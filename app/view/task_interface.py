@@ -77,6 +77,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             and os.path.exists(interface_Path)
             and os.path.exists(maa_pi_config_Path)
         ):
+            print("配置文件存在")
             # 填充数据至组件并设置初始值
             self.Task_List.addItems(Get_Values_list_Option(maa_pi_config_Path, "task"))
             self.Resource_Combox.addItems(
@@ -92,6 +93,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.Resource_Combox.setCurrentIndex(return_init["init_Resource_Type"])
             self.Control_Combox.setCurrentIndex(return_init["init_Controller_Type"])
             adb_data = Read_Config(maa_pi_config_Path)["adb"]
+            print(adb_data)
             if check_adb_path(adb_data):  # adb数据不存在
                 self.Start_ADB_Detection()
             else:  # adb数据存在
@@ -105,6 +107,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             and os.path.exists(interface_Path)
             and not (os.path.exists(maa_pi_config_Path))
         ):
+            print("配置文件不存在")
             # 填充数据至组件
             data = {
                 "adb": {"adb_path": "", "address": "127.0.0.1:0", "config": {}},
@@ -377,24 +380,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             if i["name"] == target:
                 result = i
 
-        port_data = Read_Config(
-            os.path.join(os.getcwd(), "config", "maa_pi_config.json")
-        )
+        port_data = Read_Config(cfg.get(cfg.Maa_config))
         port_data["adb"]["adb_path"] = result["path"]
 
-        Save_Config(
-            os.path.join(os.getcwd(), "config", "maa_pi_config.json"), port_data
-        )
-        path_data = Read_Config(
-            os.path.join(os.getcwd(), "config", "maa_pi_config.json")
-        )
+        Save_Config(cfg.get(cfg.Maa_config), port_data)
+        path_data = Read_Config(cfg.get(cfg.Maa_config))
         path_data["adb"]["address"] = result["port"]
 
         SettingInterface(self).update()
-        print(result["port"].split(":")[1])
 
-        Save_Config(
-            os.path.join(os.getcwd(), "config", "maa_pi_config.json"), path_data
-        )
+        Save_Config(cfg.get(cfg.Maa_config), path_data)
         signalBus.update_adb.connect(SettingInterface(self).update_adb)
         signalBus.update_adb.emit(result)

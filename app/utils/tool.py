@@ -17,6 +17,11 @@ def Read_Config(paths):
 
 def Save_Config(paths, data):
     # 打开json并写入data内数据
+
+    directory = os.path.dirname(paths)
+
+    # 创建所有必要的目录
+    os.makedirs(directory, exist_ok=True)
     with open(paths, "w", encoding="utf-8") as MAA_Config:
         json.dump(data, MAA_Config, indent=4, ensure_ascii=False)
 
@@ -31,12 +36,13 @@ def gui_init(resource_Path, maa_pi_config_Path, interface_Path):
         and os.path.exists(interface_Path)
     ):
         # 获取初始resource序号
+        Resource_count = 0
         Add_Resource_Type_Select_Values = []
         for a in Read_Config(interface_Path)["resource"]:
             Add_Resource_Type_Select_Values.append(a["name"])
         Resource_Type = Read_Config(maa_pi_config_Path)["resource"]
         if Resource_Type != "":
-            Resource_count = 0
+
             for b in Add_Resource_Type_Select_Values:
                 if b == Resource_Type:
                     break
@@ -44,13 +50,14 @@ def gui_init(resource_Path, maa_pi_config_Path, interface_Path):
                     Resource_count += 1
 
         # 获取初始Controller序号
+        Controller_count = 0
         Add_Controller_Type_Select_Values = []
         for c in Read_Config(interface_Path)["controller"]:
             Add_Controller_Type_Select_Values.append(c["name"])
         Controller_Type = Read_Config(maa_pi_config_Path)["controller"]["name"]
 
         if Controller_Type != "":
-            Controller_count = 0
+
             for d in Add_Controller_Type_Select_Values:
                 if d == Controller_Type:
                     break

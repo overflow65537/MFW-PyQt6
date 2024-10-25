@@ -62,11 +62,12 @@ class MainWindow(FluentWindow):
         if os.path.exists(os.path.join(os.getcwd(), "config", "custom.json")):
             self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("Task"))
             self.addSubInterface(
-                self.customsettingInterface, FIF.IOT, self.tr("Custom Setting")
-            )
-            self.addSubInterface(
                 self.scheduledInterface, FIF.CALENDAR, self.tr("Scheduled Task")
             )
+            self.addSubInterface(
+                self.customsettingInterface, FIF.IOT, self.tr("Custom Setting")
+            )
+
             self.addSubInterface(
                 self.settingInterface,
                 FIF.SETTING,

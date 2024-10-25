@@ -275,5 +275,5 @@ class SettingInterface(ScrollArea):
         Save_Config(cfg.get(cfg.Maa_config), data)
 
     def update_adb(self, msg):
-        self.ADBPath.contentLabel.setText(msg["path"])
-        self.ADBPort.lineEdit.setText(msg["port"].split(":")[1])
+        self.ADBPath.setContent(msg["path"])
+        self.ADBPort.lineEdit.setText(f'{msg["port"].split(":")[1]}')

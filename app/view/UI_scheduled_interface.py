@@ -12,6 +12,7 @@ from qfluentwidgets import (
     PushButton,
     BodyLabel,
     ComboBox,
+    EditableComboBox,
     ListWidget,
     LineEdit,
     TimeEdit,
@@ -29,7 +30,7 @@ class Ui_Scheduled_Interface(object):
         # 切换配置布局
 
         self.Combox_layout = QHBoxLayout()
-        self.Cfg_Combox = ComboBox(Scheduled_Interface)
+        self.Cfg_Combox = EditableComboBox(Scheduled_Interface)
         self.Cfg_Combox.setObjectName("Cfg_Combox")
         self.Add_cfg_Button = PushButton(Scheduled_Interface)
         self.Add_cfg_Button.setObjectName("Add_cfg_Button")

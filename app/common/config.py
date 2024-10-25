@@ -47,18 +47,25 @@ class Config(QConfig):
 
     # MAA路径
     Maa_config = ConfigItem(
-        "Maa", "Maa_config", os.path.join(os.getcwd(), "config", "maa_pi_config.json")
+        "Main", "Maa_config", os.path.join(os.getcwd(), "config", "maa_pi_config.json")
     )
     Maa_interface = ConfigItem(
-        "Maa",
+        "Main",
         "Maa_interface",
         os.path.join(os.getcwd(), "interface.json"),
     )
     Maa_resource = ConfigItem(
-        "Maa", "Maa_resource", os.path.join(os.getcwd(), "resource")
+        "Main", "Maa_resource", os.path.join(os.getcwd(), "resource")
     )
     maa_dev = ConfigItem(
-        "Maa", "maa_dev", os.path.join(os.getcwd(), "config", "maa_option.json")
+        "Main", "maa_dev", os.path.join(os.getcwd(), "config", "maa_option.json")
+    )
+
+    # 多配置
+    maa_config_list = ConfigItem(
+        "config_manager",
+        "maa_config_list",
+        {"Main": f'{os.path.join(os.getcwd(), "config", "maa_pi_config.json")}'},
     )
 
     # main window
