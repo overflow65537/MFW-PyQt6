@@ -3,13 +3,14 @@ import threading
 
 from maa.toolkit import Toolkit
 
-from PyQt6.QtCore import QObject, Qt, pyqtSignal
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QWidget
 from qfluentwidgets import InfoBar, InfoBarPosition
 
 from ..view.UI_task_interface import Ui_Task_Interface
 from ..logic.notification import MyNotificationHandler
 from ..logic.auto_detect_ADB_Thread import AutoDetectADBThread
+
 from ..common.signal_bus import signalBus
 from ..utils.tool import (
     Get_Values_list_Option,
@@ -31,10 +32,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         super().__init__(parent=parent)
         self.setupUi(self)
 
-        signalBus.update_signal.connect(self.refresh_widget)
+        signalBus.update_form_scheduled.connect(self.refresh_widget)
         # 初始化组件
         self._auto_detect_adb_thread = AutoDetectADBThread(self)
         self.MyNotificationHandler = MyNotificationHandler(self)
+        print("TaskInterface init")
         self.Start_Status(
             interface_Path=cfg.get(cfg.Maa_interface),
             maa_pi_config_Path=cfg.get(cfg.Maa_config),
@@ -68,7 +70,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.AutoDetect_Button.clicked.connect(self.Start_ADB_Detection)
         self.S2_Button.clicked.connect(self.Start_Up)
         self.Autodetect_combox.currentTextChanged.connect(self.Save_ADB_Config)
-        self.Task_List.currentRowChanged.connect(self.Task_List_Changed)
 
     def Start_Status(self, interface_Path, maa_pi_config_Path, resource_Path):
         # 资源文件和配置文件全部存在
@@ -93,7 +94,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.Resource_Combox.setCurrentIndex(return_init["init_Resource_Type"])
             self.Control_Combox.setCurrentIndex(return_init["init_Controller_Type"])
             adb_data = Read_Config(maa_pi_config_Path)["adb"]
-            print(adb_data)
             if check_adb_path(adb_data):  # adb数据不存在
                 self.Start_ADB_Detection()
             else:  # adb数据存在
@@ -143,13 +143,29 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 parent=self,
             )
 
-    def refresh_widget(self):
-        self.Task_List.clear()
-        self.Start_Status(
-            interface_Path=cfg.get(cfg.Maa_interface),
-            maa_pi_config_Path=cfg.get(cfg.Maa_config),
-            resource_Path=cfg.get(cfg.Maa_resource),
-        )
+    def refresh_widget(self, task_list=[]):
+        # 刷新任务列表
+
+        # 从组件获取配置的任务列表
+        items = self.get_task_list_widget()
+
+        if items != task_list:
+            self.Task_List.clear()
+            self.Start_Status(
+                interface_Path=cfg.get(cfg.Maa_interface),
+                maa_pi_config_Path=cfg.get(cfg.Maa_config),
+                resource_Path=cfg.get(cfg.Maa_resource),
+            )
+            items = self.get_task_list_widget()
+            signalBus.update_form_task.emit(items)
+
+    def get_task_list_widget(self):
+        items = []
+        for i in range(self.Task_List.count()):
+            item = self.Task_List.item(i)
+            if item is not None:
+                items.append(item.text())
+        return items
 
     def Start_Up(self):
         self.TaskOutput_Text.clear()
@@ -165,8 +181,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             notification_handler=self.MyNotificationHandler,
         )
 
-    def Task_List_Changed(self, msg):
-        pass
+    def task_list_changed(self):
+        self.Task_List.clear()
+        self.Task_List.addItems(Get_Values_list_Option(cfg.get(cfg.Maa_config), "task"))
 
     def Add_Task(self):
         # 添加任务
@@ -197,6 +214,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         Save_Config(cfg.get(cfg.Maa_config), MAA_Pi_Config)
         self.Task_List.clear()
         self.Task_List.addItems(Get_Values_list_Option(cfg.get(cfg.Maa_config), "task"))
+        item = self.get_task_list_widget()
+        signalBus.update_form_task.emit(item)
 
     def Delete_Task(self):
 
@@ -225,6 +244,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.Task_List.setCurrentRow(Select_Target)
         elif Select_Target != -1:
             self.Task_List.setCurrentRow(Select_Target - 1)
+        item = self.get_task_list_widget()
+        signalBus.update_form_task.emit(item)
 
     def Move_Up(self):
 
@@ -249,6 +270,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 Get_Values_list_Option(cfg.get(cfg.Maa_config), "task")
             )
             self.Task_List.setCurrentRow(Select_Target - 1)
+        item = self.get_task_list_widget()
+        signalBus.update_form_task.emit(item)
 
     def Move_Down(self):
 
@@ -273,6 +296,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 Get_Values_list_Option(cfg.get(cfg.Maa_config), "task")
             )
             self.Task_List.setCurrentRow(Select_Target + 1)
+        item = self.get_task_list_widget()
+        signalBus.update_form_task.emit(item)
 
     def Save_Resource(self):
         Resource_Type_Select = self.Resource_Combox.currentText()

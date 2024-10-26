@@ -17,7 +17,6 @@ from qfluentwidgets import (
     LineEdit,
     TimeEdit,
 )
-from ..components.listwidge_menu_draggable import ListWidge_Menu_Draggable
 
 
 class Ui_Scheduled_Interface(object):
@@ -51,10 +50,8 @@ class Ui_Scheduled_Interface(object):
         # 列表布局
 
         self.List_layout = QVBoxLayout()
-        self.List_widget = ListWidge_Menu_Draggable(Scheduled_Interface)
+        self.List_widget = ListWidget(Scheduled_Interface)
         self.List_widget.setObjectName("List_widget")
-        self.List_widget.setDragEnabled(True)
-        self.List_widget.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.Add_cfg_Button.setSizePolicy(
             QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum
         )
