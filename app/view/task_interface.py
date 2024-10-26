@@ -3,12 +3,11 @@ import threading
 
 from maa.toolkit import Toolkit
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QObject, Qt, pyqtSignal
 from PyQt6.QtWidgets import QWidget
 from qfluentwidgets import InfoBar, InfoBarPosition
 
 from ..view.UI_task_interface import Ui_Task_Interface
-from ..view.setting_interface import SettingInterface
 from ..logic.notification import MyNotificationHandler
 from ..logic.auto_detect_ADB_Thread import AutoDetectADBThread
 from ..common.signal_bus import signalBus
@@ -32,6 +31,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         super().__init__(parent=parent)
         self.setupUi(self)
 
+        signalBus.update_signal.connect(self.refresh_widget)
         # 初始化组件
         self._auto_detect_adb_thread = AutoDetectADBThread(self)
         self.MyNotificationHandler = MyNotificationHandler(self)
@@ -142,6 +142,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 duration=-1,
                 parent=self,
             )
+
+    def refresh_widget(self):
+        self.Task_List.clear()
+        self.Start_Status(
+            interface_Path=cfg.get(cfg.Maa_interface),
+            maa_pi_config_Path=cfg.get(cfg.Maa_config),
+            resource_Path=cfg.get(cfg.Maa_resource),
+        )
 
     def Start_Up(self):
         self.TaskOutput_Text.clear()
@@ -387,8 +395,5 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         path_data = Read_Config(cfg.get(cfg.Maa_config))
         path_data["adb"]["address"] = result["port"]
 
-        SettingInterface(self).update()
-
         Save_Config(cfg.get(cfg.Maa_config), path_data)
-        signalBus.update_adb.connect(SettingInterface(self).update_adb)
         signalBus.update_adb.emit(result)

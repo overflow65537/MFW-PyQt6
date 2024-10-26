@@ -16,7 +16,7 @@ from qfluentwidgets import (
 )
 from qfluentwidgets import FluentIcon as FIF
 from qfluentwidgets import InfoBar
-from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtCore import Qt, QUrl, pyqtSignal
 from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import QWidget, QLabel, QFileDialog
 
@@ -41,6 +41,7 @@ class SettingInterface(ScrollArea):
         super().__init__(parent=parent)
         self.scrollWidget = QWidget()
         self.expandLayout = ExpandLayout(self.scrollWidget)
+        signalBus.update_adb.connect(self.update_adb)
 
         # setting label
         self.settingLabel = QLabel(self.tr("Settings"), self)
