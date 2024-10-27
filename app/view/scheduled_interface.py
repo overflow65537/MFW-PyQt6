@@ -17,7 +17,8 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         super().__init__(parent=parent)
         self.setupUi(self)
 
-        signalBus.update_form_task.connect(self.update_task_list)
+        signalBus.update_task_list.connect(self.update_task_list)
+
 
         config_name_list = list(cfg.get(cfg.maa_config_list))
         self.Cfg_Combox.addItems(config_name_list)
@@ -181,7 +182,8 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
                 Get_Values_list_Option(cfg.get(cfg.Maa_config), "task")
             )
             items = self.get_task_list_widget()
-            signalBus.update_form_scheduled.emit(items)
+            signalBus.update_task_list.emit(items)
+
 
     def get_task_list_widget(self):
         items = []
