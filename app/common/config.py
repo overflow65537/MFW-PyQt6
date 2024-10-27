@@ -12,7 +12,6 @@ from qfluentwidgets import (
     RangeConfigItem,
     RangeValidator,
     Theme,
-    FolderValidator,
     ConfigSerializer,
     __version__,
 )
@@ -68,6 +67,25 @@ class Config(QConfig):
         {"Main": f'{os.path.join(os.getcwd(), "config", "maa_pi_config.json")}'},
     )
 
+    # 外部通知
+    Notice_Webhook = ConfigItem(
+        "Notice", "Webhook", {"DingTalk": {"url": "", "secret": ""}, "Lark": {}}
+    )
+    Notice_Qmsg = ConfigItem(
+        "Notice", "Qmsg", {"sever": "", "key": "", "uesr_qq": "", "robot_qq": ""}
+    )
+    Notice_SMTP = ConfigItem(
+        "Notice",
+        "SMTP",
+        {
+            "sever_address": "",
+            "sever_port": 0,
+            "uesr_name": "",
+            "password": "",
+            "send_mail": "",
+            "receive_mail": "",
+        },
+    )
     # main window
     micaEnabled = ConfigItem("MainWindow", "MicaEnabled", isWin11(), BoolValidator())
 
