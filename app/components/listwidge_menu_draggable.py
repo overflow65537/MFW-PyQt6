@@ -11,11 +11,20 @@ from ..utils.tool import (
 )
 from PyQt6.QtCore import Qt
 from ..common.config import cfg
+from ..common.signal_bus import signalBus
 
 
 class ListWidge_Menu_Draggable(ListWidget):
     def __init__(self, parent=None):
         super(ListWidge_Menu_Draggable, self).__init__(parent)
+
+    def get_task_list_widget(self):
+        items = []
+        for i in range(self.count()):
+            item = self.item(i)
+            if item is not None:
+                items.append(item.text())
+        return items
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.RightButton:
@@ -75,6 +84,8 @@ class ListWidge_Menu_Draggable(ListWidget):
             self.setCurrentRow(Select_Target)
         elif Select_Target != -1:
             self.setCurrentRow(Select_Target - 1)
+        item = self.get_task_list_widget()
+        signalBus.update_form_task.emit(item)
 
     def Move_Up(self):
 
@@ -97,6 +108,8 @@ class ListWidge_Menu_Draggable(ListWidget):
             self.clear()
             self.addItems(Get_Values_list_Option(cfg.get(cfg.Maa_config), "task"))
             self.setCurrentRow(Select_Target - 1)
+        item = self.get_task_list_widget()
+        signalBus.update_form_task.emit(item)
 
     def Move_Down(self):
 
@@ -119,6 +132,8 @@ class ListWidge_Menu_Draggable(ListWidget):
             self.clear()
             self.addItems(Get_Values_list_Option(cfg.get(cfg.Maa_config), "task"))
             self.setCurrentRow(Select_Target + 1)
+        item = self.get_task_list_widget()
+        signalBus.update_form_task.emit(item)
 
     def dropEvent(self, event):
         maa_pi_config_Path = os.path.join(os.getcwd(), "config", "maa_pi_config.json")
@@ -129,3 +144,6 @@ class ListWidge_Menu_Draggable(ListWidget):
         need_to_move = config["task"].pop(begin)
         config["task"].insert(end, need_to_move)
         Save_Config(maa_pi_config_Path, config)
+
+        item = self.get_task_list_widget()
+        signalBus.update_form_task.emit(item)

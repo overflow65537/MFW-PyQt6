@@ -8,9 +8,9 @@ from PyQt6.QtWidgets import QWidget
 from qfluentwidgets import InfoBar, InfoBarPosition
 
 from ..view.UI_task_interface import Ui_Task_Interface
-from ..view.setting_interface import SettingInterface
 from ..logic.notification import MyNotificationHandler
 from ..logic.auto_detect_ADB_Thread import AutoDetectADBThread
+
 from ..common.signal_bus import signalBus
 from ..utils.tool import (
     Get_Values_list_Option,
@@ -32,9 +32,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         super().__init__(parent=parent)
         self.setupUi(self)
 
+        signalBus.update_form_scheduled.connect(self.refresh_widget)
         # 初始化组件
         self._auto_detect_adb_thread = AutoDetectADBThread(self)
         self.MyNotificationHandler = MyNotificationHandler(self)
+        print("TaskInterface init")
         self.Start_Status(
             interface_Path=cfg.get(cfg.Maa_interface),
             maa_pi_config_Path=cfg.get(cfg.Maa_config),
@@ -68,7 +70,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.AutoDetect_Button.clicked.connect(self.Start_ADB_Detection)
         self.S2_Button.clicked.connect(self.Start_Up)
         self.Autodetect_combox.currentTextChanged.connect(self.Save_ADB_Config)
-        self.Task_List.currentRowChanged.connect(self.Task_List_Changed)
 
     def Start_Status(self, interface_Path, maa_pi_config_Path, resource_Path):
         # 资源文件和配置文件全部存在
@@ -77,6 +78,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             and os.path.exists(interface_Path)
             and os.path.exists(maa_pi_config_Path)
         ):
+            print("配置文件存在")
             # 填充数据至组件并设置初始值
             self.Task_List.addItems(Get_Values_list_Option(maa_pi_config_Path, "task"))
             self.Resource_Combox.addItems(
@@ -105,6 +107,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             and os.path.exists(interface_Path)
             and not (os.path.exists(maa_pi_config_Path))
         ):
+            print("配置文件不存在")
             # 填充数据至组件
             data = {
                 "adb": {"adb_path": "", "address": "127.0.0.1:0", "config": {}},
@@ -140,6 +143,30 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 parent=self,
             )
 
+    def refresh_widget(self, task_list=[]):
+        # 刷新任务列表
+
+        # 从组件获取配置的任务列表
+        items = self.get_task_list_widget()
+
+        if items != task_list:
+            self.Task_List.clear()
+            self.Start_Status(
+                interface_Path=cfg.get(cfg.Maa_interface),
+                maa_pi_config_Path=cfg.get(cfg.Maa_config),
+                resource_Path=cfg.get(cfg.Maa_resource),
+            )
+            items = self.get_task_list_widget()
+            signalBus.update_form_task.emit(items)
+
+    def get_task_list_widget(self):
+        items = []
+        for i in range(self.Task_List.count()):
+            item = self.Task_List.item(i)
+            if item is not None:
+                items.append(item.text())
+        return items
+
     def Start_Up(self):
         self.TaskOutput_Text.clear()
         threading.Thread(target=self._Start_Up, daemon=True).start()
@@ -154,8 +181,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             notification_handler=self.MyNotificationHandler,
         )
 
-    def Task_List_Changed(self, msg):
-        pass
+    def task_list_changed(self):
+        self.Task_List.clear()
+        self.Task_List.addItems(Get_Values_list_Option(cfg.get(cfg.Maa_config), "task"))
 
     def Add_Task(self):
         # 添加任务
@@ -186,6 +214,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         Save_Config(cfg.get(cfg.Maa_config), MAA_Pi_Config)
         self.Task_List.clear()
         self.Task_List.addItems(Get_Values_list_Option(cfg.get(cfg.Maa_config), "task"))
+        item = self.get_task_list_widget()
+        signalBus.update_form_task.emit(item)
 
     def Delete_Task(self):
 
@@ -214,6 +244,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.Task_List.setCurrentRow(Select_Target)
         elif Select_Target != -1:
             self.Task_List.setCurrentRow(Select_Target - 1)
+        item = self.get_task_list_widget()
+        signalBus.update_form_task.emit(item)
 
     def Move_Up(self):
 
@@ -238,6 +270,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 Get_Values_list_Option(cfg.get(cfg.Maa_config), "task")
             )
             self.Task_List.setCurrentRow(Select_Target - 1)
+        item = self.get_task_list_widget()
+        signalBus.update_form_task.emit(item)
 
     def Move_Down(self):
 
@@ -262,6 +296,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 Get_Values_list_Option(cfg.get(cfg.Maa_config), "task")
             )
             self.Task_List.setCurrentRow(Select_Target + 1)
+        item = self.get_task_list_widget()
+        signalBus.update_form_task.emit(item)
 
     def Save_Resource(self):
         Resource_Type_Select = self.Resource_Combox.currentText()
@@ -377,24 +413,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             if i["name"] == target:
                 result = i
 
-        port_data = Read_Config(
-            os.path.join(os.getcwd(), "config", "maa_pi_config.json")
-        )
+        port_data = Read_Config(cfg.get(cfg.Maa_config))
         port_data["adb"]["adb_path"] = result["path"]
 
-        Save_Config(
-            os.path.join(os.getcwd(), "config", "maa_pi_config.json"), port_data
-        )
-        path_data = Read_Config(
-            os.path.join(os.getcwd(), "config", "maa_pi_config.json")
-        )
+        Save_Config(cfg.get(cfg.Maa_config), port_data)
+        path_data = Read_Config(cfg.get(cfg.Maa_config))
         path_data["adb"]["address"] = result["port"]
 
-        SettingInterface(self).update()
-        print(result["port"].split(":")[1])
-
-        Save_Config(
-            os.path.join(os.getcwd(), "config", "maa_pi_config.json"), path_data
-        )
-        signalBus.update_adb.connect(SettingInterface(self).update_adb)
+        Save_Config(cfg.get(cfg.Maa_config), path_data)
         signalBus.update_adb.emit(result)
