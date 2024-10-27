@@ -19,7 +19,6 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
 
         signalBus.update_task_list.connect(self.update_task_list)
 
-
         config_name_list = list(cfg.get(cfg.maa_config_list))
         self.Cfg_Combox.addItems(config_name_list)
         self.List_widget.addItems(
@@ -28,6 +27,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.Add_cfg_Button.clicked.connect(self.add_config)
         self.Delete_cfg_Button.clicked.connect(self.cfg_delete)
         self.Cfg_Combox.currentIndexChanged.connect(self.cfg_changed)
+        self.set_config()
 
     def get_list_items(self):
         items = []
@@ -39,14 +39,10 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
 
     def set_config(self):
         # 启动后自动加载当前配置
-        config_name = cfg.get(cfg.Maa_config)
-        if config_name in ["Main", "main"]:
-            print("加载主配置")
-            self.Cfg_Combox.setCurrentText("Main")
-        else:
-            print("加载配置")
-            self.Cfg_Combox.setCurrentText(config_name)
-            self.cfg_changed()
+        config_path = cfg.get(cfg.Maa_config)
+        config_dict = cfg.get(cfg.maa_config_list)
+        result = [k for k, v in config_dict.items() if v == config_path]
+        self.Cfg_Combox.setCurrentText(result[0])
 
     def add_config(self):
         config_name = self.Cfg_Combox.currentText()
@@ -183,7 +179,6 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             )
             items = self.get_task_list_widget()
             signalBus.update_task_list.emit(items)
-
 
     def get_task_list_widget(self):
         items = []
