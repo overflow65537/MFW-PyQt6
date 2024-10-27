@@ -17,7 +17,7 @@ class DingTalk:
     def __init__(self) -> None:
         data = cfg.get(cfg.Notice_Webhook)["DingTalk"]
 
-        self.appname = str(self.__class__.__name__)
+        self.appname = "DingTalk"
         self.url = str(data["url"])
         self.secret = str(data["secret"])
         self.correct_url = r"^https://oapi.dingtalk.com/robot/.*$"
@@ -89,7 +89,7 @@ class Lark:
     def __init__(self) -> None:
         data = cfg.get(cfg.Notice_Webhook)["Lark"]
 
-        self.appname = str(self.__class__.__name__)
+        self.appname = "Lark"
         self.url = str(data["url"])
         self.secret = str(data["secret"])
         self.correct_url = r"^https://open.feishu.cn/open-apis/bot/.*$"
@@ -97,7 +97,6 @@ class Lark:
 
     def sign(self) -> list[str]:
         # 飞书的签名校验方法为将 sign 与 timestamp 写进 message 中
-        url = self.url
         secret = self.secret
         timestamp = str(round(time.time()))
         # 拼接timestamp和secret
@@ -125,7 +124,7 @@ class Lark:
             "content": {
                 "post": {
                     "zh_cn": {
-                        "title": "Tesr",
+                        "title": "Test",
                         "content": [
                             [
                                 {
