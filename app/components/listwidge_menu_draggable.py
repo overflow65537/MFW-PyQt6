@@ -85,7 +85,7 @@ class ListWidge_Menu_Draggable(ListWidget):
         elif Select_Target != -1:
             self.setCurrentRow(Select_Target - 1)
         item = self.get_task_list_widget()
-        signalBus.update_form_task.emit(item)
+        signalBus.update_task_list.emit(item)
 
     def Move_Up(self):
 
@@ -109,7 +109,7 @@ class ListWidge_Menu_Draggable(ListWidget):
             self.addItems(Get_Values_list_Option(cfg.get(cfg.Maa_config), "task"))
             self.setCurrentRow(Select_Target - 1)
         item = self.get_task_list_widget()
-        signalBus.update_form_task.emit(item)
+        signalBus.update_task_list.emit(item)
 
     def Move_Down(self):
 
@@ -133,7 +133,7 @@ class ListWidge_Menu_Draggable(ListWidget):
             self.addItems(Get_Values_list_Option(cfg.get(cfg.Maa_config), "task"))
             self.setCurrentRow(Select_Target + 1)
         item = self.get_task_list_widget()
-        signalBus.update_form_task.emit(item)
+        signalBus.update_task_list.emit(item)
 
     def dropEvent(self, event):
         maa_pi_config_Path = os.path.join(os.getcwd(), "config", "maa_pi_config.json")
@@ -146,4 +146,4 @@ class ListWidge_Menu_Draggable(ListWidget):
         Save_Config(maa_pi_config_Path, config)
 
         item = self.get_task_list_widget()
-        signalBus.update_form_task.emit(item)
+        signalBus.update_task_list.emit(item)

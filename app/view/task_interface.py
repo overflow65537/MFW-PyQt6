@@ -32,7 +32,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         super().__init__(parent=parent)
         self.setupUi(self)
 
-        signalBus.update_form_scheduled.connect(self.refresh_widget)
+        signalBus.update_task_list.connect(self.refresh_widget)
         # 初始化组件
         self._auto_detect_adb_thread = AutoDetectADBThread(self)
         self.MyNotificationHandler = MyNotificationHandler(self)
@@ -157,7 +157,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 resource_Path=cfg.get(cfg.Maa_resource),
             )
             items = self.get_task_list_widget()
-            signalBus.update_form_task.emit(items)
+            signalBus.update_task_list.emit(items)
 
     def get_task_list_widget(self):
         items = []
@@ -176,7 +176,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         Toolkit.pi_run_cli(
             os.getcwd(),
-            os.getcwd(),
+            cfg.get(cfg.Maa_config).replace(
+                os.path.join("config", "maa_pi_config.json"), ""
+            ),
             True,
             notification_handler=self.MyNotificationHandler,
         )
@@ -215,7 +217,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Task_List.clear()
         self.Task_List.addItems(Get_Values_list_Option(cfg.get(cfg.Maa_config), "task"))
         item = self.get_task_list_widget()
-        signalBus.update_form_task.emit(item)
+        signalBus.update_task_list.emit(item)
 
     def Delete_Task(self):
 
@@ -245,7 +247,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         elif Select_Target != -1:
             self.Task_List.setCurrentRow(Select_Target - 1)
         item = self.get_task_list_widget()
-        signalBus.update_form_task.emit(item)
+        signalBus.update_task_list.emit(item)
 
     def Move_Up(self):
 
@@ -271,7 +273,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             )
             self.Task_List.setCurrentRow(Select_Target - 1)
         item = self.get_task_list_widget()
-        signalBus.update_form_task.emit(item)
+        signalBus.update_task_list.emit(item)
 
     def Move_Down(self):
 
@@ -297,7 +299,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             )
             self.Task_List.setCurrentRow(Select_Target + 1)
         item = self.get_task_list_widget()
-        signalBus.update_form_task.emit(item)
+        signalBus.update_task_list.emit(item)
 
     def Save_Resource(self):
         Resource_Type_Select = self.Resource_Combox.currentText()
