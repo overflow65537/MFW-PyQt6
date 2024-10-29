@@ -61,7 +61,7 @@
 - **[PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)**\
     A fluent design widgets library based on C++ Qt/PyQt/PySide. Make Qt Great Again.
 - **[MaaFramework](https://github.com/MaaAssistantArknights/MaaFramework)**\
-    基于图像识别的自动化黑盒测试框架。
+    An automation black-box testing framework based on image recognition
 
 ### Developers
 Thanks to the following developers for their contributions to PyQt-MAA.
