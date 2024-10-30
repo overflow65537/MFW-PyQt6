@@ -90,9 +90,10 @@ class Lark:
 
         msg_text = msg_text + f"\n{self.sendtime}"
 
+        sign_cache = self.sign()
         msg = {
-            "timestamp": self.sign()[1],
-            "sign": self.sign()[2],
+            "timestamp": sign_cache[1],
+            "sign": sign_cache[2],
             "msg_type": "post",
             "content": {
                 "post": {
