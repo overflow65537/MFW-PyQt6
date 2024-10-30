@@ -221,7 +221,7 @@ def webhook_send(appname: str, msg_type: str = "Test") -> bool:
 
 def SMTP_send(msg_type: str = "Test") -> bool:
     status = SMTP.send(msg_type)
-    if not status:
+    if status:  # 发送正常情况下，返回值应为 {}
         signalBus.Notice_msg.emit(f"SMTP 发送失败")
         return False
     else:
