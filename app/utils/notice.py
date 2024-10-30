@@ -16,22 +16,42 @@ from ..common.config import cfg
 class DingTalk:
     def __init__(self) -> None:
         data = cfg.get(cfg.Notice_Webhook)["DingTalk"]
-
-        self.appname = "DingTalk"
+        self.sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+        self.correct_url = r"^https://oapi.dingtalk.com/robot/.*$"
         self.url = str(data["url"])
         self.secret = str(data["secret"])
-        self.correct_url = r"^https://oapi.dingtalk.com/robot/.*$"
         self.headers = {"Content-Type": "application/json"}
+        self.codename = "errcode"
+        self.code = 0
 
-    def sign(self) -> str:
-        # 钉钉的签名校验方法为将 sign 与 timestamp 写进 url 中
+    def msg(self, msg_type: str) -> dict:
+        if msg_type == "Test":
+            msg_text = "# 信息发送测试\n\n这是一段具有十六个汉字的文本测试"
+        elif msg_type == "Completed":
+            msg_text = "# 任务完成通知\n\n任务已完成。"
+        elif msg_type == "Timeout":
+            msg_text = "# 任务失败通知\n\n任务因超时而未能完成，请检查运行状态。"
+
+        msg_text = msg_text + f"\n\n{self.sendtime}"
+        msg = {
+            "msgtype": "markdown",
+            "markdown": {
+                "title": "Title",
+                "text": msg_text,
+            },
+        }
+
+        return msg
+
+    def sign(self) -> list[str]:
+        # 钉钉的签名校验方法为将 sign 与 timestamp 组合进 url 中
         url = self.url
         secret = self.secret
 
         if url == "":
             return None
         if secret == "":
-            return url
+            return [url]
 
         timestamp = str(round(time.time() * 1000))
         secret_enc = secret.encode("utf-8")
@@ -43,57 +63,54 @@ class DingTalk:
         sign = urllib.parse.quote_plus(base64.b64encode(hmac_code))
         final_url = f"{url}&timestamp={timestamp}&sign={sign}"
 
-        return final_url
-
-    def send(self) -> None:
-        url = self.sign()
-        headers = self.headers
-        message = {
-            "msgtype": "markdown",
-            "markdown": {
-                "title": "PyQt-MAA 运行状态提醒",  # 对于钉钉， title 实际上不会显示在信息中
-                "text": f"# Test\n\n ## Something\n\nto be continued ",  # TODO: 填充文本
-            },
-        }
-
-        # 校验参数合法值
-        if url is None:
-            signalBus.Notice_msg.emit(
-                f"{self.appname} Webhook URL 不能为空"
-            )  # TODO:i18n
-            return None
-        if not re.match(self.correct_url, url):
-            signalBus.Notice_msg.emit(
-                f"{self.appname} Webhook URL 格式不正确"
-            )  # TODO:i18n
-            return None
-
-        try:
-            response = requests.post(
-                url, headers=headers, json=message
-            )  # 发送 post 请求
-            status_code = response.json()["errcode"]  # 尝试获取返回码
-        except Exception:
-            signalBus.Notice_msg.emit(f"{self.appname} 发送失败")  # TODO:i18n
-            return None
-
-        if status_code != 0:  # 发送正常时应返回 0
-            signalBus.Notice_msg.emit(
-                f"{self.appname} 发送失败(Error:{status_code})"
-            )  # TODO:i18n
-        else:
-            signalBus.Notice_msg.emit(f"{self.appname} 发送成功)")
+        return [final_url]
 
 
 class Lark:
     def __init__(self) -> None:
         data = cfg.get(cfg.Notice_Webhook)["Lark"]
-
-        self.appname = "Lark"
+        self.sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+        self.correct_url = r"^https://open.feishu.cn/open-apis/bot/.*$"
         self.url = str(data["url"])
         self.secret = str(data["secret"])
-        self.correct_url = r"^https://open.feishu.cn/open-apis/bot/.*$"
         self.headers = {"Content-Type": "application/json"}
+        self.codename = "code"
+        self.code = 0
+
+    def msg(self, msg_type: str) -> dict:
+        if msg_type == "Test":
+            msg_title = "信息发送测试"
+            msg_text = "这是一段具有十六个汉字的文本测试"
+        elif msg_type == "Completed":
+            msg_title = "任务完成通知"
+            msg_text = "任务已完成。"
+        elif msg_type == "Timeout":
+            msg_title = "任务失败通知"
+            msg_text = "任务因超时而未能完成，请检查运行状态。"
+
+        msg_text = msg_text + f"\n{self.sendtime}"
+
+        msg = {
+            "timestamp": self.sign()[1],
+            "sign": self.sign()[2],
+            "msg_type": "post",
+            "content": {
+                "post": {
+                    "zh_cn": {
+                        "title": msg_title,
+                        "content": [
+                            [
+                                {
+                                    "tag": "text",
+                                    "text": msg_text,
+                                },
+                            ]
+                        ],
+                    }
+                }
+            },
+        }
+        return msg
 
     def sign(self) -> list[str]:
         # 飞书的签名校验方法为将 sign 与 timestamp 写进 message 中
@@ -108,65 +125,51 @@ class Lark:
         # 对结果进行base64处理
         sign = base64.b64encode(hmac_code).decode("utf-8")
 
-        return [timestamp, sign]
-
-    def send(self) -> None:
-        sign_data = self.sign()
-        timestamp = sign_data[0]
-        sign = sign_data[1]
-
-        url = self.url
-        headers = self.headers
-        message = {
-            "timestamp": timestamp,
-            "sign": sign,
-            "msg_type": "post",
-            "content": {
-                "post": {
-                    "zh_cn": {
-                        "title": "Test",
-                        "content": [
-                            [
-                                {
-                                    "tag": "text",
-                                    "text": f"to be continued",
-                                },
-                            ]
-                        ],
-                    }
-                }
-            },
-        }
-
-        # 校验参数合法值
-        if url == "":
-            signalBus.Notice_msg.emit(
-                f"{self.appname} Webhook URL 不能为空"
-            )  # TODO:i18n
-            return None
-        if not re.match(self.correct_url, url):
-            signalBus.Notice_msg.emit(
-                f"{self.appname} Webhook URL 格式不正确"
-            )  # TODO:i18n
-            return None
-
-        try:
-            response = requests.post(
-                url, headers=headers, json=message
-            )  # 发送 post 请求
-            status_code = response.json()["code"]  # 尝试获取返回码
-        except Exception:
-            signalBus.Notice_msg.emit(f"{self.appname} 发送失败")  # TODO:i18n
-            return None
-
-        if status_code != 0:  # 发送正常时应返回 0
-            signalBus.Notice_msg.emit(
-                f"{self.appname} 发送失败(Error:{status_code})"
-            )  # TODO:i18n
-        else:
-            signalBus.Notice_msg.emit(f"{self.appname} 发送成功)")
+        return [self.url, timestamp, sign]
 
 
 class SMTP:
     def __init__(self) -> None:
         pass  # TODO
+
+
+def webhook_send(appname: str, msg_type: str = "Test") -> bool:
+    # appname: "DingTalk" | "Lark"
+    # msg_type: "Test" | "Completed" | "Timeout"
+    # 当发送成功时，返回 True ，其余情况均返回 False
+
+    if appname == "DingTalk":
+        APP = DingTalk()
+    elif appname == "Lark":
+        APP = Lark()
+    else:
+        signalBus.Notice_msg.emit("不支持的发送方式")
+        return False
+
+    url = APP.sign()[0]
+    msg = APP.msg(msg_type)
+    headers = APP.headers
+    if url is None:
+        print("Url is None")
+        signalBus.Notice_msg.emit("Url 不能为空")
+        return False
+    if not re.match(APP.correct_url, url):
+        signalBus.Notice_msg.emit("Url 格式不正确")
+        return False
+
+    try:
+        response = requests.post(url=url, headers=headers, json=msg)
+        status_code = response.json()[APP.codename]
+    except Exception:
+        print("response failed")
+        signalBus.Notice_msg.emit(f"{appname} 发送失败")
+        return False
+
+    if status_code == APP.code:
+        print("send success")
+        signalBus.Notice_msg.emit(f"{appname} 发送成功")
+        return True
+    else:
+        print("send failed")
+        signalBus.Notice_msg.emit(f"{appname} 发送失败 (Error:{status_code})")
+        return False
