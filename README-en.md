@@ -53,7 +53,7 @@
     }
 }
 ```
-- The processed data will be saved to `./config/custom_config.json`
+- The processed data will be saved to `./config/custom_config.json` for custom programs to read.
 
 ## License
 **PyQt-MAA** is licensed under **[GPL-3.0 License](./LICENSE)**.
