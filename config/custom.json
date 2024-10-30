@@ -1,5 +1,5 @@
 {
-    "option1": {
+    "Option1": {
         "optionname": "option1",
         "optiontype": "switch",
         "optioncontent": false,
@@ -8,7 +8,7 @@
             "content": "这是一个开关"
         }
     },
-    "option2": {
+    "Option2": {
         "optionname": "option2",
         "optiontype": "combox",
         "optioncontent": [
@@ -21,7 +21,7 @@
             "content": "这是一个下拉框"
         }
     },
-    "option3": {
+    "Option3": {
         "optionname": "option3",
         "optiontype": "lineedit",
         "optioncontent": "content3",

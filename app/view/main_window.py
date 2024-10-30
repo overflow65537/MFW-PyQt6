@@ -65,7 +65,7 @@ class MainWindow(FluentWindow):
                 self.scheduledInterface, FIF.CALENDAR, self.tr("Scheduled Task")
             )
             self.addSubInterface(
-                self.customsettingInterface, FIF.IOT, self.tr("Custom Setting")
+                self.customsettingInterface, FIF.APPLICATION, self.tr("Custom Setting")
             )
 
             self.addSubInterface(

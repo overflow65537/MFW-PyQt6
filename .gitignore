@@ -446,7 +446,6 @@ install
 
 # Tools
 tools/ImageCropper/**/*.png
-maa_option.json
-maa_pi_config.json
-config/config.json
-config/custom_config.json
+config/*
+!config/emulator.json
+!config/custom.json
