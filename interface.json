@@ -1,0 +1,58 @@
+{
+    "controller": [
+        {
+            "name": "Android",
+            "type": "Adb"
+        },
+        {
+            "name": "PC",
+            "type": "Win32",
+            "win32": {
+                "class_regex": ".*",
+                "window_regex": "Github Desktop"
+            }
+        }
+    ],
+    "task": [
+        {
+            "name": "你好 世界",
+            "entry": "Sample"
+        },
+        {
+            "name": "这是一个示例文件",
+            "entry": "Sample"
+        },
+        {
+            "name": "请将资源文件移至项目根目录",
+            "entry": "Sample"
+        },
+        {
+            "name": "这是一段具有十六个汉字的文本测试",
+            "entry": "Sample"
+        },
+        {
+            "name": "Hello World",
+            "entry": "Sample"
+        },
+        {
+            "name": "This is just a sample",
+            "entry": "Sample"
+        },
+        {
+            "name": "Please put your res files into ./",
+            "entry": "Sample"
+        },
+        {
+            "name": "The quick brown fox jumps over the lazy dog",
+            "entry": "Sample"
+        }
+    ],
+    "resource": [
+        {
+            "name": "Base",
+            "path": [
+                "{PROJECT_DIR}/resource"
+            ]
+        }
+    ]
+}

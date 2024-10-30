@@ -20,34 +20,36 @@
 - 内容为
 ```
 {
-    "option1":{
-        "optionname":"option1",
-        "optiontype":"combox",
-        "text":{
-            "title":"下拉框",
-            "content":"这是一个下拉框"
-        },
-        "optioncontent":["content1","content2","content3"]
-
-    },
-    "option2":{
-        "optionname":"option2",
-        "optiontype":"switch",
-        "text":{
-            "title":"开关",
-            "content":"这是一个开关"
+    "option1": {
+        "optionname": "option1",
+        "optiontype": "switch",
+        "optioncontent": false,
+        "text": {
+            "title": "开关",
+            "content": "这是一个开关"
         }
-
     },
-    "option3":{
-        "optionname":"option3",
-        "optiontype":"lineedit",
-        "text":{
-            "title":"输入框",
-            "content":"这是一个输入框"
-        },
-        "optioncontent":"content3"
-
+    "option2": {
+        "optionname": "option2",
+        "optiontype": "combox",
+        "optioncontent": [
+            "content1",
+            "content2",
+            "content3"
+        ],
+        "text": {
+            "title": "下拉框",
+            "content": "这是一个下拉框"
+        }
+    },
+    "option3": {
+        "optionname": "option3",
+        "optiontype": "lineedit",
+        "optioncontent": "content3",
+        "text": {
+            "title": "输入框",
+            "content": "这是一个输入框"
+        }
     }
 }
 ```
