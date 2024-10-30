@@ -53,7 +53,7 @@
     }
 }
 ```
-- 处理后的数据会保存至 `./config/custom_config.json`以供custom程序读取
+- 处理后的数据会保存至 `./config/custom_config.json` 以供custom程序读取。
 
 ## 许可证
 **PyQt-MAA** 使用 **[GPL-3.0 许可证](./LICENSE)** 开源。
