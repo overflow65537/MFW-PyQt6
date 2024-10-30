@@ -58,7 +58,7 @@ class CustomSettingInterface(ScrollArea):
     def CreateOption(self, dict: dict):
         if dict["optiontype"] == "combox":
             self.combox = ComboBoxSettingCardCustom(
-                icon=FIF.SETTING,
+                icon=FIF.FILTER,
                 title=dict["text"]["title"],
                 content=dict["text"]["content"],
                 texts=dict["optioncontent"],
@@ -76,7 +76,7 @@ class CustomSettingInterface(ScrollArea):
                 text = ""
             self.lineedit = LineEditCard(
                 holderText=text,
-                icon=FIF.COMMAND_PROMPT,
+                icon=FIF.EDIT,
                 title=dict["text"]["title"],
                 content=dict["text"]["content"],
                 parent=self.CustomSettingGroup,
@@ -87,7 +87,7 @@ class CustomSettingInterface(ScrollArea):
 
         elif dict["optiontype"] == "switch":
             self.Switch = SwitchSettingCardCustom(
-                icon=FIF.COMMAND_PROMPT,
+                icon=FIF.POWER_BUTTON,
                 title=dict["text"]["title"],
                 content=dict["text"]["content"],
                 target=dict["optionname"],

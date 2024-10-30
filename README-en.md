@@ -20,34 +20,36 @@
 - The file should contain the following content:
 ```
 {
-    "option1":{
-        "optionname":"option1",
-        "optiontype":"combox",
-        "text":{
-            "title":"Combox",
-            "content":"This is a Combox."
-        },
-        "optioncontent":["content1","content2","content3"]
-
-    },
-    "option2":{
-        "optionname":"option2",
-        "optiontype":"switch",
-        "text":{
+    "option1": {
+        "optionname": "option1",
+        "optiontype": "switch",
+        "optioncontent": false,
+        "text": {
             "title":"Switch",
             "content":"This is a Switch."
         }
-
     },
-    "option3":{
-        "optionname":"option3",
-        "optiontype":"lineedit",
-        "text":{
+    "option2": {
+        "optionname": "option2",
+        "optiontype": "combox",
+        "optioncontent": [
+            "content1",
+            "content2",
+            "content3"
+        ],
+        "text": {
+            "title":"Combox",
+            "content":"This is a Combox."
+        }
+    },
+    "option3": {
+        "optionname": "option3",
+        "optiontype": "lineedit",
+        "optioncontent": "content3",
+        "text": {
             "title":"Lineedit",
             "content":"This is a Lineedit"
-        },
-        "optioncontent":"content3"
-
+        }
     }
 }
 ```
