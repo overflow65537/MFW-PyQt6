@@ -1,10 +1,14 @@
 import os
-import threading
+import json
+
+# import threading
+import subprocess
 
 from maa.toolkit import Toolkit
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QByteArray
 from PyQt6.QtWidgets import QWidget
+from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from qfluentwidgets import InfoBar, InfoBarPosition
 
 from ..view.UI_task_interface import Ui_Task_Interface
@@ -32,6 +36,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         super().__init__(parent=parent)
         self.setupUi(self)
 
+        # 连接本地服务
+        self.server = QLocalServer(self)
+        self.server.newConnection.connect(self.connection)
+        self.server.listen("MAA2GUI")
+
+        # subprocess.Popen([os.path.join(os.getcwd(), "MAA_Service.exe")])
+
         signalBus.update_task_list.connect(self.refresh_widget)
         # 初始化组件
         self._auto_detect_adb_thread = AutoDetectADBThread(self)
@@ -44,7 +55,27 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         )
         self.init_widget()
 
+    def connection(self):
+        socket = self.server.nextPendingConnection()
+        socket.readyRead.connect(lambda: self.signal_routing(socket))
+
+    def signal_routing(self, socket):
+        data = (socket.readAll()).data().decode("utf-8")
+        print(f"收到信号：{data}")
+        if data == "MAA_start":
+            print("开始按钮解锁")
+            self.S2_Button.setEnabled(True)
+        else:
+            self.TaskOutput_Text.append(data)
+
+    def sendData(self, msg):
+        data = QByteArray(bytes(msg, "utf-8"))  # 要发送的数据
+        self.socket.write(data)  # 发送数据
+
     def init_widget(self):
+        # 在MAA_Service.exe启动前 禁用按钮
+        self.S2_Button.setEnabled(False)
+        print("锁定开始按钮")
 
         # 隐藏任务选项
         self.SelectTask_Combox_2.hide()
@@ -169,7 +200,18 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def Start_Up(self):
         self.TaskOutput_Text.clear()
-        threading.Thread(target=self._Start_Up, daemon=True).start()
+        self.socket = QLocalSocket()
+        self.socket.connectToServer("GUI2MAA")
+        parameter = {
+            "resource_dir": os.getcwd(),
+            "cfg_dir": cfg.get(cfg.Maa_config).replace(
+                os.path.join("config", "maa_pi_config.json"), ""
+            ),
+            "directly": True,
+        }
+        msg = json.dumps(parameter)
+        print(f"发送信号：{msg}")
+        self.sendData(msg)
 
     def _Start_Up(self):
         # notification_handler = MyNotificationHandler(callback.callback_sig)
