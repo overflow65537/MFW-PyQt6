@@ -43,7 +43,6 @@ class DingTalk:
 
         return msg
 
-
     def sign(self) -> list[str]:
         # 钉钉的签名校验方法为将 sign 与 timestamp 组合进 url 中
         url = self.url
@@ -227,13 +226,4 @@ def SMTP_send(msg_type: str = "Test") -> bool:
         return False
     else:
         signalBus.Notice_msg.emit(f"SMTP 发送成功")
-        return True
-
-    if status_code != APP.code:
-        print("send failed")
-        signalBus.Notice_msg.emit(f"{appname} 发送失败 (Error:{status_code})")
-        return False
-    else:
-        print("send success")
-        signalBus.Notice_msg.emit(f"{appname} 发送成功")
         return True
