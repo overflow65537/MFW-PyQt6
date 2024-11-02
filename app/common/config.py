@@ -44,6 +44,8 @@ def isWin11():
 class Config(QConfig):
     """Config of application"""
 
+    # 完成后运行
+    Finish_combox = ConfigItem("combox", "Finish_combox", 0)
     # MAA路径
     Maa_config = ConfigItem(
         "Main", "Maa_config", os.path.join(os.getcwd(), "config", "maa_pi_config.json")

@@ -1,14 +1,14 @@
 import os
 import json
 import subprocess
+import platform
 
 from PyQt6.QtCore import Qt, QByteArray
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtWidgets import QApplication, QWidget
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from qfluentwidgets import InfoBar, InfoBarPosition
 
 from ..view.UI_task_interface import Ui_Task_Interface
-from ..logic.notification import MyNotificationHandler
 from ..logic.auto_detect_ADB_Thread import AutoDetectADBThread
 
 from ..common.signal_bus import signalBus
@@ -44,7 +44,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         signalBus.update_task_list.connect(self.refresh_widget)
         # 初始化组件
         self._auto_detect_adb_thread = AutoDetectADBThread(self)
-        self.MyNotificationHandler = MyNotificationHandler(self)
         print("TaskInterface init")
         self.Start_Status(
             interface_Path=cfg.get(cfg.Maa_interface),
@@ -65,6 +64,23 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.S2_Button.setEnabled(True)
         elif data == "MAA_runing":
             self.S2_Button.setEnabled(True)
+        elif data == "MAA_completed":
+            self.TaskOutput_Text.append("任务完成")
+            self.Completion_Options()
+            self.S2_Button.setText("开始")
+        elif "连接失败" in data:
+            self.Task_List
+            self.TaskOutput_Text.append(data)
+            self.Stop_task()
+            InfoBar.error(
+                title="错误",
+                content="连接失败，请检查ADB配置",
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.BOTTOM_RIGHT,
+                duration=-1,
+                parent=self,
+            )
         else:
             self.TaskOutput_Text.append(data)
 
@@ -76,6 +92,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         # 在MAA_Service.exe启动前 禁用按钮
         self.S2_Button.setEnabled(False)
         print("锁定开始按钮")
+
+        self.Finish_combox.setCurrentIndex(cfg.get(cfg.Finish_combox))
 
         # 隐藏任务选项
         self.SelectTask_Combox_2.hide()
@@ -89,7 +107,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Topic_Text.hide()
 
         # 绑定信号
-        self.MyNotificationHandler.callbackSignal.callback.connect(self.change_output)
         self._auto_detect_adb_thread.signal.connect(self.On_ADB_Detected)
         self.AddTask_Button.clicked.connect(self.Add_Task)
         self.Delete_Button.clicked.connect(self.Delete_Task)
@@ -198,10 +215,32 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 items.append(item.text())
         return items
 
+    def Completion_Options(self):
+        target = self.Finish_combox.currentIndex()
+        if target == 1:
+            self.closeEmulator()
+        elif target == 2:
+            QApplication.quit()
+        elif target == 3:
+            self.closeEmulator()
+            self.close()
+        elif target == 4:
+            self.shutdown()
+
+    def closeEmulator(self):
+        pass
+
+    def shutdown(self):
+        if platform.system() == "Windows":
+            os.system("shutdown /s /t 1")
+        elif platform.system() == "Linux":
+            os.system("shutdown now")
+        elif platform.system() == "macOS":
+            os.system("sudo shutdown -h now")
+
     def Start_Up(self):
         self.S2_Button.setEnabled(False)
         self.S2_Button.setText("停止")
-        self.TaskOutput_Text.clear()
         self.TaskOutput_Text.clear()
         self.socket = QLocalSocket()
         self.socket.connectToServer("GUI2MAA")

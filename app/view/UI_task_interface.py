@@ -75,6 +75,10 @@ class Ui_Task_Interface(object):
         self.Autodetect_combox = ComboBox(Task_Interface)
         self.Finish_combox = ComboBox(Task_Interface)
 
+        self.Finish_combox.addItems(
+            ["无动作", "关闭模拟器", "关闭主进程", "关闭模拟器及主进程" "关机"]
+        )
+
         self.Resource_Combox.setObjectName("Resource_Combox")
         self.Control_Combox.setObjectName("Control_Combox")
         self.Autodetect_combox.setObjectName("Autodetect_combox")
@@ -83,7 +87,6 @@ class Ui_Task_Interface(object):
         self.Resource_Combox.setPlaceholderText("选择资源")
         self.Control_Combox.setPlaceholderText("选择控制端")
         self.Autodetect_combox.setPlaceholderText("选择设备")
-        self.Finish_combox.setPlaceholderText("完成后操作")
 
         self.LD4_layout.addWidget(self.Resource_Combox)
         self.LD4_layout.addWidget(self.Control_Combox)
