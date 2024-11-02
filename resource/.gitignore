@@ -1,6 +1,3 @@
-image/*
-model/*
-pipeline/*
-default_pipeline.json
 !pipeline/sample.json
 !*/.gitkeep
+*

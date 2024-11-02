@@ -1,10 +1,6 @@
 import os
 import json
-
-# import threading
 import subprocess
-
-from maa.toolkit import Toolkit
 
 from PyQt6.QtCore import Qt, QByteArray
 from PyQt6.QtWidgets import QWidget
@@ -41,7 +37,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.server.newConnection.connect(self.connection)
         self.server.listen("MAA2GUI")
 
-        # subprocess.Popen([os.path.join(os.getcwd(), "MAA_Service.exe")])
+        self.MAA_Service_Process = subprocess.Popen(
+            ["python", os.path.join(os.getcwd(), "MAA_Service.py")]
+        )
 
         signalBus.update_task_list.connect(self.refresh_widget)
         # 初始化组件
@@ -62,8 +60,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def signal_routing(self, socket):
         data = (socket.readAll()).data().decode("utf-8")
         print(f"收到信号：{data}")
-        if data == "MAA_start":
+        if data == "MAA_started":
             print("开始按钮解锁")
+            self.S2_Button.setEnabled(True)
+        elif data == "MAA_runing":
             self.S2_Button.setEnabled(True)
         else:
             self.TaskOutput_Text.append(data)
@@ -199,6 +199,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         return items
 
     def Start_Up(self):
+        self.S2_Button.setEnabled(False)
+        self.S2_Button.setText("停止")
+        self.TaskOutput_Text.clear()
         self.TaskOutput_Text.clear()
         self.socket = QLocalSocket()
         self.socket.connectToServer("GUI2MAA")
@@ -212,17 +215,25 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         msg = json.dumps(parameter)
         print(f"发送信号：{msg}")
         self.sendData(msg)
+        self.S2_Button.clicked.disconnect()
+        self.S2_Button.clicked.connect(self.Stop_task)
 
-    def _Start_Up(self):
-        # notification_handler = MyNotificationHandler(callback.callback_sig)
+    def Stop_task(self):
+        self.S2_Button.setEnabled(False)
+        self.S2_Button.setText("开始")
+        self.TaskOutput_Text.append("正在停止任务...")
+        self.socket.disconnectFromServer()
+        self.socket.waitForDisconnected()
+        self.MAA_Service_Process.terminate()
+        try:
+            self.MAA_Service_Process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            self.MAA_Service_Process.kill()
 
-        Toolkit.pi_run_cli(
-            os.getcwd(),
-            cfg.get(cfg.Maa_config).replace(
-                os.path.join("config", "maa_pi_config.json"), ""
-            ),
-            True,
-            notification_handler=self.MyNotificationHandler,
+        self.S2_Button.clicked.disconnect()
+        self.S2_Button.clicked.connect(self.Start_Up)
+        self.MAA_Service_Process = subprocess.Popen(
+            ["python", os.path.join(os.getcwd(), "MAA_Service.py")]
         )
 
     def task_list_changed(self):
