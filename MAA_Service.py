@@ -1,4 +1,8 @@
 from maa.toolkit import Toolkit
+
+# from maa.custom_recognition import CustomRecognition
+# from maa.custom_action import CustomAction
+
 from maa.notification_handler import NotificationHandler, NotificationType
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from PyQt6.QtCore import QByteArray, QObject
@@ -84,17 +88,46 @@ class MAA_Service(QObject):
         self.socket.disconnectFromServer()
         self.socket.waitForDisconnected()
         print("参数列表:", values_list[0], values_list[1], values_list[2])
-        self.MyNotificationHandler = MyNotificationHandler(self)
-        Toolkit.pi_run_cli(
-            values_list[0],
-            values_list[1],
-            values_list[2],
-            notification_handler=self.MyNotificationHandler,
-        )
+        custom_maa(values_list[0], values_list[1], values_list[2])
 
     def sendData(self, msg):
         data = QByteArray(bytes(msg, "utf-8"))  # 要发送的数据
         self.socket.write(data)  # 发送数据
+
+
+class custom_maa:
+    def __init__(self, resource_dir, cfg_dir, directly):
+        """
+        # 注册自定义识别器
+        Toolkit.register_custom_recognition("MyReco", MyRecognition())
+
+        # 注册自定义动作
+        Toolkit.register_custom_action("MyAct", MyAction())
+        """
+        # 启动MAA
+        self.MyNotificationHandler = MyNotificationHandler(self)
+        Toolkit.pi_run_cli(
+            resource_dir,
+            cfg_dir,
+            directly,
+            notification_handler=self.MyNotificationHandler,
+        )
+
+    """
+    class MyRecognition(CustomRecognition):
+        def analyze(context, ...):
+            # 获取图片，然后进行自己的图像操作
+            image = context.tasker.controller.cached_image
+            # 返回图像分析结果
+            return AnalyzeResult(box=(10, 10, 100, 100))
+
+    class MyAction(CustomAction):
+        def run(context, ...):
+            # 进行点击
+            context.controller.post_click(100, 10).wait()
+            # 重写接下来要执行的任务
+            context.override_next(task_name, ["TaskA", "TaskB"])
+    """
 
 
 if __name__ == "__main__":
