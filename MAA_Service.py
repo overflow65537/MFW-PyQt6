@@ -25,13 +25,6 @@ class MyNotificationHandler(NotificationHandler):
         data = QByteArray(bytes(msg, "utf-8"))  # 要发送的数据
         self.socket.write(data)  # 发送数据
 
-    def on_resource_loading(
-        self,
-        noti_type: NotificationType,
-        detail: NotificationHandler.ResourceLoadingDetail,
-    ):
-        pass
-
     def on_controller_action(
         self,
         noti_type: NotificationType,
@@ -39,13 +32,13 @@ class MyNotificationHandler(NotificationHandler):
     ):
         now_time = datetime.now().strftime("%H:%M:%S")
         if noti_type.value == 1:
-            self.sendData(f"{now_time}" + " 连接中")
+            self.sendData(f"{now_time}" + "  连接中")
         elif noti_type.value == 2:
-            self.sendData(f"{now_time}" + " 连接成功")
+            self.sendData(f"{now_time}" + "  连接成功")
         elif noti_type.value == 3:
-            self.sendData(f"{now_time}" + " 连接失败")
+            self.sendData(f"{now_time}" + "  连接失败")
         else:
-            self.sendData(f"{now_time}" + " 连接状态未知")
+            self.sendData(f"{now_time}" + "  连接状态未知")
 
     def on_tasker_task(
         self, noti_type: NotificationType, detail: NotificationHandler.TaskerTaskDetail
@@ -54,11 +47,38 @@ class MyNotificationHandler(NotificationHandler):
         status_map = {0: "未知", 1: "运行中", 2: "成功", 3: "失败"}
         self.sendData(
             f"{now_time}"
-            + " "
+            + "  "
             + f"{detail.entry}"
             + " "
             + f"{status_map[noti_type.value]}"
         )
+
+    def on_resource_loading(
+        self,
+        noti_type: NotificationType,
+        detail: NotificationHandler.ResourceLoadingDetail,
+    ):
+        pass
+        # self.sendData(f"on_resource_loading: {noti_type}, {detail}")
+
+    def on_task_next_list(
+        self,
+        noti_type: NotificationType,
+        detail: NotificationHandler.TaskNextListDetail,
+    ):
+        self.sendData(f"on_task_next_list: {noti_type}, {detail}")
+
+    def on_task_recognition(
+        self,
+        noti_type: NotificationType,
+        detail: NotificationHandler.TaskRecognitionDetail,
+    ):
+        self.sendData(f"on_task_recognition: {noti_type}, {detail}")
+
+    def on_task_action(
+        self, noti_type: NotificationType, detail: NotificationHandler.TaskActionDetail
+    ):
+        self.sendData(f"on_task_action: {noti_type}, {detail}")
 
 
 class MAA_Service(QObject):
@@ -89,6 +109,9 @@ class MAA_Service(QObject):
         self.socket.waitForDisconnected()
         print("参数列表:", values_list[0], values_list[1], values_list[2])
         custom_maa(values_list[0], values_list[1], values_list[2])
+        self.socket = QLocalSocket()
+        self.socket.connectToServer("MAA2GUI")
+        self.sendData("MAA_completed")
 
     def sendData(self, msg):
         data = QByteArray(bytes(msg, "utf-8"))  # 要发送的数据
