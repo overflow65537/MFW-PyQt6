@@ -131,7 +131,50 @@ class Lark:
 
 class SMTP:
     def __init__(self) -> None:
-        pass  # TODO
+        data = cfg.get(cfg.Notice_SMTP)
+        self.sever_address = data["sever_address"]
+        self.sever_port = data["sever_port"]
+        self.uesr_name = data["user_name"]
+        self.password = data["password"]
+        self.send_mail = data["send_mail"]
+        self.receive_mail = data["receive_mail"]
+
+        self.Open_SSL = True  # TODO
+        self.Open_Login = True  # TODO
+
+    def msg(self, msg_type: str) -> MIMEText:
+        if msg_type == "Test":
+            msg_text = "这是一段具有十六个汉字的文本测试"
+            msg = MIMEText(msg_text, "html", "utf-8")
+            msg["Subject"] = "信息发送测试"
+        elif msg_type == "Completed":
+            msg_text = "任务已完成。"
+            msg = MIMEText(msg_text, "html", "utf-8")
+            msg["Subject"] = "任务完成通知"
+        elif msg_type == "Timeout":
+            msg_text = "任务因超时而未能完成，请检查运行状态。"
+            msg = MIMEText(msg_text, "html", "utf-8")
+            msg["Subject"] = "任务失败通知"
+
+        msg["From"] = self.send_mail
+        msg["To"] = self.receive_mail
+
+        return msg
+
+    def send(self, msg_type: str) -> bool:
+        msg = self.msg(msg_type)
+        if self.Open_SSL:
+            smtp = smtplib.SMTP_SSL(self.sever_address, self.sever_port)
+        else:
+            smtp = smtplib.SMTP(self.sever_address, self.sever_port)
+
+        if self.Open_Login:
+            smtp.login(self.uesr_name, self.password)
+
+        try:
+            smtp.sendmail(self.send_mail, self.receive_mail, msg.as_string())
+        finally:
+            smtp.quit()
 
 
 def webhook_send(appname: str, msg_type: str = "Test") -> bool:
@@ -166,11 +209,21 @@ def webhook_send(appname: str, msg_type: str = "Test") -> bool:
         signalBus.Notice_msg.emit(f"{appname} 发送失败")
         return False
 
-    if status_code == APP.code:
-        print("send success")
-        signalBus.Notice_msg.emit(f"{appname} 发送成功")
-        return True
-    else:
+    if status_code != APP.code:
         print("send failed")
         signalBus.Notice_msg.emit(f"{appname} 发送失败 (Error:{status_code})")
         return False
+    else:
+        print("send success")
+        signalBus.Notice_msg.emit(f"{appname} 发送成功")
+        return True
+
+
+def SMTP_send(msg_type: str = "Test") -> bool:
+    status = SMTP.send(msg_type)
+    if status:  # 发送正常情况下，返回值应为 {}
+        signalBus.Notice_msg.emit(f"SMTP 发送失败")
+        return False
+    else:
+        signalBus.Notice_msg.emit(f"SMTP 发送成功")
+        return True
