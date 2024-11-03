@@ -3,6 +3,7 @@ import json
 import psutil
 import socket
 import re
+import subprocess
 
 
 def Read_Config(paths):
@@ -189,3 +190,43 @@ def check_adb_path(adb_data):
         return True  # 路径或地址不正确
     else:
         return False  # 路径或地址正确
+
+
+def get_gpu_info():
+    gpu_info = {}
+
+    try:
+        # 获取显卡ID列表
+        id_output = subprocess.check_output(
+            "wmic path win32_VideoController get DeviceID", shell=True, text=True
+        )
+
+        # 获取显卡名称列表
+        name_output = subprocess.check_output(
+            "wmic path win32_VideoController get Name", shell=True, text=True
+        )
+
+        ids = id_output.strip().split("\n")[1:]  # 跳过第一行
+        names = name_output.strip().split("\n")[1:]  # 跳过第一行
+
+        for id, name in zip(ids, names):
+            if id and name:  # 清除空元素
+                # 提取数字部分
+                id_num = "".join(filter(str.isdigit, id))
+                gpu_info[id_num] = name.strip()
+        """
+        Read_Config(os.path.join(os.getcwd(), "confgi", "gpu_blacklist.json"))
+        for gpu_name in blacklist:
+            # 找到相应的键
+            keys_to_remove = [
+                key for key, value in gpu_info.items() if value == gpu_name
+            ]
+            # 从字典中移除
+            for key in keys_to_remove:
+                del gpu_info[key]
+        """
+
+    except Exception as e:
+        print(f"获取显卡信息时出错: {e}")
+
+    return gpu_info

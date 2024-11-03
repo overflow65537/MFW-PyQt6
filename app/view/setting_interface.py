@@ -16,7 +16,7 @@ from qfluentwidgets import (
 )
 from qfluentwidgets import FluentIcon as FIF
 from qfluentwidgets import InfoBar
-from PyQt6.QtCore import Qt, QUrl, pyqtSignal
+from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import QWidget, QLabel, QFileDialog
 
@@ -31,7 +31,8 @@ from ..common.config import (
 from ..common.signal_bus import signalBus
 from ..common.style_sheet import StyleSheet
 from ..components.line_edit_card import LineEditCard
-from ..utils.tool import Read_Config, Save_Config
+from ..components.combobox_setting_card_custom import ComboBoxSettingCardCustom
+from ..utils.tool import Read_Config, Save_Config, get_gpu_info
 
 
 class SettingInterface(ScrollArea):
@@ -46,7 +47,7 @@ class SettingInterface(ScrollArea):
         # setting label
         self.settingLabel = QLabel(self.tr("Settings"), self)
 
-        # ADB Group
+        # ADB设备设置
 
         if os.path.exists(cfg.get(cfg.Maa_config)):
             pi_config = Read_Config(cfg.get(cfg.Maa_config))
@@ -60,24 +61,71 @@ class SettingInterface(ScrollArea):
             Port_data = "0"
             path_data = "./"
 
-        self.ADB_Path_Port_Adjuster = SettingCardGroup(
-            self.tr("ADB"), self.scrollWidget
-        )
-        self.ADBPort = LineEditCard(
+        self.ADB_Setting = SettingCardGroup(self.tr("ADB"), self.scrollWidget)
+        self.ADB_port = LineEditCard(
             FIF.COMMAND_PROMPT,
             Port_data,
             title=self.tr("ADB 端口"),  # TODO:i18n
-            parent=self.ADB_Path_Port_Adjuster,
+            parent=self.ADB_Setting,
         )
-        self.ADBPath = PrimaryPushSettingCard(
+        self.ADB_path = PrimaryPushSettingCard(
             self.tr("选择 ADB 路径"),  # TODO:i18n
             FIF.COMMAND_PROMPT,
             self.tr("ADB 路径"),
             f"当前路径：{path_data}",
-            self.ADB_Path_Port_Adjuster,
+            self.ADB_Setting,
         )
-
-        # personalization
+        self.emu_path = PrimaryPushSettingCard(
+            self.tr("选择模拟器路径"),  # TODO:i18n
+            FIF.COMMAND_PROMPT,
+            self.tr("模拟器路径"),
+            f"当前路径：{cfg.get(cfg.emu_path)}",
+            self.ADB_Setting,
+        )
+        self.emu_wait_time = LineEditCard(
+            FIF.COMMAND_PROMPT,
+            cfg.get(cfg.emu_wait_time),
+            title=self.tr("等待模拟器启动时间"),  # TODO:i18n
+            parent=self.ADB_Setting,
+        )
+        # win32程序
+        self.Win32_Setting = SettingCardGroup(self.tr("Win32"), self.scrollWidget)
+        self.exe_path = PrimaryPushSettingCard(
+            self.tr("选择启动程序路径"),  # TODO:i18n
+            FIF.COMMAND_PROMPT,
+            self.tr("启动程序路径"),
+            f"当前路径：{cfg.get(cfg.exe_path)}",
+            self.Win32_Setting,
+        )
+        self.exe_parameter = LineEditCard(
+            FIF.COMMAND_PROMPT,
+            cfg.get(cfg.exe_parameter),
+            title=self.tr("运行参数"),  # TODO:i18n
+            parent=self.Win32_Setting,
+        )
+        self.exe_wait_time = LineEditCard(
+            FIF.COMMAND_PROMPT,
+            cfg.get(cfg.exe_wait_time),
+            title=self.tr("等待程序启动时间"),  # TODO:i18n
+            parent=self.Win32_Setting,
+        )
+        # 启动设置
+        self.start_Setting = SettingCardGroup(self.tr("自定义启动"), self.scrollWidget)
+        self.run_before_start = PrimaryPushSettingCard(
+            self.tr("选择程序"),  # TODO:i18n
+            FIF.COMMAND_PROMPT,
+            self.tr("启动前运行程序"),
+            f"当前路径：{cfg.get(cfg.run_before_start)}",
+            self.start_Setting,
+        )
+        self.run_after_finish = PrimaryPushSettingCard(
+            self.tr("选择程序"),  # TODO:i18n
+            FIF.COMMAND_PROMPT,
+            self.tr("完成后运行程序"),
+            f"当前路径：{cfg.get(cfg.run_after_finish)}",
+            self.start_Setting,
+        )
+        # 个性化
         self.personalGroup = SettingCardGroup(
             self.tr("Personalization"), self.scrollWidget
         )
@@ -133,6 +181,53 @@ class SettingInterface(ScrollArea):
         else:
             DEV_Config = False
         self.DEVGroup = SettingCardGroup(self.tr("DEV Mode"), self.scrollWidget)
+        """
+        创建枚举器来表示需要使用的GPU
+        gpu_list = get_gpu_info()
+        gpu_list += [self.tr("Auto"), self.tr("Disable")]
+
+        self.use_GPU = ComboBoxSettingCardCustom(
+            cfg.language,
+            FIF.LANGUAGE,
+            self.tr("Language"),
+            self.tr("Set your preferred language for UI"),
+            texts=["default", "sezie", "sendmessage"],
+            parent=self.DEVGroup,
+        )
+
+        self.win32_input_mode = ComboBoxSettingCardCustom(
+            cfg.language,
+            FIF.LANGUAGE,
+            self.tr("Language"),
+            self.tr("Set your preferred language for UI"),
+            texts=["default", "sezie", "sendmessage"],
+            parent=self.DEVGroup,
+        )
+        self.win32_screencap_mode = ComboBoxSettingCardCustom(
+            cfg.language,
+            FIF.LANGUAGE,
+            self.tr("Language"),
+            self.tr("Set your preferred language for UI"),
+            texts=["简体中文", "繁體中文", "English", self.tr("Use system setting")],
+            parent=self.DEVGroup,
+        )
+        self.ADB_input_mode = ComboBoxSettingCardCustom(
+            cfg.language,
+            FIF.LANGUAGE,
+            self.tr("Language"),
+            self.tr("Set your preferred language for UI"),
+            texts=["简体中文", "繁體中文", "English", self.tr("Use system setting")],
+            parent=self.DEVGroup,
+        )
+        self.ADB_screencap_mode = ComboBoxSettingCardCustom(
+            cfg.language,
+            FIF.LANGUAGE,
+            self.tr("Language"),
+            self.tr("Set your preferred language for UI"),
+            texts=["简体中文", "繁體中文", "English", self.tr("Use system setting")],
+            parent=self.DEVGroup,
+        )
+        """
         self.DEVmodeCard = SwitchSettingCard(
             FIF.ALBUM,
             self.tr("DEV Mode"),
@@ -192,8 +287,17 @@ class SettingInterface(ScrollArea):
         self.settingLabel.move(36, 30)
 
         # add cards to group
-        self.ADB_Path_Port_Adjuster.addSettingCard(self.ADBPort)
-        self.ADB_Path_Port_Adjuster.addSettingCard(self.ADBPath)
+        self.ADB_Setting.addSettingCard(self.ADB_port)
+        self.ADB_Setting.addSettingCard(self.ADB_path)
+        self.ADB_Setting.addSettingCard(self.emu_path)
+        self.ADB_Setting.addSettingCard(self.emu_wait_time)
+
+        self.Win32_Setting.addSettingCard(self.exe_path)
+        self.Win32_Setting.addSettingCard(self.exe_parameter)
+        self.Win32_Setting.addSettingCard(self.exe_wait_time)
+
+        self.start_Setting.addSettingCard(self.run_before_start)
+        self.start_Setting.addSettingCard(self.run_after_finish)
 
         self.personalGroup.addSettingCard(self.micaCard)
         self.personalGroup.addSettingCard(self.themeCard)
@@ -202,6 +306,9 @@ class SettingInterface(ScrollArea):
         self.personalGroup.addSettingCard(self.languageCard)
 
         self.DEVGroup.addSettingCard(self.DEVmodeCard)
+        # self.DEVGroup.addSettingCard(self.use_GPU)
+        # self.DEVGroup.addSettingCard(self.win32_input_mode)
+        # self.DEVGroup.addSettingCard(self.win32_screencap_mode)
 
         self.aboutGroup.addSettingCard(self.updateCard)
         self.aboutGroup.addSettingCard(self.feedbackCard)
@@ -210,10 +317,21 @@ class SettingInterface(ScrollArea):
         # add setting card group to layout
         self.expandLayout.setSpacing(28)
         self.expandLayout.setContentsMargins(36, 10, 36, 0)
-        self.expandLayout.addWidget(self.ADB_Path_Port_Adjuster)
+        self.expandLayout.addWidget(self.ADB_Setting)
+        self.expandLayout.addWidget(self.Win32_Setting)
+        self.expandLayout.addWidget(self.start_Setting)
         self.expandLayout.addWidget(self.personalGroup)
         self.expandLayout.addWidget(self.DEVGroup)
         self.expandLayout.addWidget(self.aboutGroup)
+
+        # 检查模拟器路径是否填写
+        if cfg.get(cfg.emu_path) == "":
+            self.emu_wait_time.setEnabled(False)
+
+        # 检查启动程序路径是否填写
+        if cfg.get(cfg.exe_path) == "":
+            self.exe_parameter.setEnabled(False)
+            self.exe_wait_time.setEnabled(False)
 
     def __showRestartTooltip(self):
         """show restart tooltip"""
@@ -235,18 +353,72 @@ class SettingInterface(ScrollArea):
         data = Read_Config(cfg.get(cfg.Maa_config))
         data["adb"]["adb_path"] = file_name
         Save_Config(cfg.get(cfg.Maa_config), data)
-        self.ADBPath.setContent(file_name)
+        self.ADB_path.setContent(file_name)
+
+    def __onEmuPathCardClicked(self):
+        """手动选择模拟器位置"""
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, self.tr("Choose file"), "./", self.tr("All Files (*);;All Files (*)")
+        )
+        if not file_name:
+            return
+
+        cfg.set(cfg.emu_path, file_name)
+        self.emu_path.setContent(file_name)
+        self.emu_wait_time.setEnabled(True)
+
+    def __onExePathCardClicked(self):
+        """手动选择启动程序位置"""
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, self.tr("Choose file"), "./", self.tr("All Files (*);;All Files (*)")
+        )
+        if not file_name:
+            return
+
+        cfg.set(cfg.exe_path, file_name)
+        self.exe_path.setContent(file_name)
+        self.exe_parameter.setEnabled(True)
+        self.exe_wait_time.setEnabled(True)
+
+    def __onRunBeforeStartCardClicked(self):
+        """手动选择启动前运行脚本位置"""
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, self.tr("Choose file"), "./", self.tr("All Files (*);;All Files (*)")
+        )
+        if not file_name:
+            return
+
+        cfg.set(cfg.run_before_start, file_name)
+        self.run_before_start.setContent(file_name)
+
+    def __onRunAfterFinishCardClicked(self):
+        """手动选择启动后运行脚本位置"""
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, self.tr("Choose file"), "./", self.tr("All Files (*);;All Files (*)")
+        )
+        if not file_name:
+            return
+
+        cfg.set(cfg.run_after_finish, file_name)
+        self.run_after_finish.setContent(file_name)
 
     def __connectSignalToSlot(self):
         """connect signal to slot"""
         cfg.appRestartSig.connect(self.__showRestartTooltip)
 
         # ADB信号
-        self.ADBPort.text_change.connect(self._onADBPortCardChange)
-        self.ADBPath.clicked.connect(self.__onADBPathCardClicked)
+        self.ADB_port.text_change.connect(self._onADB_portCardChange)
+        self.ADB_path.clicked.connect(self.__onADBPathCardClicked)
+        self.emu_path.clicked.connect(self.__onEmuPathCardClicked)
+
+        # Win32信号
+        self.exe_path.clicked.connect(self.__onExePathCardClicked)
+
+        # 启动信号
+        self.run_before_start.clicked.connect(self.__onRunBeforeStartCardClicked)
+        self.run_after_finish.clicked.connect(self.__onRunAfterFinishCardClicked)
 
         # 调试信号
-
         self.DEVmodeCard.checkedChanged.connect(self._onDEVmodeCardChange)
         # personalization
         cfg.themeChanged.connect(setTheme)
@@ -262,8 +434,8 @@ class SettingInterface(ScrollArea):
         )
         self.aboutCard.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(REPO_URL)))
 
-    def _onADBPortCardChange(self):
-        port = self.ADBPort.lineEdit.text()
+    def _onADB_portCardChange(self):
+        port = self.ADB_port.lineEdit.text()
         full_ADB_address = f"127.0.0.1:{port}"
         data = Read_Config(cfg.get(cfg.Maa_config))
         data["adb"]["address"] = full_ADB_address
@@ -276,5 +448,5 @@ class SettingInterface(ScrollArea):
         Save_Config(cfg.get(cfg.Maa_config), data)
 
     def update_adb(self, msg):
-        self.ADBPath.setContent(msg["path"])
-        self.ADBPort.lineEdit.setText(f'{msg["port"].split(":")[1]}')
+        self.ADB_path.setContent(msg["path"])
+        self.ADB_port.lineEdit.setText(f'{msg["port"].split(":")[1]}')

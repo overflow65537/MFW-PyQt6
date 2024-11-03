@@ -45,7 +45,17 @@ class Config(QConfig):
     """Config of application"""
 
     # 完成后运行
-    Finish_combox = ConfigItem("combox", "Finish_combox", 0)
+    Finish_combox = ConfigItem("Combox", "Finish_combox", 0)
+
+    # 文件地址
+    emu_path = ConfigItem("Path", "emu_path", "")
+    emu_wait_time = ConfigItem("Path", "emu_wati_time", "10")
+    exe_path = ConfigItem("Path", "exe_path", "")
+    exe_parameter = ConfigItem("Path", "exe_parameter", "")
+    exe_wait_time = ConfigItem("Path", "exe_wait_time", "10")
+    run_before_start = ConfigItem("Path", "run_before_start", "")
+    run_after_finish = ConfigItem("Path", "run_after_finish", "")
+
     # MAA路径
     Maa_config = ConfigItem(
         "Main", "Maa_config", os.path.join(os.getcwd(), "config", "maa_pi_config.json")
@@ -59,7 +69,7 @@ class Config(QConfig):
         "Main", "Maa_resource", os.path.join(os.getcwd(), "resource")
     )
     maa_dev = ConfigItem(
-        "Main", "maa_dev", os.path.join(os.getcwd(), "config", "maa_option.json")
+        "Main", "Maa_dev", os.path.join(os.getcwd(), "config", "maa_option.json")
     )
 
     # 多配置
