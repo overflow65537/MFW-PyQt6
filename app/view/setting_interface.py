@@ -32,7 +32,7 @@ from ..common.signal_bus import signalBus
 from ..common.style_sheet import StyleSheet
 from ..components.line_edit_card import LineEditCard
 from ..components.combobox_setting_card_custom import ComboBoxSettingCardCustom
-from ..utils.tool import Read_Config, Save_Config, get_gpu_info
+from ..utils.tool import Read_Config, Save_Config, get_gpu_info, access_nested_dict
 
 
 class SettingInterface(ScrollArea):
@@ -175,34 +175,60 @@ class SettingInterface(ScrollArea):
             parent=self.personalGroup,
         )
 
-        # 调试模式
-        if os.path.exists(cfg.get(cfg.maa_dev)):
-            DEV_Config = Read_Config(cfg.get(cfg.maa_dev))["save_draw"]
+        # 保存截图
+        if os.path.exists(cfg.get(cfg.Maa_dev)):
+            DEV_Config = Read_Config(cfg.get(cfg.Maa_dev))["save_draw"]
         else:
+            Save_Config(
+                cfg.get(cfg.Maa_dev),
+                {
+                    "logging": True,
+                    "recording": False,
+                    "save_draw": False,
+                    "show_hit_draw": False,
+                    "stdout_level": 2,
+                },
+            )
             DEV_Config = False
-        self.DEVGroup = SettingCardGroup(self.tr("DEV Mode"), self.scrollWidget)
-        """
-        创建枚举器来表示需要使用的GPU
+        # GPU设置
         gpu_list = get_gpu_info()
-        gpu_list += [self.tr("Auto"), self.tr("Disable")]
+        gpu_combox_list = list(set(gpu_list.values()))
+        gpu_combox_list.insert(0, self.tr("Auto"))
+        gpu_combox_list.insert(1, self.tr("disabeld"))
+        gpu_list["-1"] = self.tr("Auto")
+        gpu_list["-2"] = self.tr("disabeld")
+        # win32输入模式
+        win32_input_mapping = {
+            "default": self.tr("默认模式"),
+            "seize": "seize",
+            "sendmessage": "SendMessage",
+        }
+
+        self.DEVGroup = SettingCardGroup(self.tr("DEV Mode"), self.scrollWidget)
 
         self.use_GPU = ComboBoxSettingCardCustom(
-            cfg.language,
-            FIF.LANGUAGE,
-            self.tr("Language"),
-            self.tr("Set your preferred language for UI"),
-            texts=["default", "sezie", "sendmessage"],
+            icon=FIF.FILTER,
+            title=self.tr("select GPU"),
+            content=self.tr("Use GPU to accelerate inference"),
+            texts=gpu_combox_list,
+            target=["gpu"],
+            path=cfg.get(cfg.Maa_config),
             parent=self.DEVGroup,
+            is_setting=True,
+            mapping=gpu_list,
         )
-
+        """
         self.win32_input_mode = ComboBoxSettingCardCustom(
-            cfg.language,
-            FIF.LANGUAGE,
-            self.tr("Language"),
-            self.tr("Set your preferred language for UI"),
-            texts=["default", "sezie", "sendmessage"],
+            icon=FIF.FILTER,
+            title=self.tr("select win32 input mode"),
+            texts=["default", "seize", "sendmessage"],
+            target=["controller", 1, "win32", "input"],
+            path=cfg.get(cfg.Maa_interface),
             parent=self.DEVGroup,
+            is_setting=True,
+            mapping=win32_input_mapping,
         )
+        
         self.win32_screencap_mode = ComboBoxSettingCardCustom(
             cfg.language,
             FIF.LANGUAGE,
@@ -306,7 +332,7 @@ class SettingInterface(ScrollArea):
         self.personalGroup.addSettingCard(self.languageCard)
 
         self.DEVGroup.addSettingCard(self.DEVmodeCard)
-        # self.DEVGroup.addSettingCard(self.use_GPU)
+        self.DEVGroup.addSettingCard(self.use_GPU)
         # self.DEVGroup.addSettingCard(self.win32_input_mode)
         # self.DEVGroup.addSettingCard(self.win32_screencap_mode)
 
@@ -443,9 +469,9 @@ class SettingInterface(ScrollArea):
 
     def _onDEVmodeCardChange(self):
         state = self.DEVmodeCard.isChecked()
-        data = Read_Config(cfg.get(cfg.Maa_config))
+        data = Read_Config(cfg.get(cfg.Maa_dev))
         data["save_draw"] = state
-        Save_Config(cfg.get(cfg.Maa_config), data)
+        Save_Config(cfg.get(cfg.Maa_dev), data)
 
     def update_adb(self, msg):
         self.ADB_path.setContent(msg["path"])
