@@ -230,3 +230,32 @@ def get_gpu_info():
         print(f"获取显卡信息时出错: {e}")
 
     return gpu_info
+
+
+def find_key_by_value(data_dict, target_value):
+    # 输入一个字典和目标值，返回字典中第一个键值等于目标值的键
+    for key, value in data_dict.items():
+        if value == target_value:
+            return key
+    return None
+
+
+def access_nested_dict(data_dict, keys, value=None):
+    current_level = data_dict  # 从字典根部开始
+
+    # 遍历到倒数第二个键（为下一个层级的父级）
+    for key in keys[:-1]:
+        current_level = current_level[key]  # 进入下一层级
+
+    # 处理最后一个键
+    last_key = keys[-1]
+    if value is not None:
+        # 如果提供了值，则修改最后一个键的值
+        current_level[last_key] = value
+        return current_level  # 返回最后一层的值
+    else:
+        # 如果没有提供值，则返回最后一个键的值
+        try:
+            return current_level[last_key]
+        except KeyError:
+            return None  # 键不存在时返回None
