@@ -68,7 +68,7 @@ class Config(QConfig):
     Maa_resource = ConfigItem(
         "Main", "Maa_resource", os.path.join(os.getcwd(), "resource")
     )
-    maa_dev = ConfigItem(
+    Maa_dev = ConfigItem(
         "Main", "Maa_dev", os.path.join(os.getcwd(), "config", "maa_option.json")
     )
 

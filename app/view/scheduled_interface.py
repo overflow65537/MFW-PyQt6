@@ -116,9 +116,15 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
                 "config",
                 "maa_pi_config.json",
             )
-            main_config = cfg.get(cfg.Maa_config)
-            main_config = config_path
-            cfg.set(cfg.Maa_config, main_config)
+            cfg.set(cfg.Maa_config, config_path)
+
+            dev_path = os.path.join(
+                os.getcwd(),
+                "config",
+                "maa_option.json",
+            )
+            cfg.set(cfg.Maa_dev, dev_path)
+
             self.update_task_list()
 
         else:
@@ -131,9 +137,18 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
                 "config",
                 "maa_pi_config.json",
             )
-            main_config = cfg.get(cfg.Maa_config)
-            main_config = config_path
-            cfg.set(cfg.Maa_config, main_config)
+            cfg.set(cfg.Maa_config, config_path)
+
+            dev_path = os.path.join(
+                os.getcwd(),
+                "config",
+                "config_manager",
+                config_name,
+                "config",
+                "maa_option.json",
+            )
+            cfg.set(cfg.Maa_dev, dev_path)
+
             self.update_task_list()
 
     def cfg_delete(self):
