@@ -192,6 +192,7 @@ class SettingInterface(ScrollArea):
             DEV_Config = False
         # GPU设置
         gpu_list = get_gpu_info()
+
         gpu_combox_list = list(set(gpu_list.values()))
         gpu_combox_list.insert(0, self.tr("Auto"))
         gpu_combox_list.insert(1, self.tr("disabeld"))
@@ -199,10 +200,64 @@ class SettingInterface(ScrollArea):
         gpu_list["-2"] = self.tr("disabeld")
         # win32输入模式
         win32_input_mapping = {
-            "default": self.tr("默认模式"),
-            "seize": "seize",
-            "sendmessage": "SendMessage",
+            0: self.tr("default"),
+            1: "seize",
+            2: "SendMessage",
         }
+        win32_input_combox_list = [
+            self.tr("default"),
+            "seize",
+            "SendMessage",
+        ]
+        # win32截图模式
+        win32_screencap_mapping = {
+            0: self.tr("default"),
+            1: "GDI",
+            2: "FramePool",
+            4: "DXGI_DesktopDup",
+        }
+        win32_screencap_combox_list = [
+            self.tr("default"),
+            "GDI",
+            "FramePool",
+            "DXGI_DesktopDup",
+        ]
+        # ADB输入模式
+        ADB_input_mapping = {
+            0: self.tr("default"),
+            1: "AdbShellL",
+            2: "MinitouchAndAdbKey",
+            4: "Maatouch",
+            8: "EmulatorExtras",
+        }
+        ADB_input_combox_list = [
+            self.tr("default"),
+            "AdbShell",
+            "MinitouchAndAdbKey",
+            "Maatouch",
+            "EmulatorExtras",
+        ]
+        # ADB截图模式
+        ADB_screencap_mapping = {
+            0: self.tr("default"),
+            1: "EncodeToFileAndPull",
+            2: "Encode",
+            4: "RawWithGzip",
+            8: "RawByNetcat",
+            16: "MinicapDirect",
+            32: "MinicapStream",
+            64: "EmulatorExtras",
+        }
+        ADB_screencap_combox_list = [
+            self.tr("default"),
+            "EncodeToFileAndPull",
+            "Encode",
+            "RawWithGzip",
+            "RawByNetcat",
+            "MinicapDirect",
+            "MinicapStream",
+            "EmulatorExtras",
+        ]
 
         self.DEVGroup = SettingCardGroup(self.tr("DEV Mode"), self.scrollWidget)
 
@@ -214,46 +269,58 @@ class SettingInterface(ScrollArea):
             target=["gpu"],
             path=cfg.get(cfg.Maa_config),
             parent=self.DEVGroup,
-            is_setting=True,
+            mode="setting",
             mapping=gpu_list,
         )
-        """
+
         self.win32_input_mode = ComboBoxSettingCardCustom(
             icon=FIF.FILTER,
             title=self.tr("select win32 input mode"),
-            texts=["default", "seize", "sendmessage"],
-            target=["controller", 1, "win32", "input"],
+            texts=win32_input_combox_list,
             path=cfg.get(cfg.Maa_interface),
             parent=self.DEVGroup,
-            is_setting=True,
+            mode="interface_setting",
+            controller="Win32",
+            controller_type="input",
             mapping=win32_input_mapping,
         )
-        
+
         self.win32_screencap_mode = ComboBoxSettingCardCustom(
-            cfg.language,
-            FIF.LANGUAGE,
-            self.tr("Language"),
-            self.tr("Set your preferred language for UI"),
-            texts=["简体中文", "繁體中文", "English", self.tr("Use system setting")],
+            icon=FIF.FILTER,
+            title=self.tr("select win32 screencap mode"),
+            texts=win32_screencap_combox_list,
+            path=cfg.get(cfg.Maa_interface),
             parent=self.DEVGroup,
+            mode="interface_setting",
+            controller="Win32",
+            controller_type="screencap",
+            mapping=win32_screencap_mapping,
         )
+
         self.ADB_input_mode = ComboBoxSettingCardCustom(
-            cfg.language,
-            FIF.LANGUAGE,
-            self.tr("Language"),
-            self.tr("Set your preferred language for UI"),
-            texts=["简体中文", "繁體中文", "English", self.tr("Use system setting")],
+            icon=FIF.FILTER,
+            title=self.tr("select Adb input mode"),
+            texts=ADB_input_combox_list,
+            path=cfg.get(cfg.Maa_interface),
             parent=self.DEVGroup,
+            mode="interface_setting",
+            controller="Adb",
+            controller_type="input",
+            mapping=ADB_input_mapping,
         )
+
         self.ADB_screencap_mode = ComboBoxSettingCardCustom(
-            cfg.language,
-            FIF.LANGUAGE,
-            self.tr("Language"),
-            self.tr("Set your preferred language for UI"),
-            texts=["简体中文", "繁體中文", "English", self.tr("Use system setting")],
+            icon=FIF.FILTER,
+            title=self.tr("select Adb screencap mode"),
+            texts=ADB_screencap_combox_list,
+            path=cfg.get(cfg.Maa_interface),
             parent=self.DEVGroup,
+            mode="interface_setting",
+            controller="Adb",
+            controller_type="screencap",
+            mapping=ADB_screencap_mapping,
         )
-        """
+
         self.DEVmodeCard = SwitchSettingCard(
             FIF.ALBUM,
             self.tr("DEV Mode"),
@@ -333,8 +400,10 @@ class SettingInterface(ScrollArea):
 
         self.DEVGroup.addSettingCard(self.DEVmodeCard)
         self.DEVGroup.addSettingCard(self.use_GPU)
-        # self.DEVGroup.addSettingCard(self.win32_input_mode)
-        # self.DEVGroup.addSettingCard(self.win32_screencap_mode)
+        self.DEVGroup.addSettingCard(self.win32_input_mode)
+        self.DEVGroup.addSettingCard(self.win32_screencap_mode)
+        self.DEVGroup.addSettingCard(self.ADB_input_mode)
+        self.DEVGroup.addSettingCard(self.ADB_screencap_mode)
 
         self.aboutGroup.addSettingCard(self.updateCard)
         self.aboutGroup.addSettingCard(self.feedbackCard)
@@ -476,3 +545,15 @@ class SettingInterface(ScrollArea):
     def update_adb(self, msg):
         self.ADB_path.setContent(msg["path"])
         self.ADB_port.lineEdit.setText(f'{msg["port"].split(":")[1]}')
+
+    def Switch_Controller(self, controller):
+        if controller == "Win32":
+            self.ADB_input_mode.hide()
+            self.ADB_screencap_mode.hide()
+            self.win32_input_mode.show()
+            self.win32_screencap_mode.show()
+        elif controller == "Adb":
+            self.win32_input_mode.hide()
+            self.win32_screencap_mode.hide()
+            self.ADB_input_mode.show()
+            self.ADB_screencap_mode.show()

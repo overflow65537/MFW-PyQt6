@@ -64,6 +64,7 @@ class CustomSettingInterface(ScrollArea):
                 texts=dict["optioncontent"],
                 target=[dict["optionname"]],
                 path=os.path.join(os.getcwd(), "config", "custom_config.json"),
+                mode="custom",
                 parent=self.CustomSettingGroup,
             )
             self.CustomSettingGroup.addSettingCard(self.combox)

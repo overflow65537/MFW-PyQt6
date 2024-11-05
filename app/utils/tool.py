@@ -193,6 +193,7 @@ def check_adb_path(adb_data):
 
 
 def get_gpu_info():
+    # 获取GPU信息
     gpu_info = {}
 
     try:
@@ -234,6 +235,8 @@ def get_gpu_info():
 
 def find_key_by_value(data_dict, target_value):
     # 输入一个字典和目标值，返回字典中第一个键值等于目标值的键
+    # 用来查找字典中某个值对应的键
+    # 反向查找
     for key, value in data_dict.items():
         if value == target_value:
             return key
@@ -241,6 +244,10 @@ def find_key_by_value(data_dict, target_value):
 
 
 def access_nested_dict(data_dict, keys, value=None):
+    # 输入一个字典，键列表，值（可选），返回字典中对应键的值
+    # 用来读取嵌套字典的值
+    # 也可以单纯的获取字典的值
+
     current_level = data_dict  # 从字典根部开始
 
     # 遍历到倒数第二个键（为下一个层级的父级）
@@ -259,3 +266,38 @@ def access_nested_dict(data_dict, keys, value=None):
             return current_level[last_key]
         except KeyError:
             return None  # 键不存在时返回None
+
+
+def rewrite_contorller(data_dict, controller, mode, new_value=None):
+    # 输入一个字典，控制器类型，模式，新值，返回修改后的字典
+    # 用来获取interface文件中的操作模式和截图模式
+    # 附带修改功能
+    current_level = {}
+
+    for i in range(len(data_dict["controller"])):
+        if data_dict["controller"][i]["type"] == controller:
+            if data_dict["controller"][i].get(controller.lower(), False):
+                current_level = data_dict["controller"][i][controller.lower()].get(mode)
+
+            if new_value is not None:
+                if not data_dict["controller"][i].get(controller.lower(), False):
+                    data_dict["controller"][i][controller.lower()] = {}
+
+                data_dict["controller"][i][controller.lower()][mode] = new_value
+    if new_value is not None:
+        return data_dict
+    else:
+        return current_level
+
+
+def delete_contorller(data_dict, controller, mode):
+    # 输入一个字典，控制器类型，模式，返回修改后的字典
+    # 用来删除interface文件中的操作模式和截图模式
+    # 恢复初始状态
+    for i in range(len(data_dict["controller"])):
+        if data_dict["controller"][i]["type"] == controller:
+            try:
+                del data_dict["controller"][i][controller.lower()][mode]
+            except KeyError:
+                pass
+    return data_dict
