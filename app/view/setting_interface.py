@@ -32,7 +32,8 @@ from ..common.signal_bus import signalBus
 from ..common.style_sheet import StyleSheet
 from ..components.line_edit_card import LineEditCard
 from ..components.combobox_setting_card_custom import ComboBoxSettingCardCustom
-from ..utils.tool import Read_Config, Save_Config, get_gpu_info, access_nested_dict
+from ..components.notic_setting_card import NoticeButtonSettingCard
+from ..utils.tool import Read_Config, Save_Config, get_gpu_info
 
 
 class SettingInterface(ScrollArea):
@@ -87,6 +88,7 @@ class SettingInterface(ScrollArea):
             cfg.get(cfg.emu_wait_time),
             title=self.tr("等待模拟器启动时间"),  # TODO:i18n
             parent=self.ADB_Setting,
+            custom= False
         )
         # win32程序
         self.Win32_Setting = SettingCardGroup(self.tr("Win32"), self.scrollWidget)
@@ -102,12 +104,14 @@ class SettingInterface(ScrollArea):
             cfg.get(cfg.exe_parameter),
             title=self.tr("运行参数"),  # TODO:i18n
             parent=self.Win32_Setting,
+            custom= False
         )
         self.exe_wait_time = LineEditCard(
             FIF.COMMAND_PROMPT,
             cfg.get(cfg.exe_wait_time),
             title=self.tr("等待程序启动时间"),  # TODO:i18n
             parent=self.Win32_Setting,
+            custom= False
         )
         # 启动设置
         self.start_Setting = SettingCardGroup(self.tr("自定义启动"), self.scrollWidget)
@@ -174,8 +178,45 @@ class SettingInterface(ScrollArea):
             texts=["简体中文", "繁體中文", "English", self.tr("Use system setting")],
             parent=self.personalGroup,
         )
+        # 外部通知
+        self.noticeGroup = SettingCardGroup(self.tr("Notice"), self.scrollWidget)
+        self.dingtalk_noticeTypeCard = NoticeButtonSettingCard(
+                self.tr("Modify"),
+                FIF.COMMAND_PROMPT,
+                self.tr("DingTalk"),
+                "DingTalk",
+                "DingTalk Configuration",
+                self.noticeGroup,
+        )
+        
+        self.lark_noticeTypeCard = NoticeButtonSettingCard(
+                self.tr("Modify"),
+                FIF.COMMAND_PROMPT,
+                self.tr("Lark"),
+                "Lark",
+                "Lark Configuration",
+                self.noticeGroup,
+        )
 
-        # 保存截图
+        self.qmsg_noticeTypeCard = NoticeButtonSettingCard(
+                self.tr("Modify"),
+                FIF.COMMAND_PROMPT,
+                self.tr("Qmsg"),
+                "Qmsg",
+                "Qmsg Configuration",
+                self.noticeGroup,
+        )
+
+        self.SMTP_noticeTypeCard = NoticeButtonSettingCard(
+            self.tr("Modify"),
+            FIF.COMMAND_PROMPT,
+            self.tr("SMTP"),
+            "SMTP",
+            "SMTP Configuration",
+            self.noticeGroup,
+        )
+        # 高级设置
+        """保存截图"""
         if os.path.exists(cfg.get(cfg.Maa_dev)):
             DEV_Config = Read_Config(cfg.get(cfg.Maa_dev))["save_draw"]
         else:
@@ -190,7 +231,7 @@ class SettingInterface(ScrollArea):
                 },
             )
             DEV_Config = False
-        # GPU设置
+        """GPU设置"""
         gpu_list = get_gpu_info()
 
         gpu_combox_list = list(set(gpu_list.values()))
@@ -198,7 +239,7 @@ class SettingInterface(ScrollArea):
         gpu_combox_list.insert(1, self.tr("disabeld"))
         gpu_list["-1"] = self.tr("Auto")
         gpu_list["-2"] = self.tr("disabeld")
-        # win32输入模式
+        """win32输入模式"""
         win32_input_mapping = {
             0: self.tr("default"),
             1: "seize",
@@ -209,7 +250,7 @@ class SettingInterface(ScrollArea):
             "seize",
             "SendMessage",
         ]
-        # win32截图模式
+        """win32截图模式"""
         win32_screencap_mapping = {
             0: self.tr("default"),
             1: "GDI",
@@ -222,7 +263,7 @@ class SettingInterface(ScrollArea):
             "FramePool",
             "DXGI_DesktopDup",
         ]
-        # ADB输入模式
+        """ADB输入模式"""
         ADB_input_mapping = {
             0: self.tr("default"),
             1: "AdbShellL",
@@ -237,7 +278,7 @@ class SettingInterface(ScrollArea):
             "Maatouch",
             "EmulatorExtras",
         ]
-        # ADB截图模式
+        """ADB截图模式"""
         ADB_screencap_mapping = {
             0: self.tr("default"),
             1: "EncodeToFileAndPull",
@@ -398,6 +439,11 @@ class SettingInterface(ScrollArea):
         self.personalGroup.addSettingCard(self.zoomCard)
         self.personalGroup.addSettingCard(self.languageCard)
 
+        self.noticeGroup.addSettingCard(self.dingtalk_noticeTypeCard)
+        self.noticeGroup.addSettingCard(self.lark_noticeTypeCard)
+        self.noticeGroup.addSettingCard(self.qmsg_noticeTypeCard)
+        self.noticeGroup.addSettingCard(self.SMTP_noticeTypeCard)
+
         self.DEVGroup.addSettingCard(self.DEVmodeCard)
         self.DEVGroup.addSettingCard(self.use_GPU)
         self.DEVGroup.addSettingCard(self.win32_input_mode)
@@ -416,6 +462,7 @@ class SettingInterface(ScrollArea):
         self.expandLayout.addWidget(self.Win32_Setting)
         self.expandLayout.addWidget(self.start_Setting)
         self.expandLayout.addWidget(self.personalGroup)
+        self.expandLayout.addWidget(self.noticeGroup)
         self.expandLayout.addWidget(self.DEVGroup)
         self.expandLayout.addWidget(self.aboutGroup)
 

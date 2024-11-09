@@ -81,15 +81,23 @@ class Config(QConfig):
 
     # 外部通知
     Notice_Webhook = ConfigItem(
-        "Notice", "Webhook", {"DingTalk": {"url": "", "secret": ""}, "Lark": {}}
+        "Notice",
+        "Webhook",
+        {
+            "DingTalk": {"status": False, "url": "", "secret": ""},
+            "Lark": {"status": False, "url": "", "secret": ""},
+        },
     )
     Notice_Qmsg = ConfigItem(
-        "Notice", "Qmsg", {"sever": "", "key": "", "uesr_qq": "", "robot_qq": ""}
+        "Notice",
+        "Qmsg",
+        {"status": False, "sever": "", "key": "", "uesr_qq": "", "robot_qq": ""},
     )
     Notice_SMTP = ConfigItem(
         "Notice",
         "SMTP",
         {
+            "status": False,
             "sever_address": "",
             "sever_port": 0,
             "uesr_name": "",
