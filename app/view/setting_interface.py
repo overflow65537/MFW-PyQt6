@@ -64,8 +64,8 @@ class SettingInterface(ScrollArea):
 
         self.ADB_Setting = SettingCardGroup(self.tr("ADB"), self.scrollWidget)
         self.ADB_port = LineEditCard(
-            FIF.COMMAND_PROMPT,
-            Port_data,
+            icon=FIF.COMMAND_PROMPT,
+            holderText=Port_data,
             title=self.tr("ADB 端口"),  # TODO:i18n
             parent=self.ADB_Setting,
         )
@@ -84,11 +84,10 @@ class SettingInterface(ScrollArea):
             self.ADB_Setting,
         )
         self.emu_wait_time = LineEditCard(
-            FIF.COMMAND_PROMPT,
-            cfg.get(cfg.emu_wait_time),
+            icon=FIF.COMMAND_PROMPT,
+            configItem=cfg.emu_wait_time,
             title=self.tr("等待模拟器启动时间"),  # TODO:i18n
             parent=self.ADB_Setting,
-            custom= False
         )
         # win32程序
         self.Win32_Setting = SettingCardGroup(self.tr("Win32"), self.scrollWidget)
@@ -100,18 +99,17 @@ class SettingInterface(ScrollArea):
             self.Win32_Setting,
         )
         self.exe_parameter = LineEditCard(
-            FIF.COMMAND_PROMPT,
-            cfg.get(cfg.exe_parameter),
+            icon=FIF.COMMAND_PROMPT,
+            configItem=cfg.exe_parameter,
             title=self.tr("运行参数"),  # TODO:i18n
+            num_only=False,
             parent=self.Win32_Setting,
-            custom= False
         )
         self.exe_wait_time = LineEditCard(
-            FIF.COMMAND_PROMPT,
-            cfg.get(cfg.exe_wait_time),
+            icon=FIF.COMMAND_PROMPT,
+            configItem=cfg.exe_wait_time,
             title=self.tr("等待程序启动时间"),  # TODO:i18n
             parent=self.Win32_Setting,
-            custom= False
         )
         # 启动设置
         self.start_Setting = SettingCardGroup(self.tr("自定义启动"), self.scrollWidget)
@@ -181,30 +179,30 @@ class SettingInterface(ScrollArea):
         # 外部通知
         self.noticeGroup = SettingCardGroup(self.tr("Notice"), self.scrollWidget)
         self.dingtalk_noticeTypeCard = NoticeButtonSettingCard(
-                self.tr("Modify"),
-                FIF.COMMAND_PROMPT,
-                self.tr("DingTalk"),
-                "DingTalk",
-                "DingTalk Configuration",
-                self.noticeGroup,
+            self.tr("Modify"),
+            FIF.COMMAND_PROMPT,
+            self.tr("DingTalk"),
+            "DingTalk",
+            "DingTalk Configuration",
+            self.noticeGroup,
         )
-        
+
         self.lark_noticeTypeCard = NoticeButtonSettingCard(
-                self.tr("Modify"),
-                FIF.COMMAND_PROMPT,
-                self.tr("Lark"),
-                "Lark",
-                "Lark Configuration",
-                self.noticeGroup,
+            self.tr("Modify"),
+            FIF.COMMAND_PROMPT,
+            self.tr("Lark"),
+            "Lark",
+            "Lark Configuration",
+            self.noticeGroup,
         )
 
         self.qmsg_noticeTypeCard = NoticeButtonSettingCard(
-                self.tr("Modify"),
-                FIF.COMMAND_PROMPT,
-                self.tr("Qmsg"),
-                "Qmsg",
-                "Qmsg Configuration",
-                self.noticeGroup,
+            self.tr("Modify"),
+            FIF.COMMAND_PROMPT,
+            self.tr("Qmsg"),
+            "Qmsg",
+            "Qmsg Configuration",
+            self.noticeGroup,
         )
 
         self.SMTP_noticeTypeCard = NoticeButtonSettingCard(

@@ -83,7 +83,7 @@ class CustomSettingInterface(ScrollArea):
                 content=dict["text"]["content"],
                 parent=self.CustomSettingGroup,
                 target=dict["optionname"],
-                custom=False,
+                num_only=False,
             )
             self.CustomSettingGroup.addSettingCard(self.lineedit)
 

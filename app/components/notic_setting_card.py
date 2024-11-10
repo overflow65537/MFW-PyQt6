@@ -229,7 +229,6 @@ class NoticeButtonSettingCard(SettingCard):
         # 创建标签
 
         if self.notice_type == "DingTalk":
-            print(cfg.get(cfg.Notice_Webhook))
             self.notice = cfg.get(cfg.Notice_Webhook)["DingTalk"]
         elif self.notice_type == "Lark":
             self.notice = cfg.get(cfg.Notice_Webhook)["Lark"]
