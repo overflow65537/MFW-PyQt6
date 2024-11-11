@@ -9,7 +9,6 @@ from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from qfluentwidgets import InfoBar, InfoBarPosition
 
 from ..view.UI_task_interface import Ui_Task_Interface
-from ..logic.auto_detect_ADB_Thread import AutoDetectADBThread
 
 from ..common.signal_bus import signalBus
 from ..utils.tool import (
@@ -25,7 +24,6 @@ from ..utils.tool import (
 )
 from ..common.config import cfg
 
-
 class TaskInterface(Ui_Task_Interface, QWidget):
 
     def __init__(self, parent=None):
@@ -40,10 +38,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.MAA_Service_Process = subprocess.Popen(
             ["python", os.path.join(os.getcwd(), "MAA_Service.py")]
         )
-
         signalBus.update_task_list.connect(self.refresh_widget)
         # 初始化组件
-        self._auto_detect_adb_thread = AutoDetectADBThread(self)
         print("TaskInterface init")
         self.Start_Status(
             interface_Path=cfg.get(cfg.Maa_interface),
@@ -81,6 +77,21 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 duration=-1,
                 parent=self,
             )
+        elif "THIS_IS_ADB_DEVICES:" in data:
+            data_string = (
+                data.replace("THIS_IS_ADB_DEVICES:", "")
+                .replace("WindowsPath(", "")
+                .replace(")", "")
+                .replace("'", '"')
+                .replace("True", "true")
+            )
+
+            # 将字符串解析为 Python 对象
+            data_list = json.loads(data_string)
+
+            # 输出还原后的列表
+            signalBus.adb_detected.emit(data_list)
+
         else:
             self.TaskOutput_Text.append(data)
 
@@ -107,7 +118,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Topic_Text.hide()
 
         # 绑定信号
-        self._auto_detect_adb_thread.signal.connect(self.On_ADB_Detected)
+        signalBus.adb_detected.connect(self.On_ADB_Detected)
         self.AddTask_Button.clicked.connect(self.Add_Task)
         self.Delete_Button.clicked.connect(self.Delete_Task)
         self.MoveUp_Button.clicked.connect(self.Move_Up)
@@ -245,11 +256,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.socket = QLocalSocket()
         self.socket.connectToServer("GUI2MAA")
         parameter = {
-            "resource_dir": os.getcwd(),
+            "action_code": 1,  # 0,获取ADB设备 1:启动任务
+            "resource_dir": os.getcwd(),  # 资源文件目录
             "cfg_dir": cfg.get(cfg.Maa_config).replace(
                 os.path.join("config", "maa_pi_config.json"), ""
-            ),
-            "directly": True,
+            ),  # 配置文件目录
+            "directly": True,  # 是否直接启动任务
         }
         msg = json.dumps(parameter)
         print(f"发送信号：{msg}")
@@ -405,13 +417,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         for i in interface_Controller:
             if i["name"] == Controller_Type_Select:
-                if i["type"] == "Adb":
-                    Controller_target = i
-                    del Controller_target["type"]
-                else:
-                    Controller_target = i
+                Controller_target = i["name"]
         MAA_Pi_Config = Read_Config(cfg.get(cfg.Maa_config))
-        MAA_Pi_Config["controller"] = Controller_target
+        MAA_Pi_Config["controller"]["name"] = Controller_target
         Save_Config(cfg.get(cfg.Maa_config), MAA_Pi_Config)
 
     def Add_Select_Task_More_Select(self):
@@ -456,8 +464,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.TaskOutput_Text.append(msg)
 
     def Start_ADB_Detection(self):
-        # 检测ADB线程
-        self._auto_detect_adb_thread.start()
+        self.socket = QLocalSocket()
+        self.socket.connectToServer("GUI2MAA")
+        parameter = {"action_code": 0}  # 0,获取ADB设备 1:启动任务
+        msg = json.dumps(parameter)
+        print(f"发送信号：{msg}")
+        self.sendData(msg)
+        self.S2_Button.clicked.disconnect()
+        self.S2_Button.clicked.connect(self.Stop_task)
         InfoBar.info(
             title="提示",
             content="正在检测模拟器",
@@ -507,12 +521,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             if i["name"] == target:
                 result = i
 
-        port_data = Read_Config(cfg.get(cfg.Maa_config))
-        port_data["adb"]["adb_path"] = result["path"]
+        data = Read_Config(cfg.get(cfg.Maa_config))
+        data["adb"]["adb_path"] = result["adb_path"]
+        data["adb"]["address"] = result["address"]
+        data["adb"]["config"] = result["config"]
+        Save_Config(cfg.get(cfg.Maa_config), data)
 
-        Save_Config(cfg.get(cfg.Maa_config), port_data)
-        path_data = Read_Config(cfg.get(cfg.Maa_config))
-        path_data["adb"]["address"] = result["port"]
-
-        Save_Config(cfg.get(cfg.Maa_config), path_data)
         signalBus.update_adb.emit(result)

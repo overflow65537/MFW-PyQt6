@@ -8,7 +8,7 @@ from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from PyQt6.QtCore import QByteArray, QObject
 from PyQt6.QtWidgets import QApplication
 
-
+from dataclasses import asdict
 from datetime import datetime
 import json
 import sys
@@ -102,16 +102,26 @@ class MAA_Service(QObject):
         data = socket.readAll().data().decode("utf-8")
         # print("接受到的数据:", data)
         parameter = json.loads(data)  # 解析json数据
-        keys_to_extract = ["resource_dir", "cfg_dir", "directly"]
-        values_list = [parameter[key] for key in keys_to_extract if key in parameter]
-        # 断开MAA2GUI连接 准备将连接转交给回调协议
-        self.socket.disconnectFromServer()
-        self.socket.waitForDisconnected()
-        print("参数列表:", values_list[0], values_list[1], values_list[2])
-        custom_maa(values_list[0], values_list[1], values_list[2])
-        self.socket = QLocalSocket()
-        self.socket.connectToServer("MAA2GUI")
-        self.sendData("MAA_completed")
+        if parameter.get("action_code") == 0:
+            # 获取ADB设备
+            adb_devices = Toolkit.find_adb_devices()
+            for i in range(len(adb_devices)):
+                adb_devices[i] = asdict(adb_devices[i])
+            self.sendData(f"THIS_IS_ADB_DEVICES:{adb_devices}")
+        elif parameter.get("action_code") == 1:
+            # 直接运行
+            keys_to_extract = ["action_code", "resource_dir", "cfg_dir", "directly"]
+            values_list = [
+                parameter[key] for key in keys_to_extract if key in parameter
+            ]
+            # 断开MAA2GUI连接 准备将连接转交给回调协议
+            self.socket.disconnectFromServer()
+            self.socket.waitForDisconnected()
+            print("参数列表:", values_list[1], values_list[2], values_list[3])
+            custom_maa(values_list[1], values_list[2], values_list[3])
+            self.socket = QLocalSocket()
+            self.socket.connectToServer("MAA2GUI")
+            self.sendData("MAA_completed")
 
     def sendData(self, msg):
         data = QByteArray(bytes(msg, "utf-8"))  # 要发送的数据

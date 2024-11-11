@@ -235,8 +235,8 @@ class SettingInterface(ScrollArea):
         gpu_combox_list = list(set(gpu_list.values()))
         gpu_combox_list.insert(0, self.tr("Auto"))
         gpu_combox_list.insert(1, self.tr("disabeld"))
-        gpu_list["-1"] = self.tr("Auto")
-        gpu_list["-2"] = self.tr("disabeld")
+        gpu_list[-1] = self.tr("Auto")
+        gpu_list[-2] = self.tr("disabeld")
         """win32输入模式"""
         win32_input_mapping = {
             0: self.tr("default"),
@@ -588,8 +588,8 @@ class SettingInterface(ScrollArea):
         Save_Config(cfg.get(cfg.Maa_dev), data)
 
     def update_adb(self, msg):
-        self.ADB_path.setContent(msg["path"])
-        self.ADB_port.lineEdit.setText(f'{msg["port"].split(":")[1]}')
+        self.ADB_path.setContent(msg["adb_path"])
+        self.ADB_port.lineEdit.setText(f'{msg["address"].split(":")[1]}')
 
     def Switch_Controller(self, controller):
         if controller == "Win32":
