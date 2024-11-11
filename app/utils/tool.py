@@ -243,7 +243,7 @@ def find_key_by_value(data_dict, target_value):
     return None
 
 
-def access_nested_dict(data_dict, keys, value=None):
+def access_nested_dict(data_dict, keys:list, value=None):
     # 输入一个字典，键列表，值（可选），返回字典中对应键的值
     # 用来读取嵌套字典的值
     # 也可以单纯的获取字典的值
@@ -276,7 +276,7 @@ def rewrite_contorller(data_dict, controller, mode, new_value=None):
 
     for i in range(len(data_dict["controller"])):
         if data_dict["controller"][i]["type"] == controller:
-            if data_dict["controller"][i].get(controller.lower(), False):
+            if data_dict["controller"][i].get(controller.lower()) is not None:
                 current_level = data_dict["controller"][i][controller.lower()].get(mode)
 
             if new_value is not None:
@@ -296,8 +296,15 @@ def delete_contorller(data_dict, controller, mode):
     # 恢复初始状态
     for i in range(len(data_dict["controller"])):
         if data_dict["controller"][i]["type"] == controller:
-            try:
+            if (
+                not data_dict["controller"][i].get(controller.lower()) == {}
+                or not data_dict["controller"][i].get(controller.lower()) is None
+
+            ):
+                print(data_dict["controller"][i][controller.lower()][mode])
                 del data_dict["controller"][i][controller.lower()][mode]
-            except KeyError:
-                pass
+                if data_dict["controller"][i].get(controller.lower()) == {}:
+                    del data_dict["controller"][i][controller.lower()]
+                
+                
     return data_dict

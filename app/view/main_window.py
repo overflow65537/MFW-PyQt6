@@ -22,71 +22,56 @@ from ..common.signal_bus import signalBus
 from ..common import resource
 
 
+
 class MainWindow(FluentWindow):
 
     def __init__(self):
         super().__init__()
         self.initWindow()
 
-        # create system theme listener
+        # 创建系统主题监听器
         self.themeListener = SystemThemeListener(self)
 
-        # create sub interface
+        # 创建子界面
         self.taskInterface = TaskInterface(self)
         self.settingInterface = SettingInterface(self)
         self.scheduledInterface = ScheduledInterface(self)
         self.customsettingInterface = CustomSettingInterface(self)
 
-        # enable acrylic effect
+        # 启用Fluent主题效果
         self.navigationInterface.setAcrylicEnabled(True)
 
         self.connectSignalToSlot()
 
-        # add items to navigation interface
+        # 添加导航项
         self.initNavigation()
         self.splashScreen.finish()
 
-        # start theme listener
+        # 启动主题监听器
         self.themeListener.start()
 
     def connectSignalToSlot(self):
+        """连接信号到槽函数。"""
         signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
 
     def initNavigation(self):
-        # add navigation items
-
+        """初始化导航界面。"""
+        
         self.navigationInterface.addSeparator()
 
-        # add custom widget to bottom
-
+        # 判断是否存在自定义配置文件
         if os.path.exists(os.path.join(os.getcwd(), "config", "custom.json")):
-            self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("Task"))
-            self.addSubInterface(
-                self.scheduledInterface, FIF.CALENDAR, self.tr("Scheduled Task")
-            )
-            self.addSubInterface(
-                self.customsettingInterface, FIF.APPLICATION, self.tr("Custom Setting")
-            )
-
-            self.addSubInterface(
-                self.settingInterface,
-                FIF.SETTING,
-                self.tr("Settings"),
-                NavigationItemPosition.BOTTOM,
-            )
+            self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("任务"))
+            self.addSubInterface(self.scheduledInterface, FIF.CALENDAR, self.tr("调度任务"))
+            self.addSubInterface(self.customsettingInterface, FIF.APPLICATION, self.tr("自定义设置"))
+            self.addSubInterface(self.settingInterface, FIF.SETTING, self.tr("设置"), NavigationItemPosition.BOTTOM)
         else:
-            self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("Task"))
-            self.addSubInterface(
-                self.scheduledInterface, FIF.CALENDAR, self.tr("Scheduled Task")
-            )
-            self.addSubInterface(
-                self.settingInterface,
-                FIF.SETTING,
-                self.tr("Settings"),
-                NavigationItemPosition.BOTTOM,
-            )
+            self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("任务"))
+            self.addSubInterface(self.scheduledInterface, FIF.CALENDAR, self.tr("调度任务"))
+            self.addSubInterface(self.settingInterface, FIF.SETTING, self.tr("设置"), NavigationItemPosition.BOTTOM)
 
     def initWindow(self):
+        """初始化窗口设置。"""
         self.resize(960, 780)
         self.setMinimumWidth(760)
         self.setWindowIcon(QIcon(":/gallery/images/logo.png"))
@@ -94,7 +79,7 @@ class MainWindow(FluentWindow):
 
         self.setMicaEffectEnabled(cfg.get(cfg.micaEnabled))
 
-        # create splash screen
+        # 创建启动画面
         self.splashScreen = SplashScreen(self.windowIcon(), self)
         self.splashScreen.setIconSize(QSize(106, 106))
         self.splashScreen.raise_()
@@ -106,19 +91,22 @@ class MainWindow(FluentWindow):
         QApplication.processEvents()
 
     def resizeEvent(self, e):
+        """重写尺寸事件。"""
         super().resizeEvent(e)
         if hasattr(self, "splashScreen"):
             self.splashScreen.resize(self.size())
 
     def closeEvent(self, e):
+        """关闭事件"""
         self.themeListener.terminate()
         self.themeListener.deleteLater()
         super().closeEvent(e)
 
     def _onThemeChangedFinished(self):
+        """主题更改完成时的处理。"""
         super()._onThemeChangedFinished()
 
-        # retry
+        # 重试
         if self.isMicaEffectEnabled():
             QTimer.singleShot(
                 100,
