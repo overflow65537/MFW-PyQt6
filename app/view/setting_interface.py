@@ -238,8 +238,8 @@ class SettingInterface(ScrollArea):
         # Setup DEV Config
         DEV_Config = self.check_and_get_dev_config()
 
-        gpu_list = get_gpu_info()
-        gpu_combox_list = self.get_unique_gpu_list(gpu_list)
+        gpu_mapping = get_gpu_info()
+        gpu_combox_list = self.get_unique_gpu_mapping(gpu_mapping)
 
         win32_input_mapping = {0: self.tr("default"), 1: "seize", 2: "SendMessage"}
         win32_input_combox_list = [self.tr("default"), "seize", "SendMessage"]
@@ -247,7 +247,7 @@ class SettingInterface(ScrollArea):
         win32_screencap_mapping = {0: self.tr("default"), 1: "GDI", 2: "FramePool", 4: "DXGI_DesktopDup"}
         win32_screencap_combox_list = [self.tr("default"), "GDI", "FramePool", "DXGI_DesktopDup"]
 
-        ADB_input_mapping = {0: self.tr("default"), 1: "AdbShellL", 2: "MinitouchAndAdbKey", 4: "Maatouch", 8: "EmulatorExtras"}
+        ADB_input_mapping = {0: self.tr("default"), 1: "AdbShell", 2: "MinitouchAndAdbKey", 4: "Maatouch", 8: "EmulatorExtras"}
         ADB_input_combox_list = [self.tr("default"), "AdbShell", "MinitouchAndAdbKey", "Maatouch", "EmulatorExtras"]
 
         ADB_screencap_mapping = {0: self.tr("default"), 1: "EncodeToFileAndPull", 2: "Encode", 4: "RawWithGzip", 8: "RawByNetcat", 16: "MinicapDirect", 32: "MinicapStream", 64: "EmulatorExtras"}
@@ -262,7 +262,7 @@ class SettingInterface(ScrollArea):
             path=cfg.get(cfg.Maa_config),
             parent=self.DEVGroup,
             mode="setting",
-            mapping=gpu_list,
+            mapping=gpu_mapping,
         )
         
         self.win32_input_mode = ComboBoxSettingCardCustom(
@@ -372,15 +372,15 @@ class SettingInterface(ScrollArea):
             })
             return False
 
-    def get_unique_gpu_list(self, gpu_list):
+    def get_unique_gpu_mapping(self, gpu_mapping):
         """Get a unique list of GPU names."""
-        gpu_combox_list = list(set(gpu_list.values()))
+        gpu_combox_list = list(set(gpu_mapping.values()))
         gpu_combox_list.insert(0, self.tr("Auto"))
         gpu_combox_list.insert(1, self.tr("Disabled"))
         
         # Update the original list for mapping
-        gpu_list[-1] = self.tr("Auto")
-        gpu_list[-2] = self.tr("Disabled")
+        gpu_mapping[-1] = self.tr("Auto")
+        gpu_mapping[-2] = self.tr("Disabled")
         
         return gpu_combox_list
 
