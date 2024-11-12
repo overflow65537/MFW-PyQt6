@@ -3,7 +3,8 @@ import json
 import subprocess
 import platform
 
-from PyQt6.QtCore import Qt, QByteArray
+
+from PyQt6.QtCore import Qt, QByteArray, QTimer
 from PyQt6.QtWidgets import QApplication, QWidget
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from qfluentwidgets import InfoBar, InfoBarPosition
@@ -36,6 +37,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         self.MAA_Service_Process = self.start_MAA_service()
         signalBus.update_task_list.connect(self.refresh_widget)
+        self.MAA_started = False
 
         # 初始化组件
         print("TaskInterface init")
@@ -57,8 +59,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def handle_signal(self, data):
         if data == "MAA_started":
+            print("开始按钮解锁")
+            self.MAA_started = True
             self.S2_Button.setEnabled(True)
         elif data == "MAA_runing":
+            print("停止按钮解锁")
             self.S2_Button.setEnabled(True)
         elif data == "MAA_completed":
             self.TaskOutput_Text.append("任务完成")
@@ -169,7 +174,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Control_Combox.setCurrentIndex(return_init["init_Controller_Type"])
         adb_data = Read_Config(maa_pi_config_Path)["adb"]
         if check_adb_path(adb_data):
-            self.Start_ADB_Detection()
+            print(adb_data)
+            self.run_afert_MAA_started()
         else:
             self.Autodetect_combox.addItem(
                 f'{check_path_for_keyword(adb_data["adb_path"])} ({adb_data["address"]})'
@@ -180,7 +186,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             print("配置文件不存在")
             self.create_default_config(maa_pi_config_Path)
             self.load_interface_options(interface_Path)
-            self.Start_ADB_Detection()
+            self.run_afert_MAA_started()
         else:
             self.show_error("未检测到资源文件")
 
@@ -201,6 +207,26 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.SelectTask_Combox_1.addItems(Get_Values_list(interface_Path, key1="task"))
         self.Save_Resource()
         self.Save_Controller()
+
+    def run_afert_MAA_started(self):
+        if self.MAA_started:
+            self.Start_ADB_Detection()
+        else:
+            self.MAA_timer()
+
+    def MAA_timer(self):
+        self.timer = QTimer(self)
+        self.timer.setInterval(100)
+        self.timer.timeout.connect(self.check_MAA_started)
+        self.timer.start()
+
+    def check_MAA_started(self):
+        if self.MAA_started:
+            self.timer.stop()
+            print("MAA启动完成")
+            self.Start_ADB_Detection()
+        else:
+            print("等待MAA启动")
 
     def refresh_widget(self, task_list=[]):
         items = self.get_task_list_widget()
@@ -241,6 +267,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         os.system(shutdown_commands.get(platform.system(), ""))
 
     def start_MAA_service(self):
+        print("启动MAA服务进程")
         return subprocess.Popen(["python", os.path.join(os.getcwd(), "MAA_Service.py")])
 
     def Start_Up(self):
@@ -413,8 +440,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         print(f"发送信号：{msg}")
         self.sendData(msg)
 
-        self.S2_Button.clicked.disconnect()
-        self.S2_Button.clicked.connect(self.Stop_task)
+        self.AutoDetect_Button.setEnabled(False)
+        self.S2_Button.setEnabled(False)
+
         InfoBar.info(
             title="提示",
             content="正在检测模拟器",
@@ -428,6 +456,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def On_ADB_Detected(self, emu):
         global emu_data
         emu_data = emu
+
+        self.AutoDetect_Button.setEnabled(True)
+        self.S2_Button.setEnabled(True)
 
         if not emu:
             self.show_error("未检测到模拟器")
