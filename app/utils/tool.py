@@ -1,9 +1,11 @@
 import os
 import json
-import psutil
-import socket
 import re
 import subprocess
+import platform
+
+# import psutil
+# import socket
 
 
 def Read_Config(paths):
@@ -122,6 +124,7 @@ def Get_Task_List(target):
     return lists
 
 
+"""
 def find_process_by_name(process_name):
     # 遍历所有程序找到指定程序
     for proc in psutil.process_iter(["name", "exe"]):
@@ -149,7 +152,6 @@ def find_existing_file(info_dict):
     # 如果没有找到任何存在的文件
     return False
 
-
 def check_port(port):
     port_result = []
     for p in port:
@@ -166,6 +168,7 @@ def check_port(port):
         finally:
             s.close()
     return port_result
+"""
 
 
 def check_path_for_keyword(path):
@@ -193,39 +196,51 @@ def check_adb_path(adb_data):
 
 
 def get_gpu_info():
-    # 获取GPU信息
+    # 获取显卡字典
     gpu_info = {}
-
     try:
-        # 获取显卡ID列表
-        id_output = subprocess.check_output(
-            "wmic path win32_VideoController get DeviceID", shell=True, text=True
-        )
+        os_type = platform.system()
+        if os_type == "Windows":
+            # Windows
+            id_output = subprocess.check_output(
+                "wmic path win32_VideoController get DeviceID", shell=True, text=True
+            )
+            name_output = subprocess.check_output(
+                "wmic path win32_VideoController get Name", shell=True, text=True
+            )
+            ids = id_output.strip().split("\n")[1:]
+            names = name_output.strip().split("\n")[1:]
 
-        # 获取显卡名称列表
-        name_output = subprocess.check_output(
-            "wmic path win32_VideoController get Name", shell=True, text=True
-        )
+            for id, name in zip(ids, names):
+                if id and name:
+                    # 使用ID作为键
+                    id_num = int("".join(filter(str.isdigit, id)))
+                    gpu_info[id_num] = name.strip()
 
-        ids = id_output.strip().split("\n")[1:]  # 跳过第一行
-        names = name_output.strip().split("\n")[1:]  # 跳过第一行
+        elif os_type == "Linux":
+            # Linux
+            lspci_output = subprocess.check_output(
+                "lspci | grep -i vga", shell=True, text=True
+            )
+            for index, line in enumerate(lspci_output.strip().split("\n")):
+                parts = line.split(":")
+                if len(parts) >= 2:
+                    # 使用索引作为键
+                    id_num = index
+                    name = parts[1].strip().split(" ")[1:]
+                    gpu_info[id_num] = " ".join(name)
 
-        for id, name in zip(ids, names):
-            if id and name:  # 清除空元素
-                # 提取数字部分
-                id_num = "".join(filter(str.isdigit, id))
-                gpu_info[id_num] = name.strip()
-        """
-        Read_Config(os.path.join(os.getcwd(), "confgi", "gpu_blacklist.json"))
-        for gpu_name in blacklist:
-            # 找到相应的键
-            keys_to_remove = [
-                key for key, value in gpu_info.items() if value == gpu_name
-            ]
-            # 从字典中移除
-            for key in keys_to_remove:
-                del gpu_info[key]
-        """
+        elif os_type == "Darwin":
+            # macOS
+            sp_output = subprocess.check_output(
+                "system_profiler SPGraphicsDataType", shell=True, text=True
+            )
+            for index, line in enumerate(sp_output.splitlines()):
+                if "Chipset Model" in line:
+                    # 使用索引作为键
+                    id_num = index
+                    name = line.split(":")[1].strip()
+                    gpu_info[id_num] = name
 
     except Exception as e:
         print(f"获取显卡信息时出错: {e}")
@@ -306,3 +321,30 @@ def delete_contorller(data_dict, controller, mode):
                     del data_dict["controller"][i][controller.lower()]
 
     return data_dict
+
+
+def for_config_get_url(url, mode):
+    # 输入一个url，模式，返回对应的链接
+    # 提取github仓库的用户名和仓库名
+    # 用来获取接口文件中的链接
+    parts = url.split("/")
+    username = parts[3]
+    repository = parts[4]
+
+    if mode == "issue":
+        return_url = f"https://github.com/{username}/{repository}/issues"
+        return return_url
+    elif mode == "download":
+        return_url = (
+            f"https://api.github.com/repos/{username}/{repository}/releases/latest"
+        )
+        return return_url
+
+
+def get_controller_type(select_value, interface_path):
+    # 输入一个选择值，接口文件路径，返回控制器类型
+    data = Read_Config(interface_path)
+    for i in data["controller"]:
+        if i["name"] == select_value:
+            return i["type"]
+    return None

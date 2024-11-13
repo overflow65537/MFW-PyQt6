@@ -106,6 +106,11 @@ class Config(QConfig):
             "receive_mail": "",
         },
     )
+    # 项目信息
+    Project_name = ConfigItem("Project", "Project_name", "")
+    Project_version = ConfigItem("Project", "Project_version", "")
+    Project_url = ConfigItem("Project", "Project_url", "")
+
     # main window
     micaEnabled = ConfigItem("MainWindow", "MicaEnabled", isWin11(), BoolValidator())
 
@@ -137,11 +142,7 @@ class Config(QConfig):
     )
 
 
-VERSION = __version__
 REPO_URL = "https://github.com/overflow65537/PYQT-MAA/"
-UPDATE_URL = "https://github.com/overflow65537/PYQT-MAA/releases/latest/"
-FEEDBACK_URL = "https://github.com/overflow65537/PYQT-MAA/issues/"
-
 
 cfg = Config()
 cfg.themeMode.value = Theme.AUTO

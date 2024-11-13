@@ -135,9 +135,8 @@ class ListWidge_Menu_Draggable(ListWidget):
         item = self.get_task_list_widget()
         signalBus.update_task_list.emit(item)
 
-
     def dropEvent(self, event):
-        maa_pi_config_Path = os.path.join(os.getcwd(), "config", "maa_pi_config.json")
+        maa_pi_config_Path = cfg.get(cfg.Maa_config)
         begin = self.currentRow()
         super(ListWidge_Menu_Draggable, self).dropEvent(event)
         end = self.currentRow()
@@ -148,4 +147,3 @@ class ListWidge_Menu_Draggable(ListWidget):
 
         item = self.get_task_list_widget()
         signalBus.update_task_list.emit(item)
-
