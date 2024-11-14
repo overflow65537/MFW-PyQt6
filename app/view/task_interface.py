@@ -298,14 +298,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.S2_Button.clicked.connect(self.Stop_task)
 
     def Start_Up(self):
-        self.S2_Button
         self.S2_Button.setEnabled(False)
         self.TaskOutput_Text.clear()
         self.socket = QLocalSocket()
         self.socket.connectToServer("GUI2MAA")
 
         parameter = {
-            "action_code": 1,  # 0,获取设备列表，1，启动任务
+            "action_code": 1,  # 0: 获取设备列表, 1: 启动任务
             "resource_dir": os.getcwd(),
             "cfg_dir": cfg.get(cfg.Maa_config).replace(
                 os.path.join("config", "maa_pi_config.json"), ""
@@ -332,7 +331,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             exe_parameter = cfg.get(cfg.exe_parameter)
             wait_time = int(cfg.get(cfg.exe_wait_time))
 
-            if exe_path != "":
+            if exe_path:
                 command.append(exe_path)
                 if exe_parameter:
                     command.extend(exe_parameter.split())
@@ -342,18 +341,32 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             emu_path = cfg.get(cfg.emu_path)
             wait_time = int(cfg.get(cfg.emu_wait_time))
 
-            if emu_path != "":
+            if emu_path:
                 command.append(emu_path)
                 print(f"启动模拟器: {command}")
 
+        run_before_start = cfg.get(cfg.run_before_start)
+        if run_before_start:
+            self.run_script_with_error_handling(run_before_start, "run_before_start")
+
         if command:
-            self.exe_process = self.start_process(command)
+            self.run_script_with_error_handling(command, "Failed to start program")
             self.countdown(wait_time)
             self.S2_Button.setText(self.tr("Stop"))
             self.S2_Button.clicked.disconnect()
             self.S2_Button.clicked.connect(self.stop_countdown)
         else:
             self.Start_Up()
+
+    def run_script_with_error_handling(self, script, error_message):
+        try:
+            self.exe_process = self.start_process(script)
+        except FileNotFoundError as e:
+            self.show_error(self.tr(f"{error_message}: 文件未找到"))
+            print(e)
+        except OSError as e:
+            self.show_error(self.tr(f"{error_message}: 无法启动该文件"))
+            print(e)
 
     def stop_countdown(self):
         self.countdown_timer.stop()
