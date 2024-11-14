@@ -75,10 +75,6 @@ class Ui_Task_Interface(object):
         self.Autodetect_combox = ComboBox(Task_Interface)
         self.Finish_combox = ComboBox(Task_Interface)
 
-        self.Finish_combox.addItems(
-            ["无动作", "关闭模拟器", "关闭主进程", "关闭模拟器及主进程", "关机"]
-        )
-
         self.Resource_Combox.setObjectName("Resource_Combox")
         self.Control_Combox.setObjectName("Control_Combox")
         self.Autodetect_combox.setObjectName("Autodetect_combox")

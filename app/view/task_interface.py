@@ -67,6 +67,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         elif data == "MAA_runing":
             print("Stop button unlocked")
             self.S2_Button.setEnabled(True)
+        elif "连接失败" in data:
+            self.TaskOutput_Text.append("Task completed")
+            self.Stop_task()
+            self.S2_Button.setText(self.tr("Start"))
         elif data == "MAA_completed":
             self.TaskOutput_Text.append("Task completed")
             self.Stop_task()
@@ -113,6 +117,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.S2_Button.setEnabled(False)
         print("Locking start button")
 
+        finish_list = [
+            self.tr("Do nothing"),
+            self.tr("Close emulator"),
+            self.tr("Close emulator and Quit app"),
+            self.tr("Shutdown"),
+        ]
+        self.Finish_combox.addItems(finish_list)
         self.Finish_combox.setCurrentIndex(cfg.get(cfg.Finish_combox))
         self.toggle_task_options(False)
 
@@ -148,6 +159,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.AutoDetect_Button.clicked.connect(self.Start_ADB_Detection)
         self.S2_Button.clicked.connect(self.start_custom_process)
         self.Autodetect_combox.currentTextChanged.connect(self.Save_ADB_Config)
+        self.Finish_combox.currentIndexChanged.connect(self.rewrite_Completion_Options)
 
     def Start_Status(self, interface_Path, maa_pi_config_Path, resource_Path):
         if self.check_file_paths_exist(
@@ -248,20 +260,30 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def get_task_list_widget(self):
         return [self.Task_List.item(i).text() for i in range(self.Task_List.count())]
 
+    def rewrite_Completion_Options(self):
+        cfg.set(cfg.Finish_combox, self.Finish_combox.currentIndex())
+
     def Completion_Options(self):
         target = self.Finish_combox.currentIndex()
         actions = {
+            -1: self.tr("Do nothing"),
+            0: self.tr("Do nothing"),
             1: self.closeEmulator,
             2: QApplication.quit,
-            3: lambda: (self.closeEmulator(), self.close()),
-            4: self.shutdown,
+            3: self.shutdown,
         }
+
         action = actions.get(target)
+        print(f"选择的动作: {actions[target]}")
         if action:
             action()
 
     def closeEmulator(self):
-        pass
+        self.exe_process.terminate()
+        try:
+            self.exe_process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            self.exe_process.kill()
 
     def shutdown(self):
         shutdown_commands = {
@@ -347,26 +369,30 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         run_before_start = cfg.get(cfg.run_before_start)
         if run_before_start:
-            self.run_script_with_error_handling(run_before_start, "run_before_start")
+            try:
+                self.run_before_start_process = self.start_process(run_before_start)
+            except FileNotFoundError as e:
+                self.show_error(self.tr(f"文件未找到"))
+                print(e)
+            except OSError as e:
+                self.show_error(self.tr(f"无法启动该文件"))
+                print(e)
 
         if command:
-            self.run_script_with_error_handling(command, "Failed to start program")
+            try:
+                self.exe_process = self.start_process(command)
+            except FileNotFoundError as e:
+                self.show_error(self.tr(f"文件未找到"))
+                print(e)
+            except OSError as e:
+                self.show_error(self.tr(f"无法启动该文件"))
+                print(e)
             self.countdown(wait_time)
             self.S2_Button.setText(self.tr("Stop"))
             self.S2_Button.clicked.disconnect()
             self.S2_Button.clicked.connect(self.stop_countdown)
         else:
             self.Start_Up()
-
-    def run_script_with_error_handling(self, script, error_message):
-        try:
-            self.exe_process = self.start_process(script)
-        except FileNotFoundError as e:
-            self.show_error(self.tr(f"{error_message}: 文件未找到"))
-            print(e)
-        except OSError as e:
-            self.show_error(self.tr(f"{error_message}: 无法启动该文件"))
-            print(e)
 
     def stop_countdown(self):
         self.countdown_timer.stop()
@@ -414,6 +440,18 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.MAA_Service_Process = self.start_process(
             ["python", os.path.join(os.getcwd(), "MAA_Service.py")]
         )
+
+    def run_after_finish(self):
+        run_after_finish = cfg.get(cfg.run_after_finish)
+        if run_after_finish != "":
+            try:
+                self.run_after_finish = self.start_process(run_after_finish)
+            except FileNotFoundError as e:
+                self.show_error(self.tr(f"文件未找到"))
+                print(e)
+            except OSError as e:
+                self.show_error(self.tr(f"无法启动该文件"))
+                print(e)
 
     def task_list_changed(self):
         self.Task_List.clear()
