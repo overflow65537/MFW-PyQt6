@@ -564,11 +564,6 @@ class SettingInterface(ScrollArea):
         self.expandLayout.addWidget(self.DEVGroup)
         self.expandLayout.addWidget(self.aboutGroup)
 
-        # 根据现有路径启用/禁用控件
-        self.emu_wait_time.setEnabled(cfg.get(cfg.emu_path) != "")
-        self.exe_parameter.setEnabled(cfg.get(cfg.exe_path) != "")
-        self.exe_wait_time.setEnabled(cfg.get(cfg.exe_path) != "")
-
     def __showRestartTooltip(self):
         """显示重启提示。"""
         InfoBar.success(
