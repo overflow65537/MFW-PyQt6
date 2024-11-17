@@ -38,9 +38,9 @@ class ListWidge_Menu_Draggable(ListWidget):
 
         selected_row = self.currentRow()
 
-        action_move_up = Action(FIF.UP, "move up")
-        action_move_down = Action(FIF.DOWN, "move down")
-        action_delete = Action(FIF.DELETE, "delete")
+        action_move_up = Action(FIF.UP, self.tr("Move Up"))
+        action_move_down = Action(FIF.DOWN, self.tr("Move Down"))
+        action_delete = Action(FIF.DELETE, self.tr("Delete"))
 
         if selected_row == -1:
             action_move_up.setEnabled(False)
@@ -58,8 +58,10 @@ class ListWidge_Menu_Draggable(ListWidget):
         menu.exec(e.globalPos(), aniType=MenuAnimationType.DROP_DOWN)
 
     def Delete_Task(self):
-
         Select_Target = self.currentRow()
+
+        if Select_Target == -1:
+            return
 
         self.takeItem(Select_Target)
         Task_List = Get_Values_list2(cfg.get(cfg.Maa_config), "task")
@@ -67,8 +69,8 @@ class ListWidge_Menu_Draggable(ListWidget):
             del Task_List[Select_Target]
         except IndexError:
             InfoBar.error(
-                title="错误",
-                content="没有任务可以被删除",
+                title=self.tr("Error"),
+                content=self.tr("No task can be deleted"),
                 orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.BOTTOM_RIGHT,
@@ -80,20 +82,21 @@ class ListWidge_Menu_Draggable(ListWidget):
             del MAA_Pi_Config["task"]
             MAA_Pi_Config.update({"task": Task_List})
             Save_Config(cfg.get(cfg.Maa_config), MAA_Pi_Config)
-        if Select_Target == 0:
+
+        if Select_Target == 0 and self.count() > 0:
             self.setCurrentRow(Select_Target)
-        elif Select_Target != -1:
+        elif Select_Target != -1 and self.count() > 1:
             self.setCurrentRow(Select_Target - 1)
+
         item = self.get_task_list_widget()
         signalBus.update_task_list.emit(item)
 
     def Move_Up(self):
-
         Select_Target = self.currentRow()
         if Select_Target == 0:
             InfoBar.error(
-                title="错误",
-                content="已经是首位任务",
+                title=self.tr("Error"),
+                content=self.tr("Already the first task"),
                 orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.BOTTOM_RIGHT,
@@ -108,17 +111,17 @@ class ListWidge_Menu_Draggable(ListWidget):
             self.clear()
             self.addItems(Get_Values_list_Option(cfg.get(cfg.Maa_config), "task"))
             self.setCurrentRow(Select_Target - 1)
+
         item = self.get_task_list_widget()
         signalBus.update_task_list.emit(item)
 
     def Move_Down(self):
-
         Select_Target = self.currentRow()
         MAA_Pi_Config = Read_Config(cfg.get(cfg.Maa_config))
         if Select_Target >= len(MAA_Pi_Config["task"]) - 1:
             InfoBar.error(
-                title="错误",
-                content="已经是末位任务",
+                title=self.tr("Error"),
+                content=self.tr("Already the last task"),
                 orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.BOTTOM_RIGHT,
@@ -132,6 +135,7 @@ class ListWidge_Menu_Draggable(ListWidget):
             self.clear()
             self.addItems(Get_Values_list_Option(cfg.get(cfg.Maa_config), "task"))
             self.setCurrentRow(Select_Target + 1)
+
         item = self.get_task_list_widget()
         signalBus.update_task_list.emit(item)
 

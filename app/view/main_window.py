@@ -22,7 +22,6 @@ from ..common.signal_bus import signalBus
 from ..common import resource
 
 
-
 class MainWindow(FluentWindow):
 
     def __init__(self):
@@ -56,19 +55,35 @@ class MainWindow(FluentWindow):
 
     def initNavigation(self):
         """初始化导航界面。"""
-        
+
         self.navigationInterface.addSeparator()
 
         # 判断是否存在自定义配置文件
         if os.path.exists(os.path.join(os.getcwd(), "config", "custom.json")):
-            self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("任务"))
-            self.addSubInterface(self.scheduledInterface, FIF.CALENDAR, self.tr("调度任务"))
-            self.addSubInterface(self.customsettingInterface, FIF.APPLICATION, self.tr("自定义设置"))
-            self.addSubInterface(self.settingInterface, FIF.SETTING, self.tr("设置"), NavigationItemPosition.BOTTOM)
+            self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("Task"))
+            self.addSubInterface(
+                self.scheduledInterface, FIF.CALENDAR, self.tr("Scheduling tasks")
+            )
+            self.addSubInterface(
+                self.customsettingInterface, FIF.APPLICATION, self.tr("Custom Setting")
+            )
+            self.addSubInterface(
+                self.settingInterface,
+                FIF.SETTING,
+                self.tr("Setting"),
+                NavigationItemPosition.BOTTOM,
+            )
         else:
-            self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("任务"))
-            self.addSubInterface(self.scheduledInterface, FIF.CALENDAR, self.tr("调度任务"))
-            self.addSubInterface(self.settingInterface, FIF.SETTING, self.tr("设置"), NavigationItemPosition.BOTTOM)
+            self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("Task"))
+            self.addSubInterface(
+                self.scheduledInterface, FIF.CALENDAR, self.tr("Scheduling tasks")
+            )
+            self.addSubInterface(
+                self.settingInterface,
+                FIF.SETTING,
+                self.tr("Setting"),
+                NavigationItemPosition.BOTTOM,
+            )
 
     def initWindow(self):
         """初始化窗口设置。"""

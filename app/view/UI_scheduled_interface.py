@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QSize
+from PyQt6.QtCore import QSize, QMetaObject, QCoreApplication
 from PyQt6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
@@ -6,7 +6,6 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QFormLayout,
     QFrame,
-    QAbstractItemView,
 )
 from qfluentwidgets import (
     PushButton,
@@ -33,13 +32,11 @@ class Ui_Scheduled_Interface(object):
         self.Cfg_Combox.setObjectName("Cfg_Combox")
         self.Add_cfg_Button = PushButton(Scheduled_Interface)
         self.Add_cfg_Button.setObjectName("Add_cfg_Button")
-        self.Add_cfg_Button.setText("添加")
         self.Add_cfg_Button.setSizePolicy(
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
         self.Delete_cfg_Button = PushButton(Scheduled_Interface)
         self.Delete_cfg_Button.setObjectName("Delete_cfg_Button")
-        self.Delete_cfg_Button.setText("删除")
         self.Delete_cfg_Button.setSizePolicy(
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
@@ -63,16 +60,13 @@ class Ui_Scheduled_Interface(object):
         self.Schedule_layout = QFormLayout()
         self.Schedule_name_title = BodyLabel(Scheduled_Interface)
         self.Schedule_name_title.setObjectName("Schedule_name_title")
-        self.Schedule_name_title.setText("计划任务名称")
         self.Schedule_name_edit = LineEdit(Scheduled_Interface)
         self.Schedule_name_edit.setObjectName("Schedule_name_edit")
-        self.Schedule_name_edit.setPlaceholderText("请输入计划任务名称")
         self.Schedule_layout.addRow(self.Schedule_name_title, self.Schedule_name_edit)
 
         self.Trigger_Time_layout = QGridLayout()
         self.Trigger_Time_title = BodyLabel(Scheduled_Interface)
         self.Trigger_Time_title.setObjectName("Trigger_Time_title")
-        self.Trigger_Time_title.setText("触发时间")
         self.Trigger_Time_type = ComboBox(Scheduled_Interface)
         self.Trigger_Time_even_week = ComboBox(Scheduled_Interface)
         self.Trigger_Time_edit = TimeEdit(Scheduled_Interface)
@@ -85,7 +79,6 @@ class Ui_Scheduled_Interface(object):
         self.use_cfg_layout = QFormLayout()
         self.use_cfg_title = BodyLabel(Scheduled_Interface)
         self.use_cfg_title.setObjectName("use_cfg_title")
-        self.use_cfg_title.setText("使用配置")
         self.use_cfg_combo = ComboBox(Scheduled_Interface)
         self.use_cfg_combo.setObjectName("use_cfg_combo")
         self.use_cfg_layout.addRow(self.use_cfg_title, self.use_cfg_combo)
@@ -111,3 +104,25 @@ class Ui_Scheduled_Interface(object):
         self.all_layout.addLayout(self.Schedule_layout_all)
 
         Scheduled_Interface.setLayout(self.all_layout)
+        self.retranslateUi(Scheduled_Interface)
+        QMetaObject.connectSlotsByName(Scheduled_Interface)
+
+    def retranslateUi(self, Scheduled_Interface):
+        _translate = QCoreApplication.translate
+        Scheduled_Interface.setWindowTitle(
+            _translate("Scheduled_Interface", "Scheduled Interface")
+        )
+        self.Add_cfg_Button.setText(_translate("Scheduled_Interface", "Add"))
+        self.Delete_cfg_Button.setText(_translate("Scheduled_Interface", "Delete"))
+        self.Schedule_name_title.setText(
+            _translate("Scheduled_Interface", "Scheduled name")
+        )
+        self.Schedule_name_edit.setPlaceholderText(
+            _translate("Scheduled_Interface", "please inter scheduled name")
+        )
+        self.Trigger_Time_title.setText(
+            _translate("Scheduled_Interface", "Trigger Time")
+        )
+        self.use_cfg_title.setText(
+            _translate("Scheduled_Interface", "Use Configuration")
+        )

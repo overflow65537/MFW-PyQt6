@@ -21,10 +21,10 @@ class CustomSettingInterface(ScrollArea):
         self.expandLayout = ExpandLayout(self.scrollWidget)
 
         # 设置标签
-        self.settingLabel = QLabel(self.tr("自定义设置"), self)
+        self.settingLabel = QLabel(self.tr("Custom Setting"), self)
 
         self.CustomSettingGroup = SettingCardGroup(
-            self.tr("设置"), self.scrollWidget
+            self.tr("Setting"), self.scrollWidget
         )
 
         if os.path.exists(os.path.join(os.getcwd(), "config", "custom.json")):
@@ -63,7 +63,7 @@ class CustomSettingInterface(ScrollArea):
         option_type = option_dict["optiontype"]
         option_name = option_dict["optionname"]
         text = option_dict["text"]
-        
+
         if option_type == "combox":
             self.combox = ComboBoxSettingCardCustom(
                 icon=FIF.FILTER,
@@ -112,7 +112,7 @@ class CustomSettingInterface(ScrollArea):
         """初始化配置文件"""
         config_path = os.path.join(os.getcwd(), "config", "custom_config.json")
         custom_path = os.path.join(os.getcwd(), "config", "custom.json")
-        
+
         if not os.path.exists(config_path):
             dicts = {}
             config = Read_Config(custom_path)

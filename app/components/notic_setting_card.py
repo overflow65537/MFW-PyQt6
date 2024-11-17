@@ -236,7 +236,6 @@ class NoticeButtonSettingCard(SettingCard):
             self.notice = cfg.get(cfg.Notice_Qmsg)
         elif self.notice_type == "SMTP":
             self.notice = cfg.get(cfg.Notice_SMTP)
-
         self.label = BodyLabel(self)
         if self.notice["status"]:
             self.label.setText(self.notice_type + self.tr("Notification Enabled"))
@@ -265,17 +264,17 @@ class NoticeButtonSettingCard(SettingCard):
             if self.notice_type == "DingTalk":
                 original_data = cfg.get(cfg.Notice_Webhook)
                 original_data["DingTalk"] = data
-                cfg.set(cfg.Notice_Webhook,original_data)
+                cfg.set(cfg.Notice_Webhook, original_data)
             elif self.notice_type == "Lark":
                 original_data = cfg.get(cfg.Notice_Webhook)
                 original_data["Lark"] = data
-                cfg.set(cfg.Notice_Webhook,original_data)
+                cfg.set(cfg.Notice_Webhook, original_data)
             elif self.notice_type == "Qmsg":
                 original_data = data
-                cfg.set(cfg.Notice_Qmsg,original_data)
+                cfg.set(cfg.Notice_Qmsg, original_data)
             elif self.notice_type == "SMTP":
                 original_data = data
-                cfg.set(cfg.Notice_SMTP,original_data)
+                cfg.set(cfg.Notice_SMTP, original_data)
         else:
             self.label.setText(self.tr("Notification Enabled"))
             data = self.notice
@@ -283,14 +282,14 @@ class NoticeButtonSettingCard(SettingCard):
             if self.notice_type == "DingTalk":
                 original_data = cfg.get(cfg.Notice_Webhook)
                 original_data["DingTalk"] = data
-                cfg.set(cfg.Notice_Webhook,original_data)
+                cfg.set(cfg.Notice_Webhook, original_data)
             elif self.notice_type == "Lark":
                 original_data = cfg.get(cfg.Notice_Webhook)
                 original_data["Lark"] = data
-                cfg.set(cfg.Notice_Webhook,original_data)
+                cfg.set(cfg.Notice_Webhook, original_data)
             elif self.notice_type == "Qmsg":
                 original_data = data
-                cfg.set(cfg.Notice_Qmsg,original_data)
+                cfg.set(cfg.Notice_Qmsg, original_data)
             elif self.notice_type == "SMTP":
                 original_data = data
-                cfg.set(cfg.Notice_SMTP,original_data)
+                cfg.set(cfg.Notice_SMTP, original_data)

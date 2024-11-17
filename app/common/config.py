@@ -24,17 +24,16 @@ class Language(Enum):
     CHINESE_SIMPLIFIED = QLocale(QLocale.Language.Chinese, QLocale.Country.China)
     CHINESE_TRADITIONAL = QLocale(QLocale.Language.Chinese, QLocale.Country.HongKong)
     ENGLISH = QLocale(QLocale.Language.English)
-    AUTO = QLocale()
 
 
 class LanguageSerializer(ConfigSerializer):
     """Language serializer"""
 
     def serialize(self, language):
-        return language.value.name() if language != Language.AUTO else "Auto"
+        return language.value.name()
 
     def deserialize(self, value: str):
-        return Language(QLocale(value)) if value != "Auto" else Language.AUTO
+        return Language(QLocale(value))
 
 
 def isWin11():
@@ -125,7 +124,7 @@ class Config(QConfig):
     language = OptionsConfigItem(
         "MainWindow",
         "Language",
-        Language.AUTO,
+        Language.CHINESE_SIMPLIFIED,
         OptionsValidator(Language),
         LanguageSerializer(),
         restart=True,

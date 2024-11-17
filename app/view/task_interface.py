@@ -372,20 +372,20 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             try:
                 self.run_before_start_process = self.start_process(run_before_start)
             except FileNotFoundError as e:
-                self.show_error(self.tr(f"文件未找到"))
+                self.show_error(self.tr(f"File not found"))
                 print(e)
             except OSError as e:
-                self.show_error(self.tr(f"无法启动该文件"))
+                self.show_error(self.tr(f"Can not start the file"))
                 print(e)
 
         if command:
             try:
                 self.exe_process = self.start_process(command)
             except FileNotFoundError as e:
-                self.show_error(self.tr(f"文件未找到"))
+                self.show_error(self.tr(f"File not found"))
                 print(e)
             except OSError as e:
-                self.show_error(self.tr(f"无法启动该文件"))
+                self.show_error(self.tr(f"Can not start the file"))
                 print(e)
             self.countdown(wait_time)
             self.S2_Button.setText(self.tr("Stop"))
@@ -413,7 +413,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def update_countdown(self):
         if self.remaining_time > 0:
             self.TaskOutput_Text.append(
-                self.tr(f"starting in {self.remaining_time // 1000} seconds")
+                self.tr("starting in ")
+                + f"{self.remaining_time // 1000}"
+                + self.tr(" seconds")
             )
             self.remaining_time -= 1000
             print(self.remaining_time)
@@ -447,10 +449,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             try:
                 self.run_after_finish = self.start_process(run_after_finish)
             except FileNotFoundError as e:
-                self.show_error(self.tr(f"文件未找到"))
+                self.show_error(self.tr(f"File not found"))
                 print(e)
             except OSError as e:
-                self.show_error(self.tr(f"无法启动该文件"))
+                self.show_error(self.tr(f"Can not start the file"))
                 print(e)
 
     def task_list_changed(self):

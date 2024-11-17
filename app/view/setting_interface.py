@@ -175,7 +175,7 @@ class SettingInterface(ScrollArea):
             FIF.BRUSH,
             self.tr("Application Theme"),
             self.tr("Change the appearance of your application"),
-            texts=["Light", "Dark", "Use system setting"],
+            texts=[self.tr("Light"), self.tr("Dark"), self.tr("Use system setting")],
             parent=self.personalGroup,
         )
         self.themeColorCard = CustomColorSettingCard(
@@ -190,7 +190,14 @@ class SettingInterface(ScrollArea):
             FIF.ZOOM,
             self.tr("Interface Zoom"),
             self.tr("Change the size of widgets and fonts"),
-            texts=["100%", "125%", "150%", "175%", "200%", "Use system setting"],
+            texts=[
+                "100%",
+                "125%",
+                "150%",
+                "175%",
+                "200%",
+                self.tr("Use system setting"),
+            ],
             parent=self.personalGroup,
         )
         self.languageCard = ComboBoxSettingCard(
@@ -198,7 +205,7 @@ class SettingInterface(ScrollArea):
             FIF.LANGUAGE,
             self.tr("Language"),
             self.tr("Set your preferred language for UI"),
-            texts=["简体中文", "繁體中文", "English", "Use system setting"],
+            texts=["简体中文", "繁體中文", "English"],
             parent=self.personalGroup,
         )
 
@@ -216,7 +223,7 @@ class SettingInterface(ScrollArea):
             self.tr("Modify"),
             FIF.COMMAND_PROMPT,
             self.tr("DingTalk"),
-            self.tr("DingTalk"),
+            "DingTalk",
             self.tr("DingTalk Configuration"),
             self.noticeGroup,
         )
@@ -225,7 +232,7 @@ class SettingInterface(ScrollArea):
             self.tr("Modify"),
             FIF.COMMAND_PROMPT,
             self.tr("Lark"),
-            self.tr("Lark"),
+            "Lark",
             self.tr("Lark Configuration"),
             self.noticeGroup,
         )
@@ -234,7 +241,7 @@ class SettingInterface(ScrollArea):
             self.tr("Modify"),
             FIF.COMMAND_PROMPT,
             self.tr("Qmsg"),
-            self.tr("Qmsg"),
+            "Qmsg",
             self.tr("Qmsg Configuration"),
             self.noticeGroup,
         )
@@ -243,7 +250,7 @@ class SettingInterface(ScrollArea):
             self.tr("Modify"),
             FIF.COMMAND_PROMPT,
             self.tr("SMTP"),
-            self.tr("SMTP"),
+            "SMTP",
             self.tr("SMTP Configuration"),
             self.noticeGroup,
         )
@@ -265,45 +272,45 @@ class SettingInterface(ScrollArea):
 
         win32_input_mapping = {
             0: self.tr("default"),
-            1: self.tr("seize"),
-            2: self.tr("SendMessage"),
+            1: "seize",
+            2: "SendMessage",
         }
         win32_input_combox_list = [
             self.tr("default"),
-            self.tr("seize"),
-            self.tr("SendMessage"),
+            "seize",
+            "SendMessage",
         ]
 
         win32_screencap_mapping = {
             0: self.tr("default"),
-            1: self.tr("GDI"),
-            2: self.tr("FramePool"),
-            4: self.tr("DXGI_DesktopDup"),
+            1: "GDI",
+            2: "FramePool",
+            4: "DXGI_DesktopDup",
         }
 
         ADB_input_mapping = {
             0: self.tr("default"),
-            1: self.tr("AdbShell"),
-            2: self.tr("MinitouchAndAdbKey"),
-            4: self.tr("Maatouch"),
-            8: self.tr("EmulatorExtras"),
+            1: "AdbShell",
+            2: "MinitouchAndAdbKey",
+            4: "Maatouch",
+            8: "EmulatorExtras",
         }
 
         ADB_screencap_mapping = {
             0: self.tr("default"),
-            1: self.tr("EncodeToFileAndPull"),
-            2: self.tr("Encode"),
-            4: self.tr("RawWithGzip"),
-            8: self.tr("RawByNetcat"),
-            16: self.tr("MinicapDirect"),
-            32: self.tr("MinicapStream"),
-            64: self.tr("EmulatorExtras"),
+            1: "EncodeToFileAndPull",
+            2: "Encode",
+            4: "RawWithGzip",
+            8: "RawByNetcat",
+            16: "MinicapDirect",
+            32: "MinicapStream",
+            64: "EmulatorExtras",
         }
 
         self.use_GPU = ComboBoxSettingCardCustom(
             icon=FIF.FILTER,
             title=self.tr("Select GPU"),
-            content=self.tr("Use GPU to accelerate inference"),
+            content="Use GPU to accelerate inference",
             texts=gpu_combox_list,
             target=["gpu"],
             path=cfg.get(cfg.Maa_config),
@@ -329,9 +336,9 @@ class SettingInterface(ScrollArea):
             title=self.tr("Select Win32 Screencap Mode"),
             texts=[
                 self.tr("default"),
-                self.tr("GDI"),
-                self.tr("FramePool"),
-                self.tr("DXGI_DesktopDup"),
+                "GDI",
+                "FramePool",
+                "DXGI_DesktopDup",
             ],
             path=cfg.get(cfg.Maa_interface),
             parent=self.DEVGroup,
@@ -346,10 +353,10 @@ class SettingInterface(ScrollArea):
             title=self.tr("Select ADB Input Mode"),
             texts=[
                 self.tr("default"),
-                self.tr("AdbShell"),
-                self.tr("MinitouchAndAdbKey"),
-                self.tr("Maatouch"),
-                self.tr("EmulatorExtras"),
+                "AdbShell",
+                "MinitouchAndAdbKey",
+                "Maatouch",
+                "EmulatorExtras",
             ],
             path=cfg.get(cfg.Maa_interface),
             parent=self.DEVGroup,
@@ -364,13 +371,13 @@ class SettingInterface(ScrollArea):
             title=self.tr("Select ADB Screencap Mode"),
             texts=[
                 self.tr("default"),
-                self.tr("EncodeToFileAndPull"),
-                self.tr("Encode"),
-                self.tr("RawWithGzip"),
-                self.tr("RawByNetcat"),
-                self.tr("MinicapDirect"),
-                self.tr("MinicapStream"),
-                self.tr("EmulatorExtras"),
+                "EncodeToFileAndPull",
+                "Encode",
+                "RawWithGzip",
+                "RawByNetcat",
+                "MinicapDirect",
+                "MinicapStream",
+                "EmulatorExtras",
             ],
             path=cfg.get(cfg.Maa_interface),
             parent=self.DEVGroup,
@@ -403,14 +410,17 @@ class SettingInterface(ScrollArea):
             self.tr("Check for updates"),
             FIF.UPDATE,
             self.tr("Check for updates"),
-            f"{self.tr('Current')} {cfg.get(cfg.Project_name)} {self.tr('version:')} {cfg.get(cfg.Project_version)}",
+            self.tr("Current")
+            + cfg.get(cfg.Project_name)
+            + self.tr("version:")
+            + cfg.get(cfg.Project_version),
             self.aboutGroup,
         )
         self.feedbackCard = PrimaryPushSettingCard(
             self.tr("Submit Feedback"),
             FIF.FEEDBACK,
             self.tr("Submit Feedback"),
-            f"{self.tr('Submit feedback to help us improve')} {cfg.get(cfg.Project_name)}",
+            self.tr("Submit feedback to help us improve") + cfg.get(cfg.Project_name),
             self.aboutGroup,
         )
         self.aboutCard = PrimaryPushSettingCard(
@@ -498,7 +508,7 @@ class SettingInterface(ScrollArea):
         else:
             InfoBar.info(
                 self.tr("Update available"),
-                self.tr(f"New version: {data_dict['tag_name']}"),
+                f"{self.tr('New version: ')}{data_dict['tag_name']}",
                 duration=2000,
                 parent=self,
             )
@@ -516,14 +526,12 @@ class SettingInterface(ScrollArea):
     def on_update_finished(self):
         InfoBar.success(
             self.tr("Update completed"),
-            self.tr(f"Successfully updated to {update_dict["tag_name"]}"),
+            f"{self.tr('Successfully updated to')} {update_dict["tag_name"]}",
             duration=2000,
             parent=self,
         )
         self.updateCard.setContent(
-            self.tr(
-                f"Current {cfg.get(cfg.Project_name)} {self.tr('version:')} {update_dict['tag_name']}"
-            )
+            f"{self.tr('Current')} {cfg.get(cfg.Project_name)} {self.tr('version:')} {update_dict['tag_name']}"
         )
         self.updateCard.button.setText(self.tr("Check for updates"))
         self.updateCard.button.setEnabled(True)

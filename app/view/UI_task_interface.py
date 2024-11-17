@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QSize
+from PyQt6.QtCore import QSize, QMetaObject, QCoreApplication
 from PyQt6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
@@ -24,10 +24,8 @@ class Ui_Task_Interface(object):
         self.LD1_layout = QHBoxLayout()
         self.S2_Button = PushButton(Task_Interface)
         self.S2_Button.setObjectName("S2_Button")
-        self.S2_Button.setText("开始")
         self.Finish_Title = BodyLabel(Task_Interface)
         self.Finish_Title.setObjectName("Finish_Title")
-        self.Finish_Title.setText("完成后操作")
         self.Finish_Title.setProperty("pixelFontSize", 14)
 
         self.LD1_layout.addWidget(self.S2_Button)
@@ -41,11 +39,6 @@ class Ui_Task_Interface(object):
         self.Resource_Title.setObjectName("Resource_Title")
         self.Control_Title.setObjectName("Control_Title")
         self.AutoDetect_Button.setObjectName("AutoDetect_Button")
-
-        self.Resource_Title.setText("资源")
-        self.Control_Title.setText("控制端")
-        self.AutoDetect_Button.setText("自动检测")
-
         self.Resource_Title.setProperty("pixelFontSize", 14)
         self.Control_Title.setProperty("pixelFontSize", 14)
         self.AutoDetect_Button.setProperty("pixelFontSize", 14)
@@ -80,10 +73,6 @@ class Ui_Task_Interface(object):
         self.Autodetect_combox.setObjectName("Autodetect_combox")
         self.Finish_combox.setObjectName("Finish_combox")
 
-        self.Resource_Combox.setPlaceholderText("选择资源")
-        self.Control_Combox.setPlaceholderText("选择控制端")
-        self.Autodetect_combox.setPlaceholderText("选择设备")
-
         self.LD4_layout.addWidget(self.Resource_Combox)
         self.LD4_layout.addWidget(self.Control_Combox)
         self.LD4_layout.addWidget(self.Autodetect_combox)
@@ -108,11 +97,6 @@ class Ui_Task_Interface(object):
         self.TaskName_Title_3.setObjectName("TaskName_Title_3")
         self.TaskName_Title_4.setObjectName("TaskName_Title_4")
 
-        self.TaskName_Title_1.setText("任务")
-        self.TaskName_Title_2.setText("任务")
-        self.TaskName_Title_3.setText("任务")
-        self.TaskName_Title_4.setText("任务")
-
         self.SelectTask_Combox_1 = ComboBox(Task_Interface)
         self.SelectTask_Combox_2 = ComboBox(Task_Interface)
         self.SelectTask_Combox_3 = ComboBox(Task_Interface)
@@ -128,10 +112,6 @@ class Ui_Task_Interface(object):
         self.Delete_Button.setObjectName("Delete_Button")
         self.AddTask_Button.setObjectName("AddTask_Button")
 
-        self.MoveUp_Button.setText("上移")
-        self.MoveDown_Button.setText("下移")
-        self.Delete_Button.setText("删除")
-        self.AddTask_Button.setText("添加")
         self.line = QFrame()
         self.line.setFrameShape(QFrame.Shape.HLine)
         self.line.setFrameShadow(QFrame.Shadow.Plain)
@@ -193,3 +173,20 @@ class Ui_Task_Interface(object):
         self.main_layout.addLayout(self.left_layout)
         self.main_layout.addLayout(self.middle_layout)
         self.main_layout.addLayout(self.right_layout)
+
+        self.retranslateUi(Task_Interface)
+        QMetaObject.connectSlotsByName(Task_Interface)
+
+    def retranslateUi(self, Task_Interface):
+        _translate = QCoreApplication.translate
+        Task_Interface.setWindowTitle(_translate("Task_Interface", "Task Interface"))
+        self.S2_Button.setText(_translate("Task_Interface", "Start"))
+        self.Finish_Title.setText(_translate("Task_Interface", "Finish Action"))
+        self.Resource_Title.setText(_translate("Task_Interface", "Resource"))
+        self.Control_Title.setText(_translate("Task_Interface", "Controller"))
+        self.TaskName_Title_1.setText(_translate("Task_Interface", "Task"))
+        self.AutoDetect_Button.setText(_translate("Task_Interface", "Auto Detect"))
+        self.MoveUp_Button.setText(_translate("Task_Interface", "Move Up"))
+        self.MoveDown_Button.setText(_translate("Task_Interface", "Move Down"))
+        self.Delete_Button.setText(_translate("Task_Interface", "Delete"))
+        self.AddTask_Button.setText(_translate("Task_Interface", "Add Task"))
