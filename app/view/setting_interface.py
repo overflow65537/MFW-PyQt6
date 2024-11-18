@@ -220,39 +220,35 @@ class SettingInterface(ScrollArea):
         self.noticeGroup = SettingCardGroup(self.tr("Notice"), self.scrollWidget)
 
         self.dingtalk_noticeTypeCard = NoticeButtonSettingCard(
-            self.tr("Modify"),
-            FIF.COMMAND_PROMPT,
-            self.tr("DingTalk"),
-            "DingTalk",
-            self.tr("DingTalk Configuration"),
-            self.noticeGroup,
+            text=self.tr("Modify"),
+            icon=FIF.COMMAND_PROMPT,
+            title=self.tr("DingTalk"),
+            notice_type="DingTalk",
+            parent=self.noticeGroup,
         )
 
         self.lark_noticeTypeCard = NoticeButtonSettingCard(
-            self.tr("Modify"),
-            FIF.COMMAND_PROMPT,
-            self.tr("Lark"),
-            "Lark",
-            self.tr("Lark Configuration"),
-            self.noticeGroup,
+            text=self.tr("Modify"),
+            icon=FIF.COMMAND_PROMPT,
+            title=self.tr("Lark"),
+            notice_type="Lark",
+            parent=self.noticeGroup,
         )
 
         self.qmsg_noticeTypeCard = NoticeButtonSettingCard(
-            self.tr("Modify"),
-            FIF.COMMAND_PROMPT,
-            self.tr("Qmsg"),
-            "Qmsg",
-            self.tr("Qmsg Configuration"),
-            self.noticeGroup,
+            text=self.tr("Modify"),
+            icon=FIF.COMMAND_PROMPT,
+            title=self.tr("Qmsg"),
+            notice_type="Qmsg",
+            parent=self.noticeGroup,
         )
 
         self.SMTP_noticeTypeCard = NoticeButtonSettingCard(
-            self.tr("Modify"),
-            FIF.COMMAND_PROMPT,
-            self.tr("SMTP"),
-            "SMTP",
-            self.tr("SMTP Configuration"),
-            self.noticeGroup,
+            text=self.tr("Modify"),
+            icon=FIF.COMMAND_PROMPT,
+            title=self.tr("SMTP"),
+            notice_type="SMTP",
+            parent=self.noticeGroup,
         )
 
         self.noticeGroup.addSettingCard(self.dingtalk_noticeTypeCard)

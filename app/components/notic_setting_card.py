@@ -26,7 +26,7 @@ class NoticeType(QDialog):
         self.notice_type = notice_type
         self.setWindowTitle(self.notice_type)
         self.setObjectName("NoticeType")
-        self.resize(900, 600)
+        self.resize(400, 300)
         self.setMinimumSize(QSize(0, 0))
 
         # 创建主布局
@@ -224,6 +224,7 @@ class NoticeButtonSettingCard(SettingCard):
         parent=None,
     ):
         self.notice_type = notice_type
+
         super().__init__(icon, title, content, parent)
 
         # 创建标签
@@ -236,12 +237,10 @@ class NoticeButtonSettingCard(SettingCard):
             self.notice = cfg.get(cfg.Notice_Qmsg)
         elif self.notice_type == "SMTP":
             self.notice = cfg.get(cfg.Notice_SMTP)
-        self.label = BodyLabel(self)
         if self.notice["status"]:
-            self.label.setText(self.notice_type + self.tr("Notification Enabled"))
+            self.setContent(self.notice_type + self.tr("Notification Enabled"))
         else:
-            self.label.setText(self.notice_type + self.tr("Notification disabled"))
-        self.hBoxLayout.addWidget(self.label)
+            self.setContent(self.notice_type + self.tr("Notification disabled"))
 
         # 使用自定义右键按钮
         self.button = CustomClickButton(text, self)
@@ -257,14 +256,19 @@ class NoticeButtonSettingCard(SettingCard):
 
     def onRightClick(self):
         # 处理右键点击事件
-        if self.label.text() == self.tr("Notification Enabled"):
-            self.label.setText(self.tr("Notification disabled"))
+        if self.contentLabel.text() == self.notice_type + self.tr(
+            "Notification Enabled"
+        ):
+            self.setContent(self.notice_type + self.tr("Notification disabled"))
             data = self.notice
             data["status"] = False
+
             if self.notice_type == "DingTalk":
                 original_data = cfg.get(cfg.Notice_Webhook)
                 original_data["DingTalk"] = data
+                print(original_data)
                 cfg.set(cfg.Notice_Webhook, original_data)
+                print(cfg.get(cfg.Notice_Webhook))
             elif self.notice_type == "Lark":
                 original_data = cfg.get(cfg.Notice_Webhook)
                 original_data["Lark"] = data
@@ -276,13 +280,15 @@ class NoticeButtonSettingCard(SettingCard):
                 original_data = data
                 cfg.set(cfg.Notice_SMTP, original_data)
         else:
-            self.label.setText(self.tr("Notification Enabled"))
+            self.setContent(self.notice_type + self.tr("Notification Enabled"))
             data = self.notice
             data["status"] = True
             if self.notice_type == "DingTalk":
                 original_data = cfg.get(cfg.Notice_Webhook)
                 original_data["DingTalk"] = data
+                print(original_data)
                 cfg.set(cfg.Notice_Webhook, original_data)
+                print(cfg.get(cfg.Notice_Webhook))
             elif self.notice_type == "Lark":
                 original_data = cfg.get(cfg.Notice_Webhook)
                 original_data["Lark"] = data

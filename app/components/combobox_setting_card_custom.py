@@ -51,12 +51,12 @@ class ComboBoxSettingCardCustom(SettingCard):
         self.mapping = mapping
         self.controller = controller
         self.controller_type = controller_type
-        
+
         # 创建ComboBox并添加到布局
         self.comboBox = ComboBox(self)
         self.hBoxLayout.addWidget(self.comboBox, 0, Qt.AlignmentFlag.AlignRight)
         self.hBoxLayout.addSpacing(16)
-        
+
         # 添加文本项到ComboBox
         self.comboBox.addItems(texts)
 
@@ -77,10 +77,12 @@ class ComboBoxSettingCardCustom(SettingCard):
                 current_text = access_nested_dict(data, self.target)
             elif self.mode == "interface_setting":
                 value = rewrite_contorller(data, self.controller, self.controller_type)
-                current_text = self.mapping.get(value, self.tr("default") if value is None else value)
+                current_text = self.mapping.get(
+                    value, self.tr("default") if value is None else value
+                )
             else:
                 current_text = ""
-            
+
             self.comboBox.setCurrentText(current_text)
         except Exception as e:
             print(f"读取配置时出错: {e}")
