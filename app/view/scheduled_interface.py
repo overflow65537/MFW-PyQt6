@@ -174,12 +174,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
 
     def update_task_list(self):
         """更新任务列表"""
-        self.List_widget.clear()
-        self.List_widget.addItems(
-            Get_Values_list_Option(cfg.get(cfg.Maa_config), "task")
-        )
-        items = self.get_task_list_widget()
-        signalBus.update_task_list.emit(items)
+        signalBus.update_task_list.emit()
 
     def update_task_list_passive(self):
         """更新任务列表(被动刷新)"""

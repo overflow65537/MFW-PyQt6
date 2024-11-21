@@ -11,7 +11,7 @@ class SignalBus(QObject):
     supportSignal = pyqtSignal()
     update_adb = pyqtSignal(AdbDevice)  # 更新设置界面adb设备信息信号
     callback = pyqtSignal(str)  # 回调协议信号
-    update_task_list = pyqtSignal(list)  # 更新tasklist信息信号
+    update_task_list = pyqtSignal()  # 更新tasklist信息信号
     Notice_msg = pyqtSignal(str)  # 通知消息
     update_available = pyqtSignal(dict)  # 检查更新
     update_finished = pyqtSignal()  # 更新完成信号
