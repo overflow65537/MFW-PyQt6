@@ -1,11 +1,10 @@
 import os
-import json
 import subprocess
 import platform
+from qasync import asyncSlot
 
-from PyQt6.QtCore import Qt, QByteArray, QTimer, pyqtSlot
+from PyQt6.QtCore import Qt, QTimer, pyqtSlot
 from PyQt6.QtWidgets import QApplication, QWidget
-from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from qfluentwidgets import InfoBar, InfoBarPosition
 
 from ..view.UI_task_interface import Ui_Task_Interface
@@ -22,24 +21,17 @@ from ..utils.tool import (
     check_adb_path,
     get_controller_type,
 )
+from ..utils.maafw import maafw
 from ..common.config import cfg
 
 
 class TaskInterface(Ui_Task_Interface, QWidget):
+    devices = []
+    run_mode = "adb"
+
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.setupUi(self)
-
-        # 初始化本地服务和MAA服务进程
-        self.server = QLocalServer(self)
-        self.server.newConnection.connect(self.connection)
-        self.server.listen("MAA2GUI")
-
-        self.MAA_Service_Process = self.start_process(
-            ["python", os.path.join(os.getcwd(), "MAA_Service.py")]
-        )
-        signalBus.update_task_list.connect(self.refresh_widget)
-        self.MAA_started = False
 
         # 初始化组件
         print("TaskInterface init")
@@ -49,43 +41,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             resource_Path=cfg.get(cfg.Maa_resource),
         )
         self.init_widget()
-
-    def connection(self):
-        socket = self.server.nextPendingConnection()
-        socket.readyRead.connect(lambda: self.signal_routing(socket))
-
-    def signal_routing(self, socket):
-        data = (socket.readAll()).data().decode("utf-8")
-        print(f"Received signal: {data}")
-        self.handle_signal(data)
-
-    def handle_signal(self, data):
-        if data == "MAA_started":
-            print("Start button unlocked")
-            self.MAA_started = True
-            self.S2_Button.setEnabled(True)
-        elif data == "MAA_runing":
-            print("Stop button unlocked")
-            self.S2_Button.setEnabled(True)
-        elif "连接失败" in data:
-            self.TaskOutput_Text.append("Task completed")
-            self.Stop_task()
-            self.S2_Button.setText(self.tr("Start"))
-        elif data == "MAA_completed":
-            self.TaskOutput_Text.append("Task completed")
-            self.Stop_task()
-            self.Completion_Options()
-            self.S2_Button.setText(self.tr("Start"))
-        elif "Connection failed" in data:
-            self.TaskOutput_Text.append(data)
-            self.Stop_task()
-            self.show_error(
-                self.tr("Connection failed, please check ADB configuration")
-            )
-        elif "THIS_IS_ADB_DEVICES:" in data:
-            self.process_adb_devices(data)
-        else:
-            self.TaskOutput_Text.append(data)
 
     def show_error(self, message):
         InfoBar.error(
@@ -98,25 +53,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             parent=self,
         )
 
-    def process_adb_devices(self, data):
-        data_string = (
-            data.replace("THIS_IS_ADB_DEVICES:", "")
-            .replace("WindowsPath(", "")
-            .replace(")", "")
-            .replace("'", '"')
-            .replace("True", "true")
-        )
-        data_list = json.loads(data_string)
-        signalBus.adb_detected.emit(data_list)
-
-    def sendData(self, msg):
-        data = QByteArray(bytes(msg, "utf-8"))
-        self.socket.write(data)
-
     def init_widget(self):
-        self.S2_Button.setEnabled(False)
-        print("Locking start button")
-
         finish_list = [
             self.tr("Do nothing"),
             self.tr("Close emulator"),
@@ -148,7 +85,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             title.setVisible(visible)
 
     def bind_signals(self):
-        signalBus.adb_detected.connect(self.On_ADB_Detected)
+
+        signalBus.update_task_list.connect(self.update_task_list_passive)
         self.AddTask_Button.clicked.connect(self.Add_Task)
         self.Delete_Button.clicked.connect(self.Delete_Task)
         self.MoveUp_Button.clicked.connect(self.Move_Up)
@@ -209,12 +147,22 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def create_default_config(self, maa_pi_config_Path):
         data = {
-            "adb": {"adb_path": "", "address": "127.0.0.1:0", "config": {}},
+            "adb": {
+                "adb_path": "",
+                "address": "",
+                "input_method": 0,
+                "screen_method": 0,
+                "config": {},
+            },
+            "win32": {
+                "hwid": 0,
+                "input_method": 0,
+                "screen_method": 0,
+            },
             "controller": {"name": ""},
             "gpu": -1,
             "resource": "",
             "task": [],
-            "win32": {"_placeholder": 0},
         }
         Save_Config(maa_pi_config_Path, data)
 
@@ -225,39 +173,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Save_Resource()
         self.Save_Controller()
 
-    def run_afert_MAA_started(self):
-        if self.MAA_started:
-            self.Start_ADB_Detection()
-        else:
-            self.MAA_timer()
-
-    def MAA_timer(self):
-        self.detect_timer = QTimer(self)
-        self.detect_timer.setInterval(100)
-        self.detect_timer.timeout.connect(self.check_MAA_started)
-        self.detect_timer.start()
-
-    def check_MAA_started(self):
-        if self.MAA_started:
-            self.detect_timer.stop()
-            print("MAA startup completed")
-            self.Start_ADB_Detection()
-        else:
-            print("Waiting for MAA to start")
-
-    def refresh_widget(self, task_list=[]):
-        items = self.get_task_list_widget()
-        if items != task_list:
-            self.Task_List.clear()
-            self.Start_Status(
-                interface_Path=cfg.get(cfg.Maa_interface),
-                maa_pi_config_Path=cfg.get(cfg.Maa_config),
-                resource_Path=cfg.get(cfg.Maa_resource),
-            )
-            items = self.get_task_list_widget()
-            signalBus.update_task_list.emit(items)
-
     def get_task_list_widget(self):
+        print([self.Task_List.item(i).text() for i in range(self.Task_List.count())])
         return [self.Task_List.item(i).text() for i in range(self.Task_List.count())]
 
     def rewrite_Completion_Options(self):
@@ -297,48 +214,89 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         print(f"Starting process: {command}")
         return subprocess.Popen(command)
 
-    def Start_Up(self):
+    @asyncSlot()
+    async def Start_Up(self):
         self.S2_Button.setEnabled(False)
         self.S2_Button.setText(self.tr("Stop"))
         self.TaskOutput_Text.clear()
-        self.socket = QLocalSocket()
-        self.socket.connectToServer("GUI2MAA")
+        PROJECT_DIR = os.getcwd()
+        controller_type = get_controller_type(
+            self.Control_Combox.currentText(), cfg.get(cfg.Maa_interface)
+        )
+        # 启动MAA
+        if controller_type == "Adb":
+            resource_target = self.Resource_Combox.currentText()
+            interface = Read_Config(cfg.get(cfg.Maa_interface))
 
-        parameter = {
-            "action_code": 1,  # 0,获取设备列表，1，启动任务
-            "resource_dir": os.getcwd(),
-            "cfg_dir": cfg.get(cfg.Maa_config).replace(
-                os.path.join("config", "maa_pi_config.json"), ""
-            ),
-            "directly": True,
-        }
-        msg = json.dumps(parameter)
-        print(f"Sending signal: {msg}")
-        self.sendData(msg)
+            resource_path = None
 
-        self.S2_Button.clicked.disconnect()
-        self.S2_Button.clicked.connect(self.Stop_task)
+            for i in interface["resource"]:
+                print(i)
+                if i["name"] == resource_target:
 
-    def Start_Up(self):
-        self.S2_Button.setEnabled(False)
-        self.TaskOutput_Text.clear()
-        self.socket = QLocalSocket()
-        self.socket.connectToServer("GUI2MAA")
+                    resource_path = i["path"]
 
-        parameter = {
-            "action_code": 1,  # 0: 获取设备列表, 1: 启动任务
-            "resource_dir": os.getcwd(),
-            "cfg_dir": cfg.get(cfg.Maa_config).replace(
-                os.path.join("config", "maa_pi_config.json"), ""
-            ),
-            "directly": True,
-        }
-        msg = json.dumps(parameter)
-        print(f"Sending signal: {msg}")
-        self.sendData(msg)
+            if resource_path is None:
+                print(f"未找到目标资源: {resource_target}")
+                self.S2_Button.setEnabled(True)
+                self.S2_Button.setText(self.tr("Start"))
 
-        self.S2_Button.clicked.disconnect()
-        self.S2_Button.clicked.connect(self.Stop_task)
+            for i in resource_path:
+                resource = (
+                    i.replace("{PROJECT_DIR}", PROJECT_DIR)
+                    .replace("/", os.sep)
+                    .replace("\\", os.sep)
+                )
+                print(f"加载资源: {resource}")
+                await maafw.load_resource(resource)
+                print(f"资源加载完成: {resource}")
+            config = Read_Config(cfg.get(cfg.Maa_config))["adb"]
+            try:
+                await maafw.connect_adb(
+                    config["adb_path"],
+                    config["address"],
+                    config["input_method"],
+                    config["screen_method"],
+                    config["config"],
+                )
+                print("连接模拟器成功")
+            except Exception as e:
+                print(f"连接模拟器失败: {e}")
+                self.show_error(self.tr(f"连接模拟器失败: {e}"))
+                self.S2_Button.setEnabled(True)
+                self.S2_Button.setText(self.tr("Start"))
+                return
+
+            task = Read_Config(cfg.get(cfg.Maa_config))["task"]
+            option = Read_Config(cfg.get(cfg.Maa_interface))
+            self.S2_Button.setEnabled(True)
+            self.S2_Button.clicked.disconnect()
+            self.S2_Button.clicked.connect(self.Stop_task)
+            self.need_runing = True
+            for task_list in task:
+                if not self.need_runing:
+                    self.need_runing = True
+                    return
+                for task_enter in option["task"]:
+                    if task_enter["name"] == task_list["name"]:
+                        entry = task_enter["entry"]
+                if task_list["option"] == []:
+                    print(f"运行任务:{entry}")
+                    await maafw.run_task(entry)
+                else:
+                    override_options = {}
+
+                    for task_option in task_list["option"]:
+                        # 遍历pi_config中task的option
+                        for override in option["option"][task_option["name"]]["cases"]:
+                            if override["name"] == task_option["value"]:
+                                override_options.update(override["pipeline_override"])
+                    print(f"运行任务:{entry}")
+                    print(f"任务选项: {override_options}")
+                    await maafw.run_task(entry, override_options)
+            print("任务全部执行完成")
+            self.S2_Button.clicked.disconnect()
+            self.S2_Button.clicked.connect(self.Start_Up)
 
     def start_custom_process(self):
         controller_type = get_controller_type(
@@ -424,24 +382,18 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             print(self.remaining_time)
             self.Start_Up()  # 倒计时结束后启动
 
-    def Stop_task(self):
+    @asyncSlot()
+    async def Stop_task(self):
         self.S2_Button.setEnabled(False)
         self.S2_Button.setText(self.tr("Start"))
         self.TaskOutput_Text.append(self.tr("Stopping task..."))
-        self.socket.disconnectFromServer()
-        self.socket.waitForDisconnected()
-
-        self.MAA_Service_Process.terminate()
-        try:
-            self.MAA_Service_Process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            self.MAA_Service_Process.kill()
+        # 停止MAA
+        self.need_runing = False
+        await maafw.stop_task()
 
         self.S2_Button.clicked.disconnect()
-        self.S2_Button.clicked.connect(self.start_custom_process)
-        self.MAA_Service_Process = self.start_process(
-            ["python", os.path.join(os.getcwd(), "MAA_Service.py")]
-        )
+        self.S2_Button.clicked.connect(self.Start_Up)
+        self.S2_Button.setEnabled(True)
 
     def run_after_finish(self):
         run_after_finish = cfg.get(cfg.run_after_finish)
@@ -481,10 +433,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         return options_dicts
 
     def update_task_list(self):
+        """更新任务列表"""
         self.Task_List.clear()
         self.Task_List.addItems(Get_Values_list_Option(cfg.get(cfg.Maa_config), "task"))
         items = self.get_task_list_widget()
         signalBus.update_task_list.emit(items)
+
+    def update_task_list_passive(self):
+        """更新任务列表(被动刷新)"""
+        self.Task_List.clear()
+        self.Task_List.addItems(Get_Values_list_Option(cfg.get(cfg.Maa_config), "task"))
 
     def Delete_Task(self):
         Select_Target = self.Task_List.currentRow()
@@ -499,6 +457,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             MAA_Pi_Config = Read_Config(cfg.get(cfg.Maa_config))
             MAA_Pi_Config["task"] = Task_List
             Save_Config(cfg.get(cfg.Maa_config), MAA_Pi_Config)
+
             self.update_task_list()
             if Select_Target == 0:
                 self.Task_List.setCurrentRow(Select_Target)
@@ -531,6 +490,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def Save_Resource(self):
         self.update_config_value("resource", self.Resource_Combox.currentText())
+        print(f"保存资源配置: {self.Resource_Combox.currentText()}")
 
     def Save_Controller(self):
         Controller_Type_Select = self.Control_Combox.currentText()
@@ -578,17 +538,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def change_output(self, msg):
         self.TaskOutput_Text.append(msg)
 
-    def Start_ADB_Detection(self):
-        self.socket = QLocalSocket()
-        self.socket.connectToServer("GUI2MAA")
-        parameter = {"action_code": 0}  # 0, 获取ADB设备 1: 启动任务
-        msg = json.dumps(parameter)
-        print(f"Sending signal: {msg}")
-        self.sendData(msg)
-
+    @asyncSlot()
+    async def Start_ADB_Detection(self):
         self.AutoDetect_Button.setEnabled(False)
         self.S2_Button.setEnabled(False)
-
         InfoBar.info(
             title=self.tr("Tip"),
             content=self.tr("Detecting emulator..."),
@@ -599,17 +552,18 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             parent=self,
         )
 
-    def On_ADB_Detected(self, emu):
-        global emu_data
-        emu_data = emu
-
+        self.devices = await maafw.detect_adb()
+        options = {}
+        for d in self.devices:
+            v = (d.adb_path, d.address, str(d.config))
+            l = d.name + " " + d.address
+            options[v] = l
         self.AutoDetect_Button.setEnabled(True)
         self.S2_Button.setEnabled(True)
-
-        if not emu:
+        if not self.devices:
             self.show_error(self.tr("No emulator detected"))
         else:
-            processed_list = [i["name"] for i in emu]
+            processed_list = [i.name for i in self.devices]
             self.show_success(f"Detected {processed_list[0]}")
             self.Autodetect_combox.clear()
             self.Autodetect_combox.addItems(processed_list)
@@ -627,15 +581,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def Save_ADB_Config(self):
         target = self.Autodetect_combox.currentText()
-        for i in emu_data:
-            if i["name"] == target:
+        for i in self.devices:
+            if i.name == target:
                 result = i
                 break
-
         data = Read_Config(cfg.get(cfg.Maa_config))
-        data["adb"]["adb_path"] = result["adb_path"]
-        data["adb"]["address"] = result["address"]
-        data["adb"]["config"] = result["config"]
+        data["adb"]["adb_path"] = str(result.adb_path)
+        data["adb"]["address"] = result.address
+        data["adb"]["config"] = result.config
+        print(data)
         Save_Config(cfg.get(cfg.Maa_config), data)
 
         signalBus.update_adb.emit(result)

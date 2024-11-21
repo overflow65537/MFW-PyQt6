@@ -1,3 +1,5 @@
+qasync
+asyncify
 requests
 MaaFw~=2.0
 psutil~=6.0

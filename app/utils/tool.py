@@ -90,10 +90,21 @@ def Get_Values_list2(path, key1):
 
 def Get_Values_list(path, key1):
     # 获取组件的初始参数
-    List = []
-    for i in Read_Config(path)[key1]:
-        List.append(i["name"])
-    return List
+    if key1 == "controller":
+        List = []
+        for i in Read_Config(path)[key1]:
+            if re.search(r"adb", i["name"], re.IGNORECASE) or re.search(
+                r"win", i["name"], re.IGNORECASE
+            ):
+                List.append(f"{i["name"]}")
+            else:
+                List.append(f"{i["name"]}_{i['type']}")
+        return List
+    else:
+        List = []
+        for i in Read_Config(path)[key1]:
+            List.append(i["name"])
+        return List
 
 
 def Get_Values_list_Option(path, key1):

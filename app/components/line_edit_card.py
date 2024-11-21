@@ -49,8 +49,6 @@ class LineEditCard(SettingCard):
         # 设置布局
         self.hBoxLayout.addWidget(self.lineEdit, 0)
         self.hBoxLayout.addSpacing(16)
-        self.lineEdit.setFixedWidth(118)
-        self.lineEdit.setMinimumWidth(118)
 
         # 设置占位符文本
         if self.configItem is not None:
@@ -67,7 +65,7 @@ class LineEditCard(SettingCard):
     def _on_text_changed(self):
         """处理文本变化事件"""
         text = self.lineEdit.text()
-        
+
         if self.configItem:
             qconfig.set(self.configItem, text)
         else:

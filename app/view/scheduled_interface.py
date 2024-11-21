@@ -12,7 +12,6 @@ import shutil
 
 
 class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
-
     MAIN_CONFIG_NAME = "Main"
     MAIN_CONFIG_PATH = os.path.join(os.getcwd(), "config", "maa_pi_config.json")
 
@@ -20,7 +19,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         super().__init__(parent=parent)
         self.setupUi(self)
 
-        signalBus.update_task_list.connect(self.update_task_list)
+        signalBus.update_task_list.connect(self.update_task_list_passive)
 
         self.initialize_config_combobox()
         self.List_widget.addItems(
@@ -32,16 +31,20 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.set_config()
 
     def initialize_config_combobox(self):
-        """初始化配置下拉框."""
+        """初始化配置下拉框"""
         config_name_list = list(cfg.get(cfg.maa_config_list))
         self.Cfg_Combox.addItems(config_name_list)
 
     def get_list_items(self):
-        """获取列表中所有项的文本."""
-        return [self.List_widget.item(i).text() for i in range(self.List_widget.count()) if self.List_widget.item(i) is not None]
+        """获取列表中所有项的文本"""
+        return [
+            self.List_widget.item(i).text()
+            for i in range(self.List_widget.count())
+            if self.List_widget.item(i) is not None
+        ]
 
     def set_config(self):
-        """启动后自动加载当前配置."""
+        """启动后自动加载当前配置"""
         config_path = cfg.get(cfg.Maa_config)
         config_dict = cfg.get(cfg.maa_config_list)
         result = [k for k, v in config_dict.items() if v == config_path]
@@ -49,7 +52,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             self.Cfg_Combox.setCurrentText(result[0])
 
     def add_config(self):
-        """添加新的配置."""
+        """添加新的配置"""
         config_name = self.Cfg_Combox.currentText()
         config_name_list = list(cfg.get(cfg.maa_config_list))
 
@@ -65,7 +68,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.cfg_changed()
 
     def create_new_config(self, config_name):
-        """创建新的配置文件."""
+        """创建新的配置文件"""
         config_data = Read_Config(cfg.get(cfg.Maa_config))
         self.Cfg_Combox.addItem(config_name)
         config_list = cfg.get(cfg.maa_config_list)
@@ -96,7 +99,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         Save_Config(cfg.get(cfg.Maa_config), data)
 
     def update_config_path(self, config_name):
-        """更新当前配置路径."""
+        """更新当前配置路径"""
         config_path = os.path.join(
             os.getcwd(),
             "config",
@@ -108,7 +111,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         cfg.set(cfg.Maa_config, config_path)
 
     def cfg_changed(self):
-        """切换配置时刷新配置文件."""
+        """切换配置时刷新配置文件"""
         config_name = self.Cfg_Combox.currentText()
 
         if config_name in [self.MAIN_CONFIG_NAME, self.MAIN_CONFIG_NAME.lower()]:
@@ -134,7 +137,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.update_task_list()
 
     def cfg_delete(self):
-        """删除当前选定的配置."""
+        """删除当前选定的配置"""
         config_name = self.Cfg_Combox.currentText()
         config_name_list = list(cfg.get(cfg.maa_config_list))
 
@@ -150,7 +153,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             self.cfg_changed()
 
     def delete_config_folder(self, config_name):
-        """删除配置文件夹."""
+        """删除配置文件夹"""
         config_list = cfg.get(cfg.maa_config_list)
         file_path = os.path.dirname(os.path.dirname(config_list[config_name]))
         shutil.rmtree(file_path)  # 删除配置文件目录
@@ -163,24 +166,32 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.refresh_combobox()
 
     def refresh_combobox(self):
-        """刷新配置下拉框和任务列表."""
+        """刷新配置下拉框和任务列表"""
         config_name_list = list(cfg.get(cfg.maa_config_list))
         self.Cfg_Combox.clear()
         self.Cfg_Combox.addItems(config_name_list)
         self.cfg_changed()
 
-    def update_task_list(self, task_list=[]):
-        """刷新配置文件列表."""
+    def update_task_list(self):
+        """更新任务列表"""
+        self.List_widget.clear()
+        self.List_widget.addItems(
+            Get_Values_list_Option(cfg.get(cfg.Maa_config), "task")
+        )
         items = self.get_task_list_widget()
+        signalBus.update_task_list.emit(items)
 
-        if items != task_list:
-            self.List_widget.clear()
-            self.List_widget.addItems(
-                Get_Values_list_Option(cfg.get(cfg.Maa_config), "task")
-            )
-            items = self.get_task_list_widget()
-            signalBus.update_task_list.emit(items)
+    def update_task_list_passive(self):
+        """更新任务列表(被动刷新)"""
+        self.List_widget.clear()
+        self.List_widget.addItems(
+            Get_Values_list_Option(cfg.get(cfg.Maa_config), "task")
+        )
 
     def get_task_list_widget(self):
-        """获取任务列表控件中的项."""
-        return [self.List_widget.item(i).text() for i in range(self.List_widget.count()) if self.List_widget.item(i) is not None]
+        """获取任务列表控件中的项"""
+        return [
+            self.List_widget.item(i).text()
+            for i in range(self.List_widget.count())
+            if self.List_widget.item(i) is not None
+        ]

@@ -64,18 +64,15 @@ class SettingInterface(ScrollArea):
             if os.path.exists(cfg.get(cfg.Maa_config))
             else {}
         )
-        address_data = pi_config.get("adb", {}).get("address", "0")
-        Port_data = (
-            address_data.split(":")[1]
-            if re.match(r"^(\d{1,3}\.){3}\d{1,3}:\d{1,5}$", address_data)
-            else "0"
-        )
+        address_data = pi_config.get("adb", {}).get("address", "")
+
         path_data = pi_config.get("adb", {}).get("adb_path", "./")
 
         self.ADB_port = LineEditCard(
             icon=FIF.COMMAND_PROMPT,
-            holderText=Port_data,
+            holderText=address_data,
             title=self.tr("ADB Port"),
+            num_only=False,
             parent=self.ADB_Setting,
         )
         self.ADB_path = PrimaryPushSettingCard(
@@ -668,8 +665,8 @@ class SettingInterface(ScrollArea):
 
     def update_adb(self, msg):
         """根据外部消息更新 ADB 路径和端口。"""
-        self.ADB_path.setContent(msg["adb_path"])
-        self.ADB_port.lineEdit.setText(f'{msg["address"].split(":")[1]}')
+        self.ADB_path.setContent(str(msg.adb_path))
+        self.ADB_port.lineEdit.setText(f'{msg.address.split(":")[1]}')
 
     def Switch_Controller(self, controller):
         """在 ADB 和 Win32 控制器设置之间切换。"""
