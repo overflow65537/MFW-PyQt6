@@ -349,7 +349,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             for task_enter in interface["task"]:
 
                 if task_enter["name"] == task_list["name"]:
-                    self.entry = task_enter["self.entry"]
+                    self.entry = task_enter["entry"]
             if task_list["option"] == []:
                 print(f"运行任务:{self.entry}")
                 self.TaskOutput_Text.append(self.tr("运行任务:") + f" {self.entry}")
