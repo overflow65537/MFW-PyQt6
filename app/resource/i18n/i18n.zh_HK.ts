@@ -442,115 +442,191 @@
     </message>
     <name>TaskInterface</name>
     <message>
-        <location filename="../../view/task_interface.py" line="429"/>
-        <source>Start</source>
-        <translation>開始</translation>
-    </message>
-    <message>
-        <location filename="../../view/task_interface.py" line="82"/>
-        <source>Connection failed, please check ADB configuration</source>
-        <translation>連接失敗，請檢查 ADB 配置</translation>
-    </message>
-    <message>
-        <location filename="../../view/task_interface.py" line="91"/>
+        <location filename="../../view/task_interface.py" line="49"/>
         <source>Error</source>
         <translation>錯誤</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="270"/>
+        <location filename="../../view/task_interface.py" line="61"/>
         <source>Do nothing</source>
         <translation>無動作</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="122"/>
+        <location filename="../../view/task_interface.py" line="62"/>
         <source>Close emulator</source>
         <translation>退出模擬器</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="123"/>
+        <location filename="../../view/task_interface.py" line="63"/>
         <source>Close emulator and Quit app</source>
         <translation>退出模擬器和應用</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="124"/>
+        <location filename="../../view/task_interface.py" line="64"/>
         <source>Shutdown</source>
         <translation>關機</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="208"/>
+        <location filename="../../view/task_interface.py" line="109"/>
+        <source>Starting Connection</source>
+        <translation>開始連接</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="111"/>
+        <source>Connection Success</source>
+        <translation>連接成功</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="113"/>
+        <source>Connection Failed</source>
+        <translation>連接失敗</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="115"/>
+        <source>Unknow Error</source>
+        <translation>未知錯誤</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="119"/>
+        <source>Failed</source>
+        <translation>失敗</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="157"/>
         <source>Resource file not detected</source>
         <translation>未找到資源文件</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="391"/>
+        <location filename="../../view/task_interface.py" line="216"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="452"/>
+        <location filename="../../view/task_interface.py" line="413"/>
         <source>File not found</source>
         <translation>未找到文件</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="455"/>
+        <location filename="../../view/task_interface.py" line="416"/>
         <source>Can not start the file</source>
         <translation>無法打開文件</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="430"/>
+        <location filename="../../view/task_interface.py" line="397"/>
+        <source>Start</source>
+        <translation>開始</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="274"/>
+        <source>waiting for emulator start...</source>
+        <translation>等待模擬器啟動中</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="287"/>
+        <source>Starting task in </source>
+        <translation>任務啟動於</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="312"/>
+        <source>Starting game...</source>
+        <translation>啟動遊戲</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="325"/>
+        <source>Starting game in </source>
+        <translation>遊戲啟動於</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="343"/>
+        <source>Starting task...</source>
+        <translation>啟動任務</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="365"/>
+        <source>running task:</source>
+        <translation>運行任務：</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="368"/>
+        <source>Task finished</source>
+        <translation>任務完成</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="398"/>
         <source>Stopping task...</source>
-        <translation>停止任務中</translation>
+        <translation>停止任務中...</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="415"/>
-        <source>starting in </source>
-        <translation>將在</translation>
-    </message>
-    <message>
-        <location filename="../../view/task_interface.py" line="415"/>
-        <source> seconds</source>
-        <translation>秒後啟動</translation>
-    </message>
-    <message>
-        <location filename="../../view/task_interface.py" line="492"/>
+        <location filename="../../view/task_interface.py" line="456"/>
         <source>No task can be deleted</source>
         <translation>沒有任務可以被刪除</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="519"/>
+        <location filename="../../view/task_interface.py" line="484"/>
         <source>Already the first task</source>
         <translation>已經是首位任務</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="522"/>
+        <location filename="../../view/task_interface.py" line="487"/>
         <source>Already the last task</source>
         <translation>已經是末位任務</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="575"/>
+        <location filename="../../view/task_interface.py" line="508"/>
+        <source>Saving ADB configuration...</source>
+        <translation>使用ADB方案中...</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="513"/>
+        <source>Saving Win32 configuration...</source>
+        <translation>使用Win32方案中...</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="566"/>
         <source>Task</source>
         <translation>任務</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="592"/>
-        <source>Tip</source>
-        <translation>提示</translation>
+        <location filename="../../view/task_interface.py" line="581"/>
+        <source>Detecting game...</source>
+        <translation>檢測Win32應用中...</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="592"/>
+        <location filename="../../view/task_interface.py" line="583"/>
+        <source>No game detected</source>
+        <translation>指定程序不存在</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="584"/>
+        <source>Game detected</source>
+        <translation>檢測到指定程序</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="587"/>
         <source>Detecting emulator...</source>
-        <translation>檢測模擬器中</translation>
+        <translation>檢測模擬器中...</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="610"/>
+        <location filename="../../view/task_interface.py" line="589"/>
         <source>No emulator detected</source>
         <translation>未檢測到模擬器</translation>
     </message>
     <message>
-        <location filename="../../view/task_interface.py" line="618"/>
+        <location filename="../../view/task_interface.py" line="590"/>
+        <source>Emulator detected</source>
+        <translation>檢測到模擬器</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="594"/>
+        <source>Tip</source>
+        <translation>提示</translation>
+    </message>
+    <message>
+        <location filename="../../view/task_interface.py" line="636"/>
         <source>Success</source>
         <translation>成功</translation>
     </message>
+
     <name>MainWindow</name>
     <message>
         <location filename="../../view/main_window.py" line="77"/>

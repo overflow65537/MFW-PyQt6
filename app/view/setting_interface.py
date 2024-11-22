@@ -48,7 +48,7 @@ class SettingInterface(ScrollArea):
         self.initialize_win32_settings()
         self.initialize_start_settings()
         self.initialize_personalization_settings()
-        self.initialize_notice_settings()
+        # self.initialize_notice_settings()
         self.initialize_dev_settings()
         self.initialize_about_settings()
 
@@ -316,11 +316,10 @@ class SettingInterface(ScrollArea):
             icon=FIF.FILTER,
             title=self.tr("Select Win32 Input Mode"),
             texts=win32_input_combox_list,
-            path=cfg.get(cfg.Maa_interface),
+            target=["win32", "input_method"],
+            path=cfg.get(cfg.Maa_config),
             parent=self.DEVGroup,
-            mode="interface_setting",
-            controller="Win32",
-            controller_type="input",
+            mode="setting",
             mapping=win32_input_mapping,
         )
 
@@ -333,11 +332,10 @@ class SettingInterface(ScrollArea):
                 "FramePool",
                 "DXGI_DesktopDup",
             ],
-            path=cfg.get(cfg.Maa_interface),
+            target=["win32", "screen_method"],
+            path=cfg.get(cfg.Maa_config),
             parent=self.DEVGroup,
-            mode="interface_setting",
-            controller="Win32",
-            controller_type="screencap",
+            mode="setting",
             mapping=win32_screencap_mapping,
         )
 
@@ -351,11 +349,10 @@ class SettingInterface(ScrollArea):
                 "Maatouch",
                 "EmulatorExtras",
             ],
-            path=cfg.get(cfg.Maa_interface),
+            target=["adb", "input_method"],
+            path=cfg.get(cfg.Maa_config),
             parent=self.DEVGroup,
-            mode="interface_setting",
-            controller="Adb",
-            controller_type="input",
+            mode="setting",
             mapping=ADB_input_mapping,
         )
 
@@ -372,11 +369,10 @@ class SettingInterface(ScrollArea):
                 "MinicapStream",
                 "EmulatorExtras",
             ],
-            path=cfg.get(cfg.Maa_interface),
+            target=["adb", "screen_method"],
+            path=cfg.get(cfg.Maa_config),
             parent=self.DEVGroup,
-            mode="interface_setting",
-            controller="Adb",
-            controller_type="screencap",
+            mode="setting",
             mapping=ADB_screencap_mapping,
         )
 
@@ -561,7 +557,7 @@ class SettingInterface(ScrollArea):
         self.expandLayout.addWidget(self.Win32_Setting)
         self.expandLayout.addWidget(self.start_Setting)
         self.expandLayout.addWidget(self.personalGroup)
-        self.expandLayout.addWidget(self.noticeGroup)
+        # self.expandLayout.addWidget(self.noticeGroup)
         self.expandLayout.addWidget(self.DEVGroup)
         self.expandLayout.addWidget(self.aboutGroup)
 

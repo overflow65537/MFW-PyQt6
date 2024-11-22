@@ -183,14 +183,16 @@ def check_port(port):
 
 
 def check_path_for_keyword(path):
+    # 输入一个路径，返回路径中可能存在的模拟器名称
     keywords_list = ["MuMu", "BlueStacks", "LDPlayer", "Nox", "MEmu", "ADV"]
     for keyword in keywords_list:
         if keyword in path:
             return keyword
-    return "emulator"
+    return "unknown device"
 
 
 def check_adb_path(adb_data):
+    # 输入一个包含ADB信息的字典，检查adb路径和地址是否正确
     if (
         adb_data["adb_path"] == ""  # 路径为空
         or adb_data["address"] == ""  # 地址为空

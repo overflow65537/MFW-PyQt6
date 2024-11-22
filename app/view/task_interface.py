@@ -4,11 +4,12 @@ import platform
 from qasync import asyncSlot
 import asyncio
 
-from PyQt6.QtCore import Qt, QTimer, pyqtSlot
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication, QWidget
 from qfluentwidgets import InfoBar, InfoBarPosition
 
 from ..view.UI_task_interface import Ui_Task_Interface
+from ..utils.notification import MyNotificationHandler
 from ..common.signal_bus import signalBus
 from ..utils.tool import (
     Get_Values_list_Option,
@@ -33,6 +34,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.setupUi(self)
+        maafw.notification_handler = MyNotificationHandler()
 
         # 初始化组件
         print("TaskInterface init")
@@ -86,7 +88,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             title.setVisible(visible)
 
     def bind_signals(self):
-
+        signalBus.callback.connect(self.callback)
         signalBus.update_task_list.connect(self.update_task_list_passive)
         self.AddTask_Button.clicked.connect(self.Add_Task)
         self.Delete_Button.clicked.connect(self.Delete_Task)
@@ -95,10 +97,26 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.SelectTask_Combox_1.activated.connect(self.Add_Select_Task_More_Select)
         self.Resource_Combox.currentTextChanged.connect(self.Save_Resource)
         self.Control_Combox.currentTextChanged.connect(self.Save_Controller)
-        self.AutoDetect_Button.clicked.connect(self.Start_ADB_Detection)
+        self.AutoDetect_Button.clicked.connect(self.Start_Detection)
         self.S2_Button.clicked.connect(self.Start_Up)
-        self.Autodetect_combox.currentTextChanged.connect(self.Save_ADB_Config)
+        self.Autodetect_combox.currentTextChanged.connect(self.Save_device_Config)
         self.Finish_combox.currentIndexChanged.connect(self.rewrite_Completion_Options)
+
+    def callback(self, message):
+        if "controller_action" in message:
+            message_data = message.replace("controller_action:", "")
+            if message_data == "1":
+                self.TaskOutput_Text.append(self.tr("Starting Connection"))
+            elif message_data == "2":
+                self.TaskOutput_Text.append(self.tr("Connection Success"))
+            elif message_data == "3":
+                self.TaskOutput_Text.append(self.tr("Connection Failed"))
+            elif message_data == "4":
+                self.TaskOutput_Text.append(self.tr("Unknow Error"))
+        elif "tasker_task" in message:
+            message_data = message.replace("tasker_task:", "")
+            if message_data == "3":
+                self.TaskOutput_Text.append(self.entry + self.tr("Failed"))
 
     def Start_Status(self, interface_Path, maa_pi_config_Path, resource_Path):
         if self.check_file_paths_exist(
@@ -128,21 +146,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         return_init = gui_init(resource_Path, maa_pi_config_Path, interface_Path)
         self.Resource_Combox.setCurrentIndex(return_init["init_Resource_Type"])
         self.Control_Combox.setCurrentIndex(return_init["init_Controller_Type"])
-        adb_data = Read_Config(maa_pi_config_Path)["adb"]
-        if check_adb_path(adb_data):
-            print(adb_data)
-            self.run_afert_MAA_started()
-        else:
-            self.Autodetect_combox.addItem(
-                f'{check_path_for_keyword(adb_data["adb_path"])} ({adb_data["address"]})'
-            )
+        self.add_Controller_combox()
 
     def handle_missing_files(self, resource_Path, interface_Path, maa_pi_config_Path):
         if os.path.exists(resource_Path) and os.path.exists(interface_Path):
             print("Configuration file is missing")
             self.create_default_config(maa_pi_config_Path)
             self.load_interface_options(interface_Path)
-            self.run_afert_MAA_started()
         else:
             self.show_error(self.tr("Resource file not detected"))
 
@@ -156,7 +166,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 "config": {},
             },
             "win32": {
-                "hwid": 0,
+                "hwnd": 0,
                 "input_method": 0,
                 "screen_method": 0,
             },
@@ -204,6 +214,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     async def Start_Up(self):
         self.S2_Button.setEnabled(False)
         self.S2_Button.setText(self.tr("Stop"))
+        self.S2_Button.clicked.connect(self.Stop_task)
         self.TaskOutput_Text.clear()
 
         PROJECT_DIR = os.getcwd()
@@ -238,6 +249,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             print(f"未找到目标资源: {resource_target}")
             self.S2_Button.setEnabled(True)
             self.S2_Button.setText(self.tr("Start"))
+            self.S2_Button.clicked.disconnect()
+            self.S2_Button.clicked.connect(self.Start_Up)
+            return
 
         for i in resource_path:
             resource = (
@@ -255,29 +269,38 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             emu_wait_time = int(cfg.get(cfg.emu_wait_time))
             if emu_path != "":
                 print(f"启动模拟器: {emu_path}")
-                self.TaskOutput_Text.append(self.tr("Starting emulator..."))
-                for i in range(int(emu_wait_time)):
-                    self.TaskOutput_Text.append(
-                        self.tr("Starting emulator in ") + f"{int(emu_wait_time) - i}"
-                    )
-                    await asyncio.sleep(1)
                 self.app_process = self.start_process(emu_path)
                 print("模拟器启动成功")
-            # 连接adb
-            try:
-                await maafw.connect_adb(
-                    config["adb"]["adb_path"],
-                    config["adb"]["address"],
-                    config["adb"]["input_method"],
-                    config["adb"]["screen_method"],
-                    config["adb"]["config"],
-                )
-                print("连接模拟器成功")
-            except Exception as e:
-                print(f"连接模拟器失败: {e}")
-                self.show_error(self.tr(f"连接模拟器失败: {e}"))
+                self.TaskOutput_Text.append(self.tr("waiting for emulator start..."))
+                self.S2_Button.setEnabled(True)
+                self.S2_Button.clicked.disconnect()
+                self.S2_Button.clicked.connect(self.Stop_task)
+                self.need_runing = True
+                for i in range(int(emu_wait_time)):
+                    if not self.need_runing:
+                        self.S2_Button.setEnabled(True)
+                        self.S2_Button.setText(self.tr("Start"))
+                        self.S2_Button.clicked.disconnect()
+                        self.S2_Button.clicked.connect(self.Start_Up)
+                        return
+                    else:
+                        self.TaskOutput_Text.append(
+                            self.tr("Starting task in ") + f"{int(emu_wait_time) - i}"
+                        )
+                        await asyncio.sleep(1)
+
+            # 连接adb失败
+            if not await maafw.connect_adb(
+                config["adb"]["adb_path"],
+                config["adb"]["address"],
+                config["adb"]["input_method"],
+                config["adb"]["screen_method"],
+                config["adb"]["config"],
+            ):
                 self.S2_Button.setEnabled(True)
                 self.S2_Button.setText(self.tr("Start"))
+                self.S2_Button.clicked.disconnect()
+                self.S2_Button.clicked.connect(self.Start_Up)
                 return
         elif controller_type == "Win32":  # win32控制
             # 启动游戏
@@ -285,44 +308,52 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             exe_wait_time = int(cfg.get(cfg.exe_wait_time))
             exe_parameter = cfg.get(cfg.exe_parameter)
             if exe_path != "":
-                self.TaskOutput_Text.append(self.tr("Starting game..."))
-                for i in range(int(exe_wait_time)):
-                    self.TaskOutput_Text.append(
-                        self.tr("Starting game in ") + f"{int(exe_wait_time) - i}"
-                    )
-                    await asyncio.sleep(1)
                 self.app_process = self.start_process(f"{exe_path} {exe_parameter}")
-            # 连接
-            try:
-                await maafw.connect_win32hwnd(
-                    config["win32"]["hwid"],
-                    config["win32"]["input_method"],
-                    config["win32"]["screen_method"],
-                )
-                print("连接游戏成功")
-            except Exception as e:
-                print(f"连接游戏失败: {e}")
-                self.show_error(self.tr(f"连接游戏失败: {e}"))
+                self.TaskOutput_Text.append(self.tr("Starting game..."))
+                self.S2_Button.setEnabled(True)
+                self.S2_Button.clicked.disconnect()
+                self.S2_Button.clicked.connect(self.Stop_task)
+                self.need_runing = True
+                for i in range(int(exe_wait_time)):
+                    if not self.need_runing:
+                        self.S2_Button.setEnabled(True)
+                        self.S2_Button.setText(self.tr("Start"))
+                        self.S2_Button.clicked.disconnect()
+                        self.S2_Button.clicked.connect(self.Start_Up)
+                        return
+                    else:
+                        self.TaskOutput_Text.append(
+                            self.tr("Starting game in ") + f"{int(exe_wait_time) - i}"
+                        )
+                        await asyncio.sleep(1)
+
+            # 连接Win32失败
+            if not await maafw.connect_win32hwnd(
+                config["win32"]["hwnd"],
+                config["win32"]["input_method"],
+                config["win32"]["screen_method"],
+            ):
                 self.S2_Button.setEnabled(True)
                 self.S2_Button.setText(self.tr("Start"))
+                self.S2_Button.clicked.disconnect()
+                self.S2_Button.clicked.connect(self.Start_Up)
                 return
 
         # 任务过程
+        self.TaskOutput_Text.append(self.tr("Starting task..."))
         self.S2_Button.setEnabled(True)
-        self.S2_Button.clicked.disconnect()
-        self.S2_Button.clicked.connect(self.Stop_task)
         self.need_runing = True
         for task_list in config["task"]:
             if not self.need_runing:
-                self.need_runing = True
                 return
             for task_enter in interface["task"]:
 
                 if task_enter["name"] == task_list["name"]:
-                    entry = task_enter["entry"]
+                    self.entry = task_enter["self.entry"]
             if task_list["option"] == []:
-                print(f"运行任务:{entry}")
-                await maafw.run_task(entry)
+                print(f"运行任务:{self.entry}")
+                self.TaskOutput_Text.append(self.tr("运行任务:") + f" {self.entry}")
+                await maafw.run_task(self.entry)
             else:
                 override_options = {}
                 for task_option in task_list["option"]:
@@ -330,10 +361,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     for override in interface["option"][task_option["name"]]["cases"]:
                         if override["name"] == task_option["value"]:
                             override_options.update(override["pipeline_override"])
-                print(f"运行任务:{entry}")
+                print(f"运行任务:{self.entry}")
+                self.TaskOutput_Text.append(self.tr("running task:") + f" {self.entry}")
                 print(f"任务选项: {override_options}")
-                await maafw.run_task(entry, override_options)
-        print("任务全部执行完成")
+                await maafw.run_task(self.entry, override_options)
+        self.TaskOutput_Text.append(self.tr("Task finished"))
 
         # 结束后脚本
         run_after_finish = cfg.get(cfg.run_after_finish)
@@ -342,19 +374,20 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         # 完成后运行
         target = self.Finish_combox.currentIndex()
         actions = {
-            -1: self.tr("Do nothing"),
-            0: self.tr("Do nothing"),
+            -1: print("Do nothing"),
+            0: print("Do nothing"),
             1: self.close_application,
             2: QApplication.quit,
             3: self.shutdown,
         }
 
         action = actions.get(target)
-        print(f"选择的动作: {actions[target]}")
+        print(f"选择的动作: {target}")
         if action:
             action()
         # 更改按钮状态
         self.S2_Button.setEnabled(True)
+        self.S2_Button.setText(self.tr("Start"))
         self.S2_Button.clicked.disconnect()
         self.S2_Button.clicked.connect(self.Start_Up)
 
@@ -465,11 +498,36 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.update_config_value("resource", self.Resource_Combox.currentText())
         print(f"保存资源配置: {self.Resource_Combox.currentText()}")
 
-    def Save_Controller(self):
+    @asyncSlot()
+    async def Save_Controller(self):
         Controller_Type_Select = self.Control_Combox.currentText()
+        controller_type = get_controller_type(
+            Controller_Type_Select, cfg.get(cfg.Maa_interface)
+        )
+        if controller_type == "Adb":
+            self.TaskOutput_Text.append(self.tr("Saving ADB configuration..."))
+            self.add_Controller_combox()
+
+        elif controller_type == "Win32":
+            await self.Start_Detection()
+            self.TaskOutput_Text.append(self.tr("Saving Win32 configuration..."))
+
         MAA_Pi_Config = Read_Config(cfg.get(cfg.Maa_config))
         MAA_Pi_Config["controller"]["name"] = Controller_Type_Select
         Save_Config(cfg.get(cfg.Maa_config), MAA_Pi_Config)
+
+    def add_Controller_combox(self):
+        controller_type = get_controller_type(
+            self.Control_Combox.currentText(), cfg.get(cfg.Maa_interface)
+        )
+        self.Autodetect_combox.clear()
+        if controller_type == "Adb":
+            config = Read_Config(cfg.get(cfg.Maa_config))
+            emulators_name = check_path_for_keyword(config["adb"]["adb_path"])
+            self.Autodetect_combox.clear()
+            self.Autodetect_combox.addItem(
+                f"{emulators_name} ({config['adb']['address'].split(':')[-1]})"
+            )
 
     def update_config_value(self, key, value):
         MAA_Pi_Config = Read_Config(cfg.get(cfg.Maa_config))
@@ -512,12 +570,30 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.TaskOutput_Text.append(msg)
 
     @asyncSlot()
-    async def Start_ADB_Detection(self):
+    async def Start_Detection(self):
         self.AutoDetect_Button.setEnabled(False)
         self.S2_Button.setEnabled(False)
+        controller_type = get_controller_type(
+            self.Control_Combox.currentText(), cfg.get(cfg.Maa_interface)
+        )
+
+        if controller_type == "Win32":
+            content = self.tr("Detecting game...")
+            detect_function = maafw.detect_win32hwnd
+            error_message = self.tr("No game detected")
+            success_message = self.tr("Game detected")
+            print(detect_function)
+        elif controller_type == "Adb":
+            content = self.tr("Detecting emulator...")
+            detect_function = maafw.detect_adb
+            error_message = self.tr("No emulator detected")
+            success_message = self.tr("Emulator detected")
+        else:
+            return
+
         InfoBar.info(
             title=self.tr("Tip"),
-            content=self.tr("Detecting emulator..."),
+            content=content,
             orient=Qt.Orientation.Horizontal,
             isClosable=True,
             position=InfoBarPosition.BOTTOM_RIGHT,
@@ -525,21 +601,36 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             parent=self,
         )
 
-        self.devices = await maafw.detect_adb()
-        options = {}
-        for d in self.devices:
-            v = (d.adb_path, d.address, str(d.config))
-            l = d.name + " " + d.address
-            options[v] = l
+        # 调用相应的检测函数
+        if controller_type == "Win32":
+            interface_config = Read_Config(cfg.get(cfg.Maa_interface))
+            for i in interface_config["controller"]:
+                if i["type"] == "Win32":
+                    self.win32_hwnd = await detect_function(i["win32"]["window_regex"])
+            if self.win32_hwnd == []:
+                self.show_error(error_message)
+            else:
+                processed_list = [i.window_name for i in self.win32_hwnd]
+                self.show_success(success_message)
+                self.Autodetect_combox.clear()
+                self.Autodetect_combox.addItems(processed_list)
+        elif controller_type == "Adb":
+            self.devices = await detect_function()
+            self.AutoDetect_Button.setEnabled(True)
+            self.S2_Button.setEnabled(True)
+            if not self.devices:
+                self.show_error(error_message)
+            else:
+                processed_list = [
+                    f"{i.name} ({i.address.split(':')[-1]})" for i in self.devices
+                ]
+                self.show_success(success_message)
+                self.Autodetect_combox.clear()
+                self.Autodetect_combox.addItems(processed_list)
+
+        # 重新启用按钮
         self.AutoDetect_Button.setEnabled(True)
         self.S2_Button.setEnabled(True)
-        if not self.devices:
-            self.show_error(self.tr("No emulator detected"))
-        else:
-            processed_list = [i.name for i in self.devices]
-            self.show_success(f"Detected {processed_list[0]}")
-            self.Autodetect_combox.clear()
-            self.Autodetect_combox.addItems(processed_list)
 
     def show_success(self, message):
         InfoBar.success(
@@ -552,17 +643,28 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             parent=self,
         )
 
-    def Save_ADB_Config(self):
+    def Save_device_Config(self):
+        controller_type = get_controller_type(
+            self.Control_Combox.currentText(), cfg.get(cfg.Maa_interface)
+        )
         target = self.Autodetect_combox.currentText()
-        for i in self.devices:
-            if i.name == target:
-                result = i
-                break
-        data = Read_Config(cfg.get(cfg.Maa_config))
-        data["adb"]["adb_path"] = str(result.adb_path)
-        data["adb"]["address"] = result.address
-        data["adb"]["config"] = result.config
-        print(data)
-        Save_Config(cfg.get(cfg.Maa_config), data)
-
-        signalBus.update_adb.emit(result)
+        if controller_type == "Adb":
+            for i in self.devices:
+                print(i)
+                if f"{i.name} ({i.address.split(':')[-1]})" == target:
+                    result = i
+                    break
+            data = Read_Config(cfg.get(cfg.Maa_config))
+            data["adb"]["adb_path"] = str(result.adb_path)
+            data["adb"]["address"] = result.address
+            data["adb"]["config"] = result.config
+            Save_Config(cfg.get(cfg.Maa_config), data)
+            signalBus.update_adb.emit(result)
+        elif controller_type == "Win32":
+            for i in self.win32_hwnd:
+                if i.window_name == target:
+                    result = i
+                    break
+            data = Read_Config(cfg.get(cfg.Maa_config))
+            data["win32"]["hwnd"] = result.hwnd
+            Save_Config(cfg.get(cfg.Maa_config), data)
