@@ -18,6 +18,7 @@ from qfluentwidgets import (
     FluentIconBase,
 )
 from ..common.config import cfg
+from ..utils.logger import logger
 
 
 class NoticeType(QDialog):
@@ -191,11 +192,11 @@ class NoticeType(QDialog):
 
     def on_ok(self):
         self.save_noticetype()
-        print(f"保存{self.notice_type}设置")
+        logger.info(f"保存{self.notice_type}设置")
         self.close()
 
     def on_clear(self):
-        print("Clear button clicked!")
+        logger.info("关闭通知设置对话框")
         self.close()
 
 
@@ -266,9 +267,7 @@ class NoticeButtonSettingCard(SettingCard):
             if self.notice_type == "DingTalk":
                 original_data = cfg.get(cfg.Notice_Webhook)
                 original_data["DingTalk"] = data
-                print(original_data)
                 cfg.set(cfg.Notice_Webhook, original_data)
-                print(cfg.get(cfg.Notice_Webhook))
             elif self.notice_type == "Lark":
                 original_data = cfg.get(cfg.Notice_Webhook)
                 original_data["Lark"] = data
@@ -286,9 +285,7 @@ class NoticeButtonSettingCard(SettingCard):
             if self.notice_type == "DingTalk":
                 original_data = cfg.get(cfg.Notice_Webhook)
                 original_data["DingTalk"] = data
-                print(original_data)
                 cfg.set(cfg.Notice_Webhook, original_data)
-                print(cfg.get(cfg.Notice_Webhook))
             elif self.notice_type == "Lark":
                 original_data = cfg.get(cfg.Notice_Webhook)
                 original_data["Lark"] = data

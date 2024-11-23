@@ -10,6 +10,7 @@ from ..utils.tool import (
     rewrite_contorller,
     delete_contorller,
 )
+from ..utils.logger import logger
 
 
 class ComboBoxSettingCardCustom(SettingCard):
@@ -85,7 +86,7 @@ class ComboBoxSettingCardCustom(SettingCard):
 
             self.comboBox.setCurrentText(current_text)
         except Exception as e:
-            print(f"读取配置时出错: {e}")
+            logger.warning(f"读取配置时出错: {e}")
             self.comboBox.setCurrentText("")  # 设置为空文本或默认值
 
     def _onCurrentIndexChanged(self):

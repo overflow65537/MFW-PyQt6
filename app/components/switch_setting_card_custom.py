@@ -10,6 +10,7 @@ from qfluentwidgets import (
     SettingCard,
 )
 from ..utils.tool import Read_Config, Save_Config
+from ..utils.logger import logger
 
 
 class SwitchSettingCardCustom(SettingCard):
@@ -49,7 +50,10 @@ class SwitchSettingCardCustom(SettingCard):
         except FileNotFoundError:
             # 如果文件不存在，将切换按钮设置为默认关闭状态
             self.switchButton.setChecked(False)
-            Save_Config(os.path.join(os.getcwd(), "config", "custom_config.json"), {self.target: False})
+            Save_Config(
+                os.path.join(os.getcwd(), "config", "custom_config.json"),
+                {self.target: False},
+            )
 
     def _onCheckedChanged(self, isChecked: bool):
         """处理切换按钮状态变化"""
@@ -60,4 +64,4 @@ class SwitchSettingCardCustom(SettingCard):
             Save_Config(config_path, data)
             self.checkedChanged.emit(isChecked)  # 发出信号通知状态变化
         except Exception as e:
-            print(f"保存设置时出错: {e}")
+            logger.info(f"保存设置时出错: {e}")

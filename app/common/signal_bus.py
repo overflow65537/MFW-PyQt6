@@ -16,6 +16,7 @@ class SignalBus(QObject):
     update_available = pyqtSignal(dict)  # 检查更新
     update_finished = pyqtSignal()  # 更新完成信号
     cfg_changed = pyqtSignal()  # 配置文件修改信号
+    adb_detect_backup = pyqtSignal(list)  # 备份adb检测
 
 
 signalBus = SignalBus()

@@ -3,9 +3,10 @@ import json
 import re
 import subprocess
 import platform
-
-# import psutil
-# import socket
+import psutil
+import socket
+import asyncio
+from ..utils.logger import logger
 
 
 def Read_Config(paths):
@@ -135,7 +136,6 @@ def Get_Task_List(target):
     return lists
 
 
-"""
 def find_process_by_name(process_name):
     # 遍历所有程序找到指定程序
     for proc in psutil.process_iter(["name", "exe"]):
@@ -163,14 +163,18 @@ def find_existing_file(info_dict):
     # 如果没有找到任何存在的文件
     return False
 
-def check_port(port):
+
+async def check_port(port):
     port_result = []
-    for p in port:
+
+    async def check_single_port(p):
         p = int(p.rsplit(":", 1)[1])
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             # 尝试连接到127.0.0.1的指定端口
-            result = s.connect_ex(("127.0.0.1", p))
+            result = await asyncio.get_event_loop().run_in_executor(
+                None, s.connect_ex, ("127.0.0.1", p)
+            )
             # 如果connect_ex返回0，表示连接成功，即端口开启
             if result == 0:
                 port_result.append("127.0.0.1:" + str(p))
@@ -178,8 +182,11 @@ def check_port(port):
             pass
         finally:
             s.close()
+
+    # 创建任务列表
+    tasks = [check_single_port(p) for p in port]
+    await asyncio.gather(*tasks)  # 等待所有任务完成
     return port_result
-"""
 
 
 def check_path_for_keyword(path):
@@ -256,7 +263,7 @@ def get_gpu_info():
                     gpu_info[id_num] = name
 
     except Exception as e:
-        print(f"获取显卡信息时出错: {e}")
+        logger.info(f"获取显卡信息时出错: {e}")
 
     return gpu_info
 
@@ -328,7 +335,7 @@ def delete_contorller(data_dict, controller, mode):
                 not data_dict["controller"][i].get(controller.lower()) == {}
                 or not data_dict["controller"][i].get(controller.lower()) is None
             ):
-                print(data_dict["controller"][i][controller.lower()][mode])
+                logger.info(data_dict["controller"][i][controller.lower()][mode])
                 del data_dict["controller"][i][controller.lower()][mode]
                 if data_dict["controller"][i].get(controller.lower()) == {}:
                     del data_dict["controller"][i][controller.lower()]

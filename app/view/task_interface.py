@@ -3,6 +3,7 @@ import subprocess
 import platform
 from qasync import asyncSlot
 import asyncio
+from pathlib import Path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication, QWidget
@@ -20,11 +21,15 @@ from ..utils.tool import (
     Get_Values_list2,
     Get_Task_List,
     check_path_for_keyword,
-    check_adb_path,
     get_controller_type,
+    check_port,
+    find_existing_file,
+    find_process_by_name,
 )
 from ..utils.maafw import maafw
 from ..common.config import cfg
+from maa.toolkit import AdbDevice
+from ..utils.logger import logger
 
 
 class TaskInterface(Ui_Task_Interface, QWidget):
@@ -37,7 +42,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         maafw.notification_handler = MyNotificationHandler()
 
         # 初始化组件
-        print("TaskInterface init")
+        logger.info("TaskInterface init")
         self.Start_Status(
             interface_Path=cfg.get(cfg.Maa_interface),
             maa_pi_config_Path=cfg.get(cfg.Maa_config),
@@ -107,16 +112,21 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             message_data = message.replace("controller_action:", "")
             if message_data == "1":
                 self.TaskOutput_Text.append(self.tr("Starting Connection"))
+                logger.info("开始连接")
             elif message_data == "2":
                 self.TaskOutput_Text.append(self.tr("Connection Success"))
+                logger.info("连接成功")
             elif message_data == "3":
                 self.TaskOutput_Text.append(self.tr("Connection Failed"))
+                logger.info("连接失败")
             elif message_data == "4":
                 self.TaskOutput_Text.append(self.tr("Unknow Error"))
+                logger.info("未知错误")
         elif "tasker_task" in message:
             message_data = message.replace("tasker_task:", "")
             if message_data == "3":
                 self.TaskOutput_Text.append(self.entry + self.tr("Failed"))
+                logger.info(f"{self.entry} 任务失败")
 
     def Start_Status(self, interface_Path, maa_pi_config_Path, resource_Path):
         if self.check_file_paths_exist(
@@ -138,7 +148,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def load_config_and_resources(
         self, interface_Path, maa_pi_config_Path, resource_Path
     ):
-        print("Configuration file exists")
+        logger.info("配置文件存在")
         self.Task_List.addItems(Get_Values_list_Option(maa_pi_config_Path, "task"))
         self.Resource_Combox.addItems(Get_Values_list(interface_Path, key1="resource"))
         self.Control_Combox.addItems(Get_Values_list(interface_Path, key1="controller"))
@@ -150,10 +160,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def handle_missing_files(self, resource_Path, interface_Path, maa_pi_config_Path):
         if os.path.exists(resource_Path) and os.path.exists(interface_Path):
-            print("Configuration file is missing")
+            logger.info("配置文件缺失")
             self.create_default_config(maa_pi_config_Path)
             self.load_interface_options(interface_Path)
         else:
+            logger.warning("资源缺失")
             self.show_error(self.tr("Resource file not detected"))
 
     def create_default_config(self, maa_pi_config_Path):
@@ -184,10 +195,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Save_Resource()
         self.Save_Controller()
 
-    def get_task_list_widget(self):
-        print([self.Task_List.item(i).text() for i in range(self.Task_List.count())])
-        return [self.Task_List.item(i).text() for i in range(self.Task_List.count())]
-
     def rewrite_Completion_Options(self):
         cfg.set(cfg.Finish_combox, self.Finish_combox.currentIndex())
 
@@ -207,11 +214,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         os.system(shutdown_commands.get(platform.system(), ""))
 
     def start_process(self, command):
-        print(f"Starting process: {command}")
+        logger.info(f"启动程序: {command}")
         return subprocess.Popen(command)
 
     @asyncSlot()
     async def Start_Up(self):
+        self.need_runing = True
         self.S2_Button.setEnabled(False)
         self.S2_Button.setText(self.tr("Stop"))
         self.S2_Button.clicked.connect(self.Stop_task)
@@ -223,16 +231,20 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         )
         # 启动前脚本
         run_before_start = cfg.get(cfg.run_before_start)
-        if run_before_start != "":
-            print(f"运行前脚本: {run_before_start}")
+        if run_before_start != "" and self.need_runing:
+            logger.info(f"运行前脚本: {run_before_start}")
             try:
                 self.run_before_start_process = self.start_process(run_before_start)
             except FileNotFoundError as e:
                 self.show_error(self.tr(f"File not found"))
-                print(e)
+                logger.error(e)
+                await maafw.stop_task()
+                return
             except OSError as e:
                 self.show_error(self.tr(f"Can not start the file"))
-                print(e)
+                logger.error(e)
+                await maafw.stop_task()
+                return
         # 加载资源
         resource_path = None
         resource_target = self.Resource_Combox.currentText()
@@ -240,13 +252,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         config = Read_Config(cfg.get(cfg.Maa_config))
 
         for i in interface["resource"]:
-            print(i)
             if i["name"] == resource_target:
-
+                logger.info(f"加载资源: {i['path']}")
                 resource_path = i["path"]
 
-        if resource_path is None:
-            print(f"未找到目标资源: {resource_target}")
+        if resource_path is None and self.need_runing:
+            logger.error(f"未找到目标资源: {resource_target}")
+            await maafw.stop_task()
             self.S2_Button.setEnabled(True)
             self.S2_Button.setText(self.tr("Start"))
             self.S2_Button.clicked.disconnect()
@@ -259,25 +271,32 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 .replace("/", os.sep)
                 .replace("\\", os.sep)
             )
-            print(f"加载资源: {resource}")
+            logger.info(f"加载资源: {resource}")
             await maafw.load_resource(resource)
-            print(f"资源加载完成: {resource}")
+            logger.info(f"资源加载完成: {resource}")
+        gpu_index = config["gpu"]
+        if gpu_index == -2 and self.need_runing:
+            logger.info("设置CPU推理")
+            maafw.resource.set_cpu
+        else:
+            logger.info(f"设置GPU推理: {gpu_index}")
+            maafw.resource.set_gpu(gpu_index)
         # 连接控制器
-        if controller_type == "Adb":  # adb控制
+        if controller_type == "Adb" and self.need_runing:  # adb控制
             # 启动模拟器
             emu_path = cfg.get(cfg.emu_path)
             emu_wait_time = int(cfg.get(cfg.emu_wait_time))
-            if emu_path != "":
-                print(f"启动模拟器: {emu_path}")
+            if emu_path != "" and self.need_runing:
+                logger.info(f"启动模拟器: {emu_path}")
                 self.app_process = self.start_process(emu_path)
-                print("模拟器启动成功")
+                logger.info("模拟器启动成功")
                 self.TaskOutput_Text.append(self.tr("waiting for emulator start..."))
                 self.S2_Button.setEnabled(True)
                 self.S2_Button.clicked.disconnect()
                 self.S2_Button.clicked.connect(self.Stop_task)
-                self.need_runing = True
                 for i in range(int(emu_wait_time)):
                     if not self.need_runing:
+                        await maafw.stop_task()
                         self.S2_Button.setEnabled(True)
                         self.S2_Button.setText(self.tr("Start"))
                         self.S2_Button.clicked.disconnect()
@@ -290,32 +309,40 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         await asyncio.sleep(1)
 
             # 连接adb失败
-            if not await maafw.connect_adb(
-                config["adb"]["adb_path"],
-                config["adb"]["address"],
-                config["adb"]["input_method"],
-                config["adb"]["screen_method"],
-                config["adb"]["config"],
+            if (
+                not await maafw.connect_adb(
+                    config["adb"]["adb_path"],
+                    config["adb"]["address"],
+                    config["adb"]["input_method"],
+                    config["adb"]["screen_method"],
+                    config["adb"]["config"],
+                )
+                and self.need_runing
             ):
+                logger.error(
+                    f"连接adb失败\n{config["adb"]["adb_path"]}\n{config['adb']['address']}\n{config['adb']['input_method']}\n{config['adb']['screen_method']}\n{config['adb']['config']}"
+                )
+                await maafw.stop_task()
                 self.S2_Button.setEnabled(True)
                 self.S2_Button.setText(self.tr("Start"))
                 self.S2_Button.clicked.disconnect()
                 self.S2_Button.clicked.connect(self.Start_Up)
                 return
-        elif controller_type == "Win32":  # win32控制
+        elif controller_type == "Win32" and self.need_runing:  # win32控制
             # 启动游戏
             exe_path = cfg.get(cfg.exe_path)
             exe_wait_time = int(cfg.get(cfg.exe_wait_time))
             exe_parameter = cfg.get(cfg.exe_parameter)
-            if exe_path != "":
+            if exe_path != "" and self.need_runing:
+                logger.info(f"启动游戏: {exe_path}")
                 self.app_process = self.start_process(f"{exe_path} {exe_parameter}")
                 self.TaskOutput_Text.append(self.tr("Starting game..."))
                 self.S2_Button.setEnabled(True)
                 self.S2_Button.clicked.disconnect()
                 self.S2_Button.clicked.connect(self.Stop_task)
-                self.need_runing = True
                 for i in range(int(exe_wait_time)):
                     if not self.need_runing:
+                        await maafw.stop_task()
                         self.S2_Button.setEnabled(True)
                         self.S2_Button.setText(self.tr("Start"))
                         self.S2_Button.clicked.disconnect()
@@ -328,11 +355,18 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         await asyncio.sleep(1)
 
             # 连接Win32失败
-            if not await maafw.connect_win32hwnd(
-                config["win32"]["hwnd"],
-                config["win32"]["input_method"],
-                config["win32"]["screen_method"],
+            if (
+                not await maafw.connect_win32hwnd(
+                    config["win32"]["hwnd"],
+                    config["win32"]["input_method"],
+                    config["win32"]["screen_method"],
+                )
+                and self.need_runing
             ):
+                logger.error(
+                    f"连接Win32失败 \n{config['win32']['hwnd']}\n{config['win32']['input_method']}\n{config['win32']['screen_method']}"
+                )
+                await maafw.stop_task()
                 self.S2_Button.setEnabled(True)
                 self.S2_Button.setText(self.tr("Start"))
                 self.S2_Button.clicked.disconnect()
@@ -340,18 +374,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 return
 
         # 任务过程
-        self.TaskOutput_Text.append(self.tr("Starting task..."))
         self.S2_Button.setEnabled(True)
-        self.need_runing = True
         for task_list in config["task"]:
             if not self.need_runing:
+                await maafw.stop_task()
                 return
             for task_enter in interface["task"]:
-
                 if task_enter["name"] == task_list["name"]:
                     self.entry = task_enter["entry"]
             if task_list["option"] == []:
-                print(f"运行任务:{self.entry}")
+                logger.info(f"运行任务:{self.entry}")
                 self.TaskOutput_Text.append(self.tr("运行任务:") + f" {self.entry}")
                 await maafw.run_task(self.entry)
             else:
@@ -361,29 +393,30 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     for override in interface["option"][task_option["name"]]["cases"]:
                         if override["name"] == task_option["value"]:
                             override_options.update(override["pipeline_override"])
-                print(f"运行任务:{self.entry}")
+                logger.info(f"运行任务:{self.entry}\n任务选项: {override_options}")
                 self.TaskOutput_Text.append(self.tr("running task:") + f" {self.entry}")
-                print(f"任务选项: {override_options}")
                 await maafw.run_task(self.entry, override_options)
         self.TaskOutput_Text.append(self.tr("Task finished"))
+        logger.info("任务完成")
 
         # 结束后脚本
         run_after_finish = cfg.get(cfg.run_after_finish)
-        if run_after_finish != "":
+        if run_after_finish != "" and self.need_runing:
+            logger.info(f"运行后脚本: {run_after_finish}")
             self.run_after_finish_process = self.start_process(run_after_finish)
         # 完成后运行
         target = self.Finish_combox.currentIndex()
         actions = {
-            -1: print("Do nothing"),
-            0: print("Do nothing"),
+            -1: logger.info("Do nothing"),
+            0: logger.info("Do nothing"),
             1: self.close_application,
             2: QApplication.quit,
             3: self.shutdown,
         }
 
         action = actions.get(target)
-        print(f"选择的动作: {target}")
-        if action:
+        logger.info(f"选择的动作: {target}")
+        if action and self.need_runing:
             action()
         # 更改按钮状态
         self.S2_Button.setEnabled(True)
@@ -396,25 +429,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.S2_Button.setEnabled(False)
         self.S2_Button.setText(self.tr("Start"))
         self.TaskOutput_Text.append(self.tr("Stopping task..."))
+        logger.info("停止任务")
         # 停止MAA
         self.need_runing = False
         await maafw.stop_task()
+        maafw.resource.clear()
 
         self.S2_Button.clicked.disconnect()
         self.S2_Button.clicked.connect(self.Start_Up)
         self.S2_Button.setEnabled(True)
-
-    def run_after_finish(self):
-        run_after_finish = cfg.get(cfg.run_after_finish)
-        if run_after_finish != "":
-            try:
-                self.run_after_finish = self.start_process(run_after_finish)
-            except FileNotFoundError as e:
-                self.show_error(self.tr(f"File not found"))
-                print(e)
-            except OSError as e:
-                self.show_error(self.tr(f"Can not start the file"))
-                print(e)
 
     def task_list_changed(self):
         self.Task_List.clear()
@@ -496,7 +519,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def Save_Resource(self):
         self.update_config_value("resource", self.Resource_Combox.currentText())
-        print(f"保存资源配置: {self.Resource_Combox.currentText()}")
+        logger.info(f"保存资源配置: {self.Resource_Combox.currentText()}")
 
     @asyncSlot()
     async def Save_Controller(self):
@@ -573,6 +596,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     async def Start_Detection(self):
         self.AutoDetect_Button.setEnabled(False)
         self.S2_Button.setEnabled(False)
+
         controller_type = get_controller_type(
             self.Control_Combox.currentText(), cfg.get(cfg.Maa_interface)
         )
@@ -582,7 +606,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             detect_function = maafw.detect_win32hwnd
             error_message = self.tr("No game detected")
             success_message = self.tr("Game detected")
-            print(detect_function)
         elif controller_type == "Adb":
             content = self.tr("Detecting emulator...")
             detect_function = maafw.detect_adb
@@ -602,35 +625,77 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         )
 
         # 调用相应的检测函数
+        processed_list = []  # 初始化处理列表
         if controller_type == "Win32":
             interface_config = Read_Config(cfg.get(cfg.Maa_interface))
             for i in interface_config["controller"]:
                 if i["type"] == "Win32":
                     self.win32_hwnd = await detect_function(i["win32"]["window_regex"])
-            if self.win32_hwnd == []:
-                self.show_error(error_message)
-            else:
-                processed_list = [i.window_name for i in self.win32_hwnd]
-                self.show_success(success_message)
-                self.Autodetect_combox.clear()
-                self.Autodetect_combox.addItems(processed_list)
+            processed_list = (
+                [hwnd.window_name for hwnd in self.win32_hwnd]
+                if self.win32_hwnd
+                else []
+            )
         elif controller_type == "Adb":
             self.devices = await detect_function()
-            self.AutoDetect_Button.setEnabled(True)
-            self.S2_Button.setEnabled(True)
             if not self.devices:
-                self.show_error(error_message)
-            else:
-                processed_list = [
-                    f"{i.name} ({i.address.split(':')[-1]})" for i in self.devices
-                ]
-                self.show_success(success_message)
-                self.Autodetect_combox.clear()
-                self.Autodetect_combox.addItems(processed_list)
+                logger.info("备用ADB检测")
+                self.devices = await self.Adb_detect_backup()
+            processed_list = [
+                f"{device.name} ({device.address.split(':')[-1]})"
+                for device in (self.devices or [])
+            ]
+
+        # 处理结果
+        if not processed_list:
+            logger.error("未检测到设备")
+            self.show_error(error_message)
+        else:
+            self.show_success(success_message)
+            self.Autodetect_combox.clear()
+            self.Autodetect_combox.addItems(processed_list)
 
         # 重新启用按钮
         self.AutoDetect_Button.setEnabled(True)
         self.S2_Button.setEnabled(True)
+
+    async def Adb_detect_backup(self):
+        emulator_list = Read_Config(
+            os.path.join(os.getcwd(), "config", "emulator.json")
+        )
+        emulator_results = []
+
+        for app in emulator_list:
+            process_path = find_process_by_name(app["exe_name"])
+
+            if process_path:
+                # 判断程序是否正在运行,是进行下一步,否则放弃
+                may_path = [os.path.join(*i) for i in app["may_path"]]
+                info_dict = {"exe_path": process_path, "may_path": may_path}
+                ADB_path = find_existing_file(info_dict)
+
+                if ADB_path:
+                    # 判断ADB地址是否存在,是进行下一步,否则放弃
+                    port_data = await check_port(
+                        app["port"]
+                    )  # 使用 await 调用 check_port
+
+                    if port_data:
+                        # 判断端口是否存在,是则组合字典,否则放弃
+                        for i in port_data:
+                            emulator_result = AdbDevice(
+                                name=app["name"],
+                                adb_path=Path(ADB_path),
+                                address=i,
+                                screencap_methods=0,
+                                input_methods=0,
+                                config={},
+                            )
+                            emulator_results.append(
+                                emulator_result
+                            )  # 将对象添加到列表中
+
+        return emulator_results  # 返回包含所有 AdbDevice 对象的列表
 
     def show_success(self, message):
         InfoBar.success(
@@ -650,7 +715,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         target = self.Autodetect_combox.currentText()
         if controller_type == "Adb":
             for i in self.devices:
-                print(i)
+                logger.info(i)
                 if f"{i.name} ({i.address.split(':')[-1]})" == target:
                     result = i
                     break

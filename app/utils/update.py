@@ -4,6 +4,7 @@ import zipfile
 from ..utils.tool import for_config_get_url
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
+from ..utils.logger import logger
 
 import requests
 
@@ -19,7 +20,7 @@ class check_Update(QThread):
             content = response.json()
             self.update_available.emit(content)  # 发出更新内容
         except Exception as e:
-            print(f"更新检查时出错: {e}")
+            logger.warning(f"更新检查时出错: {e}")
             self.update_available.emit({})  # 发出空字典表示没有更新
 
 

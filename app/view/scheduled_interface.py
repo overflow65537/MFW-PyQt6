@@ -9,6 +9,7 @@ from ..utils.tool import (
 )
 import os
 import shutil
+from ..utils.logger import logger
 
 
 class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
@@ -57,10 +58,10 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         config_name_list = list(cfg.get(cfg.maa_config_list))
 
         if config_name in [self.MAIN_CONFIG_NAME, self.MAIN_CONFIG_NAME.lower()]:
-            print("不能添加主配置文件")
+            logger.info("不能添加主配置文件")
             cfg.set(cfg.Maa_config, self.MAIN_CONFIG_PATH)
         elif config_name in config_name_list:
-            print(f"{config_name}已存在")
+            logger.info(f"{config_name}已存在")
             self.update_config_path(config_name)
         else:
             self.create_new_config(config_name)
@@ -81,7 +82,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             "config",
             "maa_pi_config.json",
         )
-        print(f"创建配置文件{config_name}于{config_path}")
+        logger.info(f"创建配置文件{config_name}于{config_path}")
 
         config_list[config_name] = config_path
         cfg.set(cfg.maa_config_list, config_list)
@@ -115,13 +116,13 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         config_name = self.Cfg_Combox.currentText()
 
         if config_name in [self.MAIN_CONFIG_NAME, self.MAIN_CONFIG_NAME.lower()]:
-            print("切换主配置")
+            logger.info("切换主配置")
             cfg.set(cfg.Maa_config, self.MAIN_CONFIG_PATH)
 
             dev_path = os.path.join(os.getcwd(), "config", "maa_option.json")
             cfg.set(cfg.Maa_dev, dev_path)
         else:
-            print(f"切换到{config_name}配置")
+            logger.info(f"切换到{config_name}配置")
             self.update_config_path(config_name)
 
             dev_path = os.path.join(
@@ -142,12 +143,12 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         config_name_list = list(cfg.get(cfg.maa_config_list))
 
         if config_name in [self.MAIN_CONFIG_NAME, self.MAIN_CONFIG_NAME.lower()]:
-            print("不能删除主配置文件")
+            logger.info("不能删除主配置文件")
         elif config_name in config_name_list:
-            print(f"删除配置文件{config_name}")
+            logger.info(f"删除配置文件{config_name}")
             self.delete_config_folder(config_name)
         else:
-            print(f"{config_name}不存在")
+            logger.info(f"{config_name}不存在")
             self.Cfg_Combox.clear()
             self.Cfg_Combox.addItems(config_name_list)
             self.cfg_changed()
@@ -157,7 +158,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         config_list = cfg.get(cfg.maa_config_list)
         file_path = os.path.dirname(os.path.dirname(config_list[config_name]))
         shutil.rmtree(file_path)  # 删除配置文件目录
-        print(f"删除配置文件{file_path}成功")
+        logger.info(f"删除配置文件{file_path}成功")
         del config_list[config_name]
         cfg.set(cfg.maa_config_list, config_list)
 

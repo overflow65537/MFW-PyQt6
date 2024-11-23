@@ -10,6 +10,7 @@ from qfluentwidgets import (
     qconfig,
 )
 from ..utils.tool import Read_Config, Save_Config
+from ..utils.logger import logger
 
 
 class LineEditCard(SettingCard):
@@ -79,4 +80,4 @@ class LineEditCard(SettingCard):
             data[self.target] = text
             Save_Config(config_path, data)
         except Exception as e:
-            print(f"保存配置时出错: {e}")
+            logger.warning(f"保存配置时出错: {e}")

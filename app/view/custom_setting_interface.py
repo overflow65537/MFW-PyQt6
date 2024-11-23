@@ -10,6 +10,7 @@ from ..components.line_edit_card import LineEditCard
 from ..components.combobox_setting_card_custom import ComboBoxSettingCardCustom
 from ..components.switch_setting_card_custom import SwitchSettingCardCustom
 from ..utils.tool import Read_Config, Save_Config
+from ..utils.logger import logger
 
 
 class CustomSettingInterface(ScrollArea):
@@ -26,11 +27,11 @@ class CustomSettingInterface(ScrollArea):
         self.CustomSettingGroup = SettingCardGroup(
             self.tr("Setting"), self.scrollWidget
         )
-
-        if os.path.exists(os.path.join(os.getcwd(), "config", "custom.json")):
+        custom_path = os.path.join(os.getcwd(), "config", "custom.json")
+        if os.path.exists(custom_path):
             self.config_init()
             self.option_init()
-
+        logger.debug(f"custom.json内容:\n{custom_path}")
         self.__initWidget()
 
     def __initWidget(self):
@@ -63,6 +64,7 @@ class CustomSettingInterface(ScrollArea):
         option_type = option_dict["optiontype"]
         option_name = option_dict["optionname"]
         text = option_dict["text"]
+        logger.info(f"创建{option_name}选项卡")
 
         if option_type == "combox":
             self.combox = ComboBoxSettingCardCustom(
