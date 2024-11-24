@@ -50,7 +50,7 @@ class Update(QThread):
             zip_file.write(response.content)
 
         # 解压文件到指定路径
-        target_path = cfg.get(cfg.Maa_resource)
+        target_path = os.getcwd()
         with zipfile.ZipFile(zip_file_path, "r") as zip_ref:
             zip_ref.extractall(target_path)
 

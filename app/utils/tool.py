@@ -235,7 +235,7 @@ def get_gpu_info():
                 if id and name:
                     # 使用ID作为键
                     id_num = int("".join(filter(str.isdigit, id)))
-                    gpu_info[id_num] = name.strip()
+                    gpu_info[id_num - 1] = name.strip()
 
         elif os_type == "Linux":
             # Linux
@@ -248,7 +248,7 @@ def get_gpu_info():
                     # 使用索引作为键
                     id_num = index
                     name = parts[1].strip().split(" ")[1:]
-                    gpu_info[id_num] = " ".join(name)
+                    gpu_info[id_num - 1] = " ".join(name)
 
         elif os_type == "Darwin":
             # macOS
@@ -260,7 +260,7 @@ def get_gpu_info():
                     # 使用索引作为键
                     id_num = index
                     name = line.split(":")[1].strip()
-                    gpu_info[id_num] = name
+                    gpu_info[id_num - 1] = name
 
     except Exception as e:
         logger.info(f"获取显卡信息时出错: {e}")

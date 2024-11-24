@@ -2,5 +2,5 @@ qasync
 asyncify
 requests
 MaaFw~=2.0
-psutil~=6.0
-PyQt6-Fluent-Widgets~=1.0
+psutil
+PyQt6-Fluent-Widgets

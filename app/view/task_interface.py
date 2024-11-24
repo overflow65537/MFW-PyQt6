@@ -277,7 +277,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         gpu_index = config["gpu"]
         if gpu_index == -2 and self.need_runing:
             logger.info("设置CPU推理")
-            maafw.resource.set_cpu
+            maafw.resource.set_cpu()
+        elif gpu_index == -1 and self.need_runing:
+            logger.info("设置自动")
+            maafw.resource.set_auto_device()
         else:
             logger.info(f"设置GPU推理: {gpu_index}")
             maafw.resource.set_gpu(gpu_index)
@@ -322,6 +325,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 logger.error(
                     f"连接adb失败\n{config["adb"]["adb_path"]}\n{config['adb']['address']}\n{config['adb']['input_method']}\n{config['adb']['screen_method']}\n{config['adb']['config']}"
                 )
+                self.TaskOutput_Text.append(self.tr("Connection Failed"))
                 await maafw.stop_task()
                 self.S2_Button.setEnabled(True)
                 self.S2_Button.setText(self.tr("Start"))
@@ -366,6 +370,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 logger.error(
                     f"连接Win32失败 \n{config['win32']['hwnd']}\n{config['win32']['input_method']}\n{config['win32']['screen_method']}"
                 )
+                self.TaskOutput_Text.append(self.tr("Connection Failed"))
                 await maafw.stop_task()
                 self.S2_Button.setEnabled(True)
                 self.S2_Button.setText(self.tr("Start"))
