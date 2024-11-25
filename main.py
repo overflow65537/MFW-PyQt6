@@ -25,15 +25,11 @@ locale = cfg.get(cfg.language)
 translator = FluentTranslator(locale.value)
 galleryTranslator = QTranslator()
 if locale == Language.CHINESE_SIMPLIFIED:
-    galleryTranslator.load(
-        os.path.join(os.getcwd(), "app", "resource", "i18n", "i18n.zh_CN.qm")
-    )
+    galleryTranslator.load(os.path.join(os.getcwd(), "i18n", "i18n.zh_CN.qm"))
     print("load chinese simplified")
 
 elif locale == Language.CHINESE_TRADITIONAL:
-    galleryTranslator.load(
-        os.path.join(os.getcwd(), "app", "resource", "i18n", "i18n.zh_HK.qm")
-    )
+    galleryTranslator.load(os.path.join(os.getcwd(), "i18n", "i18n.zh_HK.qm"))
     print("load chinese traditional")
 elif locale == Language.ENGLISH:
     galleryTranslator.load()

@@ -7,6 +7,7 @@ from ..utils.tool import (
     Save_Config,
     Read_Config,
 )
+from ..components.choose_resource_button import CustomMessageBox
 import os
 import shutil
 from ..utils.logger import logger
@@ -29,7 +30,13 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.Add_cfg_Button.clicked.connect(self.add_config)
         self.Delete_cfg_Button.clicked.connect(self.cfg_delete)
         self.Cfg_Combox.currentIndexChanged.connect(self.cfg_changed)
+        self.add_res_button.clicked.connect(self.add_resource)
         self.set_config()
+
+    def add_resource(self):
+        w = CustomMessageBox(self)
+        if w.exec():
+            print(w.name_LineEdit.text())
 
     def initialize_config_combobox(self):
         """初始化配置下拉框"""

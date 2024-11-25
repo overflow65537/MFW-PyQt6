@@ -27,7 +27,7 @@ class Ui_Scheduled_Interface(object):
 
         # 切换配置布局
 
-        self.Combox_layout = QHBoxLayout()
+        self.cfgCombox_layout = QHBoxLayout()
         self.Cfg_Combox = EditableComboBox(Scheduled_Interface)
         self.Cfg_Combox.setObjectName("Cfg_Combox")
         self.Add_cfg_Button = PushButton(Scheduled_Interface)
@@ -40,11 +40,30 @@ class Ui_Scheduled_Interface(object):
         self.Delete_cfg_Button.setSizePolicy(
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
-        self.Combox_layout.addWidget(self.Cfg_Combox)
-        self.Combox_layout.addWidget(self.Add_cfg_Button)
-        self.Combox_layout.addWidget(self.Delete_cfg_Button)
 
-        # 列表布局
+        self.cfgCombox_layout.addWidget(self.Cfg_Combox)
+        self.cfgCombox_layout.addWidget(self.Add_cfg_Button)
+        self.cfgCombox_layout.addWidget(self.Delete_cfg_Button)
+
+        # 资源布局
+        self.res_combox_layout = QHBoxLayout()
+        self.res_combox = ComboBox(Scheduled_Interface)
+        self.res_combox.setObjectName("res_combox")
+        self.add_res_button = PushButton(Scheduled_Interface)
+        self.add_res_button.setObjectName("add_res_button")
+        self.add_res_button.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
+        )
+        self.delete_res_button = PushButton(Scheduled_Interface)
+        self.delete_res_button.setObjectName("delete_res_button")
+        self.delete_res_button.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
+        )
+        self.res_combox_layout.addWidget(self.res_combox)
+        self.res_combox_layout.addWidget(self.add_res_button)
+        self.res_combox_layout.addWidget(self.delete_res_button)
+
+        # 配置列表布局
 
         self.List_layout = QVBoxLayout()
         self.List_widget = ListWidget(Scheduled_Interface)
@@ -52,7 +71,8 @@ class Ui_Scheduled_Interface(object):
         self.Add_cfg_Button.setSizePolicy(
             QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum
         )
-        self.List_layout.addLayout(self.Combox_layout)
+        self.List_layout.addLayout(self.res_combox_layout)
+        self.List_layout.addLayout(self.cfgCombox_layout)
         self.List_layout.addWidget(self.List_widget)
 
         # 计划任务布局
@@ -60,7 +80,7 @@ class Ui_Scheduled_Interface(object):
         self.Schedule_layout = QFormLayout()
         self.Schedule_name_title = BodyLabel(Scheduled_Interface)
         self.Schedule_name_title.setObjectName("Schedule_name_title")
-        self.Schedule_name_edit = LineEdit(Scheduled_Interface)
+        self.Schedule_name_edit = EditableComboBox(Scheduled_Interface)
         self.Schedule_name_edit.setObjectName("Schedule_name_edit")
         self.Schedule_layout.addRow(self.Schedule_name_title, self.Schedule_name_edit)
 
@@ -82,6 +102,12 @@ class Ui_Scheduled_Interface(object):
         self.use_cfg_combo = ComboBox(Scheduled_Interface)
         self.use_cfg_combo.setObjectName("use_cfg_combo")
         self.use_cfg_layout.addRow(self.use_cfg_title, self.use_cfg_combo)
+
+        # 计划列表布局
+        self.Schedule_list_layout = QVBoxLayout()
+        self.Schedule_list_widget = ListWidget(Scheduled_Interface)
+        self.Schedule_list_widget.setObjectName("Schedule_list_widget")
+        self.Schedule_list_layout.addWidget(self.Schedule_list_widget)
 
         # 总布局
 
@@ -114,6 +140,8 @@ class Ui_Scheduled_Interface(object):
         )
         self.Add_cfg_Button.setText(_translate("Scheduled_Interface", "Add"))
         self.Delete_cfg_Button.setText(_translate("Scheduled_Interface", "Delete"))
+        self.add_res_button.setText(_translate("Scheduled_Interface", "Add"))
+        self.delete_res_button.setText(_translate("Scheduled_Interface", "Delete"))
         self.Schedule_name_title.setText(
             _translate("Scheduled_Interface", "Scheduled name")
         )

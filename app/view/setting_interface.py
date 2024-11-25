@@ -28,6 +28,7 @@ from ..components.combobox_setting_card_custom import ComboBoxSettingCardCustom
 from ..components.notic_setting_card import NoticeButtonSettingCard
 from ..utils.update import check_Update, Update
 from ..utils.tool import Read_Config, Save_Config, get_gpu_info, for_config_get_url
+from ..utils.logger import logger
 
 
 class SettingInterface(ScrollArea):
@@ -261,7 +262,12 @@ class SettingInterface(ScrollArea):
         DEV_Config = self.check_and_get_dev_config()
 
         gpu_mapping = get_gpu_info()
+        logger.info(f"GPU列表: {gpu_mapping}")
+        print(gpu_mapping)
         gpu_combox_list = self.get_unique_gpu_mapping(gpu_mapping)
+        gpu_mapping[-1] = self.tr("Auto")
+        gpu_mapping[-2] = self.tr("Disabled")
+        print(gpu_combox_list)
 
         win32_input_mapping = {
             0: self.tr("default"),
@@ -448,10 +454,6 @@ class SettingInterface(ScrollArea):
         gpu_combox_list = list(set(gpu_mapping.values()))
         gpu_combox_list.insert(0, self.tr("Auto"))
         gpu_combox_list.insert(1, self.tr("Disabled"))
-
-        # 更新原始列表以供映射
-        gpu_mapping[-1] = self.tr("Auto")
-        gpu_mapping[-2] = self.tr("Disabled")
 
         return gpu_combox_list
 
