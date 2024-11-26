@@ -40,8 +40,18 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
 
     def initialize_config_combobox(self):
         """初始化配置下拉框"""
-        config_name_list = list(cfg.get(cfg.maa_config_list))
-        self.Cfg_Combox.addItems(config_name_list)
+        resource_data = cfg.get(cfg.maa_resource_list)
+        config_name_data = cfg.get(cfg.maa_config_list)
+        config_name_list = list(config_name_data)
+        resource_name_list = list(resource_data)
+        final_list = []
+        for i in config_name_list:
+            for l in resource_name_list:
+                if config_name_data[i]["resource"] == l:
+                    final_list.append(i)
+
+        self.Cfg_Combox.addItems(final_list)
+        self.res_combox.addItems(resource_name_list)
 
     def get_list_items(self):
         """获取列表中所有项的文本"""
@@ -80,31 +90,27 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         config_data = Read_Config(cfg.get(cfg.Maa_config))
         self.Cfg_Combox.addItem(config_name)
         config_list = cfg.get(cfg.maa_config_list)
-
-        config_path = os.path.join(
-            os.getcwd(),
-            "config",
-            "config_manager",
-            config_name,
-            "config",
-            "maa_pi_config.json",
-        )
+        resource_selected = self.res_combox.currentText()
+        config_path = {
+            "path": os.path.join(
+                os.getcwd(),
+                "config",
+                "config_manager",
+                config_name,
+                "config",
+                "maa_pi_config.json",
+            ),
+            "resource": resource_selected,
+        }
         logger.info(f"创建配置文件{config_name}于{config_path}")
 
         config_list[config_name] = config_path
         cfg.set(cfg.maa_config_list, config_list)
-        cfg.set(cfg.Maa_config, config_path)
+        cfg.set(cfg.Maa_config, config_path["path"])
 
         # 创建初始配置文件
-        data = {
-            "adb": config_data["adb"],
-            "controller": config_data["controller"],
-            "gpu": -1,
-            "resource": config_data["resource"],
-            "task": [],
-            "win32": {"_placeholder": 0},
-        }
-        Save_Config(cfg.get(cfg.Maa_config), data)
+        config_data["task"] = []
+        Save_Config(cfg.get(cfg.Maa_config), config_data)
 
     def update_config_path(self, config_name):
         """更新当前配置路径"""

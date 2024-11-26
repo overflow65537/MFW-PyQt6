@@ -40,13 +40,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         super().__init__(parent=parent)
         self.setupUi(self)
         maafw.notification_handler = MyNotificationHandler()
-
+        self.maa_interface_path = os.path.join(
+            cfg.get(cfg.Maa_resource), "interface.json"
+        )
+        self.maa_resource_path = os.path.join(cfg.get(cfg.Maa_resource), "resource")
         # 初始化组件
         logger.info("TaskInterface init")
         self.Start_Status(
-            interface_Path=cfg.get(cfg.Maa_interface),
+            interface_Path=self.maa_interface_path,
             maa_pi_config_Path=cfg.get(cfg.Maa_config),
-            resource_Path=cfg.get(cfg.Maa_resource),
+            resource_Path=self.maa_resource_path,
         )
         self.init_widget()
 
@@ -129,6 +132,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 logger.info(f"{self.entry} 任务失败")
 
     def Start_Status(self, interface_Path, maa_pi_config_Path, resource_Path):
+        print(interface_Path, maa_pi_config_Path, resource_Path)
         if self.check_file_paths_exist(
             resource_Path, interface_Path, maa_pi_config_Path
         ):
@@ -227,7 +231,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         PROJECT_DIR = os.getcwd()
         controller_type = get_controller_type(
-            self.Control_Combox.currentText(), cfg.get(cfg.Maa_interface)
+            self.Control_Combox.currentText(), self.maa_interface_path
         )
         # 启动前脚本
         run_before_start = cfg.get(cfg.run_before_start)
@@ -248,7 +252,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         # 加载资源
         resource_path = None
         resource_target = self.Resource_Combox.currentText()
-        interface = Read_Config(cfg.get(cfg.Maa_interface))
+        interface = Read_Config(self.maa_interface_path)
         config = Read_Config(cfg.get(cfg.Maa_config))
 
         for i in interface["resource"]:
@@ -450,7 +454,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def Add_Task(self):
         Select_Target = self.SelectTask_Combox_1.currentText()
-        MAA_Pi_Config = Read_Config(cfg.get(cfg.Maa_interface))
+        MAA_Pi_Config = Read_Config(self.maa_interface_path)
         Option = self.extract_task_options(Select_Target, MAA_Pi_Config)
 
         MAA_Pi_Config = Read_Config(cfg.get(cfg.Maa_config))
@@ -530,7 +534,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     async def Save_Controller(self):
         Controller_Type_Select = self.Control_Combox.currentText()
         controller_type = get_controller_type(
-            Controller_Type_Select, cfg.get(cfg.Maa_interface)
+            Controller_Type_Select, self.maa_interface_path
         )
         if controller_type == "Adb":
             self.TaskOutput_Text.append(self.tr("Saving ADB configuration..."))
@@ -546,7 +550,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def add_Controller_combox(self):
         controller_type = get_controller_type(
-            self.Control_Combox.currentText(), cfg.get(cfg.Maa_interface)
+            self.Control_Combox.currentText(), self.maa_interface_path
         )
         self.Autodetect_combox.clear()
         if controller_type == "Adb":
@@ -565,7 +569,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def Add_Select_Task_More_Select(self):
         self.clear_extra_widgets()
         select_target = self.SelectTask_Combox_1.currentText()
-        MAA_Pi_Config = Read_Config(cfg.get(cfg.Maa_interface))
+        MAA_Pi_Config = Read_Config(self.maa_interface_path)
         self.show_task_options(select_target, MAA_Pi_Config)
 
     def show_task_options(self, select_target, MAA_Pi_Config):
@@ -603,7 +607,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.S2_Button.setEnabled(False)
 
         controller_type = get_controller_type(
-            self.Control_Combox.currentText(), cfg.get(cfg.Maa_interface)
+            self.Control_Combox.currentText(), self.maa_interface_path
         )
 
         if controller_type == "Win32":
@@ -632,7 +636,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         # 调用相应的检测函数
         processed_list = []  # 初始化处理列表
         if controller_type == "Win32":
-            interface_config = Read_Config(cfg.get(cfg.Maa_interface))
+            interface_config = Read_Config(self.maa_interface_path)
             for i in interface_config["controller"]:
                 if i["type"] == "Win32":
                     self.win32_hwnd = await detect_function(i["win32"]["window_regex"])
@@ -715,7 +719,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def Save_device_Config(self):
         controller_type = get_controller_type(
-            self.Control_Combox.currentText(), cfg.get(cfg.Maa_interface)
+            self.Control_Combox.currentText(), self.maa_interface_path
         )
         target = self.Autodetect_combox.currentText()
         if controller_type == "Adb":

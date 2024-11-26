@@ -59,23 +59,24 @@ class Config(QConfig):
     Maa_config = ConfigItem(
         "Main", "Maa_config", os.path.join(os.getcwd(), "config", "maa_pi_config.json")
     )
-    Maa_interface = ConfigItem(
-        "Main",
-        "Maa_interface",
-        os.path.join(os.getcwd(), "interface.json"),
-    )
-    Maa_resource = ConfigItem(
-        "Main", "Maa_resource", os.path.join(os.getcwd(), "resource")
-    )
-    Maa_dev = ConfigItem(
-        "Main", "Maa_dev", os.path.join(os.getcwd(), "config", "maa_option.json")
-    )
+
+    Maa_resource = ConfigItem("Main", "Maa_resource", os.getcwd())
 
     # 多配置
     maa_config_list = ConfigItem(
         "config_manager",
         "maa_config_list",
-        {"Main": f'{os.path.join(os.getcwd(), "config", "maa_pi_config.json")}'},
+        {
+            "Main": {
+                "path": f'{os.path.join(os.getcwd(), "config", "maa_pi_config.json")}',
+                "resource": "Main",
+            }
+        },
+    )
+    maa_resource_list = ConfigItem(
+        "config_manager",
+        "maa_resource_list",
+        {"Main": f"{os.getcwd()}"},
     )
 
     # 外部通知
@@ -105,10 +106,6 @@ class Config(QConfig):
             "receive_mail": "",
         },
     )
-    # 项目信息
-    Project_name = ConfigItem("Project", "Project_name", "")
-    Project_version = ConfigItem("Project", "Project_version", "")
-    Project_url = ConfigItem("Project", "Project_url", "")
 
     # main window
     micaEnabled = ConfigItem("MainWindow", "MicaEnabled", isWin11(), BoolValidator())

@@ -43,6 +43,12 @@ class SettingInterface(ScrollArea):
         self.settingLabel = QLabel(self.tr("Settings"), self)
 
         self.UpdateWorker = check_Update(self)
+        interface_config = Read_Config(
+            os.path.join(cfg.get(cfg.Maa_resource), "interface.json")
+        )
+        self.project_name = interface_config["name"]
+        self.project_version = interface_config["version"]
+        self.project_url = interface_config["url"]
 
         # 初始化设置
         self.initialize_adb_settings()
@@ -406,16 +412,19 @@ class SettingInterface(ScrollArea):
             FIF.UPDATE,
             self.tr("Check for updates"),
             self.tr("Current")
-            + cfg.get(cfg.Project_name)
+            + " "
+            + self.project_name
+            + " "
             + self.tr("version:")
-            + cfg.get(cfg.Project_version),
+            + " "
+            + self.project_version,
             self.aboutGroup,
         )
         self.feedbackCard = PrimaryPushSettingCard(
             self.tr("Submit Feedback"),
             FIF.FEEDBACK,
             self.tr("Submit Feedback"),
-            self.tr("Submit feedback to help us improve") + cfg.get(cfg.Project_name),
+            self.tr("Submit feedback to help us improve") + self.project_name,
             self.aboutGroup,
         )
         self.aboutCard = PrimaryPushSettingCard(
@@ -434,11 +443,19 @@ class SettingInterface(ScrollArea):
 
     def check_and_get_dev_config(self):
         """检查并获取开发者配置。"""
-        if os.path.exists(cfg.get(cfg.Maa_dev)):
-            return Read_Config(cfg.get(cfg.Maa_dev))["save_draw"]
+        if os.path.exists(
+            os.path.join(os.path.dirname(cfg.get(cfg.Maa_config)), "maa_option.json")
+        ):
+            return Read_Config(
+                os.path.join(
+                    os.path.dirname(cfg.get(cfg.Maa_config)), "maa_option.json"
+                )
+            )["save_draw"]
         else:
             Save_Config(
-                cfg.get(cfg.Maa_dev),
+                os.path.join(
+                    os.path.dirname(cfg.get(cfg.Maa_config)), "maa_option.json"
+                ),
                 {
                     "logging": True,
                     "recording": False,
@@ -458,7 +475,7 @@ class SettingInterface(ScrollArea):
         return gpu_combox_list
 
     def update_check(self):
-        if cfg.get(cfg.Project_url) != "":
+        if self.project_url != "":
             self.UpdateWorker.update_available.connect(self.ready_to_update)
             self.UpdateWorker.start()
             self.updateCard.clicked.disconnect()
@@ -522,12 +539,18 @@ class SettingInterface(ScrollArea):
             parent=self,
         )
         self.updateCard.setContent(
-            f"{self.tr('Current')} {cfg.get(cfg.Project_name)} {self.tr('version:')} {update_dict['tag_name']}"
+            f"{self.tr('Current')} {self.project_name} {self.tr('version:')} {update_dict['tag_name']}"
         )
         self.updateCard.button.setText(self.tr("Check for updates"))
         self.updateCard.button.setEnabled(True)
         self.updateCard.clicked.connect(self.update_check)
-        cfg.set(cfg.Project_version, update_dict["tag_name"])
+        interface_config = Read_Config(
+            os.path.join(cfg.get(cfg.Maa_resource), "interface.json")
+        )
+        interface_config["version"] = update_dict["tag_name"]
+        Save_Config(
+            os.path.join(cfg.get(cfg.Maa_resource), "interface.json"), interface_config
+        )
 
     def __initWidget(self):
         self.resize(1000, 800)
@@ -641,7 +664,7 @@ class SettingInterface(ScrollArea):
 
         self.feedbackCard.clicked.connect(
             lambda: QDesktopServices.openUrl(
-                QUrl(for_config_get_url(cfg.get(cfg.Project_url), "issue"))
+                QUrl(for_config_get_url(self.project_url, "issue"))
             )
         )
         self.aboutCard.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(REPO_URL)))
@@ -657,9 +680,14 @@ class SettingInterface(ScrollArea):
     def _onDEVmodeCardChange(self):
         """切换开发者模式的保存设置。"""
         state = self.DEVmodeCard.isChecked()
-        data = Read_Config(cfg.get(cfg.Maa_dev))
+        data = Read_Config(
+            os.path.join(os.path.dirname(cfg.get(cfg.Maa_config)), "maa_option.json")
+        )
         data["save_draw"] = state
-        Save_Config(cfg.get(cfg.Maa_dev), data)
+        Save_Config(
+            os.path.join(os.path.dirname(cfg.get(cfg.Maa_config)), "maa_option.json"),
+            data,
+        )
 
     def update_adb(self, msg):
         """根据外部消息更新 ADB 路径和端口。"""
