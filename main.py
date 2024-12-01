@@ -10,6 +10,25 @@ from qfluentwidgets import FluentTranslator
 from app.common.config import cfg
 from app.view.main_window import MainWindow
 from app.common.config import Language
+from app.common.signal_bus import signalBus
+from app.common.maa_config_data import maa_config_data
+
+
+# 检查资源文件是否存在
+if (
+    cfg.get(cfg.maa_config_name) == ""
+    or cfg.get(cfg.maa_config_path) == ""
+    or cfg.get(cfg.maa_resource_name) == ""
+    or cfg.get(cfg.maa_resource_path) == ""
+    or cfg.get(cfg.maa_config_list) == {}
+    or cfg.get(cfg.maa_resource_list) == {}
+):
+    cfg.set(cfg.resource_exist, False)
+else:
+    cfg.set(cfg.resource_exist, True)
+    signalBus.resource_exist.emit(True)
+    print(maa_config_data.interface_config_path)
+
 
 # enable dpi scale
 if cfg.get(cfg.dpiScale) != "Auto":

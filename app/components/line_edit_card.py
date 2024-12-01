@@ -6,11 +6,11 @@ from qfluentwidgets import (
     SettingCard,
     FluentIconBase,
     LineEdit,
-    OptionsConfigItem,
     qconfig,
 )
 from ..utils.tool import Read_Config, Save_Config
 from ..utils.logger import logger
+from ..common.maa_config_data import maa_config_data
 
 
 class LineEditCard(SettingCard):
@@ -23,7 +23,6 @@ class LineEditCard(SettingCard):
         icon: Union[str, QIcon, FluentIconBase],
         title: str,
         holderText: str = "",
-        configItem: OptionsConfigItem = None,
         target: str = None,
         content=None,
         parent=None,
@@ -35,7 +34,6 @@ class LineEditCard(SettingCard):
         :param icon: 图标
         :param title: 标题
         :param holderText: 占位符文本
-        :param configItem: 配置项
         :param target: 修改目标（custom页面要用）
         :param content: 内容
         :param parent: 父级控件
@@ -44,7 +42,6 @@ class LineEditCard(SettingCard):
         super().__init__(icon, title, content, parent)
 
         self.target = target
-        self.configItem = configItem
         self.lineEdit = LineEdit(self)
 
         # 设置布局
@@ -52,9 +49,8 @@ class LineEditCard(SettingCard):
         self.hBoxLayout.addSpacing(16)
 
         # 设置占位符文本
-        if self.configItem is not None:
-            holderText = self.configItem.value
-        self.lineEdit.setPlaceholderText(holderText)
+
+        self.lineEdit.setPlaceholderText(str(holderText))
 
         # 设置输入限制
         if num_only:
@@ -67,9 +63,7 @@ class LineEditCard(SettingCard):
         """处理文本变化事件"""
         text = self.lineEdit.text()
 
-        if self.configItem:
-            qconfig.set(self.configItem, text)
-        else:
+        if self.target != None:
             self._save_text_to_config(text)
 
     def _save_text_to_config(self, text: str):

@@ -11,6 +11,7 @@ from qfluentwidgets import (
 )
 from ..common.config import cfg
 from ..utils.tool import Read_Config, Save_Config
+from ..common.maa_config_data import maa_config_data
 import os
 
 
@@ -91,15 +92,15 @@ class CustomMessageBox(MessageBoxBase):
         )
 
     def click_yes_button(self):
-        print("点击确定按钮")
-        name_data = self.name_LineEdit.text()
-        path_data = self.path_LineEdit.text()
+        self.name_data = self.name_LineEdit.text()
+        path_data = os.path.dirname(self.path_LineEdit.text())
         update_data = self.update_LineEdit.text()
         interface_path = os.path.join(path_data, "..", "interface.json")
         resource_data = cfg.get(cfg.maa_resource_list)
         resource_list = list(resource_data)
         resource_path_list = list(resource_data.values())
-        if self.name_LineEdit.text() == "":
+        maa_config_list = cfg.get(cfg.maa_config_list)
+        if self.name_data == "":
             print("资源名称不能为空")
             self.show_error(self.tr("资源名称不能为空"))
             return
@@ -107,7 +108,7 @@ class CustomMessageBox(MessageBoxBase):
             print("资源路径不能为空")
             self.show_error(self.tr("资源路径不能为空"))
             return
-        elif name_data in resource_list or path_data in resource_path_list:
+        elif self.name_data in resource_list or path_data in resource_path_list:
             print("资源已存在")
             self.show_error(self.tr("资源已存在"))
             return
@@ -115,9 +116,51 @@ class CustomMessageBox(MessageBoxBase):
             print("更新链接不能为空")
             self.show_error(self.tr("更新链接不能为空"))
             return
-        self.interface_data["name"] = name_data
+        # 将名字和更新链接写入interface.json文件
+        self.interface_data["name"] = self.name_data
         self.interface_data["url"] = update_data
         Save_Config(interface_path, self.interface_data)
-        resource_data[name_data] = path_data
+
+        # 将信息写入maa_resource_list
+        resource_data[self.name_data] = path_data
         cfg.set(cfg.maa_resource_list, resource_data)
-        self.close()
+        maa_pi_config_Path = os.path.join(
+            os.getcwd(), "config", self.name_data, "default", "maa_pi_config.json"
+        )
+        # 将信息写入maa_config_list
+        maa_config_list[self.name_data] = {"default": maa_pi_config_Path}
+        cfg.set(cfg.maa_config_list, maa_config_list)
+        # 设置显示当前资源
+        cfg.set(cfg.maa_config_name, "default")
+        cfg.set(cfg.maa_config_path, maa_pi_config_Path)
+        data = {
+            "adb": {
+                "adb_path": "",
+                "address": "",
+                "input_method": 0,
+                "screen_method": 0,
+                "config": {},
+            },
+            "win32": {
+                "hwnd": 0,
+                "input_method": 0,
+                "screen_method": 0,
+            },
+            "controller": {"name": ""},
+            "gpu": -1,
+            "resource": "",
+            "task": [],
+            "save_draw": False,
+            "finish_option": 0,
+            "run_before_start": "",
+            "run_after_finish": "",
+            "emu_path": "",
+            "emu_wait_time": 10,
+            "exe_path": "",
+            "exe_wait_time": 10,
+            "exe_parameter": "",
+        }
+        Save_Config(maa_pi_config_Path, data)
+        cfg.set(cfg.maa_resource_name, self.name_data)
+        cfg.set(cfg.maa_resource_path, path_data)
+        cfg.set(cfg.resource_exist, True)

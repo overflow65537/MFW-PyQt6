@@ -43,8 +43,10 @@ def isWin11():
 class Config(QConfig):
     """Config of application"""
 
-    # 完成后运行
-    Finish_combox = ConfigItem("Combox", "Finish_combox", 0)
+    # 资源存在
+    resource_exist = ConfigItem(
+        "resource_exist", "resource_exist", False, BoolValidator()
+    )
 
     # 文件地址
     emu_path = ConfigItem("Path", "emu_path", "")
@@ -56,27 +58,22 @@ class Config(QConfig):
     run_after_finish = ConfigItem("Path", "run_after_finish", "")
 
     # MAA路径
-    Maa_config = ConfigItem(
-        "Main", "Maa_config", os.path.join(os.getcwd(), "config", "maa_pi_config.json")
-    )
+    maa_config_name = ConfigItem("Main", "Maa_config_name", "")
+    maa_config_path = ConfigItem("Main", "Maa_config_path", "")
 
-    Maa_resource = ConfigItem("Main", "Maa_resource", os.getcwd())
+    maa_resource_name = ConfigItem("Main", "Maa_resource_name", "")
+    maa_resource_path = ConfigItem("Main", "Maa_resource_path", "")
 
     # 多配置
     maa_config_list = ConfigItem(
         "config_manager",
         "maa_config_list",
-        {
-            "Main": {
-                "path": f'{os.path.join(os.getcwd(), "config", "maa_pi_config.json")}',
-                "resource": "Main",
-            }
-        },
+        {},
     )
     maa_resource_list = ConfigItem(
         "config_manager",
         "maa_resource_list",
-        {"Main": f"{os.getcwd()}"},
+        {},
     )
 
     # 外部通知

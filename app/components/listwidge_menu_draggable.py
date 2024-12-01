@@ -18,6 +18,9 @@ class ListWidge_Menu_Draggable(ListWidget):
     def __init__(self, parent=None):
         super(ListWidge_Menu_Draggable, self).__init__(parent)
 
+        self.config_path = cfg.get(cfg.maa_config_path)
+        self.config = Read_Config(self.config_path)
+
     def get_task_list_widget(self):
         items = []
         for i in range(self.count()):
@@ -64,90 +67,63 @@ class ListWidge_Menu_Draggable(ListWidget):
             return
 
         self.takeItem(Select_Target)
-        Task_List = Get_Values_list2(cfg.get(cfg.Maa_config), "task")
-        try:
-            del Task_List[Select_Target]
-        except IndexError:
-            InfoBar.error(
-                title=self.tr("Error"),
-                content=self.tr("No task can be deleted"),
-                orient=Qt.Orientation.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.BOTTOM_RIGHT,
-                duration=2000,
-                parent=self,
-            )
-        else:
-            MAA_Pi_Config = Read_Config(cfg.get(cfg.Maa_config))
-            del MAA_Pi_Config["task"]
-            MAA_Pi_Config.update({"task": Task_List})
-            Save_Config(cfg.get(cfg.Maa_config), MAA_Pi_Config)
+        Task_List = Get_Values_list2(self.config_path, "task")
 
-        if Select_Target == 0 and self.count() > 0:
-            self.setCurrentRow(Select_Target)
-        elif Select_Target != -1 and self.count() > 1:
-            self.setCurrentRow(Select_Target - 1)
+        # 只有在有效索引时更新任务配置
+        if 0 <= Select_Target < len(Task_List):
+            del Task_List[Select_Target]
+            self.update_task_config(Task_List)
+
+        self.update_selection(Select_Target)
 
         item = self.get_task_list_widget()
         signalBus.update_task_list.emit(item)
 
     def Move_Up(self):
         Select_Target = self.currentRow()
-        if Select_Target == 0:
-            InfoBar.error(
-                title=self.tr("Error"),
-                content=self.tr("Already the first task"),
-                orient=Qt.Orientation.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.BOTTOM_RIGHT,
-                duration=2000,
-                parent=self,
-            )
-        elif Select_Target != -1:
-            MAA_Pi_Config = Read_Config(cfg.get(cfg.Maa_config))
-            Select_Task = MAA_Pi_Config["task"].pop(Select_Target)
-            MAA_Pi_Config["task"].insert(Select_Target - 1, Select_Task)
-            Save_Config(cfg.get(cfg.Maa_config), MAA_Pi_Config)
-            self.clear()
-            self.addItems(Get_Values_list_Option(cfg.get(cfg.Maa_config), "task"))
-            self.setCurrentRow(Select_Target - 1)
-
-        item = self.get_task_list_widget()
-        signalBus.update_task_list.emit(item)
+        self.move_task(Select_Target, Select_Target - 1)
 
     def Move_Down(self):
         Select_Target = self.currentRow()
-        MAA_Pi_Config = Read_Config(cfg.get(cfg.Maa_config))
-        if Select_Target >= len(MAA_Pi_Config["task"]) - 1:
-            InfoBar.error(
-                title=self.tr("Error"),
-                content=self.tr("Already the last task"),
-                orient=Qt.Orientation.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.BOTTOM_RIGHT,
-                duration=2000,
-                parent=self,
-            )
-        elif Select_Target < len(MAA_Pi_Config["task"]):
-            Select_Task = MAA_Pi_Config["task"].pop(Select_Target)
-            MAA_Pi_Config["task"].insert(Select_Target + 1, Select_Task)
-            Save_Config(cfg.get(cfg.Maa_config), MAA_Pi_Config)
-            self.clear()
-            self.addItems(Get_Values_list_Option(cfg.get(cfg.Maa_config), "task"))
-            self.setCurrentRow(Select_Target + 1)
+        self.move_task(Select_Target, Select_Target + 1)
+
+    def move_task(self, from_index, to_index):
+        if (
+            from_index < 0
+            or from_index >= self.count()
+            or to_index < 0
+            or to_index >= self.count()
+        ):
+            return  # 索引无效，直接返回
+
+        # 执行移动操作
+        Select_Task = self.config["task"].pop(from_index)
+        self.config["task"].insert(to_index, Select_Task)
+        Save_Config(self.config_path, self.config)
+
+        self.clear()
+        self.addItems(Get_Values_list_Option(self.config_path, "task"))
+        self.setCurrentRow(to_index)
 
         item = self.get_task_list_widget()
         signalBus.update_task_list.emit(item)
 
+    def update_task_config(self, Task_List):
+        self.config["task"] = Task_List
+        Save_Config(self.config_path, self.config)
+
+    def update_selection(self, Select_Target):
+        if Select_Target == 0 and self.count() > 0:
+            self.setCurrentRow(Select_Target)
+        elif Select_Target != -1 and self.count() > 1:
+            self.setCurrentRow(Select_Target - 1)
+
     def dropEvent(self, event):
-        maa_pi_config_Path = cfg.get(cfg.Maa_config)
         begin = self.currentRow()
         super(ListWidge_Menu_Draggable, self).dropEvent(event)
         end = self.currentRow()
-        config = Read_Config(maa_pi_config_Path)
-        need_to_move = config["task"].pop(begin)
-        config["task"].insert(end, need_to_move)
-        Save_Config(maa_pi_config_Path, config)
+        need_to_move = self.config["task"].pop(begin)
+        self.config["task"].insert(end, need_to_move)
+        Save_Config(self.config_path, self.config)
 
-        item = self.get_task_list_widget()
-        signalBus.update_task_list.emit(item)
+        signalBus.update_task_list.emit()

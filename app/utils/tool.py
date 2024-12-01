@@ -10,7 +10,14 @@ from ..utils.logger import logger
 
 
 def Read_Config(paths):
-    # 打开json并传入MAA_data
+    """读取指定路径的JSON配置文件。
+
+    Args:
+        paths (str): 配置文件的路径。
+
+    Returns:
+        dict or bool: 如果文件存在，返回解析后的字典；否则返回False。
+    """
     if os.path.exists(paths):
         with open(paths, "r", encoding="utf-8") as MAA_Config:
             MAA_data = json.load(MAA_Config)
@@ -20,8 +27,12 @@ def Read_Config(paths):
 
 
 def Save_Config(paths, data):
-    # 打开json并写入data内数据
+    """将数据保存到指定路径的JSON配置文件。
 
+    Args:
+        paths (str): 配置文件的路径。
+        data (dict): 要保存的数据。
+    """
     directory = os.path.dirname(paths)
 
     # 创建所有必要的目录
@@ -31,6 +42,16 @@ def Save_Config(paths, data):
 
 
 def gui_init(resource_Path, maa_pi_config_Path, interface_Path):
+    """初始化GUI组件的配置信息。
+
+    Args:
+        resource_Path (str): 资源文件路径。
+        maa_pi_config_Path (str): MAA配置文件路径。
+        interface_Path (str): 接口配置文件路径。
+
+    Returns:
+        dict or bool: 如果所有路径都存在，返回初始化信息的字典；否则返回False。
+    """
     if not os.path.exists(resource_Path):
         return False
 
@@ -46,7 +67,6 @@ def gui_init(resource_Path, maa_pi_config_Path, interface_Path):
             Add_Resource_Type_Select_Values.append(a["name"])
         Resource_Type = Read_Config(maa_pi_config_Path)["resource"]
         if Resource_Type != "":
-
             for b in Add_Resource_Type_Select_Values:
                 if b == Resource_Type:
                     break
@@ -61,7 +81,6 @@ def gui_init(resource_Path, maa_pi_config_Path, interface_Path):
         Controller_Type = Read_Config(maa_pi_config_Path)["controller"]["name"]
 
         if Controller_Type != "":
-
             for d in Add_Controller_Type_Select_Values:
                 if d == Controller_Type:
                     break
@@ -83,6 +102,15 @@ def gui_init(resource_Path, maa_pi_config_Path, interface_Path):
 
 
 def Get_Values_list2(path, key1):
+    """获取指定键的值列表。
+
+    Args:
+        path (str): 配置文件路径。
+        key1 (str): 要查询的键。
+
+    Returns:
+        list: 指定键的值列表。
+    """
     List = []
     for i in Read_Config(path)[key1]:
         List.append(i)
@@ -90,16 +118,24 @@ def Get_Values_list2(path, key1):
 
 
 def Get_Values_list(path, key1):
-    # 获取组件的初始参数
+    """获取组件的初始参数。
+
+    Args:
+        path (str): 配置文件路径。
+        key1 (str): 查询的键。
+
+    Returns:
+        list: 组件名称列表。
+    """
     if key1 == "controller":
         List = []
         for i in Read_Config(path)[key1]:
             if re.search(r"adb", i["name"], re.IGNORECASE) or re.search(
                 r"win", i["name"], re.IGNORECASE
             ):
-                List.append(f"{i["name"]}")
+                List.append(f"{i['name']}")
             else:
-                List.append(f"{i["name"]}_{i['type']}")
+                List.append(f"{i['name']}_{i['type']}")
         return List
     else:
         List = []
@@ -109,7 +145,15 @@ def Get_Values_list(path, key1):
 
 
 def Get_Values_list_Option(path, key1):
-    # 获取组件的初始参数
+    """获取组件的初始参数，包括选项。
+
+    Args:
+        path (str): 配置文件路径。
+        key1 (str): 查询的键。
+
+    Returns:
+        list: 组件及其选项列表。
+    """
     List = []
     for i in Read_Config(path)[key1]:
         if i["option"] != []:
@@ -124,8 +168,14 @@ def Get_Values_list_Option(path, key1):
 
 
 def Get_Task_List(target):
-    # 输入option名称来输出一个包含所有该option中所有cases的name列表
-    # 具体逻辑为 interface.json文件/option键/选项名称/cases键/键为空,所以通过len计算长度来选择最后一个/name键
+    """根据选项名称获取所有case的name列表。
+
+    Args:
+        target (str): 选项名称。
+
+    Returns:
+        list: 包含所有case的name列表。
+    """
     lists = []
     Task_Config = Read_Config(os.path.join(os.getcwd(), "interface.json"))["option"][
         target
@@ -137,7 +187,14 @@ def Get_Task_List(target):
 
 
 def find_process_by_name(process_name):
-    # 遍历所有程序找到指定程序
+    """查找指定名称的进程，并返回其可执行文件的路径。
+
+    Args:
+        process_name (str): 进程名称。
+
+    Returns:
+        str or None: 进程的可执行文件路径，如果未找到则返回None。
+    """
     for proc in psutil.process_iter(["name", "exe"]):
         if proc.info["name"].lower() == process_name.lower():
             # 如果一样返回可执行文件的绝对路径
@@ -145,7 +202,14 @@ def find_process_by_name(process_name):
 
 
 def find_existing_file(info_dict):
-    # 输入一个包含可执行文件的绝对路径和可能存在ADB的相对路径,输出ADB文件的绝对地路径
+    """根据给出的路径信息查找可执行文件。
+
+    Args:
+        info_dict (dict): 包含可执行文件路径和可能存在的ADB相对路径信息的字典。
+
+    Returns:
+        str or False: 若找到则返回ADB文件的绝对路径，否则返回False。
+    """
     exe_path = info_dict.get("exe_path").rsplit(os.sep, 1)[0]
     may_paths = info_dict.get("may_path", [])
     if not exe_path or not may_paths:
@@ -153,7 +217,6 @@ def find_existing_file(info_dict):
 
     # 遍历所有可能的相对路径
     for path in may_paths:
-
         # 拼接完整路径
         full_path = os.path.join(exe_path, path)
         # 检查文件是否存在
@@ -165,6 +228,14 @@ def find_existing_file(info_dict):
 
 
 async def check_port(port):
+    """检查指定端口是否打开。
+
+    Args:
+        port (list): 端口列表。
+
+    Returns:
+        list: 打开的端口列表。
+    """
     port_result = []
 
     async def check_single_port(p):
@@ -190,7 +261,14 @@ async def check_port(port):
 
 
 def check_path_for_keyword(path):
-    # 输入一个路径，返回路径中可能存在的模拟器名称
+    """检查路径字符串是否包含指定的关键字。
+
+    Args:
+        path (str): 要检查的路径。
+
+    Returns:
+        str: 如果找到关键字，返回对应的模拟器名称；否则返回"unknown device"。
+    """
     keywords_list = ["MuMu", "BlueStacks", "LDPlayer", "Nox", "MEmu", "ADV"]
     for keyword in keywords_list:
         if keyword in path:
@@ -199,7 +277,14 @@ def check_path_for_keyword(path):
 
 
 def check_adb_path(adb_data):
-    # 输入一个包含ADB信息的字典，检查adb路径和地址是否正确
+    """检查ADB路径和地址是否有效。
+
+    Args:
+        adb_data (dict): 包含ADB信息的字典。
+
+    Returns:
+        bool: 如果路径或地址无效，返回True；否则返回False。
+    """
     if (
         adb_data["adb_path"] == ""  # 路径为空
         or adb_data["address"] == ""  # 地址为空
@@ -216,7 +301,11 @@ def check_adb_path(adb_data):
 
 
 def get_gpu_info():
-    # 获取显卡字典
+    """获取GPU相关信息。
+
+    Returns:
+        dict: GPU信息字典，其中键为索引，值为GPU名称。
+    """
     gpu_info = {}
     try:
         os_type = platform.system()
@@ -269,9 +358,15 @@ def get_gpu_info():
 
 
 def find_key_by_value(data_dict, target_value):
-    # 输入一个字典和目标值，返回字典中第一个键值等于目标值的键
-    # 用来查找字典中某个值对应的键
-    # 反向查找
+    """根据目标值查找字典中的键。
+
+    Args:
+        data_dict (dict): 要查找的字典。
+        target_value: 目标值。
+
+    Returns:
+        str or None: 如果找到，则返回对应的键；否则返回None。
+    """
     for key, value in data_dict.items():
         if value == target_value:
             return key
@@ -279,10 +374,16 @@ def find_key_by_value(data_dict, target_value):
 
 
 def access_nested_dict(data_dict, keys: list, value=None):
-    # 输入一个字典，键列表，值（可选），返回字典中对应键的值
-    # 用来读取嵌套字典的值
-    # 也可以单纯的获取字典的值
+    """访问嵌套字典中的值。
 
+    Args:
+        data_dict (dict): 嵌套字典。
+        keys (list): 访问的键列表。
+        value (optional): 如果提供，将在指定位置设置键值。
+
+    Returns:
+        value: 返回指定路径的值，如果设置了值，则返回修改后的字典。
+    """
     current_level = data_dict  # 从字典根部开始
 
     # 遍历到倒数第二个键（为下一个层级的父级）
@@ -304,9 +405,17 @@ def access_nested_dict(data_dict, keys: list, value=None):
 
 
 def rewrite_contorller(data_dict, controller, mode, new_value=None):
-    # 输入一个字典，控制器类型，模式，新值，返回修改后的字典
-    # 用来获取interface文件中的操作模式和截图模式
-    # 附带修改功能
+    """重写控制器配置。
+
+    Args:
+        data_dict (dict): 要更新的字典。
+        controller (str): 控制器名称。
+        mode (str): 模式名称。
+        new_value (optional): 新值，用于更新。
+
+    Returns:
+        dict or current_level: 如果提供了新值，则返回更新后的字典，否则返回当前模式的值。
+    """
     current_level = {}
 
     for i in range(len(data_dict["controller"])):
@@ -326,9 +435,16 @@ def rewrite_contorller(data_dict, controller, mode, new_value=None):
 
 
 def delete_contorller(data_dict, controller, mode):
-    # 输入一个字典，控制器类型，模式，返回修改后的字典
-    # 用来删除interface文件中的操作模式和截图模式
-    # 恢复初始状态
+    """删除控制器配置。
+
+    Args:
+        data_dict (dict): 要更新的字典。
+        controller (str): 控制器名称。
+        mode (str): 模式名称。
+
+    Returns:
+        dict: 更新后的字典。
+    """
     for i in range(len(data_dict["controller"])):
         if data_dict["controller"][i]["type"] == controller:
             if (
@@ -344,9 +460,15 @@ def delete_contorller(data_dict, controller, mode):
 
 
 def for_config_get_url(url, mode):
-    # 输入一个url，模式，返回对应的链接
-    # 提取github仓库的用户名和仓库名
-    # 用来获取接口文件中的链接
+    """根据给定的URL和模式返回相应的链接。
+
+    Args:
+        url (str): GitHub项目的URL。
+        mode (str): 模式（"issue"或"download"）。
+
+    Returns:
+        str: 对应的链接。
+    """
     parts = url.split("/")
     username = parts[3]
     repository = parts[4]
@@ -362,9 +484,17 @@ def for_config_get_url(url, mode):
 
 
 def get_controller_type(select_value, interface_path):
-    # 输入一个选择值，接口文件路径，返回控制器类型
+    """获取控制器类型。
+
+    Args:
+        select_value (str): 选择的控制器名称。
+        interface_path (str): 接口配置文件路径。
+
+    Returns:
+        str or None: 控制器类型，如果未找到则返回None。
+    """
     data = Read_Config(interface_path)
     for i in data["controller"]:
-        if i["name"] == select_value:
+        if i["name"] == select_value or i["name"] == select_value[:-4]:
             return i["type"]
     return None
