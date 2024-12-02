@@ -1,4 +1,3 @@
-from typing import TypedDict
 from ..common.signal_bus import signalBus
 from ..utils.tool import Read_Config
 from ..common.config import cfg
@@ -40,10 +39,13 @@ def init_maa_config_data(status: bool):
         maa_config_data.config_name = cfg.get(cfg.maa_config_name)
         maa_config_data.config_path = cfg.get(cfg.maa_config_path)
         maa_config_data.config_data = cfg.get(cfg.maa_config_list)
-        maa_config_data.config_name_list = list(maa_config_data.config_data.keys())
 
         maa_config_data.resource_path = cfg.get(cfg.maa_resource_path)
         maa_config_data.resource_name = cfg.get(cfg.maa_resource_name)
+        maa_config_data.config_name_list = list(
+            maa_config_data.config_data[maa_config_data.resource_name].keys()
+        )
+
         maa_config_data.resource_data = cfg.get(cfg.maa_resource_list)
         maa_config_data.resource_name_list = list(maa_config_data.resource_data.keys())
     else:

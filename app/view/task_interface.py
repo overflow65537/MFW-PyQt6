@@ -36,6 +36,7 @@ from ..common.maa_config_data import maa_config_data
 class TaskInterface(Ui_Task_Interface, QWidget):
     devices = []
     run_mode = "adb"
+    start_again = False
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -44,6 +45,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         maafw.notification_handler = MyNotificationHandler()
         if cfg.get(cfg.resource_exist):
             self.init_ui()
+            self.bind_signals()
         else:
             logger.warning("资源缺失")
             self.show_error(self.tr("Resource file not detected"))
@@ -54,6 +56,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if status:
             self.clear_content()
             self.init_ui()
+            self.disconnect_signals()
+            self.bind_signals()
         else:
             self.uninit_ui()
 
@@ -69,7 +73,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             resource_Path=maa_config_data.resource_path,
         )
         self.init_finish_combox()
-        self.bind_signals()
 
     def uninit_ui(self):
         self.disconnect_signals()
@@ -91,21 +94,28 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def disconnect_signals(self):
         logger.info("TaskInterface uninit")
-        signalBus.callback.disconnect(self.callback)
-        signalBus.update_task_list.disconnect(self.update_task_list_passive)
-        self.AddTask_Button.clicked.disconnect(self.Add_Task)
-        self.Delete_Button.clicked.disconnect(self.Delete_Task)
-        self.MoveUp_Button.clicked.disconnect(self.Move_Up)
-        self.MoveDown_Button.clicked.disconnect(self.Move_Down)
-        self.SelectTask_Combox_1.activated.disconnect(self.Add_Select_Task_More_Select)
-        self.Resource_Combox.currentTextChanged.disconnect(self.Save_Resource)
-        self.Control_Combox.currentTextChanged.disconnect(self.Save_Controller)
-        self.AutoDetect_Button.clicked.disconnect(self.Start_Detection)
-        self.S2_Button.clicked.disconnect(self.Start_Up)
-        self.Autodetect_combox.currentTextChanged.disconnect(self.Save_device_Config)
-        self.Finish_combox.currentIndexChanged.disconnect(
-            self.rewrite_Completion_Options
-        )
+        try:
+            signalBus.callback.disconnect(self.callback)
+            signalBus.update_task_list.disconnect(self.update_task_list_passive)
+            self.AddTask_Button.clicked.disconnect(self.Add_Task)
+            self.Delete_Button.clicked.disconnect(self.Delete_Task)
+            self.MoveUp_Button.clicked.disconnect(self.Move_Up)
+            self.MoveDown_Button.clicked.disconnect(self.Move_Down)
+            self.SelectTask_Combox_1.activated.disconnect(
+                self.Add_Select_Task_More_Select
+            )
+            self.Resource_Combox.currentTextChanged.disconnect(self.Save_Resource)
+            self.Control_Combox.currentTextChanged.disconnect(self.Save_Controller)
+            self.AutoDetect_Button.clicked.disconnect(self.Start_Detection)
+            self.S2_Button.clicked.disconnect(self.Start_Up)
+            self.Autodetect_combox.currentTextChanged.disconnect(
+                self.Save_device_Config
+            )
+            self.Finish_combox.currentIndexChanged.disconnect(
+                self.rewrite_Completion_Options
+            )
+        except:
+            pass
 
     def init_finish_combox(self):
         finish_list = [
@@ -283,7 +293,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.S2_Button.clicked.connect(self.Stop_task)
         self.TaskOutput_Text.clear()
 
-        PROJECT_DIR = os.getcwd()
+        PROJECT_DIR = maa_config_data.resource_path
         controller_type = get_controller_type(
             self.Control_Combox.currentText(), maa_config_data.interface_config_path
         )
@@ -368,26 +378,57 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         await asyncio.sleep(1)
 
             # 连接adb失败
-            if (
-                not await maafw.connect_adb(
-                    maa_config_data.config["adb"]["adb_path"],
-                    maa_config_data.config["adb"]["address"],
-                    maa_config_data.config["adb"]["input_method"],
-                    maa_config_data.config["adb"]["screen_method"],
-                    maa_config_data.config["adb"]["config"],
-                )
-                and self.need_runing
-            ):
-                logger.error(
-                    f"连接adb失败\n{maa_config_data.config['adb']['adb_path']}\n{maa_config_data.config['adb']['address']}\n{maa_config_data.config['adb']['input_method']}\n{maa_config_data.config['adb']['screen_method']}\n{maa_config_data.config['adb']['config']}"
-                )
-                self.TaskOutput_Text.append(self.tr("Connection Failed"))
-                await maafw.stop_task()
-                self.S2_Button.setEnabled(True)
-                self.S2_Button.setText(self.tr("Start"))
-                self.S2_Button.clicked.disconnect()
-                self.S2_Button.clicked.connect(self.Start_Up)
-                return
+            if self.start_again:
+                device = await maafw.detect_adb()
+                config = {}
+                for i in device:
+                    if (
+                        i.adb_path == maa_config_data.config["adb"]["adb_path"]
+                        and i.address == maa_config_data.config["adb"]["address"]
+                    ):
+                        config = i.config
+                        break
+                if (
+                    not await maafw.connect_adb(
+                        maa_config_data.config["adb"]["adb_path"],
+                        maa_config_data.config["adb"]["address"],
+                        maa_config_data.config["adb"]["input_method"],
+                        maa_config_data.config["adb"]["screen_method"],
+                        config,
+                    )
+                    and self.need_runing
+                ):
+                    logger.error(
+                        f"连接adb失败\n{maa_config_data.config['adb']['adb_path']}\n{maa_config_data.config['adb']['address']}\n{maa_config_data.config['adb']['input_method']}\n{maa_config_data.config['adb']['screen_method']}\n{maa_config_data.config['adb']['config']}"
+                    )
+                    self.TaskOutput_Text.append(self.tr("Connection Failed"))
+                    await maafw.stop_task()
+                    self.S2_Button.setEnabled(True)
+                    self.S2_Button.setText(self.tr("Start"))
+                    self.S2_Button.clicked.disconnect()
+                    self.S2_Button.clicked.connect(self.Start_Up)
+                    return
+            else:
+                if (
+                    not await maafw.connect_adb(
+                        maa_config_data.config["adb"]["adb_path"],
+                        maa_config_data.config["adb"]["address"],
+                        maa_config_data.config["adb"]["input_method"],
+                        maa_config_data.config["adb"]["screen_method"],
+                        maa_config_data.config["adb"]["config"],
+                    )
+                    and self.need_runing
+                ):
+                    logger.error(
+                        f"连接adb失败\n{maa_config_data.config['adb']['adb_path']}\n{maa_config_data.config['adb']['address']}\n{maa_config_data.config['adb']['input_method']}\n{maa_config_data.config['adb']['screen_method']}\n{maa_config_data.config['adb']['config']}"
+                    )
+                    self.TaskOutput_Text.append(self.tr("Connection Failed"))
+                    await maafw.stop_task()
+                    self.S2_Button.setEnabled(True)
+                    self.S2_Button.setText(self.tr("Start"))
+                    self.S2_Button.clicked.disconnect()
+                    self.S2_Button.clicked.connect(self.Start_Up)
+                    return
         elif controller_type == "Win32" and self.need_runing:  # win32控制
             # 启动游戏
             exe_path = maa_config_data.config.get("exe_path")
@@ -486,6 +527,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.S2_Button.setText(self.tr("Start"))
         self.S2_Button.clicked.disconnect()
         self.S2_Button.clicked.connect(self.Start_Up)
+        self.start_again = True
 
     @asyncSlot()
     async def Stop_task(self):
@@ -495,6 +537,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         logger.info("停止任务")
         # 停止MAA
         self.need_runing = False
+        self.start_again = True
         await maafw.stop_task()
         maafw.resource.clear()
 
@@ -673,13 +716,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         if controller_type == "Win32":
             content = self.tr("Detecting game...")
-            detect_function = maafw.detect_win32hwnd
             error_message = self.tr("No game detected")
             success_message = self.tr("Game detected")
         elif controller_type == "Adb":
             print("检测模拟器")
             content = self.tr("Detecting emulator...")
-            detect_function = maafw.detect_adb
             error_message = self.tr("No emulator detected")
             success_message = self.tr("Emulator detected")
         else:
@@ -700,14 +741,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if controller_type == "Win32":
             for i in maa_config_data.interface_config["controller"]:
                 if i["type"] == "Win32":
-                    self.win32_hwnd = await detect_function(i["win32"]["window_regex"])
+                    self.win32_hwnd = await maafw.detect_win32hwnd(
+                        i["win32"]["window_regex"]
+                    )
             processed_list = (
                 [hwnd.window_name for hwnd in self.win32_hwnd]
                 if self.win32_hwnd
                 else []
             )
         elif controller_type == "Adb":
-            self.devices = await detect_function()
+            self.devices = await maafw.detect_adb()
             if not self.devices:
                 logger.info("备用 ADB 检测")
                 self.devices = await self.Adb_detect_backup()
@@ -794,24 +837,27 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.Control_Combox.currentText(), maa_config_data.interface_config_path
         )
         target = self.Autodetect_combox.currentText()
+        result = None
         if controller_type == "Adb":
             for i in self.devices:
                 logger.info(i)
                 if f"{i.name} ({i.address.split(':')[-1]})" == target:
                     result = i
                     break
-            data = maa_config_data.config  # 使用已加载的 config 变量
-            data["adb"]["adb_path"] = str(result.adb_path)
-            data["adb"]["address"] = result.address
-            data["adb"]["config"] = result.config
-            Save_Config(maa_config_data.config_path, maa_config_data.config)  # 刷新保存
+            if result:
+                print(result)
+                maa_config_data.config["adb"]["adb_path"] = str(result.adb_path)
+                maa_config_data.config["adb"]["address"] = result.address
+                maa_config_data.config["adb"]["config"] = result.config
+                Save_Config(maa_config_data.config_path, maa_config_data.config)
 
-            signalBus.update_adb.emit(result)
+                signalBus.update_adb.emit(result)
         elif controller_type == "Win32":
             for i in self.win32_hwnd:
                 if i.window_name == target:
                     result = i
                     break
-            data = maa_config_data.config  # 使用已加载的 config 变量
-            data["win32"]["hwnd"] = result.hwnd
-            Save_Config(maa_config_data.config_path, maa_config_data.config)  # 刷新保存
+            if result:
+
+                maa_config_data.config["win32"]["hwnd"] = result.hwnd
+                Save_Config(maa_config_data.config_path, maa_config_data.config)

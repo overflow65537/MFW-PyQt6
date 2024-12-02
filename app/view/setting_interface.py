@@ -50,6 +50,7 @@ class SettingInterface(ScrollArea):
         if status:
             self.clear_content()
             self.init_ui()
+            self.disconnect_signals()
             self.__connectSignalToSlot()
         else:
             self.uninit_ui()
@@ -114,19 +115,22 @@ class SettingInterface(ScrollArea):
         """断开信号连接。"""
 
         # 断开信号连接
-        signalBus.update_adb.disconnect(self.update_adb)
-        self.ADB_port.text_change.disconnect(self._onADB_portCardChange)
-        self.ADB_path.clicked.disconnect(self.__onADBPathCardClicked)
-        self.emu_path.clicked.disconnect(self.__onEmuPathCardClicked)
-        self.emu_wait_time.text_change.disconnect(self._onEmuWaitTimeCardChange)
-        self.exe_path.clicked.disconnect(self.__onExePathCardClicked)
-        self.exe_parameter.text_change.disconnect(self._onExeParameterCardChange)
-        self.exe_wait_time.text_change.disconnect(self._onExeWaitTimeCardChange)
-        self.run_before_start.clicked.disconnect(self.__onRunBeforeStartCardClicked)
-        self.run_after_finish.clicked.disconnect(self.__onRunAfterFinishCardClicked)
-        self.DEVmodeCard.checkedChanged.disconnect(self._onDEVmodeCardChange)
-        self.feedbackCard.clicked.disconnect()
-        self.updateCard.clicked.disconnect()
+        try:
+            signalBus.update_adb.disconnect(self.update_adb)
+            self.ADB_port.text_change.disconnect(self._onADB_portCardChange)
+            self.ADB_path.clicked.disconnect(self.__onADBPathCardClicked)
+            self.emu_path.clicked.disconnect(self.__onEmuPathCardClicked)
+            self.emu_wait_time.text_change.disconnect(self._onEmuWaitTimeCardChange)
+            self.exe_path.clicked.disconnect(self.__onExePathCardClicked)
+            self.exe_parameter.text_change.disconnect(self._onExeParameterCardChange)
+            self.exe_wait_time.text_change.disconnect(self._onExeWaitTimeCardChange)
+            self.run_before_start.clicked.disconnect(self.__onRunBeforeStartCardClicked)
+            self.run_after_finish.clicked.disconnect(self.__onRunAfterFinishCardClicked)
+            self.DEVmodeCard.checkedChanged.disconnect(self._onDEVmodeCardChange)
+            self.feedbackCard.clicked.disconnect()
+            self.updateCard.clicked.disconnect()
+        except:
+            pass
 
     def initialize_adb_settings(self):
         """初始化 ADB 设置。"""

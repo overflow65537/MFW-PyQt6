@@ -73,7 +73,10 @@ class ComboBoxSettingCardCustom(SettingCard):
             data = Read_Config(self.path)
             if self.mode == "setting":
                 value = access_nested_dict(data, self.target)
-                current_text = self.mapping[value]
+                if value in self.mapping:
+                    current_text = self.mapping[value]
+                else:
+                    current_text = self.mapping.get(0)
             elif self.mode == "custom":
                 current_text = access_nested_dict(data, self.target)
             elif self.mode == "interface_setting":
