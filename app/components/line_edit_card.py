@@ -16,8 +16,6 @@ from ..common.maa_config_data import maa_config_data
 class LineEditCard(SettingCard):
     """设置中的输入框卡片"""
 
-    text_change = pyqtSignal()
-
     def __init__(
         self,
         icon: Union[str, QIcon, FluentIconBase],

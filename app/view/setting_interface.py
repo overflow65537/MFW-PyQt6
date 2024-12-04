@@ -56,8 +56,7 @@ class SettingInterface(ScrollArea):
             self.uninit_ui()
 
     def init_ui(self):
-        """初始化界面，连接信号和设置内容。"""
-        signalBus.update_adb.connect(self.update_adb)
+        """初始化界面内容。"""
 
         # 设置标签
         self.settingLabel = QLabel(self.tr("Settings"), self)
@@ -114,21 +113,29 @@ class SettingInterface(ScrollArea):
     def disconnect_signals(self):
         """断开信号连接。"""
 
-        # 断开信号连接
+        print("信号断开")
         try:
             signalBus.update_adb.disconnect(self.update_adb)
-            self.ADB_port.text_change.disconnect(self._onADB_portCardChange)
+            self.ADB_port.lineEdit.textChanged.disconnect(self._onADB_portCardChange)
             self.ADB_path.clicked.disconnect(self.__onADBPathCardClicked)
             self.emu_path.clicked.disconnect(self.__onEmuPathCardClicked)
-            self.emu_wait_time.text_change.disconnect(self._onEmuWaitTimeCardChange)
+            self.emu_wait_time.lineEdit.textChanged.disconnect(
+                self._onEmuWaitTimeCardChange
+            )
             self.exe_path.clicked.disconnect(self.__onExePathCardClicked)
-            self.exe_parameter.text_change.disconnect(self._onExeParameterCardChange)
-            self.exe_wait_time.text_change.disconnect(self._onExeWaitTimeCardChange)
+            self.exe_parameter.lineEdit.textChanged.disconnect(
+                self._onExeParameterCardChange
+            )
+            self.exe_wait_time.lineEdit.textChanged.disconnect(
+                self._onExeWaitTimeCardChange
+            )
             self.run_before_start.clicked.disconnect(self.__onRunBeforeStartCardClicked)
             self.run_after_finish.clicked.disconnect(self.__onRunAfterFinishCardClicked)
             self.DEVmodeCard.checkedChanged.disconnect(self._onDEVmodeCardChange)
+            signalBus.update_adb.disconnect(self.update_adb)
             self.feedbackCard.clicked.disconnect()
             self.updateCard.clicked.disconnect()
+
         except:
             pass
 
@@ -651,18 +658,20 @@ class SettingInterface(ScrollArea):
 
     def __connectSignalToSlot(self):
         """连接信号到对应的槽函数。"""
+
         cfg.appRestartSig.connect(self.__showRestartTooltip)
+        signalBus.update_adb.connect(self.update_adb)
 
         # 连接 ADB 信号
-        self.ADB_port.text_change.connect(self._onADB_portCardChange)
+        self.ADB_port.lineEdit.textChanged.connect(self._onADB_portCardChange)
         self.ADB_path.clicked.connect(self.__onADBPathCardClicked)
         self.emu_path.clicked.connect(self.__onEmuPathCardClicked)
-        self.emu_wait_time.text_change.connect(self._onEmuWaitTimeCardChange)
+        self.emu_wait_time.lineEdit.textChanged.connect(self._onEmuWaitTimeCardChange)
 
         # 连接 Win32 信号
         self.exe_path.clicked.connect(self.__onExePathCardClicked)
-        self.exe_parameter.text_change.connect(self._onExeParameterCardChange)
-        self.exe_wait_time.text_change.connect(self._onExeWaitTimeCardChange)
+        self.exe_parameter.lineEdit.textChanged.connect(self._onExeParameterCardChange)
+        self.exe_wait_time.lineEdit.textChanged.connect(self._onExeWaitTimeCardChange)
 
         # 连接启动信号
         self.run_before_start.clicked.connect(self.__onRunBeforeStartCardClicked)
@@ -719,7 +728,7 @@ class SettingInterface(ScrollArea):
     def update_adb(self, msg):
         """根据外部消息更新 ADB 路径和端口。"""
         self.ADB_path.setContent(str(msg.adb_path))
-        self.ADB_port.lineEdit.setText(f'{msg.address.split(":")[1]}')
+        self.ADB_port.lineEdit.setText(msg.address)
 
     def Switch_Controller(self, controller):
         """在 ADB 和 Win32 控制器设置之间切换。"""
