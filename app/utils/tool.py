@@ -167,7 +167,7 @@ def Get_Values_list_Option(path, key1):
     return List
 
 
-def Get_Task_List(target):
+def Get_Task_List(path, target):
     """根据选项名称获取所有case的name列表。
 
     Args:
@@ -177,9 +177,7 @@ def Get_Task_List(target):
         list: 包含所有case的name列表。
     """
     lists = []
-    Task_Config = Read_Config(os.path.join(os.getcwd(), "interface.json"))["option"][
-        target
-    ]["cases"]
+    Task_Config = Read_Config(path)["option"][target]["cases"]
     Lens = len(Task_Config) - 1
     for i in range(Lens, -1, -1):
         lists.append(Task_Config[i]["name"])

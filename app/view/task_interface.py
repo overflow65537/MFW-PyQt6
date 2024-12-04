@@ -679,7 +679,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     label = getattr(self, f"TaskName_Title_{i + 2}")
                     option_name = task["option"][i]
 
-                    select_box.addItems(list(Get_Task_List(option_name)))
+                    select_box.addItems(
+                        list(
+                            Get_Task_List(
+                                maa_config_data.interface_config_path, option_name
+                            )
+                        )
+                    )
                     select_box.show()
 
                     label.setText(option_name)
