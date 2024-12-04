@@ -787,5 +787,77 @@
         <source>Already the last task</source>
         <translation>已經是末位任務</translation>
     </message>
+    <name>CustomMessageBox</name>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="26"/>
+        <source>choose Resource</source>
+        <translation>選擇資源</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="28"/>
+        <source>Enter the name of the resource</source>
+        <translation>輸入資源名稱</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="33"/>
+        <source>Enter the path of the resource</source>
+        <translation>輸入資源路徑</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="37"/>
+        <source>Select Resource</source>
+        <translation>選擇資源</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="46"/>
+        <source>Enter update link (optional)</source>
+        <translation>輸入更新連結（可選）</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="57"/>
+        <source>Confirm</source>
+        <translation>確認</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="58"/>
+        <source>Cancel</source>
+        <translation>退出</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="64"/>
+        <source>Choose folder</source>
+        <translation>選擇資料夾</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="72"/>
+        <source>The resource does not have an interface.json file</source>
+        <translation>當前路徑內無interface.json檔案</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="79"/>
+        <source>The resource is not a resource directory</source>
+        <translation>未找到resource資料夾</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="93"/>
+        <source>Error</source>
+        <translation>錯誤</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="113"/>
+        <source>Resource name cannot be empty</source>
+        <translation>資源名稱不能為空</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="116"/>
+        <source>Resource path cannot be empty</source>
+        <translation>資源路徑不能為空</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="119"/>
+        <source>Resource already exists</source>
+        <translation>資源已經存在</translation>
+    </message>
+
 </context>
 </TS>

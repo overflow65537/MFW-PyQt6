@@ -11,7 +11,7 @@ from qfluentwidgets import (
 )
 from ..common.config import cfg
 from ..utils.tool import Read_Config, Save_Config
-from ..common.maa_config_data import maa_config_data
+from ..utils.logger import logger
 import os
 
 
@@ -23,18 +23,18 @@ class CustomMessageBox(MessageBoxBase):
         transparent_color = QColor(255, 255, 255, 0)
         self.setMaskColor(transparent_color)
         self.folder = None
-        self.titleLabel = SubtitleLabel("输入资源名称", self)
+        self.titleLabel = SubtitleLabel(self.tr("choose Resource"), self)
         self.name_LineEdit = LineEdit(self)
-        self.name_LineEdit.setPlaceholderText("输入资源的名称")
+        self.name_LineEdit.setPlaceholderText(self.tr("Enter the name of the resource"))
         self.name_LineEdit.setClearButtonEnabled(True)
 
         self.path_layout = QHBoxLayout()
         self.path_LineEdit = LineEdit(self)
-        self.path_LineEdit.setPlaceholderText("输入资源的路径")
+        self.path_LineEdit.setPlaceholderText(self.tr("Enter the path of the resource"))
         self.path_LineEdit.setClearButtonEnabled(True)
 
         self.path_layout.addWidget(self.path_LineEdit)
-        self.resourceButton = PushButton("选择资源", self)
+        self.resourceButton = PushButton(self.tr("Select Resource"), self)
         self.resourceButton.setSizePolicy(
             QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed
         )
@@ -43,7 +43,7 @@ class CustomMessageBox(MessageBoxBase):
         self.path_layout.addWidget(self.resourceButton)
 
         self.update_LineEdit = LineEdit(self)
-        self.update_LineEdit.setPlaceholderText("输入更新链接")
+        self.update_LineEdit.setPlaceholderText(self.tr("Enter update link (optional)"))
         self.update_LineEdit.setClearButtonEnabled(True)
 
         self.path_layout.setStretch(0, 9)
@@ -54,8 +54,8 @@ class CustomMessageBox(MessageBoxBase):
         self.viewLayout.addWidget(self.name_LineEdit)
         self.viewLayout.addWidget(self.update_LineEdit)
 
-        self.yesButton.setText("确定")
-        self.cancelButton.setText("取消")
+        self.yesButton.setText(self.tr("Confirm"))
+        self.cancelButton.setText(self.tr("Cancel"))
 
         self.widget.setMinimumWidth(350)
         self.yesButton.clicked.connect(self.click_yes_button)
@@ -64,14 +64,23 @@ class CustomMessageBox(MessageBoxBase):
         self.folder = QFileDialog.getExistingDirectory(
             self, self.tr("Choose folder"), "./"
         )
-        self.path_LineEdit.setText(self.folder)
-        interface_path = os.path.join(self.folder, "..", "interface.json")
+
+        interface_path = os.path.join(os.path.dirname(self.folder), "interface.json")
         if not os.path.exists(interface_path):
-            self.show_error(self.tr("该资源没有interface.json文件"))
-            return
-        elif os.path.basename(self.folder) != "resource":
-            self.show_error(self.tr("该资源不是resource目录下的资源"))
-            return
+            interface_path = os.path.join(self.folder, "resource", "interface.json")
+            if not os.path.exists(interface_path):
+                self.show_error(
+                    self.tr("The resource does not have an interface.json file")
+                )
+                return
+        if os.path.basename(self.folder) != "resource":
+            self.folder = os.path.join(self.folder, "resource")
+            if not os.path.exists(self.folder):
+                self.show_error(self.tr("The resource is not a resource directory"))
+                return
+        self.path_LineEdit.setText(self.folder)
+        logger.info(f"choose_resource_button.py:资源路径 {self.folder}")
+        logger.info(f"choose_resource_button.py: interface.json路径 {interface_path}")
         self.interface_data = Read_Config(interface_path)
         project_name = self.interface_data.get("name", "")
         projece_url = self.interface_data.get("url", "")
@@ -101,24 +110,19 @@ class CustomMessageBox(MessageBoxBase):
         resource_path_list = list(resource_data.values())
         maa_config_list = cfg.get(cfg.maa_config_list)
         if self.name_data == "":
-            print("资源名称不能为空")
-            self.show_error(self.tr("资源名称不能为空"))
+            self.show_error(self.tr("Resource name cannot be empty"))
             return
         elif path_data == "":
-            print("资源路径不能为空")
-            self.show_error(self.tr("资源路径不能为空"))
+            self.show_error(self.tr("Resource path cannot be empty"))
             return
         elif self.name_data in resource_list or path_data in resource_path_list:
-            print("资源已存在")
-            self.show_error(self.tr("资源已存在"))
+            self.show_error(self.tr("Resource already exists"))
             return
-        elif update_data == "":
-            print("更新链接不能为空")
-            self.show_error(self.tr("更新链接不能为空"))
-            return
+
         # 将名字和更新链接写入interface.json文件
         self.interface_data["name"] = self.name_data
-        self.interface_data["url"] = update_data
+        if update_data != "":
+            self.interface_data["url"] = update_data
         Save_Config(interface_path, self.interface_data)
 
         # 将信息写入maa_resource_list

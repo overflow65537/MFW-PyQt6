@@ -224,6 +224,11 @@
         <translation>选择GPU</translation>
     </message>
     <message>
+        <location filename="app/view/setting_interface.py" line="361"/>
+        <source>Use GPU to accelerate inference</source>
+        <translation>使用GPU加速推理</translation>
+    </message>
+    <message>
         <location filename="app/view/setting_interface.py" line="315"/>
         <source>Select Win32 Input Mode</source>
         <translation>选择Win32输入模式</translation>
@@ -817,5 +822,77 @@
         <source>Already the last task</source>
         <translation>已经是末位任务</translation>
     </message>
+    <name>CustomMessageBox</name>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="26"/>
+        <source>choose Resource</source>
+        <translation>选择资源</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="28"/>
+        <source>Enter the name of the resource</source>
+        <translation>输入资源名称</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="33"/>
+        <source>Enter the path of the resource</source>
+        <translation>输入资源路径</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="37"/>
+        <source>Select Resource</source>
+        <translation>选择资源</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="46"/>
+        <source>Enter update link (optional)</source>
+        <translation>输入更新链接(可选)</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="57"/>
+        <source>Confirm</source>
+        <translation>确认</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="58"/>
+        <source>Cancel</source>
+        <translation>退出</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="64"/>
+        <source>Choose folder</source>
+        <translation>选择文件夹</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="72"/>
+        <source>The resource does not have an interface.json file</source>
+        <translation>当前路径内无interface.json文件</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="79"/>
+        <source>The resource is not a resource directory</source>
+        <translation>未找到resource文件</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="93"/>
+        <source>Error</source>
+        <translation>错误</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="113"/>
+        <source>Resource name cannot be empty</source>
+        <translation>资源名称不能为空</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="116"/>
+        <source>Resource path cannot be empty</source>
+        <translation>资源路径不能为空</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="119"/>
+        <source>Resource already exists</source>
+        <translation>资源已经存在</translation>
+    </message>
+
 </context>
 </TS>

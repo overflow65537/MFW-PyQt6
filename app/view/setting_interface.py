@@ -358,7 +358,7 @@ class SettingInterface(ScrollArea):
         self.use_GPU = ComboBoxSettingCardCustom(
             icon=FIF.FILTER,
             title=self.tr("Select GPU"),
-            content="Use GPU to accelerate inference",
+            content=self.tr("Use GPU to accelerate inference"),
             texts=gpu_combox_list,
             target=["gpu"],
             path=maa_config_data.config_path,
