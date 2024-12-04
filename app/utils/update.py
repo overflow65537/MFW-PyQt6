@@ -2,9 +2,9 @@ from PyQt6.QtCore import QThread
 import os
 import zipfile
 from ..utils.tool import for_config_get_url
-from ..common.config import cfg
 from ..common.signal_bus import signalBus
 from ..utils.logger import logger
+from ..common.maa_config_data import maa_config_data
 
 import requests
 
@@ -13,14 +13,19 @@ class check_Update(QThread):
     update_available = signalBus.update_available
 
     def run(self):
-        url = for_config_get_url(cfg.get(cfg.Project_url), "download")
+        project_url = maa_config_data.interface_config.get("url", None)
+        if not project_url:
+            logger.warning("update.py:项目地址未配置，无法进行更新检查")
+            self.update_available.emit({})  # 发出空字典表示没有更新
+            return
+        url = for_config_get_url(project_url, "download")
         try:
             response = requests.get(url)
             response.raise_for_status()
             content = response.json()
             self.update_available.emit(content)  # 发出更新内容
         except Exception as e:
-            logger.warning(f"更新检查时出错: {e}")
+            logger.warning(f"update.py:更新检查时出错: {e}")
             self.update_available.emit({})  # 发出空字典表示没有更新
 
 
@@ -50,7 +55,8 @@ class Update(QThread):
             zip_file.write(response.content)
 
         # 解压文件到指定路径
-        target_path = os.getcwd()
+        target_path = maa_config_data.resource_path
+        logger.debug(f"update.py:解压文件到 {target_path}")
         with zipfile.ZipFile(zip_file_path, "r") as zip_ref:
             zip_ref.extractall(target_path)
 

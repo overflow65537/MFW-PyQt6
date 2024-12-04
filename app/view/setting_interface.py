@@ -48,11 +48,13 @@ class SettingInterface(ScrollArea):
 
     def resource_exist(self, status: bool):
         if status:
+            logger.info("setting_interface.py:收到信号,初始化界面并连接信号")
             self.clear_content()
             self.init_ui()
             self.disconnect_signals()
             self.__connectSignalToSlot()
         else:
+            logger.info("setting_interface.py:收到信号,清空界面并断开信号")
             self.uninit_ui()
 
     def init_ui(self):
@@ -113,7 +115,6 @@ class SettingInterface(ScrollArea):
     def disconnect_signals(self):
         """断开信号连接。"""
 
-        print("信号断开")
         try:
             signalBus.update_adb.disconnect(self.update_adb)
             self.ADB_port.lineEdit.textChanged.disconnect(self._onADB_portCardChange)
@@ -312,12 +313,10 @@ class SettingInterface(ScrollArea):
         DEV_Config = maa_config_data.config.get("save_draw", False)
 
         gpu_mapping = get_gpu_info()
-        logger.info(f"GPU列表: {gpu_mapping}")
-        print(gpu_mapping)
+        logger.debug(f"setting_interface.py:GPU列表: {gpu_mapping}")
         gpu_combox_list = self.get_unique_gpu_mapping(gpu_mapping)
         gpu_mapping[-1] = self.tr("Auto")
         gpu_mapping[-2] = self.tr("Disabled")
-        print(gpu_combox_list)
 
         win32_input_mapping = {
             0: self.tr("default"),

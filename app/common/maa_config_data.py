@@ -1,6 +1,7 @@
 from ..common.signal_bus import signalBus
 from ..utils.tool import Read_Config
 from ..common.config import cfg
+from ..utils.logger import logger
 import os
 
 
@@ -48,6 +49,25 @@ def init_maa_config_data(status: bool):
 
         maa_config_data.resource_data = cfg.get(cfg.maa_resource_list)
         maa_config_data.resource_name_list = list(maa_config_data.resource_data.keys())
+        logger.debug("maa_config_data.py:配置文件初始化")
+        logger.debug(
+            f"maa_config_data.py:interface_config: {maa_config_data.interface_config}"
+        )
+        logger.debug(f"maa_config_data.py:config: {maa_config_data.config}")
+        logger.debug(f"maa_config_data.py:config_name: {maa_config_data.config_name}")
+        logger.debug(f"maa_config_data.py:config_path: {maa_config_data.config_path}")
+        logger.debug(f"maa_config_data.py:config_data: {maa_config_data.config_data}")
+        logger.debug(
+            f"maa_config_data.py:resource_path: {maa_config_data.resource_path}"
+        )
+        logger.debug(
+            f"maa_config_data.py:resource_name: {maa_config_data.resource_name}"
+        )
+        logger.debug(
+            f"maa_config_data.py:resource_data: {maa_config_data.resource_data}"
+        )
+        logger.debug("maa_config_data.py:配置文件初始化完成")
+
     else:
         maa_config_data.interface_config_path = ""
         maa_config_data.interface_config = {}

@@ -61,7 +61,6 @@ class MainWindow(FluentWindow):
 
         # 判断是否存在自定义配置文件
         if os.path.exists(os.path.join(os.getcwd(), "config", "custom.json")):
-            logger.info("检查到自定义配置文件，启用自定义设置界面。")
             self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("Task"))
             self.addSubInterface(
                 self.scheduledInterface, FIF.CALENDAR, self.tr("Scheduling tasks")
@@ -76,7 +75,7 @@ class MainWindow(FluentWindow):
                 NavigationItemPosition.BOTTOM,
             )
         else:
-            logger.info("未检测到自定义配置文件，启用默认设置界面。")
+            logger.info("main_window.py: 未检测到自定义配置文件，启用默认设置界面。")
             self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("Task"))
             self.addSubInterface(
                 self.scheduledInterface, FIF.CALENDAR, self.tr("Scheduling tasks")

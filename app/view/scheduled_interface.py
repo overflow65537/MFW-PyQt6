@@ -42,7 +42,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         """添加资源"""
         w = CustomMessageBox(self)
         if w.exec():
-            print("添加资源")
+            logger.debug(f"scheduled_interface.py:添加资源{w.name_data}")
             self.res_combox.clear()
             self.Cfg_Combox.clear()
             init_maa_config_data(True)
@@ -51,7 +51,6 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
 
     def initialize_config_combobox(self):
         """初始化配置下拉框"""
-
         self.Cfg_Combox.addItems(maa_config_data.config_name_list)
         self.Cfg_Combox.setCurrentText(maa_config_data.config_name)
         self.res_combox.addItems(maa_config_data.resource_name_list)
@@ -71,7 +70,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             config_name = self.Cfg_Combox.currentText()
 
             if config_name in ["default", "default".lower()]:
-                logger.info("不能添加主配置文件")
+                logger.warning("scheduled_interface.py:不能添加主配置文件")
                 cfg.set(cfg.maa_config_name, "default")
                 maa_config_data.config_path = os.path.join(
                     os.getcwd(),
@@ -84,9 +83,10 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
                 maa_config_data.config_name = "default"
 
             elif config_name in maa_config_data.config_name_list:
-                logger.info(f"{config_name}已存在")
+                logger.warning(f"scheduled_interface.py:{config_name}已存在")
                 self.update_config_path(config_name)
             else:
+                logger.debug(f"scheduled_interface.py:创建{config_name}配置")
                 self.create_new_config(config_name)
 
             self.cfg_changed()
@@ -116,7 +116,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             "maa_pi_config.json",
         )
 
-        logger.info(f"创建配置文件{config_name}于{config_path}")
+        logger.debug(f"scheduled_interface.py:创建配置文件{config_name}于{config_path}")
 
         maa_config_data.config_data[maa_config_data.resource_name][
             config_name
@@ -153,7 +153,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         config_name = self.Cfg_Combox.currentText()
 
         if config_name in ["Default", "default".lower()]:
-            logger.info("切换主配置")
+            logger.info("scheduled_interface.py:切换主配置")
 
             cfg.set(cfg.maa_config_name, "default")
             maa_config_path = os.path.join(
@@ -168,7 +168,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             maa_config_data.config_path = maa_config_path
 
         else:
-            logger.info(f"切换到{config_name}配置")
+            logger.info(f"scheduled_interface.py:切换到{config_name}配置")
             self.update_config_path(config_name)
 
         self.update_task_list()
@@ -201,27 +201,27 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         maa_config_data.resource_name_list = list(
             maa_config_data.resource_data
         )  # 资源名称列表
+        logger.info(f"scheduled_interface.py:切换到{resource_name}资源")
         signalBus.resource_exist.emit(True)
-        print("资源存在_资源切换发送")
         self.refresh_combobox()
 
     def res_delete(self):
         """删除当前选定的资源"""
         resource_name = self.res_combox.currentText()
         resource_index = self.res_combox.currentIndex()
+        logger.info(f"scheduled_interface.py:删除资源{resource_name}")
         if len(maa_config_data.resource_name_list) == 1:
             cfg.set(cfg.resource_exist, False)
             self.res_combox.clear()
             self.Cfg_Combox.clear()
             self.List_widget.clear()
-            print("资源不存在_资源删除发送")
+            logger.info("scheduled_interface.py:删除最后一个资源")
         self.res_combox.removeItem(resource_index)
 
         # 删除资源文件夹
         file_path = os.path.join(os.getcwd(), "config", resource_name)
         shutil.rmtree(file_path)  # 删除资源目录
-        print(f"删除资源{file_path}成功")
-        logger.info(f"删除资源{file_path}成功")
+        logger.info(f"scheduled_interface.py:删除资源{file_path}成功")
         del maa_config_data.resource_data[resource_name]
         del maa_config_data.config_data[resource_name]
         cfg.set(cfg.maa_resource_list, maa_config_data.resource_data)
@@ -243,17 +243,16 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         config_index = self.Cfg_Combox.currentIndex()
 
         if config_name in ["default", "default".lower()]:
-            logger.info("不能删除主配置文件")
+            logger.warning("scheduled_interface.py:不能删除主配置文件")
         elif config_name == "" or None:
             return
         elif config_name in maa_config_data.config_name_list:
-            logger.info(f"删除配置文件{config_name}")
+            logger.info(f"scheduled_interface.py:删除配置文件{config_name}")
             self.Cfg_Combox.removeItem(config_index)
             # 删除配置文件夹
             file_path = os.path.dirname(maa_config_data.config_path)
             shutil.rmtree(file_path)  # 删除配置文件目录
-            print(f"删除配置文件{file_path}成功")
-            logger.info(f"删除配置文件{file_path}成功")
+            logger.info(f"scheduled_interface.py:删除配置文件{file_path}")
             del maa_config_data.config_data[maa_config_data.resource_name][config_name]
             cfg.set(cfg.maa_config_list, maa_config_data.config_data)
             # 切换到主配置
@@ -273,7 +272,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             )  # 配置名称列表
             self.refresh_combobox()
         else:
-            logger.info(f"{config_name}不存在")
+            logger.info(f"scheduled_interface.py:{config_name}不存在")
             self.Cfg_Combox.clear()
             self.Cfg_Combox.addItems(maa_config_data.config_name_list)
             self.cfg_changed()
