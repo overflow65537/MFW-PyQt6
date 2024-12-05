@@ -2,6 +2,342 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="zh_CN" sourcelanguage="en_US">
 <context>
+    <name>CustomMessageBox</name>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="26"/>
+        <source>choose Resource</source>
+        <translation>选择资源</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="28"/>
+        <source>Enter the name of the resource</source>
+        <translation>输入资源名称</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="33"/>
+        <source>Enter the path of the resource</source>
+        <translation>输入资源路径</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="37"/>
+        <source>Select Resource</source>
+        <translation>选择资源</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="46"/>
+        <source>Enter update link (optional)</source>
+        <translation>输入更新链接(可选)</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="57"/>
+        <source>Confirm</source>
+        <translation>确认</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="58"/>
+        <source>Cancel</source>
+        <translation>退出</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="64"/>
+        <source>Choose folder</source>
+        <translation>选择文件夹</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="72"/>
+        <source>The resource does not have an interface.json file</source>
+        <translation>当前路径内无interface.json文件</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="79"/>
+        <source>The resource is not a resource directory</source>
+        <translation>未找到resource文件</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="93"/>
+        <source>Error</source>
+        <translation>错误</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="113"/>
+        <source>Resource name cannot be empty</source>
+        <translation>资源名称不能为空</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="116"/>
+        <source>Resource path cannot be empty</source>
+        <translation>资源路径不能为空</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="119"/>
+        <source>Resource already exists</source>
+        <translation>资源已经存在</translation>
+    </message>
+</context>
+<context>
+    <name>CustomSettingInterface</name>
+    <message>
+        <location filename="app/view/custom_setting_interface.py" line="24"/>
+        <source>Custom Setting</source>
+        <translation>自定义程序设置</translation>
+    </message>
+    <message>
+        <location filename="app/view/custom_setting_interface.py" line="26"/>
+        <source>Setting</source>
+        <translation>设置</translation>
+    </message>
+</context>
+<context>
+    <name>ListWidge_Menu_Draggable</name>
+    <message>
+        <location filename="app/components/listwidge_menu_draggable.py" line="41"/>
+        <source>Move Up</source>
+        <translation>上移</translation>
+    </message>
+    <message>
+        <location filename="app/components/listwidge_menu_draggable.py" line="42"/>
+        <source>Move Down</source>
+        <translation>下移</translation>
+    </message>
+    <message>
+        <location filename="app/components/listwidge_menu_draggable.py" line="43"/>
+        <source>Delete</source>
+        <translation>删除</translation>
+    </message>
+    <message>
+        <location filename="app/components/listwidge_menu_draggable.py" line="122"/>
+        <source>Error</source>
+        <translation>错误</translation>
+    </message>
+    <message>
+        <location filename="app/components/listwidge_menu_draggable.py" line="71"/>
+        <source>No task can be deleted</source>
+        <translation>没有任务可以被删除</translation>
+    </message>
+    <message>
+        <location filename="app/components/listwidge_menu_draggable.py" line="97"/>
+        <source>Already the first task</source>
+        <translation>已经是首位任务</translation>
+    </message>
+    <message>
+        <location filename="app/components/listwidge_menu_draggable.py" line="122"/>
+        <source>Already the last task</source>
+        <translation>已经是末位任务</translation>
+    </message>
+</context>
+<context>
+    <name>MainWindow</name>
+    <message>
+        <location filename="app/view/main_window.py" line="77"/>
+        <source>Task</source>
+        <translation>任务</translation>
+    </message>
+    <message>
+        <location filename="app/view/main_window.py" line="78"/>
+        <source>Scheduling tasks</source>
+        <translation>计划任务</translation>
+    </message>
+    <message>
+        <location filename="app/view/main_window.py" line="67"/>
+        <source>Custom Setting</source>
+        <translation>自定义程序设置</translation>
+    </message>
+    <message>
+        <location filename="app/view/main_window.py" line="81"/>
+        <source>Setting</source>
+        <translation>设置</translation>
+    </message>
+</context>
+<context>
+    <name>NoticeButtonSettingCard</name>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="351"/>
+        <source>Notification Enabled</source>
+        <translation>通知已启用</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="351"/>
+        <source>Notification disabled</source>
+        <translation>通知已禁用</translation>
+    </message>
+</context>
+<context>
+    <name>NoticeType</name>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="46"/>
+        <source>OK</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="48"/>
+        <source>Clear</source>
+        <translation>退出</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="187"/>
+        <source>DingTalk Webhook URL:</source>
+        <translation>钉钉 Webhook 地址：</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="188"/>
+        <source>DingTalk Secret:</source>
+        <translation>钉钉密钥：</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="208"/>
+        <source>Lark Webhook URL:</source>
+        <translation>飞书 Webhook 地址：</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="209"/>
+        <source>Lark App Key:</source>
+        <translation>飞书应用密钥：</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="234"/>
+        <source>Server:</source>
+        <translation>服务器：</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="235"/>
+        <source>Key:</source>
+        <translation>密钥：</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="236"/>
+        <source>User QQ:</source>
+        <translation>用户 QQ：</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="237"/>
+        <source>Robot QQ:</source>
+        <translation>机器人 QQ：</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="268"/>
+        <source>Server Address:</source>
+        <translation>服务器地址：</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="269"/>
+        <source>Server Port:</source>
+        <translation>服务器端口：</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="270"/>
+        <source>User Name:</source>
+        <translation>用户名：</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="271"/>
+        <source>Password:</source>
+        <translation>密码：</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="182"/>
+        <source>Send Mail:</source>
+        <translation>发送邮件：</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="272"/>
+        <source>Receive Mail:</source>
+        <translation>接收邮件：</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="47"/>
+        <source>test</source>
+        <translation>测试</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="83"/>
+        <source>send test message success</source>
+        <translation>发送测试成功</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="87"/>
+        <source>send test message failed</source>
+        <translation>发送测试失败</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="96"/>
+        <source>Error</source>
+        <translation>错误</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="107"/>
+        <source>Success</source>
+        <translation>成功</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="189"/>
+        <source>DingTalk Status:</source>
+        <translation>钉钉状态</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="210"/>
+        <source>Lark Status:</source>
+        <translation>飞书状态</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="238"/>
+        <source>Qmsg Status:</source>
+        <translation>QQ机器人状态</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="273"/>
+        <source>SMTP Status:</source>
+        <translation>SMTP 状态</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="297"/>
+        <source>WxPusher Spt:</source>
+        <translation>微信推送SPT</translation>
+    </message>
+    <message>
+        <location filename="app/components/notic_setting_card.py" line="298"/>
+        <source>WxPusher Status:</source>
+        <translation>微信推送状态</translation>
+    </message>
+</context>
+<context>
+    <name>Scheduled_Interface</name>
+    <message>
+        <location filename="app/view/UI_scheduled_interface.py" line="112"/>
+        <source>Scheduled Interface</source>
+        <translation>计划任务</translation>
+    </message>
+    <message>
+        <location filename="app/view/UI_scheduled_interface.py" line="115"/>
+        <source>Add</source>
+        <translation>添加</translation>
+    </message>
+    <message>
+        <location filename="app/view/UI_scheduled_interface.py" line="116"/>
+        <source>Delete</source>
+        <translation>删除</translation>
+    </message>
+    <message>
+        <location filename="app/view/UI_scheduled_interface.py" line="117"/>
+        <source>Scheduled name</source>
+        <translation>计划名</translation>
+    </message>
+    <message>
+        <location filename="app/view/UI_scheduled_interface.py" line="120"/>
+        <source>please inter scheduled name</source>
+        <translation>请选择计划名</translation>
+    </message>
+    <message>
+        <location filename="app/view/UI_scheduled_interface.py" line="123"/>
+        <source>Trigger Time</source>
+        <translation>触发事件</translation>
+    </message>
+    <message>
+        <location filename="app/view/UI_scheduled_interface.py" line="126"/>
+        <source>Use Configuration</source>
+        <translation>选择配置</translation>
+    </message>
+</context>
+<context>
     <name>SettingInterface</name>
     <message>
         <location filename="app/view/setting_interface.py" line="42"/>
@@ -370,6 +706,267 @@
     </message>
 </context>
 <context>
+    <name>TaskInterface</name>
+    <message>
+        <location filename="app/view/task_interface.py" line="884"/>
+        <source>Error</source>
+        <translation>错误</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="122"/>
+        <source>Do nothing</source>
+        <translation>无动作</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="123"/>
+        <source>Close emulator</source>
+        <translation>退出模拟器</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="124"/>
+        <source>Close emulator and Quit app</source>
+        <translation>退出模拟器和应用</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="125"/>
+        <source>Shutdown</source>
+        <translation>关机</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="188"/>
+        <source>Starting Connection</source>
+        <translation>开始连接</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="190"/>
+        <source>Connection Success</source>
+        <translation>连接成功</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="487"/>
+        <source>Connection Failed</source>
+        <translation>连接失败</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="115"/>
+        <source>Unknow Error</source>
+        <translation>未知错误</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="119"/>
+        <source>Failed</source>
+        <translation>失败</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="241"/>
+        <source>Resource file not detected</source>
+        <translation>未找到资源文件</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="310"/>
+        <source>Stop</source>
+        <translation>停止</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="325"/>
+        <source>File not found</source>
+        <translation>未找到文件</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="330"/>
+        <source>Can not start the file</source>
+        <translation>无法打开文件</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="555"/>
+        <source>Start</source>
+        <translation>开始</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="379"/>
+        <source>waiting for emulator start...</source>
+        <translation>等待模拟器启动中</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="392"/>
+        <source>Starting task in </source>
+        <translation>任务启动于</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="457"/>
+        <source>Starting game...</source>
+        <translation>启动游戏</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="470"/>
+        <source>Starting game in </source>
+        <translation>游戏启动于</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="343"/>
+        <source>Starting task...</source>
+        <translation>启动任务</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="520"/>
+        <source>running task:</source>
+        <translation>运行任务</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="522"/>
+        <source>Task finished</source>
+        <translation>任务完成</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="556"/>
+        <source>Stopping task...</source>
+        <translation>停止任务中</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="609"/>
+        <source>No task can be deleted</source>
+        <translation>没有任务可以被删除</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="635"/>
+        <source>Already the first task</source>
+        <translation>已经是首位任务</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="640"/>
+        <source>Already the last task</source>
+        <translation>已经是末位任务</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="508"/>
+        <source>Saving ADB configuration...</source>
+        <translation>使用ADB方案</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="513"/>
+        <source>Saving Win32 configuration...</source>
+        <translation>使用Win32方案</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="727"/>
+        <source>Task</source>
+        <translation>任务</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="744"/>
+        <source>Detecting game...</source>
+        <translation>检测Win32应用中</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="745"/>
+        <source>No game detected</source>
+        <translation>指定程序不存在</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="746"/>
+        <source>Game detected</source>
+        <translation>检测到指定程序</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="748"/>
+        <source>Detecting emulator...</source>
+        <translation>检测模拟器中</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="749"/>
+        <source>No emulator detected</source>
+        <translation>未检测到模拟器</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="750"/>
+        <source>Emulator detected</source>
+        <translation>检测到模拟器</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="754"/>
+        <source>Tip</source>
+        <translation>提示</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="873"/>
+        <source>Success</source>
+        <translation>成功</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="166"/>
+        <source>DingTalk Failed</source>
+        <translation>钉钉推送失败</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="168"/>
+        <source>Lark Failed</source>
+        <translation>飞书推送失败</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="170"/>
+        <source>SMTP Failed</source>
+        <translation>SMTP推送失败</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="172"/>
+        <source>WxPusher Failed</source>
+        <translation>微信推送失败</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="174"/>
+        <source>DingTalk Success</source>
+        <translation>钉钉推送成功</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="176"/>
+        <source>Lark Success</source>
+        <translation>飞书推送成功</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="178"/>
+        <source>SMTP Success</source>
+        <translation>SMTP推送成功</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="180"/>
+        <source>WxPusher Success</source>
+        <translation>微信推送成功</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="194"/>
+        <source>Unknown Error</source>
+        <translation>未知错误</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="198"/>
+        <source> Failed</source>
+        <translation>失败</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="666"/>
+        <source>save Win32 config...</source>
+        <translation>保存Win32控制器</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="851"/>
+        <source>task completed</source>
+        <translation>任务完成</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="862"/>
+        <source>task failed</source>
+        <translation>任务失败</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="506"/>
+        <source>task running:</source>
+        <translation>运行任务:</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="662"/>
+        <source>save ADB config...</source>
+        <translation>保存ADB控制器</translation>
+    </message>
     <name>Task_Interface</name>
     <message>
         <location filename="app/view/UI_task_interface.py" line="182"/>
@@ -426,473 +1023,5 @@
         <source>Add Task</source>
         <translation>添加</translation>
     </message>
-</context>
-<context>
-    <name>Scheduled_Interface</name>
-    <message>
-        <location filename="app/view/UI_scheduled_interface.py" line="112"/>
-        <source>Scheduled Interface</source>
-        <translation>计划任务</translation>
-    </message>
-    <message>
-        <location filename="app/view/UI_scheduled_interface.py" line="115"/>
-        <source>Add</source>
-        <translation>添加</translation>
-    </message>
-    <message>
-        <location filename="app/view/UI_scheduled_interface.py" line="116"/>
-        <source>Delete</source>
-        <translation>删除</translation>
-    </message>
-    <message>
-        <location filename="app/view/UI_scheduled_interface.py" line="117"/>
-        <source>Scheduled name</source>
-        <translation>计划名</translation>
-    </message>
-    <message>
-        <location filename="app/view/UI_scheduled_interface.py" line="120"/>
-        <source>please inter scheduled name</source>
-        <translation>请选择计划名</translation>
-    </message>
-    <message>
-        <location filename="app/view/UI_scheduled_interface.py" line="123"/>
-        <source>Trigger Time</source>
-        <translation>触发事件</translation>
-    </message>
-    <message>
-        <location filename="app/view/UI_scheduled_interface.py" line="126"/>
-        <source>Use Configuration</source>
-        <translation>选择配置</translation>
-    </message>
-    </context>
-    <context>
-    <name>TaskInterface</name>
-    <message>
-        <location filename="app/view/task_interface.py" line="49"/>
-        <source>Error</source>
-        <translation>错误</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="61"/>
-        <source>Do nothing</source>
-        <translation>无动作</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="62"/>
-        <source>Close emulator</source>
-        <translation>退出模拟器</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="63"/>
-        <source>Close emulator and Quit app</source>
-        <translation>退出模拟器和应用</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="64"/>
-        <source>Shutdown</source>
-        <translation>关机</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="109"/>
-        <source>Starting Connection</source>
-        <translation>开始连接</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="111"/>
-        <source>Connection Success</source>
-        <translation>连接成功</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="113"/>
-        <source>Connection Failed</source>
-        <translation>连接失败</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="115"/>
-        <source>Unknow Error</source>
-        <translation>未知错误</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="119"/>
-        <source>Failed</source>
-        <translation>失败</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="157"/>
-        <source>Resource file not detected</source>
-        <translation>未找到资源文件</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="216"/>
-        <source>Stop</source>
-        <translation>停止</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="413"/>
-        <source>File not found</source>
-        <translation>未找到文件</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="416"/>
-        <source>Can not start the file</source>
-        <translation>无法打开文件</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="397"/>
-        <source>Start</source>
-        <translation>开始</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="274"/>
-        <source>waiting for emulator start...</source>
-        <translation>等待模拟器启动中</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="287"/>
-        <source>Starting task in </source>
-        <translation>任务启动于</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="312"/>
-        <source>Starting game...</source>
-        <translation>启动游戏</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="325"/>
-        <source>Starting game in </source>
-        <translation>游戏启动于</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="343"/>
-        <source>Starting task...</source>
-        <translation>启动任务</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="365"/>
-        <source>running task:</source>
-        <translation>运行任务</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="368"/>
-        <source>Task finished</source>
-        <translation>任务完成</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="398"/>
-        <source>Stopping task...</source>
-        <translation>停止任务中</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="456"/>
-        <source>No task can be deleted</source>
-        <translation>没有任务可以被删除</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="484"/>
-        <source>Already the first task</source>
-        <translation>已经是首位任务</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="487"/>
-        <source>Already the last task</source>
-        <translation>已经是末位任务</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="508"/>
-        <source>Saving ADB configuration...</source>
-        <translation>使用ADB方案</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="513"/>
-        <source>Saving Win32 configuration...</source>
-        <translation>使用Win32方案</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="566"/>
-        <source>Task</source>
-        <translation>任务</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="581"/>
-        <source>Detecting game...</source>
-        <translation>检测Win32应用中</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="583"/>
-        <source>No game detected</source>
-        <translation>指定程序不存在</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="584"/>
-        <source>Game detected</source>
-        <translation>检测到指定程序</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="587"/>
-        <source>Detecting emulator...</source>
-        <translation>检测模拟器中</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="589"/>
-        <source>No emulator detected</source>
-        <translation>未检测到模拟器</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="590"/>
-        <source>Emulator detected</source>
-        <translation>检测到模拟器</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="594"/>
-        <source>Tip</source>
-        <translation>提示</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="636"/>
-        <source>Success</source>
-        <translation>成功</translation>
-    </message>
-</context>
-<context>
-    <name>MainWindow</name>
-    <message>
-        <location filename="app/view/main_window.py" line="77"/>
-        <source>Task</source>
-        <translation>任务</translation>
-    </message>
-    <message>
-        <location filename="app/view/main_window.py" line="78"/>
-        <source>Scheduling tasks</source>
-        <translation>计划任务</translation>
-    </message>
-    <message>
-        <location filename="app/view/main_window.py" line="67"/>
-        <source>Custom Setting</source>
-        <translation>自定义程序设置</translation>
-    </message>
-    <message>
-        <location filename="app/view/main_window.py" line="81"/>
-        <source>Setting</source>
-        <translation>设置</translation>
-    </message>
-</context>
-<context>
-    <name>CustomSettingInterface</name>
-    <message>
-        <location filename="app/view/custom_setting_interface.py" line="24"/>
-        <source>Custom Setting</source>
-        <translation>自定义程序设置</translation>
-    </message>
-    <message>
-        <location filename="app/view/custom_setting_interface.py" line="26"/>
-        <source>Setting</source>
-        <translation>设置</translation>
-    </message>
-</context>
-<context>
-    <name>NoticeButtonSettingCard</name>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="279"/>
-        <source>Notification Enabled</source>
-        <translation>通知已启用</translation>
-    </message>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="261"/>
-        <source>Notification disabled</source>
-        <translation>通知已禁用</translation>
-    </message>
-</context>
-<context>
-    <name>NoticeType</name>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="40"/>
-        <source>OK</source>
-        <translation>确定</translation>
-    </message>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="41"/>
-        <source>Clear</source>
-        <translation>清除</translation>
-    </message>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="121"/>
-        <source>DingTalk Webhook URL:</source>
-        <translation>钉钉 Webhook 地址：</translation>
-    </message>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="122"/>
-        <source>DingTalk Secret:</source>
-        <translation>钉钉密钥：</translation>
-    </message>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="134"/>
-        <source>Lark Webhook URL:</source>
-        <translation>飞书 Webhook 地址：</translation>
-    </message>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="135"/>
-        <source>Lark App Key:</source>
-        <translation>飞书应用密钥：</translation>
-    </message>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="152"/>
-        <source>Server:</source>
-        <translation>服务器：</translation>
-    </message>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="153"/>
-        <source>Key:</source>
-        <translation>密钥：</translation>
-    </message>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="154"/>
-        <source>User QQ:</source>
-        <translation>用户 QQ：</translation>
-    </message>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="155"/>
-        <source>Robot QQ:</source>
-        <translation>机器人 QQ：</translation>
-    </message>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="178"/>
-        <source>Server Address:</source>
-        <translation>服务器地址：</translation>
-    </message>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="179"/>
-        <source>Server Port:</source>
-        <translation>服务器端口：</translation>
-    </message>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="180"/>
-        <source>User Name:</source>
-        <translation>用户名：</translation>
-    </message>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="181"/>
-        <source>Password:</source>
-        <translation>密码：</translation>
-    </message>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="182"/>
-        <source>Send Mail:</source>
-        <translation>发送邮件：</translation>
-    </message>
-    <message>
-        <location filename="app/components/notic_setting_card.py" line="183"/>
-        <source>Receive Mail:</source>
-        <translation>接收邮件：</translation>
-    </message>
-</context>
-<context>
-    <name>ListWidge_Menu_Draggable</name>
-    <message>
-        <location filename="app/components/listwidge_menu_draggable.py" line="41"/>
-        <source>Move Up</source>
-        <translation>上移</translation>
-    </message>
-    <message>
-        <location filename="app/components/listwidge_menu_draggable.py" line="42"/>
-        <source>Move Down</source>
-        <translation>下移</translation>
-    </message>
-    <message>
-        <location filename="app/components/listwidge_menu_draggable.py" line="43"/>
-        <source>Delete</source>
-        <translation>删除</translation>
-    </message>
-    <message>
-        <location filename="app/components/listwidge_menu_draggable.py" line="122"/>
-        <source>Error</source>
-        <translation>错误</translation>
-    </message>
-    <message>
-        <location filename="app/components/listwidge_menu_draggable.py" line="71"/>
-        <source>No task can be deleted</source>
-        <translation>没有任务可以被删除</translation>
-    </message>
-    <message>
-        <location filename="app/components/listwidge_menu_draggable.py" line="97"/>
-        <source>Already the first task</source>
-        <translation>已经是首位任务</translation>
-    </message>
-    <message>
-        <location filename="app/components/listwidge_menu_draggable.py" line="122"/>
-        <source>Already the last task</source>
-        <translation>已经是末位任务</translation>
-    </message>
-    <name>CustomMessageBox</name>
-    <message>
-        <location filename="app/components/choose_resource_button.py" line="26"/>
-        <source>choose Resource</source>
-        <translation>选择资源</translation>
-    </message>
-    <message>
-        <location filename="app/components/choose_resource_button.py" line="28"/>
-        <source>Enter the name of the resource</source>
-        <translation>输入资源名称</translation>
-    </message>
-    <message>
-        <location filename="app/components/choose_resource_button.py" line="33"/>
-        <source>Enter the path of the resource</source>
-        <translation>输入资源路径</translation>
-    </message>
-    <message>
-        <location filename="app/components/choose_resource_button.py" line="37"/>
-        <source>Select Resource</source>
-        <translation>选择资源</translation>
-    </message>
-    <message>
-        <location filename="app/components/choose_resource_button.py" line="46"/>
-        <source>Enter update link (optional)</source>
-        <translation>输入更新链接(可选)</translation>
-    </message>
-    <message>
-        <location filename="app/components/choose_resource_button.py" line="57"/>
-        <source>Confirm</source>
-        <translation>确认</translation>
-    </message>
-    <message>
-        <location filename="app/components/choose_resource_button.py" line="58"/>
-        <source>Cancel</source>
-        <translation>退出</translation>
-    </message>
-    <message>
-        <location filename="app/components/choose_resource_button.py" line="64"/>
-        <source>Choose folder</source>
-        <translation>选择文件夹</translation>
-    </message>
-    <message>
-        <location filename="app/components/choose_resource_button.py" line="72"/>
-        <source>The resource does not have an interface.json file</source>
-        <translation>当前路径内无interface.json文件</translation>
-    </message>
-    <message>
-        <location filename="app/components/choose_resource_button.py" line="79"/>
-        <source>The resource is not a resource directory</source>
-        <translation>未找到resource文件</translation>
-    </message>
-    <message>
-        <location filename="app/components/choose_resource_button.py" line="93"/>
-        <source>Error</source>
-        <translation>错误</translation>
-    </message>
-    <message>
-        <location filename="app/components/choose_resource_button.py" line="113"/>
-        <source>Resource name cannot be empty</source>
-        <translation>资源名称不能为空</translation>
-    </message>
-    <message>
-        <location filename="app/components/choose_resource_button.py" line="116"/>
-        <source>Resource path cannot be empty</source>
-        <translation>资源路径不能为空</translation>
-    </message>
-    <message>
-        <location filename="app/components/choose_resource_button.py" line="119"/>
-        <source>Resource already exists</source>
-        <translation>资源已经存在</translation>
-    </message>
-
 </context>
 </TS>

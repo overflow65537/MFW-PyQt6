@@ -9,21 +9,21 @@ import asyncio
 from ..utils.logger import logger
 
 
-def Read_Config(paths):
+def Read_Config(paths) -> dict:
     """读取指定路径的JSON配置文件。
 
     Args:
         paths (str): 配置文件的路径。
 
     Returns:
-        dict or bool: 如果文件存在，返回解析后的字典；否则返回False。
+        dict: 如果文件存在，返回解析后的字典；否则返回空字典。
     """
     if os.path.exists(paths):
         with open(paths, "r", encoding="utf-8") as MAA_Config:
             MAA_data = json.load(MAA_Config)
             return MAA_data
     else:
-        return False
+        return {}
 
 
 def Save_Config(paths, data):

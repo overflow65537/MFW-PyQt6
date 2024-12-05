@@ -31,6 +31,7 @@ from ..common.config import cfg
 from maa.toolkit import AdbDevice
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
+from ..utils.notice import dingtalk_send, lark_send, SMTP_send, WxPusher_send
 
 
 class TaskInterface(Ui_Task_Interface, QWidget):
@@ -93,6 +94,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def disconnect_signals(self):
         try:
+            signalBus.Notice_msg.disconnect(self.print_notice)
             signalBus.callback.disconnect(self.callback)
             signalBus.update_task_list.disconnect(self.update_task_list_passive)
             self.AddTask_Button.clicked.disconnect(self.Add_Task)
@@ -144,6 +146,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             title.setVisible(visible)
 
     def bind_signals(self):
+        signalBus.Notice_msg.connect(self.print_notice)
         signalBus.callback.connect(self.callback)
         signalBus.update_task_list.connect(self.update_task_list_passive)
         self.AddTask_Button.clicked.connect(self.Add_Task)
@@ -157,6 +160,26 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.S2_Button.clicked.connect(self.Start_Up)
         self.Autodetect_combox.currentTextChanged.connect(self.Save_device_Config)
         self.Finish_combox.currentIndexChanged.connect(self.rewrite_Completion_Options)
+
+    def print_notice(self, message: str):
+        if "DingTalk Failed".lower() in message.lower():
+            self.TaskOutput_Text.append(self.tr("DingTalk Failed"))
+        elif "Lark Failed".lower() in message.lower():
+            self.TaskOutput_Text.append(self.tr("Lark Failed"))
+        elif "SMTP Failed".lower() in message.lower():
+            self.TaskOutput_Text.append(self.tr("SMTP Failed"))
+        elif "WxPusher Failed".lower() in message.lower():
+            self.TaskOutput_Text.append(self.tr("WxPusher Failed"))
+        elif "DingTalk Success".lower() in message.lower():
+            self.TaskOutput_Text.append(self.tr("DingTalk Success"))
+        elif "Lark Success".lower() in message.lower():
+            self.TaskOutput_Text.append(self.tr("Lark Success"))
+        elif "SMTP Success".lower() in message.lower():
+            self.TaskOutput_Text.append(self.tr("SMTP Success"))
+        elif "WxPusher Success".lower() in message.lower():
+            self.TaskOutput_Text.append(self.tr("WxPusher Success"))
+        else:
+            self.TaskOutput_Text.append(message)
 
     def callback(self, message: str):
         if "controller_action" in message:
@@ -174,6 +197,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             if message_data == "3":
                 self.TaskOutput_Text.append(self.entry + self.tr(" Failed"))
                 logger.debug(f"task_interface.py:{self.entry} 任务失败")
+                self.send_notice("failed", self.entry)
 
     def Start_Status(
         self, interface_Path: str, maa_pi_config_Path: str, resource_Path: str
@@ -479,7 +503,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     self.entry = task_enter["entry"]
             if task_list["option"] == []:
                 logger.info(f"task_interface.py:运行任务:{self.entry}")
-                self.TaskOutput_Text.append(self.tr("运行任务:") + f" {self.entry}")
+                self.TaskOutput_Text.append(self.tr("task running:") + f" {self.entry}")
                 await maafw.run_task(self.entry)
             else:
                 override_options = {}
@@ -497,7 +521,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 await maafw.run_task(self.entry, override_options)
         self.TaskOutput_Text.append(self.tr("Task finished"))
         logger.info("task_interface.py:任务完成")
-
+        # 发送外部通知
+        self.send_notice("completed")
         # 结束后脚本
         run_after_finish = maa_config_data.config.get("run_after_finish")
         if run_after_finish != "" and self.need_runing:
@@ -634,11 +659,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             Controller_Type_Select, maa_config_data.interface_config_path
         )
         if controller_type == "Adb":
-            self.TaskOutput_Text.append(self.tr("保存 ADB 配置..."))
+            self.TaskOutput_Text.append(self.tr("save ADB config..."))
             self.add_Controller_combox()
 
         elif controller_type == "Win32":
-            self.TaskOutput_Text.append(self.tr("保存 Win32 配置..."))
+            self.TaskOutput_Text.append(self.tr("save Win32 config..."))
             self.Start_Detection()
         logger.info(f"task_interface.py:保存控制器配置: {Controller_Type_Select}")
         # 更新配置并保存
@@ -809,6 +834,40 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             )  # 将对象添加到列表中
 
         return emulator_results  # 返回包含所有 AdbDevice 对象的列表
+
+    def send_notice(self, msg_type: str = "", filed_task: str = "") -> None:
+        """发送通知
+        参数:
+        msg_type (str): 消息的类型，用于区分通知的内容或来源。
+        filed_task (str): 发送失败的任务名。
+        """
+        if msg_type == "completed":
+            msg = {
+                "title": self.tr("task completed"),
+                "text": maa_config_data.resource_name
+                + " "
+                + maa_config_data.config_name
+                + " "
+                + self.tr("task completed"),
+            }
+        elif msg_type == "failed":
+            msg = {
+                "title": self.tr("task failed"),
+                "text": maa_config_data.resource_name
+                + " "
+                + maa_config_data.config_name
+                + " "
+                + filed_task
+                + " "
+                + self.tr("task failed"),
+            }
+        else:
+            return
+
+        dingtalk_send(msg, cfg.get(cfg.Notice_DingTalk_status))
+        lark_send(msg, cfg.get(cfg.Notice_Lark_status))
+        SMTP_send(msg, cfg.get(cfg.Notice_SMTP_status))
+        WxPusher_send(msg, cfg.get(cfg.Notice_WxPusher_status))
 
     def show_success(self, message):
         InfoBar.success(

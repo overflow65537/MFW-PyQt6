@@ -48,15 +48,6 @@ class Config(QConfig):
         "resource_exist", "resource_exist", False, BoolValidator()
     )
 
-    # 文件地址
-    emu_path = ConfigItem("Path", "emu_path", "")
-    emu_wait_time = ConfigItem("Path", "emu_wati_time", "10")
-    exe_path = ConfigItem("Path", "exe_path", "")
-    exe_parameter = ConfigItem("Path", "exe_parameter", "")
-    exe_wait_time = ConfigItem("Path", "exe_wait_time", "10")
-    run_before_start = ConfigItem("Path", "run_before_start", "")
-    run_after_finish = ConfigItem("Path", "run_after_finish", "")
-
     # MAA路径
     maa_config_name = ConfigItem("Main", "Maa_config_name", "")
     maa_config_path = ConfigItem("Main", "Maa_config_path", "")
@@ -77,32 +68,30 @@ class Config(QConfig):
     )
 
     # 外部通知
-    Notice_Webhook = ConfigItem(
-        "Notice",
-        "Webhook",
-        {
-            "DingTalk": {"status": False, "url": "", "secret": ""},
-            "Lark": {"status": False, "url": "", "secret": ""},
-        },
-    )
-    Notice_Qmsg = ConfigItem(
-        "Notice",
-        "Qmsg",
-        {"status": False, "sever": "", "key": "", "uesr_qq": "", "robot_qq": ""},
-    )
-    Notice_SMTP = ConfigItem(
-        "Notice",
-        "SMTP",
-        {
-            "status": False,
-            "sever_address": "",
-            "sever_port": 0,
-            "uesr_name": "",
-            "password": "",
-            "send_mail": "",
-            "receive_mail": "",
-        },
-    )
+    Notice_DingTalk_status = ConfigItem("Notice", "DingTalk_status", False)
+    Notice_DingTalk_url = ConfigItem("Notice", "DingTalk_url", "")
+    Notice_DingTalk_secret = ConfigItem("Notice", "DingTalk_secret", "")
+
+    Notice_Lark_status = ConfigItem("Notice", "Lark_status", False)
+    Notice_Lark_url = ConfigItem("Notice", "Lark_url", "")
+    Notice_Lark_secret = ConfigItem("Notice", "Lark_secret", "")
+
+    Notice_Qmsg_status = ConfigItem("Notice", "Qmsg_status", False)
+    Notice_Qmsg_sever = ConfigItem("Notice", "Qmsg_sever", "")
+    Notice_Qmsg_key = ConfigItem("Notice", "Qmsg_key", "")
+    Notice_Qmsg_user_qq = ConfigItem("Notice", "Qmsg_uesr_qq", "")
+    Notice_Qmsg_robot_qq = ConfigItem("Notice", "Qmsg_robot_qq", "")
+
+    Notice_SMTP_status = ConfigItem("Notice", "SMTP_status", False)
+    Notice_SMTP_sever_address = ConfigItem("Notice", "SMTP_sever_address", "")
+    Notice_SMTP_sever_port = ConfigItem("Notice", "SMTP_sever_port", "25")
+    Notice_SMTP_user_name = ConfigItem("Notice", "SMTP_uesr_name", "")
+    Notice_SMTP_password = ConfigItem("Notice", "SMTP_password", "")
+    Notice_SMTP_send_mail = ConfigItem("Notice", "SMTP_send_mail", "")
+    Notice_SMTP_receive_mail = ConfigItem("Notice", "SMTP_receive_mail", "")
+
+    Notice_WxPusher_status = ConfigItem("Notice", "WxPush_status", False)
+    Notice_WxPusher_SPT_token = ConfigItem("Notice", "WxPusher_SPT_token", "")
 
     # main window
     micaEnabled = ConfigItem("MainWindow", "MicaEnabled", isWin11(), BoolValidator())

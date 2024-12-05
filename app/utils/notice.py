@@ -11,32 +11,26 @@ from email.mime.text import MIMEText
 
 from ..common.signal_bus import signalBus
 from ..common.config import cfg
+from ..utils.logger import logger
 
 
 class DingTalk:
     def __init__(self) -> None:
-        data = cfg.get(cfg.Notice_Webhook)["DingTalk"]
         self.sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
         self.correct_url = r"^https://oapi.dingtalk.com/robot/.*$"
-        self.url = str(data["url"])
-        self.secret = str(data["secret"])
+        self.url = cfg.get(cfg.Notice_DingTalk_url)
+        self.secret = cfg.get(cfg.Notice_DingTalk_secret)
         self.headers = {"Content-Type": "application/json"}
         self.codename = "errcode"
         self.code = 0
 
-    def msg(self, msg_type: str) -> dict:
-        if msg_type == "Test":
-            msg_text = "# 信息发送测试\n\n这是一段具有十六个汉字的文本测试"
-        elif msg_type == "Completed":
-            msg_text = "# 任务完成通知\n\n任务已完成。"
-        elif msg_type == "Timeout":
-            msg_text = "# 任务失败通知\n\n任务因超时而未能完成，请检查运行状态。"
+    def msg(self, msg_dict: dict) -> dict:
 
-        msg_text = msg_text + f"\n\n{self.sendtime}"
+        msg_text = f"{self.sendtime}: " + msg_dict["text"]
         msg = {
             "msgtype": "markdown",
             "markdown": {
-                "title": "Title",
+                "title": msg_dict["Title"],
                 "text": msg_text,
             },
         }
@@ -49,8 +43,12 @@ class DingTalk:
         secret = self.secret
 
         if url == "":
+            logger.error("notice.py:DingTalk 通知地址为空")
+            cfg.set(cfg.Notice_DingTalk_status, False)
             return None
         if secret == "":
+            logger.error("notice.py:DingTalk 密钥为空")
+            cfg.set(cfg.Notice_DingTalk_status, False)
             return [url]
 
         timestamp = str(round(time.time() * 1000))
@@ -68,27 +66,17 @@ class DingTalk:
 
 class Lark:
     def __init__(self) -> None:
-        data = cfg.get(cfg.Notice_Webhook)["Lark"]
         self.sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
         self.correct_url = r"^https://open.feishu.cn/open-apis/bot/.*$"
-        self.url = str(data["url"])
-        self.secret = str(data["secret"])
+        self.url = cfg.get(cfg.Notice_Lark_url)
+        self.secret = cfg.get(cfg.Notice_Lark_secret)
         self.headers = {"Content-Type": "application/json"}
         self.codename = "code"
         self.code = 0
 
-    def msg(self, msg_type: str) -> dict:
-        if msg_type == "Test":
-            msg_title = "信息发送测试"
-            msg_text = "这是一段具有十六个汉字的文本测试"
-        elif msg_type == "Completed":
-            msg_title = "任务完成通知"
-            msg_text = "任务已完成。"
-        elif msg_type == "Timeout":
-            msg_title = "任务失败通知"
-            msg_text = "任务因超时而未能完成，请检查运行状态。"
+    def msg(self, msg_dict: dict) -> dict:
 
-        msg_text = msg_text + f"\n{self.sendtime}"
+        msg_text = f"{self.sendtime}: " + msg_dict["text"]
 
         sign_cache = self.sign()
         msg = {
@@ -98,7 +86,7 @@ class Lark:
             "content": {
                 "post": {
                     "zh_cn": {
-                        "title": msg_title,
+                        "title": msg_dict["title"],
                         "content": [
                             [
                                 {
@@ -131,39 +119,29 @@ class Lark:
 
 class SMTP:
     def __init__(self) -> None:
-        data = cfg.get(cfg.Notice_SMTP)
-        self.sever_address = data["sever_address"]
-        self.sever_port = data["sever_port"]
-        self.uesr_name = data["user_name"]
-        self.password = data["password"]
-        self.send_mail = data["send_mail"]
-        self.receive_mail = data["receive_mail"]
+        self.sever_address = cfg.get(cfg.Notice_SMTP_sever_address)
+        self.sever_port = cfg.get(cfg.Notice_SMTP_sever_port)
+        self.uesr_name = cfg.get(cfg.Notice_SMTP_user_name)
+        self.password = cfg.get(cfg.Notice_SMTP_password)
+        self.send_mail = cfg.get(cfg.Notice_SMTP_user_name)
+        self.receive_mail = cfg.get(cfg.Notice_SMTP_receive_mail)
+        self.sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
 
         self.Open_SSL = True  # TODO
         self.Open_Login = True  # TODO
 
-    def msg(self, msg_type: str) -> MIMEText:
-        if msg_type == "Test":
-            msg_text = "这是一段具有十六个汉字的文本测试"
-            msg = MIMEText(msg_text, "html", "utf-8")
-            msg["Subject"] = "信息发送测试"
-        elif msg_type == "Completed":
-            msg_text = "任务已完成。"
-            msg = MIMEText(msg_text, "html", "utf-8")
-            msg["Subject"] = "任务完成通知"
-        elif msg_type == "Timeout":
-            msg_text = "任务因超时而未能完成，请检查运行状态。"
-            msg = MIMEText(msg_text, "html", "utf-8")
-            msg["Subject"] = "任务失败通知"
-
+    def msg(self, msg_dict: dict) -> MIMEText:
+        msg_text = f"{self.sendtime}: " + msg_dict["text"]
+        msg = MIMEText(msg_text, "html", "utf-8")
+        msg["Subject"] = msg_dict["title"]
         msg["From"] = self.send_mail
         msg["To"] = self.receive_mail
 
         return msg
 
-    def send(self, msg_type: str) -> bool:
-        msg = self.msg(msg_type)
-        if self.Open_SSL:
+    def send(self, msg_dict: dict) -> bool:
+        msg = self.msg(msg_dict)
+        if self.Open_SSL and self.sever_port == 443:
             smtp = smtplib.SMTP_SSL(self.sever_address, self.sever_port)
         else:
             smtp = smtplib.SMTP(self.sever_address, self.sever_port)
@@ -177,53 +155,152 @@ class SMTP:
             smtp.quit()
 
 
-def webhook_send(appname: str, msg_type: str = "Test") -> bool:
-    # appname: "DingTalk" | "Lark"
-    # msg_type: "Test" | "Completed" | "Timeout"
-    # 当发送成功时，返回 True ，其余情况均返回 False
+class WxPusher:
+    def msg(self, msg_dict: dict) -> dict:
+        sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+        msg_text = f"{sendtime}: {msg_dict["text"]}"
+        msg = {
+            "content": msg_text,
+            "summary": msg_dict["title"],
+            "contentType": 1,
+            "spt": cfg.get(cfg.Notice_WxPusher_SPT_token),
+            "sptList": [cfg.get(cfg.Notice_WxPusher_SPT_token)],
+        }
+        return msg
 
-    if appname == "DingTalk":
-        APP = DingTalk()
-    elif appname == "Lark":
-        APP = Lark()
-    else:
-        signalBus.Notice_msg.emit("不支持的发送方式")
+    def send(self, msg_type: dict) -> bool:
+
+        url = "https://wxpusher.zjiecode.com/api/send/message/simple-push"
+        msg = self.msg(msg_type)
+        try:
+            response = requests.post(url=url, json=msg)
+            status_code = response.json()["code"]
+        except Exception as e:
+            logger.error(f"WxPusher 发送失败 {e}")
+            return False
+
+        if status_code != 1000:
+            logger.error(f"WxPusher 发送失败 {response.json()}")
+            return False
+
+        else:
+            return True
+
+
+def dingtalk_send(
+    msg_text: dict = {"title": "Test", "text": "Test"}, status: bool = False
+) -> bool:
+    if not status:
+        logger.info(f"notice.py:DingTalk 未启用")
         return False
+    APP = DingTalk()
 
     url = APP.sign()[0]
-    msg = APP.msg(msg_type)
+    msg = APP.msg(msg_text)
     headers = APP.headers
     if url is None:
-        print("Url is None")
-        signalBus.Notice_msg.emit("Url 不能为空")
+        logger.error("notice.py:dingtalk Url空")
+        cfg.set(cfg.Notice_DingTalk_status, False)
         return False
     if not re.match(APP.correct_url, url):
-        signalBus.Notice_msg.emit("Url 格式不正确")
+        logger.error(f"notice.py:dingtalk Url不正确")
+        cfg.set(cfg.Notice_DingTalk_status, False)
         return False
 
     try:
         response = requests.post(url=url, headers=headers, json=msg)
         status_code = response.json()[APP.codename]
     except Exception:
-        print("response failed")
-        signalBus.Notice_msg.emit(f"{appname} 发送失败")
+        logger.error(f"notice.py:DingTalk 发送失败 {response.json()}")
+        cfg.set(cfg.Notice_DingTalk_status, False)
+        signalBus.Notice_msg.emit(f"DingTalk Failed")
         return False
 
     if status_code != APP.code:
-        print("send failed")
-        signalBus.Notice_msg.emit(f"{appname} 发送失败 (Error:{status_code})")
+        logger.error(f"notice.py:DingTalk 发送失败 {response.json()}")
+        cfg.set(cfg.Notice_DingTalk_status, False)
+        signalBus.Notice_msg.emit(f"DingTalk Failed")
         return False
     else:
-        print("send success")
-        signalBus.Notice_msg.emit(f"{appname} 发送成功")
+        logger.info(f"notice.py:DingTalk 发送成功")
+        signalBus.Notice_msg.emit(f"DingTalk success")
         return True
 
 
-def SMTP_send(msg_type: str = "Test") -> bool:
-    status = SMTP.send(msg_type)
-    if status:  # 发送正常情况下，返回值应为 {}
-        signalBus.Notice_msg.emit(f"SMTP 发送失败")
+def lark_send(
+    msg_dict: dict = {"title": "Test", "text": "Test"}, status: bool = False
+) -> bool:
+    if not status:
+        logger.info(f"Lark 未启用")
+        return False
+    APP = Lark()
+
+    url = APP.sign()[0]
+    msg = APP.msg(msg_dict)
+    headers = APP.headers
+    if url is None:
+        logger.error("Lark Url空")
+        cfg.set(cfg.Notice_Lark_status, False)
+        signalBus.Notice_msg.emit("Lark Failed")
+        return False
+    if not re.match(APP.correct_url, url):
+        logger.error(f"Lark Url不正确")
+        cfg.set(cfg.Notice_Lark_status, False)
+        signalBus.Notice_msg.emit("Lark Failed")
+        return False
+
+    try:
+        response = requests.post(url=url, headers=headers, json=msg)
+        status_code = response.json()[APP.codename]
+    except Exception:
+        logger.error(f"Lark 发送失败 {response.json()}")
+        signalBus.Notice_msg.emit(f"Lark failed")
+        return False
+
+    if status_code != APP.code:
+        logger.error(f"Lark 发送失败 {response.json()}")
+        signalBus.Notice_msg.emit(f"Lark failed")
         return False
     else:
-        signalBus.Notice_msg.emit(f"SMTP 发送成功")
+        logger.info(f"Lark 发送成功")
+        signalBus.Notice_msg.emit(f"Lark success")
         return True
+
+
+def SMTP_send(
+    msg_dict: dict = {"title": "Test", "text": "Test"}, status: bool = False
+) -> bool:
+    if status:
+        app = SMTP()
+        status = app.send(msg_dict=msg_dict)
+        if status:  # 发送正常情况下，返回值应为 {}
+            logger.error(f"SMTP 发送失败 {status}")
+            cfg.set(cfg.Notice_SMTP_status, False)
+            signalBus.Notice_msg.emit(f"SMTP failed")
+            return False
+        else:
+            logger.info(f"SMTP 发送成功")
+            signalBus.Notice_msg.emit(f"SMTP success")
+            return True
+    else:
+        logger.info(f"SMTP 未启用")
+        return False
+
+
+def WxPusher_send(
+    msg_dict: str = {"title": "Test", "text": "Test"}, status: bool = False
+) -> bool:
+    if status:
+        status = WxPusher().send(msg_dict)
+        if status:
+            logger.info(f"WxPusher 发送成功")
+            signalBus.Notice_msg.emit(f"WxPusher success")
+            return True
+        else:
+            cfg.set(cfg.Notice_WxPusher_status, False)
+            signalBus.Notice_msg.emit(f"WxPusher failed")
+            return False
+
+    else:
+        logger.info(f"WxPusher 未启用")
+        return False

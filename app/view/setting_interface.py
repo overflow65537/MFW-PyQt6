@@ -80,7 +80,7 @@ class SettingInterface(ScrollArea):
         self.initialize_win32_settings()
         self.initialize_start_settings()
         self.initialize_personalization_settings()
-        # self.initialize_notice_settings()
+        self.initialize_notice_settings()
         self.initialize_dev_settings()
         self.initialize_about_settings()
 
@@ -303,7 +303,53 @@ class SettingInterface(ScrollArea):
 
     def initialize_notice_settings(self):
         """初始化外部通知设置。"""
-        # 填充通知功能的初始化逻辑（省略具体实现）
+        """初始化外部通知设置。"""
+        self.noticeGroup = SettingCardGroup(self.tr("Notice"), self.scrollWidget)
+
+        self.dingtalk_noticeTypeCard = NoticeButtonSettingCard(
+            text=self.tr("Modify"),
+            icon=FIF.COMMAND_PROMPT,
+            title=self.tr("DingTalk"),
+            notice_type="DingTalk",
+            parent=self.noticeGroup,
+        )
+
+        self.lark_noticeTypeCard = NoticeButtonSettingCard(
+            text=self.tr("Modify"),
+            icon=FIF.COMMAND_PROMPT,
+            title=self.tr("Lark"),
+            notice_type="Lark",
+            parent=self.noticeGroup,
+        )
+
+        """self.qmsg_noticeTypeCard = NoticeButtonSettingCard(
+            text=self.tr("Modify"),
+            icon=FIF.COMMAND_PROMPT,
+            title=self.tr("Qmsg"),
+            notice_type="Qmsg",
+            parent=self.noticeGroup,
+        )"""
+
+        self.SMTP_noticeTypeCard = NoticeButtonSettingCard(
+            text=self.tr("Modify"),
+            icon=FIF.COMMAND_PROMPT,
+            title=self.tr("SMTP"),
+            notice_type="SMTP",
+            parent=self.noticeGroup,
+        )
+        self.WxPusher_noticeTypeCard = NoticeButtonSettingCard(
+            text=self.tr("Modify"),
+            icon=FIF.COMMAND_PROMPT,
+            title=self.tr("WxPusher"),
+            notice_type="WxPusher",
+            parent=self.noticeGroup,
+        )
+
+        self.noticeGroup.addSettingCard(self.dingtalk_noticeTypeCard)
+        self.noticeGroup.addSettingCard(self.lark_noticeTypeCard)
+        # self.noticeGroup.addSettingCard(self.qmsg_noticeTypeCard)
+        self.noticeGroup.addSettingCard(self.SMTP_noticeTypeCard)
+        self.noticeGroup.addSettingCard(self.WxPusher_noticeTypeCard)
 
     def initialize_dev_settings(self):
         """初始化开发者设置。"""
@@ -598,7 +644,7 @@ class SettingInterface(ScrollArea):
         self.expandLayout.addWidget(self.Win32_Setting)
         self.expandLayout.addWidget(self.start_Setting)
         self.expandLayout.addWidget(self.personalGroup)
-        # self.expandLayout.addWidget(self.noticeGroup)
+        self.expandLayout.addWidget(self.noticeGroup)
         self.expandLayout.addWidget(self.DEVGroup)
         self.expandLayout.addWidget(self.aboutGroup)
 
