@@ -1,4 +1,6 @@
 import os
+import sys
+import ctypes
 
 from PyQt6.QtCore import QSize, QTimer
 from PyQt6.QtGui import QIcon
@@ -53,6 +55,7 @@ class MainWindow(FluentWindow):
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
         signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
+        signalBus.title_changed.connect(self.set_title)
 
     def initNavigation(self):
         """初始化导航界面。"""
@@ -86,14 +89,33 @@ class MainWindow(FluentWindow):
                 self.tr("Setting"),
                 NavigationItemPosition.BOTTOM,
             )
+    def is_admin(self):
+        """判断是否为管理员权限"""
+        try:
+            return ctypes.windll.shell32.IsUserAnAdmin()
+        except Exception as e:
+            logger.error(f"main_window.py: 检查权限失败，错误信息：{e}")
+            return False
+    
+    def set_title(self):
+        """设置窗口标题"""
+        title = cfg.get(cfg.title)
+        resource_name = cfg.get(cfg.maa_resource_name)
+        config_name = cfg.get(cfg.maa_config_name)
+        if resource_name !="":
+            title += f" {resource_name}"
+        if config_name !="":
+            title += f" {config_name}"
+        if self.is_admin():
+            title += " "+self.tr("admin")
+        self.setWindowTitle(title)
 
     def initWindow(self):
         """初始化窗口设置。"""
         self.resize(960, 780)
         self.setMinimumWidth(760)
-        self.setWindowIcon(QIcon(":/gallery/images/logo.png"))
-        self.setWindowTitle("PyQt-MAA")
-
+        self.setWindowIcon(QIcon("./logo.png"))
+        self.set_title()
         self.setMicaEffectEnabled(cfg.get(cfg.micaEnabled))
 
         # 创建启动画面

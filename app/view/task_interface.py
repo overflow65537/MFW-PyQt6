@@ -403,7 +403,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         i.adb_path == maa_config_data.config["adb"]["adb_path"]
                         and i.address == maa_config_data.config["adb"]["address"]
                     ):
-                        maa_config_data.config["adb"]["config"] = i.config
+                        config = i.config
                         break
                 if (
                     not await maafw.connect_adb(
@@ -411,7 +411,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         maa_config_data.config["adb"]["address"],
                         maa_config_data.config["adb"]["input_method"],
                         maa_config_data.config["adb"]["screen_method"],
-                        maa_config_data.config["adb"]["config"],
+                        config,
                     )
                     and self.need_runing
                 ):
@@ -564,7 +564,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.S2_Button.clicked.disconnect()
         self.S2_Button.clicked.connect(self.Start_Up)
         self.S2_Button.setEnabled(True)
-
+    def kill_adb_process(self):
+        adb_path = maa_config_data.config["adb"]["adb_path"]
+        if adb_path == "":
+            return
+        try:
+            subprocess.run([adb_path, "kill-server"], check=True)
+            logger.info("task_interface.py:杀死ADB进程")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"task_interface.py:杀死ADB进程失败: {e}")
     def task_list_changed(self):
         self.Task_List.clear()
         self.Task_List.addItems(

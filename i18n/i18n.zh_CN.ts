@@ -44,12 +44,12 @@
         <translation>选择文件夹</translation>
     </message>
     <message>
-        <location filename="app/components/choose_resource_button.py" line="72"/>
+        <location filename="app/components/choose_resource_button.py" line="74"/>
         <source>The resource does not have an interface.json file</source>
-        <translation>当前路径内无interface.json文件</translation>
+        <translation>当前路径interface内无interface.json文件</translation>
     </message>
     <message>
-        <location filename="app/components/choose_resource_button.py" line="79"/>
+        <location filename="app/components/choose_resource_button.py" line="77"/>
         <source>The resource is not a resource directory</source>
         <translation>未找到resource文件</translation>
     </message>

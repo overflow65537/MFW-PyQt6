@@ -23,6 +23,7 @@ class CustomMessageBox(MessageBoxBase):
         transparent_color = QColor(255, 255, 255, 0)
         self.setMaskColor(transparent_color)
         self.folder = None
+        self.status = 0
         self.titleLabel = SubtitleLabel(self.tr("choose Resource"), self)
         self.name_LineEdit = LineEdit(self)
         self.name_LineEdit.setPlaceholderText(self.tr("Enter the name of the resource"))
@@ -64,20 +65,24 @@ class CustomMessageBox(MessageBoxBase):
         self.folder = QFileDialog.getExistingDirectory(
             self, self.tr("Choose folder"), "./"
         )
+        if os.path.basename(self.folder) == "resource":
+            interface_path = os.path.join(os.path.dirname(self.folder), "interface.json")
+            resource_path = self.folder
+            self.status = 0 # 0 直接选择resource目录，1选择resource目录的上级目录
+        else:
+            interface_path = os.path.join(self.folder, "interface.json")
+            resource_path = os.path.join(self.folder, "resource")
+            self.status = 1 # 0 直接选择resource目录，1选择resource目录的上级目录
 
-        interface_path = os.path.join(os.path.dirname(self.folder), "interface.json")
         if not os.path.exists(interface_path):
-            interface_path = os.path.join(self.folder, "resource", "interface.json")
-            if not os.path.exists(interface_path):
-                self.show_error(
-                    self.tr("The resource does not have an interface.json file")
-                )
-                return
-        if os.path.basename(self.folder) != "resource":
-            self.folder = os.path.join(self.folder, "resource")
-            if not os.path.exists(self.folder):
-                self.show_error(self.tr("The resource is not a resource directory"))
-                return
+            self.show_error(self.tr("The resource does not have an interface.json"))
+            return
+        elif not os.path.exists(resource_path):
+            self.show_error(self.tr("The resource is not a resource directory"))
+            return
+        
+
+
         self.path_LineEdit.setText(self.folder)
         logger.info(f"choose_resource_button.py:资源路径 {self.folder}")
         logger.info(f"choose_resource_button.py: interface.json路径 {interface_path}")
@@ -102,9 +107,17 @@ class CustomMessageBox(MessageBoxBase):
 
     def click_yes_button(self):
         self.name_data = self.name_LineEdit.text()
-        path_data = os.path.dirname(self.path_LineEdit.text())
+        path_data = self.path_LineEdit.text()
+        if self.status == 0:
+            #直接选择resource目录
+            interface_path = os.path.join(os.path.dirname(path_data), "interface.json")
+            path_data = os.path.dirname(path_data)
+        elif self.status == 1:
+            #选择resource目录的上级目录
+            interface_path = os.path.join(path_data, "interface.json")
+            path_data = path_data
+            
         update_data = self.update_LineEdit.text()
-        interface_path = os.path.join(path_data, "..", "interface.json")
         resource_data = cfg.get(cfg.maa_resource_list)
         resource_list = list(resource_data)
         resource_path_list = list(resource_data.values())

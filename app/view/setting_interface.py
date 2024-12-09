@@ -519,9 +519,9 @@ class SettingInterface(ScrollArea):
         self.aboutCard = PrimaryPushSettingCard(
             self.tr("About"),
             FIF.INFO,
-            self.tr("About PyQt-MAA"),
+            self.tr("About MFW-PyQt6"),
             self.tr(
-                "PyQt-MAA is open source under the GPLv3 license. Visit the project URL for more information."
+                "MFW-PyQt6 is open source under the GPLv3 license. Visit the project URL for more information."
             ),
             self.aboutGroup,
         )

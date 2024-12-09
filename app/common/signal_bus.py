@@ -18,6 +18,6 @@ class SignalBus(QObject):
     cfg_changed = pyqtSignal()  # 配置文件修改信号
     adb_detect_backup = pyqtSignal(list)  # 备份adb检测
     resource_exist = pyqtSignal(bool)  # 选择资源信号
-
+    title_changed = pyqtSignal()  # 标题栏改变信号
 
 signalBus = SignalBus()

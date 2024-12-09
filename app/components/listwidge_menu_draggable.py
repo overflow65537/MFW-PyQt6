@@ -6,21 +6,17 @@ from qfluentwidgets import InfoBar, InfoBarPosition
 from ..utils.tool import (
     Get_Values_list_Option,
     Save_Config,
-    Read_Config,
     Get_Values_list2,
 )
 from PyQt6.QtCore import Qt
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
+from ..common.maa_config_data import maa_config_data
 
 
 class ListWidge_Menu_Draggable(ListWidget):
     def __init__(self, parent=None):
         super(ListWidge_Menu_Draggable, self).__init__(parent)
-
-        self.config_path = cfg.get(cfg.maa_config_path)
-        self.config = Read_Config(self.config_path)
-
     def get_task_list_widget(self):
         items = []
         for i in range(self.count()):
@@ -67,7 +63,7 @@ class ListWidge_Menu_Draggable(ListWidget):
             return
 
         self.takeItem(Select_Target)
-        Task_List = Get_Values_list2(self.config_path, "task")
+        Task_List = Get_Values_list2(maa_config_data.config_path, "task")
 
         # 只有在有效索引时更新任务配置
         if 0 <= Select_Target < len(Task_List):
@@ -76,8 +72,7 @@ class ListWidge_Menu_Draggable(ListWidget):
 
         self.update_selection(Select_Target)
 
-        item = self.get_task_list_widget()
-        signalBus.update_task_list.emit(item)
+        signalBus.update_task_list.emit()
 
     def Move_Up(self):
         Select_Target = self.currentRow()
@@ -97,20 +92,19 @@ class ListWidge_Menu_Draggable(ListWidget):
             return  # 索引无效，直接返回
 
         # 执行移动操作
-        Select_Task = self.config["task"].pop(from_index)
-        self.config["task"].insert(to_index, Select_Task)
-        Save_Config(self.config_path, self.config)
+        Select_Task = maa_config_data.config["task"].pop(from_index)
+        maa_config_data.config["task"].insert(to_index, Select_Task)
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
 
         self.clear()
-        self.addItems(Get_Values_list_Option(self.config_path, "task"))
+        self.addItems(Get_Values_list_Option(maa_config_data.config_path, "task"))
         self.setCurrentRow(to_index)
 
-        item = self.get_task_list_widget()
-        signalBus.update_task_list.emit(item)
+        signalBus.update_task_list.emit()
 
     def update_task_config(self, Task_List):
-        self.config["task"] = Task_List
-        Save_Config(self.config_path, self.config)
+        maa_config_data.config["task"] = Task_List
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def update_selection(self, Select_Target):
         if Select_Target == 0 and self.count() > 0:
@@ -122,8 +116,8 @@ class ListWidge_Menu_Draggable(ListWidget):
         begin = self.currentRow()
         super(ListWidge_Menu_Draggable, self).dropEvent(event)
         end = self.currentRow()
-        need_to_move = self.config["task"].pop(begin)
-        self.config["task"].insert(end, need_to_move)
-        Save_Config(self.config_path, self.config)
+        need_to_move = maa_config_data.config["task"].pop(begin)
+        maa_config_data.config["task"].insert(end, need_to_move)
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
 
         signalBus.update_task_list.emit()

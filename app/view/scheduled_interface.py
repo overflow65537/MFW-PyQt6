@@ -172,6 +172,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             self.update_config_path(config_name)
 
         self.update_task_list()
+        signalBus.title_changed.emit()
 
     def res_changed(self):
         """资源下拉框改变时触发"""
@@ -202,21 +203,18 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             maa_config_data.resource_data
         )  # 资源名称列表
         logger.info(f"scheduled_interface.py:切换到{resource_name}资源")
-        signalBus.resource_exist.emit(True)
         self.refresh_combobox()
+        signalBus.title_changed.emit()
 
     def res_delete(self):
         """删除当前选定的资源"""
+        if not cfg.get(cfg.resource_exist):
+            self.show_error(self.tr("Please add resources first."))
+            return
         resource_name = self.res_combox.currentText()
         resource_index = self.res_combox.currentIndex()
         logger.info(f"scheduled_interface.py:删除资源{resource_name}")
-        if len(maa_config_data.resource_name_list) == 1:
-            cfg.set(cfg.resource_exist, False)
-            self.res_combox.clear()
-            self.Cfg_Combox.clear()
-            self.List_widget.clear()
-            logger.info("scheduled_interface.py:删除最后一个资源")
-        self.res_combox.removeItem(resource_index)
+        
 
         # 删除资源文件夹
         file_path = os.path.join(os.getcwd(), "config", resource_name)
@@ -227,8 +225,17 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         cfg.set(cfg.maa_resource_list, maa_config_data.resource_data)
         cfg.set(cfg.maa_config_list, maa_config_data.config_data)
         if maa_config_data.resource_data == {} and maa_config_data.config_data == {}:
+            cfg.set(cfg.resource_exist, False)
+            self.res_combox.clear()
+            self.Cfg_Combox.clear()
+            self.List_widget.clear()
+            cfg.set(cfg.maa_config_name, "")
+            cfg.set(cfg.maa_config_path, "")
+            cfg.set(cfg.maa_resource_name, "")
+            cfg.set(cfg.maa_resource_path, "")
             signalBus.resource_exist.emit(False)
         else:
+            self.res_combox.removeItem(resource_index)
             maa_config_data.config_name_list = list(
                 maa_config_data.config_data[maa_config_data.resource_name]
             )  # 配置名称列表
@@ -239,6 +246,9 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
 
     def cfg_delete(self):
         """删除当前选定的配置"""
+        if not cfg.get(cfg.resource_exist):
+            self.show_error(self.tr("Please add resources first."))
+            return
         config_name = self.Cfg_Combox.currentText()
         config_index = self.Cfg_Combox.currentIndex()
 

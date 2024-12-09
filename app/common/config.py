@@ -1,5 +1,6 @@
 import sys
 from enum import Enum
+import os
 
 from PyQt6.QtCore import QLocale
 from qfluentwidgets import (
@@ -15,7 +16,7 @@ from qfluentwidgets import (
     ConfigSerializer,
     __version__,
 )
-import os
+
 
 
 class Language(Enum):
@@ -42,18 +43,24 @@ def isWin11():
 
 class Config(QConfig):
     """Config of application"""
+    # 标题
+    title = ConfigItem("Main", "Title", "MFW-PyQt6")
 
+    # 管理员权限
+    admin_permission = ConfigItem(
+        "Main", "Admin_permission", False, BoolValidator()
+    )
     # 资源存在
     resource_exist = ConfigItem(
         "resource_exist", "resource_exist", False, BoolValidator()
     )
 
     # MAA路径
-    maa_config_name = ConfigItem("Main", "Maa_config_name", "")
-    maa_config_path = ConfigItem("Main", "Maa_config_path", "")
+    maa_config_name = ConfigItem("Maa", "Maa_config_name", "")
+    maa_config_path = ConfigItem("Maa", "Maa_config_path", "")
 
-    maa_resource_name = ConfigItem("Main", "Maa_resource_name", "")
-    maa_resource_path = ConfigItem("Main", "Maa_resource_path", "")
+    maa_resource_name = ConfigItem("Maa", "Maa_resource_name", "")
+    maa_resource_path = ConfigItem("Maa", "Maa_resource_path", "")
 
     # 多配置
     maa_config_list = ConfigItem(
@@ -124,7 +131,7 @@ class Config(QConfig):
     )
 
 
-REPO_URL = "https://github.com/overflow65537/PYQT-MAA/"
+REPO_URL = "https://github.com/overflow65537/MFW-PyQt6/"
 
 cfg = Config()
 cfg.themeMode.value = Theme.AUTO

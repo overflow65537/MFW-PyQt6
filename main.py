@@ -44,7 +44,6 @@ if __name__ == "__main__":
             logger.info("main.py:资源文件存在")
             cfg.set(cfg.resource_exist, True)
             signalBus.resource_exist.emit(True)
-
         # enable dpi scale
         if cfg.get(cfg.dpiScale) != "Auto":
             os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
