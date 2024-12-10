@@ -89,7 +89,7 @@ class NoticeType(QDialog):
                     )
 
         except Exception as e:
-            logger.error(f"notice_setting_card.py: 测试 {self.notice_type} Error: {e}")
+            logger.error(f"测试 {self.notice_type} Error: {e}")
             self.show_error(str(e))
 
     def show_error(self, error_message):

@@ -83,4 +83,4 @@ class LineEditCard(SettingCard):
             data[self.target] = text
             Save_Config(config_path, data)
         except Exception as e:
-            logger.warning(f"line_edit_card:保存配置时出错: {e}")
+            logger.warning(f"保存配置时出错: {e}")

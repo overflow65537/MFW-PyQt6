@@ -80,8 +80,14 @@ def main() -> None:
              QTimer.singleShot(0, lambda: signalBus.start_finish.emit())
     loop = QEventLoop(app)
     loop.run_forever()
-
+def start_symbol():
+    logger.debug("-"*50)
+    logger.debug("/"*50)
+    logger.debug("GUI Process Start")
+    logger.debug("\\"*50)
+    logger.debug("-"*50)
 if __name__ == "__main__":
+    start_symbol()
     try:
         main()
     except Exception as e:

@@ -18,7 +18,7 @@ class CustomSettingInterface(ScrollArea):
 
     def __init__(self, parent=None):
         logger.info(
-            "custom_setting_interface.py:检测到custom.json文件，初始化自定义设置界面"
+            "检测到custom.json文件，初始化自定义设置界面"
         )
         super().__init__(parent=parent)
         self.scrollWidget = QWidget()
@@ -34,7 +34,6 @@ class CustomSettingInterface(ScrollArea):
         if os.path.exists(custom_path):
             self.config_init()
             self.option_init()
-        logger.debug(f"custom.json内容:\n{custom_path}")
         self.__initWidget()
 
     def __initWidget(self):
@@ -67,7 +66,7 @@ class CustomSettingInterface(ScrollArea):
         option_type = option_dict["optiontype"]
         option_name = option_dict["optionname"]
         text = option_dict["text"]
-        logger.debug(f"custom_setting_interface.py:创建{option_name}选项卡")
+        logger.debug(f"创建{option_name}选项卡")
 
         if option_type == "combox":
             self.combox = ComboBoxSettingCardCustom(
@@ -129,6 +128,7 @@ class CustomSettingInterface(ScrollArea):
         """初始化选项"""
         custom_path = os.path.join(os.getcwd(), "config", "custom.json")
         config = Read_Config(custom_path)
+        logger.debug(f"{config}")
 
         for _, option in config.items():
             self.CreateOption(option)

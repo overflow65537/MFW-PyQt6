@@ -85,8 +85,8 @@ class CustomMessageBox(MessageBoxBase):
 
 
         self.path_LineEdit.setText(self.folder)
-        logger.info(f"choose_resource_button.py:资源路径 {self.folder}")
-        logger.info(f"choose_resource_button.py: interface.json路径 {interface_path}")
+        logger.info(f"资源路径 {self.folder}")
+        logger.info(f"interface.json路径 {interface_path}")
         self.interface_data = Read_Config(interface_path)
         project_name = self.interface_data.get("name", "")
         projece_url = self.interface_data.get("url", "")

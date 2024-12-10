@@ -1,4 +1,4 @@
-from typing import List,Any
+from typing import Any
 
 from qfluentwidgets import ListWidget, RoundMenu, Action, MenuAnimationType
 from qfluentwidgets import FluentIcon as FIF
@@ -8,7 +8,6 @@ from ..utils.tool import (
     Get_Values_list2,
 )
 from PyQt6.QtCore import Qt
-from ..common.config import cfg
 from ..common.signal_bus import signalBus
 from ..common.maa_config_data import maa_config_data
 

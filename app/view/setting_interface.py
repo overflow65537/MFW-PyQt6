@@ -48,11 +48,11 @@ class SettingInterface(ScrollArea):
 
     def resource_exist(self, status: bool):
         if status:
-            logger.info("setting_interface.py:收到信号,初始化界面并连接信号")
+            logger.info("收到信号,初始化界面并连接信号")
             self.init_info()
             self.enable_widgets(True)
         else:
-            logger.info("setting_interface.py:收到信号,清空界面并断开信号")
+            logger.info("收到信号,清空界面并断开信号")
             self.clear_content()
             self.enable_widgets(False)
 
@@ -124,9 +124,9 @@ class SettingInterface(ScrollArea):
         """启用或禁用所有可交互控件。"""
         # 遍历所有子控件
         if enable:
-            logger.info("setting_interface.py:启用所有可交互控件")
+            logger.info("启用所有可交互控件")
         else:
-            logger.info("setting_interface.py:禁用所有可交互控件")
+            logger.info("禁用所有可交互控件")
         for widget in self.scrollWidget.findChildren(QWidget):
             # 启用或禁用控件
             widget.setEnabled(enable)
@@ -351,7 +351,7 @@ class SettingInterface(ScrollArea):
         DEV_Config = False  # 默认状态
 
         gpu_mapping = get_gpu_info()
-        logger.debug(f"setting_interface.py:GPU列表: {gpu_mapping}")
+        logger.debug(f"GPU列表: {gpu_mapping}")
         gpu_combox_list = self.get_unique_gpu_mapping(gpu_mapping)
         gpu_mapping[-1] = self.tr("Auto")
         gpu_mapping[-2] = self.tr("Disabled")
@@ -494,7 +494,7 @@ class SettingInterface(ScrollArea):
         self.aboutGroup.addSettingCard(self.feedbackCard)
         self.aboutGroup.addSettingCard(self.aboutCard)
 
-    def get_unique_gpu_mapping(self, gpu_mapping):# -> list[Any]:
+    def get_unique_gpu_mapping(self, gpu_mapping)-> list:
         """获取唯一的 GPU 名称列表。"""
         gpu_combox_list = list(set(gpu_mapping.values()))
         gpu_combox_list.insert(0, self.tr("Auto"))
@@ -646,26 +646,26 @@ class SettingInterface(ScrollArea):
         file_name, _ = QFileDialog.getOpenFileName(
             self, self.tr("Choose file"), "./", "All Files (*)"
         )
-        logger.debug(f"setting_interface.py:选择的文件路径: {file_name}")
+        logger.debug(f"选择的文件路径: {file_name}")
         if not file_name:
             return
 
         # 更新配置并设置卡片内容
         if config_key == "adb":
             maa_config_data.config["adb"]["adb_path"] = file_name
-            logger.debug(f"setting_interface.py:选择的 ADB 路径: {file_name}")
+            logger.debug(f"选择的 ADB 路径: {file_name}")
         elif config_key == "emu":
             maa_config_data.config["emu_path"] = file_name
-            logger.debug(f"setting_interface.py:选择的模拟器路径: {file_name}")
+            logger.debug(f"选择的模拟器路径: {file_name}")
         elif config_key == "exe":
             maa_config_data.config["exe_path"] = file_name
-            logger.debug(f"setting_interface.py:选择的可执行文件路径: {file_name}")
+            logger.debug(f"选择的可执行文件路径: {file_name}")
         elif config_key == "run_before":
             maa_config_data.config["run_before_start"] = file_name
-            logger.debug(f"setting_interface.py:选择的启动前运行程序脚本路径: {file_name}")
+            logger.debug(f"选择的启动前运行程序脚本路径: {file_name}")
         elif config_key == "run_after":
             maa_config_data.config["run_after_finish"] = file_name
-            logger.debug(f"setting_interface.py:选择的完成后运行程序脚本路径: {file_name}")
+            logger.debug(f"选择的完成后运行程序脚本路径: {file_name}")
 
         Save_Config(maa_config_data.config_path, maa_config_data.config)
         logger.info(f"保存至{maa_config_data.config_path}")
@@ -776,7 +776,7 @@ class SettingInterface(ScrollArea):
 
     def update_adb(self):
         """根据外部消息更新 ADB 路径和端口。"""
-        logger.info(f"setting_interface.py:adb_信息更新")
+        logger.info(f"adb_信息更新")
         self.ADB_path.lineEdit.setText(maa_config_data.config.get("adb", {}).get("adb_path", ""))
         self.ADB_port.lineEdit.setText(maa_config_data.config.get("adb", {}).get("address", ""))
 

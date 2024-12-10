@@ -15,7 +15,7 @@ class check_Update(QThread):
     def run(self):
         project_url = maa_config_data.interface_config.get("url", None)
         if not project_url:
-            logger.warning("update.py:项目地址未配置，无法进行更新检查")
+            logger.warning("项目地址未配置，无法进行更新检查")
             self.update_available.emit({})  # 发出空字典表示没有更新
             return
         url = for_config_get_url(project_url, "download")
@@ -25,7 +25,7 @@ class check_Update(QThread):
             content = response.json()
             self.update_available.emit(content)  # 发出更新内容
         except Exception as e:
-            logger.warning(f"update.py:更新检查时出错: {e}")
+            logger.warning(f"更新检查时出错: {e}")
             self.update_available.emit({})  # 发出空字典表示没有更新
 
 
@@ -56,7 +56,7 @@ class Update(QThread):
 
         # 解压文件到指定路径
         target_path = maa_config_data.resource_path
-        logger.debug(f"update.py:解压文件到 {target_path}")
+        logger.debug(f"解压文件到 {target_path}")
         with zipfile.ZipFile(zip_file_path, "r") as zip_ref:
             zip_ref.extractall(target_path)
 

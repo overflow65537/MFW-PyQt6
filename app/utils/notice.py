@@ -43,11 +43,11 @@ class DingTalk:
         secret = self.secret
 
         if url == "":
-            logger.error("notice.py:DingTalk 通知地址为空")
+            logger.error("DingTalk 通知地址为空")
             cfg.set(cfg.Notice_DingTalk_status, False)
             return None
         if secret == "":
-            logger.error("notice.py:DingTalk 密钥为空")
+            logger.error("DingTalk 密钥为空")
             cfg.set(cfg.Notice_DingTalk_status, False)
             return [url]
 
@@ -191,7 +191,7 @@ def dingtalk_send(
     msg_text: dict = {"title": "Test", "text": "Test"}, status: bool = False
 ) -> bool:
     if not status:
-        logger.info(f"notice.py:DingTalk 未启用")
+        logger.info(f"DingTalk 未启用")
         return False
     APP = DingTalk()
 
@@ -199,11 +199,11 @@ def dingtalk_send(
     msg = APP.msg(msg_text)
     headers = APP.headers
     if url is None:
-        logger.error("notice.py:dingtalk Url空")
+        logger.error("dingtalk Url空")
         cfg.set(cfg.Notice_DingTalk_status, False)
         return False
     if not re.match(APP.correct_url, url):
-        logger.error(f"notice.py:dingtalk Url不正确")
+        logger.error(f"dingtalk Url不正确")
         cfg.set(cfg.Notice_DingTalk_status, False)
         return False
 
@@ -211,18 +211,18 @@ def dingtalk_send(
         response = requests.post(url=url, headers=headers, json=msg)
         status_code = response.json()[APP.codename]
     except Exception:
-        logger.error(f"notice.py:DingTalk 发送失败 {response.json()}")
+        logger.error(f"DingTalk 发送失败 {response.json()}")
         cfg.set(cfg.Notice_DingTalk_status, False)
         signalBus.Notice_msg.emit(f"DingTalk Failed")
         return False
 
     if status_code != APP.code:
-        logger.error(f"notice.py:DingTalk 发送失败 {response.json()}")
+        logger.error(f"DingTalk 发送失败 {response.json()}")
         cfg.set(cfg.Notice_DingTalk_status, False)
         signalBus.Notice_msg.emit(f"DingTalk Failed")
         return False
     else:
-        logger.info(f"notice.py:DingTalk 发送成功")
+        logger.info(f"DingTalk 发送成功")
         signalBus.Notice_msg.emit(f"DingTalk success")
         return True
 

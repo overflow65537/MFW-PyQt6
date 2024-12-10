@@ -51,7 +51,7 @@ class MainWindow(FluentWindow):
 
         # 启动主题监听器
         self.themeListener.start()
-        logger.info("main_window.py: 主界面初始化完成。")
+        logger.info(" 主界面初始化完成。")
 
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
@@ -79,7 +79,7 @@ class MainWindow(FluentWindow):
                 NavigationItemPosition.BOTTOM,
             )
         else:
-            logger.info("main_window.py: 未检测到自定义配置文件，启用默认设置界面。")
+            logger.info(" 未检测到自定义配置文件，启用默认设置界面。")
             self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("Task"))
             self.addSubInterface(
                 self.scheduledInterface, FIF.CALENDAR, self.tr("Scheduling tasks")
@@ -95,7 +95,7 @@ class MainWindow(FluentWindow):
         try:
             return ctypes.windll.shell32.IsUserAnAdmin()
         except Exception as e:
-            logger.error(f"main_window.py: 检查权限失败，错误信息：{e}")
+            logger.error(f" 检查权限失败，错误信息：{e}")
             return False
     
     def set_title(self):
@@ -109,7 +109,7 @@ class MainWindow(FluentWindow):
             title += f" {config_name}"
         if self.is_admin():
             title += " "+self.tr("admin")
-        logger.info(f"main_window.py: 设置窗口标题：{title}")
+        logger.info(f" 设置窗口标题：{title}")
         self.setWindowTitle(title)
 
     def initWindow(self):
