@@ -916,7 +916,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 maa_config_data.config["adb"]["config"] = result.config
                 Save_Config(maa_config_data.config_path, maa_config_data.config)
 
-                signalBus.update_adb.emit(result)
+                signalBus.update_adb.emit()
         elif controller_type == "Win32":
             for i in self.win32_hwnd:
                 if i.window_name == target:

@@ -5,10 +5,11 @@ from qfluentwidgets import (
     MessageBoxBase,
     SubtitleLabel,
     LineEdit,
-    PushButton,
     InfoBar,
     InfoBarPosition,
+    ToolButton
 )
+from qfluentwidgets import FluentIcon as FIF
 from ..common.config import cfg
 from ..utils.tool import Read_Config, Save_Config
 from ..utils.logger import logger
@@ -35,7 +36,7 @@ class CustomMessageBox(MessageBoxBase):
         self.path_LineEdit.setClearButtonEnabled(True)
 
         self.path_layout.addWidget(self.path_LineEdit)
-        self.resourceButton = PushButton(self.tr("Select Resource"), self)
+        self.resourceButton = ToolButton(FIF.FOLDER_ADD,self)
         self.resourceButton.setSizePolicy(
             QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed
         )

@@ -1,13 +1,15 @@
 import os
 from typing import Union
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QFileDialog
 from PyQt6.QtGui import QIcon, QIntValidator
 from qfluentwidgets import (
     SettingCard,
     FluentIconBase,
     LineEdit,
+    ToolButton,
     qconfig,
 )
+from qfluentwidgets import FluentIcon as FIF
 from ..utils.tool import Read_Config, Save_Config
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
@@ -25,6 +27,7 @@ class LineEditCard(SettingCard):
         content=None,
         parent=None,
         num_only=True,
+        button: bool = False,
     ):
         """
         初始化输入框卡片。
@@ -41,14 +44,23 @@ class LineEditCard(SettingCard):
 
         self.target = target
         self.lineEdit = LineEdit(self)
+        self.toolbutton = ToolButton(FIF.FOLDER_ADD,self)
 
+        
         # 设置布局
         self.hBoxLayout.addWidget(self.lineEdit, 0)
         self.hBoxLayout.addSpacing(16)
 
+        if button:
+            self.hBoxLayout.addWidget(self.toolbutton, 0)
+            self.hBoxLayout.addSpacing(16)
+            self.lineEdit.setFixedWidth(300)
+            
+        else:
+            self.toolbutton.hide()
         # 设置占位符文本
 
-        self.lineEdit.setPlaceholderText(str(holderText))
+        self.lineEdit.setText(str(holderText))
 
         # 设置输入限制
         if num_only:
@@ -56,7 +68,6 @@ class LineEditCard(SettingCard):
 
         # 连接文本变化信号
         self.lineEdit.textChanged.connect(self._on_text_changed)
-
     def _on_text_changed(self):
         """处理文本变化事件"""
         text = self.lineEdit.text()

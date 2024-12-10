@@ -46,10 +46,6 @@ class Config(QConfig):
     # 标题
     title = ConfigItem("Main", "Title", "MFW-PyQt6")
 
-    # 管理员权限
-    admin_permission = ConfigItem(
-        "Main", "Admin_permission", False, BoolValidator()
-    )
     # 资源存在
     resource_exist = ConfigItem(
         "resource_exist", "resource_exist", False, BoolValidator()
@@ -64,12 +60,12 @@ class Config(QConfig):
 
     # 多配置
     maa_config_list = ConfigItem(
-        "config_manager",
+        "Maa",
         "maa_config_list",
         {},
     )
     maa_resource_list = ConfigItem(
-        "config_manager",
+        "Maa",
         "maa_resource_list",
         {},
     )

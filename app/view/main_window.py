@@ -108,6 +108,7 @@ class MainWindow(FluentWindow):
             title += f" {config_name}"
         if self.is_admin():
             title += " "+self.tr("admin")
+        logger.info(f"main_window.py: 设置窗口标题：{title}")
         self.setWindowTitle(title)
 
     def initWindow(self):

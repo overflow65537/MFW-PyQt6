@@ -45,7 +45,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             logger.debug(f"scheduled_interface.py:添加资源{w.name_data}")
             self.res_combox.clear()
             self.Cfg_Combox.clear()
-            init_maa_config_data(True)
+            signalBus.resource_exist.emit(True)
             self.initialize_config_combobox()
             self.res_combox.setCurrentText(w.name_data)
 
@@ -172,6 +172,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             self.update_config_path(config_name)
 
         self.update_task_list()
+        signalBus.resource_exist.emit(True)
         signalBus.title_changed.emit()
 
     def res_changed(self):
@@ -204,7 +205,6 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         )  # 资源名称列表
         logger.info(f"scheduled_interface.py:切换到{resource_name}资源")
         self.refresh_combobox()
-        signalBus.title_changed.emit()
 
     def res_delete(self):
         """删除当前选定的资源"""
@@ -291,7 +291,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         """刷新配置下拉框和任务列表"""
         self.Cfg_Combox.clear()
         self.Cfg_Combox.addItems(maa_config_data.config_name_list)
-        self.cfg_changed()
+        
 
     def update_task_list(self):
         """更新任务列表"""

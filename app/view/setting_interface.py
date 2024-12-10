@@ -1,6 +1,3 @@
-import os
-import re
-
 from qfluentwidgets import (
     SettingCardGroup,
     SwitchSettingCard,
@@ -94,11 +91,11 @@ class SettingInterface(ScrollArea):
     def clear_content(self):
         # 清空输入框和设置内容
         self.ADB_port.lineEdit.clear()
-        self.ADB_path.setContent("")
-        self.emu_path.setContent("")
-        self.exe_path.setContent("")
-        self.run_before_start.setContent("")
-        self.run_after_finish.setContent("")
+        self.ADB_path.lineEdit.clear()
+        self.emu_path.lineEdit.clear()
+        self.exe_path.lineEdit.clear()
+        self.run_before_start.lineEdit.clear()
+        self.run_after_finish.lineEdit.clear()
         self.updateCard.setContent(
             self.tr("Current")
             + " "
@@ -111,29 +108,37 @@ class SettingInterface(ScrollArea):
         self.feedbackCard.setContent(
             self.tr("Submit feedback to help us improve"),
         )
+        
 
     def disconnect_signals(self):
         """断开信号连接。"""
 
         try:
-            signalBus.update_adb.disconnect(self.update_adb)
             self.ADB_port.lineEdit.textChanged.disconnect(self._onADB_portCardChange)
-            self.ADB_path.clicked.disconnect(self.__onADBPathCardClicked)
-            self.emu_path.clicked.disconnect(self.__onEmuPathCardClicked)
+            self.ADB_path.toolbutton.clicked.disconnect(self.__onADBPathCardClicked)
+            self.ADB_path.lineEdit.textChanged.disconnect(self._onADB_pathCardChange)
+            self.emu_path.toolbutton.clicked.disconnect(self.__onEmuPathCardClicked)
+            self.emu_path.lineEdit.textChanged.disconnect(self._onEmuPathCardChange)
             self.emu_wait_time.lineEdit.textChanged.disconnect(
                 self._onEmuWaitTimeCardChange
             )
-            self.exe_path.clicked.disconnect(self.__onExePathCardClicked)
+            self.exe_path.toolbutton.clicked.disconnect(self.__onExePathCardClicked)
+            self.exe_path.lineEdit.textChanged.disconnect(self._onExePathCardChange)
             self.exe_parameter.lineEdit.textChanged.disconnect(
                 self._onExeParameterCardChange
             )
             self.exe_wait_time.lineEdit.textChanged.disconnect(
                 self._onExeWaitTimeCardChange
             )
-            self.run_before_start.clicked.disconnect(self.__onRunBeforeStartCardClicked)
-            self.run_after_finish.clicked.disconnect(self.__onRunAfterFinishCardClicked)
+            self.run_before_start.toolbutton.clicked.disconnect(self.__onRunBeforeStartCardClicked)
+            self.run_before_start.lineEdit.textChanged.disconnect(
+                self._onRunBeforeStartCardChange
+            )
+            self.run_after_finish.toolbutton.clicked.disconnect(self.__onRunAfterFinishCardClicked)
+            self.run_after_finish.lineEdit.textChanged.disconnect(
+                self._onRunAfterFinishCardChange
+            )
             self.DEVmodeCard.checkedChanged.disconnect(self._onDEVmodeCardChange)
-            signalBus.update_adb.disconnect(self.update_adb)
             self.feedbackCard.clicked.disconnect()
             self.updateCard.clicked.disconnect()
 
@@ -157,19 +162,23 @@ class SettingInterface(ScrollArea):
             num_only=False,
             parent=self.ADB_Setting,
         )
-        self.ADB_path = PrimaryPushSettingCard(
-            self.tr("Select ADB Path"),
-            FIF.COMMAND_PROMPT,
-            self.tr("ADB Path"),
-            path_data,
-            self.ADB_Setting,
+        self.ADB_path = LineEditCard(
+            icon=FIF.COMMAND_PROMPT,
+            title = self.tr("ADB Path"),
+            num_only=False,
+            holderText = path_data,
+            content=self.tr("Select ADB Path"),
+            button=True,
+            parent = self.ADB_Setting,
         )
-        self.emu_path = PrimaryPushSettingCard(
-            self.tr("Select Emulator Path"),
-            FIF.COMMAND_PROMPT,
-            self.tr("Emulator Path"),
-            emu_path,
-            self.ADB_Setting,
+        self.emu_path = LineEditCard(
+            icon=FIF.COMMAND_PROMPT,
+            title=self.tr("Select Emulator Path"),
+            num_only=False,
+            holderText=emu_path,
+            content=self.tr("Select Emulator Path"),
+            button=True,
+            parent=self.ADB_Setting,
         )
         self.emu_wait_time = LineEditCard(
             icon=FIF.COMMAND_PROMPT,
@@ -191,12 +200,14 @@ class SettingInterface(ScrollArea):
         exe_parameter = maa_config_data.config.get("exe_parameter", "")
         exe_wait_time = maa_config_data.config.get("exe_wait_time", "")
         self.Win32_Setting = SettingCardGroup(self.tr("Win32"), self.scrollWidget)
-        self.exe_path = PrimaryPushSettingCard(
-            self.tr("Select Executable Path"),
-            FIF.COMMAND_PROMPT,
-            self.tr("Executable Path"),
-            exe_path,
-            self.Win32_Setting,
+        self.exe_path = LineEditCard(
+            icon=FIF.COMMAND_PROMPT,
+            title=self.tr("Executable Path"),
+            content=self.tr("Select Executable Path"),
+            num_only=False,
+            holderText=exe_path,
+            button=True, 
+            parent=self.Win32_Setting,
         )
         self.exe_parameter = LineEditCard(
             icon=FIF.COMMAND_PROMPT,
@@ -225,19 +236,24 @@ class SettingInterface(ScrollArea):
         self.start_Setting = SettingCardGroup(
             self.tr("Custom Startup"), self.scrollWidget
         )
-        self.run_before_start = PrimaryPushSettingCard(
-            self.tr("Select Program"),
-            FIF.COMMAND_PROMPT,
-            self.tr("Run Program Before Start"),
-            run_before_start,
-            self.start_Setting,
+        self.run_before_start = LineEditCard(
+            icon=FIF.COMMAND_PROMPT,
+            title=self.tr("Run Program Before Start"),
+            content=self.tr("Select Program"),
+            num_only=False,
+            holderText=run_before_start,
+            button=True,  # 使用 LineEditCard 形式，并添加按钮
+            parent=self.start_Setting,
         )
-        self.run_after_finish = PrimaryPushSettingCard(
-            self.tr("Select Program"),
-            FIF.COMMAND_PROMPT,
-            self.tr("Run Program After Finish"),
-            run_after_finish,
-            self.start_Setting,
+
+        self.run_after_finish = LineEditCard(
+            icon=FIF.COMMAND_PROMPT,
+            title=self.tr("Run Program After Finish"),
+            content=self.tr("Select Program"),
+            num_only=False,
+            holderText=run_after_finish,
+            button=True,  # 使用 LineEditCard 形式，并添加按钮
+            parent=self.start_Setting,
         )
 
         self.start_Setting.addSettingCard(self.run_before_start)
@@ -682,24 +698,31 @@ class SettingInterface(ScrollArea):
         file_name, _ = QFileDialog.getOpenFileName(
             self, self.tr("Choose file"), "./", "All Files (*)"
         )
+        logger.debug(f"setting_interface.py:选择的文件路径: {file_name}")
         if not file_name:
             return
 
         # 更新配置并设置卡片内容
         if config_key == "adb":
-            maa_config_data.config["adb"]["path"] = file_name
+            maa_config_data.config["adb"]["adb_path"] = file_name
+            logger.debug(f"setting_interface.py:选择的 ADB 路径: {file_name}")
         elif config_key == "emu":
             maa_config_data.config["emu_path"] = file_name
+            logger.debug(f"setting_interface.py:选择的模拟器路径: {file_name}")
         elif config_key == "exe":
             maa_config_data.config["exe_path"] = file_name
+            logger.debug(f"setting_interface.py:选择的可执行文件路径: {file_name}")
         elif config_key == "run_before":
             maa_config_data.config["run_before_start"] = file_name
+            logger.debug(f"setting_interface.py:选择的启动前运行程序脚本路径: {file_name}")
         elif config_key == "run_after":
             maa_config_data.config["run_after_finish"] = file_name
+            logger.debug(f"setting_interface.py:选择的完成后运行程序脚本路径: {file_name}")
 
         Save_Config(maa_config_data.config_path, maa_config_data.config)
+        logger.info(f"保存至{maa_config_data.config_path}")
 
-        setting_card.setContent(file_name)
+        setting_card.lineEdit.setText(file_name)
 
     def __connectSignalToSlot(self):
         """连接信号到对应的槽函数。"""
@@ -709,18 +732,23 @@ class SettingInterface(ScrollArea):
 
         # 连接 ADB 信号
         self.ADB_port.lineEdit.textChanged.connect(self._onADB_portCardChange)
-        self.ADB_path.clicked.connect(self.__onADBPathCardClicked)
-        self.emu_path.clicked.connect(self.__onEmuPathCardClicked)
+        self.ADB_path.toolbutton.clicked.connect(self.__onADBPathCardClicked)
+        self.ADB_path.lineEdit.textChanged.connect(self._onADB_pathCardChange)
+        self.emu_path.toolbutton.clicked.connect(self.__onEmuPathCardClicked)
+        self.emu_path.lineEdit.textChanged.connect(self._onEmuPathCardChange)
         self.emu_wait_time.lineEdit.textChanged.connect(self._onEmuWaitTimeCardChange)
 
         # 连接 Win32 信号
-        self.exe_path.clicked.connect(self.__onExePathCardClicked)
+        self.exe_path.toolbutton.clicked.connect(self.__onExePathCardClicked)
+        self.exe_path.lineEdit.textChanged.connect(self._onExePathCardChange)
         self.exe_parameter.lineEdit.textChanged.connect(self._onExeParameterCardChange)
         self.exe_wait_time.lineEdit.textChanged.connect(self._onExeWaitTimeCardChange)
 
         # 连接启动信号
-        self.run_before_start.clicked.connect(self.__onRunBeforeStartCardClicked)
-        self.run_after_finish.clicked.connect(self.__onRunAfterFinishCardClicked)
+        self.run_before_start.toolbutton.clicked.connect(self.__onRunBeforeStartCardClicked)
+        self.run_before_start.lineEdit.textChanged.connect(self._onRunBeforeStartCardChange)
+        self.run_after_finish.toolbutton.clicked.connect(self.__onRunAfterFinishCardClicked)
+        self.run_after_finish.lineEdit.textChanged.connect(self._onRunAfterFinishCardChange)
 
         # 连接开发者模式信号
         self.DEVmodeCard.checkedChanged.connect(self._onDEVmodeCardChange)
@@ -746,10 +774,27 @@ class SettingInterface(ScrollArea):
         maa_config_data.config["adb"]["address"] = port
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
+    def _onADB_pathCardChange(self):
+        """根据输入更新 ADB 路径。"""
+        adb_path = self.ADB_path.lineEdit.text()
+        maa_config_data.config["adb"]["adb_path"] = adb_path
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
+    def _onEmuPathCardChange(self):
+
+        """根据输入更新模拟器路径。"""
+        emu_path = self.emu_path.lineEdit.text()    
+        maa_config_data.config["emu_path"] = emu_path
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
+
     def _onEmuWaitTimeCardChange(self):
         """根据输入更新启动模拟器等待时间。"""
         emu_wait_time = self.emu_wait_time.lineEdit.text()
         maa_config_data.config["emu_wait_time"] = emu_wait_time
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
+    def _onExePathCardChange(self):
+        """根据输入更新可执行文件路径。"""
+        exe_path = self.exe_path.lineEdit.text()
+        maa_config_data.config["exe_path"] = exe_path
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def _onExeWaitTimeCardChange(self):
@@ -763,6 +808,17 @@ class SettingInterface(ScrollArea):
         exe_parameter = self.exe_parameter.lineEdit.text()
         maa_config_data.config["exe_parameter"] = exe_parameter
         Save_Config(maa_config_data.config_path, maa_config_data.config)
+    def _onRunBeforeStartCardChange(self):
+        """根据输入更新启动前运行的程序脚本路径。"""
+        run_before_start = self.run_before_start.lineEdit.text()
+        maa_config_data.config["run_before_start"] = run_before_start
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
+
+    def _onRunAfterFinishCardChange(self):
+        """根据输入更新完成后运行的程序脚本路径。"""
+        run_after_finish = self.run_after_finish.lineEdit.text()
+        maa_config_data.config["run_after_finish"] = run_after_finish
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def _onDEVmodeCardChange(self):
         """切换开发者模式的保存设置。"""
@@ -770,10 +826,11 @@ class SettingInterface(ScrollArea):
         maa_config_data.config["save_draw"] = state
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
-    def update_adb(self, msg):
+    def update_adb(self):
         """根据外部消息更新 ADB 路径和端口。"""
-        self.ADB_path.setContent(str(msg.adb_path))
-        self.ADB_port.lineEdit.setText(msg.address)
+        logger.info(f"setting_interface.py:adb_信息更新")
+        self.ADB_path.lineEdit.setText(maa_config_data.config.get("adb",{}).get("adb_path",""))
+        self.ADB_port.lineEdit.setText(maa_config_data.config.get("adb",{}).get("address",""))
 
     def Switch_Controller(self, controller):
         """在 ADB 和 Win32 控制器设置之间切换。"""
