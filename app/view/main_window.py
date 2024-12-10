@@ -51,6 +51,7 @@ class MainWindow(FluentWindow):
 
         # 启动主题监听器
         self.themeListener.start()
+        logger.info("main_window.py: 主界面初始化完成。")
 
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""

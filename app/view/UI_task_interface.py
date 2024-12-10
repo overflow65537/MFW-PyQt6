@@ -19,18 +19,6 @@ class Ui_Task_Interface(object):
         # 设置主窗口
         self.main_layout = QHBoxLayout(self)
 
-        # 启动/停止按钮和完成后操作标签
-
-        self.LD1_layout = QHBoxLayout()
-        self.S2_Button = PushButton(Task_Interface)
-        self.S2_Button.setObjectName("S2_Button")
-        self.Finish_Title = BodyLabel(Task_Interface)
-        self.Finish_Title.setObjectName("Finish_Title")
-        self.Finish_Title.setProperty("pixelFontSize", 14)
-
-        self.LD1_layout.addWidget(self.S2_Button)
-        self.LD1_layout.addWidget(self.Finish_Title)
-
         # 自动检测按钮,资源和控制器标签布局
         self.LD2_layout = QVBoxLayout()
         self.Resource_Title = BodyLabel(Task_Interface)
@@ -39,9 +27,6 @@ class Ui_Task_Interface(object):
         self.Resource_Title.setObjectName("Resource_Title")
         self.Control_Title.setObjectName("Control_Title")
         self.AutoDetect_Button.setObjectName("AutoDetect_Button")
-        self.Resource_Title.setProperty("pixelFontSize", 14)
-        self.Control_Title.setProperty("pixelFontSize", 14)
-        self.AutoDetect_Button.setProperty("pixelFontSize", 14)
 
         self.Resource_Title.setSizePolicy(
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
@@ -59,30 +44,51 @@ class Ui_Task_Interface(object):
         # 左下二级整体布局
         self.LD3_layout = QVBoxLayout()
         self.LD3_layout.addLayout(self.LD2_layout)
-        self.LD3_layout.addLayout(self.LD1_layout)
 
         # 左下下拉栏布局
         self.LD4_layout = QVBoxLayout()
         self.Resource_Combox = ComboBox(Task_Interface)
         self.Control_Combox = ComboBox(Task_Interface)
         self.Autodetect_combox = ComboBox(Task_Interface)
-        self.Finish_combox = ComboBox(Task_Interface)
 
         self.Resource_Combox.setObjectName("Resource_Combox")
         self.Control_Combox.setObjectName("Control_Combox")
         self.Autodetect_combox.setObjectName("Autodetect_combox")
-        self.Finish_combox.setObjectName("Finish_combox")
 
         self.LD4_layout.addWidget(self.Resource_Combox)
         self.LD4_layout.addWidget(self.Control_Combox)
         self.LD4_layout.addWidget(self.Autodetect_combox)
-        self.LD4_layout.addWidget(self.Finish_combox)
-
+        
         # 左下完整布局
         self.LD5_layout = QHBoxLayout()
-
         self.LD5_layout.addLayout(self.LD3_layout)
         self.LD5_layout.addLayout(self.LD4_layout)
+
+        # 完成后操作
+        self.Finish_combox = ComboBox(Task_Interface)
+        self.Finish_combox_res = ComboBox(Task_Interface)
+        self.Finish_combox_cfg = ComboBox(Task_Interface)
+        self.Finish_combox_layout = QHBoxLayout()
+        self.Finish_combox_layout.addWidget(self.Finish_combox)
+        self.Finish_combox_layout.addWidget(self.Finish_combox_res)
+        self.Finish_combox_layout.addWidget(self.Finish_combox_cfg)
+        self.Finish_combox.setObjectName("Finish_combox")
+        self.Finish_combox_res.setObjectName("Finish_combox_res")
+        self.Finish_combox_cfg.setObjectName("Finish_combox_cfg")
+
+        # 启动/停止按钮和完成后操作标签
+
+        self.LD1_layout = QHBoxLayout()
+        self.S2_Button = PushButton(Task_Interface)
+        self.S2_Button.setObjectName("S2_Button")
+
+        self.LD1_layout.addWidget(self.S2_Button)
+        self.LD1_layout.addStretch()
+        self.LD1_layout.addLayout(self.Finish_combox_layout)
+
+        self.LD7_layout = QVBoxLayout()
+        self.LD7_layout.addLayout(self.LD5_layout)
+        self.LD7_layout.addLayout(self.LD1_layout)
 
         # 添加任务区布局
         self.AddMission_layout = QGridLayout()
@@ -148,7 +154,7 @@ class Ui_Task_Interface(object):
         self.left_layout.addLayout(self.AddMission_layout)
         self.left_layout.addStretch()
         self.left_layout.addWidget(self.line2)
-        self.left_layout.addLayout(self.LD5_layout)
+        self.left_layout.addLayout(self.LD7_layout)
 
         # 中间布局（包含任务列表）
         self.middle_layout = QVBoxLayout()
@@ -181,7 +187,6 @@ class Ui_Task_Interface(object):
         _translate = QCoreApplication.translate
         Task_Interface.setWindowTitle(_translate("Task_Interface", "Task Interface"))
         self.S2_Button.setText(_translate("Task_Interface", "Start"))
-        self.Finish_Title.setText(_translate("Task_Interface", "Finish Action"))
         self.Resource_Title.setText(_translate("Task_Interface", "Resource"))
         self.Control_Title.setText(_translate("Task_Interface", "Controller"))
         self.TaskName_Title_1.setText(_translate("Task_Interface", "Task"))

@@ -44,9 +44,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.setupUi(self)
         signalBus.resource_exist.connect(self.resource_exist)
         maafw.notification_handler = MyNotificationHandler()
+        self.bind_signals()
         if cfg.get(cfg.resource_exist):
             self.init_ui()
-            self.bind_signals()
+            
         else:
             logger.warning("task_interface.py:资源缺失")
             self.show_error(self.tr("Resource file not detected"))
@@ -56,13 +57,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def resource_exist(self, status: bool):
         if status:
             logger.info("task_interface.py:收到信号,初始化界面和信号连接")
+            self.enable_widgets(True)
             self.clear_content()
             self.init_ui()
-            self.disconnect_signals()
-            self.bind_signals()
+            
         else:
             logger.info("task_interface.py:资源缺失,清空界面")
-            self.uninit_ui()
+            self.enable_widgets(False)
+            self.clear_content()
 
     def init_ui(self):
         # 读取配置文件并存储在实例变量中
@@ -73,10 +75,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             resource_Path=maa_config_data.resource_path,
         )
         self.init_finish_combox()
-
-    def uninit_ui(self):
-        self.disconnect_signals()
-        self.clear_content()
 
     def clear_content(self):
         self.TaskOutput_Text.clear()
@@ -92,41 +90,44 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Topic_Text.clear()
         self.Autodetect_combox.clear()
 
-    def disconnect_signals(self):
-        try:
-            signalBus.Notice_msg.disconnect(self.print_notice)
-            signalBus.callback.disconnect(self.callback)
-            signalBus.update_task_list.disconnect(self.update_task_list_passive)
-            self.AddTask_Button.clicked.disconnect(self.Add_Task)
-            self.Delete_Button.clicked.disconnect(self.Delete_Task)
-            self.MoveUp_Button.clicked.disconnect(self.Move_Up)
-            self.MoveDown_Button.clicked.disconnect(self.Move_Down)
-            self.SelectTask_Combox_1.activated.disconnect(
-                self.Add_Select_Task_More_Select
-            )
-            self.Resource_Combox.currentTextChanged.disconnect(self.Save_Resource)
-            self.Control_Combox.currentTextChanged.disconnect(self.Save_Controller)
-            self.AutoDetect_Button.clicked.disconnect(self.Start_Detection)
-            self.S2_Button.clicked.disconnect(self.Start_Up)
-            self.Autodetect_combox.currentTextChanged.disconnect(
-                self.Save_device_Config
-            )
-            self.Finish_combox.currentIndexChanged.disconnect(
-                self.rewrite_Completion_Options
-            )
-        except:
-            pass
+    def enable_widgets(self, enable: bool):
+        """启用或禁用所有可交互控件。"""
+        # 遍历所有子控件
+        if enable:
+            logger.info("setting_interface.py:启用所有可交互控件")
+        else:
+            logger.info("setting_interface.py:禁用所有可交互控件")
+        for widget in self.main_layout.findChildren(QWidget):
+            # 启用或禁用控件
+            widget.setEnabled(enable)
 
     def init_finish_combox(self):
+        self.Finish_combox.clear()
+        self.Finish_combox_res.clear()
+        self.Finish_combox_cfg.clear()
         finish_list = [
             self.tr("Do nothing"),
             self.tr("Close emulator"),
             self.tr("Close emulator and Quit app"),
             self.tr("Shutdown"),
+            self.tr("Run Other Config"),
         ]
+        finish_combox = maa_config_data.config.get("finish_option", 0)
         self.Finish_combox.addItems(finish_list)
-        finish_combox = maa_config_data.config["finish_option"]
         self.Finish_combox.setCurrentIndex(finish_combox)
+        logger.info(f"task_interface.py:完成选项初始化完成,当前选择项为{finish_combox}")
+        if not finish_combox == 4:
+            self.Finish_combox_cfg.hide()
+            self.Finish_combox_res.hide()
+        
+        finish_combox_res = maa_config_data.config.get("finish_option_res",0)
+        self.Finish_combox_res.addItems(maa_config_data.resource_name_list)
+        self.Finish_combox_res.setCurrentIndex(finish_combox_res)
+
+        finish_combox_cfg = maa_config_data.config.get("finish_option_cfg",0)
+        self.Finish_combox_cfg.addItems(maa_config_data.config_name_list)
+        self.Finish_combox_cfg.setCurrentIndex(finish_combox_cfg)
+        
 
     def toggle_task_options(self, visible: bool):
         task_comboxes = [
@@ -149,6 +150,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         signalBus.Notice_msg.connect(self.print_notice)
         signalBus.callback.connect(self.callback)
         signalBus.update_task_list.connect(self.update_task_list_passive)
+        signalBus.update_finished_action.connect(self.init_finish_combox)
+        signalBus.start_finish.connect(self.Start_Up)
         self.AddTask_Button.clicked.connect(self.Add_Task)
         self.Delete_Button.clicked.connect(self.Delete_Task)
         self.MoveUp_Button.clicked.connect(self.Move_Up)
@@ -160,7 +163,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.S2_Button.clicked.connect(self.Start_Up)
         self.Autodetect_combox.currentTextChanged.connect(self.Save_device_Config)
         self.Finish_combox.currentIndexChanged.connect(self.rewrite_Completion_Options)
-
+        self.Finish_combox_res.currentIndexChanged.connect(self.Save_Finish_Option_Res)
+        self.Finish_combox_cfg.currentIndexChanged.connect(self.Save_Finish_Option_Cfg)
+    
     def print_notice(self, message: str):
         if "DingTalk Failed".lower() in message.lower():
             self.TaskOutput_Text.append(self.tr("DingTalk Failed"))
@@ -260,6 +265,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             "task": [],
             "save_draw": False,
             "finish_option": 0,
+            "finish_option_res":0,
+            "finish_option_cfg":0,
             "run_before_start": "",
             "run_after_finish": "",
             "emu_path": "",
@@ -267,6 +274,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             "exe_path": "",
             "exe_wait_time": 10,
             "exe_parameter": "",
+            "run_on_startup":False
         }
         Save_Config(maa_pi_config_Path, data)
         maa_config_data.config = data
@@ -279,10 +287,25 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Save_Controller()
 
     def rewrite_Completion_Options(self):
-        maa_config_data.config["finish_option"] = (
-            self.Finish_combox.currentIndex()
-        )  # 更新保存的配置
-        Save_Config(maa_config_data.config_path, maa_config_data.config)  # 刷新配置文件
+        finish_option = self.Finish_combox.currentIndex()
+        maa_config_data.config["finish_option"] = (finish_option) 
+        if finish_option == 4:
+            self.Finish_combox_cfg.show()
+            self.Finish_combox_res.show()
+        else:
+            self.Finish_combox_cfg.hide()
+            self.Finish_combox_res.hide()
+        Save_Config(maa_config_data.config_path, maa_config_data.config) 
+
+    def Save_Finish_Option_Res(self):
+        finish_option_res = self.Finish_combox_res.currentIndex()
+        maa_config_data.config["finish_option_res"] = (finish_option_res)
+        Save_Config(maa_config_data.config_path, maa_config_data.config) 
+
+    def Save_Finish_Option_Cfg(self):
+        finish_option_cfg = self.Finish_combox_cfg.currentIndex()
+        maa_config_data.config["finish_option_cfg"] = (finish_option_cfg)
+        Save_Config(maa_config_data.config_path, maa_config_data.config) 
 
     def close_application(self):
         self.app_process.terminate()
@@ -298,6 +321,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             "Darwin": "sudo shutdown -h now",  # macOS
         }
         os.system(shutdown_commands.get(platform.system(), ""))
+    def run_other_config(self):
+        data_dict = {"resource_name":self.Finish_combox_res.currentText(),"config_name":self.Finish_combox_cfg.currentText()}
+        signalBus.switch_config.emit(data_dict)
 
     def start_process(self, command):
         logger.debug(f"task_interface.py:启动程序: {command}")
@@ -531,11 +557,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         # 完成后运行
         target = self.Finish_combox.currentIndex()
         actions = {
-            -1: logger.info("task_interface.py:Do nothing"),
             0: logger.info("task_interface.py:Do nothing"),
             1: self.close_application,
             2: QApplication.quit,
             3: self.shutdown,
+            4: self.run_other_config,
         }
 
         action = actions.get(target)
