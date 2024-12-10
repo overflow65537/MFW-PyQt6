@@ -5,7 +5,7 @@ import sys
 from qasync import QEventLoop
 
 from PyQt6.QtCore import Qt, QTranslator,QTimer
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication,QMessageBox
 from qfluentwidgets import FluentTranslator
 
 from app.common.config import cfg
@@ -33,7 +33,7 @@ def main() -> None:
         or maa_config_list == {}
         or maa_resource_list == {}
     ):
-        logger.error("main.py:资源文件不存在")
+        logger.error("资源文件不存在")
         cfg.set(cfg.resource_exist, False)
         maa_config_name = ""
         maa_config_path = ""
@@ -42,7 +42,7 @@ def main() -> None:
         maa_config_list = {}
         maa_resource_list = {}
     else:
-        logger.info("main.py:资源文件存在")
+        logger.info("资源文件存在")
         cfg.set(cfg.resource_exist, True)
         signalBus.resource_exist.emit(True)
     # enable dpi scale
@@ -61,13 +61,13 @@ def main() -> None:
 
     if locale == Language.CHINESE_SIMPLIFIED:
         galleryTranslator.load(os.path.join(os.getcwd(), "i18n", "i18n.zh_CN.qm"))
-        logger.info("main.py:加载简体中文翻译")
+        logger.info("加载简体中文翻译")
 
     elif locale == Language.CHINESE_TRADITIONAL:
         galleryTranslator.load(os.path.join(os.getcwd(), "i18n", "i18n.zh_HK.qm"))
-        logger.info("main.py:加载繁体中文翻译")
+        logger.info("加载繁体中文翻译")
     elif locale == Language.ENGLISH:
-        logger.info("main.py:加载英文翻译")
+        logger.info("加载英文翻译")
 
     app.installTranslator(translator)
     app.installTranslator(galleryTranslator)
@@ -91,4 +91,10 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        logger.error(f"main.py: {e}")
+        logger.exception("发生了一个异常：")
+        QMessageBox.critical(
+            None,
+            "错误",
+            f"发生了一个异常：{str(e)}",
+            QMessageBox.StandardButton.Ok
+        )
