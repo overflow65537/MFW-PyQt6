@@ -12,7 +12,8 @@
 ## 使用方法
 - `pip install -r requirements.txt`
 - `python main.py`
-- `在第计划任务界面找到资源,点击“添加”按钮，选择需要添加的资源文件(resource文件夹或上级文件夹),要求在resource文件夹同级包含有interface.json文件。`
+- 在计划任务界面点击资源的添加
+- 选择需要添加的资源文件(resource文件夹或上级文件夹),要求在resource文件夹同级包含有interface.json文件。
 
 ## 特色功能
 ### Custom 程序配置
