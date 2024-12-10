@@ -19,7 +19,7 @@ import os
 class CustomMessageBox(MessageBoxBase):
     """Custom message box"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         transparent_color = QColor(255, 255, 255, 0)
         self.setMaskColor(transparent_color)
@@ -62,7 +62,7 @@ class CustomMessageBox(MessageBoxBase):
         self.widget.setMinimumWidth(350)
         self.yesButton.clicked.connect(self.click_yes_button)
 
-    def type_resource_name(self):
+    def type_resource_name(self) -> None:
         self.folder = QFileDialog.getExistingDirectory(
             self, self.tr("Choose folder"), "./"
         )
@@ -95,7 +95,7 @@ class CustomMessageBox(MessageBoxBase):
         self.update_LineEdit.clear()
         self.update_LineEdit.setText(projece_url)
 
-    def show_error(self, message):
+    def show_error(self, message) -> None:
         InfoBar.error(
             title=self.tr("Error"),
             content=message,
@@ -106,9 +106,10 @@ class CustomMessageBox(MessageBoxBase):
             parent=self,
         )
 
-    def click_yes_button(self):
+    def click_yes_button(self) -> None:
         self.name_data = self.name_LineEdit.text()
         path_data = self.path_LineEdit.text()
+        interface_path = ""
         if self.status == 0:
             #直接选择resource目录
             interface_path = os.path.join(os.path.dirname(path_data), "interface.json")
@@ -137,6 +138,8 @@ class CustomMessageBox(MessageBoxBase):
         self.interface_data["name"] = self.name_data
         if update_data != "":
             self.interface_data["url"] = update_data
+        if interface_path == "":
+            return
         Save_Config(interface_path, self.interface_data)
 
         # 将信息写入maa_resource_list

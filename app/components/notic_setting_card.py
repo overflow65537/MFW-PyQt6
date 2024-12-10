@@ -27,7 +27,7 @@ from ..utils.notice import lark_send, dingtalk_send, WxPusher_send, SMTP_send
 
 
 class NoticeType(QDialog):
-    def __init__(self, parent=None, notice_type: str = None):
+    def __init__(self, parent=None, notice_type: str = ""):
         super().__init__(parent)
         self.notice_type = notice_type
         self.setWindowTitle(self.notice_type)
@@ -321,7 +321,7 @@ class NoticeButtonSettingCard(SettingCard):
         text,
         icon: Union[str, QIcon, FluentIconBase],
         title,
-        notice_type: str = None,
+        notice_type: str = "",
         content=None,
         parent=None,
     ):

@@ -15,7 +15,7 @@ from app.common.config import Language
 from app.common.signal_bus import signalBus
 from app.common.maa_config_data import maa_config_data
 
-if __name__ == "__main__":
+def main() -> None:
     
     # 检查资源文件是否存在
     maa_config_name = cfg.get(cfg.maa_config_name)
@@ -67,7 +67,6 @@ if __name__ == "__main__":
         galleryTranslator.load(os.path.join(os.getcwd(), "i18n", "i18n.zh_HK.qm"))
         logger.info("main.py:加载繁体中文翻译")
     elif locale == Language.ENGLISH:
-        galleryTranslator.load()
         logger.info("main.py:加载英文翻译")
 
     app.installTranslator(translator)
@@ -81,3 +80,9 @@ if __name__ == "__main__":
              QTimer.singleShot(0, lambda: signalBus.start_finish.emit())
     loop = QEventLoop(app)
     loop.run_forever()
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        logger.error(f"main.py: {e}")

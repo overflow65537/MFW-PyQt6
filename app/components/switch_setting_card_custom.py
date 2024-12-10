@@ -23,7 +23,7 @@ class SwitchSettingCardCustom(SettingCard):
         icon: Union[str, QIcon, FluentIconBase],
         title: str,
         target: str,
-        content: str = None,
+        content: str = "",
         parent=None,
     ):
         super().__init__(icon, title, content, parent)

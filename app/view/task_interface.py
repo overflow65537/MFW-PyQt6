@@ -232,8 +232,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Control_Combox.addItems(Get_Values_list(interface_Path, key1="controller"))
         self.SelectTask_Combox_1.addItems(Get_Values_list(interface_Path, key1="task"))
         return_init = gui_init(resource_Path, maa_pi_config_Path, interface_Path)
-        self.Resource_Combox.setCurrentIndex(return_init["init_Resource_Type"])
-        self.Control_Combox.setCurrentIndex(return_init["init_Controller_Type"])
+        if return_init is not None:
+            self.Resource_Combox.setCurrentIndex(return_init.get("init_Resource_Type", 0))
+            self.Control_Combox.setCurrentIndex(return_init.get("init_Controller_Type", 0))
         self.add_Controller_combox()
 
     def handle_missing_files(self, resource_Path, interface_Path, maa_pi_config_Path):
@@ -358,7 +359,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 await maafw.stop_task()
                 return
         # 加载资源
-        resource_path = None
+        resource_path = ""
         resource_target = self.Resource_Combox.currentText()
 
         for i in maa_config_data.interface_config["resource"]:
@@ -366,7 +367,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 logger.debug(f"task_interface.py:加载资源: {i['path']}")
                 resource_path = i["path"]
 
-        if resource_path is None and self.need_runing:
+        if resource_path  == "" and self.need_runing:
             logger.error(f"task_interface.py:未找到目标资源: {resource_target}")
             await maafw.stop_task()
             self.S2_Button.setEnabled(True)

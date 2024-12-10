@@ -56,13 +56,13 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.res_combox.addItems(maa_config_data.resource_name_list)
         self.res_combox.setCurrentText(maa_config_data.resource_name)
 
-    def get_list_items(self):
+    def get_list_items(self) -> list[str]:
         """获取列表中所有项的文本"""
         return [
-            self.List_widget.item(i).text()
-            for i in range(self.List_widget.count())
-            if self.List_widget.item(i) is not None
+            item.text() for i in range(self.List_widget.count())
+            if (item := self.List_widget.item(i)) is not None
         ]
+
     def switch_config(self, data_dict:dict = {})->None:
         """主动切换配置"""
         
@@ -184,9 +184,9 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         signalBus.title_changed.emit()
         signalBus.update_finished_action.emit()
 
-    def res_changed(self, resource_name:str=None):
+    def res_changed(self, resource_name:str=""):
         """资源下拉框改变时触发"""
-        if resource_name is None:
+        if resource_name  == "" or None:
             resource_name = self.res_combox.currentText()
 
         cfg.set(cfg.maa_resource_name, resource_name)
@@ -319,10 +319,8 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             Get_Values_list_Option(maa_config_data.config_path, "task")
         )
 
-    def get_task_list_widget(self):
+    def get_task_list_widget(self) -> list[str]:
         """获取任务列表控件中的项"""
         return [
-            self.List_widget.item(i).text()
-            for i in range(self.List_widget.count())
-            if self.List_widget.item(i) is not None
+            item.text() for item in (self.List_widget.item(i) for i in range(self.List_widget.count())) if item is not None
         ]

@@ -11,6 +11,7 @@ from qfluentwidgets import (
     setThemeColor,
     ConfigItem,
 )
+from typing import List,Any
 from qfluentwidgets import FluentIcon as FIF
 from qfluentwidgets import InfoBar
 from PyQt6.QtCore import Qt, QUrl
@@ -493,7 +494,7 @@ class SettingInterface(ScrollArea):
         self.aboutGroup.addSettingCard(self.feedbackCard)
         self.aboutGroup.addSettingCard(self.aboutCard)
 
-    def get_unique_gpu_mapping(self, gpu_mapping):
+    def get_unique_gpu_mapping(self, gpu_mapping):# -> list[Any]:
         """获取唯一的 GPU 名称列表。"""
         gpu_combox_list = list(set(gpu_mapping.values()))
         gpu_combox_list.insert(0, self.tr("Auto"))

@@ -23,7 +23,7 @@ class LineEditCard(SettingCard):
         icon: Union[str, QIcon, FluentIconBase],
         title: str,
         holderText: str = "",
-        target: str = None,
+        target: str = "",
         content=None,
         parent=None,
         num_only=True,
@@ -72,7 +72,7 @@ class LineEditCard(SettingCard):
         """处理文本变化事件"""
         text = self.lineEdit.text()
 
-        if self.target != None:
+        if self.target != "":
             self._save_text_to_config(text)
 
     def _save_text_to_config(self, text: str):

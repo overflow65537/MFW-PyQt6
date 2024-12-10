@@ -1,8 +1,7 @@
-import os
+from typing import List,Any
 
 from qfluentwidgets import ListWidget, RoundMenu, Action, MenuAnimationType
 from qfluentwidgets import FluentIcon as FIF
-from qfluentwidgets import InfoBar, InfoBarPosition
 from ..utils.tool import (
     Get_Values_list_Option,
     Save_Config,
@@ -17,7 +16,7 @@ from ..common.maa_config_data import maa_config_data
 class ListWidge_Menu_Draggable(ListWidget):
     def __init__(self, parent=None):
         super(ListWidge_Menu_Draggable, self).__init__(parent)
-    def get_task_list_widget(self):
+    def get_task_list_widget(self) -> list[Any]:
         items = []
         for i in range(self.count()):
             item = self.item(i)
@@ -25,14 +24,15 @@ class ListWidge_Menu_Draggable(ListWidget):
                 items.append(item.text())
         return items
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.RightButton:
-            item = self.itemAt(event.pos())
+    def mousePressEvent(self, e):
+        if e.button() == Qt.MouseButton.RightButton:
+            item = self.itemAt(e.pos())
             if item:
                 self.setCurrentItem(item)
-        super(ListWidge_Menu_Draggable, self).mousePressEvent(event)
+        super(ListWidge_Menu_Draggable, self).mousePressEvent(e)
 
-    def contextMenuEvent(self, e):
+
+    def contextMenuEvent(self, e): # type: ignore
         menu = RoundMenu(parent=self)
 
         selected_row = self.currentRow()

@@ -30,11 +30,12 @@ class Language(Enum):
 class LanguageSerializer(ConfigSerializer):
     """Language serializer"""
 
-    def serialize(self, language):
-        return language.value.name()
+    def serialize(self, value):
+        return value.value.name()
 
-    def deserialize(self, value: str):
+    def deserialize(self, value: str) -> Language:
         return Language(QLocale(value))
+
 
 
 def isWin11():

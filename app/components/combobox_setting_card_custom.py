@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union,List
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 from qfluentwidgets import SettingCard, FluentIconBase, ComboBox
@@ -20,15 +20,15 @@ class ComboBoxSettingCardCustom(SettingCard):
         self,
         icon: Union[str, QIcon, FluentIconBase],
         title,
+        texts:List[str],
         path,
-        target: list = None,
+        target: list = [],
         controller=None,
         controller_type=None,
         content=None,
-        texts=None,
         parent=None,
-        mode: str = None,
-        mapping: dict = None,
+        mode: str = "",
+        mapping: dict = {},
     ):
         """
         初始化自定义ComboBox设置卡片。

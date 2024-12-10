@@ -1,5 +1,5 @@
 import os
-
+from typing import Any, Literal
 from qfluentwidgets import SettingCardGroup, ScrollArea, ExpandLayout
 from qfluentwidgets import FluentIcon as FIF
 from PyQt6.QtCore import Qt
@@ -105,7 +105,7 @@ class CustomSettingInterface(ScrollArea):
             )
             self.CustomSettingGroup.addSettingCard(self.Switch)
 
-    def get_initial_text(self, option_name):
+    def get_initial_text(self, option_name) -> Any | Literal['']:
         """获取选项的初始文本"""
         config_path = os.path.join(os.getcwd(), "config", "custom_config.json")
         try:
