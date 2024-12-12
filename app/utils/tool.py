@@ -6,10 +6,41 @@ import platform
 import psutil
 import socket
 import asyncio
-from ..utils.logger import logger
-from typing import Any, Literal
+import traceback
+import functools
+from typing import Any, Literal,Callable, TypeVar
 
+from PyQt6.QtWidgets import QMessageBox
+from PyQt6.QtGui import QIcon
+from app.utils.logger import logger
 
+R = TypeVar('R')
+
+def error_handler(func: Callable[..., R]) -> Callable[..., R]:
+    """错误处理装饰器。"""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs) -> R:
+        try:
+            return func(*args, **kwargs)
+        except:
+            logger.exception(f"Error in {func.__name__}:\n")
+            show_error_message()
+            return None 
+    return wrapper
+
+def show_error_message():
+
+    """显示错误信息的弹窗。"""
+    traceback_info = traceback.format_exc()
+
+    msg_box = QMessageBox()
+
+    msg_box.setIcon(QMessageBox.Icon.Critical)  
+    msg_box.setWindowTitle("ERROR")
+    msg_box.setText(f"{str(traceback_info)}") 
+    msg_box.setWindowIcon(QIcon("./icon/ERROR.png"))  
+    msg_box.exec() 
+@error_handler
 def Read_Config(paths) -> dict:
     """读取指定路径的JSON配置文件。
 
@@ -17,15 +48,14 @@ def Read_Config(paths) -> dict:
         paths (str): 配置文件的路径。
 
     Returns:
-        dict: 如果文件存在，返回解析后的字典；否则返回空字典。
+        dict: 如果文件存在，返回解析后的字典
     """
     if os.path.exists(paths):
         with open(paths, "r", encoding="utf-8") as MAA_Config:
             MAA_data = json.load(MAA_Config)
             return MAA_data
     else:
-        return {}
-
+        raise FileNotFoundError("Config file not found.")
 
 def Save_Config(paths, data):
     """将数据保存到指定路径的JSON配置文件。
@@ -41,7 +71,7 @@ def Save_Config(paths, data):
     with open(paths, "w", encoding="utf-8") as MAA_Config:
         json.dump(data, MAA_Config, indent=4, ensure_ascii=False)
 
-
+@error_handler
 def gui_init(resource_Path, maa_pi_config_Path, interface_Path) ->  dict:
     """初始化GUI组件的配置信息。    
 
@@ -54,7 +84,7 @@ def gui_init(resource_Path, maa_pi_config_Path, interface_Path) ->  dict:
         dict : 如果所有路径都存在，返回初始化信息的字典；否则空字典。
     """
     if not os.path.exists(resource_Path):
-        return {}
+        raise FileNotFoundError("Resource file not found.")
 
     elif (
         os.path.exists(resource_Path)
@@ -101,7 +131,6 @@ def gui_init(resource_Path, maa_pi_config_Path, interface_Path) ->  dict:
         }
         return return_init
 
-
 def Get_Values_list2(path, key1) -> list:
     """获取指定键的值列表。
 
@@ -116,7 +145,6 @@ def Get_Values_list2(path, key1) -> list:
     for i in Read_Config(path)[key1]:
         List.append(i)
     return List
-
 
 def Get_Values_list(path, key1) -> list:
     """获取组件的初始参数。
@@ -144,7 +172,6 @@ def Get_Values_list(path, key1) -> list:
             List.append(i["name"])
         return List
 
-
 def Get_Values_list_Option(path, key1) -> list:
     """获取组件的初始参数，包括选项。
 
@@ -167,7 +194,6 @@ def Get_Values_list_Option(path, key1) -> list:
             List.append(i["name"])
     return List
 
-
 def Get_Task_List(path, target) -> list:
     """根据选项名称获取所有case的name列表。
 
@@ -184,7 +210,6 @@ def Get_Task_List(path, target) -> list:
         lists.append(Task_Config[i]["name"])
     return lists
 
-
 def find_process_by_name(process_name) -> str | None:
     """查找指定名称的进程，并返回其可执行文件的路径。
 
@@ -198,7 +223,6 @@ def find_process_by_name(process_name) -> str | None:
         if proc.info["name"].lower() == process_name.lower():
             # 如果一样返回可执行文件的绝对路径
             return proc.info["exe"]
-
 
 def find_existing_file(info_dict) -> str | Literal[False]:
     """根据给出的路径信息查找可执行文件。
@@ -402,7 +426,7 @@ def access_nested_dict(data_dict, keys: list, value=None) -> str | dict | None:
         except KeyError:
             return None  # 键不存在时返回None
 
-
+@error_handler
 def rewrite_contorller(data_dict, controller, mode, new_value=None) -> str | dict:
     """重写控制器配置。
 
@@ -432,7 +456,7 @@ def rewrite_contorller(data_dict, controller, mode, new_value=None) -> str | dic
     else:
         return current_level
 
-
+@error_handler
 def delete_contorller(data_dict, controller, mode) -> dict:
     """删除控制器配置。
 

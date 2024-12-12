@@ -11,7 +11,6 @@ from qfluentwidgets import (
     setThemeColor,
     ConfigItem,
 )
-from typing import List,Any
 from qfluentwidgets import FluentIcon as FIF
 from qfluentwidgets import InfoBar
 from PyQt6.QtCore import Qt, QUrl
@@ -53,8 +52,9 @@ class SettingInterface(ScrollArea):
             self.enable_widgets(True)
         else:
             logger.info("收到信号,清空界面并断开信号")
-            self.clear_content()
             self.enable_widgets(False)
+            self.clear_content()
+            
 
     def init_ui(self):
         """初始化界面内容。"""
@@ -63,14 +63,7 @@ class SettingInterface(ScrollArea):
         # 更新工作线程
         self.UpdateWorker = check_Update(self)
 
-        if maa_config_data.interface_config:
-            self.project_name = maa_config_data.interface_config.get("name", "")
-            self.project_version = maa_config_data.interface_config.get("version", "")
-            self.project_url = maa_config_data.interface_config.get("url", "")
-        else:
-            self.project_name = ""
-            self.project_version = ""
-            self.project_url = ""
+
 
         # 初始化设置
         self.initialize_adb_settings()
@@ -86,6 +79,14 @@ class SettingInterface(ScrollArea):
     def init_info(self):
         """初始化控件信息。"""
         # 从配置中读取数据并填充到控件
+        if maa_config_data.interface_config:
+            self.project_name = maa_config_data.interface_config.get("name", "")
+            self.project_version = maa_config_data.interface_config.get("version", "")
+            self.project_url = maa_config_data.interface_config.get("url", "")
+        else:
+            self.project_name = ""
+            self.project_version = ""
+            self.project_url = ""
         self.ADB_port.lineEdit.setText(maa_config_data.config.get("adb", {}).get("address", ""))
         self.ADB_path.lineEdit.setText(maa_config_data.config.get("adb", {}).get("adb_path", ""))
         self.emu_path.lineEdit.setText(maa_config_data.config.get("emu_path", ""))
@@ -95,6 +96,23 @@ class SettingInterface(ScrollArea):
         self.exe_wait_time.lineEdit.setText(str(maa_config_data.config.get("exe_wait_time", "")))
         self.run_before_start.lineEdit.setText(maa_config_data.config.get("run_before_start", ""))
         self.run_after_finish.lineEdit.setText(maa_config_data.config.get("run_after_finish", ""))
+        self.use_GPU.path = maa_config_data.config_path
+        self.win32_input_mode.path = maa_config_data.config_path
+        self.win32_screencap_mode.path = maa_config_data.config_path
+        self.ADB_input_mode.path = maa_config_data.config_path
+        self.ADB_screencap_mode.path = maa_config_data.config_path
+        self.updateCard.setContent(
+            self.tr("Current")
+            + " "
+            + self.project_name
+            + " "
+            + self.tr("version:") 
+            + " " 
+            + self.project_version,
+        )
+        self.feedbackCard.setContent(
+            self.tr("Submit feedback to help us improve")+self.project_name,
+        )
 
     def clear_content(self):
         # 清空输入框和设置内容
@@ -472,14 +490,14 @@ class SettingInterface(ScrollArea):
             self.tr("Check for updates"),
             FIF.UPDATE,
             self.tr("Check for updates"),
-            self.tr("Current") + " " + self.project_name + " " + self.tr("version:") + " " + self.project_version,
+            self.tr("Current") + " " + " " + self.tr("version:") + " " ,
             self.aboutGroup,
         )
         self.feedbackCard = PrimaryPushSettingCard(
             self.tr("Submit Feedback"),
             FIF.FEEDBACK,
             self.tr("Submit Feedback"),
-            self.tr("Submit feedback to help us improve") + self.project_name,
+            self.tr("Submit feedback to help us improve"),
             self.aboutGroup,
         )
         self.aboutCard = PrimaryPushSettingCard(
@@ -646,7 +664,6 @@ class SettingInterface(ScrollArea):
         file_name, _ = QFileDialog.getOpenFileName(
             self, self.tr("Choose file"), "./", "All Files (*)"
         )
-        logger.debug(f"选择的文件路径: {file_name}")
         if not file_name:
             return
 
@@ -716,60 +733,80 @@ class SettingInterface(ScrollArea):
 
     def _onADB_portCardChange(self):
         """根据端口更改更新 ADB 地址。"""
+        if maa_config_data.config_path == "":
+            return
         port = self.ADB_port.lineEdit.text()
         maa_config_data.config["adb"]["address"] = port
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def _onADB_pathCardChange(self):
         """根据输入更新 ADB 路径。"""
+        if maa_config_data.config_path == "":
+            return
         adb_path = self.ADB_path.lineEdit.text()
         maa_config_data.config["adb"]["adb_path"] = adb_path
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def _onEmuPathCardChange(self):
         """根据输入更新模拟器路径。"""
+        if maa_config_data.config_path == "":
+            return
         emu_path = self.emu_path.lineEdit.text()    
         maa_config_data.config["emu_path"] = emu_path
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def _onEmuWaitTimeCardChange(self):
         """根据输入更新启动模拟器等待时间。"""
+        if maa_config_data.config_path == "":
+            return
         emu_wait_time = self.emu_wait_time.lineEdit.text()
         maa_config_data.config["emu_wait_time"] = emu_wait_time
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def _onExePathCardChange(self):
         """根据输入更新可执行文件路径。"""
+        if maa_config_data.config_path == "":
+            return
         exe_path = self.exe_path.lineEdit.text()
         maa_config_data.config["exe_path"] = exe_path
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def _onExeWaitTimeCardChange(self):
         """根据输入更新启动可执行文件等待时间。"""
+        if maa_config_data.config_path == "":
+            return
         exe_wait_time = self.exe_wait_time.lineEdit.text()
         maa_config_data.config["exe_wait_time"] = exe_wait_time
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def _onExeParameterCardChange(self):
         """根据输入更新可执行文件的参数。"""
+        if maa_config_data.config_path == "":
+            return
         exe_parameter = self.exe_parameter.lineEdit.text()
         maa_config_data.config["exe_parameter"] = exe_parameter
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def _onRunBeforeStartCardChange(self):
         """根据输入更新启动前运行的程序脚本路径。"""
+        if maa_config_data.config_path == "":
+            return
         run_before_start = self.run_before_start.lineEdit.text()
         maa_config_data.config["run_before_start"] = run_before_start
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def _onRunAfterFinishCardChange(self):
         """根据输入更新完成后运行的程序脚本路径。"""
+        if maa_config_data.config_path == "":
+            return
         run_after_finish = self.run_after_finish.lineEdit.text()
         maa_config_data.config["run_after_finish"] = run_after_finish
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def _onDEVmodeCardChange(self):
         """切换开发者模式的保存设置。"""
+        if maa_config_data.config_path == "":
+            return
         state = self.DEVmodeCard.isChecked()
         maa_config_data.config["save_draw"] = state
         Save_Config(maa_config_data.config_path, maa_config_data.config)

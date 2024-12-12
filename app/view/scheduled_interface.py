@@ -15,7 +15,7 @@ from ..components.choose_resource_button import CustomMessageBox
 import os
 import shutil
 from ..utils.logger import logger
-from ..common.maa_config_data import maa_config_data
+from ..common.maa_config_data import maa_config_data,init_maa_config_data
 
 
 class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
@@ -25,6 +25,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.setupUi(self)
 
         signalBus.update_task_list.connect(self.update_task_list_passive)
+        signalBus.switch_config.connect(self.switch_config)
         if cfg.get(cfg.resource_exist):
             self.initialize_config_combobox()
             self.List_widget.addItems(
@@ -33,10 +34,10 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.Add_cfg_Button.clicked.connect(self.add_config)
         self.Delete_cfg_Button.clicked.connect(self.cfg_delete)
         self.Cfg_Combox.currentTextChanged.connect(self.cfg_changed)
-        self.add_res_button.clicked.connect(self.add_resource)
         self.res_combox.currentTextChanged.connect(self.res_changed)
+        self.add_res_button.clicked.connect(self.add_resource)
         self.delete_res_button.clicked.connect(self.res_delete)
-        signalBus.switch_config.connect(self.switch_config)
+        
 
     def add_resource(self):
         """添加资源"""
@@ -45,10 +46,16 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             logger.debug(f"添加资源{w.name_data}")
             self.res_combox.clear()
             self.Cfg_Combox.clear()
+            logger.debug("add_resource发送信号")
+            self.Cfg_Combox.currentTextChanged.disconnect(self.cfg_changed)
+            self.res_combox.currentTextChanged.disconnect(self.res_changed)
             signalBus.resource_exist.emit(True)
             self.initialize_config_combobox()
             self.res_combox.setCurrentText(w.name_data)
-
+            self.Cfg_Combox.setCurrentText("default")
+            self.Cfg_Combox.currentTextChanged.connect(self.cfg_changed)
+            self.res_combox.currentTextChanged.connect(self.res_changed)
+            
     def initialize_config_combobox(self):
         """初始化配置下拉框"""
         self.Cfg_Combox.addItems(maa_config_data.config_name_list)
@@ -159,8 +166,9 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         """切换配置时刷新配置文件"""
         if config_name is None:
             config_name = self.Cfg_Combox.currentText()
-
-        if config_name in ["Default", "default".lower()]:
+        elif config_name == "" :
+            return
+        elif config_name in ["Default", "default".lower()]:
             logger.info(" 切换主配置")
 
             cfg.set(cfg.maa_config_name, "default")
@@ -180,6 +188,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             self.update_config_path(config_name)
 
         self.update_task_list()
+        logger.debug("cfg_changed发送信号")
         signalBus.resource_exist.emit(True)
         signalBus.title_changed.emit()
         signalBus.update_finished_action.emit()
@@ -215,15 +224,13 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         logger.info(f" 切换到 {resource_name} 资源")
         self.refresh_combobox()
 
-    def res_delete(self, resource_name=None):
+    def res_delete(self):
         """删除当前选定的资源"""
         if not cfg.get(cfg.resource_exist):
             self.show_error(self.tr("Please add resources first."))
             return
-
-        if resource_name is None:
-            resource_name = self.res_combox.currentText()
-
+        
+        resource_name = self.res_combox.currentText()
         logger.info(f" 删除资源 {resource_name}")
 
         # 删除资源文件夹

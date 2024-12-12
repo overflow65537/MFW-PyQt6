@@ -17,9 +17,7 @@ class CustomSettingInterface(ScrollArea):
     """自定义设置界面"""
 
     def __init__(self, parent=None):
-        logger.info(
-            "检测到custom.json文件，初始化自定义设置界面"
-        )
+
         super().__init__(parent=parent)
         self.scrollWidget = QWidget()
         self.expandLayout = ExpandLayout(self.scrollWidget)
@@ -30,8 +28,10 @@ class CustomSettingInterface(ScrollArea):
         self.CustomSettingGroup = SettingCardGroup(
             self.tr("Setting"), self.scrollWidget
         )
-        custom_path = os.path.join(os.getcwd(), "config", "custom.json")
-        if os.path.exists(custom_path):
+        self.custom_path = os.path.join(os.getcwd(), "config", "custom.json")
+        self.config_path = os.path.join(os.getcwd(), "config", "custom_config.json")
+        if os.path.exists(self.custom_path):
+            logger.info("加载自定义设置")
             self.config_init()
             self.option_init()
         self.__initWidget()
@@ -106,29 +106,21 @@ class CustomSettingInterface(ScrollArea):
 
     def get_initial_text(self, option_name) -> Any | Literal['']:
         """获取选项的初始文本"""
-        config_path = os.path.join(os.getcwd(), "config", "custom_config.json")
-        try:
-            return Read_Config(config_path).get(option_name, "")
-        except FileNotFoundError:
-            return ""
+        return Read_Config(self.config_path).get(option_name, "")
 
     def config_init(self):
         """初始化配置文件"""
-        config_path = os.path.join(os.getcwd(), "config", "custom_config.json")
-        custom_path = os.path.join(os.getcwd(), "config", "custom.json")
-
-        if not os.path.exists(config_path):
+        if not os.path.exists(self.config_path):
             dicts = {}
-            config = Read_Config(custom_path)
+            config = Read_Config(self.custom_path)
             for key, value in config.items():
                 dicts[value["optionname"]] = value.get("optioncontent", "")
-            Save_Config(config_path, dicts)
+            Save_Config(self.config_path, dicts)
 
     def option_init(self):
         """初始化选项"""
-        custom_path = os.path.join(os.getcwd(), "config", "custom.json")
-        config = Read_Config(custom_path)
+        
+        config = Read_Config(self.custom_path)
         logger.debug(f"{config}")
-
         for _, option in config.items():
             self.CreateOption(option)

@@ -66,31 +66,34 @@ class ComboBoxSettingCardCustom(SettingCard):
 
         # 连接选项改变信号
         self.comboBox.currentIndexChanged.connect(self._onCurrentIndexChanged)
-
+        logger.debug(f"初始化自定义ComboBox设置卡片: {title}")
     def set_current_text(self):
         """根据模式设置ComboBox的当前文本。"""
-        try:
-            data = Read_Config(self.path)
-            if self.mode == "setting":
-                value = access_nested_dict(data, self.target)
-                if value in self.mapping:
-                    current_text = self.mapping[value]
-                else:
-                    current_text = self.mapping.get(0)
-            elif self.mode == "custom":
-                current_text = access_nested_dict(data, self.target)
-            elif self.mode == "interface_setting":
-                value = rewrite_contorller(data, self.controller, self.controller_type)
-                current_text = self.mapping.get(
-                    value, self.tr("default") if value is None else value
-                )
-            else:
-                current_text = ""
-
-            self.comboBox.setCurrentText(current_text)
-        except Exception as e:
-            logger.warning(f"读取配置时出错: {e}")
+        if self.path == "":
             self.comboBox.setCurrentText("")  # 设置为空文本或默认值
+            return
+
+        # 读取配置
+        data = Read_Config(self.path)
+        if self.mode == "setting":
+            value = access_nested_dict(data, self.target)
+            if value in self.mapping:
+                current_text = self.mapping[value]
+            else:
+                current_text = self.mapping.get(0)
+        elif self.mode == "custom":
+            current_text = access_nested_dict(data, self.target)
+        elif self.mode == "interface_setting":
+            value = rewrite_contorller(data, self.controller, self.controller_type)
+            current_text = self.mapping.get(
+                value, self.tr("default") if value is None else value
+            )
+        else:
+            current_text = ""
+
+        self.comboBox.setCurrentText(current_text)
+
+        
 
     def _onCurrentIndexChanged(self):
         """处理ComboBox当前索引变化的事件。"""

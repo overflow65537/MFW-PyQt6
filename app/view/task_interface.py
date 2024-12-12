@@ -25,6 +25,7 @@ from ..utils.tool import (
     check_port,
     find_existing_file,
     find_process_by_name,
+    error_handler
 )
 from ..utils.maafw import maafw
 from ..common.config import cfg
@@ -38,6 +39,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     devices = []
     run_mode = "adb"
     start_again = False
+    need_runing = False
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -65,6 +67,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.info("资源缺失,清空界面")
             self.enable_widgets(False)
             self.clear_content()
+            self.Finish_combox_cfg.hide()
+            self.Finish_combox_res.hide()
 
     def init_ui(self):
         # 读取配置文件并存储在实例变量中
@@ -332,6 +336,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     @asyncSlot()
     async def Start_Up(self):
+        if not cfg.get(cfg.resource_exist) or not self.need_runing:
+            return
         self.need_runing = True
         self.S2_Button.setEnabled(False)
         self.S2_Button.setText(self.tr("Stop"))
@@ -605,8 +611,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Task_List.addItems(
             Get_Values_list_Option(maa_config_data.config_path, "task")
         )
-
     def Add_Task(self):
+        if maa_config_data.config == {}:
+            return
         Select_Target = self.SelectTask_Combox_1.currentText()
         Option = self.extract_task_options(
             Select_Target, maa_config_data.interface_config
@@ -663,7 +670,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def Move_Down(self):
         self.move_task(direction=1)
 
+    
     def move_task(self, direction: int):
+        if maa_config_data.config == {}:
+            return
         Select_Target = self.Task_List.currentRow()
 
         if direction == -1 and Select_Target == 0:
@@ -764,9 +774,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def change_output(self, msg):
         self.TaskOutput_Text.append(msg)
-
+    
+    
     @asyncSlot()
     async def Start_Detection(self):
+        if not cfg.get(cfg.resource_exist):
+            return
         logger.info("开始检测")
         self.AutoDetect_Button.setEnabled(False)
         self.S2_Button.setEnabled(False)
