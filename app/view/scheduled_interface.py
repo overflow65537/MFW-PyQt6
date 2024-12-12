@@ -15,7 +15,7 @@ from ..components.choose_resource_button import CustomMessageBox
 import os
 import shutil
 from ..utils.logger import logger
-from ..common.maa_config_data import maa_config_data,init_maa_config_data
+from ..common.maa_config_data import maa_config_data
 
 
 class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
@@ -37,7 +37,6 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.res_combox.currentTextChanged.connect(self.res_changed)
         self.add_res_button.clicked.connect(self.add_resource)
         self.delete_res_button.clicked.connect(self.res_delete)
-        
 
     def add_resource(self):
         """添加资源"""
@@ -55,7 +54,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             self.Cfg_Combox.setCurrentText("default")
             self.Cfg_Combox.currentTextChanged.connect(self.cfg_changed)
             self.res_combox.currentTextChanged.connect(self.res_changed)
-            
+
     def initialize_config_combobox(self):
         """初始化配置下拉框"""
         self.Cfg_Combox.addItems(maa_config_data.config_name_list)
@@ -66,17 +65,21 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
     def get_list_items(self) -> list[str]:
         """获取列表中所有项的文本"""
         return [
-            item.text() for i in range(self.List_widget.count())
+            item.text()
+            for i in range(self.List_widget.count())
             if (item := self.List_widget.item(i)) is not None
         ]
 
-    def switch_config(self, data_dict:dict = {})->None:
+    def switch_config(self, data_dict: dict = {}) -> None:
         """主动切换配置"""
-        
-        if data_dict.get("resource_name",False) and data_dict.get("config_name",False):
+
+        if data_dict.get("resource_name", False) and data_dict.get(
+            "config_name", False
+        ):
             logger.debug(f"主动切换配置{data_dict}")
             self.res_combox.setCurrentText(data_dict.get("resource_name"))
             self.Cfg_Combox.setCurrentText(data_dict.get("config_name"))
+
     def add_config(self, config_name=None):
         """添加新的配置"""
         if cfg.get(cfg.resource_exist):
@@ -166,7 +169,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         """切换配置时刷新配置文件"""
         if config_name is None:
             config_name = self.Cfg_Combox.currentText()
-        elif config_name == "" :
+        elif config_name == "":
             return
         elif config_name in ["Default", "default".lower()]:
             logger.info(" 切换主配置")
@@ -193,9 +196,9 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         signalBus.title_changed.emit()
         signalBus.update_finished_action.emit()
 
-    def res_changed(self, resource_name:str=""):
+    def res_changed(self, resource_name: str = ""):
         """资源下拉框改变时触发"""
-        if resource_name  == "" or None:
+        if resource_name == "" or None:
             resource_name = self.res_combox.currentText()
 
         cfg.set(cfg.maa_resource_name, resource_name)
@@ -213,7 +216,9 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         maa_config_data.config_name = "default"
         maa_config_data.config_path = main_config_path
 
-        maa_config_data.resource_path = maa_config_data.resource_data[maa_config_data.resource_name]
+        maa_config_data.resource_path = maa_config_data.resource_data[
+            maa_config_data.resource_name
+        ]
         cfg.set(cfg.maa_resource_path, maa_config_data.resource_path)
         maa_config_data.config_name_list = list(
             maa_config_data.config_data[maa_config_data.resource_name]
@@ -229,7 +234,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         if not cfg.get(cfg.resource_exist):
             self.show_error(self.tr("Please add resources first."))
             return
-        
+
         resource_name = self.res_combox.currentText()
         logger.info(f" 删除资源 {resource_name}")
 
@@ -329,5 +334,9 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
     def get_task_list_widget(self) -> list[str]:
         """获取任务列表控件中的项"""
         return [
-            item.text() for item in (self.List_widget.item(i) for i in range(self.List_widget.count())) if item is not None
+            item.text()
+            for item in (
+                self.List_widget.item(i) for i in range(self.List_widget.count())
+            )
+            if item is not None
         ]

@@ -25,7 +25,7 @@ from ..utils.tool import (
     check_port,
     find_existing_file,
     find_process_by_name,
-    error_handler
+    error_handler,
 )
 from ..utils.maafw import maafw
 from ..common.config import cfg
@@ -49,7 +49,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.bind_signals()
         if cfg.get(cfg.resource_exist):
             self.init_ui()
-            
+
         else:
             logger.warning("资源缺失")
             self.show_error(self.tr("Resource file not detected"))
@@ -62,7 +62,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.enable_widgets(True)
             self.clear_content()
             self.init_ui()
-            
+
         else:
             logger.info("资源缺失,清空界面")
             self.enable_widgets(False)
@@ -123,15 +123,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if not finish_combox == 4:
             self.Finish_combox_cfg.hide()
             self.Finish_combox_res.hide()
-        
-        finish_combox_res = maa_config_data.config.get("finish_option_res",0)
+
+        finish_combox_res = maa_config_data.config.get("finish_option_res", 0)
         self.Finish_combox_res.addItems(maa_config_data.resource_name_list)
         self.Finish_combox_res.setCurrentIndex(finish_combox_res)
 
-        finish_combox_cfg = maa_config_data.config.get("finish_option_cfg",0)
+        finish_combox_cfg = maa_config_data.config.get("finish_option_cfg", 0)
         self.Finish_combox_cfg.addItems(maa_config_data.config_name_list)
         self.Finish_combox_cfg.setCurrentIndex(finish_combox_cfg)
-        
 
     def toggle_task_options(self, visible: bool):
         task_comboxes = [
@@ -169,7 +168,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Finish_combox.currentIndexChanged.connect(self.rewrite_Completion_Options)
         self.Finish_combox_res.currentIndexChanged.connect(self.Save_Finish_Option_Res)
         self.Finish_combox_cfg.currentIndexChanged.connect(self.Save_Finish_Option_Cfg)
-    
+
     def print_notice(self, message: str):
         if "DingTalk Failed".lower() in message.lower():
             self.TaskOutput_Text.append(self.tr("DingTalk Failed"))
@@ -237,8 +236,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.SelectTask_Combox_1.addItems(Get_Values_list(interface_Path, key1="task"))
         return_init = gui_init(resource_Path, maa_pi_config_Path, interface_Path)
         if return_init is not None:
-            self.Resource_Combox.setCurrentIndex(return_init.get("init_Resource_Type", 0))
-            self.Control_Combox.setCurrentIndex(return_init.get("init_Controller_Type", 0))
+            self.Resource_Combox.setCurrentIndex(
+                return_init.get("init_Resource_Type", 0)
+            )
+            self.Control_Combox.setCurrentIndex(
+                return_init.get("init_Controller_Type", 0)
+            )
         self.add_Controller_combox()
 
     def handle_missing_files(self, resource_Path, interface_Path, maa_pi_config_Path):
@@ -270,8 +273,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             "task": [],
             "save_draw": False,
             "finish_option": 0,
-            "finish_option_res":0,
-            "finish_option_cfg":0,
+            "finish_option_res": 0,
+            "finish_option_cfg": 0,
             "run_before_start": "",
             "run_after_finish": "",
             "emu_path": "",
@@ -279,7 +282,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             "exe_path": "",
             "exe_wait_time": 10,
             "exe_parameter": "",
-            "run_on_startup":False
+            "run_on_startup": False,
         }
         Save_Config(maa_pi_config_Path, data)
         maa_config_data.config = data
@@ -293,24 +296,24 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def rewrite_Completion_Options(self):
         finish_option = self.Finish_combox.currentIndex()
-        maa_config_data.config["finish_option"] = (finish_option) 
+        maa_config_data.config["finish_option"] = finish_option
         if finish_option == 4:
             self.Finish_combox_cfg.show()
             self.Finish_combox_res.show()
         else:
             self.Finish_combox_cfg.hide()
             self.Finish_combox_res.hide()
-        Save_Config(maa_config_data.config_path, maa_config_data.config) 
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def Save_Finish_Option_Res(self):
         finish_option_res = self.Finish_combox_res.currentIndex()
-        maa_config_data.config["finish_option_res"] = (finish_option_res)
-        Save_Config(maa_config_data.config_path, maa_config_data.config) 
+        maa_config_data.config["finish_option_res"] = finish_option_res
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def Save_Finish_Option_Cfg(self):
         finish_option_cfg = self.Finish_combox_cfg.currentIndex()
-        maa_config_data.config["finish_option_cfg"] = (finish_option_cfg)
-        Save_Config(maa_config_data.config_path, maa_config_data.config) 
+        maa_config_data.config["finish_option_cfg"] = finish_option_cfg
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def close_application(self):
         self.app_process.terminate()
@@ -326,8 +329,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             "Darwin": "sudo shutdown -h now",  # macOS
         }
         os.system(shutdown_commands.get(platform.system(), ""))
+
     def run_other_config(self):
-        data_dict = {"resource_name":self.Finish_combox_res.currentText(),"config_name":self.Finish_combox_cfg.currentText()}
+        data_dict = {
+            "resource_name": self.Finish_combox_res.currentText(),
+            "config_name": self.Finish_combox_cfg.currentText(),
+        }
         signalBus.switch_config.emit(data_dict)
 
     def start_process(self, command):
@@ -373,7 +380,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 logger.debug(f"加载资源: {i['path']}")
                 resource_path = i["path"]
 
-        if resource_path  == "" and self.need_runing:
+        if resource_path == "" and self.need_runing:
             logger.error(f"未找到目标资源: {resource_target}")
             await maafw.stop_task()
             self.S2_Button.setEnabled(True)
@@ -547,9 +554,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     ]["cases"]:
                         if override["name"] == task_option["value"]:
                             override_options.update(override["pipeline_override"])
-                logger.info(
-                    f"运行任务:{self.entry}\n任务选项: {override_options}"
-                )
+                logger.info(f"运行任务:{self.entry}\n任务选项: {override_options}")
                 self.TaskOutput_Text.append(self.tr("running task:") + f" {self.entry}")
                 await maafw.run_task(self.entry, override_options)
         self.TaskOutput_Text.append(self.tr("Task finished"))
@@ -597,6 +602,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.S2_Button.clicked.disconnect()
         self.S2_Button.clicked.connect(self.Start_Up)
         self.S2_Button.setEnabled(True)
+
     def kill_adb_process(self):
         adb_path = maa_config_data.config["adb"]["adb_path"]
         if adb_path == "":
@@ -606,11 +612,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.info("杀死ADB进程")
         except subprocess.CalledProcessError as e:
             logger.error(f"杀死ADB进程失败: {e}")
+
     def task_list_changed(self):
         self.Task_List.clear()
         self.Task_List.addItems(
             Get_Values_list_Option(maa_config_data.config_path, "task")
         )
+
     def Add_Task(self):
         if maa_config_data.config == {}:
             return
@@ -670,7 +678,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def Move_Down(self):
         self.move_task(direction=1)
 
-    
     def move_task(self, direction: int):
         if maa_config_data.config == {}:
             return
@@ -694,9 +701,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def Save_Resource(self):
         self.update_config_value("resource", self.Resource_Combox.currentText())
-        logger.info(
-            f"保存资源配置: {self.Resource_Combox.currentText()}"
-        )
+        logger.info(f"保存资源配置: {self.Resource_Combox.currentText()}")
 
     def Save_Controller(self):
         Controller_Type_Select = self.Control_Combox.currentText()
@@ -774,8 +779,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def change_output(self, msg):
         self.TaskOutput_Text.append(msg)
-    
-    
+
     @asyncSlot()
     async def Start_Detection(self):
         if not cfg.get(cfg.resource_exist):

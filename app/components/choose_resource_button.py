@@ -7,7 +7,7 @@ from qfluentwidgets import (
     LineEdit,
     InfoBar,
     InfoBarPosition,
-    ToolButton
+    ToolButton,
 )
 from qfluentwidgets import FluentIcon as FIF
 from ..common.config import cfg
@@ -36,7 +36,7 @@ class CustomMessageBox(MessageBoxBase):
         self.path_LineEdit.setClearButtonEnabled(True)
 
         self.path_layout.addWidget(self.path_LineEdit)
-        self.resourceButton = ToolButton(FIF.FOLDER_ADD,self)
+        self.resourceButton = ToolButton(FIF.FOLDER_ADD, self)
         self.resourceButton.setSizePolicy(
             QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed
         )
@@ -67,13 +67,15 @@ class CustomMessageBox(MessageBoxBase):
             self, self.tr("Choose folder"), "./"
         )
         if os.path.basename(self.folder) == "resource":
-            interface_path = os.path.join(os.path.dirname(self.folder), "interface.json")
+            interface_path = os.path.join(
+                os.path.dirname(self.folder), "interface.json"
+            )
             resource_path = self.folder
-            self.status = 0 # 0 直接选择resource目录，1选择resource目录的上级目录
+            self.status = 0  # 0 直接选择resource目录，1选择resource目录的上级目录
         else:
             interface_path = os.path.join(self.folder, "interface.json")
             resource_path = os.path.join(self.folder, "resource")
-            self.status = 1 # 0 直接选择resource目录，1选择resource目录的上级目录
+            self.status = 1  # 0 直接选择resource目录，1选择resource目录的上级目录
 
         if not os.path.exists(interface_path):
             self.show_error(self.tr("The resource does not have an interface.json"))
@@ -81,8 +83,6 @@ class CustomMessageBox(MessageBoxBase):
         elif not os.path.exists(resource_path):
             self.show_error(self.tr("The resource is not a resource directory"))
             return
-        
-
 
         self.path_LineEdit.setText(self.folder)
         logger.info(f"资源路径 {self.folder}")
@@ -111,14 +111,14 @@ class CustomMessageBox(MessageBoxBase):
         path_data = self.path_LineEdit.text()
         interface_path = ""
         if self.status == 0:
-            #直接选择resource目录
+            # 直接选择resource目录
             interface_path = os.path.join(os.path.dirname(path_data), "interface.json")
             path_data = os.path.dirname(path_data)
         elif self.status == 1:
-            #选择resource目录的上级目录
+            # 选择resource目录的上级目录
             interface_path = os.path.join(path_data, "interface.json")
             path_data = path_data
-            
+
         update_data = self.update_LineEdit.text()
         resource_data = cfg.get(cfg.maa_resource_list)
         resource_list = list(resource_data)
@@ -173,8 +173,8 @@ class CustomMessageBox(MessageBoxBase):
             "task": [],
             "save_draw": False,
             "finish_option": 0,
-            "finish_option_res":0,
-            "finish_option_cfg":0,
+            "finish_option_res": 0,
+            "finish_option_cfg": 0,
             "run_before_start": "",
             "run_after_finish": "",
             "emu_path": "",
@@ -182,7 +182,7 @@ class CustomMessageBox(MessageBoxBase):
             "exe_path": "",
             "exe_wait_time": "10",
             "exe_parameter": "",
-            "run_on_startup":False
+            "run_on_startup": False,
         }
         Save_Config(maa_pi_config_Path, data)
         cfg.set(cfg.maa_resource_name, self.name_data)

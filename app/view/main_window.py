@@ -90,6 +90,7 @@ class MainWindow(FluentWindow):
                 self.tr("Setting"),
                 NavigationItemPosition.BOTTOM,
             )
+
     def is_admin(self):
         """判断是否为管理员权限"""
         try:
@@ -97,18 +98,18 @@ class MainWindow(FluentWindow):
         except Exception as e:
             logger.error(f" 检查权限失败，错误信息：{e}")
             return False
-    
+
     def set_title(self):
         """设置窗口标题"""
         title = cfg.get(cfg.title)
         resource_name = cfg.get(cfg.maa_resource_name)
         config_name = cfg.get(cfg.maa_config_name)
-        if resource_name !="":
+        if resource_name != "":
             title += f" {resource_name}"
-        if config_name !="":
+        if config_name != "":
             title += f" {config_name}"
         if self.is_admin():
-            title += " "+self.tr("admin")
+            title += " " + self.tr("admin")
         logger.info(f" 设置窗口标题：{title}")
         self.setWindowTitle(title)
 

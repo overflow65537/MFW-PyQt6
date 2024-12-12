@@ -58,7 +58,7 @@ class Ui_Task_Interface(object):
         self.LD4_layout.addWidget(self.Resource_Combox)
         self.LD4_layout.addWidget(self.Control_Combox)
         self.LD4_layout.addWidget(self.Autodetect_combox)
-        
+
         # 左下完整布局
         self.LD5_layout = QHBoxLayout()
         self.LD5_layout.addLayout(self.LD3_layout)

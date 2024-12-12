@@ -104,7 +104,7 @@ class CustomSettingInterface(ScrollArea):
             )
             self.CustomSettingGroup.addSettingCard(self.Switch)
 
-    def get_initial_text(self, option_name) -> Any | Literal['']:
+    def get_initial_text(self, option_name) -> Any | Literal[""]:
         """获取选项的初始文本"""
         return Read_Config(self.config_path).get(option_name, "")
 
@@ -119,7 +119,7 @@ class CustomSettingInterface(ScrollArea):
 
     def option_init(self):
         """初始化选项"""
-        
+
         config = Read_Config(self.custom_path)
         logger.debug(f"{config}")
         for _, option in config.items():

@@ -77,7 +77,7 @@ class MaaFW:
             input_method = 1  # Seize
 
         self.controller = Win32Controller(
-            hwnd, screencap_method=screencap_method, input_method=input_method # type: ignore
+            hwnd, screencap_method=screencap_method, input_method=input_method  # type: ignore
         )
         connected = self.controller.post_connection().wait().succeeded()
         if not connected:

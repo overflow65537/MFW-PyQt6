@@ -1,4 +1,4 @@
-from typing import Union,List
+from typing import Union, List
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 from qfluentwidgets import SettingCard, FluentIconBase, ComboBox
@@ -20,7 +20,7 @@ class ComboBoxSettingCardCustom(SettingCard):
         self,
         icon: Union[str, QIcon, FluentIconBase],
         title,
-        texts:List[str],
+        texts: List[str],
         path,
         target: list = [],
         controller=None,
@@ -67,6 +67,7 @@ class ComboBoxSettingCardCustom(SettingCard):
         # 连接选项改变信号
         self.comboBox.currentIndexChanged.connect(self._onCurrentIndexChanged)
         logger.debug(f"初始化自定义ComboBox设置卡片: {title}")
+
     def set_current_text(self):
         """根据模式设置ComboBox的当前文本。"""
         if self.path == "":
@@ -92,8 +93,6 @@ class ComboBoxSettingCardCustom(SettingCard):
             current_text = ""
 
         self.comboBox.setCurrentText(current_text)
-
-        
 
     def _onCurrentIndexChanged(self):
         """处理ComboBox当前索引变化的事件。"""

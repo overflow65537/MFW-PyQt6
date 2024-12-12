@@ -15,6 +15,7 @@ from ..common.maa_config_data import maa_config_data
 class ListWidge_Menu_Draggable(ListWidget):
     def __init__(self, parent=None):
         super(ListWidge_Menu_Draggable, self).__init__(parent)
+
     def get_task_list_widget(self) -> list[Any]:
         items = []
         for i in range(self.count()):
@@ -30,8 +31,7 @@ class ListWidge_Menu_Draggable(ListWidget):
                 self.setCurrentItem(item)
         super(ListWidge_Menu_Draggable, self).mousePressEvent(e)
 
-
-    def contextMenuEvent(self, e): # type: ignore
+    def contextMenuEvent(self, e):  # type: ignore
         menu = RoundMenu(parent=self)
 
         selected_row = self.currentRow()
