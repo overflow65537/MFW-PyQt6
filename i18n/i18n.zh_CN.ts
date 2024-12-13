@@ -336,6 +336,16 @@
         <source>Use Configuration</source>
         <translation>选择配置</translation>
     </message>
+    <message>
+        <location filename="app/view/UI_scheduled_interface.py" line="142"/>
+        <source>Configuration</source>
+        <translation>配置</translation>
+    </message>
+    <message>
+        <location filename="app/view/UI_scheduled_interface.py" line="144"/>
+        <source>Resource</source>
+        <translation>资源</translation>
+    </message>
 </context>
 <context>
     <name>SettingInterface</name>
@@ -758,6 +768,11 @@
         <translation>失败</translation>
     </message>
     <message>
+        <location filename="app/view/task_interface.py" line="117"/>
+        <source>Run Other Config</source>
+        <translation>运行其他配置</translation>
+    </message>
+    <message>
         <location filename="app/view/task_interface.py" line="241"/>
         <source>Resource file not detected</source>
         <translation>未找到资源文件</translation>
@@ -1002,6 +1017,11 @@
         <location filename="app/view/UI_task_interface.py" line="187"/>
         <source>Auto Detect</source>
         <translation>自动检测</translation>
+     </message>
+    <message>
+        <location filename="app/view/UI_task_interface.py" line="197"/>
+        <source>Finished</source>
+        <translation>完成后</translation>
     </message>
     <message>
         <location filename="app/view/UI_task_interface.py" line="204"/>

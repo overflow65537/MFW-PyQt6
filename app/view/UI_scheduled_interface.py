@@ -25,39 +25,39 @@ class Ui_Scheduled_Interface(object):
         # 主窗口
 
         # 切换配置布局
-
         self.cfgCombox_layout = QHBoxLayout()
+        self.Cfg_Combox_title = BodyLabel(Scheduled_Interface)
+        self.Cfg_Combox_title.setObjectName("Cfg_Combox_title")
+        self.Cfg_Combox_title.setFixedSize(100, 30)
         self.Cfg_Combox = EditableComboBox(Scheduled_Interface)
         self.Cfg_Combox.setObjectName("Cfg_Combox")
         self.Add_cfg_Button = PushButton(Scheduled_Interface)
         self.Add_cfg_Button.setObjectName("Add_cfg_Button")
-        self.Add_cfg_Button.setSizePolicy(
-            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
-        )
+        self.Add_cfg_Button.setFixedSize(70, 30)
         self.Delete_cfg_Button = PushButton(Scheduled_Interface)
         self.Delete_cfg_Button.setObjectName("Delete_cfg_Button")
-        self.Delete_cfg_Button.setSizePolicy(
-            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
-        )
+        self.Delete_cfg_Button.setFixedSize(70, 30)
 
+        self.cfgCombox_layout.addWidget(self.Cfg_Combox_title)
         self.cfgCombox_layout.addWidget(self.Cfg_Combox)
         self.cfgCombox_layout.addWidget(self.Add_cfg_Button)
         self.cfgCombox_layout.addWidget(self.Delete_cfg_Button)
 
         # 资源布局
         self.res_combox_layout = QHBoxLayout()
+        self.res_title = BodyLabel(Scheduled_Interface)
+        self.res_title.setObjectName("res_title")
+        self.res_title.setFixedSize(100, 30)
         self.res_combox = ComboBox(Scheduled_Interface)
         self.res_combox.setObjectName("res_combox")
         self.add_res_button = PushButton(Scheduled_Interface)
         self.add_res_button.setObjectName("add_res_button")
-        self.add_res_button.setSizePolicy(
-            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
-        )
+        self.add_res_button.setFixedSize(70, 30)
         self.delete_res_button = PushButton(Scheduled_Interface)
         self.delete_res_button.setObjectName("delete_res_button")
-        self.delete_res_button.setSizePolicy(
-            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
-        )
+        self.delete_res_button.setFixedSize(70, 30)
+
+        self.res_combox_layout.addWidget(self.res_title)
         self.res_combox_layout.addWidget(self.res_combox)
         self.res_combox_layout.addWidget(self.add_res_button)
         self.res_combox_layout.addWidget(self.delete_res_button)
@@ -137,6 +137,10 @@ class Ui_Scheduled_Interface(object):
         Scheduled_Interface.setWindowTitle(
             _translate("Scheduled_Interface", "Scheduled Interface")
         )
+        self.Cfg_Combox_title.setText(
+            _translate("Scheduled_Interface", "Configuration")
+        )
+        self.res_title.setText(_translate("Scheduled_Interface", "Resource"))
         self.Add_cfg_Button.setText(_translate("Scheduled_Interface", "Add"))
         self.Delete_cfg_Button.setText(_translate("Scheduled_Interface", "Delete"))
         self.add_res_button.setText(_translate("Scheduled_Interface", "Add"))
