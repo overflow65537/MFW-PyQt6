@@ -171,7 +171,6 @@ class CustomMessageBox(MessageBoxBase):
             "gpu": -1,
             "resource": "",
             "task": [],
-            "save_draw": False,
             "finish_option": 0,
             "finish_option_res": 0,
             "finish_option_cfg": 0,
@@ -182,7 +181,6 @@ class CustomMessageBox(MessageBoxBase):
             "exe_path": "",
             "exe_wait_time": "10",
             "exe_parameter": "",
-            "run_on_startup": False,
         }
         Save_Config(maa_pi_config_Path, data)
         cfg.set(cfg.maa_resource_name, self.name_data)

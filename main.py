@@ -4,7 +4,7 @@ import os
 import sys
 from qasync import QEventLoop
 
-from PyQt6.QtCore import Qt, QTranslator,QTimer
+from PyQt6.QtCore import Qt, QTranslator, QTimer
 from PyQt6.QtWidgets import QApplication
 from qfluentwidgets import FluentTranslator
 
@@ -15,6 +15,7 @@ from app.common.config import Language
 from app.common.signal_bus import signalBus
 from app.common.maa_config_data import maa_config_data
 from app.utils.tool import error_handler
+
 
 @error_handler
 def main():
@@ -45,6 +46,9 @@ def main():
     else:
         logger.info("资源文件存在")
         cfg.set(cfg.resource_exist, True)
+        logger.info(
+            f"资源版本:{maa_config_data.interface_config.get('version',"v0.0.1")}"
+        )
         signalBus.resource_exist.emit(True)
     # enable dpi scale
     if cfg.get(cfg.dpiScale) != "Auto":
@@ -75,18 +79,19 @@ def main():
     # create main window
     w = MainWindow()
     w.show()
-    if cfg.get(cfg.resource_exist):
-        if maa_config_data.config.get("run_on_startup", False):
-            QTimer.singleShot(0, lambda: signalBus.start_finish.emit())
+    QTimer.singleShot(0, lambda: signalBus.start_finish.emit())
     loop = QEventLoop(app)
     loop.run_forever()
 
+
 def start_symbol():
-    logger.debug("-"*50)
-    logger.debug("/"*50)
+    logger.debug("-" * 50)
+    logger.debug("/" * 50)
     logger.debug("GUI Process Start")
-    logger.debug("\\"*50)
-    logger.debug("-"*50)
+    logger.debug("\\" * 50)
+    logger.debug("-" * 50)
+
+
 if __name__ == "__main__":
     start_symbol()
     main()

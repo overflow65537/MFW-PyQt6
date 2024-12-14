@@ -79,10 +79,12 @@ class SettingInterface(ScrollArea):
             self.project_name = maa_config_data.interface_config.get("name", "")
             self.project_version = maa_config_data.interface_config.get("version", "")
             self.project_url = maa_config_data.interface_config.get("url", "")
+
         else:
             self.project_name = ""
             self.project_version = ""
             self.project_url = ""
+
         self.ADB_port.lineEdit.setText(
             maa_config_data.config.get("adb", {}).get("address", "")
         )
@@ -126,6 +128,7 @@ class SettingInterface(ScrollArea):
 
     def clear_content(self):
         # 清空输入框和设置内容
+        cfg.set(cfg.save_draw, False)
         self.ADB_port.lineEdit.clear()
         self.ADB_path.lineEdit.clear()
         self.emu_path.lineEdit.clear()
@@ -135,6 +138,7 @@ class SettingInterface(ScrollArea):
         self.exe_wait_time.lineEdit.clear()
         self.run_before_start.lineEdit.clear()
         self.run_after_finish.lineEdit.clear()
+        self.DEVmodeCard.switchButton.setChecked(False)
         self.updateCard.setContent(
             self.tr("Current")
             + " "
@@ -177,7 +181,7 @@ class SettingInterface(ScrollArea):
             parent=self.ADB_Setting,
         )
         self.ADB_path = LineEditCard(
-            icon=FIF.COMMAND_PROMPT,
+            icon=FIF.APPLICATION,
             title=self.tr("ADB Path"),
             num_only=False,
             holderText=path_data,  # 使用空字符串
@@ -186,7 +190,7 @@ class SettingInterface(ScrollArea):
             parent=self.ADB_Setting,
         )
         self.emu_path = LineEditCard(
-            icon=FIF.COMMAND_PROMPT,
+            icon=FIF.APPLICATION,
             title=self.tr("Select Emulator Path"),
             num_only=False,
             holderText=emu_path,  # 使用空字符串
@@ -195,7 +199,7 @@ class SettingInterface(ScrollArea):
             parent=self.ADB_Setting,
         )
         self.emu_wait_time = LineEditCard(
-            icon=FIF.COMMAND_PROMPT,
+            icon=FIF.STOP_WATCH,
             holderText=emu_wait_time,  # 使用空字符串
             title=self.tr("Wait Time for Emulator Startup"),
             num_only=True,
@@ -215,7 +219,7 @@ class SettingInterface(ScrollArea):
         exe_wait_time = "10"
         self.Win32_Setting = SettingCardGroup(self.tr("Win32"), self.scrollWidget)
         self.exe_path = LineEditCard(
-            icon=FIF.COMMAND_PROMPT,
+            icon=FIF.APPLICATION,
             title=self.tr("Executable Path"),
             content=self.tr("Select Executable Path"),
             num_only=False,
@@ -224,14 +228,14 @@ class SettingInterface(ScrollArea):
             parent=self.Win32_Setting,
         )
         self.exe_parameter = LineEditCard(
-            icon=FIF.COMMAND_PROMPT,
+            icon=FIF.LABEL,
             holderText=exe_parameter,  # 使用空字符串
             title=self.tr("Run Parameters"),
             num_only=False,
             parent=self.Win32_Setting,
         )
         self.exe_wait_time = LineEditCard(
-            icon=FIF.COMMAND_PROMPT,
+            icon=FIF.STOP_WATCH,
             holderText=exe_wait_time,  # 使用空字符串
             title=self.tr("Wait Time for Program Startup"),
             parent=self.Win32_Setting,
@@ -250,8 +254,17 @@ class SettingInterface(ScrollArea):
         self.start_Setting = SettingCardGroup(
             self.tr("Custom Startup"), self.scrollWidget
         )
+
+        self.run_after_startup = SwitchSettingCard(
+            FIF.SPEED_HIGH,
+            self.tr("run_after_startup"),
+            self.tr("Launch the task immediately after starting the GUI program"),
+            configItem=cfg.run_after_startup,
+            parent=self.start_Setting,
+        )
+
         self.run_before_start = LineEditCard(
-            icon=FIF.COMMAND_PROMPT,
+            icon=FIF.APPLICATION,
             title=self.tr("Run Program Before Start"),
             content=self.tr("Select Program"),
             num_only=False,
@@ -261,7 +274,7 @@ class SettingInterface(ScrollArea):
         )
 
         self.run_after_finish = LineEditCard(
-            icon=FIF.COMMAND_PROMPT,
+            icon=FIF.APPLICATION,
             title=self.tr("Run Program After Finish"),
             content=self.tr("Select Program"),
             num_only=False,
@@ -269,7 +282,7 @@ class SettingInterface(ScrollArea):
             button=True,
             parent=self.start_Setting,
         )
-
+        self.start_Setting.addSettingCard(self.run_after_startup)
         self.start_Setting.addSettingCard(self.run_before_start)
         self.start_Setting.addSettingCard(self.run_after_finish)
 
@@ -337,7 +350,7 @@ class SettingInterface(ScrollArea):
 
         self.dingtalk_noticeTypeCard = NoticeButtonSettingCard(
             text=self.tr("Modify"),
-            icon=FIF.COMMAND_PROMPT,
+            icon=FIF.SEND,
             title=self.tr("DingTalk"),
             notice_type="DingTalk",
             parent=self.noticeGroup,
@@ -345,7 +358,7 @@ class SettingInterface(ScrollArea):
 
         self.lark_noticeTypeCard = NoticeButtonSettingCard(
             text=self.tr("Modify"),
-            icon=FIF.COMMAND_PROMPT,
+            icon=FIF.SEND,
             title=self.tr("Lark"),
             notice_type="Lark",
             parent=self.noticeGroup,
@@ -353,14 +366,14 @@ class SettingInterface(ScrollArea):
 
         self.SMTP_noticeTypeCard = NoticeButtonSettingCard(
             text=self.tr("Modify"),
-            icon=FIF.COMMAND_PROMPT,
+            icon=FIF.SEND,
             title=self.tr("SMTP"),
             notice_type="SMTP",
             parent=self.noticeGroup,
         )
         self.WxPusher_noticeTypeCard = NoticeButtonSettingCard(
             text=self.tr("Modify"),
-            icon=FIF.COMMAND_PROMPT,
+            icon=FIF.SEND,
             title=self.tr("WxPusher"),
             notice_type="WxPusher",
             parent=self.noticeGroup,
@@ -376,7 +389,7 @@ class SettingInterface(ScrollArea):
         self.DEVGroup = SettingCardGroup(self.tr("DEV Mode"), self.scrollWidget)
 
         # 设置开发者配置
-        DEV_Config = False  # 默认状态
+        cfg.set(cfg.save_draw, False)
 
         gpu_mapping = get_gpu_info()
         logger.debug(f"GPU列表: {gpu_mapping}")
@@ -422,7 +435,7 @@ class SettingInterface(ScrollArea):
         }
 
         self.use_GPU = ComboBoxSettingCardCustom(
-            icon=FIF.FILTER,
+            icon=FIF.IOT,
             title=self.tr("Select GPU"),
             content=self.tr("Use GPU to accelerate inference"),
             texts=gpu_combox_list,
@@ -434,7 +447,7 @@ class SettingInterface(ScrollArea):
         )
 
         self.win32_input_mode = ComboBoxSettingCardCustom(
-            icon=FIF.FILTER,
+            icon=FIF.SAVE_AS,
             title=self.tr("Select Win32 Input Mode"),
             texts=win32_input_combox_list,
             target=["win32", "input_method"],
@@ -445,7 +458,7 @@ class SettingInterface(ScrollArea):
         )
 
         self.win32_screencap_mode = ComboBoxSettingCardCustom(
-            icon=FIF.FILTER,
+            icon=FIF.SAVE_AS,
             title=self.tr("Select Win32 Screencap Mode"),
             texts=[self.tr("default"), "GDI", "FramePool", "DXGI_DesktopDup"],
             target=["win32", "screen_method"],
@@ -456,7 +469,7 @@ class SettingInterface(ScrollArea):
         )
 
         self.ADB_input_mode = ComboBoxSettingCardCustom(
-            icon=FIF.FILTER,
+            icon=FIF.SAVE_AS,
             title=self.tr("Select ADB Input Mode"),
             texts=[
                 self.tr("default"),
@@ -473,7 +486,7 @@ class SettingInterface(ScrollArea):
         )
 
         self.ADB_screencap_mode = ComboBoxSettingCardCustom(
-            icon=FIF.FILTER,
+            icon=FIF.SAVE_AS,
             title=self.tr("Select ADB Screencap Mode"),
             texts=[
                 self.tr("default"),
@@ -493,10 +506,10 @@ class SettingInterface(ScrollArea):
         )
 
         self.DEVmodeCard = SwitchSettingCard(
-            FIF.ALBUM,
+            FIF.PHOTO,
             self.tr("DEV Mode"),
             self.tr("If enabled, screenshots will be saved in ./debug/vision"),
-            configItem=ConfigItem(group="DEV", name="DEV", default=DEV_Config),
+            configItem=cfg.save_draw,
             parent=self.DEVGroup,
         )
 

@@ -154,7 +154,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         signalBus.callback.connect(self.callback)
         signalBus.update_task_list.connect(self.update_task_list_passive)
         signalBus.update_finished_action.connect(self.init_finish_combox)
-        signalBus.start_finish.connect(self.Start_Up)
+        signalBus.start_finish.connect(self.ready_Start_Up)
+        signalBus.start_task_inmediately.connect(self.Start_Up)
         self.AddTask_Button.clicked.connect(self.Add_Task)
         self.Delete_Button.clicked.connect(self.Delete_Task)
         self.MoveUp_Button.clicked.connect(self.Move_Up)
@@ -271,7 +272,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             "gpu": -1,
             "resource": "",
             "task": [],
-            "save_draw": False,
             "finish_option": 0,
             "finish_option_res": 0,
             "finish_option_cfg": 0,
@@ -282,7 +282,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             "exe_path": "",
             "exe_wait_time": 10,
             "exe_parameter": "",
-            "run_on_startup": False,
         }
         Save_Config(maa_pi_config_Path, data)
         maa_config_data.config = data
@@ -340,6 +339,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def start_process(self, command):
         logger.debug(f"启动程序: {command}")
         return subprocess.Popen(command)
+
+    def ready_Start_Up(self):
+        if cfg.get(cfg.resource_exist):
+            if cfg.get(cfg.run_after_startup):
+                logger.info("启动GUI后运行任务")
+                signalBus.start_task_inmediately.emit()
 
     @asyncSlot()
     async def Start_Up(self):

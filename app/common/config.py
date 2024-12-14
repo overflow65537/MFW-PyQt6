@@ -18,7 +18,6 @@ from qfluentwidgets import (
 )
 
 
-
 class Language(Enum):
     """Language enumeration"""
 
@@ -37,25 +36,30 @@ class LanguageSerializer(ConfigSerializer):
         return Language(QLocale(value))
 
 
-
 def isWin11():
     return sys.platform == "win32" and sys.getwindowsversion().build >= 22000
 
 
 class Config(QConfig):
     """Config of application"""
+
     # 标题
-    title = ConfigItem("Main", "Title", "MFW-PyQt6")
+    title = ConfigItem("MainWindow", "Title", "MFW-PyQt6")
 
     # 资源存在
-    resource_exist = ConfigItem(
-        "resource_exist", "resource_exist", False, BoolValidator()
+    resource_exist = ConfigItem("program", "resource_exist", False, BoolValidator())
+
+    # 启动后直接运行
+    run_after_startup = ConfigItem(
+        "program", "run_after_startup", False, BoolValidator()
     )
+
+    # 保存截图
+    save_draw = ConfigItem("program", "save_draw", False, BoolValidator())
 
     # MAA路径
     maa_config_name = ConfigItem("Maa", "Maa_config_name", "")
     maa_config_path = ConfigItem("Maa", "Maa_config_path", "")
-
     maa_resource_name = ConfigItem("Maa", "Maa_resource_name", "")
     maa_resource_path = ConfigItem("Maa", "Maa_resource_path", "")
 

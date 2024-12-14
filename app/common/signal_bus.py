@@ -1,5 +1,6 @@
 from PyQt6.QtCore import QObject, pyqtSignal
 
+
 class SignalBus(QObject):
     """pyqtSignal bus"""
 
@@ -16,8 +17,10 @@ class SignalBus(QObject):
     adb_detect_backup = pyqtSignal(list)  # 备份adb检测
     resource_exist = pyqtSignal(bool)  # 选择资源信号
     title_changed = pyqtSignal()  # 标题栏改变信号
-    update_finished_action = pyqtSignal()# 更新完成后操作信号
-    switch_config = pyqtSignal(dict) #主动切换配置信号
-    start_finish = pyqtSignal() #启动完成信号
+    update_finished_action = pyqtSignal()  # 更新完成后操作信号
+    switch_config = pyqtSignal(dict)  # 主动切换配置信号
+    start_finish = pyqtSignal()  # 启动完成信号
+    start_task_inmediately = pyqtSignal()  # 立即启动任务信号
+
 
 signalBus = SignalBus()

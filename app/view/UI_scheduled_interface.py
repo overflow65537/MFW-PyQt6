@@ -96,11 +96,35 @@ class Ui_Scheduled_Interface(object):
         self.Trigger_Time_layout.addWidget(self.Trigger_Time_edit, 1, 1)
 
         self.use_cfg_layout = QFormLayout()
+        self.use_res_layout = QFormLayout()
         self.use_cfg_title = BodyLabel(Scheduled_Interface)
         self.use_cfg_title.setObjectName("use_cfg_title")
         self.use_cfg_combo = ComboBox(Scheduled_Interface)
         self.use_cfg_combo.setObjectName("use_cfg_combo")
+
+        self.use_res_title = BodyLabel(Scheduled_Interface)
+        self.use_res_title.setObjectName("use_res_title")
+        self.use_res_combo = ComboBox(Scheduled_Interface)
+        self.use_res_combo.setObjectName("use_res_combo")
+
+        self.use_res_layout.addRow(self.use_res_title, self.use_res_combo)
         self.use_cfg_layout.addRow(self.use_cfg_title, self.use_cfg_combo)
+
+        self.all_config_layout = QHBoxLayout()
+        self.all_config_layout.addLayout(self.use_res_layout)
+        self.all_config_layout.addLayout(self.use_cfg_layout)
+
+        # 确认\删除按钮布局
+        self.confirm_delete_layout = QHBoxLayout()
+        self.confirm_button = PushButton(Scheduled_Interface)
+        self.confirm_button.setObjectName("confirm_button")
+        self.delete_button = PushButton(Scheduled_Interface)
+        self.delete_button.setObjectName("delete_button")
+        self.confirm_delete_layout.addStretch()
+        self.confirm_delete_layout.addWidget(self.confirm_button)
+        self.confirm_delete_layout.addStretch()
+        self.confirm_delete_layout.addWidget(self.delete_button)
+        self.confirm_delete_layout.addStretch()
 
         # 计划列表布局
         self.Schedule_list_layout = QVBoxLayout()
@@ -116,7 +140,8 @@ class Ui_Scheduled_Interface(object):
 
         self.Schedule_layout_all.addLayout(self.Schedule_layout)
         self.Schedule_layout_all.addLayout(self.Trigger_Time_layout)
-        self.Schedule_layout_all.addLayout(self.use_cfg_layout)
+        self.Schedule_layout_all.addLayout(self.all_config_layout)
+        self.Schedule_layout_all.addLayout(self.confirm_delete_layout)
         self.Schedule_layout_all.addWidget(self.cfg_list)
 
         self.all_layout = QHBoxLayout()
@@ -157,3 +182,6 @@ class Ui_Scheduled_Interface(object):
         self.use_cfg_title.setText(
             _translate("Scheduled_Interface", "Use Configuration")
         )
+        self.use_res_title.setText(_translate("Scheduled_Interface", "Use Resource"))
+        self.confirm_button.setText(_translate("Scheduled_Interface", "Add"))
+        self.delete_button.setText(_translate("Scheduled_Interface", "Delete"))
