@@ -13,8 +13,9 @@ from qfluentwidgets import (
     ComboBox,
     EditableComboBox,
     ListWidget,
+    LineEdit,
+    DateTimeEdit,
     TimePicker,
-    ZhDatePicker,
 )
 
 
@@ -88,17 +89,43 @@ class Ui_Scheduled_Interface(object):
         self.Trigger_Time_title = BodyLabel(Scheduled_Interface)
         self.Trigger_Time_title.setObjectName("Trigger_Time_title")
         self.Trigger_Time_type = ComboBox(Scheduled_Interface)
-        self.Trigger_Time_even_week = ComboBox(Scheduled_Interface)
-        self.Trigger_Time_edit = TimePicker(Scheduled_Interface)
-        self.Trigger_Time_edit.setObjectName("Trigger_Time_edit")
-        self.Trigger_date_edit = ZhDatePicker(Scheduled_Interface)
+        self.Trigger_Time_type.setObjectName("Trigger_Time_type")
+        self.Trigger_Time_type.setFixedSize(100, 30)
+        self.Trigger_date_edit = DateTimeEdit(Scheduled_Interface)
         self.Trigger_date_edit.setObjectName("Trigger_date_edit")
+        self.Trigger_interval = LineEdit(Scheduled_Interface)
+        self.Trigger_interval.setObjectName("Trigger_Interval")
+        self.Trigger_interval_title = BodyLabel(Scheduled_Interface)
+        self.Trigger_interval_title.setObjectName("Trigger_interval_title")
+        self.Trigger_interval_title2 = BodyLabel(Scheduled_Interface)
+        self.Trigger_interval_title2.setObjectName("Trigger_interval_title2")
+        self.Trigger_interval.setFixedSize(35, 30)
+        self.Trigger_time = TimePicker(Scheduled_Interface)
+        self.Trigger_time.setObjectName("Trigger_time")
+        self.Trigger_WeekMonth = ComboBox(Scheduled_Interface)
+        self.Trigger_WeekMonth.setObjectName("Trigger_WeekMonth")
+
+        self.Trigger_interval_layout = QHBoxLayout()
+        self.Trigger_interval_layout.addWidget(self.Trigger_interval_title)
+        self.Trigger_interval_layout.addWidget(self.Trigger_interval)
+        self.Trigger_interval_layout.addWidget(self.Trigger_interval_title2)
+        self.Trigger_interval_layout.addStretch()
+        self.Trigger_interval_layout.addWidget(self.Trigger_WeekMonth)
+        self.Trigger_interval_layout.addWidget(self.Trigger_time)
+        self.Trigger_interval_layout.addStretch()
+
+        self.Trigger_date_time_layout = QHBoxLayout()
+        self.Trigger_date_time_layout.addWidget(self.Trigger_Time_type)
+        self.Trigger_date_time_layout.addWidget(self.Trigger_date_edit)
 
         self.Trigger_Time_layout.addWidget(self.Trigger_Time_title, 0, 0)
-        self.Trigger_Time_layout.addWidget(self.Trigger_Time_type, 0, 1)
-        self.Trigger_Time_layout.addWidget(self.Trigger_Time_even_week, 0, 2)
-        self.Trigger_Time_layout.addWidget(self.Trigger_Time_edit, 1, 1)
-        self.Trigger_Time_layout.addWidget(self.Trigger_date_edit, 0, 2)
+        self.Trigger_Time_layout.addLayout(self.Trigger_date_time_layout, 0, 1)
+        self.Trigger_Time_layout.addLayout(self.Trigger_interval_layout, 1, 1)
+        self.Trigger_interval_title.hide()
+        self.Trigger_interval.hide()
+        self.Trigger_interval_title2.hide()
+        self.Trigger_WeekMonth.hide()
+        self.Trigger_time.hide()
 
         self.Trigger_Time_title.setFixedSize(70, 30)
         self.Trigger_Time_layout.setAlignment(
@@ -108,16 +135,8 @@ class Ui_Scheduled_Interface(object):
             self.Trigger_Time_type, Qt.AlignmentFlag.AlignLeft
         )
         self.Trigger_Time_layout.setAlignment(
-            self.Trigger_Time_even_week, Qt.AlignmentFlag.AlignLeft
-        )
-        self.Trigger_Time_layout.setAlignment(
-            self.Trigger_Time_edit, Qt.AlignmentFlag.AlignLeft
-        )
-        self.Trigger_Time_layout.setAlignment(
             self.Trigger_date_edit, Qt.AlignmentFlag.AlignLeft
         )
-        self.Trigger_date_edit.hide()
-        self.Trigger_Time_even_week.hide()
 
         self.use_cfg_layout = QFormLayout()
         self.use_res_layout = QFormLayout()
@@ -208,4 +227,7 @@ class Ui_Scheduled_Interface(object):
         )
         self.use_res_title.setText(_translate("Scheduled_Interface", "Use Resource"))
         self.confirm_button.setText(_translate("Scheduled_Interface", "Add"))
+        self.Trigger_interval_title.setText(
+            _translate("Scheduled_Interface", "Interval")
+        )
         self.delete_button.setText(_translate("Scheduled_Interface", "Delete"))
