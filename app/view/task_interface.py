@@ -25,7 +25,7 @@ from ..utils.tool import (
     check_port,
     find_existing_file,
     find_process_by_name,
-    error_handler,
+    show_error_message,
 )
 from ..utils.maafw import maafw
 from ..common.config import cfg
@@ -337,8 +337,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         signalBus.switch_config.emit(data_dict)
 
     def start_process(self, command):
-        logger.debug(f"启动程序: {command}")
-        return subprocess.Popen(command)
+        try:
+            logger.debug(f"启动程序: {command}")
+            return subprocess.Popen(command)
+        except:
+            logger.exception(f"启动程序失败:\n ")
+            show_error_message()
 
     def ready_Start_Up(self):
         if cfg.get(cfg.resource_exist):
@@ -348,7 +352,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     @asyncSlot()
     async def Start_Up(self):
-        if not cfg.get(cfg.resource_exist) or not self.need_runing:
+        if not cfg.get(cfg.resource_exist):
             return
         self.need_runing = True
         self.S2_Button.setEnabled(False)

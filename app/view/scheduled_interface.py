@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QWidget
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from .UI_scheduled_interface import Ui_Scheduled_Interface
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
@@ -19,6 +19,7 @@ from ..common.maa_config_data import maa_config_data
 
 
 class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
+    tasker = {}
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -37,6 +38,11 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.res_combox.currentTextChanged.connect(self.res_changed)
         self.add_res_button.clicked.connect(self.add_resource)
         self.delete_res_button.clicked.connect(self.res_delete)
+
+    # self.Trigger_Time_type.currentTextChanged.connect(self.trigger_time_changed)
+    # def trigger_time_changed
+    def tasker_timer(self, tasker_data: dict = {"name": ""}):
+        pass
 
     def add_resource(self):
         """添加资源"""
@@ -61,6 +67,9 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.Cfg_Combox.setCurrentText(maa_config_data.config_name)
         self.res_combox.addItems(maa_config_data.resource_name_list)
         self.res_combox.setCurrentText(maa_config_data.resource_name)
+        self.Trigger_Time_type.addItems(
+            [self.tr("Once"), self.tr("Daily"), self.tr("Weekly"), self.tr("Monthly")]
+        )
 
     def get_list_items(self) -> list[str]:
         """获取列表中所有项的文本"""

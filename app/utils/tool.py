@@ -14,23 +14,6 @@ from PyQt6.QtWidgets import QMessageBox
 from PyQt6.QtGui import QIcon
 from app.utils.logger import logger
 
-R = TypeVar("R")
-
-
-def error_handler(func: Callable[..., R]) -> Callable[..., R]:
-    """错误处理装饰器。"""
-
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs) -> R:
-        try:
-            return func(*args, **kwargs)
-        except:
-            logger.exception(f"Error in {func.__name__}:\n")
-            show_error_message()
-            return None
-
-    return wrapper
-
 
 def show_error_message():
     """显示错误信息的弹窗。"""
@@ -45,7 +28,6 @@ def show_error_message():
     msg_box.exec()
 
 
-@error_handler
 def Read_Config(paths) -> dict:
     """读取指定路径的JSON配置文件。
 
@@ -54,13 +36,18 @@ def Read_Config(paths) -> dict:
 
     Returns:
         dict: 如果文件存在，返回解析后的字典
+
     """
-    if os.path.exists(paths):
-        with open(paths, "r", encoding="utf-8") as MAA_Config:
-            MAA_data = json.load(MAA_Config)
-            return MAA_data
-    else:
-        raise FileNotFoundError("Config file not found.")
+    try:
+        if os.path.exists(paths):
+            with open(paths, "r", encoding="utf-8") as MAA_Config:
+                MAA_data = json.load(MAA_Config)
+                return MAA_data
+        else:
+            raise FileNotFoundError("Config file not found.")
+    except:
+        logger.exception("Read_Config error")
+        show_error_message()
 
 
 def Save_Config(paths, data):
@@ -78,7 +65,6 @@ def Save_Config(paths, data):
         json.dump(data, MAA_Config, indent=4, ensure_ascii=False)
 
 
-@error_handler
 def gui_init(resource_Path, maa_pi_config_Path, interface_Path) -> dict:
     """初始化GUI组件的配置信息。
 
@@ -90,53 +76,57 @@ def gui_init(resource_Path, maa_pi_config_Path, interface_Path) -> dict:
     Returns:
         dict : 如果所有路径都存在，返回初始化信息的字典；否则空字典。
     """
-    if not os.path.exists(resource_Path):
-        raise FileNotFoundError("Resource file not found.")
+    try:
+        if not os.path.exists(resource_Path):
+            raise FileNotFoundError("Resource file not found.")
 
-    elif (
-        os.path.exists(resource_Path)
-        and os.path.exists(maa_pi_config_Path)
-        and os.path.exists(interface_Path)
-    ):
-        # 获取初始resource序号
-        Resource_count = 0
-        Add_Resource_Type_Select_Values = []
-        for a in Read_Config(interface_Path)["resource"]:
-            Add_Resource_Type_Select_Values.append(a["name"])
-        Resource_Type = Read_Config(maa_pi_config_Path)["resource"]
-        if Resource_Type != "":
-            for b in Add_Resource_Type_Select_Values:
-                if b == Resource_Type:
-                    break
-                else:
-                    Resource_count += 1
+        elif (
+            os.path.exists(resource_Path)
+            and os.path.exists(maa_pi_config_Path)
+            and os.path.exists(interface_Path)
+        ):
+            # 获取初始resource序号
+            Resource_count = 0
+            Add_Resource_Type_Select_Values = []
+            for a in Read_Config(interface_Path)["resource"]:
+                Add_Resource_Type_Select_Values.append(a["name"])
+            Resource_Type = Read_Config(maa_pi_config_Path)["resource"]
+            if Resource_Type != "":
+                for b in Add_Resource_Type_Select_Values:
+                    if b == Resource_Type:
+                        break
+                    else:
+                        Resource_count += 1
 
-        # 获取初始Controller序号
-        Controller_count = 0
-        Add_Controller_Type_Select_Values = []
-        for c in Read_Config(interface_Path)["controller"]:
-            Add_Controller_Type_Select_Values.append(c["name"])
-        Controller_Type = Read_Config(maa_pi_config_Path)["controller"]["name"]
+            # 获取初始Controller序号
+            Controller_count = 0
+            Add_Controller_Type_Select_Values = []
+            for c in Read_Config(interface_Path)["controller"]:
+                Add_Controller_Type_Select_Values.append(c["name"])
+            Controller_Type = Read_Config(maa_pi_config_Path)["controller"]["name"]
 
-        if Controller_Type != "":
-            for d in Add_Controller_Type_Select_Values:
-                if d == Controller_Type:
-                    break
-                else:
-                    Controller_count += 1
+            if Controller_Type != "":
+                for d in Add_Controller_Type_Select_Values:
+                    if d == Controller_Type:
+                        break
+                    else:
+                        Controller_count += 1
 
-        # 初始显示
-        init_ADB_Path = Read_Config(maa_pi_config_Path)["adb"]["adb_path"]
-        init_ADB_Address = Read_Config(maa_pi_config_Path)["adb"]["address"]
-        init_Resource_Type = Resource_count
-        init_Controller_Type = Controller_count
-        return_init = {
-            "init_ADB_Path": init_ADB_Path,
-            "init_ADB_Address": init_ADB_Address,
-            "init_Resource_Type": init_Resource_Type,
-            "init_Controller_Type": init_Controller_Type,
-        }
-        return return_init
+            # 初始显示
+            init_ADB_Path = Read_Config(maa_pi_config_Path)["adb"]["adb_path"]
+            init_ADB_Address = Read_Config(maa_pi_config_Path)["adb"]["address"]
+            init_Resource_Type = Resource_count
+            init_Controller_Type = Controller_count
+            return_init = {
+                "init_ADB_Path": init_ADB_Path,
+                "init_ADB_Address": init_ADB_Address,
+                "init_Resource_Type": init_Resource_Type,
+                "init_Controller_Type": init_Controller_Type,
+            }
+            return return_init
+    except:
+        logger.exception("gui_init error")
+        show_error_message()
 
 
 def Get_Values_list2(path, key1) -> list:
@@ -440,7 +430,6 @@ def access_nested_dict(data_dict, keys: list, value=None) -> str | dict | None:
             return None  # 键不存在时返回None
 
 
-@error_handler
 def rewrite_contorller(data_dict, controller, mode, new_value=None) -> str | dict:
     """重写控制器配置。
 
@@ -471,7 +460,6 @@ def rewrite_contorller(data_dict, controller, mode, new_value=None) -> str | dic
         return current_level
 
 
-@error_handler
 def delete_contorller(data_dict, controller, mode) -> dict:
     """删除控制器配置。
 

@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QSize, QMetaObject, QCoreApplication
+from PyQt6.QtCore import Qt, QSize, QMetaObject, QCoreApplication
 from PyQt6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
@@ -13,7 +13,8 @@ from qfluentwidgets import (
     ComboBox,
     EditableComboBox,
     ListWidget,
-    TimeEdit,
+    TimePicker,
+    ZhDatePicker,
 )
 
 
@@ -88,12 +89,35 @@ class Ui_Scheduled_Interface(object):
         self.Trigger_Time_title.setObjectName("Trigger_Time_title")
         self.Trigger_Time_type = ComboBox(Scheduled_Interface)
         self.Trigger_Time_even_week = ComboBox(Scheduled_Interface)
-        self.Trigger_Time_edit = TimeEdit(Scheduled_Interface)
+        self.Trigger_Time_edit = TimePicker(Scheduled_Interface)
         self.Trigger_Time_edit.setObjectName("Trigger_Time_edit")
+        self.Trigger_date_edit = ZhDatePicker(Scheduled_Interface)
+        self.Trigger_date_edit.setObjectName("Trigger_date_edit")
+
         self.Trigger_Time_layout.addWidget(self.Trigger_Time_title, 0, 0)
         self.Trigger_Time_layout.addWidget(self.Trigger_Time_type, 0, 1)
         self.Trigger_Time_layout.addWidget(self.Trigger_Time_even_week, 0, 2)
         self.Trigger_Time_layout.addWidget(self.Trigger_Time_edit, 1, 1)
+        self.Trigger_Time_layout.addWidget(self.Trigger_date_edit, 0, 2)
+
+        self.Trigger_Time_title.setFixedSize(70, 30)
+        self.Trigger_Time_layout.setAlignment(
+            self.Trigger_Time_title, Qt.AlignmentFlag.AlignLeft
+        )
+        self.Trigger_Time_layout.setAlignment(
+            self.Trigger_Time_type, Qt.AlignmentFlag.AlignLeft
+        )
+        self.Trigger_Time_layout.setAlignment(
+            self.Trigger_Time_even_week, Qt.AlignmentFlag.AlignLeft
+        )
+        self.Trigger_Time_layout.setAlignment(
+            self.Trigger_Time_edit, Qt.AlignmentFlag.AlignLeft
+        )
+        self.Trigger_Time_layout.setAlignment(
+            self.Trigger_date_edit, Qt.AlignmentFlag.AlignLeft
+        )
+        self.Trigger_date_edit.hide()
+        self.Trigger_Time_even_week.hide()
 
         self.use_cfg_layout = QFormLayout()
         self.use_res_layout = QFormLayout()

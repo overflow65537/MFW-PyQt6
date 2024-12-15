@@ -14,10 +14,9 @@ from app.view.main_window import MainWindow
 from app.common.config import Language
 from app.common.signal_bus import signalBus
 from app.common.maa_config_data import maa_config_data
-from app.utils.tool import error_handler
+from app.utils.tool import show_error_message
 
 
-@error_handler
 def main():
     # 检查资源文件是否存在
     maa_config_name = cfg.get(cfg.maa_config_name)
@@ -94,4 +93,8 @@ def start_symbol():
 
 if __name__ == "__main__":
     start_symbol()
-    main()
+    try:
+        main()
+    except:
+        logger.exception("GUI Process Error")
+        show_error_message()
