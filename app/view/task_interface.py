@@ -155,7 +155,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         signalBus.update_task_list.connect(self.update_task_list_passive)
         signalBus.update_finished_action.connect(self.init_finish_combox)
         signalBus.start_finish.connect(self.ready_Start_Up)
-        signalBus.start_task_inmediately.connect(self.Start_Up)
+        signalBus.start_task_inmediately.connect(self._print)
         self.AddTask_Button.clicked.connect(self.Add_Task)
         self.Delete_Button.clicked.connect(self.Delete_Task)
         self.MoveUp_Button.clicked.connect(self.Move_Up)
@@ -169,6 +169,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Finish_combox.currentIndexChanged.connect(self.rewrite_Completion_Options)
         self.Finish_combox_res.currentIndexChanged.connect(self.Save_Finish_Option_Res)
         self.Finish_combox_cfg.currentIndexChanged.connect(self.Save_Finish_Option_Cfg)
+
+    def _print(self):
+        self.TaskOutput_Text.append("test")
 
     def print_notice(self, message: str):
         if "DingTalk Failed".lower() in message.lower():

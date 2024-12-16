@@ -15,6 +15,8 @@ from qfluentwidgets import (
 from ..components.choose_resource_button import CustomMessageBox
 import os
 import shutil
+from datetime import datetime, timedelta
+from copy import deepcopy
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 
@@ -33,6 +35,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             self.List_widget.addItems(
                 Get_Values_list_Option(maa_config_data.config_path, "task")
             )
+            self.init_schedule()
         self.Add_cfg_Button.clicked.connect(self.add_config)
         self.Delete_cfg_Button.clicked.connect(self.cfg_delete)
         self.Cfg_Combox.currentTextChanged.connect(self.cfg_changed)
@@ -40,21 +43,21 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.add_res_button.clicked.connect(self.add_resource)
         self.delete_res_button.clicked.connect(self.res_delete)
         self.Trigger_Time_type.currentIndexChanged.connect(self.trigger_time_changed)
-        self.Trigger_date_edit.dateChanged.connect(self.trigger_date_changed)
+        self.confirm_button.clicked.connect(self.confirm_schedule)
+        self.delete_button.clicked.connect(self.delete_schedule)
         self.Trigger_interval.setValidator(QIntValidator(1, 999999))
-        self.init_schedule()
 
     def init_schedule(self):
         """初始化定时任务"""
         schedule_data = cfg.get(cfg.schedule_task)
-        print(schedule_data)
+        trigger_interval_unit = {0: "hour", 1: "day", 2: "week"}
         for i in schedule_data:
-            # self.tasker_timer(i)
+            # 添加任务到 QListWidget
             if i.get("trigger_time_type") == 0:  # 一次性
                 self.Schedule_list_widget.addItem(
-                    f"{i.get("name")} "
+                    f"{i.get('name')} "
                     + self.tr("Once")
-                    + f" {i.get('trigger_time')}"
+                    + f" {i.get('trigger_time')} "
                     + f" {i.get('resource_name')} {i.get('config_name')}"
                 )
             elif i.get("trigger_time_type") == 1:  # 循环
@@ -62,18 +65,83 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
                     f"{i.get('name')} "
                     + self.tr("every")
                     + f" {i.get('trigger_interval')} "
-                    + self.tr("Days")
-                    + f" {i.get('trigger_time')}"
+                    + f" {trigger_interval_unit.get(i.get('trigger_interval_unit'))} "
+                    + f" starting from {i.get('trigger_time')} "
                     + f" {i.get('resource_name')} {i.get('config_name')}"
                 )
 
-    def trigger_date_changed(self, date):
-        print(date)
-        msecs_since_epoch = QDateTime(date).toMSecsSinceEpoch()
-        now = QDateTime.currentMSecsSinceEpoch()
-        print(now)
-        print(type(now))
-        print(msecs_since_epoch)
+            # 启动定时器
+            self.tasker_timer(i)
+
+    def confirm_schedule(self):
+        """确认定时任务"""
+        name = self.Schedule_name_edit.text()
+        trigger_time_type = self.Trigger_Time_type.currentIndex()
+        trigger_time = self.Trigger_date_edit.dateTime().toString("yyyy-MM-dd hh:mm:ss")
+        trigger_interval = self.Trigger_interval.text()
+        trigger_interval_unit = self.Trigger_WeekMonth.currentIndex()
+        resource_name = self.res_combox.currentText()
+        config_name = self.Cfg_Combox.currentText()
+        if not name or not trigger_time or not resource_name or not config_name:
+            self.show_error(self.tr("Please fill in all fields"))
+            return
+        if trigger_time_type == 0:  # 一次性
+            trigger_data = {
+                "name": name,
+                "trigger_time_type": trigger_time_type,
+                "trigger_time": trigger_time,
+                "trigger_interval": trigger_interval,
+                "trigger_interval_unit": trigger_interval_unit,
+                "resource_name": resource_name,
+                "config_name": config_name,
+            }
+            self.tasker_timer(trigger_data)
+            self.Schedule_list_widget.addItem(
+                f"{name} "
+                + self.tr("Once")
+                + f" {trigger_time} "
+                + f" {resource_name} {config_name}"
+            )
+            tasker_data = cfg.get(cfg.schedule_task)
+            tasker_data.append(trigger_data)
+            cfg.set(cfg.schedule_task, tasker_data)
+        elif trigger_time_type == 1:  # 循环
+            if not trigger_interval:
+                self.show_error(self.tr("Please enter the interval"))
+                return
+            if not trigger_interval_unit:
+                self.show_error(self.tr("Please select the interval unit"))
+                return
+            trigger_data = {
+                "name": name,
+                "trigger_time_type": trigger_time_type,
+                "trigger_time": trigger_time,
+                "trigger_interval": trigger_interval,
+                "trigger_interval_unit": trigger_interval_unit,
+                "resource_name": resource_name,
+                "config_name": config_name,
+            }
+            self.tasker_timer(trigger_data)
+            self.Schedule_list_widget.addItem(
+                f"{name} "
+                + self.tr("every")
+                + f" {trigger_interval} "
+                + f" {trigger_interval_unit} "
+                + f" {trigger_time} "
+                + f" {resource_name} {config_name}"
+            )
+            tasker_data = cfg.get(cfg.schedule_task)
+            tasker_data.append(trigger_data)
+            cfg.set(cfg.schedule_task, tasker_data)
+
+    def delete_schedule(self):
+        """删除定时任务"""
+        for i in self.Schedule_list_widget.selectedItems():
+            task_name = i.text().split()[0]
+            if task_name in self.tasker:
+                self.tasker[task_name].stop()
+                del self.tasker[task_name]
+            self.Schedule_list_widget.takeItem(self.Schedule_list_widget.row(i))
 
     def trigger_time_changed(self, index):
         if index == 0:  # 一次性
@@ -92,29 +160,82 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             "name": "",  # 任务名称
             "trigger_time_type": 0,  # 触发类型 0:一次性 1:循环
             "trigger_time": "",  # 触发时间
-            "trigger_interval": 0,  # 触发间隔 一次性触发时无效
+            "trigger_interval": 0,  # 触发周期 一次性触发时无效
+            "trigger_interval_unit": 0,  # 触发周期单位 0:小时 1:天 2:周
             "resource_name": "",  # 资源名称
             "config_name": "",  # 配置名称
         },
     ):
+        task_name = tasker_data.get("name")
         if tasker_data.get("trigger_time_type") == 0:  # 一次性
-            self.tasker[tasker_data.get("name")] = QTimer()
-            self.tasker[tasker_data.get("name")].timeout.connect(
-                lambda: signalBus.start_task_inmediately.emit()
+            self.tasker[task_name] = QTimer()
+            self.tasker[task_name].timeout.connect(
+                lambda: self.start_task_with_config(deepcopy(tasker_data))
             )
 
+            # 计算当前时间和触发时间的差值
+            trigger_datetime = QDateTime.fromString(
+                tasker_data.get("trigger_time"), "yyyy-MM-dd hh:mm:ss"
+            )
             now = QDateTime.currentMSecsSinceEpoch()
-            if now < tasker_data.get("trigger_interval"):
+            if now < trigger_datetime.toMSecsSinceEpoch():
                 signalBus.switch_config.emit(
                     {
                         "resource_name": tasker_data.get("resource_name"),
                         "config_name": tasker_data.get("config_name"),
                     }
                 )
-                timer = tasker_data.get("trigger_interval") - now
-                self.tasker[tasker_data.get("name")].start(timer)
+                timer = trigger_datetime.toMSecsSinceEpoch() - now
+                self.tasker[task_name].start(timer)
             else:
                 return
+        elif tasker_data.get("trigger_time_type") == 1:  # 循环
+
+            def start_task_and_reschedule():
+                self.start_task_with_config(deepcopy(tasker_data))
+                reschedule_timer()
+
+            def reschedule_timer():
+                interval = tasker_data.get("trigger_interval")
+                unit = tasker_data.get("trigger_interval_unit")
+                initial_trigger_time = QDateTime.fromString(
+                    tasker_data.get("trigger_time"), "yyyy-MM-dd hh:mm:ss"
+                ).toPyDateTime()
+
+                # 计算下一个触发时间
+                now = datetime.now()
+                next_trigger_time = initial_trigger_time
+                while next_trigger_time < now:
+                    if unit == 0:  # 小时
+                        next_trigger_time += timedelta(hours=interval)
+                    elif unit == 1:  # 天
+                        next_trigger_time += timedelta(days=interval)
+                    elif unit == 2:  # 周
+                        next_trigger_time += timedelta(weeks=interval)
+
+                next_trigger_time_msecs = QDateTime(
+                    next_trigger_time
+                ).toMSecsSinceEpoch()
+                now_msecs = QDateTime.currentMSecsSinceEpoch()
+                timer_interval = next_trigger_time_msecs - now_msecs
+
+                self.tasker[task_name].start(timer_interval)
+
+            self.tasker[task_name] = QTimer()
+            self.tasker[task_name].timeout.connect(start_task_and_reschedule)
+
+            # 启动时立即运行任务并重新安排定时器
+            reschedule_timer()
+
+    def start_task_with_config(self, tasker_data):
+        """启动任务并切换配置"""
+        signalBus.switch_config.emit(
+            {
+                "resource_name": tasker_data.get("resource_name"),
+                "config_name": tasker_data.get("config_name"),
+            }
+        )
+        signalBus.start_task_inmediately.emit()
 
     def add_resource(self):
         """添加资源"""
@@ -143,6 +264,8 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.Trigger_WeekMonth.addItems(
             [self.tr("hour"), self.tr("day"), self.tr("week")]
         )
+        self.use_res_combo.addItems(maa_config_data.resource_name_list)
+        self.use_cfg_combo.addItems(maa_config_data.config_name_list)
 
     def get_list_items(self) -> list[str]:
         """获取列表中所有项的文本"""
@@ -267,6 +390,10 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             cfg.set(cfg.maa_config_path, maa_config_path)
             maa_config_data.config_name = "default"
             maa_config_data.config_path = maa_config_path
+            self.use_cfg_combo.clear()
+            self.use_cfg_combo.addItems(maa_config_data.config_name_list)
+            self.use_res_combo.clear()
+            self.use_res_combo.addItems(maa_config_data.resource_name_list)
 
         else:
             logger.info(f" 切换到 {config_name} 配置")

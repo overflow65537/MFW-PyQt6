@@ -113,6 +113,7 @@ class Ui_Scheduled_Interface(object):
 
         self.Trigger_Time_layout.addWidget(self.Trigger_Time_title, 0, 0)
         self.Trigger_Time_layout.addLayout(self.Trigger_date_time_layout, 0, 1)
+        self.Trigger_Time_layout.addLayout(self.Trigger_interval_layout, 1, 1)
         self.Trigger_interval_title.hide()
         self.Trigger_interval.hide()
         self.Trigger_WeekMonth.hide()
@@ -173,7 +174,6 @@ class Ui_Scheduled_Interface(object):
 
         self.Schedule_layout_all.addLayout(self.Schedule_layout)
         self.Schedule_layout_all.addLayout(self.Trigger_Time_layout)
-        self.Schedule_layout_all.addLayout(self.Trigger_interval_layout)
         self.Schedule_layout_all.addLayout(self.all_config_layout)
         self.Schedule_layout_all.addLayout(self.confirm_delete_layout)
         self.Schedule_layout_all.addLayout(self.Schedule_list_layout)
