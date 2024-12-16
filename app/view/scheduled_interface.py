@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QWidget
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QDateTime
 from PyQt6.QtGui import QIntValidator
 from .UI_scheduled_interface import Ui_Scheduled_Interface
 from ..common.config import cfg
@@ -40,113 +40,81 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.add_res_button.clicked.connect(self.add_resource)
         self.delete_res_button.clicked.connect(self.res_delete)
         self.Trigger_Time_type.currentIndexChanged.connect(self.trigger_time_changed)
-        self.Trigger_date_edit.dateTimeChanged.connect(self.trigger_date_changed)
+        self.Trigger_date_edit.dateChanged.connect(self.trigger_date_changed)
         self.Trigger_interval.setValidator(QIntValidator(1, 999999))
+        self.init_schedule()
+
+    def init_schedule(self):
+        """初始化定时任务"""
+        schedule_data = cfg.get(cfg.schedule_task)
+        print(schedule_data)
+        for i in schedule_data:
+            # self.tasker_timer(i)
+            if i.get("trigger_time_type") == 0:  # 一次性
+                self.Schedule_list_widget.addItem(
+                    f"{i.get("name")} "
+                    + self.tr("Once")
+                    + f" {i.get('trigger_time')}"
+                    + f" {i.get('resource_name')} {i.get('config_name')}"
+                )
+            elif i.get("trigger_time_type") == 1:  # 循环
+                self.Schedule_list_widget.addItem(
+                    f"{i.get('name')} "
+                    + self.tr("every")
+                    + f" {i.get('trigger_interval')} "
+                    + self.tr("Days")
+                    + f" {i.get('trigger_time')}"
+                    + f" {i.get('resource_name')} {i.get('config_name')}"
+                )
 
     def trigger_date_changed(self, date):
         print(date)
+        msecs_since_epoch = QDateTime(date).toMSecsSinceEpoch()
+        now = QDateTime.currentMSecsSinceEpoch()
+        print(now)
+        print(type(now))
+        print(msecs_since_epoch)
 
     def trigger_time_changed(self, index):
         if index == 0:  # 一次性
             self.Trigger_interval.hide()
             self.Trigger_interval_title.hide()
-            self.Trigger_interval_title2.hide()
             self.Trigger_WeekMonth.hide()
-            self.Trigger_time.hide()
-            self.Trigger_WeekMonth.clear()
-        elif index == 1:  # 每天
+            self.Trigger_date_edit.show()
+        elif index == 1:  # 循环
             self.Trigger_interval.show()
             self.Trigger_interval_title.show()
-            self.Trigger_interval_title2.show()
-            self.Trigger_interval_title2.setText(self.tr("Dalay"))
-            self.Trigger_WeekMonth.clear()
-            self.Trigger_WeekMonth.hide()
-            self.Trigger_time.show()
-
-        elif index == 2:  # 每周
-            self.Trigger_interval.show()
-            self.Trigger_interval_title.show()
-            self.Trigger_interval_title2.show()
-            self.Trigger_interval_title2.setText(self.tr("Weekly"))
-            self.Trigger_time.hide()
             self.Trigger_WeekMonth.show()
-            self.Trigger_WeekMonth.clear()
-            self.Trigger_WeekMonth.addItems(
-                [
-                    self.tr("Monday"),
-                    self.tr("Tuesday"),
-                    self.tr("Wednesday"),
-                    self.tr("Thursday"),
-                    self.tr("Friday"),
-                    self.tr("Saturday"),
-                    self.tr("Sunday"),
-                ]
-            )
-        elif index == 3:  # 每月
-            self.Trigger_interval.show()
-            self.Trigger_interval_title.show()
-            self.Trigger_interval_title2.show()
-            self.Trigger_interval_title2.setText(self.tr("Monthly"))
-            self.Trigger_time.hide()
-            self.Trigger_WeekMonth.show()
-            self.Trigger_WeekMonth.clear()
-            self.Trigger_WeekMonth.addItems(
-                [
-                    self.tr("1st"),
-                    self.tr("2nd"),
-                    self.tr("3rd"),
-                    self.tr("4th"),
-                    self.tr("5th"),
-                    self.tr("6th"),
-                    self.tr("7th"),
-                    self.tr("8th"),
-                    self.tr("9th"),
-                    self.tr("10th"),
-                    self.tr("11th"),
-                    self.tr("12th"),
-                    self.tr("13th"),
-                    self.tr("14th"),
-                    self.tr("15th"),
-                    self.tr("16th"),
-                    self.tr("17th"),
-                    self.tr("18th"),
-                    self.tr("19th"),
-                    self.tr("20th"),
-                    self.tr("21st"),
-                    self.tr("22nd"),
-                    self.tr("23rd"),
-                    self.tr("24th"),
-                    self.tr("25th"),
-                    self.tr("26th"),
-                    self.tr("27th"),
-                    self.tr("28th"),
-                    self.tr("29th"),
-                    self.tr("30th"),
-                    self.tr("31st"),
-                ]
-            )
 
     def tasker_timer(
         self,
         tasker_data: dict = {
-            "name": "",
-            "start_time": 0,
-            "trigger_time_type": 0,
-            "trigger_interval": 0,
-            "trigger_week_month": 0,
-            "resource_name": "",
-            "config_name": "",
+            "name": "",  # 任务名称
+            "trigger_time_type": 0,  # 触发类型 0:一次性 1:循环
+            "trigger_time": "",  # 触发时间
+            "trigger_interval": 0,  # 触发间隔 一次性触发时无效
+            "resource_name": "",  # 资源名称
+            "config_name": "",  # 配置名称
         },
     ):
-        if tasker_data.get("trigger_time_type", False) == 0:  # 一次性
-
+        if tasker_data.get("trigger_time_type") == 0:  # 一次性
             self.tasker[tasker_data.get("name")] = QTimer()
             self.tasker[tasker_data.get("name")].timeout.connect(
-                lambda: self.tasker_timer(tasker_data)
+                lambda: signalBus.start_task_inmediately.emit()
             )
-            self.tasker[tasker_data.get("name")].start(
-                tasker_data.get("trigger_interval") * 1000
-            )
+
+            now = QDateTime.currentMSecsSinceEpoch()
+            if now < tasker_data.get("trigger_interval"):
+                signalBus.switch_config.emit(
+                    {
+                        "resource_name": tasker_data.get("resource_name"),
+                        "config_name": tasker_data.get("config_name"),
+                    }
+                )
+                timer = tasker_data.get("trigger_interval") - now
+                self.tasker[tasker_data.get("name")].start(timer)
+            else:
+                return
 
     def add_resource(self):
         """添加资源"""
@@ -171,8 +139,9 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.Cfg_Combox.setCurrentText(maa_config_data.config_name)
         self.res_combox.addItems(maa_config_data.resource_name_list)
         self.res_combox.setCurrentText(maa_config_data.resource_name)
-        self.Trigger_Time_type.addItems(
-            [self.tr("Once"), self.tr("Daily"), self.tr("Weekly"), self.tr("Monthly")]
+        self.Trigger_Time_type.addItems([self.tr("Once"), self.tr("Loop")])
+        self.Trigger_WeekMonth.addItems(
+            [self.tr("hour"), self.tr("day"), self.tr("week")]
         )
 
     def get_list_items(self) -> list[str]:

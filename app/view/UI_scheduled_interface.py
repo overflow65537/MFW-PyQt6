@@ -15,7 +15,6 @@ from qfluentwidgets import (
     ListWidget,
     LineEdit,
     DateTimeEdit,
-    TimePicker,
 )
 
 
@@ -90,42 +89,33 @@ class Ui_Scheduled_Interface(object):
         self.Trigger_Time_title.setObjectName("Trigger_Time_title")
         self.Trigger_Time_type = ComboBox(Scheduled_Interface)
         self.Trigger_Time_type.setObjectName("Trigger_Time_type")
-        self.Trigger_Time_type.setFixedSize(100, 30)
         self.Trigger_date_edit = DateTimeEdit(Scheduled_Interface)
         self.Trigger_date_edit.setObjectName("Trigger_date_edit")
+
         self.Trigger_interval = LineEdit(Scheduled_Interface)
         self.Trigger_interval.setObjectName("Trigger_Interval")
         self.Trigger_interval_title = BodyLabel(Scheduled_Interface)
         self.Trigger_interval_title.setObjectName("Trigger_interval_title")
-        self.Trigger_interval_title2 = BodyLabel(Scheduled_Interface)
-        self.Trigger_interval_title2.setObjectName("Trigger_interval_title2")
         self.Trigger_interval.setFixedSize(35, 30)
-        self.Trigger_time = TimePicker(Scheduled_Interface)
-        self.Trigger_time.setObjectName("Trigger_time")
         self.Trigger_WeekMonth = ComboBox(Scheduled_Interface)
         self.Trigger_WeekMonth.setObjectName("Trigger_WeekMonth")
 
         self.Trigger_interval_layout = QHBoxLayout()
         self.Trigger_interval_layout.addWidget(self.Trigger_interval_title)
         self.Trigger_interval_layout.addWidget(self.Trigger_interval)
-        self.Trigger_interval_layout.addWidget(self.Trigger_interval_title2)
-        self.Trigger_interval_layout.addStretch()
         self.Trigger_interval_layout.addWidget(self.Trigger_WeekMonth)
-        self.Trigger_interval_layout.addWidget(self.Trigger_time)
         self.Trigger_interval_layout.addStretch()
 
         self.Trigger_date_time_layout = QHBoxLayout()
         self.Trigger_date_time_layout.addWidget(self.Trigger_Time_type)
         self.Trigger_date_time_layout.addWidget(self.Trigger_date_edit)
+        self.Trigger_date_time_layout.addStretch()
 
         self.Trigger_Time_layout.addWidget(self.Trigger_Time_title, 0, 0)
         self.Trigger_Time_layout.addLayout(self.Trigger_date_time_layout, 0, 1)
-        self.Trigger_Time_layout.addLayout(self.Trigger_interval_layout, 1, 1)
         self.Trigger_interval_title.hide()
         self.Trigger_interval.hide()
-        self.Trigger_interval_title2.hide()
         self.Trigger_WeekMonth.hide()
-        self.Trigger_time.hide()
 
         self.Trigger_Time_title.setFixedSize(70, 30)
         self.Trigger_Time_layout.setAlignment(
@@ -183,8 +173,10 @@ class Ui_Scheduled_Interface(object):
 
         self.Schedule_layout_all.addLayout(self.Schedule_layout)
         self.Schedule_layout_all.addLayout(self.Trigger_Time_layout)
+        self.Schedule_layout_all.addLayout(self.Trigger_interval_layout)
         self.Schedule_layout_all.addLayout(self.all_config_layout)
         self.Schedule_layout_all.addLayout(self.confirm_delete_layout)
+        self.Schedule_layout_all.addLayout(self.Schedule_list_layout)
         self.Schedule_layout_all.addWidget(self.cfg_list)
 
         self.all_layout = QHBoxLayout()

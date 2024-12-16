@@ -57,6 +57,46 @@ class Config(QConfig):
     # 保存截图
     save_draw = ConfigItem("program", "save_draw", False, BoolValidator())
 
+    # 计划任务
+    schedule_task = ConfigItem(
+        "schedule_task",
+        "schedule_task",
+        [
+            {
+                "name": "AAAA",
+                "trigger_time_type": 0,
+                "trigger_time": "00:00:00",
+                "trigger_interval": 0,
+                "resource_name": "BBB",
+                "config_name": "CCC",
+            },
+            {
+                "name": "AAAA",
+                "trigger_time_type": 1,
+                "trigger_time": "00:00:00",
+                "trigger_interval": 0,
+                "resource_name": "BBB",
+                "config_name": "CCC",
+            },
+            {
+                "name": "AAAA",
+                "trigger_time_type": 2,
+                "trigger_time": "00:00:00",
+                "trigger_interval": 0,
+                "resource_name": "BBB",
+                "config_name": "CCC",
+            },
+            {
+                "name": "AAAA",
+                "trigger_time_type": 3,
+                "trigger_time": "00:00:00",
+                "trigger_interval": 0,
+                "resource_name": "BBB",
+                "config_name": "CCC",
+            },
+        ],
+    )
+
     # MAA路径
     maa_config_name = ConfigItem("Maa", "Maa_config_name", "")
     maa_config_path = ConfigItem("Maa", "Maa_config_path", "")
