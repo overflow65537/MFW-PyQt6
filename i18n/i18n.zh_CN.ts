@@ -346,6 +346,11 @@
         <source>Resource</source>
         <translation>资源</translation>
     </message>
+    <message>
+        <location filename="app/view/UI_scheduled_interface.py" line="144"/>
+        <source>Use Resource</source>
+    <translation>选择资源</translation>
+</message>
 </context>
 <context>
     <name>SettingInterface</name>
@@ -423,6 +428,16 @@
         <location filename="app/view/setting_interface.py" line="149"/>
         <source>Select Program</source>
         <translation>选择程序</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="142"/>
+        <source>run after startup</source>
+        <translation>启动后直接运行</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="142"/>
+        <source>Launch the task immediately after starting the GUI program</source>
+        <translation>启动 GUI 程序后立即运行任务</translation>
     </message>
     <message>
         <location filename="app/view/setting_interface.py" line="142"/>
@@ -631,13 +646,13 @@
     </message>
     <message>
         <location filename="app/view/setting_interface.py" line="416"/>
-        <source>About PyQt-MAA</source>
-        <translation>关于PyQt-MAA</translation>
+        <source>About MFW-PyQt6</source>
+        <translation>关于MFW-PyQt6</translation>
     </message>
     <message>
         <location filename="app/view/setting_interface.py" line="416"/>
-        <source>PyQt-MAA is open source under the GPLv3 license. Visit the project URL for more information.</source>
-        <translation>PyQt-MAA 遵循GPLv3开源协议,访问项目地址以了解更多</translation>
+        <source>MFW-PyQt6 is open source under the GPLv3 license. Visit the project URL for more information.</source>
+        <translation>MFW-PyQt6 遵循GPLv3开源协议,访问项目地址以了解更多</translation>
     </message>
     <message>
         <location filename="app/view/setting_interface.py" line="454"/>

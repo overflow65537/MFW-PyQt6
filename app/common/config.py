@@ -43,6 +43,8 @@ def isWin11():
 class Config(QConfig):
     """Config of application"""
 
+    # 强制更新
+    force_update = ConfigItem("program", "force_update", False, BoolValidator())
     # 标题
     title = ConfigItem("MainWindow", "Title", "MFW-PyQt6")
 
@@ -67,16 +69,8 @@ class Config(QConfig):
     maa_resource_path = ConfigItem("Maa", "Maa_resource_path", "")
 
     # 多配置
-    maa_config_list = ConfigItem(
-        "Maa",
-        "maa_config_list",
-        {},
-    )
-    maa_resource_list = ConfigItem(
-        "Maa",
-        "maa_resource_list",
-        {},
-    )
+    maa_config_list = ConfigItem("Maa", "maa_config_list", {})
+    maa_resource_list = ConfigItem("Maa", "maa_resource_list", {})
 
     # 外部通知
     Notice_DingTalk_status = ConfigItem("Notice", "DingTalk_status", False)

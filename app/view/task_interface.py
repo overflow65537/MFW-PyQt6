@@ -155,7 +155,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         signalBus.update_task_list.connect(self.update_task_list_passive)
         signalBus.update_finished_action.connect(self.init_finish_combox)
         signalBus.start_finish.connect(self.ready_Start_Up)
-        signalBus.start_task_inmediately.connect(self._print)
+        signalBus.start_task_inmediately.connect(self.Start_Up)
         self.AddTask_Button.clicked.connect(self.Add_Task)
         self.Delete_Button.clicked.connect(self.Delete_Task)
         self.MoveUp_Button.clicked.connect(self.Move_Up)
@@ -234,10 +234,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self, interface_Path, maa_pi_config_Path, resource_Path
     ):
         logger.info("配置文件存在")
+        self.Resource_Combox.currentTextChanged.disconnect(self.Save_Resource)
+        self.Control_Combox.currentTextChanged.disconnect(self.Save_Controller)
         self.Task_List.addItems(Get_Values_list_Option(maa_pi_config_Path, "task"))
         self.Resource_Combox.addItems(Get_Values_list(interface_Path, key1="resource"))
         self.Control_Combox.addItems(Get_Values_list(interface_Path, key1="controller"))
         self.SelectTask_Combox_1.addItems(Get_Values_list(interface_Path, key1="task"))
+        self.Resource_Combox.currentTextChanged.connect(self.Save_Resource)
+        self.Control_Combox.currentTextChanged.connect(self.Save_Controller)
         return_init = gui_init(resource_Path, maa_pi_config_Path, interface_Path)
         if return_init is not None:
             self.Resource_Combox.setCurrentIndex(
@@ -246,6 +250,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.Control_Combox.setCurrentIndex(
                 return_init.get("init_Controller_Type", 0)
             )
+            print(return_init.get("init_Controller_Type", 0))
         self.add_Controller_combox()
 
     def handle_missing_files(self, resource_Path, interface_Path, maa_pi_config_Path):
@@ -291,10 +296,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def load_interface_options(self, interface_Path):
         self.Resource_Combox.addItems(Get_Values_list(interface_Path, key1="resource"))
+        self.Resource_Combox.setCurrentIndex(0)
         self.Control_Combox.addItems(Get_Values_list(interface_Path, key1="controller"))
         self.SelectTask_Combox_1.addItems(Get_Values_list(interface_Path, key1="task"))
-        self.Save_Resource()
-        self.Save_Controller()
 
     def rewrite_Completion_Options(self):
         finish_option = self.Finish_combox.currentIndex()
@@ -351,6 +355,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if cfg.get(cfg.resource_exist):
             if cfg.get(cfg.run_after_startup):
                 logger.info("启动GUI后运行任务")
+                self.start_again = True
                 signalBus.start_task_inmediately.emit()
 
     @asyncSlot()
@@ -716,6 +721,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         logger.info(f"保存资源配置: {self.Resource_Combox.currentText()}")
 
     def Save_Controller(self):
+        self.Resource_Combox.currentData
         Controller_Type_Select = self.Control_Combox.currentText()
         controller_type = get_controller_type(
             Controller_Type_Select, maa_config_data.interface_config_path

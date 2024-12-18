@@ -3,19 +3,18 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
     QHBoxLayout,
-    QGridLayout,
-    QFormLayout,
-    QFrame,
 )
+
+from PyQt6.QtWidgets import QGridLayout, QFormLayout, QFrame
 from qfluentwidgets import (
     PushButton,
     BodyLabel,
     ComboBox,
     EditableComboBox,
     ListWidget,
-    LineEdit,
-    DateTimeEdit,
 )
+
+from qfluentwidgets import LineEdit, DateTimeEdit
 
 
 class Ui_Scheduled_Interface(object):
@@ -91,6 +90,7 @@ class Ui_Scheduled_Interface(object):
         self.Trigger_Time_type.setObjectName("Trigger_Time_type")
         self.Trigger_date_edit = DateTimeEdit(Scheduled_Interface)
         self.Trigger_date_edit.setObjectName("Trigger_date_edit")
+        self.Trigger_date_edit.setFixedSize(220, 30)
 
         self.Trigger_interval = LineEdit(Scheduled_Interface)
         self.Trigger_interval.setObjectName("Trigger_Interval")

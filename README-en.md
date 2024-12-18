@@ -10,11 +10,25 @@
 - Python 3.12
 
 ## Usage
-- Put the MaaFramework resource folder `resource` and `interface.json` into the project root directory.
 - `pip install -r requirements.txt`
 - `python main.py`
 
-## Featrues
+## Function Description
+### Multi-Configuration Launch
+- Click the add button for resources in the scheduled task interface to add resources.
+- Each resource can have multiple configurations, which are independent of each other.
+- After the operation ends, you can choose to start a specific configuration file from another resource.
+- Combining this with post-launch task execution can achieve seamless multi-resource startup.
+
+### Scheduled Tasks (Subject to Change)
+- The scheduled task interface allows you to set the start time and loop time to launch a specific configuration from a resource.
+
+### External Notifications
+- Currently supports four notification methods: DingTalk, FeiShu, SMTP, and WxPusher.
+
+### Update Resources
+- When adding a resource, if you fill in the update address, you can perform a one-click update.
+- **Requirement: The project release package must include `update.zip`.**
 ### Custom Program Configuration
 - Create `./config/custom.json`
 - The file should contain the following content:

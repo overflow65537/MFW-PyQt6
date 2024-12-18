@@ -1,6 +1,8 @@
 from PyQt6.QtWidgets import QWidget
-from PyQt6.QtCore import Qt, QTimer, QDateTime
-from PyQt6.QtGui import QIntValidator
+from PyQt6.QtCore import Qt
+
+# from PyQt6.QtCore import QTimer, QDateTime
+# from PyQt6.QtGui import QIntValidator
 from .UI_scheduled_interface import Ui_Scheduled_Interface
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
@@ -15,8 +17,9 @@ from qfluentwidgets import (
 from ..components.choose_resource_button import CustomMessageBox
 import os
 import shutil
-from datetime import datetime, timedelta
-from copy import deepcopy
+
+# from datetime import datetime, timedelta
+# from copy import deepcopy
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 
@@ -35,20 +38,21 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             self.List_widget.addItems(
                 Get_Values_list_Option(maa_config_data.config_path, "task")
             )
-            self.init_schedule()
+            # self.init_schedule()
         self.Add_cfg_Button.clicked.connect(self.add_config)
         self.Delete_cfg_Button.clicked.connect(self.cfg_delete)
-        self.Cfg_Combox.currentTextChanged.connect(self.cfg_changed)
+        self.Cfg_Combox.currentIndexChanged.connect(self.cfg_changed)
         self.res_combox.currentTextChanged.connect(self.res_changed)
         self.add_res_button.clicked.connect(self.add_resource)
         self.delete_res_button.clicked.connect(self.res_delete)
+        """
         self.Trigger_Time_type.currentIndexChanged.connect(self.trigger_time_changed)
         self.confirm_button.clicked.connect(self.confirm_schedule)
         self.delete_button.clicked.connect(self.delete_schedule)
+        self.use_res_combo.currentTextChanged.connect(self.use_res_changed)
         self.Trigger_interval.setValidator(QIntValidator(1, 999999))
-
     def init_schedule(self):
-        """初始化定时任务"""
+        #初始化定时任务
         schedule_data = cfg.get(cfg.schedule_task)
         trigger_interval_unit = {0: "hour", 1: "day", 2: "week"}
         for i in schedule_data:
@@ -73,17 +77,25 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             # 启动定时器
             self.tasker_timer(i)
 
+    def use_res_changed(self):
+        #计划任务选择资源更新
+        self.use_cfg_combo.clear()
+        self.use_cfg_combo.addItems(maa_config_data.config_name_list)
+
     def confirm_schedule(self):
-        """确认定时任务"""
+        #确认定时任务
         name = self.Schedule_name_edit.text()
         trigger_time_type = self.Trigger_Time_type.currentIndex()
         trigger_time = self.Trigger_date_edit.dateTime().toString("yyyy-MM-dd hh:mm:ss")
         trigger_interval = self.Trigger_interval.text()
         trigger_interval_unit = self.Trigger_WeekMonth.currentIndex()
-        resource_name = self.res_combox.currentText()
-        config_name = self.Cfg_Combox.currentText()
+        resource_name = self.use_res_combo.currentText()
+        config_name = self.use_cfg_combo.currentText()
         if not name or not trigger_time or not resource_name or not config_name:
             self.show_error(self.tr("Please fill in all fields"))
+            return
+        if name in [i.get("name") for i in cfg.get(cfg.schedule_task)]:
+            self.show_error(self.tr("The name already exists"))
             return
         if trigger_time_type == 0:  # 一次性
             trigger_data = {
@@ -133,15 +145,28 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             tasker_data = cfg.get(cfg.schedule_task)
             tasker_data.append(trigger_data)
             cfg.set(cfg.schedule_task, tasker_data)
+        logger.info(f" {trigger_data} 定时任务添加成功")
+        cfg.set(cfg.force_update, not cfg.get(cfg.force_update))
 
     def delete_schedule(self):
-        """删除定时任务"""
-        for i in self.Schedule_list_widget.selectedItems():
-            task_name = i.text().split()[0]
-            if task_name in self.tasker:
-                self.tasker[task_name].stop()
-                del self.tasker[task_name]
-            self.Schedule_list_widget.takeItem(self.Schedule_list_widget.row(i))
+        #删除定时任务
+        print("删除定时任务")
+        schedule_data = cfg.get(cfg.schedule_task)
+        for i in schedule_data:
+            if (
+                i.get("name")
+                == self.Schedule_list_widget.currentItem().text().split()[0]
+            ):
+                self.tasker[i.get("name")].stop()
+                self.tasker.pop(i.get("name"))
+                self.Schedule_list_widget.takeItem(
+                    self.Schedule_list_widget.currentRow()
+                )
+                tasker_data = cfg.get(cfg.schedule_task)
+                tasker_data.remove(i)
+                cfg.set(cfg.schedule_task, tasker_data)
+                logger.info(f" {i.get('name')} 定时任务删除成功")
+                cfg.set(cfg.force_update, not cfg.get(cfg.force_update))
 
     def trigger_time_changed(self, index):
         if index == 0:  # 一次性
@@ -179,15 +204,11 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             )
             now = QDateTime.currentMSecsSinceEpoch()
             if now < trigger_datetime.toMSecsSinceEpoch():
-                signalBus.switch_config.emit(
-                    {
-                        "resource_name": tasker_data.get("resource_name"),
-                        "config_name": tasker_data.get("config_name"),
-                    }
-                )
+                logger.debug(f" {task_name} 定时器启动")
                 timer = trigger_datetime.toMSecsSinceEpoch() - now
                 self.tasker[task_name].start(timer)
             else:
+                logger.warning(f" {task_name} 已过期")
                 return
         elif tasker_data.get("trigger_time_type") == 1:  # 循环
 
@@ -228,7 +249,8 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             reschedule_timer()
 
     def start_task_with_config(self, tasker_data):
-        """启动任务并切换配置"""
+        #启动任务并切换配置
+        logger.debug(f" {tasker_data.get('name')} 启动")
         signalBus.switch_config.emit(
             {
                 "resource_name": tasker_data.get("resource_name"),
@@ -236,6 +258,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             }
         )
         signalBus.start_task_inmediately.emit()
+"""
 
     def add_resource(self):
         """添加资源"""
@@ -245,13 +268,13 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             self.res_combox.clear()
             self.Cfg_Combox.clear()
             logger.debug("add_resource发送信号")
-            self.Cfg_Combox.currentTextChanged.disconnect(self.cfg_changed)
+            self.Cfg_Combox.currentIndexChanged.disconnect(self.cfg_changed)
             self.res_combox.currentTextChanged.disconnect(self.res_changed)
             signalBus.resource_exist.emit(True)
             self.initialize_config_combobox()
             self.res_combox.setCurrentText(w.name_data)
             self.Cfg_Combox.setCurrentText("default")
-            self.Cfg_Combox.currentTextChanged.connect(self.cfg_changed)
+            self.Cfg_Combox.currentIndexChanged.connect(self.cfg_changed)
             self.res_combox.currentTextChanged.connect(self.res_changed)
 
     def initialize_config_combobox(self):
@@ -260,12 +283,12 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.Cfg_Combox.setCurrentText(maa_config_data.config_name)
         self.res_combox.addItems(maa_config_data.resource_name_list)
         self.res_combox.setCurrentText(maa_config_data.resource_name)
-        self.Trigger_Time_type.addItems([self.tr("Once"), self.tr("Loop")])
+        """self.Trigger_Time_type.addItems([self.tr("Once"), self.tr("Loop")])
         self.Trigger_WeekMonth.addItems(
             [self.tr("hour"), self.tr("day"), self.tr("week")]
         )
         self.use_res_combo.addItems(maa_config_data.resource_name_list)
-        self.use_cfg_combo.addItems(maa_config_data.config_name_list)
+        self.use_cfg_combo.addItems(maa_config_data.config_name_list)"""
 
     def get_list_items(self) -> list[str]:
         """获取列表中所有项的文本"""
@@ -285,10 +308,12 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             self.res_combox.setCurrentText(data_dict.get("resource_name"))
             self.Cfg_Combox.setCurrentText(data_dict.get("config_name"))
 
+        signalBus.start_task_inmediately.emit()
+
     def add_config(self, config_name=None):
         """添加新的配置"""
         if cfg.get(cfg.resource_exist):
-            if config_name is None:
+            if config_name is None or type(config_name) in [int, bool]:
                 config_name = self.Cfg_Combox.currentText()
 
             if config_name in ["default", "default".lower()]:
@@ -372,9 +397,9 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
 
     def cfg_changed(self, config_name=None):
         """切换配置时刷新配置文件"""
-        if config_name is None:
+        if config_name is None or type(config_name) in [int, bool]:
             config_name = self.Cfg_Combox.currentText()
-        elif config_name == "":
+        if config_name == "":
             return
         elif config_name in ["Default", "default".lower()]:
             logger.info(" 切换主配置")
@@ -390,10 +415,10 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             cfg.set(cfg.maa_config_path, maa_config_path)
             maa_config_data.config_name = "default"
             maa_config_data.config_path = maa_config_path
-            self.use_cfg_combo.clear()
+            """self.use_cfg_combo.clear()
             self.use_cfg_combo.addItems(maa_config_data.config_name_list)
             self.use_res_combo.clear()
-            self.use_res_combo.addItems(maa_config_data.resource_name_list)
+            self.use_res_combo.addItems(maa_config_data.resource_name_list)"""
 
         else:
             logger.info(f" 切换到 {config_name} 配置")
@@ -482,7 +507,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             self.show_error(self.tr("Please add resources first."))
             return
 
-        if config_name is None:
+        if config_name is None or type(config_name) in [int, bool]:
             config_name = self.Cfg_Combox.currentText()
 
         config_index = self.Cfg_Combox.currentIndex()
@@ -524,9 +549,9 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
 
     def refresh_combobox(self):
         """刷新配置下拉框和任务列表"""
-        self.Cfg_Combox.currentTextChanged.disconnect()
+        self.Cfg_Combox.currentIndexChanged.disconnect()
         self.Cfg_Combox.clear()
-        self.Cfg_Combox.currentTextChanged.connect(self.cfg_changed)
+        self.Cfg_Combox.currentIndexChanged.connect(self.cfg_changed)
         self.Cfg_Combox.addItems(maa_config_data.config_name_list)
 
     def update_task_list(self):

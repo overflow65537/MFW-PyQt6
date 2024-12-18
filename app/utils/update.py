@@ -1,7 +1,7 @@
 from PyQt6.QtCore import QThread
 import os
 import zipfile
-from ..utils.tool import for_config_get_url
+from ..utils.tool import for_config_get_url, show_error_message
 from ..common.signal_bus import signalBus
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
@@ -50,7 +50,12 @@ class Update(QThread):
         )
 
         # 下载文件
-        response = requests.get(download_url)
+        try:
+            response = requests.get(download_url)
+        except:
+            logger.exception("下载更新文件时出错")
+            show_error_message()
+
         with open(zip_file_path, "wb") as zip_file:
             zip_file.write(response.content)
 

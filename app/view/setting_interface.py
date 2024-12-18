@@ -257,7 +257,7 @@ class SettingInterface(ScrollArea):
 
         self.run_after_startup = SwitchSettingCard(
             FIF.SPEED_HIGH,
-            self.tr("run_after_startup"),
+            self.tr("run after startup"),
             self.tr("Launch the task immediately after starting the GUI program"),
             configItem=cfg.run_after_startup,
             parent=self.start_Setting,
