@@ -96,7 +96,7 @@ class Ui_Scheduled_Interface(object):
         self.Trigger_interval.setObjectName("Trigger_Interval")
         self.Trigger_interval_title = BodyLabel(Scheduled_Interface)
         self.Trigger_interval_title.setObjectName("Trigger_interval_title")
-        self.Trigger_interval.setFixedSize(35, 30)
+        self.Trigger_interval.setFixedSize(50, 30)
         self.Trigger_WeekMonth = ComboBox(Scheduled_Interface)
         self.Trigger_WeekMonth.setObjectName("Trigger_WeekMonth")
 

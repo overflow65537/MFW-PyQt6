@@ -1,5 +1,9 @@
 import logging
+import os
 
+# 创建日志目录
+if not os.path.exists("./debug"):
+    os.makedirs("./debug")
 
 # 设置日志记录器
 logging.basicConfig(

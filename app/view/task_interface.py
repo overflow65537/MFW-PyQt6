@@ -234,15 +234,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self, interface_Path, maa_pi_config_Path, resource_Path
     ):
         logger.info("配置文件存在")
-        self.Resource_Combox.currentTextChanged.disconnect(self.Save_Resource)
-        self.Control_Combox.currentTextChanged.disconnect(self.Save_Controller)
+        return_init = gui_init(resource_Path, maa_pi_config_Path, interface_Path)
         self.Task_List.addItems(Get_Values_list_Option(maa_pi_config_Path, "task"))
         self.Resource_Combox.addItems(Get_Values_list(interface_Path, key1="resource"))
         self.Control_Combox.addItems(Get_Values_list(interface_Path, key1="controller"))
         self.SelectTask_Combox_1.addItems(Get_Values_list(interface_Path, key1="task"))
-        self.Resource_Combox.currentTextChanged.connect(self.Save_Resource)
-        self.Control_Combox.currentTextChanged.connect(self.Save_Controller)
-        return_init = gui_init(resource_Path, maa_pi_config_Path, interface_Path)
+
         if return_init is not None:
             self.Resource_Combox.setCurrentIndex(
                 return_init.get("init_Resource_Type", 0)
