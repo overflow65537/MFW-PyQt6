@@ -23,7 +23,7 @@ else:
 
 # 定义打包命令
 nuitka_command = [
-    nuitka_path,
+    str(nuitka_path),
     "--standalone",
     "--plugin-enable=pyqt6",
     "--include-data-dir=config=config",
