@@ -2,22 +2,27 @@ import os
 import subprocess
 import site
 import shutil
+import sys
 
 # 获取 site-packages 路径
 site_packages_paths = site.getsitepackages()
+if sys.platform == "win32":
+    # 获取 Scripts 路径
+    site_user_base = site_packages_paths[0]
+    scripts_path = os.path.join(site_user_base, "Scripts")
+    print(f"Scripts path: {scripts_path}")
 
-# 获取 Scripts 路径
-site_user_base = site_packages_paths[0]
-scripts_path = os.path.join(site_user_base, "Scripts")
-print(f"Scripts 路径: {scripts_path}")
+    # 查找包含 nuitka 的路径
+    nuitka_path = os.path.join(scripts_path, "nuitka.cmd")
 
-# 查找包含 nuitka 的路径
-nuitka_path = os.path.join(scripts_path, "nuitka.cmd")
-
-# 检查 nuitka 是否存在
-if not os.path.exists(nuitka_path):
-    print(f"未找到 Nuitka 可执行文件在路径: {nuitka_path}")
-    raise FileNotFoundError("Nuitka 可执行文件未找到。")
+    # 检查 nuitka 是否存在
+    if not os.path.exists(nuitka_path):
+        print(f"cannot find nuitka: {nuitka_path}")
+        exit(1)
+# macos 下使用 which 命令查找 nuitka
+else:
+    nuitka_path = "nuitka"
+    subprocess.run(["which", nuitka_path], check=True)
 
 
 # 定义打包命令
@@ -41,7 +46,7 @@ for path in site_packages_paths:
         break
 
 if maa_bin_path is None:
-    raise FileNotFoundError("未找到包含 maa/bin 的路径")
+    exit(1)
 
 # 查找包含 MaaAgentBinary 的路径
 maa_bin_path2 = None
@@ -52,18 +57,18 @@ for path in site_packages_paths:
         break
 
 if maa_bin_path2 is None:
-    raise FileNotFoundError("未找到包含 MaaAgentBinary 的路径")
+    exit(1)
 
 # 移动 maa/bin 到 dist 目录
 shutil.copytree(
     maa_bin_path,
-    os.path.join(os.getcwd(), "dist", "main.dist", "maa", "bin"),
+    os.path.join(os.getcwd(), "main.dist", "maa", "bin"),
     dirs_exist_ok=True,
 )
 
 # 移动 MaaAgentBinary 到 dist 目录
 shutil.copytree(
     maa_bin_path2,
-    os.path.join(os.getcwd(), "dist", "main.dist", "MaaAgentBinary"),
+    os.path.join(os.getcwd(), "main.dist", "MaaAgentBinary"),
     dirs_exist_ok=True,
 )
