@@ -6,7 +6,6 @@ import sys
 
 
 site_packages_paths = site.getsitepackages()
-subprocess.run(["nuitka", "--version"], check=True)
 if sys.platform == "win32":
     # 获取 Scripts 路径
     site_user_base = site_packages_paths[0]
