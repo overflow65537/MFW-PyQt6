@@ -4,25 +4,21 @@ import site
 import shutil
 import sys
 
-# 获取 site-packages 路径
+
 site_packages_paths = site.getsitepackages()
-if sys.platform == "win32":
-    # 获取 Scripts 路径
-    site_user_base = site_packages_paths[0]
-    scripts_path = os.path.join(site_user_base, "Scripts")
-    print(f"Scripts path: {scripts_path}")
 
-    # 查找包含 nuitka 的路径
-    nuitka_path = os.path.join(scripts_path, "nuitka.cmd")
+# 获取 Scripts 路径
+site_user_base = site_packages_paths[0]
+scripts_path = os.path.join(site_user_base, "Scripts")
+print(f"Scripts path: {scripts_path}")
 
-    # 检查 nuitka 是否存在
-    if not os.path.exists(nuitka_path):
-        print(f"cannot find nuitka: {nuitka_path}")
-        exit(1)
-# macos 下使用 which 命令查找 nuitka
-else:
-    nuitka_path = "nuitka"
-    subprocess.run(["which", nuitka_path], check=True)
+# 查找包含 nuitka 的路径
+nuitka_path = os.path.join(scripts_path, "nuitka.cmd")
+
+# 检查 nuitka 是否存在
+if not os.path.exists(nuitka_path):
+    print(f"cannot find nuitka: {nuitka_path}")
+    exit(1)
 
 
 # 定义打包命令
