@@ -17,14 +17,10 @@ if sys.platform == "win32":
     nuitka_path = os.path.join(scripts_path, "nuitka.cmd")
 else:
 
-    subprocess.run(["which", "nuitka"], check=True)
-    # 获取 bin 路径
-    site_user_base = site_packages_paths[0]
-    bin_path = os.path.join(os.path.dirname(site_user_base), "bin")
-    print(f"Bin path: {bin_path}")
+    nuitka_path = subprocess.run(
+        ["which", "nuitka"], check=True, capture_output=True, text=True
+    )
 
-    # 查找包含 nuitka 的路径
-    nuitka_path = os.path.join(bin_path, "nuitka")
 
 # 检查 nuitka 是否存在
 if not os.path.exists(nuitka_path):
