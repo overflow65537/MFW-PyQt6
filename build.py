@@ -15,7 +15,9 @@ if sys.platform == "win32":
 
     # 查找包含 nuitka 的路径
     nuitka_path = os.path.join(scripts_path, "nuitka.cmd")
+    subprocess.run([nuitka_path, "--version"], check=True)
 else:
+    subprocess.run(["nuitka", "--version"], check=True)
 
     result = subprocess.run(
         ["which", "nuitka"], check=True, capture_output=True, text=True
@@ -32,6 +34,9 @@ nuitka_command = [
     "--include-data-dir=icon=icon",
     "main.py",
 ]
+# macos 下需要额外参数
+if sys.platform == "darwin":
+    nuitka_command.insert(1, "--macos-create-app-bundle")
 subprocess.run(nuitka_command, check=True)
 
 # 查找包含 maa/bin 的路径
