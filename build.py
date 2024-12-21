@@ -17,9 +17,10 @@ if sys.platform == "win32":
     nuitka_path = os.path.join(scripts_path, "nuitka.cmd")
 else:
 
-    nuitka_path = subprocess.run(
+    result = subprocess.run(
         ["which", "nuitka"], check=True, capture_output=True, text=True
     )
+    nuitka_path = result.stdout.strip()
 
 # 定义打包命令
 nuitka_command = [
