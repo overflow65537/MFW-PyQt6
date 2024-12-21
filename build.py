@@ -21,13 +21,6 @@ else:
         ["which", "nuitka"], check=True, capture_output=True, text=True
     )
 
-
-# 检查 nuitka 是否存在
-if not os.path.exists(nuitka_path):
-    print(f"cannot find nuitka: {nuitka_path}")
-    exit(1)
-
-
 # 定义打包命令
 nuitka_command = [
     nuitka_path,
