@@ -40,7 +40,7 @@ if sys.platform == "win32":
 elif sys.platform == "darwin":
     nuitka_command.insert(1, "--macos-create-app-bundle")
 
-subprocess.run(nuitka_command, check=True)
+subprocess.run(nuitka_command, input=b"Yes\n", check=True, text=True)
 
 
 # 查找包含 maa/bin 的路径
