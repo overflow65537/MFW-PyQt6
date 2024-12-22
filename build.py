@@ -31,12 +31,15 @@ nuitka_command = [
     "--include-data-dir=config=config",
     "--include-data-dir=i18n=i18n",
     "--include-data-dir=icon=icon",
+    "--download-dependencies",  # 自动下载依赖
     "main.py",
 ]
-# macos 下需要额外参数
-if sys.platform == "darwin":
+if sys.platform == "win32":
+    nuitka_command.insert(1, "--windows-disable-console")
+elif sys.platform == "darwin":
     nuitka_command.insert(1, "--macos-create-app-bundle")
 subprocess.run(nuitka_command, check=True)
+
 
 # 查找包含 maa/bin 的路径
 maa_bin_path = None

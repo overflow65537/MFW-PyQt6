@@ -443,6 +443,8 @@ enc_temp_folder/*
 deps
 build
 install
+main.dist
+main.build
 
 # Tools
 tools/ImageCropper/**/*.png
