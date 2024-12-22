@@ -501,12 +501,15 @@ def for_config_get_url(url, mode) -> str:
 
     if mode == "issue":
         return_url = f"https://github.com/{username}/{repository}/issues"
-        return return_url
     elif mode == "download":
         return_url = (
             f"https://api.github.com/repos/{username}/{repository}/releases/latest"
         )
-        return return_url
+
+    elif mode == "readme":
+
+        return_url = f"https://raw.githubusercontent.com/{username}/{repository}/master/README.md"
+    return return_url
 
 
 def get_controller_type(select_value, interface_path) -> str | None:

@@ -1,4 +1,5 @@
 qasync
+markdown
 asyncify
 requests
 MaaFw~=2.0

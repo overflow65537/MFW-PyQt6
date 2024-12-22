@@ -3,6 +3,8 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
     QHBoxLayout,
+    QAbstractItemView,
+    QTextBrowser,
 )
 
 from PyQt6.QtWidgets import QGridLayout, QFormLayout, QFrame
@@ -15,6 +17,7 @@ from qfluentwidgets import (
 )
 
 from qfluentwidgets import LineEdit, DateTimeEdit
+from ..components.listwidge_menu_draggable import ListWidge_Menu_Draggable
 
 
 class Ui_Scheduled_Interface(object):
@@ -28,9 +31,10 @@ class Ui_Scheduled_Interface(object):
         self.cfgCombox_layout = QHBoxLayout()
         self.Cfg_Combox_title = BodyLabel(Scheduled_Interface)
         self.Cfg_Combox_title.setObjectName("Cfg_Combox_title")
-        self.Cfg_Combox_title.setFixedSize(100, 30)
+        self.Cfg_Combox_title.setFixedSize(50, 30)
         self.Cfg_Combox = EditableComboBox(Scheduled_Interface)
         self.Cfg_Combox.setObjectName("Cfg_Combox")
+        self.Cfg_Combox.setFixedSize(200, 30)
         self.Add_cfg_Button = PushButton(Scheduled_Interface)
         self.Add_cfg_Button.setObjectName("Add_cfg_Button")
         self.Add_cfg_Button.setFixedSize(70, 30)
@@ -47,9 +51,10 @@ class Ui_Scheduled_Interface(object):
         self.res_combox_layout = QHBoxLayout()
         self.res_title = BodyLabel(Scheduled_Interface)
         self.res_title.setObjectName("res_title")
-        self.res_title.setFixedSize(100, 30)
+        self.res_title.setFixedSize(50, 30)
         self.res_combox = ComboBox(Scheduled_Interface)
         self.res_combox.setObjectName("res_combox")
+        self.res_combox.setFixedSize(200, 30)
         self.add_res_button = PushButton(Scheduled_Interface)
         self.add_res_button.setObjectName("add_res_button")
         self.add_res_button.setFixedSize(70, 30)
@@ -65,18 +70,24 @@ class Ui_Scheduled_Interface(object):
         # 配置列表布局
 
         self.List_layout = QVBoxLayout()
-        self.List_widget = ListWidget(Scheduled_Interface)
-        self.List_widget.setObjectName("List_widget")
+        self.List_widget = ListWidge_Menu_Draggable(Scheduled_Interface)
+        self.List_widget.setDragEnabled(True)
+        self.List_widget.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.Add_cfg_Button.setSizePolicy(
             QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum
         )
+        self.text_browser = QTextBrowser(Scheduled_Interface)
         self.List_layout.addLayout(self.res_combox_layout)
-        self.List_layout.addLayout(self.cfgCombox_layout)
-        self.List_layout.addWidget(self.List_widget)
+
+        self.List_layout.addWidget(self.text_browser)
+
+        self.List_widget_layout = QVBoxLayout()
+        self.List_widget_layout.addLayout(self.cfgCombox_layout)
+        self.List_widget_layout.addWidget(self.List_widget)
 
         # 计划任务布局
 
-        self.Schedule_layout = QFormLayout()
+        """self.Schedule_layout = QFormLayout()
         self.Schedule_name_title = BodyLabel(Scheduled_Interface)
         self.Schedule_name_title.setObjectName("Schedule_name_title")
         self.Schedule_name_edit = EditableComboBox(Scheduled_Interface)
@@ -164,12 +175,11 @@ class Ui_Scheduled_Interface(object):
         self.Schedule_list_layout = QVBoxLayout()
         self.Schedule_list_widget = ListWidget(Scheduled_Interface)
         self.Schedule_list_widget.setObjectName("Schedule_list_widget")
-        self.Schedule_list_layout.addWidget(self.Schedule_list_widget)
+        self.Schedule_list_layout.addWidget(self.Schedule_list_widget)"""
 
         # 总布局
 
-        self.Schedule_layout_all = QVBoxLayout()
-        self.cfg_list = ListWidget(Scheduled_Interface)
+        """self.cfg_list = ListWidget(Scheduled_Interface)
         self.cfg_list.setObjectName("cfg_list")
 
         self.Schedule_layout_all.addLayout(self.Schedule_layout)
@@ -177,7 +187,7 @@ class Ui_Scheduled_Interface(object):
         self.Schedule_layout_all.addLayout(self.all_config_layout)
         self.Schedule_layout_all.addLayout(self.confirm_delete_layout)
         self.Schedule_layout_all.addLayout(self.Schedule_list_layout)
-        self.Schedule_layout_all.addWidget(self.cfg_list)
+        self.Schedule_layout_all.addWidget(self.cfg_list)"""
 
         self.all_layout = QHBoxLayout()
 
@@ -186,7 +196,7 @@ class Ui_Scheduled_Interface(object):
         self.line.setFrameShadow(QFrame.Shadow.Plain)
         self.all_layout.addLayout(self.List_layout)
         self.all_layout.addWidget(self.line)
-        self.all_layout.addLayout(self.Schedule_layout_all)
+        self.all_layout.addLayout(self.List_widget_layout)
 
         Scheduled_Interface.setLayout(self.all_layout)
         self.retranslateUi(Scheduled_Interface)
@@ -205,7 +215,7 @@ class Ui_Scheduled_Interface(object):
         self.Delete_cfg_Button.setText(_translate("Scheduled_Interface", "Delete"))
         self.add_res_button.setText(_translate("Scheduled_Interface", "Add"))
         self.delete_res_button.setText(_translate("Scheduled_Interface", "Delete"))
-        self.Schedule_name_title.setText(
+        """self.Schedule_name_title.setText(
             _translate("Scheduled_Interface", "Scheduled name")
         )
         self.Schedule_name_edit.setPlaceholderText(
@@ -222,4 +232,4 @@ class Ui_Scheduled_Interface(object):
         self.Trigger_interval_title.setText(
             _translate("Scheduled_Interface", "Interval")
         )
-        self.delete_button.setText(_translate("Scheduled_Interface", "Delete"))
+        self.delete_button.setText(_translate("Scheduled_Interface", "Delete"))"""

@@ -21,6 +21,7 @@ class SignalBus(QObject):
     switch_config = pyqtSignal(dict)  # 主动切换配置信号
     start_finish = pyqtSignal()  # 启动完成信号
     start_task_inmediately = pyqtSignal()  # 立即启动任务信号
+    readme_available = pyqtSignal(str)  # readme文件信号
 
 
 signalBus = SignalBus()

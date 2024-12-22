@@ -70,3 +70,21 @@ class Update(QThread):
 
         # 任务完成，发出信号
         self.update_finished.emit()
+
+
+class Readme(QThread):
+    readme_url = ""
+
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        logger.debug(f"读取README文件: {self.readme_url}")
+        try:
+            response = requests.get(self.readme_url)
+            response.raise_for_status()
+            content = response.text
+            signalBus.readme_available.emit(content)
+        except Exception as e:
+            logger.exception(f"读取README文件时出错: {e}")
+            signalBus.readme_available.emit(f"读取README文件时出错: {e}")
