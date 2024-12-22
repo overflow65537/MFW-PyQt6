@@ -31,13 +31,15 @@ nuitka_command = [
     "--include-data-dir=config=config",
     "--include-data-dir=i18n=i18n",
     "--include-data-dir=icon=icon",
-    "--download-dependencies",  # 自动下载依赖
     "main.py",
 ]
 if sys.platform == "win32":
     nuitka_command.insert(1, "--windows-disable-console")
+    nuitka_command.insert(1, "--download-dependencies")
+
 elif sys.platform == "darwin":
     nuitka_command.insert(1, "--macos-create-app-bundle")
+
 subprocess.run(nuitka_command, check=True)
 
 
