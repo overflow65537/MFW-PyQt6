@@ -15,9 +15,10 @@ from app.common.config import Language
 from app.common.signal_bus import signalBus
 from app.common.maa_config_data import maa_config_data
 from app.utils.tool import show_error_message
+import argparse
 
 
-def main():
+def main(resource, config, directly):
     # 检查资源文件是否存在
     maa_config_name = cfg.get(cfg.maa_config_name)
     maa_config_path = cfg.get(cfg.maa_config_path)
@@ -43,12 +44,36 @@ def main():
         maa_config_list = {}
         maa_resource_list = {}
     else:
+        if resource in list(maa_resource_list.keys()):
+            cfg.set(cfg.maa_resource_name, resource)
+            maa_resource_name = resource
+            cfg.set(cfg.maa_resource_path, maa_resource_list[resource])
+            maa_resource_path = maa_resource_list[resource]
+            if not config:
+                cfg.set(cfg.maa_config_name, "default")
+                cfg.set(cfg.maa_config_path, maa_config_list[resource]["default"])
+                maa_config_name = "default"
+                maa_config_path = maa_config_list[resource]["default"]
+        if config in list(maa_config_list[maa_resource_name].keys()):
+            cfg.set(cfg.maa_config_name, config)
+            cfg.set(cfg.maa_config_path, maa_config_list[maa_resource_name][config])
+            maa_config_name = config
+            maa_config_path = maa_config_list[maa_resource_name][config]
+
+        else:
+            cfg.set(cfg.maa_config_name, "default")
+            cfg.set(cfg.maa_config_path, maa_config_list[maa_resource_name]["default"])
+            maa_config_name = "default"
+            maa_config_path = maa_config_list[maa_resource_name]["default"]
+        if directly:
+            cfg.set(cfg.run_after_startup, True)
         logger.info("资源文件存在")
         cfg.set(cfg.resource_exist, True)
         logger.info(
             f"资源版本:{maa_config_data.interface_config.get('version',"v0.0.1")}"
         )
         signalBus.resource_exist.emit(True)
+
     # enable dpi scale
     if cfg.get(cfg.dpiScale) != "Auto":
         os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
@@ -93,8 +118,13 @@ def start_symbol():
 
 if __name__ == "__main__":
     start_symbol()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r", "--resource", default=False)
+    parser.add_argument("-c", "--config", default=False)
+    parser.add_argument("-d", "--directly", action="store_true")
+    args = parser.parse_args()
     try:
-        main()
+        main(args.resource, args.config, args.directly)
     except:
         logger.exception("GUI Process Error")
         show_error_message()
