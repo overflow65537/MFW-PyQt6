@@ -20,6 +20,11 @@
 - 结束后操作可以选择启动其他资源中的某项配置文件
 - 配合启动后执行任务可以实现多资源的无缝启动
 
+### 参数启动
+- -r参数可接受资源名称 例如 `python main.py -r resource1`或者 `main.exe -r resource1`
+- -c参数可接受配置文件名称 例如 `python main.py -c config1`或者 `main.exe -c config1`
+- -d参数可以直接启动 例如 `python main.py -d`或者 `main.exe -d`
+
 ### 外部通知
 - 目前支持 钉钉,飞书,SMTP,WxPusher 四种通知方式
 
