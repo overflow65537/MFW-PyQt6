@@ -35,12 +35,13 @@ nuitka_command = [
 ]
 if sys.platform == "win32":
     nuitka_command.insert(1, "--windows-disable-console")
-    nuitka_command.insert(1, "--download-dependencies")
+    nuitka_command.insert(1, "--follow-imports=all")
+    nuitka_command.insert(1, "--assume-yes-for-downloads")
 
 elif sys.platform == "darwin":
     nuitka_command.insert(1, "--macos-create-app-bundle")
 
-subprocess.run(nuitka_command, input=b"Yes\n", check=True, text=True)
+subprocess.run(nuitka_command, check=True)
 
 
 # 查找包含 maa/bin 的路径
