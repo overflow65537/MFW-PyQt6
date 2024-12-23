@@ -35,17 +35,17 @@ if maa_bin_path2 is None:
 # 构建 --add-data 参数
 add_data_param2 = f"{maa_bin_path2}{os.pathsep}MaaAgentBinary"
 
-
+command = [
+    "main.py",
+    "--name=MFW",
+    f"--add-data={add_data_param}",
+    f"--add-data={add_data_param2}",
+    "--clean",
+]
+if sys.platform == "win32":
+    command.insert(1, "--noconsole")
 # 运行 PyInstaller
-PyInstaller.__main__.run(
-    [
-        "main.py",
-        "--name=MFW",
-        f"--add-data={add_data_param}",
-        f"--add-data={add_data_param2}",
-        "--clean",
-    ]
-)
+PyInstaller.__main__.run()
 print(
     f"{os.path.join(os.getcwd(), "resource")} to {os.path.join(os.getcwd(), "dist", "MFW", "resource")}"
 )
