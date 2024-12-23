@@ -43,9 +43,9 @@ command = [
     "--clean",
 ]
 if sys.platform == "win32":
-    command.insert(1, "--noconsole")
+    command.insert(2, "--noconsole")
 # 运行 PyInstaller
-PyInstaller.__main__.run()
+PyInstaller.__main__.run(command)
 print(
     f"{os.path.join(os.getcwd(), "resource")} to {os.path.join(os.getcwd(), "dist", "MFW", "resource")}"
 )
