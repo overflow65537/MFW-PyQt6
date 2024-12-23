@@ -57,3 +57,9 @@ shutil.copytree(
     os.path.join(os.getcwd(), "dist", "MFW"),
     dirs_exist_ok=True,
 )
+
+shutil.copytree(
+    os.path.join(os.getcwd(), "config", "emulator.json"),
+    os.path.join(os.getcwd(), "dist", "MFW", "config", "emulator.json"),
+    dirs_exist_ok=True,
+)

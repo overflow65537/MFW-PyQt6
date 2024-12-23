@@ -71,7 +71,8 @@ jobs:
 
       - name: Install
         run: |
-          python ./build.py  
+          ls
+          python build.py  
         shell: pwsh  
 
       - name: Upload artifact
@@ -103,14 +104,15 @@ jobs:
       - name: Install
         shell: bash
         run: |
-          python ./build.py 
+          ls
+          python build.py 
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: MFW-PyQt6-linux
           path: "dist/MFW"
-          
+
   macos:
     needs: meta
     runs-on: macos-latest
@@ -133,8 +135,11 @@ jobs:
 
       - name: Install
         run: |
-          python ./build.py  
+          ls
+          python build.py  
+
         shell: pwsh  
+        
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
