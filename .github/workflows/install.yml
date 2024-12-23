@@ -52,6 +52,10 @@ jobs:
   windows:
     needs: meta
     runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x86_64]
+      fail-fast: false
 
     steps:
       - uses: actions/checkout@v4
@@ -77,12 +81,16 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MFW-PyQt6-win
+          name: MFW-PyQt6-win-${{ matrix.arch }}
           path: "dist/MFW"
 
   ubuntu:
     needs: meta
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [x86_64]
+      fail-fast: false
 
     steps:
       - uses: actions/checkout@v4
@@ -103,17 +111,21 @@ jobs:
       - name: Install
         shell: bash
         run: |
-          python build.py 
+          python build_linux.py 
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MFW-PyQt6-linux
-          path: "dist/MFW"
+          name: MFW-PyQt6-linux-${{ matrix.arch }}
+          path: "main.dist"
 
   macos:
     needs: meta
     runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [x86_64]
+      fail-fast: false
 
     steps:
       - uses: actions/checkout@v4
@@ -140,7 +152,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MFW-PyQt6-macos
+          name: MFW-PyQt6-macos-${{ matrix.arch }}
           path: "dist/MFW"
 
 
