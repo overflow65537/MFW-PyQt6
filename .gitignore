@@ -455,3 +455,5 @@ config/*
 !config/custom.json
 MFW.spec
 main.spec
+bundles
+hotfix

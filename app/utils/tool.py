@@ -7,12 +7,28 @@ import psutil
 import socket
 import asyncio
 import traceback
-import functools
-from typing import Any, Literal, Callable, TypeVar
+import shutil
+from typing import Literal
+
 
 from PyQt6.QtWidgets import QMessageBox
 from PyQt6.QtGui import QIcon
 from app.utils.logger import logger
+
+
+def replace_ocr(path):
+    """替换OCR模型"""
+    bundle_dir1 = os.path.join(path, "resource", "base", "model", "ocr")
+    bundle_dir2 = os.path.join(path, "resource", "model", "ocr")
+    main_ocr_path = os.path.join(os.getcwd(), "resource", "model", "ocr")
+    if os.path.exists(os.path.dirname(bundle_dir1)):
+        if not os.path.exists(bundle_dir1):
+            logger.info("正在替换OCR模型旧模板...")
+            shutil.copytree(main_ocr_path, bundle_dir1, dirs_exist_ok=True)
+    elif os.path.exists(os.path.dirname(bundle_dir2)):
+        if not os.path.exists(bundle_dir2):
+            logger.info("正在替换OCR模型新模板...")
+            shutil.copytree(main_ocr_path, bundle_dir2, dirs_exist_ok=True)
 
 
 def show_error_message():

@@ -14,10 +14,13 @@ from ..common.config import cfg
 from ..utils.tool import Read_Config, Save_Config
 from ..utils.logger import logger
 import os
+from ..utils.update import download_bundle
 
 
 class CustomMessageBox(MessageBoxBase):
     """Custom message box"""
+
+    download_bundle = download_bundle()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -47,6 +50,14 @@ class CustomMessageBox(MessageBoxBase):
         self.update_LineEdit = LineEdit(self)
         self.update_LineEdit.setPlaceholderText(self.tr("Enter update link (optional)"))
         self.update_LineEdit.setClearButtonEnabled(True)
+        self.search_button = ToolButton(FIF.SEARCH, self)
+        self.search_button.setSizePolicy(
+            QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed
+        )
+        self.search_button.clicked.connect(self.search_bundle)
+        self.update_layout = QHBoxLayout()
+        self.update_layout.addWidget(self.update_LineEdit)
+        self.update_layout.addWidget(self.search_button)
 
         self.path_layout.setStretch(0, 9)
         self.path_layout.setStretch(1, 1)
@@ -54,13 +65,74 @@ class CustomMessageBox(MessageBoxBase):
         self.viewLayout.addWidget(self.titleLabel)
         self.viewLayout.addLayout(self.path_layout)
         self.viewLayout.addWidget(self.name_LineEdit)
-        self.viewLayout.addWidget(self.update_LineEdit)
+        self.viewLayout.addLayout(self.update_layout)
 
         self.yesButton.setText(self.tr("Confirm"))
         self.cancelButton.setText(self.tr("Cancel"))
 
         self.widget.setMinimumWidth(350)
         self.yesButton.clicked.connect(self.click_yes_button)
+
+    def search_bundle(self) -> None:
+        if self.update_LineEdit.text() == "":
+            self.show_error(self.tr("Please enter the update link"))
+            return
+        self.search_button.setIcon(FIF.MORE)
+        self.search_button.disconnect()
+        updata_link = self.update_LineEdit.text()
+        logger.info(f"更新链接 {updata_link}")
+
+        self.download_bundle.project_url = updata_link
+        self.download_bundle.finished.connect(self.download_finished)
+        self.download_bundle.run()
+
+    def download_finished(self, message) -> None:
+        if message == {}:
+            self.show_info(self.tr("No update found"))
+        else:
+            self.show_info(self.tr("Update found"))
+            self.folder = message["target_path"]
+            if os.path.basename(self.folder) == "resource":
+                interface_path = os.path.join(
+                    os.path.dirname(self.folder), "interface.json"
+                )
+                resource_path = self.folder
+                self.status = 0  # 0 直接选择resource目录，1选择resource目录的上级目录
+            else:
+                interface_path = os.path.join(self.folder, "interface.json")
+                resource_path = os.path.join(self.folder, "resource")
+                self.status = 1  # 0 直接选择resource目录，1选择resource目录的上级目录
+
+            if not os.path.exists(interface_path):
+                self.show_error(self.tr("The resource does not have an interface.json"))
+                return
+            elif not os.path.exists(resource_path):
+                self.show_error(self.tr("The resource is not a resource directory"))
+                return
+
+            self.path_LineEdit.setText(self.folder)
+            logger.info(f"资源路径 {self.folder}")
+            logger.info(f"interface.json路径 {interface_path}")
+            self.interface_data = Read_Config(interface_path)
+            project_name = self.interface_data.get("name", "")
+            projece_url = self.interface_data.get("url", "")
+            self.name_LineEdit.clear()
+            self.name_LineEdit.setText(project_name)
+            self.update_LineEdit.clear()
+            self.update_LineEdit.setText(projece_url)
+
+        self.search_button.setIcon(FIF.SEARCH)
+
+    def show_info(self, message) -> None:
+        InfoBar.info(
+            title=self.tr("Info"),
+            content=message,
+            orient=Qt.Orientation.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.BOTTOM_RIGHT,
+            duration=-1,
+            parent=self,
+        )
 
     def type_resource_name(self) -> None:
         self.folder = QFileDialog.getExistingDirectory(

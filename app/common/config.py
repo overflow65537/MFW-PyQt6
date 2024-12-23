@@ -59,9 +59,6 @@ class Config(QConfig):
     # 保存截图
     save_draw = ConfigItem("program", "save_draw", False, BoolValidator())
 
-    # 计划任务
-    schedule_task = ConfigItem("schedule_task", "schedule_task", [])
-
     # MAA路径
     maa_config_name = ConfigItem("Maa", "Maa_config_name", "")
     maa_config_path = ConfigItem("Maa", "Maa_config_path", "")
