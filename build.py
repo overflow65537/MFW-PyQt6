@@ -2,6 +2,7 @@ import PyInstaller.__main__
 import os
 import site
 import shutil
+import sys
 
 # 获取 site-packages 目录列表
 site_packages_paths = site.getsitepackages()
@@ -45,21 +46,28 @@ PyInstaller.__main__.run(
         "--clean",
     ]
 )
-
+print(
+    f"{os.path.join(os.getcwd(), "resource")} to {os.path.join(os.getcwd(), "dist", "MFW", "resource")}"
+)
 shutil.copytree(
     os.path.join(os.getcwd(), "resource"),
     os.path.join(os.getcwd(), "dist", "MFW", "resource"),
     dirs_exist_ok=True,
 )
-
-shutil.copytree(
-    os.path.join(os.getcwd(), "dll"),
-    os.path.join(os.getcwd(), "dist", "MFW"),
-    dirs_exist_ok=True,
+if sys.platform == "win32":
+    print(
+        f"{os.path.join(os.getcwd(), "dll")} to {os.path.join(os.getcwd(), "dist", "MFW")}"
+    )
+    shutil.copytree(
+        os.path.join(os.getcwd(), "dll"),
+        os.path.join(os.getcwd(), "dist", "MFW"),
+        dirs_exist_ok=True,
+    )
+print(
+    f"{os.path.join(os.getcwd(), "config", "emulator.json")} to {os.path.join(os.getcwd(), "dist", "MFW", "config", "emulator.json")}"
 )
-
-shutil.copytree(
+os.makedirs(os.path.join(os.getcwd(), "dist", "MFW", "config"), exist_ok=True)
+shutil.copy(
     os.path.join(os.getcwd(), "config", "emulator.json"),
     os.path.join(os.getcwd(), "dist", "MFW", "config", "emulator.json"),
-    dirs_exist_ok=True,
 )
