@@ -75,7 +75,7 @@ jobs:
 
       - name: Install
         run: |
-          python build.py  
+          python ./build.py  
         shell: pwsh  
 
       - name: Upload artifact
@@ -111,7 +111,7 @@ jobs:
       - name: Install
         shell: bash
         run: |
-          python build_linux.py 
+          python ./build_linux.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -145,7 +145,7 @@ jobs:
 
       - name: Install
         run: |
-          python build.py  
+          python ./build.py  
 
         shell: pwsh  
         
