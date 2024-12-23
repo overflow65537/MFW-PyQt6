@@ -71,8 +71,6 @@ jobs:
 
       - name: Install
         run: |
-          cd ..
-          gl
           python build.py  
         shell: pwsh  
 
@@ -105,8 +103,6 @@ jobs:
       - name: Install
         shell: bash
         run: |
-          cd ..
-          pwd
           python build.py 
 
       - name: Upload artifact
@@ -137,8 +133,6 @@ jobs:
 
       - name: Install
         run: |
-          cd ..
-          pwd
           python build.py  
 
         shell: pwsh  
@@ -152,7 +146,7 @@ jobs:
 
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
-    needs: [meta, windows, ubuntu]
+    needs: [meta, windows, ubuntu, macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
