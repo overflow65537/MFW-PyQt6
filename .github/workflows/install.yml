@@ -71,7 +71,7 @@ jobs:
 
       - name: Install
         run: |
-          ls
+          gl
           python build.py  
         shell: pwsh  
 
@@ -104,7 +104,7 @@ jobs:
       - name: Install
         shell: bash
         run: |
-          ls
+          pwd
           python build.py 
 
       - name: Upload artifact
@@ -135,7 +135,7 @@ jobs:
 
       - name: Install
         run: |
-          ls
+          pwd
           python build.py  
 
         shell: pwsh  
