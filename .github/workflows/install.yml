@@ -71,6 +71,7 @@ jobs:
 
       - name: Install
         run: |
+          cd ..
           gl
           python build.py  
         shell: pwsh  
@@ -104,6 +105,7 @@ jobs:
       - name: Install
         shell: bash
         run: |
+          cd ..
           pwd
           python build.py 
 
@@ -135,6 +137,7 @@ jobs:
 
       - name: Install
         run: |
+          cd ..
           pwd
           python build.py  
 
