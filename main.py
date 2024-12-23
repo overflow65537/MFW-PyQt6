@@ -89,11 +89,15 @@ def main(resource, config, directly):
     galleryTranslator = QTranslator()
 
     if locale == Language.CHINESE_SIMPLIFIED:
-        galleryTranslator.load(os.path.join(os.getcwd(), "i18n", "i18n.zh_CN.qm"))
+        galleryTranslator.load(
+            os.path.join(os.getcwd(), "resource", "i18n", "i18n.zh_CN.qm")
+        )
         logger.info("加载简体中文翻译")
 
     elif locale == Language.CHINESE_TRADITIONAL:
-        galleryTranslator.load(os.path.join(os.getcwd(), "i18n", "i18n.zh_HK.qm"))
+        galleryTranslator.load(
+            os.path.join(os.getcwd(), "resource", "i18n", "i18n.zh_HK.qm")
+        )
         logger.info("加载繁体中文翻译")
     elif locale == Language.ENGLISH:
         logger.info("加载英文翻译")

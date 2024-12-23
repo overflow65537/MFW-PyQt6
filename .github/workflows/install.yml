@@ -52,10 +52,6 @@ jobs:
   windows:
     needs: meta
     runs-on: windows-latest
-    strategy:
-      matrix:
-        arch: [aarch64, x86_64]
-      fail-fast: false
 
     steps:
       - uses: actions/checkout@v4
@@ -70,7 +66,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install nuitka
+          pip install pyinstaller
           pip install -r ./requirements.txt
 
       - name: Install
@@ -81,16 +77,12 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MFW-PyQt6-win-${{ matrix.arch }}
-          path: "main.dist"
+          name: MFW-PyQt6-win
+          path: "dist/MFW"
 
   ubuntu:
     needs: meta
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [aarch64, x86_64]
-      fail-fast: false
 
     steps:
       - uses: actions/checkout@v4
@@ -105,7 +97,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install nuitka
+          pip install pyinstaller
           pip install -r ./requirements.txt
           
       - name: Install
@@ -116,8 +108,39 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MFW-PyQt6-linux-${{ matrix.arch }}
-          path: "main.dist"
+          name: MFW-PyQt6-linux
+          path: "dist/MFW"
+          
+  macos:
+    needs: meta
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r ./requirements.txt
+
+      - name: Install
+        run: |
+          python ./build.py  
+        shell: pwsh  
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MFW-PyQt6-macos
+          path: "dist/MFW"
+
 
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}

@@ -117,7 +117,7 @@ class MainWindow(FluentWindow):
         """初始化窗口设置。"""
         self.resize(960, 780)
         self.setMinimumWidth(760)
-        self.setWindowIcon(QIcon("./logo.png"))
+        self.setWindowIcon(QIcon("./resource/icon/logo.png"))
         self.set_title()
         self.setMicaEffectEnabled(cfg.get(cfg.micaEnabled))
 

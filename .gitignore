@@ -445,9 +445,13 @@ build
 install
 main.dist
 main.build
+dist
+build
 
 # Tools
 tools/ImageCropper/**/*.png
 config/*
 !config/emulator.json
 !config/custom.json
+MFW.spec
+main.spec
