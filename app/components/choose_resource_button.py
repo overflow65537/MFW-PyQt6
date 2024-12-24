@@ -115,11 +115,8 @@ class CustomMessageBox(MessageBoxBase):
             logger.info(f"interface.json路径 {interface_path}")
             self.interface_data = Read_Config(interface_path)
             project_name = self.interface_data.get("name", "")
-            projece_url = self.interface_data.get("url", "")
             self.name_LineEdit.clear()
             self.name_LineEdit.setText(project_name)
-            self.update_LineEdit.clear()
-            self.update_LineEdit.setText(projece_url)
 
         self.search_button.setIcon(FIF.SEARCH)
 

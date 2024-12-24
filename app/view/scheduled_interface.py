@@ -91,12 +91,6 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.Cfg_Combox.setCurrentText(maa_config_data.config_name)
         self.res_combox.addItems(maa_config_data.resource_name_list)
         self.res_combox.setCurrentText(maa_config_data.resource_name)
-        """self.Trigger_Time_type.addItems([self.tr("Once"), self.tr("Loop")])
-        self.Trigger_WeekMonth.addItems(
-            [self.tr("hour"), self.tr("day"), self.tr("week")]
-        )
-        self.use_res_combo.addItems(maa_config_data.resource_name_list)
-        self.use_cfg_combo.addItems(maa_config_data.config_name_list)"""
 
     def get_list_items(self) -> list[str]:
         """获取列表中所有项的文本"""

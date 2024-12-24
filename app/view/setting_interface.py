@@ -9,7 +9,6 @@ from qfluentwidgets import (
     CustomColorSettingCard,
     setTheme,
     setThemeColor,
-    ConfigItem,
 )
 from qfluentwidgets import FluentIcon as FIF
 from qfluentwidgets import InfoBar
@@ -71,6 +70,7 @@ class SettingInterface(ScrollArea):
         self.initialize_about_settings()
         self.__initWidget()
         self.init_info()
+        cfg.set(cfg.run_after_startup, False)
 
     def init_info(self):
         """初始化控件信息。"""
@@ -129,6 +129,7 @@ class SettingInterface(ScrollArea):
     def clear_content(self):
         # 清空输入框和设置内容
         cfg.set(cfg.save_draw, False)
+        cfg.set(cfg.run_after_startup, False)
         self.ADB_port.lineEdit.clear()
         self.ADB_path.lineEdit.clear()
         self.emu_path.lineEdit.clear()
@@ -255,13 +256,13 @@ class SettingInterface(ScrollArea):
             self.tr("Custom Startup"), self.scrollWidget
         )
 
-        self.run_after_startup = SwitchSettingCard(
+        """self.run_after_startup = SwitchSettingCard(
             FIF.SPEED_HIGH,
             self.tr("run after startup"),
             self.tr("Launch the task immediately after starting the GUI program"),
             configItem=cfg.run_after_startup,
             parent=self.start_Setting,
-        )
+        )"""
 
         self.run_before_start = LineEditCard(
             icon=FIF.APPLICATION,
@@ -282,7 +283,7 @@ class SettingInterface(ScrollArea):
             button=True,
             parent=self.start_Setting,
         )
-        self.start_Setting.addSettingCard(self.run_after_startup)
+        # self.start_Setting.addSettingCard(self.run_after_startup)
         self.start_Setting.addSettingCard(self.run_before_start)
         self.start_Setting.addSettingCard(self.run_after_finish)
 
@@ -603,7 +604,7 @@ class SettingInterface(ScrollArea):
         else:
             InfoBar.info(
                 self.tr("Update available"),
-                f"{self.tr('New version: ')}{data_dict['tag_name']}",
+                self.tr("New version: ") + data_dict["tag_name"],
                 duration=2000,
                 parent=self,
             )
@@ -621,12 +622,15 @@ class SettingInterface(ScrollArea):
     def on_update_finished(self):
         InfoBar.success(
             self.tr("Update completed"),
-            f"{self.tr('Successfully updated to')} {update_dict['tag_name']}",
+            self.tr("Successfully updated to") + {update_dict["tag_name"]},
             duration=2000,
             parent=self,
         )
         self.updateCard.setContent(
-            f"{self.tr('Current')} {self.project_name} {self.tr('version:')} {update_dict['tag_name']}"
+            self.tr("Current")
+            + self.project_name
+            + self.tr("version:")
+            + update_dict["tag_name"]
         )
         self.updateCard.button.setText(self.tr("Check for updates"))
         self.updateCard.button.setEnabled(True)
