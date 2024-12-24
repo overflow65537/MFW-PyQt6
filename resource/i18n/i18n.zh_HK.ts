@@ -73,13 +73,38 @@
         <source>Resource already exists</source>
         <translation>資源已經存在</translation>
     </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="78"/>
+        <source>Please enter the update link</source>
+        <translation>請輸入更新連結</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="91"/>
+        <source>No update found</source>
+        <translation>未發現更新</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="93"/>
+        <source>Update found</source>
+        <translation>發現更新</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="153"/>
+        <source>The resource does not have an interface.json</source>
+        <translation>資源中缺少interface.json</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="127"/>
+        <source>Info</source>
+        <translation>信息</translation>
+    </message>
 </context>
 <context>
     <name>CustomSettingInterface</name>
     <message>
         <location filename="app/view/custom_setting_interface.py" line="24"/>
         <source>Custom Setting</source>
-        <translation>自定義程序設置</translation>
+        <translation>自定義程式設置</translation>
     </message>
     <message>
         <location filename="app/view/custom_setting_interface.py" line="26"/>
@@ -140,7 +165,7 @@
     <message>
         <location filename="app/view/main_window.py" line="67"/>
         <source>Custom Setting</source>
-        <translation>自定義程序設置</translation>
+        <translation>自定義程式設置</translation>
     </message>
     <message>
         <location filename="app/view/main_window.py" line="81"/>
@@ -166,7 +191,7 @@
     <message>
         <location filename="app/components/notic_setting_card.py" line="46"/>
         <source>OK</source>
-        <translation>確定</translation>
+        <translation>確認</translation>
     </message>
     <message>
         <location filename="app/components/notic_setting_card.py" line="48"/>
@@ -221,7 +246,7 @@
     <message>
         <location filename="app/components/notic_setting_card.py" line="269"/>
         <source>Server Port:</source>
-        <translation>伺服器端口：</translation>
+        <translation>伺服器連接埠：</translation>
     </message>
     <message>
         <location filename="app/components/notic_setting_card.py" line="270"/>
@@ -296,7 +321,20 @@
     <message>
         <location filename="app/components/notic_setting_card.py" line="298"/>
         <source>WxPusher Status:</source>
-        <translation>微信推送狀態：</translation>
+        <translation>微信推送狀態</translation>
+    </message>
+</context>
+<context>
+    <name>ScheduledInterface</name>
+    <message>
+        <location filename="app/view/scheduled_interface.py" line="311"/>
+        <source>Please add resources first.</source>
+        <translation>請先添加資源。</translation>
+    </message>
+    <message>
+        <location filename="app/view/scheduled_interface.py" line="148"/>
+        <source>Error</source>
+        <translation>錯誤</translation>
     </message>
 </context>
 <context>
@@ -334,7 +372,22 @@
     <message>
         <location filename="app/view/UI_scheduled_interface.py" line="126"/>
         <source>Use Configuration</source>
-        <translation>使用配置</translation>
+        <translation>选择配置</translation>
+    </message>
+    <message>
+        <location filename="app/view/UI_scheduled_interface.py" line="142"/>
+        <source>Configuration</source>
+        <translation>配置</translation>
+    </message>
+    <message>
+        <location filename="app/view/UI_scheduled_interface.py" line="144"/>
+        <source>Resource</source>
+        <translation>資源</translation>
+    </message>
+    <message>
+        <location filename="app/view/UI_scheduled_interface.py" line="144"/>
+        <source>Use Resource</source>
+    <translation>選擇資源</translation>
     </message>
 </context>
 <context>
@@ -352,7 +405,7 @@
     <message>
         <location filename="app/view/setting_interface.py" line="75"/>
         <source>ADB Port</source>
-        <translation>ADB 端口</translation>
+        <translation>ADB 連接埠</translation>
     </message>
     <message>
         <location filename="app/view/setting_interface.py" line="81"/>
@@ -402,7 +455,7 @@
     <message>
         <location filename="app/view/setting_interface.py" line="125"/>
         <source>Wait Time for Program Startup</source>
-        <translation>程序啟動等待時間</translation>
+        <translation>程式啟動等待時間</translation>
     </message>
     <message>
         <location filename="app/view/setting_interface.py" line="138"/>
@@ -412,17 +465,27 @@
     <message>
         <location filename="app/view/setting_interface.py" line="149"/>
         <source>Select Program</source>
-        <translation>選擇程序</translation>
+        <translation>選擇程式</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="142"/>
+        <location filename="app/view/setting_interface.py" line="258"/>
+        <source>run after startup</source>
+        <translation>啟動後直接運行</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="258"/>
+        <source>Launch the task immediately after starting the GUI program</source>
+        <translation>啟動 GUI 程式後立即運行任務</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="266"/>
         <source>Run Program Before Start</source>
-        <translation>啟動前運行程序</translation>
+        <translation>啟動前運行程式</translation>
     </message>
     <message>
         <location filename="app/view/setting_interface.py" line="149"/>
         <source>Run Program After Finish</source>
-        <translation>結束後運行程序</translation>
+        <translation>結束後運行程式</translation>
     </message>
     <message>
         <location filename="app/view/setting_interface.py" line="162"/>
@@ -675,7 +738,12 @@
         <translation>更新可用</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="506"/>
+        <location filename="app/view/setting_interface.py" line="604"/>
+        <source>New version: </source>
+        <translation>新版本: </translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="611"/>
         <source>Update</source>
         <translation>更新</translation>
     </message>
@@ -702,7 +770,17 @@
     <message>
         <location filename="app/view/setting_interface.py" line="596"/>
         <source>Choose file</source>
-        <translation>選擇文件</translation>
+        <translation>选择文件</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="374"/>
+        <source>WxPusher</source>
+        <translation>微信</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="374"/>
+        <source>Successfully updated to</source>
+        <translation>成功更新至</translation>
     </message>
 </context>
 <context>
@@ -755,7 +833,12 @@
     <message>
         <location filename="app/view/task_interface.py" line="119"/>
         <source>Failed</source>
-        <translation>失敗</translation>
+        <translation>失败</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="117"/>
+        <source>Run Other Config</source>
+        <translation>運行其他配置</translation>
     </message>
     <message>
         <location filename="app/view/task_interface.py" line="241"/>
@@ -860,12 +943,12 @@
     <message>
         <location filename="app/view/task_interface.py" line="745"/>
         <source>No game detected</source>
-        <translation>指定程序不存在</translation>
+        <translation>指定程式不存在</translation>
     </message>
     <message>
         <location filename="app/view/task_interface.py" line="746"/>
         <source>Game detected</source>
-        <translation>檢測到指定程序</translation>
+        <translation>檢測到指定程式</translation>
     </message>
     <message>
         <location filename="app/view/task_interface.py" line="748"/>
@@ -1001,7 +1084,12 @@
     <message>
         <location filename="app/view/UI_task_interface.py" line="187"/>
         <source>Auto Detect</source>
-        <translation>自動檢測</translation>
+        <translation>自动检测</translation>
+     </message>
+    <message>
+        <location filename="app/view/UI_task_interface.py" line="197"/>
+        <source>Finished</source>
+        <translation>完成後</translation>
     </message>
     <message>
         <location filename="app/view/UI_task_interface.py" line="204"/>

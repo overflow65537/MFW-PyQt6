@@ -4,74 +4,99 @@
 <context>
     <name>CustomMessageBox</name>
     <message>
-        <location filename="app/components/choose_resource_button.py" line="26"/>
+        <location filename="app/components/choose_resource_button.py" line="31"/>
         <source>choose Resource</source>
         <translation>选择资源</translation>
     </message>
     <message>
-        <location filename="app/components/choose_resource_button.py" line="28"/>
+        <location filename="app/components/choose_resource_button.py" line="33"/>
         <source>Enter the name of the resource</source>
         <translation>输入资源名称</translation>
     </message>
     <message>
-        <location filename="app/components/choose_resource_button.py" line="33"/>
+        <location filename="app/components/choose_resource_button.py" line="38"/>
         <source>Enter the path of the resource</source>
         <translation>输入资源路径</translation>
     </message>
     <message>
         <location filename="app/components/choose_resource_button.py" line="37"/>
         <source>Select Resource</source>
-        <translation>选择资源</translation>
+        <translation type="obsolete">选择资源</translation>
     </message>
     <message>
-        <location filename="app/components/choose_resource_button.py" line="46"/>
+        <location filename="app/components/choose_resource_button.py" line="51"/>
         <source>Enter update link (optional)</source>
         <translation>输入更新链接(可选)</translation>
     </message>
     <message>
-        <location filename="app/components/choose_resource_button.py" line="57"/>
+        <location filename="app/components/choose_resource_button.py" line="70"/>
         <source>Confirm</source>
         <translation>确认</translation>
     </message>
     <message>
-        <location filename="app/components/choose_resource_button.py" line="58"/>
+        <location filename="app/components/choose_resource_button.py" line="71"/>
         <source>Cancel</source>
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="app/components/choose_resource_button.py" line="64"/>
+        <location filename="app/components/choose_resource_button.py" line="138"/>
         <source>Choose folder</source>
         <translation>选择文件夹</translation>
     </message>
     <message>
         <location filename="app/components/choose_resource_button.py" line="74"/>
         <source>The resource does not have an interface.json file</source>
-        <translation>当前路径interface内无interface.json文件</translation>
+        <translation type="obsolete">当前路径interface内无interface.json文件</translation>
     </message>
     <message>
-        <location filename="app/components/choose_resource_button.py" line="77"/>
+        <location filename="app/components/choose_resource_button.py" line="156"/>
         <source>The resource is not a resource directory</source>
         <translation>未找到resource文件</translation>
     </message>
     <message>
-        <location filename="app/components/choose_resource_button.py" line="93"/>
+        <location filename="app/components/choose_resource_button.py" line="171"/>
         <source>Error</source>
         <translation>错误</translation>
     </message>
     <message>
-        <location filename="app/components/choose_resource_button.py" line="113"/>
+        <location filename="app/components/choose_resource_button.py" line="200"/>
         <source>Resource name cannot be empty</source>
         <translation>资源名称不能为空</translation>
     </message>
     <message>
-        <location filename="app/components/choose_resource_button.py" line="116"/>
+        <location filename="app/components/choose_resource_button.py" line="203"/>
         <source>Resource path cannot be empty</source>
         <translation>资源路径不能为空</translation>
     </message>
     <message>
-        <location filename="app/components/choose_resource_button.py" line="119"/>
+        <location filename="app/components/choose_resource_button.py" line="206"/>
         <source>Resource already exists</source>
         <translation>资源已经存在</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="78"/>
+        <source>Please enter the update link</source>
+        <translation>请输入更新链接</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="91"/>
+        <source>No update found</source>
+        <translation>未发现更新</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="93"/>
+        <source>Update found</source>
+        <translation>发现更新</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="153"/>
+        <source>The resource does not have an interface.json</source>
+        <translation>资源中缺少interface.json</translation>
+    </message>
+    <message>
+        <location filename="app/components/choose_resource_button.py" line="127"/>
+        <source>Info</source>
+        <translation>信息</translation>
     </message>
 </context>
 <context>
@@ -300,6 +325,19 @@
     </message>
 </context>
 <context>
+    <name>ScheduledInterface</name>
+    <message>
+        <location filename="app/view/scheduled_interface.py" line="311"/>
+        <source>Please add resources first.</source>
+        <translation>请先添加资源。</translation>
+    </message>
+    <message>
+        <location filename="app/view/scheduled_interface.py" line="148"/>
+        <source>Error</source>
+        <translation>错误</translation>
+    </message>
+</context>
+<context>
     <name>Scheduled_Interface</name>
     <message>
         <location filename="app/view/UI_scheduled_interface.py" line="112"/>
@@ -355,379 +393,394 @@
 <context>
     <name>SettingInterface</name>
     <message>
-        <location filename="app/view/setting_interface.py" line="42"/>
+        <location filename="app/view/setting_interface.py" line="60"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="59"/>
+        <location filename="app/view/setting_interface.py" line="168"/>
         <source>ADB</source>
         <translation>安卓调试桥</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="75"/>
+        <location filename="app/view/setting_interface.py" line="176"/>
         <source>ADB Port</source>
         <translation>ADB 端口</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="81"/>
+        <location filename="app/view/setting_interface.py" line="183"/>
         <source>Select ADB Path</source>
         <translation>选择 ADB 路径</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="81"/>
+        <location filename="app/view/setting_interface.py" line="183"/>
         <source>ADB Path</source>
         <translation>ADB 路径</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="88"/>
+        <location filename="app/view/setting_interface.py" line="192"/>
         <source>Select Emulator Path</source>
         <translation>选择模拟器路径</translation>
     </message>
     <message>
         <location filename="app/view/setting_interface.py" line="88"/>
         <source>Emulator Path</source>
-        <translation>模拟器路径</translation>
+        <translation type="obsolete">模拟器路径</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="95"/>
+        <location filename="app/view/setting_interface.py" line="201"/>
         <source>Wait Time for Emulator Startup</source>
         <translation>模拟器启动等待时间</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="109"/>
+        <location filename="app/view/setting_interface.py" line="220"/>
         <source>Win32</source>
         <translation>Win32</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="111"/>
+        <location filename="app/view/setting_interface.py" line="221"/>
         <source>Select Executable Path</source>
         <translation>选择可执行文件路径</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="111"/>
+        <location filename="app/view/setting_interface.py" line="221"/>
         <source>Executable Path</source>
         <translation>可执行文件路径</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="118"/>
+        <location filename="app/view/setting_interface.py" line="230"/>
         <source>Run Parameters</source>
         <translation>运行参数</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="125"/>
+        <location filename="app/view/setting_interface.py" line="237"/>
         <source>Wait Time for Program Startup</source>
         <translation>程序启动等待时间</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="138"/>
+        <location filename="app/view/setting_interface.py" line="254"/>
         <source>Custom Startup</source>
         <translation>自定义启动</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="149"/>
+        <location filename="app/view/setting_interface.py" line="276"/>
         <source>Select Program</source>
         <translation>选择程序</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="142"/>
+        <location filename="app/view/setting_interface.py" line="258"/>
         <source>run after startup</source>
         <translation>启动后直接运行</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="142"/>
+        <location filename="app/view/setting_interface.py" line="258"/>
         <source>Launch the task immediately after starting the GUI program</source>
         <translation>启动 GUI 程序后立即运行任务</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="142"/>
+        <location filename="app/view/setting_interface.py" line="266"/>
         <source>Run Program Before Start</source>
         <translation>启动前运行程序</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="149"/>
+        <location filename="app/view/setting_interface.py" line="276"/>
         <source>Run Program After Finish</source>
         <translation>结束后运行程序</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="162"/>
+        <location filename="app/view/setting_interface.py" line="291"/>
         <source>Personalization</source>
         <translation>个性化设置</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="166"/>
+        <location filename="app/view/setting_interface.py" line="295"/>
         <source>Mica Effect</source>
         <translation>云母效果</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="166"/>
+        <location filename="app/view/setting_interface.py" line="295"/>
         <source>Apply semi transparent to windows and surfaces</source>
         <translation>对窗口和表面应用半透明效果</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="173"/>
+        <location filename="app/view/setting_interface.py" line="302"/>
         <source>Application Theme</source>
         <translation>应用主题</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="173"/>
+        <location filename="app/view/setting_interface.py" line="302"/>
         <source>Change the appearance of your application</source>
         <translation>更改应用的外观</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="173"/>
+        <location filename="app/view/setting_interface.py" line="302"/>
         <source>Light</source>
         <translation>亮色</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="173"/>
+        <location filename="app/view/setting_interface.py" line="302"/>
         <source>Dark</source>
         <translation>暗色</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="188"/>
+        <location filename="app/view/setting_interface.py" line="317"/>
         <source>Use system setting</source>
         <translation>使用系统设置</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="181"/>
+        <location filename="app/view/setting_interface.py" line="310"/>
         <source>Theme Color</source>
         <translation>主题颜色</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="181"/>
+        <location filename="app/view/setting_interface.py" line="310"/>
         <source>Change the theme color of your application</source>
         <translation>更改应用的主题颜色</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="188"/>
+        <location filename="app/view/setting_interface.py" line="317"/>
         <source>Interface Zoom</source>
         <translation>界面缩放</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="188"/>
+        <location filename="app/view/setting_interface.py" line="317"/>
         <source>Change the size of widgets and fonts</source>
         <translation>更改小部件和字体的大小</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="196"/>
+        <location filename="app/view/setting_interface.py" line="332"/>
         <source>Language</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="196"/>
+        <location filename="app/view/setting_interface.py" line="332"/>
         <source>Set your preferred language for UI</source>
         <translation>设置您喜欢的用户界面语言</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="213"/>
+        <location filename="app/view/setting_interface.py" line="349"/>
         <source>Notice</source>
         <translation>通知</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="242"/>
+        <location filename="app/view/setting_interface.py" line="374"/>
         <source>Modify</source>
         <translation>更改</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="215"/>
+        <location filename="app/view/setting_interface.py" line="351"/>
         <source>DingTalk</source>
         <translation>钉钉</translation>
     </message>
     <message>
         <location filename="app/view/setting_interface.py" line="215"/>
         <source>DingTalk Configuration</source>
-        <translation>钉钉配置</translation>
+        <translation type="obsolete">钉钉配置</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="224"/>
+        <location filename="app/view/setting_interface.py" line="359"/>
         <source>Lark</source>
         <translation>飞书</translation>
     </message>
     <message>
         <location filename="app/view/setting_interface.py" line="224"/>
         <source>Lark Configuration</source>
-        <translation>飞书配置</translation>
+        <translation type="obsolete">飞书配置</translation>
     </message>
     <message>
         <location filename="app/view/setting_interface.py" line="233"/>
         <source>Qmsg</source>
-        <translation>Qmsg</translation>
+        <translation type="obsolete">Qmsg</translation>
     </message>
     <message>
         <location filename="app/view/setting_interface.py" line="233"/>
         <source>Qmsg Configuration</source>
-        <translation>Qmsg配置</translation>
+        <translation type="obsolete">Qmsg配置</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="242"/>
+        <location filename="app/view/setting_interface.py" line="367"/>
         <source>SMTP</source>
         <translation>SMTP</translation>
     </message>
     <message>
         <location filename="app/view/setting_interface.py" line="242"/>
         <source>SMTP Configuration</source>
-        <translation>SMTP配置</translation>
+        <translation type="obsolete">SMTP配置</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="383"/>
+        <location filename="app/view/setting_interface.py" line="508"/>
         <source>DEV Mode</source>
         <translation>开发者选项</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="362"/>
+        <location filename="app/view/setting_interface.py" line="488"/>
         <source>default</source>
         <translation>默认</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="303"/>
+        <location filename="app/view/setting_interface.py" line="437"/>
         <source>Select GPU</source>
         <translation>选择GPU</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="361"/>
+        <location filename="app/view/setting_interface.py" line="437"/>
         <source>Use GPU to accelerate inference</source>
         <translation>使用GPU加速推理</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="315"/>
+        <location filename="app/view/setting_interface.py" line="449"/>
         <source>Select Win32 Input Mode</source>
         <translation>选择Win32输入模式</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="327"/>
+        <location filename="app/view/setting_interface.py" line="460"/>
         <source>Select Win32 Screencap Mode</source>
         <translation>选择Win32截图模式</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="344"/>
+        <location filename="app/view/setting_interface.py" line="471"/>
         <source>Select ADB Input Mode</source>
         <translation>选择ADB输入模式</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="362"/>
+        <location filename="app/view/setting_interface.py" line="488"/>
         <source>Select ADB Screencap Mode</source>
         <translation>选择ADB截图模式</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="383"/>
+        <location filename="app/view/setting_interface.py" line="508"/>
         <source>If enabled, screenshots will be saved in ./debug/vision</source>
         <translation>如果开启,会保存截图至./debug/vision</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="416"/>
+        <location filename="app/view/setting_interface.py" line="541"/>
         <source>About</source>
         <translation>关于</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="526"/>
+        <location filename="app/view/setting_interface.py" line="631"/>
         <source>Check for updates</source>
         <translation>检查更新</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="409"/>
+        <location filename="app/view/setting_interface.py" line="534"/>
         <source>Submit Feedback</source>
         <translation>发送反馈</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="409"/>
+        <location filename="app/view/setting_interface.py" line="527"/>
         <source>Current</source>
         <translation>当前 </translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="409"/>
+        <location filename="app/view/setting_interface.py" line="527"/>
         <source>version:</source>
         <translation> 版本:</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="419"/>
+        <location filename="app/view/setting_interface.py" line="534"/>
         <source>Submit feedback to help us improve</source>
         <translation>发送反馈帮助我们改进 </translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="416"/>
+        <location filename="app/view/setting_interface.py" line="541"/>
         <source>About MFW-PyQt6</source>
         <translation>关于MFW-PyQt6</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="416"/>
+        <location filename="app/view/setting_interface.py" line="541"/>
         <source>MFW-PyQt6 is open source under the GPLv3 license. Visit the project URL for more information.</source>
         <translation>MFW-PyQt6 遵循GPLv3开源协议,访问项目地址以了解更多</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="454"/>
+        <location filename="app/view/setting_interface.py" line="558"/>
         <source>Auto</source>
         <translation>自动</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="455"/>
+        <location filename="app/view/setting_interface.py" line="559"/>
         <source>Disabled</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="465"/>
+        <location filename="app/view/setting_interface.py" line="569"/>
         <source>Checking for updates...</source>
         <translation>检查更新中</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="478"/>
+        <location filename="app/view/setting_interface.py" line="583"/>
         <source>Update failed</source>
         <translation>更新失败</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="467"/>
+        <location filename="app/view/setting_interface.py" line="571"/>
         <source>Please set the project URL first</source>
         <translation>请检查资源链接</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="478"/>
+        <location filename="app/view/setting_interface.py" line="583"/>
         <source>Please check your internet connection</source>
         <translation>请检查网络连接</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="489"/>
+        <location filename="app/view/setting_interface.py" line="594"/>
         <source>No need to update</source>
         <translation>无需更新</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="489"/>
+        <location filename="app/view/setting_interface.py" line="594"/>
         <source>You are using the latest version</source>
         <translation>你已经在使用最新版本</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="499"/>
+        <location filename="app/view/setting_interface.py" line="604"/>
         <source>Update available</source>
         <translation>更新可用</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="506"/>
+        <location filename="app/view/setting_interface.py" line="604"/>
+        <source>New version: </source>
+        <translation>新版本: </translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="611"/>
         <source>Update</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="514"/>
+        <location filename="app/view/setting_interface.py" line="619"/>
         <source>Updating...</source>
         <translation>更新中</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="517"/>
+        <location filename="app/view/setting_interface.py" line="622"/>
         <source>Update completed</source>
         <translation>更新完成</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="567"/>
+        <location filename="app/view/setting_interface.py" line="675"/>
         <source>Updated successfully</source>
         <translation>更新成功</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="567"/>
+        <location filename="app/view/setting_interface.py" line="675"/>
         <source>Configuration takes effect after restart</source>
         <translation>配置保存,重启后生效</translation>
     </message>
     <message>
-        <location filename="app/view/setting_interface.py" line="596"/>
+        <location filename="app/view/setting_interface.py" line="704"/>
         <source>Choose file</source>
         <translation>选择文件</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="374"/>
+        <source>WxPusher</source>
+        <translation>微信</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="374"/>
+        <source>Successfully updated to</source>
+        <translation>成功更新至</translation>
     </message>
 </context>
 <context>
