@@ -319,6 +319,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def close_application(self):
+        if maa_config_data.config.get("emu_path") == "":
+            return
         self.app_process.terminate()
         try:
             self.app_process.wait(timeout=5)
@@ -386,6 +388,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 await maafw.stop_task()
                 return
         # 加载资源
+        await maafw.load_resource("", True)
         resource_path = ""
         resource_target = self.Resource_Combox.currentText()
 
@@ -426,6 +429,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if controller_type == "Adb" and self.need_runing:  # adb控制
             # 启动模拟器
             emu_path = maa_config_data.config.get("emu_path")
+            if emu_path == "":
+                logger.warning("未设置模拟器路径")
             emu_wait_time = int(maa_config_data.config.get("emu_wait_time"))
             if emu_path != "" and self.need_runing:
                 logger.info(f"启动模拟器")
