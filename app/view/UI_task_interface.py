@@ -1,4 +1,5 @@
-from PyQt6.QtCore import QSize, QMetaObject, QCoreApplication
+from PyQt6.QtCore import QSize, QMetaObject, QCoreApplication, Qt, QMimeData
+from PyQt6.QtGui import QDrag
 from PyQt6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
@@ -7,6 +8,7 @@ from PyQt6.QtWidgets import (
     QFrame,
     QAbstractItemView,
 )
+
 from qfluentwidgets import PushButton, BodyLabel, ComboBox, TextEdit
 from ..components.listwidge_menu_draggable import ListWidge_Menu_Draggable
 from ..components.right_check_button import RightCheckButton
@@ -157,15 +159,24 @@ class Ui_Task_Interface(object):
 
         # 中间布局（包含任务列表）
         self.middle_layout = QVBoxLayout()
-        self.Task_List = ListWidge_Menu_Draggable(Task_Interface)
-        self.Task_List.setDragEnabled(True)
-        self.Task_List.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
-        self.Topic_Text = TextEdit(Task_Interface)
-        self.Topic_Text.setReadOnly(True)
-        self.Topic_Text.setObjectName("Topic_Text")
+        self.Task_List = ListWidge_Menu_Draggable(self)
 
+        self.Task_List.setDragDropMode(
+            QAbstractItemView.DragDropMode.DragDrop
+        )  # 允许外部拖拽和内部移动
+
+        self.Delete_label = BodyLabel(self)
+        self.Delete_label.setObjectName("Delete_label")
+        self.Delete_label.setFixedHeight(30)
+        self.Delete_label.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        self.Delete_label.setText("Drag to Delete")
+        self.Delete_label.setStyleSheet("background-color: rgba(255, 0, 0, 0.5);")
+        self.Delete_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.Delete_label.setAcceptDrops(True)
         self.middle_layout.addWidget(self.Task_List)
-        self.middle_layout.addWidget(self.Topic_Text)
+        self.middle_layout.addWidget(self.Delete_label)
 
         # 右侧布局（包含文本编辑区域）
         self.right_layout = QVBoxLayout()
@@ -195,3 +206,4 @@ class Ui_Task_Interface(object):
         self.MoveDown_Button.setText(_translate("Task_Interface", "Move Down"))
         self.Delete_Button.setText(_translate("Task_Interface", "Delete"))
         self.AddTask_Button.setText(_translate("Task_Interface", "Add Task"))
+        self.Delete_label.setText(_translate("Task_Interface", "drag to delete"))

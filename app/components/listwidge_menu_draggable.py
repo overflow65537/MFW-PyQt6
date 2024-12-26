@@ -7,7 +7,9 @@ from ..utils.tool import (
     Save_Config,
     Get_Values_list2,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QMimeData, QPoint
+from PyQt6.QtGui import QDrag, QDragMoveEvent, QDropEvent, QDragEnterEvent
+from PyQt6.QtWidgets import QAbstractItemView
 from ..common.signal_bus import signalBus
 from ..common.maa_config_data import maa_config_data
 
@@ -15,6 +17,12 @@ from ..common.maa_config_data import maa_config_data
 class ListWidge_Menu_Draggable(ListWidget):
     def __init__(self, parent=None):
         super(ListWidge_Menu_Draggable, self).__init__(parent)
+        self.setAcceptDrops(True)
+        self.setDragEnabled(True)  # 允许拖拽
+        self.setDefaultDropAction(Qt.DropAction.MoveAction)  # 设置默认的拖拽动作
+        self.setDragDropMode(
+            QAbstractItemView.DragDropMode.InternalMove
+        )  # 设置内部移动模式
 
     def get_task_list_widget(self) -> list[Any]:
         items = []
@@ -111,14 +119,52 @@ class ListWidge_Menu_Draggable(ListWidget):
         elif Select_Target != -1 and self.count() > 1:
             self.setCurrentRow(Select_Target - 1)
 
-    def dropEvent(self, event):
-        begin = self.currentRow()
-        super(ListWidge_Menu_Draggable, self).dropEvent(event)
-        end = self.currentRow()
-        need_to_move = maa_config_data.config["task"].pop(begin)
-        maa_config_data.config["task"].insert(end, need_to_move)
-        Save_Config(maa_config_data.config_path, maa_config_data.config)
+    def startDrag(self, supportedActions):
+        item = self.currentItem()
+        if item is not None:
+            drag = QDrag(self)
+            mimeData = QMimeData()
+            mimeData.setText(item.text())
+            drag.setMimeData(mimeData)
+            drag.exec(supportedActions)
 
-        signalBus.update_task_list.emit()
-        self.setCurrentRow(end)
-        signalBus.dragging_finished.emit()
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
+        if event.mimeData().hasText():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event: QDragMoveEvent) -> None:
+        if event.mimeData().hasText():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event: QDropEvent) -> None:
+        if event.proposedAction() == Qt.DropAction.MoveAction:
+            # 获取拖拽开始的索引
+            source_item = self.currentItem()
+            if source_item is None:
+                super(ListWidge_Menu_Draggable, self).dropEvent(event)
+                return
+
+            begin = self.row(source_item)
+
+            # 获取拖拽结束的索引
+            position = event.position().toPoint()
+            dragged_item = self.itemAt(position)
+            end = self.row(dragged_item) if dragged_item else self.count()
+
+            if begin != end:  # 只有在移动操作时更新任务配置
+                task_list = maa_config_data.config["task"]
+                if 0 <= begin < len(task_list) and 0 <= end < len(task_list):
+                    # 移动任务配置
+                    task_to_move = task_list.pop(begin)
+                    task_list.insert(end, task_to_move)
+                    maa_config_data.config["task"] = task_list
+                    Save_Config(maa_config_data.config_path, maa_config_data.config)
+
+                    signalBus.update_task_list.emit()
+                    self.setCurrentRow(end)
+                    signalBus.dragging_finished.emit()
+        super(ListWidge_Menu_Draggable, self).dropEvent(event)

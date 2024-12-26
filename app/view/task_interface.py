@@ -6,7 +6,8 @@ import asyncio
 from pathlib import Path
 import json
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QMimeData
+from PyQt6.QtGui import QDrag
 from PyQt6.QtWidgets import QApplication, QWidget
 from qfluentwidgets import InfoBar, InfoBarPosition
 
@@ -45,9 +46,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.setupUi(self)
-        signalBus.resource_exist.connect(self.resource_exist)
+
         maafw.notification_handler = MyNotificationHandler()
         self.bind_signals()
+
         if cfg.get(cfg.resource_exist):
             self.init_ui()
 
@@ -56,6 +58,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.show_error(self.tr("Resource file not detected"))
 
         self.toggle_task_options(False)
+
+        # 隐藏不需要的组件
+        self.MoveUp_Button.hide()
+        self.MoveDown_Button.hide()
+        self.Delete_Button.hide()
 
     def resource_exist(self, status: bool):
         if status:
@@ -92,7 +99,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Control_Combox.clear()
         self.Autodetect_combox.clear()
         self.Finish_combox.clear()
-        self.Topic_Text.clear()
         self.Autodetect_combox.clear()
 
     def enable_widgets(self, enable: bool):
@@ -143,7 +149,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.TaskName_Title_2,
             self.TaskName_Title_3,
             self.TaskName_Title_4,
-            self.Topic_Text,
         ]
         for combox in task_comboxes:
             combox.setVisible(visible)
@@ -151,6 +156,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             title.setVisible(visible)
 
     def bind_signals(self):
+        signalBus.resource_exist.connect(self.resource_exist)
         signalBus.Notice_msg.connect(self.print_notice)
         signalBus.callback.connect(self.callback)
         signalBus.update_task_list.connect(self.update_task_list_passive)
@@ -178,9 +184,44 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Finish_combox_res.currentIndexChanged.connect(self.Save_Finish_Option_Res)
         self.Finish_combox_cfg.currentIndexChanged.connect(self.Save_Finish_Option_Cfg)
         self.Task_List.itemSelectionChanged.connect(self.Select_Task)
+        # self.Task_List.itemPressed.connect(self.startDrag)
+        self.Delete_label.dragEnterEvent = self.dragEnter
+        self.Delete_label.dropEvent = self.drop
 
-    def _print(self):
-        self.TaskOutput_Text.append("test")
+    def dragEnter(self, event):
+        if event.mimeData().hasText():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def drop(self, event):
+        dropped_text = event.mimeData().text()
+        self.Delete_label.setText(self.tr("Delete: ") + dropped_text)
+        if " " in dropped_text:
+            dropped_text = dropped_text.split(" ")[0]
+
+        # 找到并删除对应的 task
+        Task_List = Get_Values_list2(maa_config_data.config_path, "task")
+        for index, task in enumerate(Task_List):
+            if task.get("name") == dropped_text:
+                del Task_List[index]
+                self.Task_List.takeItem(
+                    self.Task_List.currentRow()
+                )  # 从列表中移除对应项
+                break  # 找到并删除后退出循环
+
+        maa_config_data.config["task"] = Task_List
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
+        event.acceptProposedAction()
+        self.Task_List.setCurrentRow(-1)
+        self.AddTask_Button.setText(self.tr("Add Task"))
+
+    def startDrag(self, item):
+        drag = QDrag(self)
+        mimeData = QMimeData()
+        mimeData.setText(item.text())
+        drag.setMimeData(mimeData)
+        drag.exec(Qt.DropAction.MoveAction)
 
     def print_notice(self, message: str):
         if "DingTalk Failed".lower() in message.lower():
