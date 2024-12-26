@@ -65,7 +65,9 @@ def main(resource, config, directly):
             cfg.set(cfg.maa_config_path, maa_config_list[maa_resource_name]["default"])
             maa_config_name = "default"
             maa_config_path = maa_config_list[maa_resource_name]["default"]
+        cfg.set(cfg.run_after_startup, False)
         if directly:
+            logger.info("检查到 -d 参数,直接启动")
             cfg.set(cfg.run_after_startup, True)
         logger.info("资源文件存在")
         cfg.set(cfg.resource_exist, True)

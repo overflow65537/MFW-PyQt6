@@ -70,7 +70,6 @@ class SettingInterface(ScrollArea):
         self.initialize_about_settings()
         self.__initWidget()
         self.init_info()
-        cfg.set(cfg.run_after_startup, False)
 
     def init_info(self):
         """初始化控件信息。"""
@@ -129,7 +128,6 @@ class SettingInterface(ScrollArea):
     def clear_content(self):
         # 清空输入框和设置内容
         cfg.set(cfg.save_draw, False)
-        cfg.set(cfg.run_after_startup, False)
         self.ADB_port.lineEdit.clear()
         self.ADB_path.lineEdit.clear()
         self.emu_path.lineEdit.clear()
