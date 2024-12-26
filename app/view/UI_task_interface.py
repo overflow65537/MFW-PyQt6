@@ -171,8 +171,6 @@ class Ui_Task_Interface(object):
         self.Delete_label.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
-        self.Delete_label.setText("Drag to Delete")
-        self.Delete_label.setStyleSheet("background-color: rgba(255, 0, 0, 0.5);")
         self.Delete_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.Delete_label.setAcceptDrops(True)
         self.middle_layout.addWidget(self.Task_List)
@@ -206,4 +204,3 @@ class Ui_Task_Interface(object):
         self.MoveDown_Button.setText(_translate("Task_Interface", "Move Down"))
         self.Delete_Button.setText(_translate("Task_Interface", "Delete"))
         self.AddTask_Button.setText(_translate("Task_Interface", "Add Task"))
-        self.Delete_label.setText(_translate("Task_Interface", "drag to delete"))

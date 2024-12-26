@@ -215,6 +215,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         event.acceptProposedAction()
         self.Task_List.setCurrentRow(-1)
         self.AddTask_Button.setText(self.tr("Add Task"))
+        self.Delete_label.setText("")
+        self.Delete_label.setStyleSheet("background-color: rgba(255, 255, 255, 0);")
 
     def startDrag(self, item):
         drag = QDrag(self)
@@ -745,6 +747,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.update_task_list()
         self.AddTask_Button.setText(self.tr("Add Task"))
         self.Task_List.setCurrentRow(-1)
+        self.Delete_label.setText("")
+        self.Delete_label.setStyleSheet("background-color: rgba(255, 255, 255, 0);")
 
     def Add_All_Tasks(self):
         if maa_config_data.config == {}:
@@ -904,6 +908,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Task_List.setCurrentRow(Select_Target + direction)
 
     def Select_Task(self):
+        self.Delete_label.setText(self.tr("Drag to Delete"))
+        self.Delete_label.setStyleSheet("background-color: rgba(255, 0, 0, 0.5);")
+
         self.AddTask_Button.setText(self.tr("Rewrite"))
         Select_Target = self.Task_List.currentRow()
         if Select_Target == -1:
