@@ -120,3 +120,4 @@ class ListWidge_Menu_Draggable(ListWidget):
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
         signalBus.update_task_list.emit()
+        self.setCurrentRow(end)
