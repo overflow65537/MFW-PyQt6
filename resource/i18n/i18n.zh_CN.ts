@@ -1050,6 +1050,16 @@
         <source>save ADB config...</source>
         <translation>保存ADB控制器</translation>
     </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="662"/>
+        <source>Add Task</source>
+        <translation>添加</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="662"/>
+        <source>Rewrite</source>
+        <translation>重写</translation>
+    </message>
     <name>Task_Interface</name>
     <message>
         <location filename="app/view/UI_task_interface.py" line="182"/>

@@ -164,7 +164,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.MoveUp_Button.rightClicked.connect(self.Move_Top)
         self.MoveDown_Button.clicked.connect(self.Move_Down)
         self.MoveDown_Button.rightClicked.connect(self.Move_Bottom)
-        self.SelectTask_Combox_1.activated.connect(self.Add_Select_Task_More_Select)
+        self.SelectTask_Combox_1.currentTextChanged.connect(
+            self.Add_Select_Task_More_Select
+        )
         self.Resource_Combox.currentTextChanged.connect(self.Save_Resource)
         self.Control_Combox.currentTextChanged.connect(self.Save_Controller)
         self.AutoDetect_Button.clicked.connect(self.Start_Detection)
@@ -173,6 +175,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Finish_combox.currentIndexChanged.connect(self.rewrite_Completion_Options)
         self.Finish_combox_res.currentIndexChanged.connect(self.Save_Finish_Option_Res)
         self.Finish_combox_cfg.currentIndexChanged.connect(self.Save_Finish_Option_Cfg)
+        self.Task_List.itemSelectionChanged.connect(self.Select_Task)
 
     def _print(self):
         self.TaskOutput_Text.append("test")
@@ -645,15 +648,36 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def Add_Task(self):
         if maa_config_data.config == {}:
             return
-        Select_Target = self.SelectTask_Combox_1.currentText()
-        Option = self.extract_task_options(
-            Select_Target, maa_config_data.interface_config
-        )
+        # 如果选中了任务的某项,则修改该项任务
+        if self.Task_List.currentRow() != -1:
+            Select_index = self.Task_List.currentRow()
+            Select_Target = self.SelectTask_Combox_1.currentText()
+            Option = self.extract_task_options(
+                Select_Target, maa_config_data.interface_config
+            )
+            del maa_config_data.config["task"][Select_index]
+            maa_config_data.config["task"].insert(
+                Select_index,
+                {
+                    "name": Select_Target,
+                    "option": Option,
+                },
+            )
 
-        maa_config_data.config["task"].append({"name": Select_Target, "option": Option})
+        else:
+            Select_Target = self.SelectTask_Combox_1.currentText()
+            Option = self.extract_task_options(
+                Select_Target, maa_config_data.interface_config
+            )
+            maa_config_data.config["task"].append(
+                {"name": Select_Target, "option": Option}
+            )
+
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
         self.update_task_list()
+        self.AddTask_Button.setText(self.tr("Add Task"))
+        self.Task_List.setCurrentRow(-1)
 
     def Add_All_Tasks(self):
         if maa_config_data.config == {}:
@@ -811,6 +835,24 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         self.update_task_list()
         self.Task_List.setCurrentRow(Select_Target + direction)
+
+    def Select_Task(self):
+        self.AddTask_Button.setText(self.tr("Rewrite"))
+        Select_Target = self.Task_List.currentRow()
+        if Select_Target == -1:
+            return
+        # 将task_combox的内容设置为选中项目
+        self.SelectTask_Combox_1.setCurrentText(
+            maa_config_data.config["task"][Select_Target]["name"]
+        )
+        # 填充任务选项
+        option_data = maa_config_data.config["task"][Select_Target]["option"]
+        option_length = len(option_data)
+        for i in range(option_length):
+            select_box = getattr(self, f"SelectTask_Combox_{i + 2}")
+            label = getattr(self, f"TaskName_Title_{i + 2}")
+            select_box.setCurrentText(option_data[i]["value"])
+            label.setText(option_data[i]["name"])
 
     def Save_Resource(self):
         self.update_config_value("resource", self.Resource_Combox.currentText())
