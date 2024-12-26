@@ -130,6 +130,11 @@
         <translation>刪除</translation>
     </message>
     <message>
+        <location filename="app/components/listwidge_menu_draggable.py" line="43"/>
+        <source>Delete All</source>
+        <translation>刪除全部</translation>
+    </message>
+    <message>
         <location filename="app/components/listwidge_menu_draggable.py" line="122"/>
         <source>Error</source>
         <translation>錯誤</translation>
@@ -789,6 +794,11 @@
         <location filename="app/view/task_interface.py" line="884"/>
         <source>Error</source>
         <translation>錯誤</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="911"/>
+        <source>Drag to Delete</source>
+        <translation>拖動至此刪除</translation>
     </message>
     <message>
         <location filename="app/view/task_interface.py" line="122"/>
