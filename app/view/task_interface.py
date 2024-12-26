@@ -213,6 +213,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         maa_config_data.config["task"] = Task_List
         Save_Config(maa_config_data.config_path, maa_config_data.config)
         event.acceptProposedAction()
+        self.update_task_list()
         self.Task_List.setCurrentRow(-1)
         self.AddTask_Button.setText(self.tr("Add Task"))
         self.Delete_label.setText("")
