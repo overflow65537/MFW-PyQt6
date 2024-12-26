@@ -69,6 +69,7 @@ class ListWidge_Menu_Draggable(ListWidget):
         maa_config_data.config["task"] = []
         Save_Config(maa_config_data.config_path, maa_config_data.config)
         signalBus.update_task_list.emit()
+        signalBus.dragging_finished.emit()
 
     def Delete_Task(self):
         Select_Target = self.currentRow()
