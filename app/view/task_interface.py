@@ -157,9 +157,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         signalBus.start_finish.connect(self.ready_Start_Up)
         signalBus.start_task_inmediately.connect(self.Start_Up)
         self.AddTask_Button.clicked.connect(self.Add_Task)
+        self.AddTask_Button.rightClicked.connect(self.Add_All_Tasks)
         self.Delete_Button.clicked.connect(self.Delete_Task)
+        self.Delete_Button.rightClicked.connect(self.Delete_all_task)
         self.MoveUp_Button.clicked.connect(self.Move_Up)
+        self.MoveUp_Button.rightClicked.connect(self.Move_Top)
         self.MoveDown_Button.clicked.connect(self.Move_Down)
+        self.MoveDown_Button.rightClicked.connect(self.Move_Bottom)
         self.SelectTask_Combox_1.activated.connect(self.Add_Select_Task_More_Select)
         self.Resource_Combox.currentTextChanged.connect(self.Save_Resource)
         self.Control_Combox.currentTextChanged.connect(self.Save_Controller)
@@ -651,6 +655,38 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         self.update_task_list()
 
+    def Add_All_Tasks(self):
+        if maa_config_data.config == {}:
+            return
+
+        for task in maa_config_data.interface_config["task"]:
+            selected_value = []
+            task_name = task.get("name")
+            options = task.get("option")
+            if options:
+                for pipeline_option in options:
+                    target = maa_config_data.interface_config["option"][
+                        pipeline_option
+                    ]["cases"][0]["name"]
+                    selected_value.append(target)
+
+            options_dicts = []
+            if options:
+                for i, option_name in enumerate(options):
+                    # 如果有option，则选择对应的项作为值
+                    options_dicts.append(
+                        {"name": option_name, "value": selected_value[i]}
+                    )
+            maa_config_data.config["task"].append(
+                {"name": task_name, "option": options_dicts}
+            )
+
+        # 保存配置
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
+
+        # 更新任务列表
+        self.update_task_list()
+
     def extract_task_options(self, Select_Target, interface_Config):
         options_dicts = []
         for task in interface_Config["task"]:
@@ -691,11 +727,69 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             elif Select_Target != -1:
                 self.Task_List.setCurrentRow(Select_Target - 1)
 
+    def Delete_all_task(self):
+        self.Task_List.clear()
+        maa_config_data.config["task"] = []
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
+        self.update_task_list()
+
     def Move_Up(self):
         self.move_task(direction=-1)
 
+    def Move_Top(self):
+        if maa_config_data.config == {}:
+            return
+        Select_Target = self.Task_List.currentRow()
+
+        if Select_Target == -1:
+            return  # 如果没有选中的任务，则直接返回
+
+        # 获取所选任务
+        task_to_move = maa_config_data.config["task"][Select_Target]
+
+        # 将所选任务从当前位置移除
+        maa_config_data.config["task"].pop(Select_Target)
+
+        # 将所选任务添加到最上层
+        maa_config_data.config["task"].insert(0, task_to_move)
+
+        # 保存配置
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
+
+        # 更新任务列表
+        self.update_task_list()
+
+        # 设置当前选中行为最上层
+        self.Task_List.setCurrentRow(0)
+
     def Move_Down(self):
         self.move_task(direction=1)
+
+    def Move_Bottom(self):
+        if maa_config_data.config == {}:
+            return
+        Select_Target = self.Task_List.currentRow()
+
+        if Select_Target == -1:
+            return  # 如果没有选中的任务，则直接返回
+
+        # 获取所选任务
+        task_to_move = maa_config_data.config["task"][Select_Target]
+
+        # 将所选任务从当前位置移除
+        maa_config_data.config["task"].pop(Select_Target)
+
+        # 将所选任务添加到最下层
+        maa_config_data.config["task"].append(task_to_move)
+
+        # 保存配置
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
+
+        # 更新任务列表
+        self.update_task_list()
+
+        # 设置当前选中行为最下层
+        self.Task_List.setCurrentRow(len(maa_config_data.config["task"]) - 1)
 
     def move_task(self, direction: int):
         if maa_config_data.config == {}:

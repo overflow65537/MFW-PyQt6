@@ -7,8 +7,9 @@ from PyQt6.QtWidgets import (
     QFrame,
     QAbstractItemView,
 )
-from qfluentwidgets import PushButton, BodyLabel, ComboBox, TextEdit, SwitchButton
+from qfluentwidgets import PushButton, BodyLabel, ComboBox, TextEdit
 from ..components.listwidge_menu_draggable import ListWidge_Menu_Draggable
+from ..components.right_check_button import RightCheckButton
 
 
 class Ui_Task_Interface(object):
@@ -106,10 +107,10 @@ class Ui_Task_Interface(object):
         self.SelectTask_Combox_3 = ComboBox(Task_Interface)
         self.SelectTask_Combox_4 = ComboBox(Task_Interface)
 
-        self.MoveUp_Button = PushButton(Task_Interface)
-        self.MoveDown_Button = PushButton(Task_Interface)
-        self.Delete_Button = PushButton(Task_Interface)
-        self.AddTask_Button = PushButton(Task_Interface)
+        self.MoveUp_Button = RightCheckButton(Task_Interface)
+        self.MoveDown_Button = RightCheckButton(Task_Interface)
+        self.Delete_Button = RightCheckButton(Task_Interface)
+        self.AddTask_Button = RightCheckButton(Task_Interface)
 
         self.MoveUp_Button.setObjectName("MoveUp_Button")
         self.MoveDown_Button.setObjectName("MoveDown_Button")
