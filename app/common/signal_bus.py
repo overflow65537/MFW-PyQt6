@@ -23,6 +23,7 @@ class SignalBus(QObject):
     start_task_inmediately = pyqtSignal()  # 立即启动任务信号
     readme_available = pyqtSignal(str)  # readme文件信号
     download_finished = pyqtSignal(dict)  # 搜索资源完成信号
+    dragging_finished = pyqtSignal()  # 拖拽完成信号
 
 
 signalBus = SignalBus()

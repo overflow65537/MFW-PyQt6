@@ -121,3 +121,4 @@ class ListWidge_Menu_Draggable(ListWidget):
 
         signalBus.update_task_list.emit()
         self.setCurrentRow(end)
+        signalBus.dragging_finished.emit()

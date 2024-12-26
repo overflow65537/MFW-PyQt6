@@ -157,6 +157,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         signalBus.update_finished_action.connect(self.init_finish_combox)
         signalBus.start_finish.connect(self.ready_Start_Up)
         signalBus.start_task_inmediately.connect(self.Start_Up)
+        signalBus.dragging_finished.connect(self.Add_Task)
         self.AddTask_Button.clicked.connect(self.Add_Task)
         self.AddTask_Button.rightClicked.connect(self.Add_All_Tasks)
         self.Delete_Button.clicked.connect(self.Delete_Task)
