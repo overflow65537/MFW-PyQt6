@@ -44,6 +44,7 @@ command = [
 ]
 if sys.platform == "win32":
     command.insert(2, "--noconsole")
+    command.insert(2, "--icon=resource/icon/logo.ico")
 # 运行 PyInstaller
 PyInstaller.__main__.run(command)
 print(
