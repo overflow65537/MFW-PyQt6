@@ -18,11 +18,9 @@ class ListWidge_Menu_Draggable(ListWidget):
     def __init__(self, parent=None):
         super(ListWidge_Menu_Draggable, self).__init__(parent)
         self.setAcceptDrops(True)
-        self.setDragEnabled(True)  # 允许拖拽
-        self.setDefaultDropAction(Qt.DropAction.MoveAction)  # 设置默认的拖拽动作
-        self.setDragDropMode(
-            QAbstractItemView.DragDropMode.InternalMove
-        )  # 设置内部移动模式
+        self.setDragEnabled(True)
+        self.setDefaultDropAction(Qt.DropAction.MoveAction)
+        self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
 
     def get_task_list_widget(self) -> list[Any]:
         items = []
@@ -47,6 +45,7 @@ class ListWidge_Menu_Draggable(ListWidget):
         action_move_up = Action(FIF.UP, self.tr("Move Up"))
         action_move_down = Action(FIF.DOWN, self.tr("Move Down"))
         action_delete = Action(FIF.DELETE, self.tr("Delete"))
+        action_delete_all = Action(FIF.DELETE, self.tr("Delete All"))
 
         if selected_row == -1:
             action_move_up.setEnabled(False)
@@ -56,12 +55,20 @@ class ListWidge_Menu_Draggable(ListWidget):
         action_move_up.triggered.connect(self.Move_Up)
         action_move_down.triggered.connect(self.Move_Down)
         action_delete.triggered.connect(self.Delete_Task)
+        action_delete_all.triggered.connect(self.Delete_All_Task)
 
         menu.addAction(action_move_up)
         menu.addAction(action_move_down)
         menu.addAction(action_delete)
+        menu.addAction(action_delete_all)
 
         menu.exec(e.globalPos(), aniType=MenuAnimationType.DROP_DOWN)
+
+    def Delete_All_Task(self):
+        self.clear()
+        maa_config_data.config["task"] = []
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
+        signalBus.update_task_list.emit()
 
     def Delete_Task(self):
         Select_Target = self.currentRow()
