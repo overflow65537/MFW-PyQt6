@@ -4,6 +4,7 @@ import platform
 from qasync import asyncSlot
 import asyncio
 from pathlib import Path
+import json
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication, QWidget
@@ -560,29 +561,53 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         # 任务过程
         self.S2_Button.setEnabled(True)
+        # 遍历配置任务列表
         for task_list in maa_config_data.config["task"]:
+            override_options = {}
+            # 检查是否需要运行任务，如果不需要则停止当前任务并返回
             if not self.need_runing:
                 await maafw.stop_task()
                 return
-            for task_enter in maa_config_data.interface_config["task"]:
+            # 遍历interface任务列表
+            for index, task_enter in enumerate(
+                maa_config_data.interface_config["task"]
+            ):
                 if task_enter["name"] == task_list["name"]:
-                    self.entry = task_enter["entry"]
-            if task_list["option"] == []:
-                logger.info(f"运行任务:{self.entry}")
-                self.TaskOutput_Text.append(self.tr("task running:") + f" {self.entry}")
-                await maafw.run_task(self.entry)
-            else:
-                override_options = {}
+                    self.entry = task_enter["entry"]  # 找到任务入口
+                    enter_index = index
+                    break
+            # 如果interface中有覆盖选项，则更新覆盖选项字典
+            if maa_config_data.interface_config["task"][enter_index].get(
+                "pipeline_override", False
+            ):
+                override_options.update(
+                    maa_config_data.interface_config["task"][enter_index][
+                        "pipeline_override"
+                    ]
+                )
+                logger.debug(
+                    f"覆盖选项:\n{json.dumps(override_options, indent=4,ensure_ascii=False)}"
+                )
+            if task_list["option"] != []:
+                # 如果任务列表中有选项，则遍历每个选项
                 for task_option in task_list["option"]:
-                    # 遍历 MAA_Pi_Config 中 task 的 option
+                    # 遍历 MAA_Pi_Config 中与当前任务选项名称对应的 cases
                     for override in maa_config_data.interface_config["option"][
                         task_option["name"]
                     ]["cases"]:
+                        # 找到与任务选项值匹配的覆盖情况
                         if override["name"] == task_option["value"]:
+                            # 更新覆盖选项字典，添加当前覆盖情况的 pipeline_override
                             override_options.update(override["pipeline_override"])
-                logger.info(f"运行任务:{self.entry}\n任务选项: {override_options}")
-                self.TaskOutput_Text.append(self.tr("running task:") + f" {self.entry}")
-                await maafw.run_task(self.entry, override_options)
+                # 记录日志信息，包括任务名称和覆盖选项
+            logger.info(
+                f"运行任务:{self.entry}\n任务选项:\n{json.dumps(override_options, indent=4,ensure_ascii=False)}"
+            )
+            # 在任务输出文本框中添加任务运行信息
+            self.TaskOutput_Text.append(self.tr("running task:") + f" {self.entry}")
+            # 异步运行任务，并传入覆盖选项
+            await maafw.run_task(self.entry, override_options)
+
         self.TaskOutput_Text.append(self.tr("Task finished"))
         logger.info("任务完成")
         # 发送外部通知
