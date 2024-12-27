@@ -7,8 +7,15 @@ from ..utils.tool import (
     Save_Config,
     Get_Values_list2,
 )
-from PyQt6.QtCore import Qt, QMimeData, QPoint
-from PyQt6.QtGui import QDrag, QDragMoveEvent, QDropEvent, QDragEnterEvent
+from PyQt6.QtCore import Qt, QMimeData
+from PyQt6.QtGui import (
+    QDrag,
+    QDragMoveEvent,
+    QDropEvent,
+    QDragEnterEvent,
+    QMouseEvent,
+    QContextMenuEvent,
+)
 from PyQt6.QtWidgets import QAbstractItemView
 from ..common.signal_bus import signalBus
 from ..common.maa_config_data import maa_config_data
@@ -30,14 +37,14 @@ class ListWidge_Menu_Draggable(ListWidget):
                 items.append(item.text())
         return items
 
-    def mousePressEvent(self, e):
+    def mousePressEvent(self, e: QMouseEvent):
         if e.button() == Qt.MouseButton.RightButton:
             item = self.itemAt(e.pos())
             if item:
                 self.setCurrentItem(item)
         super(ListWidge_Menu_Draggable, self).mousePressEvent(e)
 
-    def contextMenuEvent(self, e):  # type: ignore
+    def contextMenuEvent(self, e: QContextMenuEvent):
         menu = RoundMenu(parent=self)
 
         selected_row = self.currentRow()

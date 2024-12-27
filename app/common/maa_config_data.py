@@ -4,23 +4,23 @@ from ..common.config import cfg
 from ..utils.logger import logger
 import json
 import os
+from typing import Dict, List, Any
 
 
 class MaaConfigData:
 
-    interface_config: dict = {}
+    interface_config: Dict[str, List[Dict]] = {}
     interface_config_path: str = ""
 
-    config: dict = {}
+    config: Dict[str, List[Dict]] = {}
     config_name: str = ""
     config_path: str = ""
-    config_data: dict = {}
-    config_name_list: list = []
-
+    config_data: Dict[str, Dict[str, Any]] = {}
+    config_name_list: list = [str]
     resource_name: str = ""
     resource_path: str = ""
-    resource_data: dict = {}
-    resource_name_list: list = []
+    resource_data: Dict[str, Dict[str, Any]] = {}
+    resource_name_list: list = [str]
 
 
 maa_config_data = MaaConfigData()

@@ -5,10 +5,11 @@ from qasync import asyncSlot
 import asyncio
 from pathlib import Path
 import json
+from typing import List, Dict
 
 from PyQt6.QtCore import Qt, QMimeData
-from PyQt6.QtGui import QDrag
-from PyQt6.QtWidgets import QApplication, QWidget
+from PyQt6.QtGui import QDrag, QDropEvent
+from PyQt6.QtWidgets import QApplication, QWidget, QListWidgetItem
 from qfluentwidgets import InfoBar, InfoBarPosition
 
 from ..view.UI_task_interface import Ui_Task_Interface
@@ -187,20 +188,22 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Delete_label.dragEnterEvent = self.dragEnter
         self.Delete_label.dropEvent = self.drop
 
-    def dragEnter(self, event):
+    def dragEnter(self, event: QDropEvent):
         if event.mimeData().hasText():
             event.acceptProposedAction()
         else:
             event.ignore()
 
-    def drop(self, event):
+    def drop(self, event: QDropEvent):
         dropped_text = event.mimeData().text()
         self.Delete_label.setText(self.tr("Delete: ") + dropped_text)
         if " " in dropped_text:
             dropped_text = dropped_text.split(" ")[0]
 
         # 找到并删除对应的 task
-        Task_List = Get_Values_list2(maa_config_data.config_path, "task")
+        Task_List: List[Dict[str, str]] = Get_Values_list2(
+            maa_config_data.config_path, "task"
+        )
         for index, task in enumerate(Task_List):
             if task.get("name") == dropped_text:
                 del Task_List[index]
@@ -208,7 +211,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     self.Task_List.currentRow()
                 )  # 从列表中移除对应项
                 break  # 找到并删除后退出循环
-
         maa_config_data.config["task"] = Task_List
         Save_Config(maa_config_data.config_path, maa_config_data.config)
         event.acceptProposedAction()
@@ -218,7 +220,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Delete_label.setText("")
         self.Delete_label.setStyleSheet("background-color: rgba(255, 255, 255, 0);")
 
-    def startDrag(self, item):
+    def startDrag(self, item: QListWidgetItem):
         drag = QDrag(self)
         mimeData = QMimeData()
         mimeData.setText(item.text())

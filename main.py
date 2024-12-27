@@ -3,6 +3,7 @@ import maa.library
 import os
 import sys
 from qasync import QEventLoop
+from qfluentwidgets import ConfigItem
 
 from PyQt6.QtCore import Qt, QTranslator, QTimer
 from PyQt6.QtWidgets import QApplication
@@ -16,16 +17,17 @@ from app.common.signal_bus import signalBus
 from app.common.maa_config_data import maa_config_data
 from app.utils.tool import show_error_message
 import argparse
+from typing import List, Dict, Tuple, Union
 
 
-def main(resource, config, directly):
+def main(resource: str, config: str, directly: bool):
     # 检查资源文件是否存在
-    maa_config_name = cfg.get(cfg.maa_config_name)
-    maa_config_path = cfg.get(cfg.maa_config_path)
-    maa_resource_name = cfg.get(cfg.maa_resource_name)
-    maa_resource_path = cfg.get(cfg.maa_resource_path)
-    maa_config_list = cfg.get(cfg.maa_config_list)
-    maa_resource_list = cfg.get(cfg.maa_resource_list)
+    maa_config_name: str = cfg.get(cfg.maa_config_name)
+    maa_config_path: str = cfg.get(cfg.maa_config_path)
+    maa_resource_name: str = cfg.get(cfg.maa_resource_name)
+    maa_resource_path: str = cfg.get(cfg.maa_resource_path)
+    maa_config_list: Dict[str, Dict[str, str]] = cfg.get(cfg.maa_config_list)
+    maa_resource_list[str, Dict[str, str]] = cfg.get(cfg.maa_resource_list)
 
     if (
         maa_config_name == ""
@@ -86,7 +88,7 @@ def main(resource, config, directly):
     app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
 
     # internationalization
-    locale = cfg.get(cfg.language)
+    locale: ConfigItem = cfg.get(cfg.language)
     translator = FluentTranslator(locale.value)
     galleryTranslator = QTranslator()
 

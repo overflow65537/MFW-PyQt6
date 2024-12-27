@@ -8,7 +8,7 @@ import socket
 import asyncio
 import traceback
 import shutil
-from typing import Literal
+from typing import Literal, Optional, List, Dict, Any
 
 
 from PyQt6.QtWidgets import QMessageBox
@@ -44,7 +44,7 @@ def show_error_message():
     msg_box.exec()
 
 
-def Read_Config(paths) -> dict:
+def Read_Config(paths: str) -> Dict:
     """读取指定路径的JSON配置文件。
 
     Args:
@@ -66,7 +66,7 @@ def Read_Config(paths) -> dict:
         show_error_message()
 
 
-def Save_Config(paths, data):
+def Save_Config(paths: str, data: Dict):
     """将数据保存到指定路径的JSON配置文件。
 
     Args:
@@ -81,7 +81,7 @@ def Save_Config(paths, data):
         json.dump(data, MAA_Config, indent=4, ensure_ascii=False)
 
 
-def gui_init(resource_Path, maa_pi_config_Path, interface_Path) -> dict:
+def gui_init(resource_Path: str, maa_pi_config_Path: str, interface_Path: str) -> Dict:
     """初始化GUI组件的配置信息。
 
     Args:
@@ -145,7 +145,7 @@ def gui_init(resource_Path, maa_pi_config_Path, interface_Path) -> dict:
         show_error_message()
 
 
-def Get_Values_list2(path, key1) -> list:
+def Get_Values_list2(path: str, key1: str) -> List:
     """获取指定键的值列表。
 
     Args:
@@ -161,7 +161,7 @@ def Get_Values_list2(path, key1) -> list:
     return List
 
 
-def Get_Values_list(path, key1) -> list:
+def Get_Values_list(path: str, key1: str) -> List:
     """获取组件的初始参数。
 
     Args:
@@ -188,7 +188,7 @@ def Get_Values_list(path, key1) -> list:
         return List
 
 
-def Get_Values_list_Option(path, key1) -> list:
+def Get_Values_list_Option(path: str, key1: str) -> List:
     """获取组件的初始参数，包括选项。
 
     Args:
@@ -211,10 +211,11 @@ def Get_Values_list_Option(path, key1) -> list:
     return List
 
 
-def Get_Task_List(path, target) -> list:
+def Get_Task_List(path: str, target: str) -> List:
     """根据选项名称获取所有case的name列表。
 
     Args:
+        path (str): 配置文件路径。
         target (str): 选项名称。
 
     Returns:
@@ -228,7 +229,7 @@ def Get_Task_List(path, target) -> list:
     return lists
 
 
-def find_process_by_name(process_name) -> str | None:
+def find_process_by_name(process_name: str) -> Optional[str]:
     """查找指定名称的进程，并返回其可执行文件的路径。
 
     Args:
@@ -241,9 +242,10 @@ def find_process_by_name(process_name) -> str | None:
         if proc.info["name"].lower() == process_name.lower():
             # 如果一样返回可执行文件的绝对路径
             return proc.info["exe"]
+    return None
 
 
-def find_existing_file(info_dict) -> str | Literal[False]:
+def find_existing_file(info_dict: Dict) -> str | Literal[False]:
     """根据给出的路径信息查找可执行文件。
 
     Args:
@@ -269,7 +271,7 @@ def find_existing_file(info_dict) -> str | Literal[False]:
     return False
 
 
-async def check_port(port) -> list:
+async def check_port(port: List[str]) -> List[str]:
     """检查指定端口是否打开。
 
     Args:
@@ -280,7 +282,7 @@ async def check_port(port) -> list:
     """
     port_result = []
 
-    async def check_single_port(p):
+    async def check_single_port(p: str):
         p = int(p.rsplit(":", 1)[1])
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
@@ -302,7 +304,7 @@ async def check_port(port) -> list:
     return port_result
 
 
-def check_path_for_keyword(path) -> str:
+def check_path_for_keyword(path: str) -> str:
     """检查路径字符串是否包含指定的关键字。
 
     Args:
@@ -318,7 +320,7 @@ def check_path_for_keyword(path) -> str:
     return "unknown device"
 
 
-def check_adb_path(adb_data) -> bool:
+def check_adb_path(adb_data: Dict) -> bool:
     """检查ADB路径和地址是否有效。
 
     Args:
@@ -342,7 +344,7 @@ def check_adb_path(adb_data) -> bool:
         return False  # 路径或地址正确
 
 
-def get_gpu_info() -> dict:
+def get_gpu_info() -> Dict[int, str]:
     """获取GPU相关信息。
 
     Returns:
@@ -399,7 +401,7 @@ def get_gpu_info() -> dict:
     return gpu_info
 
 
-def find_key_by_value(data_dict, target_value) -> str | None:
+def find_key_by_value(data_dict: Dict[str, Any], target_value: Any) -> Optional[str]:
     """根据目标值查找字典中的键。
 
     Args:
@@ -415,7 +417,9 @@ def find_key_by_value(data_dict, target_value) -> str | None:
     return None
 
 
-def access_nested_dict(data_dict, keys: list, value=None) -> str | dict | None:
+def access_nested_dict(
+    data_dict: Dict[str, Dict[str, Any]], keys: List[str], value: str = None
+) -> str | dict | None:
     """访问嵌套字典中的值。
 
     Args:
@@ -446,7 +450,12 @@ def access_nested_dict(data_dict, keys: list, value=None) -> str | dict | None:
             return None  # 键不存在时返回None
 
 
-def rewrite_contorller(data_dict, controller, mode, new_value=None) -> str | dict:
+def rewrite_contorller(
+    data_dict: Dict[str, Dict[str, Any]],
+    controller: str,
+    mode: str,
+    new_value: str = None,
+) -> str | dict:
     """重写控制器配置。
 
     Args:
@@ -476,7 +485,9 @@ def rewrite_contorller(data_dict, controller, mode, new_value=None) -> str | dic
         return current_level
 
 
-def delete_contorller(data_dict, controller, mode) -> dict:
+def delete_contorller(
+    data_dict: Dict[str, Dict[str, Any]], controller: str, mode: str
+) -> dict:
     """删除控制器配置。
 
     Args:
@@ -501,7 +512,7 @@ def delete_contorller(data_dict, controller, mode) -> dict:
     return data_dict
 
 
-def for_config_get_url(url, mode) -> str:
+def for_config_get_url(url: str, mode: str) -> str:
     """根据给定的URL和模式返回相应的链接。
 
     Args:
@@ -531,7 +542,7 @@ def for_config_get_url(url, mode) -> str:
     return return_url
 
 
-def get_controller_type(select_value, interface_path) -> str | None:
+def get_controller_type(select_value: str, interface_path: str) -> str | None:
     """获取控制器类型。
 
     Args:

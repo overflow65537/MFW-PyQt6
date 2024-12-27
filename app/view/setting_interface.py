@@ -553,7 +553,7 @@ class SettingInterface(ScrollArea):
         self.aboutGroup.addSettingCard(self.feedbackCard)
         self.aboutGroup.addSettingCard(self.aboutCard)
 
-    def get_unique_gpu_mapping(self, gpu_mapping) -> list:
+    def get_unique_gpu_mapping(self, gpu_mapping: dict) -> list:
         """获取唯一的 GPU 名称列表。"""
         gpu_combox_list = list(set(gpu_mapping.values()))
         gpu_combox_list.insert(0, self.tr("Auto"))
@@ -702,7 +702,7 @@ class SettingInterface(ScrollArea):
         """手动选择完成后运行的程序脚本。"""
         self.__select_file(self.run_after_finish, "run_after")
 
-    def __select_file(self, setting_card, config_key):
+    def __select_file(self, setting_card: LineEditCard, config_key):
         """帮助方法，用于处理文件选择和设置内容。"""
         file_name, _ = QFileDialog.getOpenFileName(
             self, self.tr("Choose file"), "./", "All Files (*)"

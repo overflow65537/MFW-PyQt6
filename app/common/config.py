@@ -1,6 +1,5 @@
 import sys
 from enum import Enum
-import os
 
 from PyQt6.QtCore import QLocale
 from qfluentwidgets import (
