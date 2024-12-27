@@ -10,8 +10,14 @@
 - Python 3.12
 
 ## 使用方法
+### 直接使用
 - `pip install -r requirements.txt`
 - `python main.py`
+
+### 使用GitHub action 自动构建
+- 将depoly\deploy.py 中的项目名和项目地址修改为你的项目名和项目地址并上传至GitHub仓库根目录
+- 将deploy\install.yml 中MaaXXX修改为你的项目名并上传至GitHub仓库的.github/workflows目录
+- 推送新版本
 
 ## 功能说明
 ### 多配置启动
