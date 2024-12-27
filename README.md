@@ -15,8 +15,8 @@
 - `python main.py`
 
 ### 使用GitHub action 自动构建
-- 将depoly\deploy.py 中的项目名和项目地址修改为你的项目名和项目地址并上传至GitHub仓库根目录
-- 将deploy\install.yml 中MaaXXX修改为你的项目名并上传至GitHub仓库的.github/workflows目录
+- 将`depoly\deploy.py` 中的项目名和项目地址修改为你的项目名和项目地址并上传至`GitHub仓库根目录`
+- 将`deploy\install.yml` 中MaaXXX修改为你的项目名并上传至GitHub仓库的`.github/workflows`目录
 - 推送新版本
 
 ## 功能说明
