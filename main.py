@@ -27,7 +27,7 @@ def main(resource: str, config: str, directly: bool):
     maa_resource_name: str = cfg.get(cfg.maa_resource_name)
     maa_resource_path: str = cfg.get(cfg.maa_resource_path)
     maa_config_list: Dict[str, Dict[str, str]] = cfg.get(cfg.maa_config_list)
-    maa_resource_list[str, Dict[str, str]] = cfg.get(cfg.maa_resource_list)
+    maa_resource_list: Dict[str, Dict[str, str]] = cfg.get(cfg.maa_resource_list)
 
     if (
         maa_config_name == ""
