@@ -15,7 +15,6 @@ import shutil
 
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
-import requests
 import markdown
 
 
@@ -56,7 +55,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
 
         markdown_url = for_config_get_url(update_url, "readme")
         self.readme.readme_url = markdown_url
-        self.readme.run()
+        self.readme.start()
 
     def update_readme(self, msg):
         """更新README"""

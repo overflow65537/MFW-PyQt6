@@ -60,6 +60,8 @@ class SettingInterface(ScrollArea):
         # 更新工作线程
         self.UpdateWorker = check_Update(self)
 
+        self.Updatethread = Update(self)
+
         # 初始化设置
         self.initialize_adb_settings()
         self.initialize_win32_settings()
@@ -561,7 +563,6 @@ class SettingInterface(ScrollArea):
 
     def update_check(self):
         if self.project_url != "":
-            self.UpdateWorker.update_available.connect(self.ready_to_update)
             self.UpdateWorker.start()
             self.updateCard.clicked.disconnect()
             self.updateCard.button.setEnabled(False)
@@ -609,10 +610,10 @@ class SettingInterface(ScrollArea):
             self.updateCard.button.setEnabled(True)
             self.updateCard.button.setText(self.tr("Update"))
             self.updateCard.clicked.connect(self.update_now)
-            self.Updatethread = Update(update_dict)
-            self.Updatethread.update_finished.connect(self.on_update_finished)
+            self.Updatethread.update_dict = data_dict
 
     def update_now(self):
+        signalBus.update_finished.connect(self.on_update_finished)
         self.Updatethread.start()
         self.updateCard.button.setEnabled(False)
         self.updateCard.button.setText(self.tr("Updating..."))
@@ -620,7 +621,7 @@ class SettingInterface(ScrollArea):
     def on_update_finished(self):
         InfoBar.success(
             self.tr("Update completed"),
-            self.tr("Successfully updated to") + {update_dict["tag_name"]},
+            self.tr("Successfully updated to") + update_dict["tag_name"],
             duration=2000,
             parent=self,
         )
@@ -733,7 +734,7 @@ class SettingInterface(ScrollArea):
 
     def __connectSignalToSlot(self):
         """连接信号到对应的槽函数。"""
-
+        self.UpdateWorker.update_available.connect(self.ready_to_update)
         cfg.appRestartSig.connect(self.__showRestartTooltip)
         signalBus.update_adb.connect(self.update_adb)
 

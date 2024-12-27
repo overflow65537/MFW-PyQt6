@@ -15,6 +15,7 @@ from ..utils.tool import Read_Config, Save_Config
 from ..utils.logger import logger
 import os
 from ..utils.update import download_bundle
+from ..common.signal_bus import signalBus
 
 
 class CustomMessageBox(MessageBoxBase):
@@ -44,6 +45,7 @@ class CustomMessageBox(MessageBoxBase):
             QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed
         )
         self.resourceButton.clicked.connect(self.type_resource_name)
+        signalBus.download_finished.connect(self.download_finished)
 
         self.path_layout.addWidget(self.resourceButton)
 
@@ -78,17 +80,17 @@ class CustomMessageBox(MessageBoxBase):
             self.show_error(self.tr("Please enter the update link"))
             return
         self.search_button.setIcon(FIF.MORE)
-        self.search_button.disconnect()
         updata_link = self.update_LineEdit.text()
         logger.info(f"更新链接 {updata_link}")
 
         self.download_bundle.project_url = updata_link
-        self.download_bundle.finished.connect(self.download_finished)
-        self.download_bundle.run()
+
+        self.download_bundle.start()
 
     def download_finished(self, message) -> None:
         if message == {}:
             self.show_info(self.tr("No update found"))
+
         else:
             self.show_info(self.tr("Update found"))
             self.folder = message["target_path"]

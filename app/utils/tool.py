@@ -512,8 +512,11 @@ def for_config_get_url(url, mode) -> str:
         str: 对应的链接。
     """
     parts = url.split("/")
-    username = parts[3]
-    repository = parts[4]
+    try:
+        username = parts[3]
+        repository = parts[4]
+    except IndexError:
+        return None
 
     if mode == "issue":
         return_url = f"https://github.com/{username}/{repository}/issues"

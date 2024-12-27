@@ -8,16 +8,16 @@ from ..common.maa_config_data import maa_config_data
 
 import requests
 import shutil
+import json
 
 
 class download_bundle(QThread):
-    finished = signalBus.download_finished  # 定义一个信号，用于通知任务完成
     project_url = ""
 
     def run(self):
         if self.project_url == "":
             logger.warning("项目地址未配置，无法进行更新检查")
-            self.finished.emit({})  # 发出空字典表示没有更新
+            signalBus.download_finished.emit({})  # 发出空字典表示没有更新
             return
         url = for_config_get_url(self.project_url, "download")
         try:
@@ -27,7 +27,7 @@ class download_bundle(QThread):
             logger.debug(f"更新检查结果: {content}")
         except Exception as e:
             logger.warning(f"更新检查时出错: {e}")
-            self.finished.emit({})  # 发出空字典表示没有更新
+            signalBus.download_finished.emit({})  # 发出空字典表示没有更新
             return
 
         download_url = content["zipball_url"]
@@ -76,7 +76,9 @@ class download_bundle(QThread):
         os.remove(zip_file_path)
 
         # 任务完成，发出信号
-        self.finished.emit({"target_path": target_path, "project_name": project_name})
+        signalBus.download_finished.emit(
+            {"target_path": target_path, "project_name": project_name}
+        )
 
 
 class check_Update(QThread):
@@ -89,10 +91,17 @@ class check_Update(QThread):
             self.update_available.emit({})  # 发出空字典表示没有更新
             return
         url = for_config_get_url(project_url, "download")
+        if url is None:
+            logger.warning("项目地址配置错误，无法进行更新检查")
+            self.update_available.emit({})  # 发出空字典表示没有更新
         try:
+
             response = requests.get(url)
             response.raise_for_status()
             content = response.json()
+            logger.debug(
+                f"更新检查结果: {json.dumps(content, indent=4, ensure_ascii=False)}"
+            )
             self.update_available.emit(content)  # 发出更新内容
         except Exception as e:
             logger.warning(f"更新检查时出错: {e}")
@@ -100,11 +109,7 @@ class check_Update(QThread):
 
 
 class Update(QThread):
-    update_finished = signalBus.update_finished  # 定义一个信号，用于通知任务完成
-
-    def __init__(self, update_dict):
-        super().__init__()
-        self.update_dict = update_dict
+    update_dict = {}
 
     def run(self):
         download_url = self.update_dict["zipball_url"]
@@ -136,6 +141,8 @@ class Update(QThread):
 
             # 找到实际的主文件夹名称
             actual_main_folder = all_members[0].split("/")[0]
+            if not os.path.exists(os.path.join(os.getcwd(), "hotfix")):
+                os.makedirs(os.path.join(os.getcwd(), "hotfix"))
             zip_ref.extractall(os.path.join(os.getcwd(), "hotfix"))
 
         folder_to_extract = os.path.join(
@@ -150,7 +157,8 @@ class Update(QThread):
         os.remove(zip_file_path)
 
         # 任务完成，发出信号
-        self.update_finished.emit()
+        signalBus.update_finished.emit()
+        logger.info("更新进程完成")
 
 
 class Readme(QThread):
