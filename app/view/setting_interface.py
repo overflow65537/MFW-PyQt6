@@ -613,7 +613,7 @@ class SettingInterface(ScrollArea):
             self.Updatethread.update_dict = data_dict
 
     def update_now(self):
-        signalBus.update_finished.connect(self.on_update_finished)
+
         self.Updatethread.start()
         self.updateCard.button.setEnabled(False)
         self.updateCard.button.setText(self.tr("Updating..."))
@@ -735,6 +735,7 @@ class SettingInterface(ScrollArea):
     def __connectSignalToSlot(self):
         """连接信号到对应的槽函数。"""
         self.UpdateWorker.update_available.connect(self.ready_to_update)
+        signalBus.update_finished.connect(self.on_update_finished)
         cfg.appRestartSig.connect(self.__showRestartTooltip)
         signalBus.update_adb.connect(self.update_adb)
 

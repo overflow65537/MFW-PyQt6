@@ -163,7 +163,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         signalBus.update_finished_action.connect(self.init_finish_combox)
         signalBus.start_finish.connect(self.ready_Start_Up)
         signalBus.start_task_inmediately.connect(self.Start_Up)
-        signalBus.dragging_finished.connect(self.Add_Task)
+        signalBus.dragging_finished.connect(self.dragging_finished)
         self.AddTask_Button.clicked.connect(self.Add_Task)
         self.AddTask_Button.rightClicked.connect(self.Add_All_Tasks)
         self.Delete_Button.clicked.connect(self.Delete_Task)
@@ -184,7 +184,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Finish_combox_res.currentIndexChanged.connect(self.Save_Finish_Option_Res)
         self.Finish_combox_cfg.currentIndexChanged.connect(self.Save_Finish_Option_Cfg)
         self.Task_List.itemSelectionChanged.connect(self.Select_Task)
-        # self.Task_List.itemPressed.connect(self.startDrag)
         self.Delete_label.dragEnterEvent = self.dragEnter
         self.Delete_label.dropEvent = self.drop
 
@@ -714,6 +713,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Task_List.addItems(
             Get_Values_list_Option(maa_config_data.config_path, "task")
         )
+
+    def dragging_finished(self):
+        self.AddTask_Button.setText(self.tr("Add Task"))
+        self.Task_List.setCurrentRow(-1)
+        self.Delete_label.setText("")
+        self.Delete_label.setStyleSheet("background-color: rgba(255, 0);")
 
     def Add_Task(self):
         if maa_config_data.config == {}:
