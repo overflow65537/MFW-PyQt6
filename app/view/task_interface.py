@@ -413,9 +413,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             except subprocess.TimeoutExpired:
                 self.app_process.kill()
         adb_path = maa_config_data.config.get("adb").get("adb_path")
-        adb_port = maa_config_data.config.get("adb").get("address").split(":")[1]
+
         emu_dict = get_console_path(adb_path)
         if emu_dict["type"] == "mumu":
+            adb_port = maa_config_data.config.get("adb").get("address").split(":")[1]
             emu = subprocess.run(
                 [emu_dict["path"], "info", "-v", "all"],
                 shell=True,
@@ -469,7 +470,24 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     logger.debug(f"关闭序号{str(emu_data.get("index"))}")
             return
         elif emu_dict["type"] == "LD":
-            pass
+            emu_args = maa_config_data.config.get("emu_args")
+            if "-index" in emu_args:
+                emu_index = emu_args.split()[1]
+                subprocess.run(
+                    [emu_dict["path"], "quit", "--index", emu_index],
+                    shell=True,
+                    check=True,
+                    encoding="utf-8",
+                )
+                return
+            else:
+                subprocess.run(
+                    [emu_dict["path"], "quit", "--index", "0"],
+                    shell=True,
+                    check=True,
+                    encoding="utf-8",
+                )
+                return
         elif emu_dict["type"] == "BlueStacks":
             pass
         elif emu_dict["type"] == "Nox":
