@@ -24,6 +24,10 @@ class SignalBus(QObject):
     readme_available = pyqtSignal(str)  # readme文件信号
     download_finished = pyqtSignal(dict)  # 搜索资源完成信号
     dragging_finished = pyqtSignal()  # 拖拽完成信号
+    bundle_download_progress = pyqtSignal(int, int)  # bundle下载进度信号
+    bundle_download_finished = pyqtSignal()  # bundle下载完成信号
+    update_download_progress = pyqtSignal(int, int)  # 更新下载进度信号
+    update_download_finished = pyqtSignal()  # 更新下载完成信号
 
 
 signalBus = SignalBus()

@@ -9,6 +9,7 @@ from qfluentwidgets import (
     InfoBarPosition,
     ToolButton,
 )
+from ..components.show_download import ShowDownload
 from qfluentwidgets import FluentIcon as FIF
 from ..common.config import cfg
 from ..utils.tool import Read_Config, Save_Config
@@ -86,6 +87,8 @@ class CustomMessageBox(MessageBoxBase):
         self.download_bundle.project_url = updata_link
 
         self.download_bundle.start()
+        w = ShowDownload(self)
+        w.show()
 
     def download_finished(self, message) -> None:
         if message == {}:
@@ -246,12 +249,15 @@ class CustomMessageBox(MessageBoxBase):
             "finish_option_res": 0,
             "finish_option_cfg": 0,
             "run_before_start": "",
+            "run_before_start_args": "",
             "run_after_finish": "",
+            "run_after_finish_args": "",
             "emu_path": "",
-            "emu_wait_time": "10",
+            "emu_args": "",
+            "emu_wait_time": 10,
             "exe_path": "",
-            "exe_wait_time": "10",
-            "exe_parameter": "",
+            "exe_args": "",
+            "exe_wait_time": 10,
         }
         Save_Config(maa_pi_config_Path, data)
         cfg.set(cfg.maa_resource_name, self.name_data)

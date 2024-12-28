@@ -7,7 +7,7 @@ from pathlib import Path
 import json
 from typing import List, Dict
 
-from PyQt6.QtCore import Qt, QMimeData
+from PyQt6.QtCore import Qt, QMimeData, QTimer
 from PyQt6.QtGui import QDrag, QDropEvent
 from PyQt6.QtWidgets import QApplication, QWidget, QListWidgetItem
 from qfluentwidgets import InfoBar, InfoBarPosition
@@ -47,6 +47,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.setupUi(self)
+
+        self.last_message = [0, 0]
+        self.now_message = [0, 0]
+        self.update_timer = QTimer(self)
+        self.update_timer.setInterval(1000)
+        self.update_timer.timeout.connect(self.start_update_download_progress)
+        self.update_timer.start()
 
         maafw.notification_handler = MyNotificationHandler()
         self.bind_signals()
@@ -120,6 +127,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         finish_list = [
             self.tr("Do nothing"),
             self.tr("Close emulator"),
+            self.tr("Quit app"),
             self.tr("Close emulator and Quit app"),
             self.tr("Shutdown"),
             self.tr("Run Other Config"),
@@ -165,6 +173,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         signalBus.start_finish.connect(self.ready_Start_Up)
         signalBus.start_task_inmediately.connect(self.Start_Up)
         signalBus.dragging_finished.connect(self.dragging_finished)
+        signalBus.update_download_progress.connect(self.update_download_progress)
+        signalBus.update_download_finished.connect(self.update_download_finished)
         self.AddTask_Button.clicked.connect(self.Add_Task)
         self.AddTask_Button.rightClicked.connect(self.Add_All_Tasks)
         self.Delete_Button.clicked.connect(self.Delete_Task)
@@ -226,6 +236,25 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         mimeData.setText(item.text())
         drag.setMimeData(mimeData)
         drag.exec(Qt.DropAction.MoveAction)
+
+    def start_update_download_progress(self):
+        if (
+            self.last_message[0] == 0 and self.last_message[1] == 0
+        ) or self.now_message == self.last_message:
+            return
+        self.TaskOutput_Text.append(
+            self.tr("downloading: ")
+            + str(self.last_message[0])
+            + "/"
+            + str(self.last_message[1])
+        )
+        self.last_message = self.now_message
+
+    def update_download_progress(self, progress: int, total: int):
+        self.now_message = [progress, total]
+
+    def update_download_finished(self):
+        self.TaskOutput_Text.append(self.tr("download finished"))
 
     def print_notice(self, message: str):
         if "DingTalk Failed".lower() in message.lower():
@@ -335,12 +364,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             "finish_option_res": 0,
             "finish_option_cfg": 0,
             "run_before_start": "",
+            "run_before_start_args": "",
             "run_after_finish": "",
+            "run_after_finish_args": "",
             "emu_path": "",
+            "emu_args": "",
             "emu_wait_time": 10,
             "exe_path": "",
+            "exe_args": "",
             "exe_wait_time": 10,
-            "exe_parameter": "",
         }
         Save_Config(maa_pi_config_Path, data)
         maa_config_data.config = data
@@ -380,6 +412,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.app_process.wait(timeout=5)
         except subprocess.TimeoutExpired:
             self.app_process.kill()
+
+    def close_application_and_quit(self):
+        self.close_application()
+        QApplication.quit
 
     def shutdown(self):
         shutdown_commands = {
@@ -426,9 +462,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.Control_Combox.currentText(), maa_config_data.interface_config_path
         )
         # 启动前脚本
-        run_before_start = maa_config_data.config.get("run_before_start")
-        if run_before_start != "" and self.need_runing:
-            logger.info("运行前脚本")
+        run_before_start = []
+        run_before_start_path = maa_config_data.config.get("run_before_start")
+
+        if run_before_start_path and self.need_runing:
+            run_before_start.append(run_before_start_path)
+            run_before_start_args = maa_config_data.config.get("run_before_start_args")
+            if run_before_start_args:
+                run_before_start.append(run_before_start_args)
+            logger.info(f"运行前脚本{run_before_start}")
             try:
                 self.run_before_start_process = self.start_process(run_before_start)
             except FileNotFoundError as e:
@@ -482,13 +524,24 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         # 连接控制器
         if controller_type == "Adb" and self.need_runing:  # adb控制
             # 启动模拟器
+            emu = []
             emu_path = maa_config_data.config.get("emu_path")
-            if emu_path == "":
-                logger.warning("未设置模拟器路径")
-            emu_wait_time = int(maa_config_data.config.get("emu_wait_time"))
-            if emu_path != "" and self.need_runing:
-                logger.info(f"启动模拟器")
-                self.app_process = self.start_process(emu_path)
+
+            if emu_path and self.need_runing:
+                emu.append(emu_path)
+
+                emu_args = maa_config_data.config.get("emu_args")
+                emu_wait_time = int(maa_config_data.config.get("emu_wait_time"))
+                if emu_args:
+                    emu.append(emu_args)
+                logger.info(f"启动模拟器{emu}")
+                try:
+                    self.app_process = self.start_process(emu)
+                except FileNotFoundError as e:
+                    self.show_error(self.tr(f"File not found"))
+                    logger.error(f'启动模拟器"{e}"')
+                    await maafw.stop_task()
+                    return
                 self.TaskOutput_Text.append(self.tr("waiting for emulator start..."))
                 self.S2_Button.setEnabled(True)
                 self.S2_Button.clicked.disconnect()
@@ -561,12 +614,24 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     return
         elif controller_type == "Win32" and self.need_runing:  # win32控制
             # 启动游戏
+            exe = []
             exe_path = maa_config_data.config.get("exe_path")
-            exe_wait_time = int(maa_config_data.config.get("exe_wait_time"))
-            exe_parameter = maa_config_data.config.get("exe_parameter")
-            if exe_path != "" and self.need_runing:
-                logger.info(f"启动游戏")
-                self.app_process = self.start_process(f"{exe_path} {exe_parameter}")
+
+            if exe_path and self.need_runing:
+                exe.append(exe_path)
+                exe_wait_time = int(maa_config_data.config.get("exe_wait_time"))
+
+                exe_args = maa_config_data.config.get("exe_args")
+                if exe_args:
+                    exe.append(exe_args)
+                logger.info(f"启动游戏{exe}")
+                try:
+                    self.app_process = self.start_process(exe)
+                except FileNotFoundError as e:
+                    self.show_error(self.tr(f"File not found"))
+                    logger.error(f'启动游戏"{e}"')
+                    await maafw.stop_task()
+                    return
                 self.TaskOutput_Text.append(self.tr("Starting game..."))
                 self.S2_Button.setEnabled(True)
                 self.S2_Button.clicked.disconnect()
@@ -659,18 +724,29 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         # 发送外部通知
         self.send_notice("completed")
         # 结束后脚本
-        run_after_finish = maa_config_data.config.get("run_after_finish")
-        if run_after_finish != "" and self.need_runing:
-            logger.info(f"运行后脚本")
-            self.run_after_finish_process = self.start_process(run_after_finish)
+        run_after_finish = []
+        run_after_finish_path = maa_config_data.config.get("run_after_finish")
+        if run_after_finish_path and self.need_runing:
+            run_after_finish.append(run_after_finish_path)
+
+            run_after_finish_args = maa_config_data.config.get("run_after_finish_args")
+            if run_after_finish_args:
+                run_after_finish.append(run_after_finish_args)
+            logger.info(f"运行后脚本{run_after_finish}")
+            try:
+                self.run_after_finish_process = self.start_process(run_after_finish)
+            except FileNotFoundError as e:
+                self.show_error(self.tr(f"File not found"))
+                logger.error(f'运行后脚本"{e}"')
         # 完成后运行
         target = self.Finish_combox.currentIndex()
         actions = {
             0: logger.info("Do nothing"),
             1: self.close_application,
-            2: QApplication.quit,
-            3: self.shutdown,
-            4: self.run_other_config,
+            2: self.close_application_and_quit,
+            4: QApplication.quit,
+            5: self.shutdown,
+            6: self.run_other_config,
         }
 
         action = actions.get(target)

@@ -17,7 +17,7 @@ from app.common.signal_bus import signalBus
 from app.common.maa_config_data import maa_config_data
 from app.utils.tool import show_error_message
 import argparse
-from typing import List, Dict, Tuple, Union
+from typing import Dict
 
 
 def main(resource: str, config: str, directly: bool):

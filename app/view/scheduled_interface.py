@@ -271,7 +271,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         if not cfg.get(cfg.resource_exist):
             self.show_error(self.tr("Please add resources first."))
             return
-
+        self.text_browser.clear()
         resource_name = self.res_combox.currentText()
         logger.info(f" 删除资源 {resource_name}")
 

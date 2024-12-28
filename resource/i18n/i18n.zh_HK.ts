@@ -177,6 +177,11 @@
         <source>Setting</source>
         <translation>設置</translation>
     </message>
+    <message>
+        <location filename="app/view/main_window.py" line="81"/>
+        <source>admin</source>
+        <translation>管理員</translation>
+    </message>
 </context>
 <context>
     <name>NoticeButtonSettingCard</name>
