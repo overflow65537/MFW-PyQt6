@@ -792,6 +792,16 @@
         <source>Successfully updated to</source>
         <translation>成功更新至</translation>
     </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="374"/>
+        <source>Auto Updat eresource</source>
+        <translation>资源自动更新</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="374"/>
+        <source>Automatically update resources on every startup</source>
+        <translation>每次启动自动更新资源</translation>
+    </message>
 </context>
 <context>
     <name>TaskInterface</name>

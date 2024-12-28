@@ -67,7 +67,10 @@ class Config(QConfig):
     # 多配置
     maa_config_list = ConfigItem("Maa", "maa_config_list", {})
     maa_resource_list = ConfigItem("Maa", "maa_resource_list", {})
-
+    # 自动更新资源
+    auto_update_resource = ConfigItem(
+        "Maa", "auto_update_resource", False, BoolValidator()
+    )
     # 外部通知
     Notice_DingTalk_status = ConfigItem("Notice", "DingTalk_status", False)
     Notice_DingTalk_url = ConfigItem("Notice", "DingTalk_url", "")

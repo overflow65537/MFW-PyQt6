@@ -5,6 +5,7 @@ from ..utils.tool import for_config_get_url, show_error_message, replace_ocr
 from ..common.signal_bus import signalBus
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
+from ..common.config import cfg
 
 import requests
 import shutil
@@ -204,6 +205,9 @@ class Update(QThread):
 
             signalBus.update_finished.emit()
             logger.info("更新进程完成")
+            if cfg.get(cfg.run_after_startup):
+                logger.info("启动GUI后运行任务")
+                signalBus.start_task_inmediately.emit()
         except Exception as e:
             logger.exception(f"解压和替换文件时出错: {e}")
             show_error_message()

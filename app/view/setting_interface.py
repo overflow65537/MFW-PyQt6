@@ -556,6 +556,13 @@ class SettingInterface(ScrollArea):
         """初始化关于设置。"""
         self.aboutGroup = SettingCardGroup(self.tr("About"), self.scrollWidget)
 
+        self.auto_update = SwitchSettingCard(
+            FIF.UPDATE,
+            self.tr("Auto Update resource"),
+            self.tr("Automatically check for updates and notify you"),
+            configItem=cfg.auto_update_resource,
+            parent=self.aboutGroup,
+        )
         self.updateCard = PrimaryPushSettingCard(
             self.tr("Check for updates"),
             FIF.UPDATE,
@@ -579,7 +586,7 @@ class SettingInterface(ScrollArea):
             ),
             self.aboutGroup,
         )
-
+        self.aboutGroup.addSettingCard(self.auto_update)
         self.aboutGroup.addSettingCard(self.updateCard)
         self.aboutGroup.addSettingCard(self.feedbackCard)
         self.aboutGroup.addSettingCard(self.aboutCard)
@@ -755,6 +762,7 @@ class SettingInterface(ScrollArea):
         signalBus.update_finished.connect(self.on_update_finished)
         cfg.appRestartSig.connect(self.__showRestartTooltip)
         signalBus.update_adb.connect(self.update_adb)
+        signalBus.auto_update.connect(self.update_check)
 
         # 连接 ADB 信号
         self.ADB_port.lineEdit.textChanged.connect(self._onADB_portCardChange)
@@ -902,7 +910,3 @@ class SettingInterface(ScrollArea):
             self.win32_screencap_mode.hide()
             self.ADB_input_mode.show()
             self.ADB_screencap_mode.show()
-
-    def _update(self):
-        """自动更新"""
-        self.update_check()

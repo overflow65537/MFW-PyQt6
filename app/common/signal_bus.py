@@ -7,6 +7,7 @@ class SignalBus(QObject):
     switchToSampleCard = pyqtSignal(str, int)
     micaEnableChanged = pyqtSignal(bool)
     supportSignal = pyqtSignal()
+    auto_update = pyqtSignal()  # 自动更新设置信号
     update_adb = pyqtSignal()  # 更新设置界面adb设备信息信号
     callback = pyqtSignal(str)  # 回调协议信号
     update_task_list = pyqtSignal()  # 更新tasklist信息信号
