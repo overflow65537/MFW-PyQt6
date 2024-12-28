@@ -245,7 +245,7 @@ def find_process_by_name(process_name: str) -> Optional[str]:
     return None
 
 
-def find_existing_file(info_dict: Dict) -> str | Literal[False]:
+def find_existing_file(info_dict: Dict[str, str]) -> str | Literal[False]:
     """根据给出的路径信息查找可执行文件。
 
     Args:
@@ -557,3 +557,52 @@ def get_controller_type(select_value: str, interface_path: str) -> str | None:
         if i["name"] == select_value or i["name"] == select_value[:-4]:
             return i["type"]
     return None
+
+
+def get_console_path(path: str) -> dict[str, str]:
+    """获取控制台路径。
+
+    Args:
+        path (str): 配置文件路径。
+
+    Returns:
+        str  控制台路径。
+    """
+    mumu = {
+        "type": "mumu",
+        "path": os.path.join(os.path.dirname(path), "MuMuManager.exe"),
+    }
+    LD_emu = {
+        "type": "LD",
+        "path": os.path.join(os.path.dirname(path), "dnconsole.exe"),
+    }
+    Nox = {
+        "type": "Nox",
+        "path": os.path.join(os.path.dirname(path), "NoxConsole.exe"),
+    }
+    MEmu = {
+        "type": "MEmu",
+        "path": os.path.join(os.path.dirname(path), "memuc.exe"),
+    }
+    BlueStacks = {
+        "type": "BlueStacks",
+        "path": os.path.join(os.path.dirname(path), "bsconsole.exe"),
+    }
+    if os.path.exists(mumu["path"]):
+        logger.info(f"mumu控制台: {mumu}")
+        return mumu
+    elif os.path.exists(LD_emu["path"]):
+        logger.info(f"LD控制台: {LD_emu}")
+        return LD_emu
+    elif os.path.exists(Nox["path"]):
+        logger.info(f"Nox控制台: {Nox}")
+        return Nox
+    elif os.path.exists(MEmu["path"]):
+        logger.info(f"MEmu控制台: {MEmu}")
+        return MEmu
+    elif os.path.exists(BlueStacks["path"]):
+        logger.info(f"BlueStacks控制台: {BlueStacks}")
+        return BlueStacks
+    else:
+        logger.info("未找到控制台")
+        return None

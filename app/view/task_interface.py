@@ -29,6 +29,7 @@ from ..utils.tool import (
     find_existing_file,
     find_process_by_name,
     show_error_message,
+    get_console_path,
 )
 from ..utils.maafw import maafw
 from ..common.config import cfg
@@ -405,13 +406,76 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def close_application(self):
-        if maa_config_data.config.get("emu_path") == "":
+        if maa_config_data.config.get("emu_path") != "":
+            self.app_process.terminate()
+            try:
+                self.app_process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.app_process.kill()
+        adb_path = maa_config_data.config.get("adb").get("adb_path")
+        adb_port = maa_config_data.config.get("adb").get("address").split(":")[1]
+        emu_dict = get_console_path(adb_path)
+        if emu_dict["type"] == "mumu":
+            emu = subprocess.run(
+                [emu_dict["path"], "info", "-v", "all"],
+                shell=True,
+                capture_output=True,
+                text=True,
+                check=True,
+                encoding="utf-8",
+            )
+            multi_dict: Dict[str, Dict[str, str]] = json.loads(emu.stdout.strip())
+
+            print(multi_dict.get("created_timestamp", False))
+            if multi_dict.get("created_timestamp", False):
+                logger.debug(f"单模拟器示例")
+                logger.debug(f"MuMuManager.exe info -v all: {multi_dict}")
+
+                logger.debug(f"关闭序号{str(multi_dict.get("index"))}")
+                if str(multi_dict.get("adb_port")) == adb_port:
+                    subprocess.run(
+                        [
+                            emu_dict["path"],
+                            "control",
+                            "-v",
+                            str(multi_dict.get("index")),
+                            "shutdown",
+                        ],
+                        shell=True,
+                        check=True,
+                        encoding="utf-8",
+                    )
+                    print(str(multi_dict.get("index")))
+                return
+            logger.debug(f"多模拟器示例")
+            logger.debug(f"MuMuManager.exe info -v all: {multi_dict}")
+
+            for emu_key, emu_data in multi_dict.items():
+                logger.debug(f"设备信息: {emu_data}")
+                if str(emu_data.get("adb_port")) == adb_port:
+
+                    subprocess.run(
+                        [
+                            emu_dict["path"],
+                            "control",
+                            "-v",
+                            str(emu_data.get("index")),
+                            "shutdown",
+                        ],
+                        shell=True,
+                        check=True,
+                        encoding="utf-8",
+                    )
+                    logger.debug(f"关闭序号{str(emu_data.get("index"))}")
             return
-        self.app_process.terminate()
-        try:
-            self.app_process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            self.app_process.kill()
+        elif emu_dict["type"] == "LD":
+            pass
+        elif emu_dict["type"] == "BlueStacks":
+            pass
+        elif emu_dict["type"] == "Nox":
+            pass
+        elif emu_dict["type"] == "Memu":
+            pass
 
     def close_application_and_quit(self):
         self.close_application()
@@ -477,6 +541,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.info(f"运行前脚本{run_before_start}")
             try:
                 self.run_before_start_process = self.start_process(run_before_start)
+                logger.info(f"程序启动成功，PID: {self.run_before_start_process.pid}")
             except FileNotFoundError as e:
                 self.show_error(self.tr(f"File not found"))
                 logger.error(f'运行前脚本"{e}"')
@@ -544,6 +609,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 logger.info(f"启动模拟器{emu}")
                 try:
                     self.app_process = self.start_process(emu)
+                    logger.info(f"模拟器启动成功，PID: {self.app_process.pid}")
                 except FileNotFoundError as e:
                     self.show_error(self.tr(f"File not found"))
                     logger.error(f'启动模拟器"{e}"')
@@ -634,6 +700,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 logger.info(f"启动游戏{exe}")
                 try:
                     self.app_process = self.start_process(exe)
+                    logger.info(f"游戏启动成功，PID: {self.app_process.pid}")
                 except FileNotFoundError as e:
                     self.show_error(self.tr(f"File not found"))
                     logger.error(f'启动游戏"{e}"')
@@ -742,6 +809,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.info(f"运行后脚本{run_after_finish}")
             try:
                 self.run_after_finish_process = self.start_process(run_after_finish)
+
             except FileNotFoundError as e:
                 self.show_error(self.tr(f"File not found"))
                 logger.error(f'运行后脚本"{e}"')
