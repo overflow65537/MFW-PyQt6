@@ -794,7 +794,7 @@
     </message>
     <message>
         <location filename="app/view/setting_interface.py" line="374"/>
-        <source>Auto Updat eresource</source>
+        <source>Auto Update resource</source>
         <translation>资源自动更新</translation>
     </message>
     <message>
@@ -829,6 +829,11 @@
         <location filename="app/view/task_interface.py" line="124"/>
         <source>Close emulator and Quit app</source>
         <translation>退出模擬器和應用</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="124"/>
+        <source>Quit app</source>
+        <translation>退出應用</translation>
     </message>
     <message>
         <location filename="app/view/task_interface.py" line="125"/>

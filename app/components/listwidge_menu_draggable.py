@@ -95,6 +95,7 @@ class ListWidge_Menu_Draggable(ListWidget):
         self.update_selection(Select_Target)
 
         signalBus.update_task_list.emit()
+        signalBus.dragging_finished.emit()
 
     def Move_Up(self):
         Select_Target = self.currentRow()
@@ -123,6 +124,7 @@ class ListWidge_Menu_Draggable(ListWidget):
         self.setCurrentRow(to_index)
 
         signalBus.update_task_list.emit()
+        signalBus.dragging_finished.emit()
 
     def update_task_config(self, Task_List):
         maa_config_data.config["task"] = Task_List

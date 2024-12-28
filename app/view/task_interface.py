@@ -415,7 +415,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def close_application_and_quit(self):
         self.close_application()
-        QApplication.quit
+        QApplication.quit()
 
     def shutdown(self):
         shutdown_commands = {
@@ -487,6 +487,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 logger.error(f'运行前脚本"{e}"')
                 await maafw.stop_task()
                 return
+            finally:
+                await asyncio.sleep(3)
+
         # 加载资源
         await maafw.load_resource("", True)
         resource_path = ""
@@ -742,6 +745,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             except FileNotFoundError as e:
                 self.show_error(self.tr(f"File not found"))
                 logger.error(f'运行后脚本"{e}"')
+            finally:
+                await asyncio.sleep(3)
+
         # 完成后运行
         target = self.Finish_combox.currentIndex()
         actions = {
@@ -833,10 +839,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
         self.update_task_list()
-        self.AddTask_Button.setText(self.tr("Add Task"))
-        self.Task_List.setCurrentRow(-1)
-        self.Delete_label.setText("")
-        self.Delete_label.setStyleSheet("background-color: rgba(255, 255, 255, 0);")
+        signalBus.dragging_finished.emit()
 
     def Add_All_Tasks(self):
         if maa_config_data.config == {}:
@@ -909,11 +912,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 self.Task_List.setCurrentRow(Select_Target)
             elif Select_Target != -1:
                 self.Task_List.setCurrentRow(Select_Target - 1)
+        signalBus.dragging_finished.emit()
 
     def Delete_all_task(self):
         self.Task_List.clear()
         maa_config_data.config["task"] = []
         Save_Config(maa_config_data.config_path, maa_config_data.config)
+        signalBus.dragging_finished.emit()
         self.update_task_list()
 
     def Move_Up(self):

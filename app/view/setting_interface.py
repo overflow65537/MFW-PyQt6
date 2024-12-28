@@ -559,7 +559,7 @@ class SettingInterface(ScrollArea):
         self.auto_update = SwitchSettingCard(
             FIF.UPDATE,
             self.tr("Auto Update resource"),
-            self.tr("Automatically check for updates and notify you"),
+            self.tr("Automatically update resources on every startup"),
             configItem=cfg.auto_update_resource,
             parent=self.aboutGroup,
         )
