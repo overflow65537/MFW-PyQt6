@@ -10,7 +10,7 @@ from typing import List, Dict
 from PyQt6.QtCore import Qt, QMimeData, QTimer
 from PyQt6.QtGui import QDrag, QDropEvent
 from PyQt6.QtWidgets import QApplication, QWidget, QListWidgetItem
-from qfluentwidgets import InfoBar, InfoBarPosition
+from qfluentwidgets import InfoBar, InfoBarPosition, BodyLabel, ComboBox
 
 from ..view.UI_task_interface import Ui_Task_Interface
 from ..utils.notification import MyNotificationHandler
@@ -839,7 +839,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
         self.update_task_list()
-        signalBus.dragging_finished.emit()
+        self.dragging_finished()
 
     def Add_All_Tasks(self):
         if maa_config_data.config == {}:
@@ -912,13 +912,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 self.Task_List.setCurrentRow(Select_Target)
             elif Select_Target != -1:
                 self.Task_List.setCurrentRow(Select_Target - 1)
-        signalBus.dragging_finished.emit()
+        self.dragging_finished()
 
     def Delete_all_task(self):
         self.Task_List.clear()
         maa_config_data.config["task"] = []
         Save_Config(maa_config_data.config_path, maa_config_data.config)
-        signalBus.dragging_finished.emit()
+        self.dragging_finished()
         self.update_task_list()
 
     def Move_Up(self):
@@ -1073,8 +1073,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             if task["name"] == select_target and task.get("option"):
                 option_length = len(task["option"])
                 for i in range(option_length):
-                    select_box = getattr(self, f"SelectTask_Combox_{i + 2}")
-                    label = getattr(self, f"TaskName_Title_{i + 2}")
+                    select_box: ComboBox = getattr(self, f"SelectTask_Combox_{i + 2}")
+                    label: BodyLabel = getattr(self, f"TaskName_Title_{i + 2}")
                     option_name = task["option"][i]
 
                     select_box.addItems(
@@ -1092,11 +1092,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def clear_extra_widgets(self):
         for i in range(2, 5):
-            select_box = getattr(self, f"SelectTask_Combox_{i}")
+            select_box: ComboBox = getattr(self, f"SelectTask_Combox_{i}")
             select_box.clear()
             select_box.hide()
 
-            label = getattr(self, f"TaskName_Title_{i}")
+            label: BodyLabel = getattr(self, f"TaskName_Title_{i}")
             label.setText(self.tr("Task"))
             label.hide()
 
@@ -1166,6 +1166,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         else:
             self.show_success(success_message)
             self.Autodetect_combox.clear()
+            processed_list = list(set(processed_list))
             self.Autodetect_combox.addItems(processed_list)
 
         # 重新启用按钮
