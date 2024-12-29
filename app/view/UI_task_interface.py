@@ -127,6 +127,17 @@ class Ui_Task_Interface(object):
         self.SelectTask_Combox_9 = ComboBox(Task_Interface)
         self.SelectTask_Combox_10 = ComboBox(Task_Interface)
 
+        self.SelectTask_Combox_1.setMaximumWidth(200)
+        self.SelectTask_Combox_2.setMaximumWidth(200)
+        self.SelectTask_Combox_3.setMaximumWidth(200)
+        self.SelectTask_Combox_4.setMaximumWidth(200)
+        self.SelectTask_Combox_5.setMaximumWidth(200)
+        self.SelectTask_Combox_6.setMaximumWidth(200)
+        self.SelectTask_Combox_7.setMaximumWidth(200)
+        self.SelectTask_Combox_8.setMaximumWidth(200)
+        self.SelectTask_Combox_9.setMaximumWidth(200)
+        self.SelectTask_Combox_10.setMaximumWidth(200)
+
         self.MoveUp_Button = RightCheckButton(Task_Interface)
         self.MoveDown_Button = RightCheckButton(Task_Interface)
         self.Delete_Button = RightCheckButton(Task_Interface)
@@ -214,9 +225,9 @@ class Ui_Task_Interface(object):
         self.right_layout.addWidget(self.TaskOutput_Text)
 
         # 将子布局添加到主布局中
-        self.main_layout.addLayout(self.left_layout)
-        self.main_layout.addLayout(self.middle_layout)
-        self.main_layout.addLayout(self.right_layout)
+        self.main_layout.addLayout(self.left_layout, 3)
+        self.main_layout.addLayout(self.middle_layout, 3)
+        self.main_layout.addLayout(self.right_layout, 3)
 
         self.retranslateUi(Task_Interface)
         QMetaObject.connectSlotsByName(Task_Interface)

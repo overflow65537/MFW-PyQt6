@@ -10,7 +10,7 @@ def write_version_file(platform, architecture, version):
         os.getcwd(), "main.dist", "MFW", "config", "version.txt"
     )
     with open(version_file_path, "w") as version_file:
-        version_file.write(f"{platform} {architecture} {version}\n")
+        version_file.write(f"{platform} {architecture} {version} v0.0.0.1\n")
         print(f"write version to {version_file_path}")
 
 
@@ -70,10 +70,15 @@ shutil.copytree(
 )
 
 # 确保 config 目录存在并复制 emulator.json 文件
-os.makedirs(os.path.join(os.getcwd(), "main.dist", "MFW", "config"), exist_ok=True)
+os.makedirs(os.path.join(os.getcwd(), "main.dist", "config"), exist_ok=True)
 shutil.copy(
     os.path.join(os.getcwd(), "config", "emulator.json"),
-    os.path.join(os.getcwd(), "main.dist", "MFW", "config", "emulator.json"),
+    os.path.join(os.getcwd(), "main.dist", "config", "emulator.json"),
+)
+# 重命名main至MFW
+shutil.move(
+    os.path.join(os.getcwd(), "main.dist", "main"),
+    os.path.join(os.getcwd(), "main.dist", "MFW"),
 )
 
 # 获取参数
@@ -90,3 +95,20 @@ version = sys.argv[3]
 
 # 写入版本信息
 write_version_file(platform, architecture, version)
+
+# 更新器
+# 定义打包命令
+nuitka_command_updater = [
+    str(nuitka_path),
+    "--standalone",
+    "--onefile",
+    "updater.py",
+]
+
+# 执行打包命令
+subprocess.run(nuitka_command_updater, check=True)
+
+shutil.copy(
+    os.path.join(os.getcwd(), "updater.dist", "updater"),
+    os.path.join(os.getcwd(), "main.dist", "updater"),
+)

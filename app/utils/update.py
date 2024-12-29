@@ -6,6 +6,7 @@ from ..common.signal_bus import signalBus
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 from ..common.config import cfg
+import time
 
 import requests
 import shutil
@@ -14,6 +15,7 @@ import json
 
 class download_bundle(QThread):
     project_url = ""
+    stop_flag = False
 
     def run(self):
         if self.project_url == "":
@@ -45,31 +47,25 @@ class download_bundle(QThread):
                 response.headers.get("content-length", 0)
             )  # 获取文件总大小
 
-            # 如果 total_size 为 0，尝试使用 shutil.copyfileobj 来估算进度
             downloaded_size = 0
-            if total_size == 0:
-                with open(zip_file_path, "wb") as zip_file:
-                    print(f"A下载进度: {downloaded_size}/{downloaded_size}")
-                    shutil.copyfileobj(response.raw, zip_file, length=4096)
-                    downloaded_size = zip_file.tell()
+            with open(zip_file_path, "wb") as zip_file:
+                for data in response.iter_content(chunk_size=4096):  # 分块下载
+                    if self.stop_flag:
+                        response.close()
+                        time.sleep(5)
+                        return
+                    downloaded_size += len(data)
+                    zip_file.write(data)
                     signalBus.bundle_download_progress.emit(
-                        downloaded_size, downloaded_size
-                    )  # 发出进度信号，这里只能用已下载大小作为总大小的估计
-                logger.debug(f"无法判断大小:{downloaded_size}")
-            else:
-                with open(zip_file_path, "wb") as zip_file:
-                    for data in response.iter_content(chunk_size=4096):  # 分块下载
-                        downloaded_size += len(data)
-                        zip_file.write(data)
-                        signalBus.bundle_download_progress.emit(
-                            downloaded_size, total_size
-                        )  # 发出进度信号
-                        print(f"B下载进度: {downloaded_size}/{total_size}")
-                    logger.debug(f"下载完成:{downloaded_size}/{total_size}")
+                        downloaded_size, total_size
+                    )  # 发出进度信号
+                    print(f"B下载进度: {downloaded_size}/{total_size}")
+                logger.debug(f"下载完成:{downloaded_size}/{total_size}")
         except:
             logger.exception("下载更新文件时出错")
             show_error_message()
             return
+
         signalBus.bundle_download_finished.emit()
         # 解压文件到指定路径
         target_path = os.path.join(os.getcwd(), "bundles", project_name)
@@ -96,23 +92,26 @@ class download_bundle(QThread):
             {"target_path": target_path, "project_name": project_name}
         )
 
+    def stop(self, flag: bool = False):
+        logger.debug(f"停止下载bundle: {flag}")
+        self.stop_flag = flag
+
 
 class Update(QThread):
-    update_available = signalBus.update_available
+    stop_flag = False
 
     def run(self):
         project_url = maa_config_data.interface_config.get("url", None)
         if not project_url:
             logger.warning("项目地址未配置，无法进行更新检查")
-            self.update_available.emit({})  # 发出空字典表示没有更新
+            signalBus.update_download_finished.emit({})  # 发出空字典表示没有更新
             return
         url = for_config_get_url(project_url, "download")
         if url is None:
             logger.warning("项目地址配置错误，无法进行更新检查")
-            self.update_available.emit({})  # 发出空字典表示没有更新
+            signalBus.update_download_finished.emit({})  # 发出空字典表示没有更新
             return
         try:
-
             response = requests.get(url)
             response.raise_for_status()
             self.update_dict: dict = response.json()
@@ -122,16 +121,16 @@ class Update(QThread):
             if self.update_dict.get(
                 "tag_name", None
             ) == maa_config_data.interface_config.get("version"):
-                self.update_available.emit(self.update_dict)
+                signalBus.update_download_finished.emit(self.update_dict)
                 return
 
         except requests.exceptions.RequestException as e:
             logger.warning(f"更新检查时出错: {e}")
-            self.update_available.emit({})  # 发出空字典表示没有更新
+            signalBus.update_download_finished.emit({})  # 发出空字典表示没有更新
             return
         except Exception as e:
             logger.exception(f"更新检查时出现未知错误: {e}")
-            self.update_available.emit({})  # 发出空字典表示没有更新
+            signalBus.update_download_finished.emit({})  # 发出空字典表示没有更新
             return
         download_url: str = self.update_dict["zipball_url"]
         hotfix_directory = os.path.join(os.getcwd(), "hotfix")
@@ -148,40 +147,34 @@ class Update(QThread):
                 response.headers.get("content-length", 0)
             )  # 获取文件总大小
 
-            # 如果 total_size 为 0，尝试使用 shutil.copyfileobj 来估算进度
             downloaded_size = 0
-            if total_size == 0:
-                with open(zip_file_path, "wb") as zip_file:
-                    shutil.copyfileobj(response.raw, zip_file, length=4096)
-                    downloaded_size = zip_file.tell()
+
+            with open(zip_file_path, "wb") as zip_file:
+                for data in response.iter_content(chunk_size=4096):  # 分块下载
+                    if self.stop_flag:
+                        response.close()
+                        time.sleep(5)
+                        os.remove(zip_file_path)
+                        return
+                    downloaded_size += len(data)
+                    zip_file.write(data)
                     signalBus.update_download_progress.emit(
-                        downloaded_size, downloaded_size
-                    )  # 发出进度信号，这里只能用已下载大小作为总大小的估计
-                    print(f"A下载进度: {downloaded_size}/{downloaded_size}")
-            else:
-                with open(zip_file_path, "wb") as zip_file:
-                    for data in response.iter_content(chunk_size=4096):  # 分块下载
-                        downloaded_size += len(data)
-                        zip_file.write(data)
-                        signalBus.update_download_progress.emit(
-                            downloaded_size, total_size
-                        )  # 发出进度信号
-                        print(f"B下载进度: {downloaded_size}/{total_size}")
+                        downloaded_size, total_size
+                    )  # 发出进度信号
+                    print(f"B下载进度: {downloaded_size}/{total_size}")
         except requests.exceptions.RequestException as e:
             logger.exception(f"下载更新文件时出错: {e}")
-            self.update_available.emit({})  # 发出空字典表示没有更新
+            signalBus.update_download_finished.emit({})  # 发出空字典表示没有更新
             show_error_message()
             return
         except Exception as e:
             logger.exception(f"下载更新文件时出现未知错误: {e}")
-            self.update_available.emit({})  # 发出空字典表示没有更新
+            signalBus.update_download_finished.emit({})  # 发出空字典表示没有更新
             show_error_message()
             return
         finally:
             if response:
                 response.close()  # 确保响应对象被关闭
-
-        signalBus.update_download_finished.emit()
 
         target_path = maa_config_data.resource_path
         logger.debug(f"解压文件到 {target_path}")
@@ -203,7 +196,6 @@ class Update(QThread):
             shutil.rmtree(os.path.join(os.getcwd(), "hotfix", actual_main_folder))
             os.remove(zip_file_path)
 
-            signalBus.update_finished.emit()
             logger.info("更新进程完成")
             if cfg.get(cfg.run_after_startup):
                 logger.info("启动GUI后运行任务")
@@ -212,13 +204,14 @@ class Update(QThread):
             logger.exception(f"解压和替换文件时出错: {e}")
             show_error_message()
             return
+        signalBus.update_download_finished.emit(self.update_dict)
+
+    def stop(self, flag: bool = False):
+        self.stop_flag = flag
 
 
 class Readme(QThread):
     readme_url = ""
-
-    def __init__(self):
-        super().__init__()
 
     def run(self):
         logger.debug(f"读取README文件: {self.readme_url}")
@@ -233,19 +226,15 @@ class Readme(QThread):
 
 
 class UpdateSelf(QThread):
-    def __init__(self):
-        super().__init__()
+    stop_flag = False
 
     def run(self):
         logger.debug("更新自身")
         url = "https://api.github.com/repos/overflow65537/MFW-PyQt6/releases/latest"
         with open(
-            os.path.join(os.getcwd(), "version.json"), "r", encoding="utf-8"
+            os.path.join(os.getcwd(), "config", "version.txt"), "r", encoding="utf-8"
         ) as f:
             version_data = f.read().split()
-        assets_name = (
-            f"MFW-PyQt6-{version_data[0]}-{version_data[1]}-{version_data[2]}.zip"
-        )
 
         try:
             response = requests.get(url)
@@ -254,54 +243,73 @@ class UpdateSelf(QThread):
             logger.debug(f"更新检查结果: {content}")
             if content.get("tag_name", None) == version_data[2]:
                 logger.info("当前版本已是最新")
+                signalBus.download_self_finished.emit(0)  # 发出0表示最新版
                 return
+            version_data[3] = content.get("tag_name")
+            assets_name = f"MFW-PyQt6-{version_data[0]}-{version_data[1]}-{content.get('tag_name')}.zip"
+            logger.debug(f"下载更新文件: {assets_name}")
             for asset in content["assets"]:
+                logger.debug(f"检查更新文件: {asset['name']}")
                 if asset["name"] == assets_name:
                     download_url = asset["browser_download_url"]
                     break
             else:
                 logger.error(f"未找到{assets_name}文件")
+                signalBus.download_self_finished.emit(1)  # 发出1表示下载失败
                 return
-            zip_file_path = os.path.join(os.getcwd(), assets_name)
+            zip_file_path = os.path.join(os.getcwd(), "update.zip")
         except requests.exceptions.RequestException as e:
             logger.exception(f"更新检查时出错: {e}")
+            signalBus.download_self_finished.emit(1)  # 发出1表示下载失败
             return
         except Exception as e:
             logger.exception(f"更新检查时出现未知错误: {e}")
+            signalBus.download_self_finished.emit(1)  # 发出1表示下载失败
             return
+
         try:
             response = requests.get(download_url, stream=True)
             response.raise_for_status()
             total_size = int(
                 response.headers.get("content-length", 0)
             )  # 获取文件总大小
-            # 如果 total_size 为 0，尝试使用 shutil.copyfileobj 来估算进度
+
             downloaded_size = 0
-            if total_size == 0:
-                with open(zip_file_path, "wb") as zip_file:
-                    shutil.copyfileobj(response.raw, zip_file, length=4096)
-                    downloaded_size = zip_file.tell()
-                    signalBus.update_download_progress.emit(
-                        downloaded_size, downloaded_size
-                    )  # 发出进度信号，这里只能用已下载大小作为总大小的估计
-                    print(f"A下载进度: {downloaded_size}/{downloaded_size}")
-            else:
-                with open(zip_file_path, "wb") as zip_file:
-                    for data in response.iter_content(chunk_size=4096):  # 分块下载
-                        downloaded_size += len(data)
-                        zip_file.write(data)
-                        signalBus.update_download_progress.emit(
-                            downloaded_size, total_size
-                        )  # 发出进度信号
-                        print(f"B下载进度: {downloaded_size}/{total_size}")
+
+            with open(zip_file_path, "wb") as zip_file:
+                for data in response.iter_content(chunk_size=4096):  # 分块下载
+                    if self.stop_flag:
+                        response.close()
+                        time.sleep(5)
+                        os.remove(zip_file_path)
+                        signalBus.download_self_finished.emit(2)  # 发出2表示手动停止
+                        return
+                    downloaded_size += len(data)
+                    zip_file.write(data)
+                    signalBus.download_self_progress.emit(
+                        downloaded_size, total_size
+                    )  # 发出进度信号
+                    print(f"B下载进度: {downloaded_size}/{total_size}")
         except requests.exceptions.RequestException as e:
             logger.exception(f"下载更新文件时出错: {e}")
             show_error_message()
+            signalBus.download_self_finished.emit(1)  # 发出1表示下载失败
             return
         except Exception as e:
             logger.exception(f"下载更新文件时出现未知错误: {e}")
             show_error_message()
+            signalBus.download_self_finished.emit(1)  # 发出1表示下载失败
             return
-        if response:
-            response.close()
-        signalBus.update_download_finished.emit()
+        finally:
+            if response:
+                response.close()
+
+            signalBus.download_self_finished.emit(3)  # 发出3表示下载完成
+
+        with open(
+            os.path.join(os.getcwd(), "config", "version.txt"), "w", encoding="utf-8"
+        ) as f:
+            f.write(" ".join(version_data))
+
+    def stop(self, flag: bool = False):
+        self.stop_flag = flag

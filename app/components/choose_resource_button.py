@@ -22,10 +22,10 @@ from ..common.signal_bus import signalBus
 class CustomMessageBox(MessageBoxBase):
     """Custom message box"""
 
-    download_bundle = download_bundle()
-
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
+        self.download_bundle = download_bundle()
+        signalBus.bundle_download_stopped.connect(self.download_bundle.stop)
         transparent_color = QColor(255, 255, 255, 0)
         self.setMaskColor(transparent_color)
         self.folder = None

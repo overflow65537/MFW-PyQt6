@@ -457,3 +457,5 @@ MFW.spec
 main.spec
 bundles
 hotfix
+MFWUpdater.spec
+update.zip

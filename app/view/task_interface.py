@@ -104,6 +104,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.SelectTask_Combox_2.clear()
         self.SelectTask_Combox_3.clear()
         self.SelectTask_Combox_4.clear()
+        self.SelectTask_Combox_5.clear()
+        self.SelectTask_Combox_6.clear()
+        self.SelectTask_Combox_7.clear()
+        self.SelectTask_Combox_8.clear()
+        self.SelectTask_Combox_9.clear()
+        self.SelectTask_Combox_10.clear()
         self.Resource_Combox.clear()
         self.Control_Combox.clear()
         self.Autodetect_combox.clear()
@@ -154,11 +160,23 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.SelectTask_Combox_2,
             self.SelectTask_Combox_3,
             self.SelectTask_Combox_4,
+            self.SelectTask_Combox_5,
+            self.SelectTask_Combox_6,
+            self.SelectTask_Combox_7,
+            self.SelectTask_Combox_8,
+            self.SelectTask_Combox_9,
+            self.SelectTask_Combox_10,
         ]
         task_titles = [
             self.TaskName_Title_2,
             self.TaskName_Title_3,
             self.TaskName_Title_4,
+            self.TaskName_Title_5,
+            self.TaskName_Title_6,
+            self.TaskName_Title_7,
+            self.TaskName_Title_8,
+            self.TaskName_Title_9,
+            self.TaskName_Title_10,
         ]
         for combox in task_comboxes:
             combox.setVisible(visible)

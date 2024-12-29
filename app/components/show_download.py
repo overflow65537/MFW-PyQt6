@@ -42,6 +42,10 @@ class ShowDownload(MessageBoxBase):
 
         signalBus.bundle_download_progress.connect(self.setProgress)
         signalBus.bundle_download_finished.connect(self.close)
+        signalBus.download_self_progress.connect(self.setProgress)
+        signalBus.download_self_finished.connect(self.close)
+        signalBus.download_self_stopped.connect(self.cancelDownload)
+        self.cancelButton.clicked.connect(self.cancelDownload)
 
     def setProgress(self, downloaded, total):
         if total == 0:
@@ -55,4 +59,5 @@ class ShowDownload(MessageBoxBase):
             self.progressLabel.setText(f"{downloaded} / {total} bytes")
 
     def cancelDownload(self):
+        signalBus.bundle_download_stopped.emit(True)
         self.close()

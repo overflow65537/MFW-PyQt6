@@ -14,7 +14,8 @@ from qfluentwidgets import FluentIcon as FIF
 from qfluentwidgets import InfoBar
 from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtGui import QDesktopServices
-from PyQt6.QtWidgets import QWidget, QLabel, QFileDialog
+from PyQt6.QtWidgets import QWidget, QLabel, QFileDialog, QApplication
+
 
 from ..common.config import cfg, REPO_URL, isWin11
 from ..common.signal_bus import signalBus
@@ -22,10 +23,16 @@ from ..common.style_sheet import StyleSheet
 from ..components.line_edit_card import LineEditCard
 from ..components.combobox_setting_card_custom import ComboBoxSettingCardCustom
 from ..components.notic_setting_card import NoticeButtonSettingCard
-from ..utils.update import Update
+from ..utils.update import Update, UpdateSelf
 from ..utils.tool import Save_Config, get_gpu_info, for_config_get_url
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
+from ..components.doble_button_setting_card import DoubleButtonSettingCard
+from ..components.show_download import ShowDownload
+
+import subprocess
+import os
+import sys
 
 
 class SettingInterface(ScrollArea):
@@ -42,6 +49,15 @@ class SettingInterface(ScrollArea):
         self.__connectSignalToSlot()
         if not cfg.get(cfg.resource_exist):
             self.enable_widgets(False)
+        self.update_exist()
+
+    def update_exist(self):
+        """更新文件是否存在"""
+        if os.path.exists(os.path.join(os.getcwd(), "update.zip")):
+            logger.info("存在更新文件")
+            self.aboutCard.button2.setText(self.tr("Update Now"))
+            self.aboutCard.button2.clicked.disconnect()
+            self.aboutCard.button2.clicked.connect(self.update_self_start)
 
     def resource_exist(self, status: bool):
         if status:
@@ -60,6 +76,10 @@ class SettingInterface(ScrollArea):
         # 更新工作线程
 
         self.Updatethread = Update(self)
+        signalBus.update_download_stopped.connect(self.Updatethread.stop)
+
+        self.update_self = UpdateSelf(self)
+        signalBus.download_self_stopped.connect(self.update_self.stop)
 
         # 初始化设置
         self.initialize_adb_settings()
@@ -127,9 +147,6 @@ class SettingInterface(ScrollArea):
             + " "
             + self.project_version,
         )
-        self.feedbackCard.setContent(
-            self.tr("Submit feedback to help us improve") + self.project_name,
-        )
 
     def clear_content(self):
         # 清空输入框和设置内容
@@ -155,9 +172,6 @@ class SettingInterface(ScrollArea):
             + self.tr("version:")
             + " "
             + self.project_version,
-        )
-        self.feedbackCard.setContent(
-            self.tr("Submit feedback to help us improve"),
         )
 
     def enable_widgets(self, enable: bool):
@@ -555,6 +569,13 @@ class SettingInterface(ScrollArea):
     def initialize_about_settings(self):
         """初始化关于设置。"""
         self.aboutGroup = SettingCardGroup(self.tr("About"), self.scrollWidget)
+        with open(
+            os.path.join(os.getcwd(), "config", "version.txt"), "r", encoding="utf-8"
+        ) as f:
+            try:
+                MFW_Version = f.read().split()[2]
+            except:
+                MFW_Version = "Unknown"
 
         self.auto_update = SwitchSettingCard(
             FIF.UPDATE,
@@ -563,32 +584,27 @@ class SettingInterface(ScrollArea):
             configItem=cfg.auto_update_resource,
             parent=self.aboutGroup,
         )
-        self.updateCard = PrimaryPushSettingCard(
-            self.tr("Check for updates"),
-            FIF.UPDATE,
-            self.tr("Check for updates"),
-            self.tr("Current") + " " + " " + self.tr("version:") + " ",
-            self.aboutGroup,
+        self.updateCard = DoubleButtonSettingCard(
+            text2=self.tr("Check for updates"),
+            text=self.tr("Submit Feedback"),
+            icon=FIF.UPDATE,
+            title=self.tr("Check for updates"),
+            content=self.tr("Current") + " " + " " + self.tr("version:") + " ",
+            parent=self.aboutGroup,
         )
-        self.feedbackCard = PrimaryPushSettingCard(
-            self.tr("Submit Feedback"),
-            FIF.FEEDBACK,
-            self.tr("Submit Feedback"),
-            self.tr("Submit feedback to help us improve"),
-            self.aboutGroup,
-        )
-        self.aboutCard = PrimaryPushSettingCard(
-            self.tr("About"),
-            FIF.INFO,
-            self.tr("About MFW-PyQt6"),
-            self.tr(
+        self.aboutCard = DoubleButtonSettingCard(
+            text=self.tr("About"),
+            text2=self.tr("Check for updates"),
+            icon=FIF.INFO,
+            title=self.tr("MFW-PyQt6 ") + MFW_Version,
+            content=self.tr(
                 "MFW-PyQt6 is open source under the GPLv3 license. Visit the project URL for more information."
             ),
-            self.aboutGroup,
+            parent=self.aboutGroup,
         )
+
         self.aboutGroup.addSettingCard(self.auto_update)
         self.aboutGroup.addSettingCard(self.updateCard)
-        self.aboutGroup.addSettingCard(self.feedbackCard)
         self.aboutGroup.addSettingCard(self.aboutCard)
 
     def get_unique_gpu_mapping(self, gpu_mapping: dict) -> list:
@@ -602,8 +618,8 @@ class SettingInterface(ScrollArea):
     def update_check(self):
         if self.project_url != "":
             self.Updatethread.start()
-            self.updateCard.button.setEnabled(False)
-            self.updateCard.button.setText(self.tr("Checking for updates..."))
+            self.updateCard.button2.setEnabled(False)
+            self.updateCard.button2.setText(self.tr("Checking for updates..."))
             return True
         else:
             InfoBar.warning(
@@ -614,8 +630,8 @@ class SettingInterface(ScrollArea):
             )
             return False
 
-    def ready_to_update(self, data_dict: dict):
-        self.update_dict = data_dict
+    def on_update_finished(self, data_dict: dict):
+        """更新检查完成的回调函数。"""
         if data_dict == {}:
             InfoBar.warning(
                 self.tr("Update failed"),
@@ -623,8 +639,8 @@ class SettingInterface(ScrollArea):
                 duration=2000,
                 parent=self,
             )
-            self.updateCard.button.setText(self.tr("Check for updates"))
-            self.updateCard.button.setEnabled(True)
+            self.updateCard.button2.setText(self.tr("Check for updates"))
+            self.updateCard.button2.setEnabled(True)
 
         elif data_dict["tag_name"] == self.project_version:
             InfoBar.info(
@@ -633,36 +649,37 @@ class SettingInterface(ScrollArea):
                 duration=2000,
                 parent=self,
             )
-            self.updateCard.button.setText(self.tr("Check for updates"))
-            self.updateCard.button.setEnabled(True)
-        else:
-            InfoBar.info(
-                self.tr("Update available"),
-                self.tr("New version: ") + data_dict["tag_name"],
+            self.updateCard.button2.setText(self.tr("Check for updates"))
+            self.updateCard.button2.setEnabled(True)
+        elif data_dict["tag_name"]:
+            InfoBar.success(
+                self.tr("Update completed"),
+                self.tr("Successfully updated to") + data_dict["tag_name"],
                 duration=2000,
                 parent=self,
             )
-
-    def on_update_finished(self):
-        InfoBar.success(
-            self.tr("Update completed"),
-            self.tr("Successfully updated to") + self.update_dict["tag_name"],
-            duration=2000,
-            parent=self,
-        )
-        self.updateCard.setContent(
-            self.tr("Current")
-            + self.project_name
-            + self.tr("version:")
-            + self.update_dict["tag_name"]
-        )
-        self.updateCard.button.setText(self.tr("Check for updates"))
-        self.updateCard.button.setEnabled(True)
-        maa_config_data.interface_config["version"] = self.update_dict["tag_name"]
-        Save_Config(
-            maa_config_data.interface_config_path,
-            maa_config_data.interface_config,
-        )
+            self.updateCard.setContent(
+                self.tr("Current")
+                + self.project_name
+                + self.tr("version:")
+                + data_dict["tag_name"]
+            )
+            self.updateCard.button2.setText(self.tr("Check for updates"))
+            self.updateCard.button2.setEnabled(True)
+            maa_config_data.interface_config["version"] = data_dict["tag_name"]
+            Save_Config(
+                maa_config_data.interface_config_path,
+                maa_config_data.interface_config,
+            )
+        else:
+            InfoBar.warning(
+                self.tr("Update failed"),
+                self.tr("Please check your internet connection"),
+                duration=2000,
+                parent=self,
+            )
+            self.updateCard.button2.setText(self.tr("Check for updates"))
+            self.updateCard.button2.setEnabled(True)
 
     def __initWidget(self):
         self.resize(1000, 800)
@@ -758,11 +775,11 @@ class SettingInterface(ScrollArea):
 
     def __connectSignalToSlot(self):
         """连接信号到对应的槽函数。"""
-        self.Updatethread.update_available.connect(self.ready_to_update)
-        signalBus.update_finished.connect(self.on_update_finished)
+        signalBus.update_download_finished.connect(self.on_update_finished)
         cfg.appRestartSig.connect(self.__showRestartTooltip)
         signalBus.update_adb.connect(self.update_adb)
         signalBus.auto_update.connect(self.update_check)
+        signalBus.download_self_finished.connect(self.update_self_finished)
 
         # 连接 ADB 信号
         self.ADB_port.lineEdit.textChanged.connect(self._onADB_portCardChange)
@@ -808,14 +825,68 @@ class SettingInterface(ScrollArea):
         self.micaCard.checkedChanged.connect(signalBus.micaEnableChanged)
 
         # 连接关于信号
-        self.updateCard.clicked.connect(self.update_check)
+        self.updateCard.clicked2.connect(self.update_check)
 
-        self.feedbackCard.clicked.connect(
+        self.updateCard.clicked.connect(
             lambda: QDesktopServices.openUrl(
                 QUrl(for_config_get_url(self.project_url, "issue"))
             )
         )
         self.aboutCard.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(REPO_URL)))
+        self.aboutCard.clicked2.connect(self.update_self_func)
+
+    def update_self_func(self):
+        """更新程序。"""
+        self.update_self.start()
+        self.aboutCard.button2.setEnabled(False)
+        self.aboutCard.button2.setText(self.tr("Updating..."))
+        w = ShowDownload(self)
+        w.show()
+
+    def update_self_finished(self, status: int):
+        """更新程序停止。"""
+        if status == 0:  # 无需更新
+            InfoBar.success(
+                self.tr("info"),
+                self.tr("Already the latest version"),
+                duration=2000,
+                parent=self,
+            )
+            self.aboutCard.button2.setEnabled(True)
+            self.aboutCard.button2.setText(self.tr("Update"))
+        elif status == 1:  # 下载失败
+            InfoBar.warning(
+                self.tr("Update failed"),
+                self.tr("Please check your internet connection"),
+                duration=2000,
+                parent=self,
+            )
+            self.aboutCard.button2.setEnabled(True)
+            self.aboutCard.button2.setText(self.tr("Update"))
+        elif status == 2:  # 手动停止
+            self.aboutCard.button2.setEnabled(True)
+            self.aboutCard.button2.setText(self.tr("Update"))
+        elif status == 3:  # 更新成功
+            InfoBar.success(
+                self.tr("Update completed"),
+                self.tr("Successfully Downloaded updates"),
+                duration=2000,
+                parent=self,
+            )
+
+            self.aboutCard.button2.setEnabled(True)
+            self.aboutCard.button2.setText(self.tr("Update Now"))
+            self.aboutCard.button2.clicked.disconnect()
+            self.aboutCard.button2.clicked.connect(self.update_self_start)
+
+    def update_self_start(self):
+        """开始更新程序。"""
+        if sys.platform == "win32":
+            subprocess.Popen(["./MFWUpdater.exe"])
+        else:
+            subprocess.Popen(["./MFWUpdater"])
+
+        QApplication.quit()
 
     def _update_config(self, card: LineEditCard, config_key: str):
         if maa_config_data.config_path == "":

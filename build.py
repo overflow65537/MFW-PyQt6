@@ -10,10 +10,12 @@ def write_version_file(platform, architecture, version):
         os.getcwd(), "dist", "MFW", "config", "version.txt"
     )
     with open(version_file_path, "w") as version_file:
-        version_file.write(f"{platform} {architecture} {version}\n")
+        version_file.write(f"{platform} {architecture} {version} v0.0.0.1\n")
         print(f"write version file to {version_file_path}")
 
 
+if os.path.exists("dist"):
+    shutil.rmtree("dist")
 # 获取 site-packages 目录列表
 site_packages_paths = site.getsitepackages()
 
@@ -94,3 +96,16 @@ version = sys.argv[3]
 
 # 写入版本信息
 write_version_file(platform, architecture, version)
+
+# 更新器
+updater_src = os.path.join(os.getcwd(), "updater.py")
+
+PyInstaller.__main__.run([updater_src, "--name=MFWUpdater", "--onefile", "--clean"])
+
+# 移动updater到dist\MFW目录
+if sys.platform == "win32":
+    updater_dst = os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater")
+    shutil.move(os.path.join(os.getcwd(), "dist", "MFWUpdater.exe"), updater_dst)
+else:
+    updater_dst = os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater")
+    shutil.move(os.path.join(os.getcwd(), "dist", "MFWUpdater"), updater_dst)
