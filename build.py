@@ -104,7 +104,7 @@ PyInstaller.__main__.run([updater_src, "--name=MFWUpdater", "--onefile", "--clea
 
 # 移动updater到dist\MFW目录
 if sys.platform == "win32":
-    updater_dst = os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater")
+    updater_dst = os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater.exe")
     shutil.move(os.path.join(os.getcwd(), "dist", "MFWUpdater.exe"), updater_dst)
 else:
     updater_dst = os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater")
