@@ -32,7 +32,7 @@ class ShowDownload(MessageBoxBase):
         self.progressBar_layout.addWidget(self.inProgressBar)
         self.progressBar_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         # 进度数字标签
-        self.progressLabel = BodyLabel(self.tr("0 / 0 bytes"), self)
+        self.progressLabel = BodyLabel("0 / 0 " + self.tr("bytes"), self)
         self.progressLabel.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         self.viewLayout.addWidget(self.titleLabel)
@@ -50,13 +50,13 @@ class ShowDownload(MessageBoxBase):
     def setProgress(self, downloaded, total):
         if total == 0:
             self.progressBar.setValue(0)
-            self.progressLabel.setText(self.tr("0 / 0 bytes"))
+            self.progressLabel.setText("0 / 0 " + self.tr("bytes"))
         else:
             self.progressBar.show()
             self.inProgressBar.hide()
             progress_value = int((downloaded / total) * 100)
             self.progressBar.setValue(progress_value)
-            self.progressLabel.setText(f"{downloaded} / {total} bytes")
+            self.progressLabel.setText(f"{downloaded} / {total}" + self.tr("bytes"))
 
     def cancelDownload(self):
         signalBus.bundle_download_stopped.emit(True)

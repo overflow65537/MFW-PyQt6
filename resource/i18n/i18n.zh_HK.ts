@@ -401,7 +401,35 @@
     </message>
 </context>
 <context>
+    <name>ShowDownload</name>
+    <message>
+        <location filename="app/components/show_download.py" line="21"/>
+        <source>Downloading...</source>
+        <translation>下載中</translation>
+    </message>
+</context>
+<context>
     <name>SettingInterface</name>
+    <message>
+        <location filename="app/view/setting_interface.py" line="60"/>
+        <source>Update Now</source>
+        <translation>立即更新</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="60"/>
+        <source>info</source>
+        <translation>信息</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="60"/>
+        <source>Already the latest version</source>
+        <translation>已經是最新版本</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="60"/>
+        <source>Successfully Downloaded updates</source>
+        <translation>成功下載更新</translation>
+    </message>
     <message>
         <location filename="app/view/setting_interface.py" line="42"/>
         <source>Settings</source>
