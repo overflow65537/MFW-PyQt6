@@ -6,9 +6,7 @@ import sys
 
 
 def write_version_file(platform, architecture, version):
-    version_file_path = os.path.join(
-        os.getcwd(), "main.dist", "MFW", "config", "version.txt"
-    )
+    version_file_path = os.path.join(os.getcwd(), "main.dist", "config", "version.txt")
     with open(version_file_path, "w") as version_file:
         version_file.write(f"{platform} {architecture} {version} v0.0.0.1\n")
         print(f"write version to {version_file_path}")
