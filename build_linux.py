@@ -11,7 +11,7 @@ def write_version_file(platform, architecture, version):
     )
     with open(version_file_path, "w") as version_file:
         version_file.write(f"{platform} {architecture} {version}\n")
-        print(f"已将版本信息写入 {version_file_path}")
+        print(f"write version to {version_file_path}")
 
 
 site_packages_paths = site.getsitepackages()
@@ -78,7 +78,7 @@ shutil.copy(
 
 # 获取参数
 if len(sys.argv) != 4:
-    error_message = "参数数量不正确，预期参数: platform architecture version"
+    error_message = "args error, should be: platform architecture version"
     with open("ERROR.log", "a") as log_file:
         log_file.write(error_message + "\n")
     print(error_message)

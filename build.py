@@ -11,7 +11,7 @@ def write_version_file(platform, architecture, version):
     )
     with open(version_file_path, "w") as version_file:
         version_file.write(f"{platform} {architecture} {version}\n")
-        print(f"已将版本信息写入 {version_file_path}")
+        print(f"write version file to {version_file_path}")
 
 
 # 获取 site-packages 目录列表
@@ -26,7 +26,7 @@ for path in site_packages_paths:
         break
 
 if maa_bin_path is None:
-    raise FileNotFoundError("未找到包含 maa/bin 的路径")
+    raise FileNotFoundError("not found maa/bin")
 
 # 构建 --add-data 参数
 add_data_param = f"{maa_bin_path}{os.pathsep}maa/bin"
@@ -40,7 +40,7 @@ for path in site_packages_paths:
         break
 
 if maa_bin_path2 is None:
-    raise FileNotFoundError("未找到包含 MaaAgentBinary 的路径")
+    raise FileNotFoundError("not found MaaAgentBinary")
 
 # 构建 --add-data 参数
 add_data_param2 = f"{maa_bin_path2}{os.pathsep}MaaAgentBinary"
@@ -82,7 +82,7 @@ shutil.copy(emulator_json_src, emulator_json_dst)
 print(sys.argv)
 print(len(sys.argv))
 if len(sys.argv) != 4:
-    error_message = "参数数量不正确，预期参数: platform architecture version"
+    error_message = "args error, should be: platform architecture version"
     with open("ERROR.log", "a") as log_file:
         log_file.write(error_message + "\n")
     print(error_message)
