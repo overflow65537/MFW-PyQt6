@@ -4,6 +4,16 @@ import site
 import shutil
 import sys
 
+
+def write_version_file(platform, architecture, version):
+    version_file_path = os.path.join(
+        os.getcwd(), "dist", "MFW", "config", "version.txt"
+    )
+    with open(version_file_path, "w") as version_file:
+        version_file.write(f"{platform} {architecture} {version}\n")
+        print(f"已将版本信息写入 {version_file_path}")
+
+
 # 获取 site-packages 目录列表
 site_packages_paths = site.getsitepackages()
 
@@ -45,30 +55,42 @@ command = [
 if sys.platform == "win32":
     command.insert(2, "--noconsole")
     command.insert(2, "--icon=resource/icon/logo.ico")
+
 # 运行 PyInstaller
 PyInstaller.__main__.run(command)
-print(
-    f"{os.path.join(os.getcwd(), "resource")} to {os.path.join(os.getcwd(), "dist", "MFW", "resource")}"
-)
-shutil.copytree(
-    os.path.join(os.getcwd(), "resource"),
-    os.path.join(os.getcwd(), "dist", "MFW", "resource"),
-    dirs_exist_ok=True,
-)
+
+# 确保 dist/MFW/resource 目录存在并复制
+resource_src = os.path.join(os.getcwd(), "resource")
+resource_dst = os.path.join(os.getcwd(), "dist", "MFW", "resource")
+os.makedirs(resource_dst, exist_ok=True)
+shutil.copytree(resource_src, resource_dst, dirs_exist_ok=True)
+
+# 确保 dist/MFW/dll 目录存在并复制（仅在 Windows 上）
 if sys.platform == "win32":
-    print(
-        f"{os.path.join(os.getcwd(), "dll")} to {os.path.join(os.getcwd(), "dist", "MFW")}"
-    )
-    shutil.copytree(
-        os.path.join(os.getcwd(), "dll"),
-        os.path.join(os.getcwd(), "dist", "MFW"),
-        dirs_exist_ok=True,
-    )
-print(
-    f"{os.path.join(os.getcwd(), "config", "emulator.json")} to {os.path.join(os.getcwd(), "dist", "MFW", "config", "emulator.json")}"
-)
-os.makedirs(os.path.join(os.getcwd(), "dist", "MFW", "config"), exist_ok=True)
-shutil.copy(
-    os.path.join(os.getcwd(), "config", "emulator.json"),
-    os.path.join(os.getcwd(), "dist", "MFW", "config", "emulator.json"),
-)
+    dll_src = os.path.join(os.getcwd(), "dll")
+    dll_dst = os.path.join(os.getcwd(), "dist", "MFW")
+    os.makedirs(dll_dst, exist_ok=True)
+    shutil.copytree(dll_src, dll_dst, dirs_exist_ok=True)
+
+# 确保 dist/MFW/config/emulator.json 文件存在并复制
+emulator_json_src = os.path.join(os.getcwd(), "config", "emulator.json")
+emulator_json_dst = os.path.join(os.getcwd(), "dist", "MFW", "config", "emulator.json")
+os.makedirs(os.path.dirname(emulator_json_dst), exist_ok=True)
+shutil.copy(emulator_json_src, emulator_json_dst)
+
+# 获取参数
+print(sys.argv)
+print(len(sys.argv))
+if len(sys.argv) != 4:
+    error_message = "参数数量不正确，预期参数: platform architecture version"
+    with open("ERROR.log", "a") as log_file:
+        log_file.write(error_message + "\n")
+    print(error_message)
+    sys.exit(1)
+
+platform = sys.argv[1]
+architecture = sys.argv[2]
+version = sys.argv[3]
+
+# 写入版本信息
+write_version_file(platform, architecture, version)

@@ -137,7 +137,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Finish_combox.addItems(finish_list)
         self.Finish_combox.setCurrentIndex(finish_combox)
         logger.info(f"完成选项初始化完成,当前选择项为{finish_combox}")
-        if not finish_combox == 4:
+        if not finish_combox == 5:
             self.Finish_combox_cfg.hide()
             self.Finish_combox_res.hide()
 
@@ -387,7 +387,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def rewrite_Completion_Options(self):
         finish_option = self.Finish_combox.currentIndex()
         maa_config_data.config["finish_option"] = finish_option
-        if finish_option == 4:
+        if finish_option == 5:
             self.Finish_combox_cfg.show()
             self.Finish_combox_res.show()
         else:
@@ -479,6 +479,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     check=True,
                     encoding="utf-8",
                 )
+                logger.debug(f"关闭序号{emu_index}")
                 return
             else:
                 subprocess.run(
@@ -487,7 +488,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     check=True,
                     encoding="utf-8",
                 )
+                logger.debug(f"关闭序号0")
                 return
+
         elif emu_dict["type"] == "BlueStacks":
             pass
         elif emu_dict["type"] == "Nox":
@@ -840,9 +843,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             0: logger.info("Do nothing"),
             1: self.close_application,
             2: self.close_application_and_quit,
-            4: QApplication.quit,
-            5: self.shutdown,
-            6: self.run_other_config,
+            3: QApplication.quit,
+            4: self.shutdown,
+            5: self.run_other_config,
         }
 
         action = actions.get(target)

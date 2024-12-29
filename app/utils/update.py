@@ -230,3 +230,78 @@ class Readme(QThread):
         except Exception as e:
             logger.exception(f"读取README文件时出错: {e}")
             signalBus.readme_available.emit(f"读取README文件时出错: {e}")
+
+
+class UpdateSelf(QThread):
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        logger.debug("更新自身")
+        url = "https://api.github.com/repos/overflow65537/MFW-PyQt6/releases/latest"
+        with open(
+            os.path.join(os.getcwd(), "version.json"), "r", encoding="utf-8"
+        ) as f:
+            version_data = f.read().split()
+        assets_name = (
+            f"MFW-PyQt6-{version_data[0]}-{version_data[1]}-{version_data[2]}.zip"
+        )
+
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            content = response.json()
+            logger.debug(f"更新检查结果: {content}")
+            if content.get("tag_name", None) == version_data[2]:
+                logger.info("当前版本已是最新")
+                return
+            for asset in content["assets"]:
+                if asset["name"] == assets_name:
+                    download_url = asset["browser_download_url"]
+                    break
+            else:
+                logger.error(f"未找到{assets_name}文件")
+                return
+            zip_file_path = os.path.join(os.getcwd(), assets_name)
+        except requests.exceptions.RequestException as e:
+            logger.exception(f"更新检查时出错: {e}")
+            return
+        except Exception as e:
+            logger.exception(f"更新检查时出现未知错误: {e}")
+            return
+        try:
+            response = requests.get(download_url, stream=True)
+            response.raise_for_status()
+            total_size = int(
+                response.headers.get("content-length", 0)
+            )  # 获取文件总大小
+            # 如果 total_size 为 0，尝试使用 shutil.copyfileobj 来估算进度
+            downloaded_size = 0
+            if total_size == 0:
+                with open(zip_file_path, "wb") as zip_file:
+                    shutil.copyfileobj(response.raw, zip_file, length=4096)
+                    downloaded_size = zip_file.tell()
+                    signalBus.update_download_progress.emit(
+                        downloaded_size, downloaded_size
+                    )  # 发出进度信号，这里只能用已下载大小作为总大小的估计
+                    print(f"A下载进度: {downloaded_size}/{downloaded_size}")
+            else:
+                with open(zip_file_path, "wb") as zip_file:
+                    for data in response.iter_content(chunk_size=4096):  # 分块下载
+                        downloaded_size += len(data)
+                        zip_file.write(data)
+                        signalBus.update_download_progress.emit(
+                            downloaded_size, total_size
+                        )  # 发出进度信号
+                        print(f"B下载进度: {downloaded_size}/{total_size}")
+        except requests.exceptions.RequestException as e:
+            logger.exception(f"下载更新文件时出错: {e}")
+            show_error_message()
+            return
+        except Exception as e:
+            logger.exception(f"下载更新文件时出现未知错误: {e}")
+            show_error_message()
+            return
+        if response:
+            response.close()
+        signalBus.update_download_finished.emit()
