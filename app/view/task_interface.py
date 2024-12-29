@@ -1180,7 +1180,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 break  # 找到匹配的任务后退出循环
 
     def clear_extra_widgets(self):
-        for i in range(2, 5):
+        for i in range(2, 11):
             select_box: ComboBox = getattr(self, f"SelectTask_Combox_{i}")
             select_box.clear()
             select_box.hide()
