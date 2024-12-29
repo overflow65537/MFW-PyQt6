@@ -883,7 +883,9 @@ class SettingInterface(ScrollArea):
         """开始更新程序。"""
         if sys.platform == "win32":
             subprocess.Popen(["./MFWUpdater.exe"])
-        else:
+        elif sys.platform == "linux":
+            subprocess.Popen(["./updater.bin"])
+        elif sys.platform == "darwin":
             subprocess.Popen(["./MFWUpdater"])
 
         QApplication.quit()

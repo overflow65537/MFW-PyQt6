@@ -34,5 +34,7 @@ if os.path.exists(zip_file_name):
 # 重启程序
 if sys.platform == "win32":
     os.system(".\\MFW.exe")
-else:
+elif sys.platform == "linux":
+    os.system("./MFW.bin")
+elif sys.platform == "darwin":
     os.system("./MFW")

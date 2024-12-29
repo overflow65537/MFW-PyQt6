@@ -75,8 +75,8 @@ shutil.copy(
 )
 # 重命名main至MFW
 shutil.move(
-    os.path.join(os.getcwd(), "main.dist", "main"),
-    os.path.join(os.getcwd(), "main.dist", "MFW"),
+    os.path.join(os.getcwd(), "main.dist", "main.bin"),
+    os.path.join(os.getcwd(), "main.dist", "MFW.bin"),
 )
 
 # 获取参数
@@ -107,6 +107,6 @@ nuitka_command_updater = [
 subprocess.run(nuitka_command_updater, check=True)
 
 shutil.copy(
-    os.path.join(os.getcwd(), "updater.dist", "updater"),
-    os.path.join(os.getcwd(), "main.dist", "updater"),
+    os.path.join(os.getcwd(), "updater.dist", "updater.bin"),
+    os.path.join(os.getcwd(), "main.dist", "updater.bin"),
 )
