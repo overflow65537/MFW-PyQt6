@@ -595,7 +595,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 await asyncio.sleep(3)
 
         # 加载资源
-        await maafw.load_resource("", True)
+        await maafw.load_resource("", True)  # 清除资源
         resource_path = ""
         resource_target = self.Resource_Combox.currentText()
 
@@ -887,7 +887,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.need_runing = False
         self.start_again = True
         await maafw.stop_task()
-        maafw.resource.clear()
+        # maafw.resource.clear()
 
         self.S2_Button.clicked.disconnect()
         self.S2_Button.clicked.connect(self.Start_Up)
@@ -1123,8 +1123,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         option_data = maa_config_data.config["task"][Select_Target]["option"]
         option_length = len(option_data)
         for i in range(option_length):
-            select_box = getattr(self, f"SelectTask_Combox_{i + 2}")
-            label = getattr(self, f"TaskName_Title_{i + 2}")
+            select_box: ComboBox = getattr(self, f"SelectTask_Combox_{i + 2}")
+            label: BodyLabel = getattr(self, f"TaskName_Title_{i + 2}")
             select_box.setCurrentText(option_data[i]["value"])
             label.setText(option_data[i]["name"])
 
@@ -1175,7 +1175,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         self.show_task_options(select_target, maa_config_data.interface_config)
 
-    def show_task_options(self, select_target, MAA_Pi_Config):
+    def show_task_options(
+        self, select_target, MAA_Pi_Config: Dict[str, List[Dict[str, str]]]
+    ):
         for task in MAA_Pi_Config["task"]:
             if task["name"] == select_target and task.get("option"):
                 option_length = len(task["option"])
