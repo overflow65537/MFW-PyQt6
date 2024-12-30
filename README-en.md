@@ -1,46 +1,55 @@
 <div align="center">
 
-# PYQT-MAA
+# MFW-PyQt6
 **[简体中文](./README.md) | [English](./README-en.md)**
 
- **[MAAFramework](https://github.com/MaaXYZ/MaaFramework)** General GUI Project Based on **[PyQT6](https://doc.qt.io/qtforpython-6)**
+A general GUI project of **[MAAFramework](https://github.com/MaaXYZ/MaaFramework)** based on **[PyQT6](https://doc.qt.io/qtforpython-6)**.
+
 </div>
 
-## Dev Environment
+## Development Environment
 - Python 3.12
 
-## Usage
+## Usage Method
+### Direct Usage
 - `pip install -r requirements.txt`
 - `python main.py`
 
-## Function Description
-### Multi-Configuration Launch
-- Click the add button for resources in the scheduled task interface to add resources.
-- Each resource can have multiple configurations, which are independent of each other.
-- After the operation ends, you can choose to start a specific configuration file from another resource.
-- Combining this with post-launch task execution can achieve seamless multi-resource startup.
+### Automatic Build with GitHub Actions
+- Change the project name and project address in `depoly\deploy.py` to your project name and project address, and upload it to the root directory of your `GitHub repository`.
+- Change MaaXXX to your project name in `deploy\install.yml`, and upload it to the `.github/workflows` directory of your GitHub repository.
+- Push the new version.
 
-### Scheduled Tasks (Subject to Change)
-- The scheduled task interface allows you to set the start time and loop time to launch a specific configuration from a resource.
+## Feature Description
+### Multi-configuration Launch
+- Click the add button for resources in the task scheduling interface to add resources.
+- Each resource can have multiple configurations, which are independent of each other.
+- After the operation is finished, you can choose to start a configuration file from another resource.
+- With the start and execute task function, seamless launch for multiple resources can be achieved.
+
+### Parameter Launch
+- The -r parameter accepts resource names, e.g., `python main.py -r resource1` or `main.exe -r resource1`.
+- The -c parameter accepts configuration file names, e.g., `python main.py -c config1` or `main.exe -c config1`.
+- The -d parameter allows direct startup, e.g., `python main.py -d` or `main.exe -d`.
 
 ### External Notifications
-- Currently supports four notification methods: DingTalk, FeiShu, SMTP, and WxPusher.
+- Currently supports DingTalk, FeiShu, SMTP, and WxPusher notification methods.
 
-### Update Resources
-- When adding a resource, if you fill in the update address, you can perform a one-click update.
-- **Requirement: The project release package must include `update.zip`.**
+### Update Resource
+- If an update address is filled when adding resources, one-click updates can be performed.
+
 ### Custom Program Configuration
-- Create `./config/custom.json`
-- The file should contain the following content:
-```
+- Create `./config/custom.json`.
+- The content should be:
+```json
 {
     "option1": {
         "optionname": "option1",
         "optiontype": "switch",
         "optioncontent": false,
         "text": {
-            "title":"Switch",
-            "content":"This is a Switch."
+            "title": "Switch",
+            "content": "This is a switch"
         }
     },
     "option2": {
@@ -52,8 +61,8 @@
             "content3"
         ],
         "text": {
-            "title":"Combox",
-            "content":"This is a Combox."
+            "title": "Combobox",
+            "content": "This is a combobox"
         }
     },
     "option3": {
@@ -61,8 +70,8 @@
         "optiontype": "lineedit",
         "optioncontent": "content3",
         "text": {
-            "title":"Lineedit",
-            "content":"This is a Lineedit"
+            "title": "Lineedit",
+            "content": "This is a lineedit"
         }
     }
 }
