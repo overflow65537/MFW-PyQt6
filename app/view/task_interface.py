@@ -488,26 +488,27 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     logger.debug(f"关闭序号{str(emu_data.get("index"))}")
             return
         elif emu_dict["type"] == "LD":
-            emu_args = maa_config_data.config.get("emu_args")
-            if "-index" in emu_args:
-                emu_index = emu_args.split()[1]
+            ld_pid = (
+                maa_config_data.config.get("adb")
+                .get("config")
+                .get("extras")
+                .get("ld")
+                .get("pid")
+            )
+            if ld_pid:
+                logger.debug(f"关闭LD进程: {ld_pid}")
                 subprocess.run(
-                    [emu_dict["path"], "quit", "--index", emu_index],
+                    [
+                        "taskkill",
+                        "/F",
+                        "/PID",
+                        str(ld_pid),
+                    ],
                     shell=True,
                     check=True,
                     encoding="utf-8",
                 )
-                logger.debug(f"关闭序号{emu_index}")
-                return
-            else:
-                subprocess.run(
-                    [emu_dict["path"], "quit", "--index", "0"],
-                    shell=True,
-                    check=True,
-                    encoding="utf-8",
-                )
-                logger.debug(f"关闭序号0")
-                return
+            return
 
         elif emu_dict["type"] == "BlueStacks":
             pass
@@ -671,18 +672,34 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             self.tr("Starting task in ") + f"{int(emu_wait_time) - i}"
                         )
                         await asyncio.sleep(1)
+            # 雷电模拟器特殊过程,重新获取pid
+            emu_type = maa_config_data.config.get("adb").get("adb_path")
+            if "LDPlayer" in emu_type:
+                logger.debug("获取雷电模拟器pid")
+                device = await maafw.detect_adb()
+                for i in device:
+                    if i.name == "LDPlayer":
+                        if (
+                            maa_config_data.config["adb"]["config"].get("extras")
+                            is None
+                        ):
+                            logger.debug("extras不存在，创建")
+                            maa_config_data.config["adb"]["config"] = i.config
+                        else:
+                            logger.debug("extras存在，更新pid")
+                            maa_config_data.config["adb"]["config"]["extras"]["ld"][
+                                "pid"
+                            ] = (i.config.get("extras").get("ld").get("pid"))
+
+                        logger.debug(
+                            f"获取到pid: {maa_config_data.config['adb']['config']['extras']['ld']['pid']}"
+                        )
+                        Save_Config(maa_config_data.config_path, maa_config_data.config)
+                        break
 
             # 连接adb失败
             if self.start_again:
-                device = await maafw.detect_adb()
                 config = {}
-                for i in device:
-                    if (
-                        i.adb_path == maa_config_data.config["adb"]["adb_path"]
-                        and i.address == maa_config_data.config["adb"]["address"]
-                    ):
-                        config = i.config
-                        break
                 if (
                     not await maafw.connect_adb(
                         maa_config_data.config["adb"]["adb_path"],
