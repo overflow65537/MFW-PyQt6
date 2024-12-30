@@ -848,8 +848,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.TaskOutput_Text.append(self.tr("running task:") + f" {self.entry}")
             # 异步运行任务，并传入覆盖选项
             await maafw.run_task(self.entry, override_options)
-
-        self.TaskOutput_Text.append(self.tr("Task finished"))
+            if self.need_runing:
+                self.TaskOutput_Text.append(self.tr("Task finished"))
         logger.info("任务完成")
         # 发送外部通知
         self.send_notice("completed")

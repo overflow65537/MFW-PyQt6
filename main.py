@@ -125,7 +125,13 @@ def start_symbol():
 
 
 if __name__ == "__main__":
+    with open("log.txt", "r", encoding="utf-8") as f:
+        try:
+            version = f.read().split()[2]
+        except:
+            version = "DEV"
     start_symbol()
+    logger.info(f"MFW 版本:{version}")
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--resource", default=False)
     parser.add_argument("-c", "--config", default=False)
