@@ -125,7 +125,9 @@ def start_symbol():
 
 
 if __name__ == "__main__":
-    with open("log.txt", "r", encoding="utf-8") as f:
+    with open(
+        os.path.join(os.getcwd(), "config", "version.txt"), "r", encoding="utf-8"
+    ) as f:
         try:
             version = f.read().split()[2]
         except:
