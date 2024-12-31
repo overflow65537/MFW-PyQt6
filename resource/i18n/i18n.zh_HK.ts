@@ -835,6 +835,21 @@
     <name>TaskInterface</name>
     <message>
         <location filename="app/view/task_interface.py" line="884"/>
+        <source>Started</source>
+        <translation>啓動</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="884"/>
+        <source>Succeeded</source>
+        <translation>成功</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="884"/>
+        <source>Failed</source>
+        <translation>失敗</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="884"/>
         <source>Error</source>
         <translation>錯誤</translation>
     </message>
@@ -887,11 +902,6 @@
         <location filename="app/view/task_interface.py" line="115"/>
         <source>Unknow Error</source>
         <translation>未知錯誤</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="119"/>
-        <source>Failed</source>
-        <translation>失败</translation>
     </message>
     <message>
         <location filename="app/view/task_interface.py" line="117"/>

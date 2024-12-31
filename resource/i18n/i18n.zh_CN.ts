@@ -839,6 +839,21 @@
         <translation>错误</translation>
     </message>
     <message>
+        <location filename="app/view/task_interface.py" line="884"/>
+        <source>Started</source>
+        <translation>启动</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="884"/>
+        <source>Succeeded</source>
+        <translation>成功</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="884"/>
+        <source>Failed</source>
+        <translation>失败</translation>
+    </message>
+    <message>
         <location filename="app/view/task_interface.py" line="911"/>
         <source>Drag to Delete</source>
         <translation>拖动至此删除</translation>
@@ -887,11 +902,6 @@
         <location filename="app/view/task_interface.py" line="115"/>
         <source>Unknow Error</source>
         <translation>未知错误</translation>
-    </message>
-    <message>
-        <location filename="app/view/task_interface.py" line="119"/>
-        <source>Failed</source>
-        <translation>失败</translation>
     </message>
     <message>
         <location filename="app/view/task_interface.py" line="117"/>
