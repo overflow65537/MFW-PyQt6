@@ -20,7 +20,13 @@ zip_file_name = os.path.join(os.getcwd(), "update.zip")
 if os.path.exists(zip_file_name):
     # 解压文件
     with zipfile.ZipFile(zip_file_name, "r") as zip_ref:
-        zip_ref.extractall(os.getcwd())
+        for file_info in zip_ref.infolist():
+            if file_info.filename not in [
+                "MFWUpdater.exe",
+                "MFWUpdater.bin",
+                "MFWUpdater",
+            ]:
+                zip_ref.extract(file_info, os.getcwd())
 
 else:
     error_message = f"file {zip_file_name} not found"
@@ -38,3 +44,5 @@ elif sys.platform == "linux":
     os.system("./MFW.bin")
 elif sys.platform == "darwin":
     os.system("./MFW")
+
+exit()
