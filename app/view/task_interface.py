@@ -8,9 +8,9 @@ import json
 from typing import List, Dict
 
 from PyQt6.QtCore import Qt, QMimeData, QTimer
-from PyQt6.QtGui import QDrag, QDropEvent
+from PyQt6.QtGui import QDrag, QDropEvent, QColor, QTextCharFormat, QTextCursor
 from PyQt6.QtWidgets import QApplication, QWidget, QListWidgetItem
-from qfluentwidgets import InfoBar, InfoBarPosition, BodyLabel, ComboBox
+from qfluentwidgets import InfoBar, InfoBarPosition, BodyLabel, ComboBox, TextEdit
 
 from ..view.UI_task_interface import Ui_Task_Interface
 from ..utils.notification import MyNotificationHandler
@@ -261,7 +261,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.last_message[0] == 0 and self.last_message[1] == 0
         ) or self.now_message == self.last_message:
             return
-        self.TaskOutput_Text.append(
+        self.insert_colored_text(
             self.tr("downloading: ")
             + str(self.last_message[0])
             + "/"
@@ -273,45 +273,80 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.now_message = [progress, total]
 
     def update_download_finished(self):
-        self.TaskOutput_Text.append(self.tr("download finished"))
+        self.insert_colored_text(self.tr("download finished"))
 
     def print_notice(self, message: str):
         if "DingTalk Failed".lower() in message.lower():
-            self.TaskOutput_Text.append(self.tr("DingTalk Failed"))
+            self.insert_colored_text(self.tr("DingTalk Failed"))
         elif "Lark Failed".lower() in message.lower():
-            self.TaskOutput_Text.append(self.tr("Lark Failed"))
+            self.insert_colored_text(self.tr("Lark Failed"))
         elif "SMTP Failed".lower() in message.lower():
-            self.TaskOutput_Text.append(self.tr("SMTP Failed"))
+            self.insert_colored_text(self.tr("SMTP Failed"))
         elif "WxPusher Failed".lower() in message.lower():
-            self.TaskOutput_Text.append(self.tr("WxPusher Failed"))
+            self.insert_colored_text(self.tr("WxPusher Failed"))
         elif "DingTalk Success".lower() in message.lower():
-            self.TaskOutput_Text.append(self.tr("DingTalk Success"))
+            self.insert_colored_text(self.tr("DingTalk Success"))
         elif "Lark Success".lower() in message.lower():
-            self.TaskOutput_Text.append(self.tr("Lark Success"))
+            self.insert_colored_text(self.tr("Lark Success"))
         elif "SMTP Success".lower() in message.lower():
-            self.TaskOutput_Text.append(self.tr("SMTP Success"))
+            self.insert_colored_text(self.tr("SMTP Success"))
         elif "WxPusher Success".lower() in message.lower():
-            self.TaskOutput_Text.append(self.tr("WxPusher Success"))
+            self.insert_colored_text(self.tr("WxPusher Success"))
         else:
-            self.TaskOutput_Text.append(message)
+            self.insert_colored_text(message)
 
-    def callback(self, message: str):
-        if "controller_action" in message:
-            message_data = message.replace("controller_action:", "")
-            if message_data == "1":
-                self.TaskOutput_Text.append(self.tr("Starting Connection"))
-            elif message_data == "2":
-                self.TaskOutput_Text.append(self.tr("Connection Success"))
-            elif message_data == "3":
-                self.TaskOutput_Text.append(self.tr("Connection Failed"))
-            elif message_data == "4":
-                self.TaskOutput_Text.append(self.tr("Unknown Error"))
-        elif "tasker_task" in message:
-            message_data = message.replace("tasker_task:", "")
-            if message_data == "3":
-                self.TaskOutput_Text.append(self.entry + self.tr(" Failed"))
-                logger.debug(f"{self.entry} 任务失败")
-                self.send_notice("failed", self.entry)
+    def callback(self, message: Dict):
+        if message["name"] == "on_controller_action":
+            if message["status"] == 1:
+                self.insert_colored_text(self.tr("Starting Connection"))
+            elif message["status"] == 2:
+                self.insert_colored_text(self.tr("Connection Success"))
+            elif message["status"] == 3:
+                self.insert_colored_text(self.tr("Connection Failed"))
+            elif message["status"] == 4:
+                self.insert_colored_text(self.tr("Unknown Error"))
+        elif message["name"] == "on_tasker_task":
+            if message["status"] == 1:
+                self.insert_colored_text(message["task"] + " " + self.tr("Started"))
+            elif message["status"] == 2:
+                self.insert_colored_text(message["task"] + " " + self.tr("Succeeded"))
+                logger.debug(f"{message['task']} 任务成功")
+            elif message["status"] == 3:
+                self.insert_colored_text(message["task"] + " " + self.tr("Failed"))
+                logger.debug(f"{message["task"]} 任务失败")
+                self.send_notice("failed", message["task"])
+        if message["name"] == "on_task_recognition":
+            task = message["task"]
+            pipeline = self.pipelines.get(task)
+            if pipeline:
+                if message["status"] == 1 and pipeline.get("focus_tip"):
+                    self.insert_colored_text(
+                        pipeline["focus_tip"],
+                        pipeline.get("focus_tip_color", "black"),
+                    )
+
+                elif message["status"] == 2 and pipeline.get("focus_succeeded"):
+                    self.insert_colored_text(
+                        pipeline["focus_succeeded"],
+                        pipeline.get("focus_succeeded_color", "black"),
+                    )
+
+                elif message["status"] == 3 and pipeline.get("focus_failed"):
+                    self.insert_colored_text(
+                        pipeline["focus_failed"],
+                        pipeline.get("focus_failed_color", "black"),
+                    )
+
+    def insert_colored_text(self, text, color_name: str = "black"):
+        cursor = self.TaskOutput_Text.textCursor()
+        color = QColor(color_name.lower())
+        char_format = QTextCharFormat()
+        char_format.setForeground(color)
+        cursor.setCharFormat(char_format)
+        if self.TaskOutput_Text.toPlainText():
+            cursor.insertText("\n" + text)
+        else:
+            cursor.insertText(text)
 
     def Start_Status(
         self, interface_Path: str, maa_pi_config_Path: str, resource_Path: str
@@ -596,6 +631,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 await asyncio.sleep(3)
 
         # 加载资源
+
         await maafw.load_resource("", True)  # 清除资源
         resource_path = ""
         resource_target = self.Resource_Combox.currentText()
@@ -613,7 +649,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.S2_Button.clicked.disconnect()
             self.S2_Button.clicked.connect(self.Start_Up)
             return
-
+        # 读取所有pipeline文件来实现focus
+        self.pipelines: Dict[str, Dict[str, str]] = {}
         for i in resource_path:
             resource = (
                 i.replace("{PROJECT_DIR}", PROJECT_DIR)
@@ -621,6 +658,49 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 .replace("\\", os.sep)
             )
             logger.debug(f"加载资源: {resource}")
+            pipelines_path = os.path.join(resource, "pipeline")
+
+            if not (os.path.exists(pipelines_path) and os.path.isdir(pipelines_path)):
+                logger.error(f"资源目录不存在: {pipelines_path}")
+                await maafw.stop_task()
+                self.S2_Button.setEnabled(True)
+                self.S2_Button.setText(self.tr("Start"))
+                self.S2_Button.clicked.disconnect()
+                self.S2_Button.clicked.connect(self.Start_Up)
+                return
+
+            for filename in os.listdir(pipelines_path):
+
+                if filename.endswith(".json"):
+                    file_path = os.path.join(pipelines_path, filename)
+                    try:
+
+                        with open(file_path, "r", encoding="utf-8") as file:
+                            data = json.load(file)
+
+                            self.pipelines.update(data)
+                        logger.debug(f"成功读取并解析 JSON 文件: {file_path}")
+                    except json.JSONDecodeError as e:
+                        logger.error(
+                            f"解析 JSON 文件时出错: {file_path}, 错误信息: {e}"
+                        )
+                        await maafw.stop_task()
+                        self.S2_Button.setEnabled(True)
+                        self.S2_Button.setText(self.tr("Start"))
+                        self.S2_Button.clicked.disconnect()
+                        self.S2_Button.clicked.connect(self.Start_Up)
+                        return
+                    except Exception as e:
+                        logger.error(
+                            f"读取 JSON 文件时出错: {file_path}, 错误信息: {e}"
+                        )
+                        await maafw.stop_task()
+                        self.S2_Button.setEnabled(True)
+                        self.S2_Button.setText(self.tr("Start"))
+                        self.S2_Button.clicked.disconnect()
+                        self.S2_Button.clicked.connect(self.Start_Up)
+                        return
+
             await maafw.load_resource(resource)
             logger.debug(f"资源加载完成: {resource}")
         gpu_index = maa_config_data.config["gpu"]
@@ -655,7 +735,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     logger.error(f'启动模拟器"{e}"')
                     await maafw.stop_task()
                     return
-                self.TaskOutput_Text.append(self.tr("waiting for emulator start..."))
+                self.insert_colored_text(self.tr("waiting for emulator start..."))
                 self.S2_Button.setEnabled(True)
                 self.S2_Button.clicked.disconnect()
                 self.S2_Button.clicked.connect(self.Stop_task)
@@ -668,7 +748,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         self.S2_Button.clicked.connect(self.Start_Up)
                         return
                     else:
-                        self.TaskOutput_Text.append(
+                        self.insert_colored_text(
                             self.tr("Starting task in ") + f"{int(emu_wait_time) - i}"
                         )
                         await asyncio.sleep(1)
@@ -713,7 +793,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     logger.error(
                         f"连接adb失败\n{maa_config_data.config['adb']['adb_path']}\n{maa_config_data.config['adb']['address']}\n{maa_config_data.config['adb']['input_method']}\n{maa_config_data.config['adb']['screen_method']}\n{maa_config_data.config['adb']['config']}"
                     )
-                    self.TaskOutput_Text.append(self.tr("Connection Failed"))
+                    self.insert_colored_text(self.tr("Connection Failed"))
                     await maafw.stop_task()
                     self.S2_Button.setEnabled(True)
                     self.S2_Button.setText(self.tr("Start"))
@@ -734,7 +814,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     logger.error(
                         f"连接adb失败\n{maa_config_data.config['adb']['adb_path']}\n{maa_config_data.config['adb']['address']}\n{maa_config_data.config['adb']['input_method']}\n{maa_config_data.config['adb']['screen_method']}\n{maa_config_data.config['adb']['config']}"
                     )
-                    self.TaskOutput_Text.append(self.tr("Connection Failed"))
+                    self.insert_colored_text(self.tr("Connection Failed"))
                     await maafw.stop_task()
                     self.S2_Button.setEnabled(True)
                     self.S2_Button.setText(self.tr("Start"))
@@ -762,7 +842,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     logger.error(f'启动游戏"{e}"')
                     await maafw.stop_task()
                     return
-                self.TaskOutput_Text.append(self.tr("Starting game..."))
+                self.insert_colored_text(self.tr("Starting game..."))
                 self.S2_Button.setEnabled(True)
                 self.S2_Button.clicked.disconnect()
                 self.S2_Button.clicked.connect(self.Stop_task)
@@ -775,7 +855,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         self.S2_Button.clicked.connect(self.Start_Up)
                         return
                     else:
-                        self.TaskOutput_Text.append(
+                        self.insert_colored_text(
                             self.tr("Starting game in ") + f"{int(exe_wait_time) - i}"
                         )
                         await asyncio.sleep(1)
@@ -792,7 +872,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 logger.error(
                     f"连接Win32失败 \n{maa_config_data.config['win32']['hwnd']}\n{maa_config_data.config['win32']['input_method']}\n{maa_config_data.config['win32']['screen_method']}"
                 )
-                self.TaskOutput_Text.append(self.tr("Connection Failed"))
+                self.insert_colored_text(self.tr("Connection Failed"))
                 await maafw.stop_task()
                 self.S2_Button.setEnabled(True)
                 self.S2_Button.setText(self.tr("Start"))
@@ -844,12 +924,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.info(
                 f"运行任务:{self.entry}\n任务选项:\n{json.dumps(override_options, indent=4,ensure_ascii=False)}"
             )
-            # 在任务输出文本框中添加任务运行信息
-            self.TaskOutput_Text.append(self.tr("running task:") + f" {self.entry}")
             # 异步运行任务，并传入覆盖选项
             await maafw.run_task(self.entry, override_options)
-            if self.need_runing:
-                self.TaskOutput_Text.append(self.tr("Task finished"))
         logger.info("任务完成")
         # 发送外部通知
         self.send_notice("completed")
@@ -898,7 +974,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     async def Stop_task(self):
         self.S2_Button.setEnabled(False)
         self.S2_Button.setText(self.tr("Start"))
-        self.TaskOutput_Text.append(self.tr("Stopping task..."))
+        self.insert_colored_text(self.tr("Stopping task..."))
         logger.info("停止任务")
         # 停止MAA
         self.need_runing = False
@@ -1156,11 +1232,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             Controller_Type_Select, maa_config_data.interface_config_path
         )
         if controller_type == "Adb":
-            self.TaskOutput_Text.append(self.tr("save ADB config..."))
+            self.insert_colored_text(self.tr("save ADB config..."))
             self.add_Controller_combox()
 
         elif controller_type == "Win32":
-            self.TaskOutput_Text.append(self.tr("save Win32 config..."))
+            self.insert_colored_text(self.tr("save Win32 config..."))
             self.Start_Detection()
         logger.info(f"保存控制器配置: {Controller_Type_Select}")
         # 更新配置并保存
@@ -1227,7 +1303,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             label.hide()
 
     def change_output(self, msg):
-        self.TaskOutput_Text.append(msg)
+        self.insert_colored_text(msg)
 
     @asyncSlot()
     async def Start_Detection(self):
