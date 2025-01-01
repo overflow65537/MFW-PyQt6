@@ -407,6 +407,11 @@
         <source>Downloading...</source>
         <translation>下載中</translation>
     </message>
+    <message>
+        <location filename="app/components/show_download.py" line="21"/>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
 </context>
 <context>
     <name>SettingInterface</name>

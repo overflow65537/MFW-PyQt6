@@ -632,15 +632,24 @@ class SettingInterface(ScrollArea):
 
     def on_update_finished(self, data_dict: dict):
         """更新检查完成的回调函数。"""
-        if data_dict == {}:
+        print(data_dict)
+        if data_dict["update_status"] == "failed":
+            self.updateCard.button2.setText(self.tr("Check for updates"))
+            self.updateCard.button2.setEnabled(True)
+            if data_dict.get("error_msg"):
+                InfoBar.warning(
+                    self.tr("Update failed"),
+                    data_dict.get("error_msg"),
+                    duration=2000,
+                    parent=self,
+                )
+                return
             InfoBar.warning(
                 self.tr("Update failed"),
                 self.tr("Please check your internet connection"),
                 duration=2000,
                 parent=self,
             )
-            self.updateCard.button2.setText(self.tr("Check for updates"))
-            self.updateCard.button2.setEnabled(True)
 
         elif data_dict["tag_name"] == self.project_version:
             InfoBar.info(
@@ -843,9 +852,9 @@ class SettingInterface(ScrollArea):
         w = ShowDownload(self)
         w.show()
 
-    def update_self_finished(self, status: int):
+    def update_self_finished(self, status: dict):
         """更新程序停止。"""
-        if status == 0:  # 无需更新
+        if status["update_status"] == "no_need":  # 无需更新
             InfoBar.success(
                 self.tr("info"),
                 self.tr("Already the latest version"),
@@ -854,19 +863,28 @@ class SettingInterface(ScrollArea):
             )
             self.aboutCard.button2.setEnabled(True)
             self.aboutCard.button2.setText(self.tr("Update"))
-        elif status == 1:  # 下载失败
+        elif status["update_status"] == "failed":  # 下载失败
+            self.aboutCard.button2.setEnabled(True)
+            self.aboutCard.button2.setText(self.tr("Update"))
+            if status.get("error_msg"):
+                InfoBar.warning(
+                    self.tr("Update failed"),
+                    status.get("error_msg"),
+                    duration=2000,
+                    parent=self,
+                )
+                return
             InfoBar.warning(
                 self.tr("Update failed"),
                 self.tr("Please check your internet connection"),
                 duration=2000,
                 parent=self,
             )
+
+        elif status["update_status"] == "stoped":  # 手动停止
             self.aboutCard.button2.setEnabled(True)
             self.aboutCard.button2.setText(self.tr("Update"))
-        elif status == 2:  # 手动停止
-            self.aboutCard.button2.setEnabled(True)
-            self.aboutCard.button2.setText(self.tr("Update"))
-        elif status == 3:  # 更新成功
+        elif status["update_status"] == "success":  # 更新成功
             InfoBar.success(
                 self.tr("Update completed"),
                 self.tr("Successfully Downloaded updates"),

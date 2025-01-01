@@ -17,6 +17,7 @@ from ..utils.logger import logger
 import os
 from ..utils.update import download_bundle
 from ..common.signal_bus import signalBus
+from typing import Dict, List
 
 
 class CustomMessageBox(MessageBoxBase):
@@ -87,13 +88,14 @@ class CustomMessageBox(MessageBoxBase):
         self.download_bundle.project_url = updata_link
 
         self.download_bundle.start()
-        w = ShowDownload(self)
-        w.show()
+        self.w = ShowDownload(self)
+        self.w.show()
 
-    def download_finished(self, message) -> None:
-        if message == {}:
+    def download_finished(self, message: Dict[str, str]) -> None:
+        print(message)
+        if message["update_status"] == "failed":
             self.show_info(self.tr("No update found"))
-
+            self.w.close()
         else:
             self.show_info(self.tr("Update found"))
             self.folder = message["target_path"]

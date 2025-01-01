@@ -31,6 +31,7 @@ class ShowDownload(MessageBoxBase):
         self.progressBar_layout.addWidget(self.progressBar)
         self.progressBar_layout.addWidget(self.inProgressBar)
         self.progressBar_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.cancelButton.setText(self.tr("Cancel"))
         # 进度数字标签
         self.progressLabel = BodyLabel("0 / 0 " + self.tr("bytes"), self)
         self.progressLabel.setAlignment(Qt.AlignmentFlag.AlignRight)
@@ -49,15 +50,27 @@ class ShowDownload(MessageBoxBase):
     def setProgress(self, downloaded, total):
         if total == 0:
             self.progressBar.setValue(0)
-            self.progressLabel.setText("0 / 0 " + self.tr("bytes"))
+            self.progressLabel.setText("0 B")
         else:
             self.progressBar.show()
             self.inProgressBar.hide()
             progress_value = int((downloaded / total) * 100)
             self.progressBar.setValue(progress_value)
-            self.progressLabel.setText(f"{downloaded} / {total}" + self.tr("bytes"))
 
-    def cancelDownload(self):
+            total_str = self.format_size(total)
+            downloaded_str = self.format_size(downloaded)
+            self.progressLabel.setText(f"{downloaded_str} / {total_str}")
+
+    def format_size(self, size):
+
+        units = ["B", "KB", "MB", "GB", "TB"]
+        unit_index = 0
+        while size >= 1024 and unit_index < len(units) - 1:
+            size /= 1024
+            unit_index += 1
+        return f"{size:.2f} {units[unit_index]}"
+
+    def cancelDownload(self, name):
         signalBus.bundle_download_stopped.emit(True)
         signalBus.download_self_stopped.emit(True)
         self.close()

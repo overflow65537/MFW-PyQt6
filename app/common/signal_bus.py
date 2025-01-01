@@ -30,7 +30,7 @@ class SignalBus(QObject):
     update_download_finished = pyqtSignal(dict)  # 更新下载完成信号
     update_download_stopped = pyqtSignal(bool)  # 更新下载停止信号
     download_self_progress = pyqtSignal(int, int)  # 下载自身进度信号
-    download_self_finished = pyqtSignal(int)  # 下载自身完成信号
+    download_self_finished = pyqtSignal(dict)  # 下载自身完成信号
     download_self_stopped = pyqtSignal(bool)  # 下载自身停止信号
 
 
