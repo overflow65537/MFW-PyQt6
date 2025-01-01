@@ -1,7 +1,7 @@
 from PyQt6.QtCore import QThread
 import os
 import zipfile
-from ..utils.tool import for_config_get_url, show_error_message, replace_ocr
+from ..utils.tool import for_config_get_url, replace_ocr
 from ..common.signal_bus import signalBus
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
@@ -21,7 +21,7 @@ class download_bundle(QThread):
             logger.warning("项目地址未配置，无法进行更新检查")
             signalBus.download_finished.emit(
                 {"update_name": "download_bundle", "update_status": "failed"}
-            )  # 发出空字典表示没有更新
+            )
             return
         url = for_config_get_url(self.project_url, "download")
         try:
@@ -37,7 +37,7 @@ class download_bundle(QThread):
                     "update_status": "failed",
                     "error_msg": f"{e}",
                 }
-            )  # 发出空字典表示没有更新
+            )
             return
 
         download_url: str = content["zipball_url"]
@@ -70,7 +70,13 @@ class download_bundle(QThread):
                 logger.debug(f"下载完成:{downloaded_size}/{total_size}")
         except:
             logger.exception("下载更新文件时出错")
-            show_error_message()
+            signalBus.download_finished.emit(
+                {
+                    "update_name": "download_bundle",
+                    "update_status": "failed",
+                    "error_msg": f"{e}",
+                }
+            )
             return
 
         signalBus.bundle_download_finished.emit()
@@ -118,14 +124,14 @@ class Update(QThread):
             logger.warning("项目地址未配置，无法进行更新检查")
             signalBus.update_download_finished.emit(
                 {"update_name": "update", "update_status": "failed"}
-            )  # 发出空字典表示没有更新
+            )
             return
         url = for_config_get_url(project_url, "download")
         if url is None:
             logger.warning("项目地址配置错误，无法进行更新检查")
             signalBus.update_download_finished.emit(
                 {"update_name": "update", "update_status": "failed"}
-            )  # 发出空字典表示没有更新
+            )
             return
         try:
             response = requests.get(url)
@@ -150,7 +156,7 @@ class Update(QThread):
                     "update_status": "failed",
                     "error_msg": f"{e}",
                 }
-            )  # 发出空字典表示没有更新
+            )
             return
         except Exception as e:
             logger.exception(f"更新检查时出现未知错误: {e}")
@@ -160,7 +166,7 @@ class Update(QThread):
                     "update_status": "failed",
                     "error_msg": f"{e}",
                 }
-            )  # 发出空字典表示没有更新
+            )
             return
         download_url: str = self.update_dict["zipball_url"]
         hotfix_directory = os.path.join(os.getcwd(), "hotfix")
@@ -192,17 +198,7 @@ class Update(QThread):
                         downloaded_size, total_size
                     )  # 发出进度信号
                     print(f"B下载进度: {downloaded_size}/{total_size}")
-        except requests.exceptions.RequestException as e:
-            logger.exception(f"下载更新文件时出错: {e}")
-            signalBus.update_download_finished.emit(
-                {
-                    "update_name": "update",
-                    "update_status": "failed",
-                    "error_msg": f"{e}",
-                }
-            )  # 发出空字典表示没有更新
-            show_error_message()
-            return
+
         except Exception as e:
             logger.exception(f"下载更新文件时出现未知错误: {e}")
             signalBus.update_download_finished.emit(
@@ -211,12 +207,11 @@ class Update(QThread):
                     "update_status": "failed",
                     "error_msg": f"{e}",
                 }
-            )  # 发出空字典表示没有更新
-            show_error_message()
+            )
             return
         finally:
             if response:
-                response.close()  # 确保响应对象被关闭
+                response.close()
 
         target_path = maa_config_data.resource_path
         logger.debug(f"解压文件到 {target_path}")
@@ -244,7 +239,13 @@ class Update(QThread):
                 signalBus.start_task_inmediately.emit()
         except Exception as e:
             logger.exception(f"解压和替换文件时出错: {e}")
-            show_error_message()
+            signalBus.update_download_finished.emit(
+                {
+                    "update_name": "update",
+                    "update_status": "failed",
+                    "error_msg": f"{e}",
+                }
+            )
             return
         signalBus.update_download_finished.emit(self.update_dict)
 
@@ -304,18 +305,8 @@ class UpdateSelf(QThread):
                 )  # 发出1表示下载失败
                 return
             zip_file_path = os.path.join(os.getcwd(), "update.zip")
-        except requests.exceptions.RequestException as e:
-            logger.exception(f"更新检查时出错: {e}")
-            signalBus.download_self_finished.emit(
-                {
-                    "update_name": "update_self",
-                    "update_status": "failed",
-                    "error_msg": f"{e}",
-                }
-            )  # 发出1表示下载失败
-            return
         except Exception as e:
-            logger.exception(f"更新检查时出现未知错误: {e}")
+            logger.exception(f"更新检查时出现错误: {e}")
             signalBus.download_self_finished.emit(
                 {
                     "update_name": "update_self",
@@ -350,20 +341,8 @@ class UpdateSelf(QThread):
                         downloaded_size, total_size
                     )  # 发出进度信号
                     print(f"B下载进度: {downloaded_size}/{total_size}")
-        except requests.exceptions.RequestException as e:
-            logger.exception(f"下载更新文件时出错: {e}")
-            show_error_message()
-            signalBus.download_self_finished.emit(
-                {
-                    "update_name": "update_self",
-                    "update_status": "failed",
-                    "error_msg": f"{e}",
-                }
-            )  # 发出1表示下载失败
-            return
         except Exception as e:
-            logger.exception(f"下载更新文件时出现未知错误: {e}")
-            show_error_message()
+            logger.exception(f"下载更新文件时出现错误: {e}")
             signalBus.download_self_finished.emit(
                 {
                     "update_name": "update_self",

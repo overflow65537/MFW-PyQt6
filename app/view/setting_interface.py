@@ -640,7 +640,7 @@ class SettingInterface(ScrollArea):
                 InfoBar.warning(
                     self.tr("Update failed"),
                     data_dict.get("error_msg"),
-                    duration=2000,
+                    duration=10000,
                     parent=self,
                 )
                 return
@@ -855,7 +855,7 @@ class SettingInterface(ScrollArea):
     def update_self_finished(self, status: dict):
         """更新程序停止。"""
         if status["update_status"] == "no_need":  # 无需更新
-            InfoBar.success(
+            InfoBar.info(
                 self.tr("info"),
                 self.tr("Already the latest version"),
                 duration=2000,
@@ -867,17 +867,17 @@ class SettingInterface(ScrollArea):
             self.aboutCard.button2.setEnabled(True)
             self.aboutCard.button2.setText(self.tr("Update"))
             if status.get("error_msg"):
-                InfoBar.warning(
+                InfoBar.error(
                     self.tr("Update failed"),
                     status.get("error_msg"),
-                    duration=2000,
+                    duration=-1,
                     parent=self,
                 )
                 return
-            InfoBar.warning(
+            InfoBar.error(
                 self.tr("Update failed"),
                 self.tr("Please check your internet connection"),
-                duration=2000,
+                duration=-1,
                 parent=self,
             )
 

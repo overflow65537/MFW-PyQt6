@@ -94,7 +94,11 @@ class CustomMessageBox(MessageBoxBase):
     def download_finished(self, message: Dict[str, str]) -> None:
         print(message)
         if message["update_status"] == "failed":
-            self.show_info(self.tr("No update found"))
+
+            if message.get("error_msg"):
+                self.show_error(message["error_msg"])
+                self.w.close()
+            self.show_error(self.tr("Update not found"))
             self.w.close()
         else:
             self.show_info(self.tr("Update found"))
