@@ -21,12 +21,8 @@ if os.path.exists(zip_file_name):
     # 解压文件
     with zipfile.ZipFile(zip_file_name, "r") as zip_ref:
         for file_info in zip_ref.infolist():
-            if file_info.filename not in [
-                "MFWUpdater.exe",
-                "MFWUpdater.bin",
-                "MFWUpdater",
-            ]:
-                zip_ref.extract(file_info, os.getcwd())
+            zip_ref.extract(file_info, os.getcwd())
+            print(f"Extracted: {file_info.filename}")
 
 else:
     error_message = f"file {zip_file_name} not found"
@@ -36,13 +32,13 @@ else:
 # 清除ZIP文件
 if os.path.exists(zip_file_name):
     os.remove(zip_file_name)
+    print(f"Deleted: {zip_file_name}")
 
 # 重启程序
 if sys.platform == "win32":
-    os.system(".\\MFW.exe")
+    subprocess.Popen(".\\MFW.exe")
 elif sys.platform == "linux":
-    os.system("./MFW.bin")
+    subprocess.Popen("./MFW.bin")
 elif sys.platform == "darwin":
-    os.system("./MFW")
-
-exit()
+    subprocess.Popen("./MFW")
+print("restart")

@@ -881,12 +881,32 @@ class SettingInterface(ScrollArea):
 
     def update_self_start(self):
         """开始更新程序。"""
+        # 重命名更新程序防止占用
         if sys.platform == "win32":
-            subprocess.Popen(["./MFWUpdater.exe"])
-        elif sys.platform == "linux":
-            subprocess.Popen(["./updater.bin"])
+            if os.path.exists("MFWUpdater.exe") and os.path.exists("MFWUpdater1.exe"):
+                os.remove("MFWUpdater1.exe")
+                os.rename("MFWUpdater.exe", "MFWUpdater1.exe")
+            elif os.path.exists("MFWUpdater.exe"):
+                os.rename("MFWUpdater.exe", "MFWUpdater1.exe")
         elif sys.platform == "darwin":
-            subprocess.Popen(["./MFWUpdater"])
+            if os.path.exists("MFWUpdater") and os.path.exists("MFWUpdater1"):
+                os.remove("MFWUpdater1")
+                os.rename("MFWUpdater", "MFWUpdater1")
+            elif os.path.exists("updater"):
+                os.rename("MFWUpdater", "MFWUpdater1")
+        elif sys.platform == "linux":
+            if os.path.exists("updater.bin") and os.path.exists("updater1.bin"):
+                os.remove("updater1.bin")
+                os.rename("updater.bin", "updater1.bin")
+            elif os.path.exists("updater.bin"):
+                os.rename("updater.bin", "updater1.bin")
+
+        if sys.platform == "win32":
+            subprocess.Popen(["./MFWUpdater1.exe"])
+        elif sys.platform == "linux":
+            subprocess.Popen(["./updater1.bin"])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["./MFWUpdater1"])
 
         QApplication.quit()
 

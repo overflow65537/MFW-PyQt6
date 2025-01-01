@@ -87,8 +87,7 @@ if len(sys.argv) != 4:
     error_message = "args error, should be: platform architecture version"
     with open("ERROR.log", "a") as log_file:
         log_file.write(error_message + "\n")
-    print(error_message)
-    sys.exit(1)
+    sys.exit(error_message)
 
 platform = sys.argv[1]
 architecture = sys.argv[2]
