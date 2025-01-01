@@ -78,7 +78,9 @@ class LineEditCard(SettingCard):
     def _save_text_to_config(self, text: str):
         """将文本保存到配置文件"""
         try:
-            config_path = os.path.join(os.getcwd(), "config", "custom_config.json")
+            config_path = os.path.join(
+                os.getcwd(), "config", "custom_setting_config.json"
+            )
             data = Read_Config(config_path)
             data[self.target] = text
             Save_Config(config_path, data)

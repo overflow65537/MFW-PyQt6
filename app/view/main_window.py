@@ -64,7 +64,7 @@ class MainWindow(FluentWindow):
         self.navigationInterface.addSeparator()
 
         # 判断是否存在自定义配置文件
-        if os.path.exists(os.path.join(os.getcwd(), "config", "custom.json")):
+        if os.path.exists(os.path.join(os.getcwd(), "config", "custom_setting.json")):
             self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("Task"))
             self.addSubInterface(
                 self.scheduledInterface, FIF.CALENDAR, self.tr("Scheduling tasks")

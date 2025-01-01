@@ -43,7 +43,9 @@ class SwitchSettingCardCustom(SettingCard):
     def initialize_switch_button(self):
         """初始化切换按钮的状态"""
         try:
-            config_path = os.path.join(os.getcwd(), "config", "custom_config.json")
+            config_path = os.path.join(
+                os.getcwd(), "config", "custom_setting_config.json"
+            )
             data = Read_Config(config_path)
             initial_state = data.get(self.target, False)  # 默认为 False（关闭状态）
             self.switchButton.setChecked(initial_state)
@@ -51,14 +53,16 @@ class SwitchSettingCardCustom(SettingCard):
             # 如果文件不存在，将切换按钮设置为默认关闭状态
             self.switchButton.setChecked(False)
             Save_Config(
-                os.path.join(os.getcwd(), "config", "custom_config.json"),
+                os.path.join(os.getcwd(), "config", "custom_setting_config.json"),
                 {self.target: False},
             )
 
     def _onCheckedChanged(self, isChecked: bool):
         """处理切换按钮状态变化"""
         try:
-            config_path = os.path.join(os.getcwd(), "config", "custom_config.json")
+            config_path = os.path.join(
+                os.getcwd(), "config", "custom_setting_config.json"
+            )
             data = Read_Config(config_path)
             data[self.target] = isChecked
             Save_Config(config_path, data)

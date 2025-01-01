@@ -452,7 +452,7 @@ build
 tools/ImageCropper/**/*.png
 config/*
 !config/emulator.json
-!config/custom.json
+!config/custom_setting.json
 MFW.spec
 main.spec
 bundles

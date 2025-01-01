@@ -28,8 +28,10 @@ class CustomSettingInterface(ScrollArea):
         self.CustomSettingGroup = SettingCardGroup(
             self.tr("Setting"), self.scrollWidget
         )
-        self.custom_path = os.path.join(os.getcwd(), "config", "custom.json")
-        self.config_path = os.path.join(os.getcwd(), "config", "custom_config.json")
+        self.custom_path = os.path.join(os.getcwd(), "config", "custom_setting.json")
+        self.config_path = os.path.join(
+            os.getcwd(), "config", "custom_setting_config.json"
+        )
         if os.path.exists(self.custom_path):
             logger.info("加载自定义设置")
             self.config_init()
@@ -75,7 +77,7 @@ class CustomSettingInterface(ScrollArea):
                 content=text["content"],
                 texts=option_dict["optioncontent"],
                 target=[option_name],
-                path=os.path.join(os.getcwd(), "config", "custom_config.json"),
+                path=os.path.join(os.getcwd(), "config", "custom_setting_config.json"),
                 mode="custom",
                 parent=self.CustomSettingGroup,
             )
