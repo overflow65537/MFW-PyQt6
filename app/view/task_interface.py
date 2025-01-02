@@ -184,6 +184,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             title.setVisible(visible)
 
     def bind_signals(self):
+        signalBus.custom_info.connect(self.show_custom_info)
         signalBus.resource_exist.connect(self.resource_exist)
         signalBus.Notice_msg.connect(self.print_notice)
         signalBus.callback.connect(self.callback)
@@ -216,6 +217,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Task_List.itemSelectionChanged.connect(self.Select_Task)
         self.Delete_label.dragEnterEvent = self.dragEnter
         self.Delete_label.dropEvent = self.drop
+
+    def show_custom_info(self, msg):
+        if msg["type"] == "action":
+            self.insert_colored_text(self.tr("Load Custom Action: ", msg["name"]))
+        elif msg["type"] == "recognition":
+            self.insert_colored_text(self.tr("Load Custom Recognition: ", msg["name"]))
 
     def dragEnter(self, event: QDropEvent):
         if event.mimeData().hasText():

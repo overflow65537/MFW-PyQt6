@@ -1,5 +1,10 @@
 import re
 from asyncify import asyncify
+import os
+import importlib.util
+
+from ..common.signal_bus import signalBus
+from ..utils.logger import logger
 
 from typing import List
 from maa.controller import AdbController, Win32Controller
@@ -23,6 +28,50 @@ class MaaFW:
         self.controller = None
         self.tasker = None
         self.notification_handler = None
+        self.load_custom_objects()
+
+    def load_custom_objects(self):
+        custom_dir = os.path.join(os.getcwd(), "custom")
+
+        if not os.path.exists(custom_dir):
+            return
+
+        for subdir in os.listdir(custom_dir):
+            subdir_path = os.path.join(custom_dir, subdir)
+            if os.path.isdir(subdir_path):
+                entry_file = os.path.join(subdir_path, "main.py")
+                if not os.path.exists(entry_file):
+                    logger.warning(f"{subdir_path} 没有main.py")
+                    continue  # 如果没有找到main.py，则跳过该子目录
+
+                try:
+                    module_name = "_".join((subdir.split("_")[1:]))  # 提取程序名
+                    module_type = subdir.split("_")[0]  # 提取类型（action或reg）
+                    spec = importlib.util.spec_from_file_location(
+                        module_name, entry_file
+                    )
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    if module_type == "action":
+
+                        if Toolkit.pi_register_custom_action(
+                            f"{module_name.lower()}", getattr(module, module_name)()
+                        ):
+                            logger.info(f"加载自定义动作{module_name.lower()}")
+                            signalBus.custom_info.emit(
+                                {"type": "action", "name": module_name.lower()}
+                            )
+                    elif module_type == "recognition":
+
+                        if Toolkit.pi_register_custom_recognition(
+                            f"{module_name.lower()}", getattr(module, module_name)()
+                        ):
+                            logger.info(f"加载自定义识别器{module_name.lower()}")
+                            signalBus.custom_info.emit(
+                                {"type": "recognition", "name": module_name.lower()}
+                            )
+                except Exception as e:
+                    logger.error(f"加载自定义内容时发生错误{entry_file}: {e}")
 
     @staticmethod
     @asyncify
