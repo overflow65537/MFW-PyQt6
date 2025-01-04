@@ -17,6 +17,7 @@ class download_bundle(QThread):
     stop_flag = False
 
     def run(self):
+        self.stop_flag = False
         if self.project_url == "":
             logger.warning("项目地址未配置，无法进行更新检查")
             signalBus.download_finished.emit(
@@ -119,6 +120,7 @@ class Update(QThread):
     stop_flag = False
 
     def run(self):
+        self.stop_flag = False
         project_url = maa_config_data.interface_config.get("url", None)
         if not project_url:
             logger.warning("项目地址未配置，无法进行更新检查")
@@ -257,6 +259,7 @@ class Readme(QThread):
     readme_url = ""
 
     def run(self):
+        self.stop_flag = False
         logger.debug(f"读取README文件: {self.readme_url}")
         try:
             response = requests.get(self.readme_url)
@@ -272,6 +275,7 @@ class UpdateSelf(QThread):
     stop_flag = False
 
     def run(self):
+        self.stop_flag = False
         logger.debug("更新自身")
         url = "https://api.github.com/repos/overflow65537/MFW-PyQt6/releases/latest"
         with open(
