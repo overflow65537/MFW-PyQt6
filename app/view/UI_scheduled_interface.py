@@ -4,19 +4,17 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QAbstractItemView,
-    QTextBrowser,
 )
 
-from PyQt6.QtWidgets import QGridLayout, QFormLayout, QFrame
+from PyQt6.QtWidgets import QFrame
 from qfluentwidgets import (
     PushButton,
     BodyLabel,
     ComboBox,
     EditableComboBox,
-    ListWidget,
+    TextEdit,
 )
 
-from qfluentwidgets import LineEdit, DateTimeEdit
 from ..components.listwidge_menu_draggable import ListWidge_Menu_Draggable
 
 
@@ -76,7 +74,7 @@ class Ui_Scheduled_Interface(object):
         self.Add_cfg_Button.setSizePolicy(
             QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum
         )
-        self.text_browser = QTextBrowser(Scheduled_Interface)
+        self.text_browser = TextEdit(Scheduled_Interface)
         self.List_layout.addLayout(self.res_combox_layout)
 
         self.List_layout.addWidget(self.text_browser)

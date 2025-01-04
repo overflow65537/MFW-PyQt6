@@ -351,8 +351,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     )
 
     def insert_colored_text(self, text, color_name: str = "black"):
-        if self.right_layout.count() >= 20:
-            self.right_layout.takeAt(0).widget().deleteLater()
         color = QColor(color_name.lower())
         now = datetime.now().strftime("%H:%M")
         message = ClickableLabel(self)

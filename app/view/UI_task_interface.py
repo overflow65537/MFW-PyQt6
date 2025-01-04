@@ -6,9 +6,15 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QFrame,
     QAbstractItemView,
+    QWidget,
 )
 
-from qfluentwidgets import PushButton, BodyLabel, ComboBox
+from qfluentwidgets import (
+    PushButton,
+    BodyLabel,
+    ComboBox,
+    ScrollArea,
+)
 from ..components.listwidge_menu_draggable import ListWidge_Menu_Draggable
 from ..components.right_check_button import RightCheckButton
 from ..components.click_label import ClickableLabel
@@ -218,12 +224,15 @@ class Ui_Task_Interface(object):
         self.middle_layout.addWidget(self.Delete_label)
 
         # 右侧布局（包含文本编辑区域）
-        self.right_layout = QVBoxLayout()
-        """self.TaskOutput_Text = TextEdit(Task_Interface)
-        self.TaskOutput_Text.setReadOnly(True)
-        self.TaskOutput_Text.setObjectName("TaskOutput_Text")
-        self.right_layout.addWidget(self.TaskOutput_Text)
-"""
+        self.scroll_area = ScrollArea(Task_Interface)
+        self.scroll_area.setStyleSheet("background-color: transparent;")
+        self.scroll_area.setWidgetResizable(True)
+
+        self.content_widget = QWidget()
+        self.scroll_area.setWidget(self.content_widget)
+
+        self.right_layout = QVBoxLayout(self.content_widget)
+
         label = ClickableLabel()
         label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.right_layout.addWidget(label)
@@ -231,7 +240,7 @@ class Ui_Task_Interface(object):
         # 将子布局添加到主布局中
         self.main_layout.addLayout(self.left_layout, 3)
         self.main_layout.addLayout(self.middle_layout, 3)
-        self.main_layout.addLayout(self.right_layout, 3)
+        self.main_layout.addWidget(self.scroll_area, 3)
 
         self.retranslateUi(Task_Interface)
         QMetaObject.connectSlotsByName(Task_Interface)
