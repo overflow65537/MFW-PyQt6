@@ -134,12 +134,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Finish_combox_res.clear()
         self.Finish_combox_cfg.clear()
         finish_list = [
-            self.tr("Do nothing"),
-            self.tr("Close emulator"),
-            self.tr("Quit app"),
-            self.tr("Close emulator and Quit app"),
-            self.tr("Shutdown"),
-            self.tr("Run Other Config"),
+            self.tr("Do nothing"),  # 无动作
+            self.tr("Close emulator"),  # 关闭模拟器
+            self.tr("Quit app"),  # 退出应用
+            self.tr("Close emulator and Quit app"),  # 关闭模拟器并退出应用
+            self.tr("Shutdown"),  # 关机
+            self.tr("Run Other Config"),  # 运行其他配置
         ]
         finish_combox = maa_config_data.config.get("finish_option", 0)
         self.Finish_combox.addItems(finish_list)
@@ -982,12 +982,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         # 完成后运行
         target = self.Finish_combox.currentIndex()
         actions = {
-            0: logger.info("Do nothing"),
-            1: self.close_application,
-            2: self.close_application_and_quit,
-            3: QApplication.quit,
-            4: self.shutdown,
-            5: self.run_other_config,
+            0: logger.info("Do nothing"),  # 无动作
+            1: self.close_application,  # 关闭模拟器
+            2: QApplication.quit,  # 退出应用
+            3: self.close_application_and_quit,  # 关闭模拟器并退出应用
+            4: self.shutdown,  # 关机
+            5: self.run_other_config,  # 运行其他配置
         }
 
         action = actions.get(target)
