@@ -2,7 +2,6 @@ from qfluentwidgets import (
     SettingCardGroup,
     SwitchSettingCard,
     OptionsSettingCard,
-    PrimaryPushSettingCard,
     ScrollArea,
     ComboBoxSettingCard,
     ExpandLayout,

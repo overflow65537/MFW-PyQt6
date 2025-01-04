@@ -1,5 +1,4 @@
-from PyQt6.QtCore import QSize, QMetaObject, QCoreApplication, Qt, QMimeData
-from PyQt6.QtGui import QDrag
+from PyQt6.QtCore import QSize, QMetaObject, QCoreApplication, Qt
 from PyQt6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
@@ -9,9 +8,10 @@ from PyQt6.QtWidgets import (
     QAbstractItemView,
 )
 
-from qfluentwidgets import PushButton, BodyLabel, ComboBox, TextEdit
+from qfluentwidgets import PushButton, BodyLabel, ComboBox
 from ..components.listwidge_menu_draggable import ListWidge_Menu_Draggable
 from ..components.right_check_button import RightCheckButton
+from ..components.click_label import ClickableLabel
 
 
 class Ui_Task_Interface(object):
@@ -219,10 +219,14 @@ class Ui_Task_Interface(object):
 
         # 右侧布局（包含文本编辑区域）
         self.right_layout = QVBoxLayout()
-        self.TaskOutput_Text = TextEdit(Task_Interface)
+        """self.TaskOutput_Text = TextEdit(Task_Interface)
         self.TaskOutput_Text.setReadOnly(True)
         self.TaskOutput_Text.setObjectName("TaskOutput_Text")
         self.right_layout.addWidget(self.TaskOutput_Text)
+"""
+        label = ClickableLabel()
+        label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.right_layout.addWidget(label)
 
         # 将子布局添加到主布局中
         self.main_layout.addLayout(self.left_layout, 3)

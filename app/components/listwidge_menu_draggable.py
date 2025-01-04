@@ -38,11 +38,15 @@ class ListWidge_Menu_Draggable(ListWidget):
         return items
 
     def mousePressEvent(self, e: QMouseEvent):
-        if e.button() == Qt.MouseButton.RightButton:
+        if e.button() == Qt.MouseButton.LeftButton:
             item = self.itemAt(e.pos())
-            if item:
-                self.setCurrentItem(item)
-        super(ListWidge_Menu_Draggable, self).mousePressEvent(e)
+            if item is None:
+                self.clearSelection()
+                signalBus.dragging_finished.emit()
+            else:
+                super(ListWidge_Menu_Draggable, self).mousePressEvent(e)
+        else:
+            super(ListWidge_Menu_Draggable, self).mousePressEvent(e)
 
     def contextMenuEvent(self, e: QContextMenuEvent):
         menu = RoundMenu(parent=self)

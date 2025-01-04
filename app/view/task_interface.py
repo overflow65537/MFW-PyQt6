@@ -8,12 +8,13 @@ import json
 from typing import List, Dict
 
 from PyQt6.QtCore import Qt, QMimeData, QTimer
-from PyQt6.QtGui import QDrag, QDropEvent, QColor, QTextCharFormat, QTextCursor
-from PyQt6.QtWidgets import QApplication, QWidget, QListWidgetItem
-from qfluentwidgets import InfoBar, InfoBarPosition, BodyLabel, ComboBox, TextEdit
+from PyQt6.QtGui import QDrag, QDropEvent, QColor
+from PyQt6.QtWidgets import QApplication, QWidget, QListWidgetItem, QSizePolicy
+from qfluentwidgets import InfoBar, InfoBarPosition, BodyLabel, ComboBox
 
 from ..view.UI_task_interface import Ui_Task_Interface
 from ..utils.notification import MyNotificationHandler
+from ..components.click_label import ClickableLabel
 from ..common.signal_bus import signalBus
 from ..utils.tool import (
     Get_Values_list_Option,
@@ -37,6 +38,7 @@ from maa.toolkit import AdbDevice
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 from ..utils.notice import dingtalk_send, lark_send, SMTP_send, WxPusher_send
+from datetime import datetime
 
 
 class TaskInterface(Ui_Task_Interface, QWidget):
@@ -98,7 +100,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.init_finish_combox()
 
     def clear_content(self):
-        self.TaskOutput_Text.clear()
+        self.clear_layout()
         self.Task_List.clear()
         self.SelectTask_Combox_1.clear()
         self.SelectTask_Combox_2.clear()
@@ -309,17 +311,21 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             elif message["status"] == 2:
                 self.insert_colored_text(self.tr("Connection Success"))
             elif message["status"] == 3:
-                self.insert_colored_text(self.tr("Connection Failed"))
+                self.insert_colored_text(self.tr("Connection Failed"), "red")
             elif message["status"] == 4:
-                self.insert_colored_text(self.tr("Unknown Error"))
+                self.insert_colored_text(self.tr("Unknown Error"), "red")
         elif message["name"] == "on_tasker_task":
-            if message["status"] == 1:
+            if not self.need_runing or message["task"] == "MaaNS::Tasker::post_stop":
+                return
+            elif message["status"] == 1:
                 self.insert_colored_text(message["task"] + " " + self.tr("Started"))
             elif message["status"] == 2:
                 self.insert_colored_text(message["task"] + " " + self.tr("Succeeded"))
                 logger.debug(f"{message['task']} 任务成功")
             elif message["status"] == 3:
-                self.insert_colored_text(message["task"] + " " + self.tr("Failed"))
+                self.insert_colored_text(
+                    message["task"] + " " + self.tr("Failed"), "red"
+                )
                 logger.debug(f"{message["task"]} 任务失败")
                 self.send_notice("failed", message["task"])
         if message["name"] == "on_task_recognition":
@@ -345,15 +351,26 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     )
 
     def insert_colored_text(self, text, color_name: str = "black"):
-        cursor = self.TaskOutput_Text.textCursor()
+        if self.right_layout.count() >= 20:
+            self.right_layout.takeAt(0).widget().deleteLater()
         color = QColor(color_name.lower())
-        char_format = QTextCharFormat()
-        char_format.setForeground(color)
-        cursor.setCharFormat(char_format)
-        if self.TaskOutput_Text.toPlainText():
-            cursor.insertText("\n" + text)
-        else:
-            cursor.insertText(text)
+        now = datetime.now().strftime("%H:%M")
+        message = ClickableLabel(self)
+        message.setAlignment(Qt.AlignmentFlag.AlignTop)
+        message.setText(now + " " + text)
+        message.setTextColor(color)
+        count = self.right_layout.count()
+        index = count - 1 if count > 1 else 0
+        self.right_layout.insertWidget(index, message)
+
+    def clear_layout(self):
+        while self.right_layout.count():
+            item = self.right_layout.takeAt(0)
+            widget = item.widget()
+            widget.deleteLater()
+        label = ClickableLabel()
+        label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.right_layout.addWidget(label)
 
     def Start_Status(
         self, interface_Path: str, maa_pi_config_Path: str, resource_Path: str
@@ -605,7 +622,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.S2_Button.setEnabled(False)
         self.S2_Button.setText(self.tr("Stop"))
         self.S2_Button.clicked.connect(self.Stop_task)
-        self.TaskOutput_Text.clear()
+        self.clear_layout()
 
         PROJECT_DIR = maa_config_data.resource_path
         controller_type = get_controller_type(
@@ -729,7 +746,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             if emu_path and self.need_runing:
                 emu.append(emu_path)
 
-                emu_args = maa_config_data.config.get("emu_args")
+                emu_args: str = maa_config_data.config.get("emu_args")
                 emu_wait_time = int(maa_config_data.config.get("emu_wait_time"))
                 if emu_args:
                     emu.extend(emu_args.split())
@@ -759,6 +776,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             self.tr("Starting task in ") + f"{int(emu_wait_time) - i}"
                         )
                         await asyncio.sleep(1)
+            self.clear_layout()
             # 雷电模拟器特殊过程,重新获取pid
             emu_type = maa_config_data.config.get("adb").get("adb_path")
             if "LDPlayer" in emu_type:
@@ -866,7 +884,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             self.tr("Starting game in ") + f"{int(exe_wait_time) - i}"
                         )
                         await asyncio.sleep(1)
-
+            self.clear_layout()
             # 连接Win32失败
             if (
                 not await maafw.connect_win32hwnd(
@@ -1239,11 +1257,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             Controller_Type_Select, maa_config_data.interface_config_path
         )
         if controller_type == "Adb":
-            self.insert_colored_text(self.tr("save ADB config..."))
             self.add_Controller_combox()
 
         elif controller_type == "Win32":
-            self.insert_colored_text(self.tr("save Win32 config..."))
             self.Start_Detection()
         logger.info(f"保存控制器配置: {Controller_Type_Select}")
         # 更新配置并保存
