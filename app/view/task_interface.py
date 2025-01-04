@@ -353,24 +353,28 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def insert_colored_text(self, text, color_name: str = "black"):
         color = QColor(color_name.lower())
         now = datetime.now().strftime("%H:%M")
+        time = ClickableLabel(self)
+        time.setAlignment(Qt.AlignmentFlag.AlignTop)
+        time.setText(now)
+
         message = ClickableLabel(self)
         message.setAlignment(Qt.AlignmentFlag.AlignTop)
-        message.setText(now + " " + text)
+        message.setText(text)
         message.setTextColor(color)
-        count = self.right_layout.count()
+
+        count = self.right_layout.rowCount()
         index = count - 1 if count > 1 else 0
-        self.right_layout.insertWidget(index, message)
+        self.right_layout.insertRow(index, time, message)
         scrollbar = self.scroll_area.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
 
     def clear_layout(self):
-        while self.right_layout.count():
-            item = self.right_layout.takeAt(0)
-            widget = item.widget()
-            widget.deleteLater()
+        while self.right_layout.rowCount() > 0:
+            self.right_layout.removeRow(0)
         label = ClickableLabel()
         label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.right_layout.addWidget(label)
+
+        self.right_layout.addRow(label, label)
 
     def Start_Status(
         self, interface_Path: str, maa_pi_config_Path: str, resource_Path: str
@@ -634,7 +638,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         if run_before_start_path and self.need_runing:
             run_before_start.append(run_before_start_path)
-            run_before_start_args = maa_config_data.config.get("run_before_start_args")
+            run_before_start_args: str = maa_config_data.config.get(
+                "run_before_start_args"
+            )
             if run_before_start_args:
                 run_before_start.extend(run_before_start_args.split())
             logger.info(f"运行前脚本{run_before_start}")

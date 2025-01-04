@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QGridLayout,
+    QFormLayout,
     QFrame,
     QAbstractItemView,
     QWidget,
@@ -231,11 +232,12 @@ class Ui_Task_Interface(object):
         self.content_widget = QWidget()
         self.scroll_area.setWidget(self.content_widget)
 
-        self.right_layout = QVBoxLayout(self.content_widget)
+        self.right_layout = QFormLayout(self.content_widget)
 
         label = ClickableLabel()
         label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.right_layout.addWidget(label)
+
+        self.right_layout.addRow(label, label)
 
         # 将子布局添加到主布局中
         self.main_layout.addLayout(self.left_layout, 3)
