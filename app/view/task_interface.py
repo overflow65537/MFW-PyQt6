@@ -360,6 +360,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         count = self.right_layout.count()
         index = count - 1 if count > 1 else 0
         self.right_layout.insertWidget(index, message)
+        scrollbar = self.scroll_area.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
 
     def clear_layout(self):
         while self.right_layout.count():
