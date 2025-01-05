@@ -51,10 +51,12 @@ clear_zip_file()
 
 
 # 重启程序
-if sys.platform == "win32":
+if sys.platform.startswith("win32"):
     subprocess.Popen(".\\MFW.exe")
-elif sys.platform == "linux":
+elif sys.platform.startswith("linux"):
     subprocess.Popen("./MFW.bin")
-elif sys.platform == "darwin":
+elif sys.platform.startswith("darwin"):
     subprocess.Popen("./MFW")
+else:
+    sys.exit("Unsupported platform")
 print("restart")
