@@ -23,12 +23,11 @@ class MaaFW:
 
     def __init__(self):
         Toolkit.init_option("./")
-
-        self.resource = None
+        self.need_custom_register = True
+        self.resource = Resource()
         self.controller = None
         self.tasker = None
         self.notification_handler = None
-        self.load_custom_objects()
 
     def load_custom_objects(self):
         custom_dir = os.path.join(os.getcwd(), "custom")
@@ -58,26 +57,25 @@ class MaaFW:
                     module = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(module)
                     if module_type.lower() == "action":
-                        logger.info(f"加载自定义动作{module_name.lower()}")
-
-                        if Toolkit.pi_register_custom_action(
-                            f"{module_name.lower()}", getattr(module, module_name)()
+                        logger.info(f"加载自定义动作{module_name}")
+                        if self.resource.register_custom_action(
+                            f"{module_name}", getattr(module, module_name)()
                         ):
                             logger.info(
-                                f"加载自定义动作{module_name.lower()},{getattr(module, module_name)()}"
+                                f"加载自定义动作{module_name},{getattr(module, module_name)()}"
                             )
                             signalBus.custom_info.emit(
-                                {"type": "action", "name": module_name.lower()}
+                                {"type": "action", "name": module_name}
                             )
                     elif module_type.lower() == "recognition":
-                        logger.info(f"加载自定义识别器{module_name.lower()}")
+                        logger.info(f"加载自定义识别器{module_name}")
 
-                        if Toolkit.pi_register_custom_recognition(
-                            f"{module_name.lower()}", getattr(module, module_name)()
+                        if self.resource.register_custom_recognition(
+                            f"{module_name}", getattr(module, module_name)()
                         ):
-                            logger.info(f"加载自定义识别器{module_name.lower()}")
+                            logger.info(f"加载自定义识别器{module_name}")
                             signalBus.custom_info.emit(
-                                {"type": "recognition", "name": module_name.lower()}
+                                {"type": "recognition", "name": module_name}
                             )
                 except Exception as e:
                     logger.error(f"加载自定义内容时发生错误{entry_file}: {e}")
@@ -146,11 +144,8 @@ class MaaFW:
 
     @asyncify
     def load_resource(self, dir: str, reset: bool = False) -> bool:
-        if not self.resource:
-            self.resource = Resource()
         if reset:
             self.resource.clear()
-
         return self.resource.post_path(dir).wait().succeeded()
 
     @asyncify
@@ -163,6 +158,8 @@ class MaaFW:
             return False
 
         self.tasker.bind(self.resource, self.controller)
+        if self.need_custom_register:
+            self.load_custom_objects()
         if not self.tasker.inited:
             print("Failed to init MaaFramework instance")
             return False
