@@ -35,16 +35,21 @@ class MaaFW:
 
         if not os.path.exists(custom_dir):
             return
+        if not os.listdir(custom_dir):
+            logger.warning("custom目录为空")
+            return
 
         for subdir in os.listdir(custom_dir):
             subdir_path = os.path.join(custom_dir, subdir)
             if os.path.isdir(subdir_path):
+                logger.info(f"加载自定义内容{subdir_path}")
                 entry_file = os.path.join(subdir_path, "main.py")
                 if not os.path.exists(entry_file):
                     logger.warning(f"{subdir_path} 没有main.py")
                     continue  # 如果没有找到main.py，则跳过该子目录
 
                 try:
+                    logger.info(f"加载自定义内容{entry_file}")
                     module_name = "_".join((subdir.split("_")[1:]))  # 提取程序名
                     module_type = subdir.split("_")[0]  # 提取类型（action或reg）
                     spec = importlib.util.spec_from_file_location(
@@ -52,16 +57,20 @@ class MaaFW:
                     )
                     module = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(module)
-                    if module_type == "action":
+                    if module_type.lower() == "action":
+                        logger.info(f"加载自定义动作{module_name.lower()}")
 
                         if Toolkit.pi_register_custom_action(
                             f"{module_name.lower()}", getattr(module, module_name)()
                         ):
-                            logger.info(f"加载自定义动作{module_name.lower()}")
+                            logger.info(
+                                f"加载自定义动作{module_name.lower()},{getattr(module, module_name)()}"
+                            )
                             signalBus.custom_info.emit(
                                 {"type": "action", "name": module_name.lower()}
                             )
-                    elif module_type == "recognition":
+                    elif module_type.lower() == "recognition":
+                        logger.info(f"加载自定义识别器{module_name.lower()}")
 
                         if Toolkit.pi_register_custom_recognition(
                             f"{module_name.lower()}", getattr(module, module_name)()

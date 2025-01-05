@@ -990,6 +990,17 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             5: self.run_other_config,  # 运行其他配置
         }
 
+        """
+        finish_list = [
+            self.tr("Do nothing"),  # 无动作
+            self.tr("Close emulator"),  # 关闭模拟器
+            self.tr("Quit app"),  # 退出应用
+            self.tr("Close emulator and Quit app"),  # 关闭模拟器并退出应用
+            self.tr("Shutdown"),  # 关机
+            self.tr("Run Other Config"),  # 运行其他配置
+        ]
+        """
+
         action = actions.get(target)
         logger.info(f"选择的动作: {target}")
         if action and self.need_runing:
