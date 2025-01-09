@@ -824,6 +824,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     logger.error(
                         f"连接adb失败\n{maa_config_data.config['adb']['adb_path']}\n{maa_config_data.config['adb']['address']}\n{maa_config_data.config['adb']['input_method']}\n{maa_config_data.config['adb']['screen_method']}\n{maa_config_data.config['adb']['config']}"
                     )
+                    self.send_notice("failed", self.tr("Connection"))
                     self.insert_colored_text(self.tr("Connection Failed"))
                     await maafw.stop_task()
                     self.S2_Button.setEnabled(True)
@@ -845,6 +846,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     logger.error(
                         f"连接adb失败\n{maa_config_data.config['adb']['adb_path']}\n{maa_config_data.config['adb']['address']}\n{maa_config_data.config['adb']['input_method']}\n{maa_config_data.config['adb']['screen_method']}\n{maa_config_data.config['adb']['config']}"
                     )
+                    self.send_notice("failed", self.tr("Connection"))
                     self.insert_colored_text(self.tr("Connection Failed"))
                     await maafw.stop_task()
                     self.S2_Button.setEnabled(True)
@@ -903,6 +905,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 logger.error(
                     f"连接Win32失败 \n{maa_config_data.config['win32']['hwnd']}\n{maa_config_data.config['win32']['input_method']}\n{maa_config_data.config['win32']['screen_method']}"
                 )
+                self.send_notice("failed", self.tr("Connection"))
                 self.insert_colored_text(self.tr("Connection Failed"))
                 await maafw.stop_task()
                 self.S2_Button.setEnabled(True)
