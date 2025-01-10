@@ -42,7 +42,7 @@
 - 将自定义动作/识别器文件按照要求命名和放置
 - 要求的结构:[这是例子](https://github.com/overflow65537/MAA_Punish/tree/main/assets)
 ```
-资源文件夹/custom/
+项目文件夹/custom/
 ├── action/
 │   ├── 动作1
 │   │    └── main.py
