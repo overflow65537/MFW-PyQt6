@@ -95,12 +95,17 @@ class download_bundle(QThread):
         folder_to_extract = os.path.join(
             os.getcwd(), "hotfix", actual_main_folder, "assets"
         )
-        print(folder_to_extract)
 
         shutil.copytree(folder_to_extract, target_path, dirs_exist_ok=True)
         replace_ocr(target_path)
         shutil.rmtree(os.path.join(os.getcwd(), "hotfix", actual_main_folder))
         os.remove(zip_file_path)
+        if os.path.exists(os.path.join(folder_to_extract, "assets", "custom")):
+            shutil.copytree(
+                os.path.join(folder_to_extract, "assets", "custom"),
+                os.path.join(os.getcwd(), "config", project_name, "custom"),
+                dirs_exist_ok=True,
+            )
 
         signalBus.download_finished.emit(
             {
