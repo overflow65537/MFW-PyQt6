@@ -22,16 +22,16 @@ site_packages_paths = site.getsitepackages()
 # 查找包含 maa/bin 的路径
 maa_bin_path = None
 for path in site_packages_paths:
-    potential_path = os.path.join(path, "maa", "bin")
+    potential_path = os.path.join(path, "maa")
     if os.path.exists(potential_path):
         maa_bin_path = potential_path
         break
 
 if maa_bin_path is None:
-    raise FileNotFoundError("not found maa/bin")
+    raise FileNotFoundError("not found maa")
 
 # 构建 --add-data 参数
-add_data_param = f"{maa_bin_path}{os.pathsep}maa/bin"
+add_data_param = f"{maa_bin_path}{os.pathsep}maa"
 
 # 查找包含 MaaAgentBinary 的路径
 maa_bin_path2 = None

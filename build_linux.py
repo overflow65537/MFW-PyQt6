@@ -34,7 +34,7 @@ subprocess.run(nuitka_command, check=True)
 # 查找包含 maa/bin 的路径
 maa_bin_path = None
 for path in site_packages_paths:
-    potential_path = os.path.join(path, "maa", "bin")
+    potential_path = os.path.join(path, "maa")
     if os.path.exists(potential_path):
         maa_bin_path = potential_path
         break
@@ -56,7 +56,7 @@ if maa_bin_path2 is None:
 # 移动 maa/bin 到 dist 目录
 shutil.copytree(
     maa_bin_path,
-    os.path.join(os.getcwd(), "main.dist", "maa", "bin"),
+    os.path.join(os.getcwd(), "main.dist", "maa"),
     dirs_exist_ok=True,
 )
 
