@@ -166,9 +166,7 @@ class MaaFW:
             self.resource.clear_custom_recognition()
             self.resource.clear_custom_action()
             custom_dir = os.path.join(
-                os.path.dirname(
-                    os.path.dirname(os.path.dirname(maa_config_data.config_path))
-                ),
+                maa_config_data.resource_path,
                 "custom",
             )
             self.load_custom_objects(custom_dir)
