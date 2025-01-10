@@ -158,6 +158,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             os.getcwd(),
             "config",
             maa_config_data.resource_name,
+            "config",
             config_name,
             "maa_pi_config.json",
         )
@@ -186,6 +187,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             os.getcwd(),
             "config",
             maa_config_data.resource_name,
+            "config",
             config_name,
             "maa_pi_config.json",
         )
@@ -208,6 +210,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
                 os.getcwd(),
                 "config",
                 maa_config_data.resource_name,
+                "config",
                 config_name,
                 "maa_pi_config.json",
             )
@@ -242,6 +245,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             os.getcwd(),
             "config",
             maa_config_data.resource_name,
+            "config",
             "default",
             "maa_pi_config.json",
         )
@@ -310,15 +314,13 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         if config_name is None or type(config_name) in [int, bool]:
             config_name = self.Cfg_Combox.currentText()
 
-        config_index = self.Cfg_Combox.currentIndex()
-
         if config_name in ["default", "default".lower()]:
             logger.warning(" 不能删除主配置文件")
         elif config_name == "" or None:
             return
         elif config_name in maa_config_data.config_name_list:
             logger.info(f" 删除配置文件 {config_name}")
-            self.Cfg_Combox.removeItem(config_index)
+
             # 删除配置文件夹
             file_path = os.path.dirname(maa_config_data.config_path)
             shutil.rmtree(file_path)  # 删除配置文件目录
@@ -331,6 +333,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
                 os.getcwd(),
                 "config",
                 maa_config_data.resource_name,
+                "config",
                 "default",
                 "maa_pi_config.json",
             )

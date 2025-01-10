@@ -226,7 +226,12 @@ class CustomMessageBox(MessageBoxBase):
         resource_data[self.name_data] = path_data
         cfg.set(cfg.maa_resource_list, resource_data)
         maa_pi_config_Path = os.path.join(
-            os.getcwd(), "config", self.name_data, "default", "maa_pi_config.json"
+            os.getcwd(),
+            "config",
+            self.name_data,
+            "config",
+            "default",
+            "maa_pi_config.json",
         )
         # 将信息写入maa_config_list
         maa_config_list[self.name_data] = {"default": maa_pi_config_Path}
