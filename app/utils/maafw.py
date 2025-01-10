@@ -12,6 +12,7 @@ from maa.tasker import Tasker, NotificationHandler
 from maa.resource import Resource
 from maa.toolkit import Toolkit, AdbDevice, DesktopWindow
 from maa.define import MaaAdbScreencapMethodEnum, MaaAdbInputMethodEnum
+from ..common.maa_config_data import maa_config_data
 
 
 class MaaFW:
@@ -29,56 +30,59 @@ class MaaFW:
         self.tasker = None
         self.notification_handler = None
 
-    def load_custom_objects(self):
-        custom_dir = os.path.join(os.getcwd(), "custom")
-
+    def load_custom_objects(self, custom_dir):
         if not os.path.exists(custom_dir):
+            logger.warning(f"自定义文件夹 {custom_dir} 不存在")
             return
         if not os.listdir(custom_dir):
-            logger.warning("custom目录为空")
+            logger.warning(f"自定义文件夹 {custom_dir} 为空")
             return
 
-        for subdir in os.listdir(custom_dir):
-            subdir_path = os.path.join(custom_dir, subdir)
-            if os.path.isdir(subdir_path):
-                logger.info(f"加载自定义内容{subdir_path}")
-                entry_file = os.path.join(subdir_path, "main.py")
-                if not os.path.exists(entry_file):
-                    logger.warning(f"{subdir_path} 没有main.py")
-                    continue  # 如果没有找到main.py，则跳过该子目录
+        for module_type in ["action", "recognition"]:
+            module_type_dir = os.path.join(custom_dir, module_type)
+            if not os.path.exists(module_type_dir):
+                logger.warning(f"{module_type} 文件夹不存在于 {custom_dir}")
+                continue
 
-                try:
-                    logger.info(f"加载自定义内容{entry_file}")
-                    module_name = "_".join((subdir.split("_")[1:]))  # 提取程序名
-                    module_type = subdir.split("_")[0]  # 提取类型（action或reg）
-                    spec = importlib.util.spec_from_file_location(
-                        module_name, entry_file
-                    )
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
-                    if module_type.lower() == "action":
-                        logger.info(f"加载自定义动作{module_name}")
-                        if self.resource.register_custom_action(
-                            f"{module_name}", getattr(module, module_name)()
-                        ):
-                            logger.info(
-                                f"加载自定义动作{module_name},{getattr(module, module_name)()}"
-                            )
-                            signalBus.custom_info.emit(
-                                {"type": "action", "name": module_name}
-                            )
-                    elif module_type.lower() == "recognition":
-                        logger.info(f"加载自定义识别器{module_name}")
+            for subdir in os.listdir(module_type_dir):
+                subdir_path = os.path.join(module_type_dir, subdir)
+                if os.path.isdir(subdir_path):
+                    logger.info(f"加载自定义内容{subdir_path}")
+                    entry_file = os.path.join(subdir_path, "main.py")
+                    if not os.path.exists(entry_file):
+                        logger.warning(f"{subdir_path} 没有main.py")
+                        continue  # 如果没有找到main.py，则跳过该子目录
 
-                        if self.resource.register_custom_recognition(
-                            f"{module_name}", getattr(module, module_name)()
-                        ):
+                    try:
+                        logger.info(f"加载自定义内容{entry_file}")
+                        module_name = subdir  # 使用子目录名作为模块名
+                        spec = importlib.util.spec_from_file_location(
+                            module_name, entry_file
+                        )
+                        module = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(module)
+                        if module_type == "action":
+                            logger.info(f"加载自定义动作{module_name}")
+                            if self.resource.register_custom_action(
+                                f"{module_name}", getattr(module, module_name)()
+                            ):
+                                logger.info(
+                                    f"加载自定义动作{module_name},{getattr(module, module_name)()}"
+                                )
+                                signalBus.custom_info.emit(
+                                    {"type": "action", "name": module_name}
+                                )
+                        elif module_type == "recognition":
                             logger.info(f"加载自定义识别器{module_name}")
-                            signalBus.custom_info.emit(
-                                {"type": "recognition", "name": module_name}
-                            )
-                except Exception as e:
-                    logger.error(f"加载自定义内容时发生错误{entry_file}: {e}")
+                            if self.resource.register_custom_recognition(
+                                f"{module_name}", getattr(module, module_name)()
+                            ):
+                                logger.info(f"加载自定义识别器{module_name}")
+                                signalBus.custom_info.emit(
+                                    {"type": "recognition", "name": module_name}
+                                )
+                    except Exception as e:
+                        logger.error(f"加载自定义内容时发生错误{entry_file}: {e}")
 
     @staticmethod
     @asyncify
@@ -159,7 +163,15 @@ class MaaFW:
 
         self.tasker.bind(self.resource, self.controller)
         if self.need_custom_register:
-            self.load_custom_objects()
+            self.resource.clear_custom_recognition()
+            self.resource.clear_custom_action()
+            custom_dir = os.path.join(
+                os.path.dirname(
+                    os.path.dirname(os.path.dirname(maa_config_data.config_path))
+                ),
+                "custom",
+            )
+            self.load_custom_objects(custom_dir)
         if not self.tasker.inited:
             print("Failed to init MaaFramework instance")
             return False
