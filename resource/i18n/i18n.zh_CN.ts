@@ -840,6 +840,16 @@
     <name>TaskInterface</name>
     <message>
         <location filename="app/view/task_interface.py" line="884"/>
+        <source>Load Custom Action:</source>
+        <translation>载入自定义动作:</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="884"/>
+        <source>Load Custom Recognition:</source>
+        <translation>载入自定义识别器:</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="884"/>
         <source>Error</source>
         <translation>错误</translation>
     </message>

@@ -840,6 +840,16 @@
     <name>TaskInterface</name>
     <message>
         <location filename="app/view/task_interface.py" line="884"/>
+        <source>Load Custom Action:</source>
+        <translation>載入自定義動作:</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="884"/>
+        <source>Load Custom Recognition:</source>
+        <translation>載入自定義識別器:</translation>
+    </message>
+    <message>
+        <location filename="app/view/task_interface.py" line="884"/>
         <source>Started</source>
         <translation>啓動</translation>
     </message>

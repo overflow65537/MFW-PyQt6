@@ -222,9 +222,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def show_custom_info(self, msg):
         if msg["type"] == "action":
-            self.insert_colored_text(self.tr("Load Custom Action: " + msg["name"]))
+            self.insert_colored_text(self.tr("Load Custom Action:") + " " + msg["name"])
         elif msg["type"] == "recognition":
-            self.insert_colored_text(self.tr("Load Custom Recognition: " + msg["name"]))
+            self.insert_colored_text(
+                self.tr("Load Custom Recognition:") + " " + msg["name"]
+            )
 
     def dragEnter(self, event: QDropEvent):
         if event.mimeData().hasText():
