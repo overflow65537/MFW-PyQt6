@@ -24,7 +24,7 @@ class MaaFW:
 
     def __init__(self):
         Toolkit.init_option("./")
-        self.need_custom_register = True
+        self.activate_resource = ""
         self.resource = Resource()
         self.controller = None
         self.tasker = None
@@ -162,7 +162,7 @@ class MaaFW:
             return False
 
         self.tasker.bind(self.resource, self.controller)
-        if self.need_custom_register:
+        if self.activate_resource != maa_config_data.resource_name:
             self.resource.clear_custom_recognition()
             self.resource.clear_custom_action()
             custom_dir = os.path.join(
@@ -170,6 +170,7 @@ class MaaFW:
                 "custom",
             )
             self.load_custom_objects(custom_dir)
+            self.activate_resource = maa_config_data.resource_name
         if not self.tasker.inited:
             print("Failed to init MaaFramework instance")
             return False
