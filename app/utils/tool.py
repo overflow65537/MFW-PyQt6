@@ -226,6 +226,7 @@ def Get_Task_List(path: str, target: str) -> List:
     Lens = len(Task_Config) - 1
     for i in range(Lens, -1, -1):
         lists.append(Task_Config[i]["name"])
+    lists.reverse()
     return lists
 
 
