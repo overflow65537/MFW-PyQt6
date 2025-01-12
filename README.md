@@ -39,6 +39,8 @@
 
 ### 动态加载自定义动作/识别器
 - 什么是[自定义动作/识别器](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md#%E4%BD%BF%E7%94%A8-json-%E4%BD%8E%E4%BB%A3%E7%A0%81%E7%BC%96%E7%A8%8B%E4%BD%86%E5%AF%B9%E5%A4%8D%E6%9D%82%E4%BB%BB%E5%8A%A1%E4%BD%BF%E7%94%A8%E8%87%AA%E5%AE%9A%E4%B9%89%E9%80%BB%E8%BE%91)
+- 要求自定义动作/识别器使用python3.12
+- 如果自定义动作/识别器中含有第三方库,需要将第三方库安装到`_internal`(windows和Macos)或者`MFW-PyQt6根目录`(linux)
 - 将自定义动作/识别器文件按照要求命名和放置
 - 要求的结构:[这是例子](https://github.com/overflow65537/MAA_Punish/tree/main/assets)
 ```
