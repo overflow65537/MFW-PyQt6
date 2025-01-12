@@ -13,6 +13,7 @@ from maa.resource import Resource
 from maa.toolkit import Toolkit, AdbDevice, DesktopWindow
 from maa.define import MaaAdbScreencapMethodEnum, MaaAdbInputMethodEnum
 from ..common.maa_config_data import maa_config_data
+from ..common.config import cfg
 
 
 class MaaFW:
@@ -174,7 +175,7 @@ class MaaFW:
         if not self.tasker.inited:
             print("Failed to init MaaFramework instance")
             return False
-
+        self.tasker.set_save_draw(cfg.get(cfg.save_draw))
         return self.tasker.post_pipeline(entry, pipeline_override).wait().succeeded()
 
     @asyncify
