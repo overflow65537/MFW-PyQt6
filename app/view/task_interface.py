@@ -614,7 +614,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             if cfg.get(cfg.auto_update_resource):
                 logger.info("启动GUI后自动更新")
                 signalBus.auto_update.emit()
-                return
+
             if cfg.get(cfg.run_after_startup):
                 logger.info("启动GUI后运行任务")
                 self.start_again = True

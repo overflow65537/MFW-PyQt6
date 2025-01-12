@@ -235,9 +235,6 @@ class Update(QThread):
             os.remove(zip_file_path)
 
             logger.info("更新进程完成")
-            if cfg.get(cfg.run_after_startup):
-                logger.info("启动GUI后运行任务")
-                signalBus.start_task_inmediately.emit()
         except Exception as e:
             logger.exception(f"解压和替换文件时出错: {e}")
             signalBus.update_download_finished.emit(

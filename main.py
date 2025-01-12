@@ -125,13 +125,27 @@ def start_symbol():
 
 
 if __name__ == "__main__":
-    with open(
-        os.path.join(os.getcwd(), "config", "version.txt"), "r", encoding="utf-8"
-    ) as f:
-        try:
+    try:
+        with open(
+            os.path.join(os.getcwd(), "config", "version.txt"), "r", encoding="utf-8"
+        ) as f:
+
             version = f.read().split()[2]
-        except:
+    except:
+        with open(
+            os.path.join(os.getcwd(), "config", "version.txt"), "w", encoding="utf-8"
+        ) as f:
+            if sys.platform.startswith("linux"):
+                platf = "linux"
+            elif sys.platform.startswith("win"):
+                platf = "win"
+            elif sys.platform.startswith("darwin"):
+                platf = "macos"
+            else:
+                platf = "unknown"
+
             version = "DEV"
+            f.write(f"{platf} DEV DEV v0.0.0.1")
     start_symbol()
     logger.info(f"MFW 版本:{version}")
     parser = argparse.ArgumentParser()
