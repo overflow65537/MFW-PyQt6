@@ -9,6 +9,13 @@
 基于 **[PyQT6](https://doc.qt.io/qtforpython-6)** 的 **[MAAFramework](https://github.com/MaaXYZ/MaaFramework)** 通用 GUI 项目
 </div>
 
+<p align="center">
+  <img alt="license" src="https://img.shields.io/github/license/overflow65537/MFW-PyQt6">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white">
+  <img alt="platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blueviolet">
+  <img alt="commit" src="https://img.shields.io/github/commit-activity/m/overflow65537/MFW-PyQt6">
+</p>
+
 ## 开发环境
 
 - Python 3.12
