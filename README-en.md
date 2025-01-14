@@ -1,46 +1,112 @@
+<!-- markdownlint-disable MD033 MD041 -->
+
 <div align="center">
 
 # MFW-PyQt6
-**[简体中文](./README.md) | [English](./README-en.md)**
 
-A general GUI project of **[MAAFramework](https://github.com/MaaXYZ/MaaFramework)** based on **[PyQT6](https://doc.qt.io/qtforpython-6)**.
+**[Simplified Chinese](./README.md) | [English](./README-en.md)**
 
+A general-purpose GUI project for **[MAAFramework](https://github.com/MaaXYZ/MaaFramework)** based on **[PyQT6](https://doc.qt.io/qtforpython-6)**
 </div>
 
 ## Development Environment
+
 - Python 3.12
 
-## Usage Method
-### Direct Usage
+## Usage
+
+### Direct Use
+
 - `pip install -r requirements.txt`
 - `python main.py`
 
-### Automatic Build with GitHub Actions
-- Change the project name and project address in `depoly\deploy.py` to your project name and project address, and upload it to the root directory of your `GitHub repository`.
-- Change MaaXXX to your project name in `deploy\install.yml`, and upload it to the `.github/workflows` directory of your GitHub repository.
-- Push the new version.
+### Using GitHub Actions for Automatic Building
+
+- Modify the project name and project address in `depoly\deploy.py` to your project name and project address, and upload it to the `GitHub repository root directory`
+- Modify MaaXXX in `deploy\install.yml` to your project name and upload it to the `.github/workflows` directory of the GitHub repository
+- Push a new version
 
 ## Feature Description
-### Multi-configuration Launch
-- Click the add button for resources in the task scheduling interface to add resources.
-- Each resource can have multiple configurations, which are independent of each other.
-- After the operation is finished, you can choose to start a configuration file from another resource.
-- With the start and execute task function, seamless launch for multiple resources can be achieved.
 
-### Parameter Launch
-- The -r parameter accepts resource names, e.g., `python main.py -r resource1` or `main.exe -r resource1`.
-- The -c parameter accepts configuration file names, e.g., `python main.py -c config1` or `main.exe -c config1`.
-- The -d parameter allows direct startup, e.g., `python main.py -d` or `main.exe -d`.
+### Multi-Configuration Startup
+
+- Click the add button for resources in the scheduled task interface to add resources
+- Each resource can have multiple configurations, independent of each other
+- The operation after completion can choose to start a certain configuration file in other resources
+- Combined with the task executed after startup, seamless startup of multiple resources can be achieved
+
+### Parameter Startup
+
+- The `-r` parameter can accept the resource name, for example `python main.py -r resource1` or `MFW.exe -r resource1`
+- The `-c` parameter can accept the configuration file name, for example `python main.py -c config1` or `MFW.exe -c config1`
+- The `-d` parameter can start directly, for example `python main.py -d` or `MFW.exe -d`
 
 ### External Notifications
-- Currently supports DingTalk, FeiShu, SMTP, and WxPusher notification methods.
 
-### Update Resource
-- If an update address is filled when adding resources, one-click updates can be performed.
+- Currently supports four notification methods: DingTalk, Feishu, SMTP, and WxPusher
+
+### Resource Update
+
+- If the update address is filled in when adding a resource, one-click update can be performed
+
+### Dynamic Loading of Custom Actions/Recognizers
+
+- What is a [Custom Action/Recognizer](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md#%E4%BD%BF%E7%94%A8-json-%E4%BD%8E%E4%BB%A3%E7%A0%81%E7%BC%96%E7%A8%8B%E4%BD%86%E5%AF%B9%E5%A4%8D%E6%9D%82%E4%BB%BB%E5%8A%A1%E4%BD%BF%E7%94%A8%E8%87%AA%E5%AE%9A%E4%B9%89%E9%80%BB%E8%BE%91)
+- Requires custom actions/recognizers to use Python 3.12
+- If the custom action/recognizer contains third-party libraries, the third-party libraries need to be installed in `_internal` (Windows and macOS) or the `MFW-PyQt6 root directory` (Linux)
+- Name and place the custom action/recognizer files as required
+- Required structure: [Here is an example](https://github.com/overflow65537/MAA_Punish/tree/main/assets)
+
+```File Tree
+Project Folder/custom/
+├── action/
+│   ├── Action1
+│   │    └── main.py
+│   └── Action2
+│        └── main.py
+└── Recognition/
+    ├── Recognizer1
+    │    └── main.py
+    └── Recognizer2
+         └── main.py
+```
+
+- Among them, Action1, Action2, Recognizer1, Recognizer2 are the names used in the pipeline, for example
+
+```json
+
 
 ### Custom Program Configuration
+
 - Create `./config/custom.json`.
 - The content should be:
+
+```json
+"my_custom_task": {
+        "recognition": "Custom",
+        "custom_recognition": "Recognizer1",
+        "action": "Custom",
+        "custom_action": "Action1"
+    }
+
+```
+
+- The object name in main.py is required to be the same as the folder name, for example
+
+```python
+  class Recognizer1(CustomRecognition):
+    def analyze(context, ...):
+        # Get the image, then perform your own image operations
+        image = context.tasker.controller.cached_image
+        # Return the image analysis result
+        return AnalyzeResult(box=(10, 10, 100, 100))
+```
+
+### Custom Program Configuration
+
+- Create ```./config/custom.json```.
+- The content should be:
+
 ```json
 {
     "option1": {
@@ -76,21 +142,26 @@ A general GUI project of **[MAAFramework](https://github.com/MaaXYZ/MaaFramework
     }
 }
 ```
+
 - The processed data will be saved to `./config/custom_config.json` for custom programs to read.
 
 ## License
+
 **PyQt-MAA** is licensed under **[GPL-3.0 License](./LICENSE)**.
 
 ## Acknowledgments
+
 ### Open Source Libraries
+
 - **[PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)**\
     A fluent design widgets library based on C++ Qt/PyQt/PySide. Make Qt Great Again.
 - **[MaaFramework](https://github.com/MaaAssistantArknights/MaaFramework)**\
     An automation black-box testing framework based on image recognition
 
 ### Developers
+
 Thanks to the following developers for their contributions to PyQt-MAA.
 
 <a href="https://github.com/overflow65537/PYQT-MAA/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=overflow65537/PYQT-MAA&max=1000" />
+  <img src="https://contrib.rocks/image?repo=overflow65537/PYQT-MAA&max=1000" alt="Contributors to MFW-PyQt6"/>
 </a>
