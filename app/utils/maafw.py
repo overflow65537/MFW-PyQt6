@@ -26,6 +26,7 @@ class MaaFW:
     def __init__(self):
         Toolkit.init_option("./")
         self.activate_resource = ""
+        self.need_register_report = True
         self.resource = Resource()
         self.controller = None
         self.tasker = None
@@ -70,18 +71,20 @@ class MaaFW:
                                 logger.info(
                                     f"加载自定义动作{module_name},{getattr(module, module_name)()}"
                                 )
-                                signalBus.custom_info.emit(
-                                    {"type": "action", "name": module_name}
-                                )
+                                if self.need_register_report:
+                                    signalBus.custom_info.emit(
+                                        {"type": "action", "name": module_name}
+                                    )
                         elif module_type == "recognition":
                             logger.info(f"加载自定义识别器{module_name}")
                             if self.resource.register_custom_recognition(
                                 f"{module_name}", getattr(module, module_name)()
                             ):
                                 logger.info(f"加载自定义识别器{module_name}")
-                                signalBus.custom_info.emit(
-                                    {"type": "recognition", "name": module_name}
-                                )
+                                if self.need_register_report:
+                                    signalBus.custom_info.emit(
+                                        {"type": "recognition", "name": module_name}
+                                    )
                     except Exception as e:
                         logger.error(f"加载自定义内容时发生错误{entry_file}: {e}")
 
@@ -164,14 +167,17 @@ class MaaFW:
 
         self.tasker.bind(self.resource, self.controller)
         if self.activate_resource != maa_config_data.resource_name:
-            self.resource.clear_custom_recognition()
-            self.resource.clear_custom_action()
-            custom_dir = os.path.join(
-                maa_config_data.resource_path,
-                "custom",
-            )
-            self.load_custom_objects(custom_dir)
-            self.activate_resource = maa_config_data.resource_name
+            self.need_register_report = True
+        self.resource.clear_custom_recognition()
+        self.resource.clear_custom_action()
+        custom_dir = os.path.join(
+            maa_config_data.resource_path,
+            "custom",
+        )
+
+        self.load_custom_objects(custom_dir)
+        self.activate_resource = maa_config_data.resource_name
+        self.need_register_report = False
         if not self.tasker.inited:
             print("Failed to init MaaFramework instance")
             return False
