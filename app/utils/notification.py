@@ -25,10 +25,10 @@ class MyNotificationHandler(NotificationHandler):
             {"name": "on_tasker_task", "task": detail.entry, "status": noti_type.value}
         )
 
-    def on_task_recognition(
+    def on_node_recognition(
         self,
         noti_type: NotificationType,
-        detail: NotificationHandler.TaskRecognitionDetail,
+        detail: NotificationHandler.NodeRecognitionDetail,
     ):
 
         self.callbackSignal.callback.emit(

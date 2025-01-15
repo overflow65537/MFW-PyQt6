@@ -663,8 +663,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 await asyncio.sleep(3)
 
         # 加载资源
-
-        await maafw.load_resource("", True)  # 清除资源
+        if maafw.resource:
+            maafw.resource.clear()  # 清除资源
         resource_path = ""
         resource_target = self.Resource_Combox.currentText()
 
@@ -865,7 +865,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 exe.append(exe_path)
                 exe_wait_time = int(maa_config_data.config.get("exe_wait_time"))
 
-                exe_args = maa_config_data.config.get("exe_args")
+                exe_args: str = maa_config_data.config.get("exe_args")
                 if exe_args:
                     exe.extend(exe_args.split())
                 logger.info(f"启动游戏{exe}")
@@ -971,7 +971,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if run_after_finish_path and self.need_runing:
             run_after_finish.append(run_after_finish_path)
 
-            run_after_finish_args = maa_config_data.config.get("run_after_finish_args")
+            run_after_finish_args: str = maa_config_data.config.get(
+                "run_after_finish_args"
+            )
             if run_after_finish_args:
                 run_after_finish.extend(run_after_finish_args.split())
             logger.info(f"运行后脚本{run_after_finish}")
@@ -1027,7 +1029,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.need_runing = False
         self.start_again = True
         await maafw.stop_task()
-        # maafw.resource.clear()
 
         self.S2_Button.clicked.disconnect()
         self.S2_Button.clicked.connect(self.Start_Up)

@@ -27,7 +27,7 @@ class MaaFW:
         Toolkit.init_option("./")
         self.activate_resource = ""
         self.need_register_report = True
-        self.resource = Resource()
+        self.resource = None
         self.controller = None
         self.tasker = None
         self.notification_handler = None
@@ -122,7 +122,7 @@ class MaaFW:
         self.controller = AdbController(
             adb_path, address, screencap_method, input_method, config
         )
-        connected = self.controller.post_connection().wait().succeeded()
+        connected = self.controller.post_connection().wait().succeeded
         if not connected:
             print(f"Failed to connect {adb_path} {address}")
             return False
@@ -143,7 +143,7 @@ class MaaFW:
         self.controller = Win32Controller(
             hwnd, screencap_method=screencap_method, input_method=input_method  # type: ignore
         )
-        connected = self.controller.post_connection().wait().succeeded()
+        connected = self.controller.post_connection().wait().succeeded
         if not connected:
             print(f"Failed to connect {hwnd}")
             return False
@@ -151,10 +151,10 @@ class MaaFW:
         return True
 
     @asyncify
-    def load_resource(self, dir: str, reset: bool = False) -> bool:
-        if reset:
-            self.resource.clear()
-        return self.resource.post_path(dir).wait().succeeded()
+    def load_resource(self, dir: str) -> bool:
+        if not self.resource:
+            self.resource = Resource()
+        return self.resource.post_bundle(dir).wait().succeeded
 
     @asyncify
     def run_task(self, entry: str, pipeline_override: dict = {}) -> bool:
@@ -182,13 +182,12 @@ class MaaFW:
             print("Failed to init MaaFramework instance")
             return False
         self.tasker.set_save_draw(cfg.get(cfg.save_draw))
-        return self.tasker.post_pipeline(entry, pipeline_override).wait().succeeded()
+        return self.tasker.post_task(entry, pipeline_override).wait().succeeded
 
     @asyncify
     def stop_task(self):
         if not self.tasker:
             return
-
         self.tasker.post_stop().wait()
 
 
