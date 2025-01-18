@@ -15,6 +15,7 @@ import shutil
 
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
+import re
 
 
 class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
@@ -45,6 +46,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         if os.path.exists(Readme_path):
             with open(Readme_path, "r", encoding="utf-8") as f:
                 content = f.read()
+                content = re.sub(r"<[^>]*>", "", content)
                 self.text_browser.setMarkdown(content)
                 return
         update_url = maa_config_data.interface_config.get("url", "")
@@ -65,6 +67,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         ) as f:
             f.write(msg)
         # 在QTextBrowser中显示HTML内容
+        msg = re.sub(r"<[^>]*>", "", msg)
         self.text_browser.setMarkdown(msg)
 
     def add_resource(self):
