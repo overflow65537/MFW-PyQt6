@@ -8,6 +8,8 @@ import socket
 import asyncio
 import traceback
 import shutil
+import wmi
+import uuid
 from typing import Literal, Optional, List, Dict, Any
 
 
@@ -607,3 +609,50 @@ def get_console_path(path: str) -> dict[str, str]:
     else:
         logger.info("未找到控制台")
         return None
+
+
+def get_uuid():
+    # 定义一个命名空间，例如使用DNS命名空间
+    namespace = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
+
+    # 获取CPU序列号
+    cpu_serial = get_cpu_serial()
+
+    if cpu_serial:
+        # 使用uuid5生成固定的UUID，基于CPU序列号
+        device_id = uuid.uuid5(namespace, cpu_serial)
+        # 输出UUID
+        return device_id
+    else:
+        return False
+
+
+def get_cpu_serial():
+    system = platform.system()
+    if system == "Windows":
+        try:
+            c = wmi.WMI()
+            return c.Win32_Processor()[0].ProcessorId
+        except Exception as e:
+            print(f"Error getting CPU serial on Windows: {e}")
+            return None
+    elif system == "Linux":
+        try:
+            result = subprocess.check_output(
+                "cat /proc/cpuinfo | grep serial | cut -d ' ' -f 2", shell=True
+            )
+            return result.decode("utf-8").strip()
+        except Exception as e:
+            print(f"Error getting CPU serial on Linux: {e}")
+            return None
+    elif system == "Darwin":
+        try:
+            result = subprocess.check_output(
+                "ioreg -l | grep IOPlatformSerialNumber", shell=True
+            )
+            return result.decode("utf-8").split('"')[-2]
+        except Exception as e:
+            print(f"Error getting CPU serial on macOS: {e}")
+            return None
+    else:
+        raise NotImplementedError(f"Unsupported operating system: {system}")

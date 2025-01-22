@@ -15,7 +15,7 @@ from ..common.config import cfg
 from ..utils.tool import Read_Config, Save_Config
 from ..utils.logger import logger
 import os
-from ..utils.update import download_bundle
+from ..utils.update import DownloadBundle
 from ..common.signal_bus import signalBus
 from typing import Dict, List
 
@@ -25,7 +25,7 @@ class CustomMessageBox(MessageBoxBase):
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
-        self.download_bundle = download_bundle()
+        self.download_bundle = DownloadBundle()
         signalBus.bundle_download_stopped.connect(self.download_bundle.stop)
         transparent_color = QColor(255, 255, 255, 0)
         self.setMaskColor(transparent_color)

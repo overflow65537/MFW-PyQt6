@@ -22,7 +22,7 @@ from ..common.style_sheet import StyleSheet
 from ..components.line_edit_card import LineEditCard
 from ..components.combobox_setting_card_custom import ComboBoxSettingCardCustom
 from ..components.notic_setting_card import NoticeButtonSettingCard
-from ..utils.update import Update, UpdateSelf
+from ..utils.update import Update, UpdateSelf, MirrorUpdate
 from ..utils.tool import Save_Config, get_gpu_info, for_config_get_url
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
@@ -72,13 +72,6 @@ class SettingInterface(ScrollArea):
         """初始化界面内容。"""
         # 设置标签
         self.settingLabel = QLabel(self.tr("Settings"), self)
-        # 更新工作线程
-
-        self.Updatethread = Update(self)
-        signalBus.update_download_stopped.connect(self.Updatethread.stop)
-
-        self.update_self = UpdateSelf(self)
-        signalBus.download_self_stopped.connect(self.update_self.stop)
 
         # 初始化设置
         self.initialize_adb_settings()
@@ -90,6 +83,19 @@ class SettingInterface(ScrollArea):
         self.initialize_about_settings()
         self.__initWidget()
         self.init_info()
+        # 更新工作线程
+        if cfg.get(cfg.Mcdk):
+            self.Updatethread = MirrorUpdate(self)
+            self.updateCard.button2.setText(self.tr("Check for updates from Mirror"))
+            logger.debug("使用镜像站更新")
+        else:
+            self.Updatethread = Update(self)
+            self.updateCard.button2.setText(self.tr("Check for updates from Github"))
+            logger.debug("使用Github更新")
+        signalBus.update_download_stopped.connect(self.Updatethread.stop)
+
+        self.update_self = UpdateSelf(self)
+        signalBus.download_self_stopped.connect(self.update_self.stop)
 
     def init_info(self):
         """初始化控件信息。"""
@@ -615,79 +621,43 @@ class SettingInterface(ScrollArea):
         return gpu_combox_list
 
     def update_check(self):
-        if self.project_url != "":
-            self.Updatethread.start()
-            self.updateCard.button2.setEnabled(False)
-            self.updateCard.button2.setText(self.tr("Checking for updates..."))
-            return True
-        else:
-            InfoBar.warning(
-                self.tr("Update failed"),
-                self.tr("Please set the project URL first"),
-                duration=2000,
-                parent=self,
-            )
-            return False
+        self.Updatethread.start()
+        self.updateCard.button2.setEnabled(False)
+        self.updateCard.button2.setText(self.tr("Checking for updates..."))
 
     def on_update_finished(self, data_dict: dict):
         """更新检查完成的回调函数。"""
-        print(data_dict)
-        if data_dict["update_status"] == "failed":
-            self.updateCard.button2.setText(self.tr("Check for updates"))
-            self.updateCard.button2.setEnabled(True)
-            if data_dict.get("error_msg"):
-                InfoBar.warning(
-                    self.tr("Update failed"),
-                    data_dict.get("error_msg"),
-                    duration=10000,
-                    parent=self,
-                )
-                return
-            InfoBar.warning(
-                self.tr("Update failed"),
-                self.tr("Please check your internet connection"),
-                duration=2000,
+        logger.debug(f"更新检查完成: {data_dict}")
+        if data_dict["status"] == "success":
+            self.project_version = maa_config_data.interface_config.get("version", "")
+            self.updateCard.setContent(
+                self.tr("Current")
+                + " "
+                + self.project_name
+                + " "
+                + self.tr("version:")
+                + " "
+                + self.project_version,
+            )
+            InfoBar.success(
+                self.tr("successful"),
+                data_dict["msg"],
+                duration=5000,
                 parent=self,
             )
 
-        elif data_dict["tag_name"] == self.project_version:
-            InfoBar.info(
-                self.tr("No need to update"),
-                self.tr("You are using the latest version"),
-                duration=2000,
-                parent=self,
-            )
-            self.updateCard.button2.setText(self.tr("Check for updates"))
-            self.updateCard.button2.setEnabled(True)
-        elif data_dict["tag_name"]:
-            InfoBar.success(
-                self.tr("Update completed"),
-                self.tr("Successfully updated to") + data_dict["tag_name"],
-                duration=2000,
-                parent=self,
-            )
-            self.updateCard.setContent(
-                self.tr("Current")
-                + self.project_name
-                + self.tr("version:")
-                + data_dict["tag_name"]
-            )
-            self.updateCard.button2.setText(self.tr("Check for updates"))
-            self.updateCard.button2.setEnabled(True)
-            maa_config_data.interface_config["version"] = data_dict["tag_name"]
-            Save_Config(
-                maa_config_data.interface_config_path,
-                maa_config_data.interface_config,
-            )
-        else:
-            InfoBar.warning(
+        elif data_dict["status"] == "failed":
+            InfoBar.error(
                 self.tr("Update failed"),
-                self.tr("Please check your internet connection"),
-                duration=2000,
+                data_dict["msg"],
+                duration=10000,
                 parent=self,
             )
-            self.updateCard.button2.setText(self.tr("Check for updates"))
-            self.updateCard.button2.setEnabled(True)
+        if cfg.get(cfg.Mcdk):
+            self.updateCard.button2.setText(self.tr("Check for updates from Mirror"))
+        else:
+            self.updateCard.button2.setText(self.tr("Check for updates from GitHub"))
+        self.updateCard.button2.setEnabled(True)
 
     def __initWidget(self):
         self.resize(1000, 800)

@@ -1,18 +1,141 @@
-from PyQt6.QtCore import QThread
+from PyQt6.QtCore import QThread, pyqtBoundSignal
 import os
 import zipfile
-from ..utils.tool import for_config_get_url, replace_ocr
+from ..utils.tool import (
+    for_config_get_url,
+    replace_ocr,
+    get_uuid,
+    Read_Config,
+    Save_Config,
+)
 from ..common.signal_bus import signalBus
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 from ..common.config import cfg
 
+from typing import Dict
 import requests
 import shutil
 import json
 
 
-class download_bundle(QThread):
+class MirrorUpdate(QThread):
+    stop_flag = False
+
+    def run(self):
+        self.stop_flag = False
+        device_id = get_uuid()
+        cdk = cfg.get(cfg.Mcdk)
+        res_id = maa_config_data.interface_config.get(
+            "mirrorchyan_rid", "MAA_SnowBreak"
+        )
+        version = maa_config_data.interface_config.get("version")
+        url = f"https://mirrorc.top/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&sp_id={device_id}&user_agent=MFW_PYQT6_Test"
+        print(url)
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            mirror_data: Dict[str, Dict] = response.json()
+        except requests.RequestException as e:
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "failed",
+                    "msg": f"{e}",
+                }
+            )
+            return
+        if mirror_data.get("code") != 0:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "failed",
+                    "msg": mirror_data.get("msg"),
+                }
+            )
+            return
+        if mirror_data.get("msg") == "current version is latest":
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "success",
+                    "msg": self.tr("current version is latest"),
+                }
+            )
+            return
+        download_url: str = mirror_data["data"].get("url")
+        hotfix_directory = os.path.join(os.getcwd(), "hotfix")
+        os.makedirs(hotfix_directory, exist_ok=True)
+        zip_file_path = os.path.join(hotfix_directory, f"{res_id}.zip")
+        try:
+            response = requests.get(download_url, stream=True)
+            total_size = int(
+                response.headers.get("content-length", 0)
+            )  # 获取文件总大小
+            downloaded_size = 0
+            with open(zip_file_path, "wb") as zip_file:
+                for data in response.iter_content(chunk_size=4096):  # 分块下载
+                    if self.stop_flag:
+                        response.close()
+                        zip_file.close()
+                        return
+                    downloaded_size += len(data)
+                    zip_file.write(data)
+                    signalBus.update_download_progress.emit(
+                        downloaded_size, total_size
+                    )  # 发出进度信号
+                    print(f"下载进度: {downloaded_size}/{total_size}")
+                logger.debug(f"下载完成:{downloaded_size}/{total_size}")
+        except:
+            logger.exception("下载更新文件时出错")
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "failed",
+                    "msg": self.tr("Download failed"),
+                }
+            )
+            return
+        finally:
+            response.close()
+            zip_file.close()
+
+        # 解压文件hotfix目录下
+        with zipfile.ZipFile(zip_file_path, "r") as zip_ref:
+            zip_ref.extractall(os.path.join(os.getcwd(), "hotfix"))
+        # 移动文件到指定路径
+        target_path = maa_config_data.resource_path
+        shutil.copytree(
+            os.path.join(os.getcwd(), "hotfix", "assets"),
+            target_path,
+            dirs_exist_ok=True,
+        )
+        maa_config_data.interface_config["version"] = mirror_data["data"].get(
+            "version_name"
+        )
+        # 删除临时资源
+        shutil.rmtree(os.path.join(os.getcwd(), "hotfix", "assets"))
+        os.remove(zip_file_path)
+
+        interface_date = Read_Config(maa_config_data.interface_config_path)
+        interface_date["version"] = mirror_data["data"].get("version_name")
+        interface_date["mirrorchyan_rid"] = "MAA_SnowBreak"
+        Save_Config(maa_config_data.interface_config_path, interface_date)
+
+        # 发送信号
+        signalBus.update_download_finished.emit(
+            {
+                "status": "success",
+                "msg": self.tr("Update successful"),
+            }
+        )
+
+    def stop(self, flag: bool = False):
+        self.stop_flag = flag
+
+
+class MirrorDownladBundle(QThread):
+    stop_flag = False
+
+
+class DownloadBundle(QThread):
     project_url = ""
     stop_flag = False
 
@@ -124,14 +247,24 @@ class Update(QThread):
         if not project_url:
             logger.warning("项目地址未配置，无法进行更新检查")
             signalBus.update_download_finished.emit(
-                {"update_name": "update", "update_status": "failed"}
+                {
+                    "status": "failed",
+                    "msg": self.tr(
+                        "Project address configuration not found, unable to perform update check"
+                    ),
+                }
             )
             return
         url = for_config_get_url(project_url, "download")
         if url is None:
             logger.warning("项目地址配置错误，无法进行更新检查")
             signalBus.update_download_finished.emit(
-                {"update_name": "update", "update_status": "failed"}
+                {
+                    "status": "failed",
+                    "msg": self.tr(
+                        "Project address configuration error, unable to perform update check"
+                    ),
+                }
             )
             return
         try:
@@ -146,16 +279,20 @@ class Update(QThread):
             if self.update_dict.get(
                 "tag_name", None
             ) == maa_config_data.interface_config.get("version"):
-                signalBus.update_download_finished.emit(self.update_dict)
+                signalBus.update_download_finished.emit(
+                    {
+                        "status": "success",
+                        "msg": self.tr("current version is latest"),
+                    }
+                )
                 return
 
         except requests.exceptions.RequestException as e:
             logger.warning(f"更新检查时出错: {e}")
             signalBus.update_download_finished.emit(
                 {
-                    "update_name": "update",
-                    "update_status": "failed",
-                    "error_msg": f"{e}",
+                    "status": "failed",
+                    "msg": f"{e}",
                 }
             )
             return
@@ -163,9 +300,8 @@ class Update(QThread):
             logger.exception(f"更新检查时出现未知错误: {e}")
             signalBus.update_download_finished.emit(
                 {
-                    "update_name": "update",
-                    "update_status": "failed",
-                    "error_msg": f"{e}",
+                    "status": "failed",
+                    "msg": f"{e}",
                 }
             )
             return
@@ -204,9 +340,8 @@ class Update(QThread):
             logger.exception(f"下载更新文件时出现未知错误: {e}")
             signalBus.update_download_finished.emit(
                 {
-                    "update_name": "update",
-                    "update_status": "failed",
-                    "error_msg": f"{e}",
+                    "status": "failed",
+                    "msg": f"{e}",
                 }
             )
             return
@@ -239,13 +374,20 @@ class Update(QThread):
             logger.exception(f"解压和替换文件时出错: {e}")
             signalBus.update_download_finished.emit(
                 {
-                    "update_name": "update",
-                    "update_status": "failed",
-                    "error_msg": f"{e}",
+                    "status": "failed",
+                    "msg": f"{e}",
                 }
             )
             return
-        signalBus.update_download_finished.emit(self.update_dict)
+        interface_date = Read_Config(maa_config_data.interface_config_path)
+        interface_date["version"] = self.update_dict["tag_name"]
+        Save_Config(maa_config_data.interface_config_path, interface_date)
+        signalBus.update_download_finished.emit(
+            {
+                "status": "success",
+                "msg": self.tr("Update successful"),
+            }
+        )
 
     def stop(self, flag: bool = False):
         self.stop_flag = flag

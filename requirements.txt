@@ -4,3 +4,4 @@ requests
 MaaFw~=3.0.0
 psutil
 PyQt6-Fluent-Widgets
+wmi

@@ -42,6 +42,8 @@ def isWin11():
 class Config(QConfig):
     """Config of application"""
 
+    # Mirror酱cdk
+    Mcdk = ConfigItem("program", "cdk", "")
     # 强制更新
     force_update = ConfigItem("program", "force_update", False, BoolValidator())
     # 标题
