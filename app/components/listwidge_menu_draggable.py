@@ -189,3 +189,4 @@ class ListWidge_Menu_Draggable(ListWidget):
                     self.setCurrentRow(end)
                     signalBus.dragging_finished.emit()
         super(ListWidge_Menu_Draggable, self).dropEvent(event)
+        signalBus.dragging_finished.emit()

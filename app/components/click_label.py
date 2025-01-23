@@ -9,3 +9,4 @@ class ClickableLabel(BodyLabel):
         if event.button() == Qt.MouseButton.LeftButton:
             signalBus.dragging_finished.emit()
         super().mousePressEvent(event)
+        signalBus.dragging_finished.emit()
