@@ -127,8 +127,8 @@ class MirrorUpdate(QThread):
             }
         )
 
-    def stop(self, flag: bool = False):
-        self.stop_flag = flag
+    def stop(self):
+        self.stop_flag = True
 
 
 class MirrorDownloadBundle(QThread):
@@ -140,7 +140,7 @@ class MirrorDownloadBundle(QThread):
         device_id = get_uuid()
         cdk = cfg.get(cfg.Mcdk)
 
-        url = f"https://mirrorc.top/api/resources/{self.res_id}/latest?current_version=&cdk={cdk}&sp_id={device_id}&user_agent=MFW_PYQT6_TEST"
+        url = f"https://mirrorc.top/api/resources/{self.res_id}/latest?current_version=&cdk={cdk}&sp_id={device_id}&user_agent=MFW_PYQT6"
         print(url)
         try:
             response = requests.get(url)
@@ -230,9 +230,8 @@ class MirrorDownloadBundle(QThread):
             }
         )
 
-    def stop(self, flag: bool = False):
-        logger.debug(f"停止下载bundle: {flag}")
-        self.stop_flag = flag
+    def stop(self):
+        self.stop_flag = True
 
 
 class DownloadBundle(QThread):
@@ -325,15 +324,14 @@ class DownloadBundle(QThread):
         signalBus.download_finished.emit(
             {
                 "status": "success",
-                "msg": "下载成功",
+                "msg": self.tr("Download successful"),
                 "target_path": target_path,
                 "project_name": project_name,
             }
         )
 
-    def stop(self, flag: bool = False):
-        logger.debug(f"停止下载bundle: {flag}")
-        self.stop_flag = flag
+    def stop(self):
+        self.stop_flag = True
 
 
 class Update(QThread):
@@ -487,8 +485,8 @@ class Update(QThread):
             }
         )
 
-    def stop(self, flag: bool = False):
-        self.stop_flag = flag
+    def stop(self):
+        self.stop_flag = True
 
 
 class Readme(QThread):
@@ -604,5 +602,5 @@ class UpdateSelf(QThread):
         ) as f:
             f.write(" ".join(version_data))
 
-    def stop(self, flag: bool = False):
-        self.stop_flag = flag
+    def stop(self):
+        self.stop_flag = True

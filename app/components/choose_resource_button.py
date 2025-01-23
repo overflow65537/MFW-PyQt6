@@ -28,7 +28,9 @@ class CustomMessageBox(MessageBoxBase):
         self.download_bundle = DownloadBundle()
         signalBus.bundle_download_stopped.connect(self.download_bundle.stop)
         self.mirror_download_bundle = MirrorDownloadBundle()
-        signalBus.bundle_download_stopped.connect(self.mirror_download_bundle.stop)
+        signalBus.mirror_bundle_download_stopped.connect(
+            self.mirror_download_bundle.stop
+        )
         transparent_color = QColor(255, 255, 255, 0)
         self.setMaskColor(transparent_color)
         self.folder = None
