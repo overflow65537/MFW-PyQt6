@@ -578,7 +578,7 @@ class SettingInterface(ScrollArea):
         self.MirrorCard = LineEditCard(
             icon=FIF.APPLICATION,
             title=self.tr("mirrorchyan CDK"),
-            content=self.tr("Enter mirrorchyanCDK for stable update path"),
+            content=self.tr("Enter mirrorchyan CDK for stable update path"),
             is_passwork=True,
             num_only=False,
             holderText=cfg.get(cfg.Mcdk),

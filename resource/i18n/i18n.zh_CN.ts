@@ -441,6 +441,36 @@
         <translation>设置</translation>
     </message>
     <message>
+        <location filename="app/view/setting_interface.py" line="662"/>
+        <source>successful</source>
+        <translation>成功</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="60"/>
+        <source>Check for updates from Mirror</source>
+        <translation>从Mirror获取更新</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="60"/>
+        <source>Check for updates from Github</source>
+        <translation>从Github获取更新</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="60"/>
+        <source>mirrorchyan CDK</source>
+        <translation>Mirror酱CDK</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="60"/>
+        <source>About Mirror</source>
+        <translation>关于Mirror酱</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="60"/>
+        <source>Enter mirrorchyan CDK for stable update path</source>
+        <translation>输入Mirror酱CDK以获取稳定的更新</translation>
+    </message>
+    <message>
         <location filename="app/view/setting_interface.py" line="168"/>
         <source>ADB</source>
         <translation>安卓调试桥</translation>
@@ -1203,6 +1233,47 @@
         <location filename="app/view/UI_task_interface.py" line="207"/>
         <source>Add Task</source>
         <translation>添加</translation>
+    </message>
+</context>
+<context>
+    <name>MirrorUpdate</name>
+    <message>
+        <location filename="app/components/update.py" line="57"/>
+        <source>current version is latest</source>
+        <translation>当前已经是最新版</translation>
+    </message>
+    <message>
+        <location filename="app/components/update.py" line="89"/>
+        <source>Download failed</source>
+        <translation>下载失败</translation>
+    </message>
+    <message>
+        <location filename="app/components/update.py" line="123"/>
+        <source>Update successful</source>
+        <translation>更新成功</translation>
+    </message>
+</context>
+<context>
+    <name>Update</name>
+    <message>
+        <location filename="app/components/update.py" line="355"/>
+        <source>Project address configuration not found, unable to perform update check</source>
+        <translation>未发现项目更新地址,无法进行更新</translation>
+    </message>
+    <message>
+        <location filename="app/components/update.py" line="367"/>
+        <source>Project address configuration error, unable to perform update check</source>
+        <translation>项目更新地址填写错误,无法进行更新</translation>
+    </message>
+    <message>
+        <location filename="app/components/update.py" line="388"/>
+        <source>current version is latest</source>
+        <translation>当前已经是最新版</translation>
+    </message>
+    <message>
+        <location filename="app/components/update.py" line="491"/>
+        <source>Update successful</source>
+        <translation>更新成功</translation>
     </message>
 </context>
 </TS>

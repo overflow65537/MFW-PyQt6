@@ -441,6 +441,36 @@
         <translation>設置</translation>
     </message>
     <message>
+        <location filename="app/view/setting_interface.py" line="662"/>
+        <source>successful</source>
+        <translation>成功</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="60"/>
+        <source>Check for updates from Mirror</source>
+        <translation>從Mirror獲取更新</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="60"/>
+        <source>Check for updates from Github</source>
+        <translation>從Github獲取更新</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="60"/>
+        <source>mirrorchyan CDK</source>
+        <translation>Mirror醬CDK</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="60"/>
+        <source>About Mirror</source>
+        <translation>關於Mirror醬</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="60"/>
+        <source>Enter mirrorchyan CDK for stable update path</source>
+        <translation>輸入Mirror醬CDK以獲取穩定的更新</translation>
+    </message>
+    <message>
         <location filename="app/view/setting_interface.py" line="59"/>
         <source>ADB</source>
         <translation>安卓調試橋</translation>
@@ -1203,6 +1233,42 @@
         <location filename="app/view/UI_task_interface.py" line="207"/>
         <source>Add Task</source>
         <translation>添加</translation>
+    </message>
+</context>
+<context>
+    <name>MirrorUpdate</name>
+    <message>
+        <location filename="app/components/update.py" line="57"/>
+        <source>current version is latest</source>
+        <translation>當前已經是最新版</translation>
+    </message>
+    <message>
+        <location filename="app/components/update.py" line="89"/>
+        <source>Download failed</source>
+        <translation>下載失敗</translation>
+    </message>
+    <message>
+        <location filename="app/components/update.py" line="123"/>
+        <source>Update successful</source>
+        <translation>更新成功</translation>
+    </message>
+</context>
+<context>
+    <name>Update</name>
+    <message>
+        <location filename="app/components/update.py" line="57"/>
+        <source>current version is latest</source>
+        <translation>當前已經是最新版</translation>
+    </message>
+    <message>
+        <location filename="app/components/update.py" line="89"/>
+        <source>Download failed</source>
+        <translation>下載失敗</translation>
+    </message>
+    <message>
+        <location filename="app/components/update.py" line="123"/>
+        <source>Update successful</source>
+        <translation>更新成功</translation>
     </message>
 </context>
 </TS>
