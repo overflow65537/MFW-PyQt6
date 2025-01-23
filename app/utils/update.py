@@ -27,7 +27,7 @@ class MirrorUpdate(QThread):
         device_id = get_uuid()
         cdk = cfg.get(cfg.Mcdk)
         res_id = maa_config_data.interface_config.get(
-            "mirrorchyan_rid", "MAA_SnowBreak"
+            "mirrorchyan_rid", maa_config_data.interface_config.get("name")
         )
         version = maa_config_data.interface_config.get("version")
         url = f"https://mirrorc.top/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&sp_id={device_id}&user_agent=MFW_PYQT6_Test"
@@ -116,7 +116,7 @@ class MirrorUpdate(QThread):
 
         interface_date = Read_Config(maa_config_data.interface_config_path)
         interface_date["version"] = mirror_data["data"].get("version_name")
-        interface_date["mirrorchyan_rid"] = "MAA_SnowBreak"
+        interface_date["mirrorchyan_rid"] = res_id
         Save_Config(maa_config_data.interface_config_path, interface_date)
 
         # 发送信号
@@ -131,7 +131,7 @@ class MirrorUpdate(QThread):
         self.stop_flag = flag
 
 
-class MirrorDownladBundle(QThread):
+class MirrorDownloadBundle(QThread):
     stop_flag = False
 
 
