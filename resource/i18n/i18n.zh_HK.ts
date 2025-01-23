@@ -1271,4 +1271,11 @@
         <translation>更新成功</translation>
     </message>
 </context>
+<context>
+    <message>
+        <location filename="app/components/update.py" line="123"/>
+        <source>Download successful</source>
+        <translation>下載成功</translation>
+    </message>
+</context>
 </TS>

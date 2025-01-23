@@ -1252,6 +1252,7 @@
         <source>Update successful</source>
         <translation>更新成功</translation>
     </message>
+
 </context>
 <context>
     <name>Update</name>
@@ -1274,6 +1275,13 @@
         <location filename="app/components/update.py" line="491"/>
         <source>Update successful</source>
         <translation>更新成功</translation>
+    </message>
+</context>
+<context>
+    <message>
+        <location filename="app/components/update.py" line="123"/>
+        <source>Download successful</source>
+        <translation>下载成功</translation>
     </message>
 </context>
 </TS>
