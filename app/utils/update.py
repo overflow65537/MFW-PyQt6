@@ -30,7 +30,7 @@ class MirrorUpdate(QThread):
             "mirrorchyan_rid", maa_config_data.interface_config.get("name")
         )
         version = maa_config_data.interface_config.get("version")
-        url = f"https://mirrorc.top/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&sp_id={device_id}&user_agent=MFW_PYQT6_Test"
+        url = f"https://mirrorc.top/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&sp_id={device_id}&user_agent=MFW_PYQT6"
         print(url)
         try:
             response = requests.get(url)

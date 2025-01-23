@@ -1,13 +1,13 @@
 import os
 from typing import Union
-from PyQt6.QtWidgets import QFileDialog
 from PyQt6.QtGui import QIcon, QIntValidator
 from qfluentwidgets import (
     SettingCard,
     FluentIconBase,
     LineEdit,
     ToolButton,
-    qconfig,
+    PrimaryPushButton,
+    PasswordLineEdit,
 )
 from qfluentwidgets import FluentIcon as FIF
 from ..utils.tool import Read_Config, Save_Config
@@ -26,8 +26,11 @@ class LineEditCard(SettingCard):
         target: str = "",
         content=None,
         parent=None,
+        is_passwork: bool = False,
         num_only=True,
         button: bool = False,
+        button_type: str = "",
+        button_text: str = "",
     ):
         """
         初始化输入框卡片。
@@ -43,15 +46,24 @@ class LineEditCard(SettingCard):
         super().__init__(icon, title, content, parent)
 
         self.target = target
-        self.lineEdit = LineEdit(self)
-        self.toolbutton = ToolButton(FIF.FOLDER_ADD, self)
+        if is_passwork:
+            self.lineEdit = PasswordLineEdit(self)
+        else:
+            self.lineEdit = LineEdit(self)
+        if button_type == "primary":
+            self.button = PrimaryPushButton(button_text, self)
+        else:
+            self.toolbutton = ToolButton(FIF.FOLDER_ADD, self)
 
         # 设置布局
         self.hBoxLayout.addWidget(self.lineEdit, 0)
         self.hBoxLayout.addSpacing(16)
 
         if button:
-            self.hBoxLayout.addWidget(self.toolbutton, 0)
+            if button_type == "primary":
+                self.hBoxLayout.addWidget(self.button, 0)
+            else:
+                self.hBoxLayout.addWidget(self.toolbutton, 0)
             self.hBoxLayout.addSpacing(16)
             self.lineEdit.setFixedWidth(300)
 

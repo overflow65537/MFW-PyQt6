@@ -1,26 +1,10 @@
 from qfluentwidgets import SettingCard, PrimaryPushButton, FluentIconBase
-from PyQt6.QtWidgets import (
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QFrame,
-    QLabel,
-    QSizePolicy,
-    QWidget,
-    QApplication,
-)
+
 from PyQt6.QtCore import Qt
 
 
 from qfluentwidgets import SettingCard, PrimaryPushButton
-from PyQt6.QtWidgets import (
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QFrame,
-    QLabel,
-    QSizePolicy,
-)
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 from typing import Union

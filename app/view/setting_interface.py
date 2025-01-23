@@ -80,6 +80,7 @@ class SettingInterface(ScrollArea):
         self.initialize_personalization_settings()
         self.initialize_notice_settings()
         self.initialize_dev_settings()
+        self.initialize_update_settings()
         self.initialize_about_settings()
         self.__initWidget()
         self.init_info()
@@ -571,6 +572,32 @@ class SettingInterface(ScrollArea):
         self.DEVGroup.addSettingCard(self.ADB_input_mode)
         self.DEVGroup.addSettingCard(self.ADB_screencap_mode)
 
+    def initialize_update_settings(self):
+        """初始化更新设置。"""
+        self.updateGroup = SettingCardGroup(self.tr("Update"), self.scrollWidget)
+        self.MirrorCard = LineEditCard(
+            icon=FIF.APPLICATION,
+            title=self.tr("mirrorchyan CDK"),
+            content=self.tr("Enter mirrorchyanCDK for stable update path"),
+            is_passwork=True,
+            num_only=False,
+            holderText=cfg.get(cfg.Mcdk),
+            button=True,
+            button_type="primary",
+            button_text=self.tr("About Mirror"),
+            parent=self.updateGroup,
+        )
+        self.auto_update = SwitchSettingCard(
+            FIF.UPDATE,
+            self.tr("Auto Update resource"),
+            self.tr("Automatically update resources on every startup"),
+            configItem=cfg.auto_update_resource,
+            parent=self.updateGroup,
+        )
+
+        self.updateGroup.addSettingCard(self.MirrorCard)
+        self.updateGroup.addSettingCard(self.auto_update)
+
     def initialize_about_settings(self):
         """初始化关于设置。"""
         self.aboutGroup = SettingCardGroup(self.tr("About"), self.scrollWidget)
@@ -582,13 +609,6 @@ class SettingInterface(ScrollArea):
             except:
                 MFW_Version = "Unknown"
 
-        self.auto_update = SwitchSettingCard(
-            FIF.UPDATE,
-            self.tr("Auto Update resource"),
-            self.tr("Automatically update resources on every startup"),
-            configItem=cfg.auto_update_resource,
-            parent=self.aboutGroup,
-        )
         self.updateCard = DoubleButtonSettingCard(
             text2=self.tr("Check for updates"),
             text=self.tr("Submit Feedback"),
@@ -608,7 +628,6 @@ class SettingInterface(ScrollArea):
             parent=self.aboutGroup,
         )
 
-        self.aboutGroup.addSettingCard(self.auto_update)
         self.aboutGroup.addSettingCard(self.updateCard)
         self.aboutGroup.addSettingCard(self.aboutCard)
 
@@ -690,6 +709,7 @@ class SettingInterface(ScrollArea):
         self.expandLayout.addWidget(self.personalGroup)
         self.expandLayout.addWidget(self.noticeGroup)
         self.expandLayout.addWidget(self.DEVGroup)
+        self.expandLayout.addWidget(self.updateGroup)
         self.expandLayout.addWidget(self.aboutGroup)
 
     def __showRestartTooltip(self):
@@ -801,10 +821,13 @@ class SettingInterface(ScrollArea):
         cfg.themeChanged.connect(setTheme)
         self.themeColorCard.colorChanged.connect(lambda c: setThemeColor(c))
         self.micaCard.checkedChanged.connect(signalBus.micaEnableChanged)
-
-        # 连接关于信号
+        # 连接更新信号
+        self.MirrorCard.button.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl("https://mirrorc.top/"))
+        )
+        self.MirrorCard.lineEdit.textChanged.connect(self._onMirrorCardChange)
         self.updateCard.clicked2.connect(self.update_check)
-
+        # 连接关于信号
         self.updateCard.clicked.connect(
             lambda: QDesktopServices.openUrl(
                 QUrl(for_config_get_url(self.project_url, "issue"))
@@ -961,6 +984,18 @@ class SettingInterface(ScrollArea):
     def _onRunAfterFinishCardChange(self):
         """根据输入更新完成后运行的程序脚本路径。"""
         self._update_config(self.run_after_finish, "run_after_finish")
+
+    def _onMirrorCardChange(self):
+        """根据输入更新镜像地址。"""
+        cfg.set(cfg.Mcdk, self.MirrorCard.lineEdit.text())
+        if self.MirrorCard.lineEdit.text() == "":
+            self.updateCard.button2.setText(self.tr("Check for updates from GitHub"))
+            self.Updatethread = Update(self)
+            logger.info("切换至GitHub更新")
+        else:
+            self.updateCard.button2.setText(self.tr("Check for updates from Mirror"))
+            self.Updatethread = MirrorUpdate(self)
+            logger.info("切换至镜像更新")
 
     def _onDEVmodeCardChange(self):
         """切换开发者模式的保存设置。"""
