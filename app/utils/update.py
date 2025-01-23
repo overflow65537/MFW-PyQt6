@@ -133,9 +133,110 @@ class MirrorUpdate(QThread):
 
 class MirrorDownloadBundle(QThread):
     stop_flag = False
+    res_id = ""
+
+    def run(self):
+        self.stop_flag = False
+        device_id = get_uuid()
+        cdk = cfg.get(cfg.Mcdk)
+
+        url = f"https://mirrorc.top/api/resources/{self.res_id}/latest?current_version=&cdk={cdk}&sp_id={device_id}&user_agent=MFW_PYQT6_TEST"
+        print(url)
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            mirror_data: Dict[str, Dict] = response.json()
+        except requests.RequestException as e:
+            signalBus.download_finished.emit(
+                {
+                    "status": "failed",
+                    "msg": f"{e}",
+                }
+            )
+            return
+        if mirror_data.get("code") != 0:
+            logger.warning(f"下载检查失败: {mirror_data.get('msg')}")
+            signalBus.download_finished.emit(
+                {
+                    "status": "failed",
+                    "msg": mirror_data.get("msg"),
+                }
+            )
+            return
+        download_url: str = mirror_data["data"].get("url")
+        hotfix_directory = os.path.join(os.getcwd(), "hotfix")
+        os.makedirs(hotfix_directory, exist_ok=True)
+        project_name = self.res_id
+        zip_file_path = os.path.join(
+            hotfix_directory,
+            f"{project_name}-{mirror_data['data'].get('version_name')}.zip",
+        )
+
+        try:
+            response = requests.get(download_url, stream=True)
+            total_size = int(
+                response.headers.get("content-length", 0)
+            )  # 获取文件总大小
+
+            downloaded_size = 0
+            with open(zip_file_path, "wb") as zip_file:
+                for data in response.iter_content(chunk_size=4096):  # 分块下载
+                    if self.stop_flag:
+                        response.close()
+                        zip_file.close()
+                        return
+                    downloaded_size += len(data)
+                    zip_file.write(data)
+                    signalBus.bundle_download_progress.emit(
+                        downloaded_size, total_size
+                    )  # 发出进度信号
+                    print(f"B下载进度: {downloaded_size}/{total_size}")
+                logger.debug(f"下载完成:{downloaded_size}/{total_size}")
+        except:
+            logger.exception("下载更新文件时出错")
+            signalBus.download_finished.emit(
+                {
+                    "status": "failed",
+                    "msg": f"{e}",
+                }
+            )
+            return
+
+        # 解压文件到指定路径
+
+        with zipfile.ZipFile(zip_file_path, "r") as zip_ref:
+            zip_ref.extractall(os.path.join(os.getcwd(), "hotfix"))
+        # 移动文件到指定路径
+        target_path = os.path.join(os.getcwd(), "bundles", project_name)
+        shutil.copytree(
+            os.path.join(os.getcwd(), "hotfix", "assets"),
+            target_path,
+            dirs_exist_ok=True,
+        )
+        interface_data = Read_Config(os.path.join(target_path, "interface.json"))
+        interface_data["mirrorchyan_rid"] = self.res_id
+        interface_data["version"] = mirror_data["data"].get("version_name")
+        Save_Config(os.path.join(target_path, "interface.json"), interface_data)
+        # 删除临时资源
+        shutil.rmtree(os.path.join(os.getcwd(), "hotfix", "assets"))
+        os.remove(zip_file_path)
+
+        signalBus.download_finished.emit(
+            {
+                "status": "success",
+                "msg": self.tr("Download successful"),
+                "target_path": target_path,
+                "project_name": project_name,
+            }
+        )
+
+    def stop(self, flag: bool = False):
+        logger.debug(f"停止下载bundle: {flag}")
+        self.stop_flag = flag
 
 
 class DownloadBundle(QThread):
+
     project_url = ""
     stop_flag = False
 
@@ -144,7 +245,7 @@ class DownloadBundle(QThread):
         if self.project_url == "":
             logger.warning("项目地址未配置，无法进行更新检查")
             signalBus.download_finished.emit(
-                {"update_name": "download_bundle", "update_status": "failed"}
+                {"status": "failed", "msg": "项目地址未配置，无法进行更新检查"}
             )
             return
         url = for_config_get_url(self.project_url, "download")
@@ -157,9 +258,8 @@ class DownloadBundle(QThread):
             logger.warning(f"更新检查时出错: {e}")
             signalBus.download_finished.emit(
                 {
-                    "update_name": "download_bundle",
-                    "update_status": "failed",
-                    "error_msg": f"{e}",
+                    "status": "failed",
+                    "msg": f"{e}",
                 }
             )
             return
@@ -196,14 +296,12 @@ class DownloadBundle(QThread):
             logger.exception("下载更新文件时出错")
             signalBus.download_finished.emit(
                 {
-                    "update_name": "download_bundle",
-                    "update_status": "failed",
-                    "error_msg": f"{e}",
+                    "status": "failed",
+                    "msg": f"{e}",
                 }
             )
             return
 
-        signalBus.bundle_download_finished.emit()
         # 解压文件到指定路径
         target_path = os.path.join(os.getcwd(), "bundles", project_name)
         if not os.path.exists(target_path):
@@ -226,8 +324,8 @@ class DownloadBundle(QThread):
 
         signalBus.download_finished.emit(
             {
-                "update_name": "download_bundle",
-                "update_status": "success",
+                "status": "success",
+                "msg": "下载成功",
                 "target_path": target_path,
                 "project_name": project_name,
             }

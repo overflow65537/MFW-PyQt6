@@ -43,9 +43,14 @@ class ShowDownload(MessageBoxBase):
 
         signalBus.bundle_download_progress.connect(self.setProgress)
         signalBus.bundle_download_finished.connect(self.close)
+
+        signalBus.mirror_bundle_download_progress.connect(self.setProgress)
+        signalBus.mirror_bundle_download_finished.connect(self.close)
+
         signalBus.download_self_progress.connect(self.setProgress)
+        signalBus.download_self_finished.connect(self.close)
+
         self.cancelButton.clicked.connect(self.cancelDownload)
-        signalBus.download_self_finished.connect(self.cancelDownload)
 
     def setProgress(self, downloaded, total):
         if total == 0:
@@ -70,7 +75,9 @@ class ShowDownload(MessageBoxBase):
             unit_index += 1
         return f"{size:.2f} {units[unit_index]}"
 
-    def cancelDownload(self, name):
-        signalBus.bundle_download_stopped.emit(True)
-        signalBus.download_self_stopped.emit(True)
+    def cancelDownload(self):
+        signalBus.bundle_download_stopped.emit()
+        signalBus.download_self_stopped.emit()
+        signalBus.mirror_bundle_download_stopped.emit()
+        signalBus.update_download_stopped.emit()
         self.close()

@@ -89,12 +89,13 @@ class SettingInterface(ScrollArea):
             self.Updatethread = MirrorUpdate(self)
             self.updateCard.button2.setText(self.tr("Check for updates from Mirror"))
             logger.debug("使用镜像站更新")
+
         else:
             self.Updatethread = Update(self)
             self.updateCard.button2.setText(self.tr("Check for updates from Github"))
             logger.debug("使用Github更新")
-        signalBus.update_download_stopped.connect(self.Updatethread.stop)
 
+        signalBus.update_download_stopped.connect(self.Updatethread.stop)
         self.update_self = UpdateSelf(self)
         signalBus.download_self_stopped.connect(self.update_self.stop)
 
@@ -991,6 +992,7 @@ class SettingInterface(ScrollArea):
         if self.MirrorCard.lineEdit.text() == "":
             self.updateCard.button2.setText(self.tr("Check for updates from GitHub"))
             self.Updatethread = Update(self)
+
             logger.info("切换至GitHub更新")
         else:
             self.updateCard.button2.setText(self.tr("Check for updates from Mirror"))

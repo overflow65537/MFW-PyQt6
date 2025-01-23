@@ -24,14 +24,17 @@ class SignalBus(QObject):
     download_finished = pyqtSignal(dict)  # 搜索资源完成信号
     dragging_finished = pyqtSignal()  # 拖拽完成信号
     bundle_download_progress = pyqtSignal(int, int)  # bundle下载进度信号
-    bundle_download_finished = pyqtSignal()  # bundle下载完成信号
-    bundle_download_stopped = pyqtSignal(bool)  # bundle下载停止信号
+    bundle_download_finished = pyqtSignal(dict)  # bundle下载完成信号
+    bundle_download_stopped = pyqtSignal()  # bundle下载停止信号
     update_download_progress = pyqtSignal(int, int)  # 更新下载进度信号
     update_download_finished = pyqtSignal(dict)  # 更新下载完成信号
-    update_download_stopped = pyqtSignal(bool)  # 更新下载停止信号
+    update_download_stopped = pyqtSignal()  # 更新下载停止信号
     download_self_progress = pyqtSignal(int, int)  # 下载自身进度信号
     download_self_finished = pyqtSignal(dict)  # 下载自身完成信号
-    download_self_stopped = pyqtSignal(bool)  # 下载自身停止信号
+    download_self_stopped = pyqtSignal()  # 下载自身停止信号
+    mirror_bundle_download_progress = pyqtSignal(int, int)  # mirror bundle下载进度信号
+    mirror_bundle_download_finished = pyqtSignal()  # mirror bundle下载完成信号
+    mirror_bundle_download_stopped = pyqtSignal()  # mirror bundle下载停止信号
     custom_info = pyqtSignal(dict)  # 自定义动作/识别器成功信号
 
 

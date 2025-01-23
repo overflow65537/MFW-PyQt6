@@ -15,7 +15,7 @@ from ..common.config import cfg
 from ..utils.tool import Read_Config, Save_Config
 from ..utils.logger import logger
 import os
-from ..utils.update import DownloadBundle
+from ..utils.update import DownloadBundle, MirrorDownloadBundle
 from ..common.signal_bus import signalBus
 from typing import Dict, List
 
@@ -27,14 +27,27 @@ class CustomMessageBox(MessageBoxBase):
         super().__init__(parent)
         self.download_bundle = DownloadBundle()
         signalBus.bundle_download_stopped.connect(self.download_bundle.stop)
+        self.mirror_download_bundle = MirrorDownloadBundle()
+        signalBus.bundle_download_stopped.connect(self.mirror_download_bundle.stop)
         transparent_color = QColor(255, 255, 255, 0)
         self.setMaskColor(transparent_color)
         self.folder = None
         self.status = 0
         self.titleLabel = SubtitleLabel(self.tr("choose Resource"), self)
+
+        self.name_layout = QHBoxLayout()
         self.name_LineEdit = LineEdit(self)
         self.name_LineEdit.setPlaceholderText(self.tr("Enter the name of the resource"))
         self.name_LineEdit.setClearButtonEnabled(True)
+
+        self.resourceid_button = ToolButton(FIF.SEARCH, self)
+        self.resourceid_button.setSizePolicy(
+            QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed
+        )
+        self.resourceid_button.clicked.connect(self.search_bundle_mirror)
+
+        self.name_layout.addWidget(self.name_LineEdit)
+        self.name_layout.addWidget(self.resourceid_button)
 
         self.path_layout = QHBoxLayout()
         self.path_LineEdit = LineEdit(self)
@@ -68,7 +81,7 @@ class CustomMessageBox(MessageBoxBase):
 
         self.viewLayout.addWidget(self.titleLabel)
         self.viewLayout.addLayout(self.path_layout)
-        self.viewLayout.addWidget(self.name_LineEdit)
+        self.viewLayout.addLayout(self.name_layout)
         self.viewLayout.addLayout(self.update_layout)
 
         self.yesButton.setText(self.tr("Confirm"))
@@ -76,6 +89,9 @@ class CustomMessageBox(MessageBoxBase):
 
         self.widget.setMinimumWidth(350)
         self.yesButton.clicked.connect(self.click_yes_button)
+
+        if not cfg.get(cfg.Mcdk):
+            self.resourceid_button.hide()
 
     def search_bundle(self) -> None:
         if self.update_LineEdit.text() == "":
@@ -91,17 +107,22 @@ class CustomMessageBox(MessageBoxBase):
         self.w = ShowDownload(self)
         self.w.show()
 
+    def search_bundle_mirror(self) -> None:
+        self.search_button.setIcon(FIF.MORE)
+        res_id = self.name_LineEdit.text()
+        logger.info(f"资源id {res_id}")
+        self.mirror_download_bundle.res_id = res_id
+        self.mirror_download_bundle.start()
+        self.w = ShowDownload(self)
+        self.w.show()
+
     def download_finished(self, message: Dict[str, str]) -> None:
         print(message)
-        if message["update_status"] == "failed":
-
-            if message.get("error_msg"):
-                self.show_error(message["error_msg"])
-                self.w.close()
-            self.show_error(self.tr("Update not found"))
+        if message["status"] == "failed":
+            self.show_error(message.get("msg"))
             self.w.close()
         else:
-            self.show_info(self.tr("Update found"))
+            self.show_info(message.get("msg"))
             self.folder = message["target_path"]
             if os.path.basename(self.folder) == "resource":
                 interface_path = os.path.join(
@@ -130,6 +151,7 @@ class CustomMessageBox(MessageBoxBase):
             self.name_LineEdit.setText(project_name)
 
         self.search_button.setIcon(FIF.SEARCH)
+        self.resourceid_button.setIcon(FIF.SEARCH)
 
     def show_info(self, message) -> None:
         InfoBar.info(
