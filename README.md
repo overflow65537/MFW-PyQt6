@@ -46,7 +46,6 @@
 
 - -r参数可接受资源名称 例如 `python main.py -r resource1`或者 `MFW.exe -r resource1`
 - -c参数可接受配置文件名称 例如 `python main.py -c config1`或者 `MFW.exe -c config1`
-- -d参数可以直接启动 例如 `python main.py -d`或者 `MFW.exe -d`
 
 ### 外部通知
 

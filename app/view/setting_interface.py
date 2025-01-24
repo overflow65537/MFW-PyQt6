@@ -292,13 +292,13 @@ class SettingInterface(ScrollArea):
             self.tr("Custom Startup"), self.scrollWidget
         )
 
-        """self.run_after_startup = SwitchSettingCard(
+        self.run_after_startup = SwitchSettingCard(
             FIF.SPEED_HIGH,
             self.tr("run after startup"),
             self.tr("Launch the task immediately after starting the GUI program"),
             configItem=cfg.run_after_startup,
             parent=self.start_Setting,
-        )"""
+        )
 
         self.run_before_start = LineEditCard(
             icon=FIF.APPLICATION,
@@ -333,7 +333,7 @@ class SettingInterface(ScrollArea):
             num_only=False,
             parent=self.start_Setting,
         )
-        # self.start_Setting.addSettingCard(self.run_after_startup)
+        self.start_Setting.addSettingCard(self.run_after_startup)
         self.start_Setting.addSettingCard(self.run_before_start)
         self.start_Setting.addSettingCard(self.run_before_start_args)
         self.start_Setting.addSettingCard(self.run_after_finish)
@@ -796,6 +796,7 @@ class SettingInterface(ScrollArea):
         self.exe_wait_time.lineEdit.textChanged.connect(self._onExeWaitTimeCardChange)
 
         # 连接启动信号
+        self.run_after_startup.checkedChanged.connect(self._onRunAfterStartupCardChange)
         self.run_before_start.toolbutton.clicked.connect(
             self.__onRunBeforeStartCardClicked
         )
@@ -985,6 +986,11 @@ class SettingInterface(ScrollArea):
     def _onRunAfterFinishCardChange(self):
         """根据输入更新完成后运行的程序脚本路径。"""
         self._update_config(self.run_after_finish, "run_after_finish")
+
+    def _onRunAfterStartupCardChange(self):
+        """根据输入更新启动前运行的程序脚本路径。"""
+        print(self.run_after_startup.isChecked())
+        cfg.set(cfg.run_after_startup, self.run_after_startup.isChecked())
 
     def _onMirrorCardChange(self):
         """根据输入更新镜像地址。"""

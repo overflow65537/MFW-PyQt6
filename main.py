@@ -20,7 +20,7 @@ import argparse
 from typing import Dict
 
 
-def main(resource: str, config: str, directly: bool):
+def main(resource: str, config: str):
     # 检查资源文件是否存在
     maa_config_name: str = cfg.get(cfg.maa_config_name)
     maa_config_path: str = cfg.get(cfg.maa_config_path)
@@ -67,10 +67,6 @@ def main(resource: str, config: str, directly: bool):
             cfg.set(cfg.maa_config_path, maa_config_list[maa_resource_name]["default"])
             maa_config_name = "default"
             maa_config_path = maa_config_list[maa_resource_name]["default"]
-        cfg.set(cfg.run_after_startup, False)
-        if directly:
-            logger.info("检查到 -d 参数,直接启动")
-            cfg.set(cfg.run_after_startup, True)
         logger.info("资源文件存在")
         cfg.set(cfg.resource_exist, True)
         logger.info(
@@ -151,10 +147,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--resource", default=False)
     parser.add_argument("-c", "--config", default=False)
-    parser.add_argument("-d", "--directly", action="store_true")
     args = parser.parse_args()
     try:
-        main(args.resource, args.config, args.directly)
+        main(args.resource, args.config)
     except:
         logger.exception("GUI Process Error")
         show_error_message()
