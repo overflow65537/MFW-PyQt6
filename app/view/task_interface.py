@@ -8,8 +8,15 @@ import json
 from typing import List, Dict
 
 from PyQt6.QtCore import Qt, QMimeData, QTimer
-from PyQt6.QtGui import QDrag, QDropEvent, QColor
-from PyQt6.QtWidgets import QApplication, QWidget, QListWidgetItem, QSizePolicy
+from PyQt6.QtGui import QDrag, QDropEvent, QColor, QFont
+from PyQt6.QtWidgets import (
+    QApplication,
+    QWidget,
+    QListWidgetItem,
+    QSizePolicy,
+    QVBoxLayout,
+    QSpacerItem,
+)
 from qfluentwidgets import InfoBar, InfoBarPosition, BodyLabel, ComboBox
 
 from ..view.UI_task_interface import Ui_Task_Interface
@@ -68,13 +75,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.warning("资源缺失")
             self.show_error(self.tr("Resource file not detected"))
 
-        self.toggle_task_options(False)
-
-        # 隐藏不需要的组件
-        self.MoveUp_Button.hide()
-        self.MoveDown_Button.hide()
-        self.Delete_Button.hide()
-
     def resource_exist(self, status: bool):
         if status:
             logger.info("收到信号,初始化界面和信号连接")
@@ -103,15 +103,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.clear_layout()
         self.Task_List.clear()
         self.SelectTask_Combox_1.clear()
-        self.SelectTask_Combox_2.clear()
-        self.SelectTask_Combox_3.clear()
-        self.SelectTask_Combox_4.clear()
-        self.SelectTask_Combox_5.clear()
-        self.SelectTask_Combox_6.clear()
-        self.SelectTask_Combox_7.clear()
-        self.SelectTask_Combox_8.clear()
-        self.SelectTask_Combox_9.clear()
-        self.SelectTask_Combox_10.clear()
         self.Resource_Combox.clear()
         self.Control_Combox.clear()
         self.Autodetect_combox.clear()
@@ -157,34 +148,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Finish_combox_cfg.addItems(maa_config_data.config_name_list)
         self.Finish_combox_cfg.setCurrentIndex(finish_combox_cfg)
 
-    def toggle_task_options(self, visible: bool):
-        task_comboxes = [
-            self.SelectTask_Combox_2,
-            self.SelectTask_Combox_3,
-            self.SelectTask_Combox_4,
-            self.SelectTask_Combox_5,
-            self.SelectTask_Combox_6,
-            self.SelectTask_Combox_7,
-            self.SelectTask_Combox_8,
-            self.SelectTask_Combox_9,
-            self.SelectTask_Combox_10,
-        ]
-        task_titles = [
-            self.TaskName_Title_2,
-            self.TaskName_Title_3,
-            self.TaskName_Title_4,
-            self.TaskName_Title_5,
-            self.TaskName_Title_6,
-            self.TaskName_Title_7,
-            self.TaskName_Title_8,
-            self.TaskName_Title_9,
-            self.TaskName_Title_10,
-        ]
-        for combox in task_comboxes:
-            combox.setVisible(visible)
-        for title in task_titles:
-            title.setVisible(visible)
-
     def bind_signals(self):
         signalBus.custom_info.connect(self.show_custom_info)
         signalBus.resource_exist.connect(self.resource_exist)
@@ -199,12 +162,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         signalBus.update_download_finished.connect(self.update_download_finished)
         self.AddTask_Button.clicked.connect(self.Add_Task)
         self.AddTask_Button.rightClicked.connect(self.Add_All_Tasks)
-        self.Delete_Button.clicked.connect(self.Delete_Task)
-        self.Delete_Button.rightClicked.connect(self.Delete_all_task)
-        self.MoveUp_Button.clicked.connect(self.Move_Up)
-        self.MoveUp_Button.rightClicked.connect(self.Move_Top)
-        self.MoveDown_Button.clicked.connect(self.Move_Down)
-        self.MoveDown_Button.rightClicked.connect(self.Move_Bottom)
         self.SelectTask_Combox_1.currentTextChanged.connect(
             self.Add_Select_Task_More_Select
         )
@@ -1317,39 +1274,66 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def show_task_options(
         self, select_target, MAA_Pi_Config: Dict[str, List[Dict[str, str]]]
     ):
+        self.clear_extra_widgets()
+
+        layout = self.Option_Label
+
         for task in MAA_Pi_Config["task"]:
             if task["name"] == select_target and task.get("option"):
                 option_length = len(task["option"])
                 for i in range(option_length):
-                    select_box: ComboBox = getattr(self, f"SelectTask_Combox_{i + 2}")
-                    label: BodyLabel = getattr(self, f"TaskName_Title_{i + 2}")
-                    option_name = task["option"][i]
+                    v_layout = QVBoxLayout()
 
+                    label: BodyLabel = BodyLabel(self)
+                    label.setText(task["option"][i])
+                    label.setFont(QFont("Arial", 10))
+                    v_layout.addWidget(label)
+
+                    select_box: ComboBox = ComboBox(self)
                     select_box.addItems(
                         list(
                             Get_Task_List(
-                                maa_config_data.interface_config_path, option_name
+                                maa_config_data.interface_config_path, task["option"][i]
                             )
                         )
                     )
-                    select_box.show()
+                    v_layout.addWidget(select_box)
 
-                    label.setText(option_name)
-                    label.show()
-                break  # 找到匹配的任务后退出循环
+                    layout.addLayout(v_layout)
+
+                spacer = QSpacerItem(
+                    0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+                )
+                layout.addItem(spacer)
+
+                break
 
     def clear_extra_widgets(self):
-        for i in range(2, 11):
-            select_box: ComboBox = getattr(self, f"SelectTask_Combox_{i}")
-            select_box.clear()
-            select_box.hide()
+        layout = self.Option_Label
+        if layout is None:
+            return
 
-            label: BodyLabel = getattr(self, f"TaskName_Title_{i}")
-            label.setText(self.tr("Task"))
-            label.hide()
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            if item is None:
+                continue
 
-    def change_output(self, msg):
-        self.insert_colored_text(msg)
+            if isinstance(item, QSpacerItem):
+                layout.takeAt(i)
+                continue
+
+            sub_layout = item.layout()
+            if sub_layout is None:
+                continue
+
+            for j in range(sub_layout.count()):
+                sub_item = sub_layout.takeAt(j)
+                if sub_item is None:
+                    continue
+
+                widget = sub_item.widget()
+                if widget is not None:
+                    widget.deleteLater()
 
     @asyncSlot()
     async def Start_Detection(self):

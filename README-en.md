@@ -39,7 +39,6 @@ A general-purpose GUI project for **[MAAFramework](https://github.com/MaaXYZ/Maa
 
 - The `-r` parameter can accept the resource name, for example `python main.py -r resource1` or `MFW.exe -r resource1`
 - The `-c` parameter can accept the configuration file name, for example `python main.py -c config1` or `MFW.exe -c config1`
-- The `-d` parameter can start directly, for example `python main.py -d` or `MFW.exe -d`
 
 ### External Notifications
 

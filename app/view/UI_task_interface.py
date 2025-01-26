@@ -3,7 +3,6 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
     QHBoxLayout,
-    QGridLayout,
     QFormLayout,
     QFrame,
     QAbstractItemView,
@@ -99,61 +98,23 @@ class Ui_Task_Interface(object):
         self.FullLayout_LeftDown.addLayout(self.S2But_FinLayout)
 
         # 添加任务区布局
-        self.AddMission_layout = QGridLayout()
+        self.AddMission_layout = QVBoxLayout()
+        self.Main_Task_Label = QHBoxLayout()
 
         self.TaskName_Title_1 = BodyLabel(Task_Interface)
-        self.TaskName_Title_2 = BodyLabel(Task_Interface)
-        self.TaskName_Title_3 = BodyLabel(Task_Interface)
-        self.TaskName_Title_4 = BodyLabel(Task_Interface)
-        self.TaskName_Title_5 = BodyLabel(Task_Interface)
-        self.TaskName_Title_6 = BodyLabel(Task_Interface)
-        self.TaskName_Title_7 = BodyLabel(Task_Interface)
-        self.TaskName_Title_8 = BodyLabel(Task_Interface)
-        self.TaskName_Title_9 = BodyLabel(Task_Interface)
-        self.TaskName_Title_10 = BodyLabel(Task_Interface)
-
         self.TaskName_Title_1.setObjectName("TaskName_Title_1")
-        self.TaskName_Title_2.setObjectName("TaskName_Title_2")
-        self.TaskName_Title_3.setObjectName("TaskName_Title_3")
-        self.TaskName_Title_4.setObjectName("TaskName_Title_4")
-        self.TaskName_Title_5.setObjectName("TaskName_Title_5")
-        self.TaskName_Title_6.setObjectName("TaskName_Title_6")
-        self.TaskName_Title_7.setObjectName("TaskName_Title_7")
-        self.TaskName_Title_8.setObjectName("TaskName_Title_8")
-        self.TaskName_Title_9.setObjectName("TaskName_Title_9")
-        self.TaskName_Title_10.setObjectName("TaskName_Title_10")
+        self.TaskName_Title_1.setFixedSize(60, 30)
 
         self.SelectTask_Combox_1 = ComboBox(Task_Interface)
-        self.SelectTask_Combox_2 = ComboBox(Task_Interface)
-        self.SelectTask_Combox_3 = ComboBox(Task_Interface)
-        self.SelectTask_Combox_4 = ComboBox(Task_Interface)
-        self.SelectTask_Combox_5 = ComboBox(Task_Interface)
-        self.SelectTask_Combox_6 = ComboBox(Task_Interface)
-        self.SelectTask_Combox_7 = ComboBox(Task_Interface)
-        self.SelectTask_Combox_8 = ComboBox(Task_Interface)
-        self.SelectTask_Combox_9 = ComboBox(Task_Interface)
-        self.SelectTask_Combox_10 = ComboBox(Task_Interface)
-
         self.SelectTask_Combox_1.setMaximumWidth(200)
-        self.SelectTask_Combox_2.setMaximumWidth(200)
-        self.SelectTask_Combox_3.setMaximumWidth(200)
-        self.SelectTask_Combox_4.setMaximumWidth(200)
-        self.SelectTask_Combox_5.setMaximumWidth(200)
-        self.SelectTask_Combox_6.setMaximumWidth(200)
-        self.SelectTask_Combox_7.setMaximumWidth(200)
-        self.SelectTask_Combox_8.setMaximumWidth(200)
-        self.SelectTask_Combox_9.setMaximumWidth(200)
-        self.SelectTask_Combox_10.setMaximumWidth(200)
 
-        self.MoveUp_Button = RightCheckButton(Task_Interface)
-        self.MoveDown_Button = RightCheckButton(Task_Interface)
-        self.Delete_Button = RightCheckButton(Task_Interface)
         self.AddTask_Button = RightCheckButton(Task_Interface)
-
-        self.MoveUp_Button.setObjectName("MoveUp_Button")
-        self.MoveDown_Button.setObjectName("MoveDown_Button")
-        self.Delete_Button.setObjectName("Delete_Button")
         self.AddTask_Button.setObjectName("AddTask_Button")
+        self.AddTask_Button.setFixedSize(60, 30)
+
+        self.Main_Task_Label.addWidget(self.TaskName_Title_1)
+        self.Main_Task_Label.addWidget(self.SelectTask_Combox_1)
+        self.Main_Task_Label.addWidget(self.AddTask_Button)
 
         self.line = QFrame()
         self.line.setFrameShape(QFrame.Shape.HLine)
@@ -163,36 +124,26 @@ class Ui_Task_Interface(object):
         self.line1.setFrameShape(QFrame.Shape.HLine)
         self.line1.setFrameShadow(QFrame.Shadow.Plain)
 
-        self.AddMission_layout.addWidget(self.TaskName_Title_1, 0, 0)
-        self.AddMission_layout.addWidget(self.line, 1, 0)
-        self.AddMission_layout.addWidget(self.TaskName_Title_2, 2, 0)
-        self.AddMission_layout.addWidget(self.TaskName_Title_3, 3, 0)
-        self.AddMission_layout.addWidget(self.TaskName_Title_4, 4, 0)
-        self.AddMission_layout.addWidget(self.TaskName_Title_5, 5, 0)
-        self.AddMission_layout.addWidget(self.TaskName_Title_6, 6, 0)
-        self.AddMission_layout.addWidget(self.TaskName_Title_7, 7, 0)
-        self.AddMission_layout.addWidget(self.TaskName_Title_8, 8, 0)
-        self.AddMission_layout.addWidget(self.TaskName_Title_9, 9, 0)
-        self.AddMission_layout.addWidget(self.TaskName_Title_10, 10, 0)
+        self.scroll_area = ScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
 
-        self.AddMission_layout.addWidget(self.SelectTask_Combox_1, 0, 1)
-        self.AddMission_layout.addWidget(self.line1, 1, 1)
-        self.AddMission_layout.addWidget(self.SelectTask_Combox_2, 2, 1)
-        self.AddMission_layout.addWidget(self.SelectTask_Combox_3, 3, 1)
-        self.AddMission_layout.addWidget(self.SelectTask_Combox_4, 4, 1)
-        self.AddMission_layout.addWidget(self.SelectTask_Combox_5, 5, 1)
-        self.AddMission_layout.addWidget(self.SelectTask_Combox_6, 6, 1)
-        self.AddMission_layout.addWidget(self.SelectTask_Combox_7, 7, 1)
-        self.AddMission_layout.addWidget(self.SelectTask_Combox_8, 8, 1)
-        self.AddMission_layout.addWidget(self.SelectTask_Combox_9, 9, 1)
-        self.AddMission_layout.addWidget(self.SelectTask_Combox_10, 10, 1)
+        self.scroll_area.setStyleSheet("background-color: transparent; border: none;")
 
-        self.AddMission_layout.addWidget(self.AddTask_Button, 0, 2)
-        self.AddMission_layout.addWidget(self.MoveUp_Button, 2, 2)
-        self.AddMission_layout.addWidget(self.MoveDown_Button, 3, 2)
-        self.AddMission_layout.addWidget(self.Delete_Button, 4, 2)
+        self.scroll_area_content = QWidget()
+        self.scroll_area_content.setContentsMargins(0, 0, 10, 0)
+        self.Option_Label = QVBoxLayout(self.scroll_area_content)
 
-        self.AddMission_layout.setColumnStretch(1, 10)
+        self.scroll_area.setWidget(self.scroll_area_content)
+
+        self.Option_area_Label = QVBoxLayout()
+        self.Option_area_Label.addWidget(self.scroll_area, 1)
+
+        self.AddMission_layout.addLayout(self.Main_Task_Label)
+        self.AddMission_layout.addWidget(self.line)
+        self.AddMission_layout.addLayout(self.Option_area_Label)
 
         # 左侧布局
         self.line2 = QFrame()
@@ -201,7 +152,6 @@ class Ui_Task_Interface(object):
 
         self.left_layout = QVBoxLayout()
         self.left_layout.addLayout(self.AddMission_layout)
-        self.left_layout.addStretch()
         self.left_layout.addWidget(self.line2)
         self.left_layout.addLayout(self.FullLayout_LeftDown)
 
@@ -209,9 +159,7 @@ class Ui_Task_Interface(object):
         self.middle_layout = QVBoxLayout()
         self.Task_List = ListWidge_Menu_Draggable(self)
 
-        self.Task_List.setDragDropMode(
-            QAbstractItemView.DragDropMode.DragDrop
-        )  # 允许外部拖拽和内部移动
+        self.Task_List.setDragDropMode(QAbstractItemView.DragDropMode.DragDrop)
 
         self.Delete_label = BodyLabel(self)
         self.Delete_label.setObjectName("Delete_label")
@@ -256,7 +204,4 @@ class Ui_Task_Interface(object):
         self.TaskName_Title_1.setText(_translate("Task_Interface", "Task"))
         self.AutoDetect_Button.setText(_translate("Task_Interface", "Auto Detect"))
         self.Finish_title.setText(_translate("Task_Interface", "Finished"))
-        self.MoveUp_Button.setText(_translate("Task_Interface", "Move Up"))
-        self.MoveDown_Button.setText(_translate("Task_Interface", "Move Down"))
-        self.Delete_Button.setText(_translate("Task_Interface", "Delete"))
         self.AddTask_Button.setText(_translate("Task_Interface", "Add Task"))
