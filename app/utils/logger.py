@@ -10,7 +10,7 @@ logging.basicConfig(
     format="[%(asctime)s][GUI][%(levelname)s][%(filename)s][L%(lineno)d][%(funcName)s] | %(message)s",
     level=logging.DEBUG,
     handlers=[
-        logging.FileHandler("./debug/maa.log", encoding="utf-8"),
+        logging.FileHandler("./debug/gui.log", encoding="utf-8"),
         logging.StreamHandler(),
     ],
 )
