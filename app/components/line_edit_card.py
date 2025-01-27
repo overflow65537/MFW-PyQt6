@@ -6,12 +6,12 @@ from qfluentwidgets import (
     FluentIconBase,
     LineEdit,
     ToolButton,
-    PrimaryPushButton,
     PasswordLineEdit,
 )
 from qfluentwidgets import FluentIcon as FIF
 from ..utils.tool import Read_Config, Save_Config
 from ..utils.logger import logger
+from ..components.right_check_button import RightCheckPrimaryPushButton
 from ..common.maa_config_data import maa_config_data
 
 
@@ -51,7 +51,8 @@ class LineEditCard(SettingCard):
         else:
             self.lineEdit = LineEdit(self)
         if button_type == "primary":
-            self.button = PrimaryPushButton(button_text, self)
+            self.button = RightCheckPrimaryPushButton(button_text, self)
+            self.button.rightClicked.connect(self._on_right_clicked)
         else:
             self.toolbutton = ToolButton(FIF.FOLDER_ADD, self)
 
@@ -79,6 +80,10 @@ class LineEditCard(SettingCard):
 
         # 连接文本变化信号
         self.lineEdit.textChanged.connect(self._on_text_changed)
+
+    def _on_right_clicked(self):
+        """处理右键点击事件"""
+        self.lineEdit.setEnabled(True)
 
     def _on_text_changed(self):
         """处理文本变化事件"""

@@ -26,9 +26,7 @@ class MirrorUpdate(QThread):
         self.stop_flag = False
         device_id = get_uuid()
         cdk = cfg.get(cfg.Mcdk)
-        res_id = maa_config_data.interface_config.get(
-            "mirrorchyan_rid", maa_config_data.interface_config.get("name")
-        )
+        res_id = maa_config_data.interface_config.get("mirrorchyan_rid")
         version = maa_config_data.interface_config.get("version")
         url = f"https://mirrorc.top/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&sp_id={device_id}&user_agent=MFW_PYQT6"
         print(url)

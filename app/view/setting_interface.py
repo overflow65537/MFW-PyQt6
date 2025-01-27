@@ -63,10 +63,12 @@ class SettingInterface(ScrollArea):
             logger.info("收到信号,初始化界面并连接信号")
             self.init_info()
             self.enable_widgets(True)
+            self.init_update_thread()
         else:
             logger.info("收到信号,清空界面并断开信号")
             self.enable_widgets(False)
             self.clear_content()
+            self.init_update_thread()
 
     def init_ui(self):
         """初始化界面内容。"""
@@ -84,15 +86,27 @@ class SettingInterface(ScrollArea):
         self.initialize_about_settings()
         self.__initWidget()
         self.init_info()
-        # 更新工作线程
-        if cfg.get(cfg.Mcdk):
+        self.init_update_thread()
+
+    def init_update_thread(self):
+        if cfg.get(cfg.Mcdk) and maa_config_data.interface_config.get(
+            "mirrorchyan_rid"
+        ):
             self.Updatethread = MirrorUpdate(self)
             self.updateCard.button2.setText(self.tr("Check for updates from Mirror"))
             logger.debug("使用镜像站更新")
 
-        else:
+        elif maa_config_data.interface_config.get("mirrorchyan_rid"):
             self.Updatethread = Update(self)
             self.updateCard.button2.setText(self.tr("Check for updates from Github"))
+            logger.debug("使用Github更新")
+        else:
+            self.Updatethread = UpdateSelf(self)
+            self.updateCard.button2.setText(self.tr("Check for updates from Github"))
+            self.MirrorCard.setContent(
+                self.tr("资源不支持Mirror酱,右键关于mirror以解锁输入")
+            )
+            self.MirrorCard.lineEdit.setEnabled(False)
             logger.debug("使用Github更新")
 
         signalBus.update_download_stopped.connect(self.Updatethread.stop)
@@ -673,10 +687,12 @@ class SettingInterface(ScrollArea):
                 duration=10000,
                 parent=self,
             )
-        if cfg.get(cfg.Mcdk):
+        if cfg.get(cfg.Mcdk) and maa_config_data.interface_config.get(
+            "mirrorchyan_rid"
+        ):
             self.updateCard.button2.setText(self.tr("Check for updates from Mirror"))
         else:
-            self.updateCard.button2.setText(self.tr("Check for updates from GitHub"))
+            self.updateCard.button2.setText(self.tr("Check for updates from Github"))
         self.updateCard.button2.setEnabled(True)
 
     def __initWidget(self):
@@ -995,8 +1011,11 @@ class SettingInterface(ScrollArea):
     def _onMirrorCardChange(self):
         """根据输入更新镜像地址。"""
         cfg.set(cfg.Mcdk, self.MirrorCard.lineEdit.text())
-        if self.MirrorCard.lineEdit.text() == "":
-            self.updateCard.button2.setText(self.tr("Check for updates from GitHub"))
+        if (
+            self.MirrorCard.lineEdit.text() == ""
+            or not maa_config_data.interface_config.get("mirrorchyan_rid")
+        ):
+            self.updateCard.button2.setText(self.tr("Check for updates from Github"))
             self.Updatethread = Update(self)
 
             logger.info("切换至GitHub更新")

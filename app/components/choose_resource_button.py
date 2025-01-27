@@ -18,6 +18,7 @@ import os
 from ..utils.update import DownloadBundle, MirrorDownloadBundle
 from ..common.signal_bus import signalBus
 from typing import Dict, List
+from ..common.maa_config_data import maa_config_data
 
 
 class CustomMessageBox(MessageBoxBase):
