@@ -23,7 +23,7 @@ from ..components.line_edit_card import LineEditCard
 from ..components.combobox_setting_card_custom import ComboBoxSettingCardCustom
 from ..components.notic_setting_card import NoticeButtonSettingCard
 from ..utils.update import Update, UpdateSelf, MirrorUpdate
-from ..utils.tool import Save_Config, get_gpu_info, for_config_get_url
+from ..utils.tool import Save_Config, get_gpu_info, for_config_get_url, decrypt, encrypt
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 from ..components.doble_button_setting_card import DoubleButtonSettingCard
@@ -589,6 +589,9 @@ class SettingInterface(ScrollArea):
 
     def initialize_update_settings(self):
         """初始化更新设置。"""
+        with open("k.ey", "rb") as key_file:
+            key = key_file.read()
+            holddertext = decrypt(cfg.get(cfg.Mcdk), key)
         self.updateGroup = SettingCardGroup(self.tr("Update"), self.scrollWidget)
         self.MirrorCard = LineEditCard(
             icon=FIF.APPLICATION,
@@ -596,7 +599,7 @@ class SettingInterface(ScrollArea):
             content=self.tr("Enter mirrorchyan CDK for stable update path"),
             is_passwork=True,
             num_only=False,
-            holderText=cfg.get(cfg.Mcdk),
+            holderText=holddertext,
             button=True,
             button_type="primary",
             button_text=self.tr("About Mirror"),
@@ -1010,7 +1013,10 @@ class SettingInterface(ScrollArea):
 
     def _onMirrorCardChange(self):
         """根据输入更新镜像地址。"""
-        cfg.set(cfg.Mcdk, self.MirrorCard.lineEdit.text())
+        with open("k.ey", "rb") as file:
+            key = file.read()
+            Mcdk = encrypt(self.MirrorCard.lineEdit.text(), key)
+        cfg.set(cfg.Mcdk, str(Mcdk))
         if (
             self.MirrorCard.lineEdit.text() == ""
             or not maa_config_data.interface_config.get("mirrorchyan_rid")

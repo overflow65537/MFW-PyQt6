@@ -11,6 +11,9 @@ import shutil
 import wmi
 import uuid
 from typing import Literal, Optional, List, Dict, Any
+from cryptography.fernet import Fernet
+import base64
+import logging
 
 
 from PyQt6.QtWidgets import QMessageBox
@@ -656,3 +659,30 @@ def get_cpu_serial():
             return None
     else:
         raise NotImplementedError(f"Unsupported operating system: {system}")
+
+
+def encrypt(plain_text: str, key: bytes) -> str:
+    """加密文本"""
+    if not plain_text:
+        return ""
+    try:
+        cipher_suite = Fernet(key)
+        encrypted_data = cipher_suite.encrypt(plain_text.encode("utf-8"))
+        return base64.urlsafe_b64encode(encrypted_data).decode("utf-8")
+    except Exception as e:
+        logging.error("Failed to encrypt text: " + str(e))
+        return plain_text
+
+
+def decrypt(encrypted_text: str, key: bytes) -> str:
+    """解密文本"""
+    if not encrypted_text:
+        return ""
+    try:
+        cipher_suite = Fernet(key)
+        encrypted_data = base64.urlsafe_b64decode(encrypted_text.encode("utf-8"))
+        decrypted_data = cipher_suite.decrypt(encrypted_data)
+        return decrypted_data.decode("utf-8")
+    except Exception as e:
+        logging.error("Failed to decrypt text: " + str(e))
+        return encrypted_text

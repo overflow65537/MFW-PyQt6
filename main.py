@@ -18,9 +18,16 @@ from app.common.maa_config_data import maa_config_data
 from app.utils.tool import show_error_message
 import argparse
 from typing import Dict
+from cryptography.fernet import Fernet
 
 
 def main(resource: str, config: str):
+    # 检查密钥文件是否存在
+    if not os.path.exists("k.ey"):
+        key = Fernet.generate_key()
+
+        with open("k.ey", "wb") as key_file:
+            key_file.write(key)
     # 检查资源文件是否存在
     maa_config_name: str = cfg.get(cfg.maa_config_name)
     maa_config_path: str = cfg.get(cfg.maa_config_path)
