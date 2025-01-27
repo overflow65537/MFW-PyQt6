@@ -56,6 +56,9 @@ class Config(QConfig):
     run_after_startup = ConfigItem(
         "program", "run_after_startup", False, BoolValidator()
     )
+    run_after_startup_arg = ConfigItem(
+        "program", "run_after_startup_arg", False, BoolValidator()
+    )
 
     # 保存截图
     save_draw = ConfigItem("program", "save_draw", False, BoolValidator())

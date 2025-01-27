@@ -21,7 +21,7 @@ from typing import Dict
 from cryptography.fernet import Fernet
 
 
-def main(resource: str, config: str):
+def main(resource: str, config: str, directly: bool):
     # 检查密钥文件是否存在
     if not os.path.exists("k.ey"):
         key = Fernet.generate_key()
@@ -74,6 +74,11 @@ def main(resource: str, config: str):
             cfg.set(cfg.maa_config_path, maa_config_list[maa_resource_name]["default"])
             maa_config_name = "default"
             maa_config_path = maa_config_list[maa_resource_name]["default"]
+        cfg.set(cfg.run_after_startup_arg, False)
+        if directly:
+            logger.info("检查到 -d 参数,直接启动")
+            cfg.set(cfg.run_after_startup_arg, True)
+
         logger.info("资源文件存在")
         cfg.set(cfg.resource_exist, True)
         logger.info(
@@ -154,9 +159,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--resource", default=False)
     parser.add_argument("-c", "--config", default=False)
+    parser.add_argument("-d", "--directly", action="store_true")
+
     args = parser.parse_args()
     try:
-        main(args.resource, args.config)
+        main(args.resource, args.config, args.directly)
+
     except:
         logger.exception("GUI Process Error")
         show_error_message()
