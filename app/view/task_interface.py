@@ -75,6 +75,17 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.warning("资源缺失")
             self.show_error(self.tr("Resource file not detected"))
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        scroll_area_width = self.scroll_area.width()
+        for i in range(self.Option_Label.count()):
+            layout = self.Option_Label.itemAt(i).layout()
+            if layout is not None:
+                for j in range(layout.count()):
+                    widget = layout.itemAt(j).widget()
+                    if isinstance(widget, ComboBox):
+                        widget.setFixedWidth(scroll_area_width - 20)
+
     def resource_exist(self, status: bool):
         if status:
             logger.info("收到信号,初始化界面和信号连接")
@@ -90,7 +101,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.Finish_combox_res.hide()
 
     def init_ui(self):
-        # 读取配置文件并存储在实例变量中
+
         # 初始化组件
         self.Start_Status(
             interface_Path=maa_config_data.interface_config_path,
@@ -1020,9 +1031,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if self.Task_List.currentRow() != -1:
             Select_index = self.Task_List.currentRow()
             Select_Target = self.SelectTask_Combox_1.currentText()
-            Option = self.extract_task_options(
-                Select_Target, maa_config_data.interface_config
-            )
+            Option = self.get_selected_options()
             del maa_config_data.config["task"][Select_index]
             maa_config_data.config["task"].insert(
                 Select_index,
@@ -1034,9 +1043,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         else:
             Select_Target = self.SelectTask_Combox_1.currentText()
-            Option = self.extract_task_options(
-                Select_Target, maa_config_data.interface_config
-            )
+            Option = self.get_selected_options()
             maa_config_data.config["task"].append(
                 {"name": Select_Target, "option": Option}
             )
@@ -1077,16 +1084,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         # 更新任务列表
         self.update_task_list()
-
-    def extract_task_options(self, Select_Target, interface_Config):
-        options_dicts = []
-        for task in interface_Config["task"]:
-            if task.get("name") == Select_Target and task.get("option"):
-                for index, option_name in enumerate(task["option"]):
-                    select_box_name = f"SelectTask_Combox_{index + 2}"
-                    selected_value = getattr(self, select_box_name).currentText()
-                    options_dicts.append({"name": option_name, "value": selected_value})
-        return options_dicts
 
     def update_task_list(self):
         """更新任务列表"""
@@ -1217,14 +1214,28 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.SelectTask_Combox_1.setCurrentText(
             maa_config_data.config["task"][Select_Target]["name"]
         )
-        # 填充任务选项
-        option_data = maa_config_data.config["task"][Select_Target]["option"]
-        option_length = len(option_data)
-        for i in range(option_length):
-            select_box: ComboBox = getattr(self, f"SelectTask_Combox_{i + 2}")
-            label: BodyLabel = getattr(self, f"TaskName_Title_{i + 2}")
-            select_box.setCurrentText(option_data[i]["value"])
-            label.setText(option_data[i]["name"])
+        self.restore_options(maa_config_data.config["task"][Select_Target]["option"])
+
+    def restore_options(self, selected_options: List[Dict[str, str]]):
+        layout = self.Option_Label
+        for option in selected_options:
+            name = option.get("name")
+            value = option.get("value")
+            if not name or not value:
+                continue  # 如果name或value不存在，跳过本次循环
+            for i in range(layout.count()):
+                item = layout.itemAt(i)
+                if not isinstance(item, QVBoxLayout):
+                    continue  # 如果item不是QVBoxLayout，跳过本次循环
+                for j in range(item.count()):
+                    widget = item.itemAt(j).widget()
+                    if isinstance(widget, BodyLabel) and widget.text() == name:
+                        for k in range(item.count()):
+                            combo_box = item.itemAt(k).widget()
+                            if isinstance(combo_box, ComboBox):
+                                combo_box.setCurrentText(value)
+                                break
+                        break
 
     def Save_Resource(self):
         self.update_config_value("resource", self.Resource_Combox.currentText())
@@ -1297,6 +1308,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             )
                         )
                     )
+                    select_box.setSizePolicy(
+                        QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+                    )
+                    scroll_area_width = self.scroll_area.width()
+                    select_box.setFixedWidth(scroll_area_width - 20)
+
                     v_layout.addWidget(select_box)
 
                     layout.addLayout(v_layout)
@@ -1307,6 +1324,27 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 layout.addItem(spacer)
 
                 break
+
+    def get_selected_options(self):
+        selected_options = []
+        layout = self.Option_Label
+        name = None
+        selected_value = None
+
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            if not isinstance(item, QVBoxLayout):
+                continue  # 如果item不是QVBoxLayout，跳过本次循环
+            for j in range(item.count()):
+                widget = item.itemAt(j).widget()
+                if isinstance(widget, BodyLabel):
+                    name = widget.text()
+                elif isinstance(widget, ComboBox):
+                    selected_value = widget.currentText()
+            if name and selected_value:
+                selected_options.append({"name": name, "value": selected_value})
+
+        return selected_options
 
     def clear_extra_widgets(self):
         layout = self.Option_Label
