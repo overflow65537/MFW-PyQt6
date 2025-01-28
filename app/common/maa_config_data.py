@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from ..common.signal_bus import signalBus
 from ..utils.tool import Read_Config, show_error_message
 from ..common.config import cfg
@@ -7,20 +8,27 @@ import os
 from typing import Dict, List, Any
 
 
+@dataclass
 class MaaConfigData:
-
-    interface_config: Dict[str, List[Dict]] = {}
+    interface_config: Dict[str, List[Dict]] = field(default_factory=dict)
     interface_config_path: str = ""
 
-    config: Dict[str, List[Dict]] = {}
+    config: Dict[str, List[Dict]] = field(default_factory=dict)
     config_name: str = ""
     config_path: str = ""
-    config_data: Dict[str, Dict[str, Any]] = {}
-    config_name_list: list = [str]
+    config_data: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    config_name_list: List[str] = field(default_factory=list)
     resource_name: str = ""
     resource_path: str = ""
-    resource_data: Dict[str, Dict[str, Any]] = {}
-    resource_name_list: list = [str]
+    resource_data: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    resource_name_list: List[str] = field(default_factory=list)
+
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(MaaConfigData, cls).__new__(cls, *args, **kwargs)
+        return cls._instance
 
 
 maa_config_data = MaaConfigData()
