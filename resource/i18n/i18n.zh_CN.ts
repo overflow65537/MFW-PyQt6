@@ -462,6 +462,11 @@
     </message>
     <message>
         <location filename="app/view/setting_interface.py" line="60"/>
+        <source>Resource does not support Mirrorchyan, right-click about mirror to unlock input</source>
+        <translation>资源不支持Mirror酱,右键关于Mirror以解锁输入</translation>
+    </message>
+    <message>
+        <location filename="app/view/setting_interface.py" line="60"/>
         <source>About Mirror</source>
         <translation>关于Mirror酱</translation>
     </message>

@@ -269,6 +269,11 @@
         <translation>密碼：</translation>
     </message>
     <message>
+        <location filename="app/view/setting_interface.py" line="60"/>
+        <source>Resource does not support MirrorChan, right-click about mirror to unlock input</source>
+        <translation>資源不支持Mirror醬,右鍵關於Mirror以解鎖輸入</translation>
+    </message>
+    <message>
         <location filename="app/components/notic_setting_card.py" line="182"/>
         <source>Send Mail:</source>
         <translation>發送電子郵件：</translation>
