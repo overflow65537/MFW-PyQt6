@@ -101,10 +101,12 @@ class SettingInterface(ScrollArea):
             self.updateCard.button2.setText(self.tr("Check for updates from Github"))
             logger.debug("使用Github更新")
         else:
-            self.Updatethread = UpdateSelf(self)
+            self.Updatethread = Update(self)
             self.updateCard.button2.setText(self.tr("Check for updates from Github"))
             self.MirrorCard.setContent(
-                self.tr("资源不支持Mirror酱,右键关于mirror以解锁输入")
+                self.tr(
+                    "Resource does not support MirrorChan, right-click about mirror to unlock input"
+                )
             )
             self.MirrorCard.lineEdit.setEnabled(False)
             logger.debug("使用Github更新")
