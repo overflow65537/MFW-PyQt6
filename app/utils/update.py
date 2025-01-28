@@ -118,6 +118,7 @@ class MirrorUpdate(QThread):
         Save_Config(maa_config_data.interface_config_path, interface_date)
 
         # 发送信号
+        signalBus.resource_exist.emit(True)
         signalBus.update_download_finished.emit(
             {
                 "status": "success",
@@ -476,6 +477,7 @@ class Update(QThread):
         interface_date = Read_Config(maa_config_data.interface_config_path)
         interface_date["version"] = self.update_dict["tag_name"]
         Save_Config(maa_config_data.interface_config_path, interface_date)
+        signalBus.resource_exist.emit(True)
         signalBus.update_download_finished.emit(
             {
                 "status": "success",
