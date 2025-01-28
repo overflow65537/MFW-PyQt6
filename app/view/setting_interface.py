@@ -94,10 +94,16 @@ class SettingInterface(ScrollArea):
         ):
             self.Updatethread = MirrorUpdate(self)
             self.updateCard.button2.setText(self.tr("Check for updates from Mirror"))
+            self.MirrorCard.setContent(
+                self.tr("Enter mirrorchyan CDK for stable update path")
+            )
             logger.debug("使用镜像站更新")
 
         elif maa_config_data.interface_config.get("mirrorchyan_rid"):
             self.Updatethread = Update(self)
+            self.MirrorCard.setContent(
+                self.tr("Enter mirrorchyan CDK for stable update path")
+            )
             self.updateCard.button2.setText(self.tr("Check for updates from Github"))
             logger.debug("使用Github更新")
         else:
@@ -105,7 +111,7 @@ class SettingInterface(ScrollArea):
             self.updateCard.button2.setText(self.tr("Check for updates from Github"))
             self.MirrorCard.setContent(
                 self.tr(
-                    "Resource does not support MirrorChan, right-click about mirror to unlock input"
+                    "Resource does not support Mirrorchyan, right-click about mirror to unlock input"
                 )
             )
             self.MirrorCard.lineEdit.setEnabled(False)
