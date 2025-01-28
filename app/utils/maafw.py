@@ -154,6 +154,16 @@ class MaaFW:
     def load_resource(self, dir: str) -> bool:
         if not self.resource:
             self.resource = Resource()
+        gpu_index = maa_config_data.config["gpu"]
+        if gpu_index == -2:
+            logger.debug("设置CPU推理")
+            self.resource.use_cpu()
+        elif gpu_index == -1:
+            logger.debug("设置自动")
+            self.resource.use_auto_ep()
+        else:
+            logger.debug(f"设置GPU推理: {gpu_index}")
+            self.resource.use_directml(gpu_index)
         return self.resource.post_bundle(dir).wait().succeeded
 
     @asyncify

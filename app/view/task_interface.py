@@ -7,7 +7,7 @@ from pathlib import Path
 import json
 from typing import List, Dict
 
-from PyQt6.QtCore import Qt, QMimeData, QTimer
+from PyQt6.QtCore import Qt, QMimeData
 from PyQt6.QtGui import QDrag, QDropEvent, QColor, QFont
 from PyQt6.QtWidgets import (
     QApplication,
@@ -50,20 +50,12 @@ from datetime import datetime
 
 class TaskInterface(Ui_Task_Interface, QWidget):
     devices = []
-    run_mode = "adb"
     start_again = False
     need_runing = False
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.setupUi(self)
-
-        self.last_message = [0, 0]
-        self.now_message = [0, 0]
-        """self.update_timer = QTimer(self)
-        self.update_timer.setInterval(1000)
-        self.update_timer.timeout.connect(self.start_update_download_progress)
-        self.update_timer.start()"""
 
         maafw.notification_handler = MyNotificationHandler()
         self.bind_signals()
@@ -169,8 +161,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         signalBus.start_finish.connect(self.ready_Start_Up)
         signalBus.start_task_inmediately.connect(self.Start_Up)
         signalBus.dragging_finished.connect(self.dragging_finished)
-        signalBus.update_download_progress.connect(self.update_download_progress)
-        signalBus.update_download_finished.connect(self.update_download_finished)
         self.AddTask_Button.clicked.connect(self.Add_Task)
         self.AddTask_Button.rightClicked.connect(self.Add_All_Tasks)
         self.SelectTask_Combox_1.currentTextChanged.connect(
@@ -234,25 +224,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         mimeData.setText(item.text())
         drag.setMimeData(mimeData)
         drag.exec(Qt.DropAction.MoveAction)
-
-    def start_update_download_progress(self):
-        if (
-            self.last_message[0] == 0 and self.last_message[1] == 0
-        ) or self.now_message == self.last_message:
-            return
-        self.insert_colored_text(
-            self.tr("downloading: ")
-            + str(self.last_message[0])
-            + "/"
-            + str(self.last_message[1])
-        )
-        self.last_message = self.now_message
-
-    def update_download_progress(self, progress: int, total: int):
-        self.now_message = [progress, total]
-
-    def update_download_finished(self):
-        self.insert_colored_text(self.tr("download finished"))
 
     def print_notice(self, message: str):
         if "DingTalk Failed".lower() in message.lower():
@@ -356,7 +327,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 interface_Path, maa_pi_config_Path, resource_Path
             )
         else:
-            self.handle_missing_files(resource_Path, interface_Path, maa_pi_config_Path)
+            logger.warning("资源缺失")
+            self.show_error(self.tr("Resource file not detected"))
 
     def check_file_paths_exist(self, resource_Path, interface_Path, maa_pi_config_Path):
         return (
@@ -384,50 +356,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             )
             print(return_init.get("init_Controller_Type", 0))
         self.add_Controller_combox()
-
-    def handle_missing_files(self, resource_Path, interface_Path, maa_pi_config_Path):
-        if os.path.exists(resource_Path) and os.path.exists(interface_Path):
-            logger.info("配置文件缺失")
-            self.create_default_config(maa_pi_config_Path)
-            self.load_interface_options(interface_Path)
-        else:
-            logger.warning("资源缺失")
-            self.show_error(self.tr("Resource file not detected"))
-
-    def create_default_config(self, maa_pi_config_Path):
-        data = {
-            "adb": {
-                "adb_path": "",
-                "address": "",
-                "input_method": 0,
-                "screen_method": 0,
-                "config": {},
-            },
-            "win32": {
-                "hwnd": 0,
-                "input_method": 0,
-                "screen_method": 0,
-            },
-            "controller": {"name": ""},
-            "gpu": -1,
-            "resource": "",
-            "task": [],
-            "finish_option": 0,
-            "finish_option_res": 0,
-            "finish_option_cfg": 0,
-            "run_before_start": "",
-            "run_before_start_args": "",
-            "run_after_finish": "",
-            "run_after_finish_args": "",
-            "emu_path": "",
-            "emu_args": "",
-            "emu_wait_time": 10,
-            "exe_path": "",
-            "exe_args": "",
-            "exe_wait_time": 10,
-        }
-        Save_Config(maa_pi_config_Path, data)
-        maa_config_data.config = data
 
     def load_interface_options(self, interface_Path):
         self.Resource_Combox.addItems(Get_Values_list(interface_Path, key1="resource"))
@@ -609,9 +537,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if not await self.load_resources(PROJECT_DIR):
             return
 
-        # 设置推理设备
-        self.set_inference_device()
-
         # 连接控制器
         if not await self.connect_controller(controller_type):
             return
@@ -723,18 +648,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     self.update_S2_Button("Start", self.Start_Up)
                     return False
         return True
-
-    def set_inference_device(self):
-        gpu_index = maa_config_data.config["gpu"]
-        if gpu_index == -2 and self.need_runing:
-            logger.debug("设置CPU推理")
-            maafw.resource.set_cpu()
-        elif gpu_index == -1 and self.need_runing:
-            logger.debug("设置自动")
-            maafw.resource.set_auto_device()
-        else:
-            logger.debug(f"设置GPU推理: {gpu_index}")
-            maafw.resource.set_gpu(gpu_index)
 
     async def connect_controller(self, controller_type):
         if controller_type == "Adb" and self.need_runing:
