@@ -593,7 +593,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if not cfg.get(cfg.resource_exist):
             return
         self.need_runing = True
-        self.update_S2_Button("Stop", self.Stop_task)
+        self.update_S2_Button("Stop", self.Stop_task, enable=False)
         self.clear_layout()
 
         PROJECT_DIR = maa_config_data.resource_path
@@ -629,18 +629,20 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.update_S2_Button("Start", self.Start_Up)
         self.start_again = True
 
-    def update_S2_Button(self, text, slot):
-        self.S2_Button.setEnabled(True)
+    def update_S2_Button(self, text, slot, enable=True):
         self.S2_Button.setText(self.tr(text))
         self.S2_Button.clicked.disconnect()
         self.S2_Button.clicked.connect(slot)
+        self.S2_Button.setEnabled(enable)
 
     async def run_before_start_script(self):
         run_before_start = []
         run_before_start_path = maa_config_data.config.get("run_before_start")
         if run_before_start_path and self.need_runing:
             run_before_start.append(run_before_start_path)
-            run_before_start_args = maa_config_data.config.get("run_before_start_args")
+            run_before_start_args: str = maa_config_data.config.get(
+                "run_before_start_args"
+            )
             if run_before_start_args:
                 run_before_start.extend(run_before_start_args.split())
             logger.info(f"运行前脚本{run_before_start}")
@@ -741,7 +743,47 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             return await self.connect_win32_controller()
         return True
 
+    @asyncSlot()
     async def connect_adb_controller(self):
+        # 尝试连接 ADB
+        if not await self.connect_adb():
+            # 如果连接失败，尝试启动模拟器
+            if not await self.start_emulator():
+                self.send_notice("failed", self.tr("Connection"))
+                self.insert_colored_text(self.tr("Connection Failed"))
+                await maafw.stop_task()
+                self.update_S2_Button("Start", self.Start_Up)
+                return False
+            # 再次尝试连接 ADB
+            if not await self.connect_adb():
+                logger.error(
+                    f"连接adb失败\n{maa_config_data.config['adb']['adb_path']}\n{maa_config_data.config['adb']['address']}\n{maa_config_data.config['adb']['input_method']}\n{maa_config_data.config['adb']['screen_method']}\n{maa_config_data.config['adb']['config']}"
+                )
+                self.send_notice("failed", self.tr("Connection"))
+                self.insert_colored_text(self.tr("Connection Failed"))
+                await maafw.stop_task()
+                self.update_S2_Button("Start", self.Start_Up)
+                return False
+        return True
+
+    @asyncSlot()
+    async def connect_adb(self):
+        config = {} if self.start_again else maa_config_data.config["adb"]["config"]
+        if (
+            not await maafw.connect_adb(
+                maa_config_data.config["adb"]["adb_path"],
+                maa_config_data.config["adb"]["address"],
+                maa_config_data.config["adb"]["input_method"],
+                maa_config_data.config["adb"]["screen_method"],
+                config,
+            )
+            and self.need_runing
+        ):
+            return False
+        return True
+
+    @asyncSlot()
+    async def start_emulator(self):
         emu = []
         emu_path = maa_config_data.config.get("emu_path")
         if emu_path and self.need_runing:
@@ -771,68 +813,30 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         self.tr("Starting task in ") + f"{int(emu_wait_time) - i}"
                     )
                     await asyncio.sleep(1)
-        self.clear_layout()
-        emu_type = maa_config_data.config.get("adb").get("adb_path")
-        if "LDPlayer" in emu_type:
-            logger.debug("获取雷电模拟器pid")
-            device = await maafw.detect_adb()
-            for i in device:
-                if i.name == "LDPlayer":
-                    if maa_config_data.config["adb"]["config"].get("extras") is None:
-                        logger.debug("extras不存在，创建")
-                        maa_config_data.config["adb"]["config"] = i.config
-                    else:
-                        logger.debug("extras存在，更新pid")
-                        maa_config_data.config["adb"]["config"]["extras"]["ld"][
-                            "pid"
-                        ] = (i.config.get("extras").get("ld").get("pid"))
-                    logger.debug(
-                        f"获取到pid: {maa_config_data.config['adb']['config']['extras']['ld']['pid']}"
-                    )
-                    Save_Config(maa_config_data.config_path, maa_config_data.config)
-                    break
-        return await self.connect_adb()
-
-    async def connect_adb(self):
-        if self.start_again:
-            config = {}
-            if (
-                not await maafw.connect_adb(
-                    maa_config_data.config["adb"]["adb_path"],
-                    maa_config_data.config["adb"]["address"],
-                    maa_config_data.config["adb"]["input_method"],
-                    maa_config_data.config["adb"]["screen_method"],
-                    config,
-                )
-                and self.need_runing
-            ):
-                logger.error(
-                    f"连接adb失败\n{maa_config_data.config['adb']['adb_path']}\n{maa_config_data.config['adb']['address']}\n{maa_config_data.config['adb']['input_method']}\n{maa_config_data.config['adb']['screen_method']}\n{maa_config_data.config['adb']['config']}"
-                )
-                self.send_notice("failed", self.tr("Connection"))
-                self.insert_colored_text(self.tr("Connection Failed"))
-                await maafw.stop_task()
-                self.update_S2_Button("Start", self.Start_Up)
-                return False
-        else:
-            if (
-                not await maafw.connect_adb(
-                    maa_config_data.config["adb"]["adb_path"],
-                    maa_config_data.config["adb"]["address"],
-                    maa_config_data.config["adb"]["input_method"],
-                    maa_config_data.config["adb"]["screen_method"],
-                    maa_config_data.config["adb"]["config"],
-                )
-                and self.need_runing
-            ):
-                logger.error(
-                    f"连接adb失败\n{maa_config_data.config['adb']['adb_path']}\n{maa_config_data.config['adb']['address']}\n{maa_config_data.config['adb']['input_method']}\n{maa_config_data.config['adb']['screen_method']}\n{maa_config_data.config['adb']['config']}"
-                )
-                self.send_notice("failed", self.tr("Connection"))
-                self.insert_colored_text(self.tr("Connection Failed"))
-                await maafw.stop_task()
-                self.update_S2_Button("Start", self.Start_Up)
-                return False
+            self.clear_layout()
+            # 雷电模拟器特殊方法,重新获取pid
+            emu_type = maa_config_data.config.get("adb").get("adb_path")
+            if "LDPlayer" in emu_type:
+                logger.debug("获取雷电模拟器pid")
+                device = await maafw.detect_adb()
+                for i in device:
+                    if i.name == "LDPlayer":
+                        if (
+                            maa_config_data.config["adb"]["config"].get("extras")
+                            is None
+                        ):
+                            logger.debug("extras不存在，创建")
+                            maa_config_data.config["adb"]["config"] = i.config
+                        else:
+                            logger.debug("extras存在，更新pid")
+                            maa_config_data.config["adb"]["config"]["extras"]["ld"][
+                                "pid"
+                            ] = (i.config.get("extras").get("ld").get("pid"))
+                        logger.debug(
+                            f"获取到pid: {maa_config_data.config['adb']['config']['extras']['ld']['pid']}"
+                        )
+                        Save_Config(maa_config_data.config_path, maa_config_data.config)
+                        break
         return True
 
     async def connect_win32_controller(self):
@@ -841,7 +845,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if exe_path and self.need_runing:
             exe.append(exe_path)
             exe_wait_time = int(maa_config_data.config.get("exe_wait_time"))
-            exe_args = maa_config_data.config.get("exe_args")
+            exe_args: str = maa_config_data.config.get("exe_args")
             if exe_args:
                 exe.extend(exe_args.split())
             logger.info(f"启动游戏{exe}")
@@ -957,18 +961,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     @asyncSlot()
     async def Stop_task(self):
-        self.S2_Button.setEnabled(False)
-        self.S2_Button.setText(self.tr("Start"))
+        self.update_S2_Button("Start", self.Start_Up)
         self.insert_colored_text(self.tr("Stopping task..."))
         logger.info("停止任务")
         # 停止MAA
         self.need_runing = False
         self.start_again = True
         await maafw.stop_task()
-
-        self.S2_Button.clicked.disconnect()
-        self.S2_Button.clicked.connect(self.Start_Up)
-        self.S2_Button.setEnabled(True)
 
     def kill_adb_process(self):
         adb_path = maa_config_data.config["adb"]["adb_path"]
