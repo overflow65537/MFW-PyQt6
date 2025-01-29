@@ -848,6 +848,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.info(
                 f"运行任务:{self.entry}\n任务选项:\n{json.dumps(override_options, indent=4,ensure_ascii=False)}"
             )
+            self.pipeline_override.update(override_options)
             await maafw.run_task(self.entry, override_options)
         logger.info("任务完成")
         self.send_notice("completed")
