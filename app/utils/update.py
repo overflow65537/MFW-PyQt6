@@ -306,6 +306,21 @@ class DownloadBundle(BaseUpdate):
 
 
 class Update(BaseUpdate):
+    def extract_zip(self, zip_file_path, extract_to):
+
+        try:
+            with zipfile.ZipFile(zip_file_path, "r") as zip_ref:
+                all_members = zip_ref.namelist()
+                actual_main_folder = all_members[0].split("/")[0]
+                if not os.path.exists(os.path.join(os.getcwd(), "hotfix")):
+                    os.makedirs(os.path.join(os.getcwd(), "hotfix"))
+                zip_ref.extractall(extract_to)
+
+            return actual_main_folder
+        except Exception as e:
+            logger.exception("解压文件时出错")
+            return False
+
     def run(self):
         self.stop_flag = False
         project_url = maa_config_data.interface_config.get("url", None)
@@ -376,13 +391,16 @@ class Update(BaseUpdate):
             return
 
         target_path = maa_config_data.resource_path
-        if not self.extract_zip(zip_file_path, os.path.join(os.getcwd(), "hotfix")):
+        main_folder = self.extract_zip(
+            zip_file_path, os.path.join(os.getcwd(), "hotfix")
+        )
+        if not main_folder:
             signalBus.update_download_finished.emit(
                 {"status": "failed", "msg": self.tr("Extraction failed")}
             )
             return
 
-        folder_to_extract = os.path.join(os.getcwd(), "hotfix", project_name, "assets")
+        folder_to_extract = os.path.join(os.getcwd(), "hotfix", main_folder, "assets")
         if not self.move_files(folder_to_extract, target_path):
             signalBus.update_download_finished.emit(
                 {"status": "failed", "msg": self.tr("Move files failed")}
@@ -391,7 +409,7 @@ class Update(BaseUpdate):
 
         replace_ocr(target_path)
         self.remove_temp_files(
-            os.path.join(os.getcwd(), "hotfix", project_name), zip_file_path
+            os.path.join(os.getcwd(), "hotfix", main_folder), zip_file_path
         )
 
         interface_date = Read_Config(maa_config_data.interface_config_path)
