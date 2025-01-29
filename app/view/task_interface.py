@@ -6,6 +6,8 @@ import asyncio
 from pathlib import Path
 import json
 from typing import List, Dict
+import re
+
 
 from PyQt6.QtCore import Qt, QMimeData
 from PyQt6.QtGui import QDrag, QDropEvent, QColor, QFont
@@ -76,6 +78,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 for j in range(layout.count()):
                     widget = layout.itemAt(j).widget()
                     if isinstance(widget, ComboBox):
+                        widget.setFixedWidth(scroll_area_width - 20)
+                    if isinstance(widget, BodyLabel):
                         widget.setFixedWidth(scroll_area_width - 20)
 
     def resource_exist(self, status: bool):
@@ -293,6 +297,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def insert_colored_text(self, text, color_name: str = "black"):
         color = QColor(color_name.lower())
+        if not color.isValid():
+            color = QColor("black")
+            logger.error(f"无效颜色 '{color_name}', 使用默认颜色 'black'")
+
         now = datetime.now().strftime("%H:%M")
         time = ClickableLabel(self)
         time.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -1161,7 +1169,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         Save_Config(maa_config_data.config_path, maa_config_data.config)  # 刷新保存
 
     def Add_Select_Task_More_Select(self):
-        self.clear_extra_widgets()
         select_target = self.SelectTask_Combox_1.currentText()
 
         self.show_task_options(select_target, maa_config_data.interface_config)
@@ -1174,33 +1181,109 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         layout = self.Option_Label
 
         for task in MAA_Pi_Config["task"]:
-            if task["name"] == select_target and task.get("option"):
-                option_length = len(task["option"])
-                for i in range(option_length):
-                    v_layout = QVBoxLayout()
+            if task["name"] == select_target:
+                # 处理 option 字段
+                options = task.get("option")
+                if options:
+                    for option in options:
+                        v_layout = QVBoxLayout()
 
-                    label: BodyLabel = BodyLabel(self)
-                    label.setText(task["option"][i])
-                    label.setFont(QFont("Arial", 10))
-                    v_layout.addWidget(label)
+                        label = BodyLabel(self)
+                        label.setText(option)
+                        label.setFont(QFont("Arial", 10))
+                        v_layout.addWidget(label)
 
-                    select_box: ComboBox = ComboBox(self)
-                    select_box.addItems(
-                        list(
-                            Get_Task_List(
-                                maa_config_data.interface_config_path, task["option"][i]
+                        select_box = ComboBox(self)
+                        select_box.addItems(
+                            list(
+                                Get_Task_List(
+                                    maa_config_data.interface_config_path, option
+                                )
                             )
                         )
-                    )
-                    select_box.setSizePolicy(
-                        QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-                    )
-                    scroll_area_width = self.scroll_area.width()
-                    select_box.setFixedWidth(scroll_area_width - 20)
+                        select_box.setSizePolicy(
+                            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+                        )
+                        scroll_area_width = self.scroll_area.width()
+                        select_box.setFixedWidth(scroll_area_width - 20)
 
-                    v_layout.addWidget(select_box)
+                        v_layout.addWidget(select_box)
 
-                    layout.addLayout(v_layout)
+                        layout.addLayout(v_layout)
+
+                # 处理 doc 字段
+                doc = task.get("doc")
+                if doc:
+                    doc_layout = QVBoxLayout()
+                    doc_parts = doc.split("\n")
+                    for part in doc_parts:
+                        doc_label = ClickableLabel(self)
+                        doc_label.setWordWrap(True)
+
+                        # 重置样式
+                        doc_label.setStyleSheet("")
+                        font = QFont("Arial", 10)
+                        font.setBold(False)
+                        font.setItalic(False)
+                        font.setUnderline(False)
+                        doc_label.setFont(font)
+
+                        # 解析颜色
+                        color_match = re.search(r"\[color:(.*?)\]", part)
+                        if color_match:
+                            color_name = color_match.group(1)
+                            if color_name.isdigit() or color_name == "cat":
+                                color_name = "black"
+                                logger.error(
+                                    f"无效颜色: {color_name}, 原始内容: {part}"
+                                )
+                            part = re.sub(r"\[color:.*?\]", "", part)
+                            part = re.sub(r"\[/color\]", "", part)
+                            doc_label.setStyleSheet(f"color: {color_name};")
+
+                        # 解析字号
+                        size_match = re.search(r"\[size:(.*?)\]", part)
+                        if size_match:
+                            font_size = size_match.group(1)
+                            if not font_size.isdigit():
+                                font_size = "10"
+                                logger.error(f"无效字号: {font_size}, 原始内容: {part}")
+                            else:
+                                font_size = int(font_size)
+                            part = re.sub(r"\[size:.*?\]", "", part)
+                            part = re.sub(r"\[/size\]", "", part)
+                            doc_label.setFont(QFont("Arial", font_size))
+
+                        # 解析粗体
+                        if "[b]" in part:
+                            part = part.replace("[b]", "").replace("[/b]", "")
+                            font.setBold(True)
+                            doc_label.setFont(font)
+
+                        # 解析斜体
+                        if "[i]" in part:
+                            part = part.replace("[i]", "").replace("[/i]", "")
+                            font.setItalic(True)
+                            doc_label.setFont(font)
+
+                        # 解析下划线
+                        if "[u]" in part:
+                            part = part.replace("[u]", "").replace("[/u]", "")
+                            font.setUnderline(True)
+                            doc_label.setFont(font)
+
+                        # 解析删除线
+                        if "[s]" in part:
+                            part = part.replace("[s]", "").replace("[/s]", "")
+                            doc_label.setStyleSheet(
+                                doc_label.styleSheet()
+                                + " text-decoration: line-through;"
+                            )
+
+                        doc_label.setText(part)
+                        doc_layout.addWidget(doc_label)
+
+                    layout.addLayout(doc_layout)
 
                 spacer = QSpacerItem(
                     0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
@@ -1231,30 +1314,31 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         return selected_options
 
     def clear_extra_widgets(self):
+        print("清除额外的控件")
         layout = self.Option_Label
         if layout is None:
             return
 
-        for i in range(layout.count()):
-            item = layout.itemAt(i)
+        while layout.count():
+            item = layout.takeAt(0)
             if item is None:
                 continue
 
             if isinstance(item, QSpacerItem):
-                layout.takeAt(i)
                 continue
 
             sub_layout = item.layout()
             if sub_layout is None:
                 continue
 
-            for j in range(sub_layout.count()):
-                sub_item = sub_layout.takeAt(j)
+            while sub_layout.count():
+                sub_item = sub_layout.takeAt(0)
                 if sub_item is None:
                     continue
 
                 widget = sub_item.widget()
                 if widget is not None:
+                    print(f"{widget} 删除")
                     widget.deleteLater()
 
     @asyncSlot()
