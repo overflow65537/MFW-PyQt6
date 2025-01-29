@@ -271,7 +271,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 self.send_notice("failed", message["task"])
         if message["name"] == "on_task_recognition":
             task = message["task"]
-            pipeline = self.pipelines.get(task)
+            pipeline: dict = self.pipeline_override.get(task)
             if pipeline:
                 if message["status"] == 1 and pipeline.get("focus_tip"):
                     self.insert_colored_text(
@@ -823,9 +823,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         "pipeline_override"
                     ]
                 )
+                self.pipeline_override: dict = self.pipelines
+                self.pipeline_override.update(override_options)
                 logger.debug(
                     f"覆盖选项:\n{json.dumps(override_options, indent=4,ensure_ascii=False)}"
                 )
+            else:
+                self.pipeline_override: dict = self.pipelines
             if task_list["option"] != []:
                 for task_option in task_list["option"]:
                     for override in maa_config_data.interface_config["option"][
