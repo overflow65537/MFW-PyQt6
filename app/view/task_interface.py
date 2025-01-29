@@ -1216,19 +1216,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 doc = task.get("doc")
                 if doc:
                     doc_layout = QVBoxLayout()
+                    doc_label = ClickableLabel(self)
+                    doc_label.setWordWrap(True)
+
+                    # 初始化 HTML 文本
+                    html_text = ""
+
                     doc_parts = doc.split("\n")
                     for part in doc_parts:
-                        doc_label = ClickableLabel(self)
-                        doc_label.setWordWrap(True)
-
-                        # 重置样式
-                        doc_label.setStyleSheet("")
-                        font = QFont("Arial", 10)
-                        font.setBold(False)
-                        font.setItalic(False)
-                        font.setUnderline(False)
-                        doc_label.setFont(font)
-
                         # 解析颜色
                         color_match = re.search(r"\[color:(.*?)\]", part)
                         if color_match:
@@ -1238,9 +1233,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                 logger.error(
                                     f"无效颜色: {color_name}, 原始内容: {part}"
                                 )
-                            part = re.sub(r"\[color:.*?\]", "", part)
-                            part = re.sub(r"\[/color\]", "", part)
-                            doc_label.setStyleSheet(f"color: {color_name};")
+                            part = re.sub(
+                                r"\[color:.*?\]",
+                                f'<span style="color:{color_name}">',
+                                part,
+                            )
+                            part = re.sub(r"\[/color\]", "</span>", part)
 
                         # 解析字号
                         size_match = re.search(r"\[size:(.*?)\]", part)
@@ -1249,41 +1247,29 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             if not font_size.isdigit():
                                 font_size = "10"
                                 logger.error(f"无效字号: {font_size}, 原始内容: {part}")
-                            else:
-                                font_size = int(font_size)
-                            part = re.sub(r"\[size:.*?\]", "", part)
-                            part = re.sub(r"\[/size\]", "", part)
-                            doc_label.setFont(QFont("Arial", font_size))
+                            part = re.sub(
+                                r"\[size:.*?\]",
+                                f'<span style="font-size:{font_size}px">',
+                                part,
+                            )
+                            part = re.sub(r"\[/size\]", "</span>", part)
 
                         # 解析粗体
-                        if "[b]" in part:
-                            part = part.replace("[b]", "").replace("[/b]", "")
-                            font.setBold(True)
-                            doc_label.setFont(font)
+                        part = part.replace("[b]", "<b>").replace("[/b]", "</b>")
 
                         # 解析斜体
-                        if "[i]" in part:
-                            part = part.replace("[i]", "").replace("[/i]", "")
-                            font.setItalic(True)
-                            doc_label.setFont(font)
+                        part = part.replace("[i]", "<i>").replace("[/i]", "</i>")
 
                         # 解析下划线
-                        if "[u]" in part:
-                            part = part.replace("[u]", "").replace("[/u]", "")
-                            font.setUnderline(True)
-                            doc_label.setFont(font)
+                        part = part.replace("[u]", "<u>").replace("[/u]", "</u>")
 
                         # 解析删除线
-                        if "[s]" in part:
-                            part = part.replace("[s]", "").replace("[/s]", "")
-                            doc_label.setStyleSheet(
-                                doc_label.styleSheet()
-                                + " text-decoration: line-through;"
-                            )
+                        part = part.replace("[s]", "<s>").replace("[/s]", "</s>")
 
-                        doc_label.setText(part)
-                        doc_layout.addWidget(doc_label)
+                        html_text += part + "<br>"
 
+                    doc_label.setText(html_text)
+                    doc_layout.addWidget(doc_label)
                     layout.addLayout(doc_layout)
 
                 spacer = QSpacerItem(
