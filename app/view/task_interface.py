@@ -1220,62 +1220,43 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     doc_label.setWordWrap(True)
 
                     # 初始化 HTML 文本
-                    html_text = ""
+                    html_text = doc
 
-                    doc_parts = doc.split("\n")
-                    for part in doc_parts:
-                        # 解析颜色
-                        color_match = re.search(r"\[color:(.*?)\]", part)
-                        if color_match:
-                            color_name = color_match.group(1)
-                            if color_name.isdigit() or color_name == "cat":
-                                color_name = "black"
-                                logger.error(
-                                    f"无效颜色: {color_name}, 原始内容: {part}"
-                                )
-                            part = re.sub(
-                                r"\[color:.*?\]",
-                                f'<span style="color:{color_name}">',
-                                part,
-                            )
-                            part = re.sub(r"\[/color\]", "</span>", part)
+                    # 解析颜色
+                    html_text = re.sub(
+                        r"\[color:(.*?)\]", r'<span style="color:\1">', html_text
+                    )
+                    html_text = re.sub(r"\[/color\]", "</span>", html_text)
 
-                        # 解析字号
-                        size_match = re.search(r"\[size:(.*?)\]", part)
-                        if size_match:
-                            font_size = size_match.group(1)
-                            if not font_size.isdigit():
-                                font_size = "10"
-                                logger.error(f"无效字号: {font_size}, 原始内容: {part}")
-                            part = re.sub(
-                                r"\[size:.*?\]",
-                                f'<span style="font-size:{font_size}px">',
-                                part,
-                            )
-                            part = re.sub(r"\[/size\]", "</span>", part)
+                    # 解析字号
+                    html_text = re.sub(
+                        r"\[size:(.*?)\]", r'<span style="font-size:\1px">', html_text
+                    )
+                    html_text = re.sub(r"\[/size\]", "</span>", html_text)
 
-                        # 解析粗体
-                        part = part.replace("[b]", "<b>").replace("[/b]", "</b>")
+                    # 解析粗体
+                    html_text = html_text.replace("[b]", "<b>").replace("[/b]", "</b>")
 
-                        # 解析斜体
-                        part = part.replace("[i]", "<i>").replace("[/i]", "</i>")
+                    # 解析斜体
+                    html_text = html_text.replace("[i]", "<i>").replace("[/i]", "</i>")
 
-                        # 解析下划线
-                        part = part.replace("[u]", "<u>").replace("[/u]", "</u>")
+                    # 解析下划线
+                    html_text = html_text.replace("[u]", "<u>").replace("[/u]", "</u>")
 
-                        # 解析删除线
-                        part = part.replace("[s]", "<s>").replace("[/s]", "</s>")
+                    # 解析删除线
+                    html_text = html_text.replace("[s]", "<s>").replace("[/s]", "</s>")
 
-                        html_text += part + "<br>"
+                    # 将换行符替换为 <br>
+                    html_text = html_text.replace("\n", "<br>")
 
                     doc_label.setText(html_text)
                     doc_layout.addWidget(doc_label)
                     layout.addLayout(doc_layout)
 
-                spacer = QSpacerItem(
-                    0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-                )
-                layout.addItem(spacer)
+                    spacer = QSpacerItem(
+                        0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+                    )
+                    layout.addItem(spacer)
 
                 break
 
