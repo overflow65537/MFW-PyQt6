@@ -7,6 +7,7 @@ from ..utils.tool import (
     get_uuid,
     Read_Config,
     Save_Config,
+    decrypt,
 )
 from ..common.signal_bus import signalBus
 from ..utils.logger import logger
@@ -68,12 +69,17 @@ class BaseUpdate(QThread):
             elif os.path.isfile(path):
                 os.remove(path)
 
+    def Mirror_ckd(self):
+        with open("k.ey", "rb") as key_file:
+            key = key_file.read()
+            return decrypt(cfg.get(cfg.Mcdk), key)
+
 
 class MirrorUpdate(BaseUpdate):
     def run(self):
         self.stop_flag = False
         device_id = get_uuid()
-        cdk = cfg.get(cfg.Mcdk)
+        cdk = self.Mirror_ckd()
         res_id = maa_config_data.interface_config.get("mirrorchyan_rid")
         version = maa_config_data.interface_config.get("version")
         url = f"https://mirrorc.top/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&sp_id={device_id}&user_agent=MFW_PYQT6"
@@ -154,7 +160,7 @@ class MirrorDownloadBundle(BaseUpdate):
     def run(self):
         self.stop_flag = False
         device_id = get_uuid()
-        cdk = cfg.get(cfg.Mcdk)
+        cdk = self.Mirror_ckd()
         url = f"https://mirrorc.top/api/resources/{self.res_id}/latest?current_version=&cdk={cdk}&sp_id={device_id}&user_agent=MFW_PYQT6"
         print(url)
         try:
