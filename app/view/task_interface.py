@@ -1253,10 +1253,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     doc_layout.addWidget(doc_label)
                     layout.addLayout(doc_layout)
 
-                    spacer = QSpacerItem(
-                        0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-                    )
-                    layout.addItem(spacer)
+                spacer = QSpacerItem(
+                    0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+                )
+                layout.addItem(spacer)
 
                 break
 
