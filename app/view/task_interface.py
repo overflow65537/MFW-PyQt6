@@ -790,23 +790,23 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         self.tr("Starting game in ") + f"{int(exe_wait_time) - i}"
                     )
                     await asyncio.sleep(1)
-            self.clear_layout()
-            if (
-                not await maafw.connect_win32hwnd(
-                    maa_config_data.config["win32"]["hwnd"],
-                    maa_config_data.config["win32"]["input_method"],
-                    maa_config_data.config["win32"]["screen_method"],
-                )
-                and self.need_runing
-            ):
-                logger.error(
-                    f"连接Win32失败 \n{maa_config_data.config['win32']['hwnd']}\n{maa_config_data.config['win32']['input_method']}\n{maa_config_data.config['win32']['screen_method']}"
-                )
-                self.send_notice("failed", self.tr("Connection"))
-                self.insert_colored_text(self.tr("Connection Failed"))
-                await maafw.stop_task()
-                self.update_S2_Button("Start", self.Start_Up)
-                return False
+        self.clear_layout()
+        if (
+            not await maafw.connect_win32hwnd(
+                maa_config_data.config["win32"]["hwnd"],
+                maa_config_data.config["win32"]["input_method"],
+                maa_config_data.config["win32"]["screen_method"],
+            )
+            and self.need_runing
+        ):
+            logger.error(
+                f"连接Win32失败 \n{maa_config_data.config['win32']['hwnd']}\n{maa_config_data.config['win32']['input_method']}\n{maa_config_data.config['win32']['screen_method']}"
+            )
+            self.send_notice("failed", self.tr("Connection"))
+            self.insert_colored_text(self.tr("Connection Failed"))
+            await maafw.stop_task()
+            self.update_S2_Button("Start", self.Start_Up)
+            return False
         return True
 
     async def run_tasks(self):
