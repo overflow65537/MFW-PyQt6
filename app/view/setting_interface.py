@@ -696,7 +696,7 @@ class SettingInterface(ScrollArea):
             InfoBar.info(
                 self.tr("info"),
                 data_dict["msg"],
-                duration=5000,
+                duration=10000,
                 parent=self,
             )
             return

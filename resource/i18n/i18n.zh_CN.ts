@@ -1241,65 +1241,52 @@
     </message>
 </context>
 <context>
-    <name>MirrorUpdate</name>
+    <name>Update</name>
     <message>
-        <location filename="app/components/update.py" line="57"/>
+        <location filename="app/utils/update.py" line="57"/>
         <source>current version is latest</source>
         <translation>当前已经是最新版</translation>
     </message>
     <message>
-        <location filename="app/components/update.py" line="57"/>
-        <source>"MirrorChyan update check successful, starting downloa"</source>
+        <location filename="app/utils/update.py" line="107"/>
+        <source>MirrorChyan update check successful, starting downloa</source>
         <translation>Mirror酱检查成功,开始更新</translation>
     </message>
     <message>
-        <location filename="app/components/update.py" line="57"/>
-        <source>"MirrorChyan update check successful, but no CDK found, switching to Github download"</source>
+        <location filename="app/utils/update.py" line="118"/>
+        <source>MirrorChyan update check successful, but no CDK found, switching to Github download</source>
         <translation>Mirror酱检查成功,但未找到CDK.转为Github下载</translation>
     </message>
     <message>
-        <location filename="app/components/update.py" line="57"/>
+        <location filename="app/utils/update.py" line="57"/>
         <source>Projeund, unable to perform update check</source>
         <translation>项目未找到，无法执行更新检查</translation>
     </message>
     <message>
-        <location filename="app/components/update.py" line="89"/>
+        <location filename="app/utils/update.py" line="89"/>
         <source>Download failed</source>
         <translation>下载失败</translation>
     </message>
     <message>
-        <location filename="app/components/update.py" line="123"/>
+        <location filename="app/utils/update.py" line="123"/>
         <source>Update successful</source>
         <translation>更新成功</translation>
     </message>
-
-</context>
-<context>
-    <name>Update</name>
     <message>
-        <location filename="app/components/update.py" line="355"/>
+        <location filename="app/utils/update.py" line="355"/>
         <source>Project address configuration not found, unable to perform update check</source>
         <translation>未发现项目更新地址,无法进行更新</translation>
     </message>
     <message>
-        <location filename="app/components/update.py" line="367"/>
+        <location filename="app/utils/update.py" line="367"/>
         <source>Project address configuration error, unable to perform update check</source>
         <translation>项目更新地址填写错误,无法进行更新</translation>
     </message>
-    <message>
-        <location filename="app/components/update.py" line="388"/>
-        <source>current version is latest</source>
-        <translation>当前已经是最新版</translation>
-    </message>
-    <message>
-        <location filename="app/components/update.py" line="491"/>
-        <source>Update successful</source>
-        <translation>更新成功</translation>
-    </message>
+
 </context>
 <context>
     <message>
-        <location filename="app/components/update.py" line="123"/>
+        <location filename="app/utils/update.py" line="123"/>
         <source>Download successful</source>
         <translation>下载成功</translation>
     </message>
