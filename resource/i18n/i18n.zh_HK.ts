@@ -1248,6 +1248,21 @@
         <translation>當前已經是最新版</translation>
     </message>
     <message>
+        <location filename="app/components/update.py" line="57"/>
+        <source>"MirrorChyan update check successful, starting downloa"</source>
+        <translation>Mirror醬檢查成功，開始更新</translation>
+    </message>
+    <message>
+        <location filename="app/components/update.py" line="57"/>
+        <source>"MirrorChyan update check successful, but no CDK found, switching to Github download"</source>
+        <translation>Mirror醬檢查成功，但未找到CDK，轉為Github下載</translation>
+    </message>
+    <message>
+        <location filename="app/components/update.py" line="57"/>
+        <source>Projeund, unable to perform update check</source>
+        <translation>項目未找到，無法執行更新檢查</translation>
+    </message>
+    <message>
         <location filename="app/components/update.py" line="89"/>
         <source>Download failed</source>
         <translation>下載失敗</translation>

@@ -48,8 +48,10 @@ class BaseUpdate(QThread):
     def extract_zip(self, zip_file_path, extract_to):
         try:
             with zipfile.ZipFile(zip_file_path, "r") as zip_ref:
+                all_members = zip_ref.namelist()
+                actual_main_folder = all_members[0].split("/")[0]
                 zip_ref.extractall(extract_to)
-            return True
+            return actual_main_folder
         except Exception as e:
             logger.exception("解压文件时出错")
             return False
@@ -75,13 +77,101 @@ class BaseUpdate(QThread):
             return decrypt(cfg.get(cfg.Mcdk), key)
 
 
-class MirrorUpdate(BaseUpdate):
+class Update(BaseUpdate):
+
     def run(self):
-        self.stop_flag = False
+        url = maa_config_data.interface_config.get("url")
         device_id = get_uuid()
         cdk = self.Mirror_ckd()
         res_id = maa_config_data.interface_config.get("mirrorchyan_rid")
         version = maa_config_data.interface_config.get("version")
+        if res_id:
+            mirror_data: Dict[str, Dict] = self.mirror_check(
+                res_id=res_id, version=version, cdk=cdk, device_id=device_id
+            )
+            if not mirror_data:
+                return
+            if mirror_data.get("data").get("version_name") == version:
+                signalBus.update_download_finished.emit(
+                    {
+                        "status": "success",
+                        "msg": self.tr("current version is latest"),
+                    }
+                )
+                return
+            if cdk:
+                signalBus.update_download_finished.emit(
+                    {
+                        "status": "info",
+                        "msg": self.tr(
+                            "MirrorChyan update check successful, starting downloa"
+                        ),
+                    }
+                )
+                self.mirror_download(res_id, mirror_data)
+                return
+            else:
+                signalBus.update_download_finished.emit(
+                    {
+                        "status": "info",
+                        "msg": self.tr(
+                            "MirrorChyan update check successful, but no CDK found, switching to Github download"
+                        ),
+                    }
+                )
+                github_url = self.assemble_gitHub_url(
+                    mirror_data["data"].get("version_name"), url
+                )
+                if not github_url:
+                    signalBus.update_download_finished.emit(
+                        {
+                            "status": "failed",
+                            "msg": self.tr("Projeund, unable to perform update check"),
+                        }
+                    )
+                    return
+                github_dict = {
+                    "zipball_url": github_url,
+                    "tag_name": mirror_data["data"].get("version_name"),
+                }
+                self.github_download(github_dict)
+                return
+        else:
+            github_dict = self.github_check(url)
+            if not github_dict:
+                return
+            self.github_download(github_dict)
+
+    def assemble_gitHub_url(self, version: str, url: str) -> str:
+        """
+        输入版本号和项目地址，返回GitHub项目源代码压缩包下载地址
+        """
+        if not url or not version:
+            return False
+
+        parts = url.split("/")
+        try:
+            username = parts[3]
+            repository = parts[4]
+        except IndexError:
+            return False
+        retuen_url = (
+            f"https://api.github.com/repos/{username}/{repository}/zipball/{version}"
+        )
+        return retuen_url
+
+    def mirror_check(self, res_id: str, version: str, cdk: str, device_id: str) -> Dict:
+        """
+        mirror检查更新
+        Args:
+            res_id (str): 资源id
+            version (str): 版本号
+            cdk (str): cdk
+            device_id (str): 设备id
+        Returns:
+            Dict: 资源信息
+        """
+
         url = f"https://mirrorc.top/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&sp_id={device_id}&user_agent=MFW_PYQT6"
         print(url)
         try:
@@ -90,21 +180,30 @@ class MirrorUpdate(BaseUpdate):
             mirror_data: Dict[str, Dict] = response.json()
         except requests.RequestException as e:
             signalBus.update_download_finished.emit({"status": "failed", "msg": str(e)})
-            return
+            return False
 
         if mirror_data.get("code") != 0:
             logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
             signalBus.update_download_finished.emit(
                 {"status": "failed", "msg": mirror_data.get("msg")}
             )
-            return
+            return False
 
         if mirror_data.get("msg") == "current version is latest":
             signalBus.update_download_finished.emit(
                 {"status": "success", "msg": self.tr("current version is latest")}
             )
-            return
+            return False
+        return mirror_data
 
+    def mirror_download(self, res_id, mirror_data):
+        """
+        mirror下载更新
+        Args:
+            res_id (str): 资源id
+            mirror_data (Dict): 资源信息
+        """
+        self.stop_flag = False
         download_url: str = mirror_data["data"].get("url")
         hotfix_directory = os.path.join(os.getcwd(), "hotfix")
         os.makedirs(hotfix_directory, exist_ok=True)
@@ -116,13 +215,13 @@ class MirrorUpdate(BaseUpdate):
             signalBus.update_download_finished.emit(
                 {"status": "failed", "msg": self.tr("Download failed")}
             )
-            return
+            return False
 
         if not self.extract_zip(zip_file_path, os.path.join(os.getcwd(), "hotfix")):
             signalBus.update_download_finished.emit(
                 {"status": "failed", "msg": self.tr("Extraction failed")}
             )
-            return
+            return False
 
         target_path = maa_config_data.resource_path
         if not self.move_files(
@@ -131,7 +230,7 @@ class MirrorUpdate(BaseUpdate):
             signalBus.update_download_finished.emit(
                 {"status": "failed", "msg": self.tr("Move files failed")}
             )
-            return
+            return False
 
         maa_config_data.interface_config["version"] = mirror_data["data"].get(
             "version_name"
@@ -145,6 +244,118 @@ class MirrorUpdate(BaseUpdate):
         interface_date["mirrorchyan_rid"] = res_id
         Save_Config(maa_config_data.interface_config_path, interface_date)
 
+        signalBus.resource_exist.emit(True)
+        signalBus.update_download_finished.emit(
+            {"status": "success", "msg": self.tr("Update successful")}
+        )
+        return True
+
+    def github_check(self, project_url: str) -> Dict:
+        """
+        github检查更新
+        Args:
+            project_url (str): 项目地址
+        Returns:
+            Dict: 更新信息
+        """
+        print(
+            "GitHub更新检查================================================================================================================="
+        )
+        if not project_url:
+            logger.warning("项目地址未配置，无法进行更新检查")
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "failed",
+                    "msg": self.tr(
+                        "Project address configuration not found, unable to perform update check"
+                    ),
+                }
+            )
+            return False
+        url = for_config_get_url(project_url, "download")
+        if url is None:
+            logger.warning("项目地址配置错误，无法进行更新检查")
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "failed",
+                    "msg": self.tr(
+                        "Project address configuration error, unable to perform update check"
+                    ),
+                }
+            )
+            return False
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            update_dict: dict = response.json()
+            logger.debug(
+                f"更新检查结果: {json.dumps(update_dict, indent=4, ensure_ascii=False)}"
+            )
+            if update_dict.get(
+                "tag_name", None
+            ) == maa_config_data.interface_config.get("version"):
+                signalBus.update_download_finished.emit(
+                    {"status": "success", "msg": self.tr("current version is latest")}
+                )
+                return False
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"更新检查时出错: {e}")
+            signalBus.update_download_finished.emit({"status": "failed", "msg": str(e)})
+            return False
+        except Exception as e:
+            logger.exception(f"更新检查时出现未知错误: {e}")
+            signalBus.update_download_finished.emit({"status": "failed", "msg": str(e)})
+            return False
+        return update_dict
+
+    def github_download(self, update_dict: Dict):
+        """
+        github下载更新
+        Args:
+            update_dict (Dict): 更新信息
+        """
+        self.stop_flag = False
+        download_url: str = update_dict["zipball_url"]
+        hotfix_directory = os.path.join(os.getcwd(), "hotfix")
+        os.makedirs(hotfix_directory, exist_ok=True)
+        project_name = download_url.split("/")[5]
+        zip_file_path = os.path.join(
+            hotfix_directory, f"{project_name}-{update_dict['tag_name']}.zip"
+        )
+
+        if not self.download_file(
+            download_url, zip_file_path, signalBus.update_download_progress
+        ):
+            signalBus.update_download_finished.emit(
+                {"status": "failed", "msg": self.tr("Download failed")}
+            )
+            return
+
+        target_path = maa_config_data.resource_path
+        main_folder = self.extract_zip(
+            zip_file_path, os.path.join(os.getcwd(), "hotfix")
+        )
+        if not main_folder:
+            signalBus.update_download_finished.emit(
+                {"status": "failed", "msg": self.tr("Extraction failed")}
+            )
+            return
+
+        folder_to_extract = os.path.join(os.getcwd(), "hotfix", main_folder, "assets")
+        if not self.move_files(folder_to_extract, target_path):
+            signalBus.update_download_finished.emit(
+                {"status": "failed", "msg": self.tr("Move files failed")}
+            )
+            return
+
+        replace_ocr(target_path)
+        self.remove_temp_files(
+            os.path.join(os.getcwd(), "hotfix", main_folder), zip_file_path
+        )
+
+        interface_date = Read_Config(maa_config_data.interface_config_path)
+        interface_date["version"] = update_dict["tag_name"]
+        Save_Config(maa_config_data.interface_config_path, interface_date)
         signalBus.resource_exist.emit(True)
         signalBus.update_download_finished.emit(
             {"status": "success", "msg": self.tr("Update successful")}
@@ -299,125 +510,6 @@ class DownloadBundle(BaseUpdate):
                 "target_path": target_path,
                 "project_name": project_name,
             }
-        )
-
-    def stop(self):
-        self.stop_flag = True
-
-
-class Update(BaseUpdate):
-    def extract_zip(self, zip_file_path, extract_to):
-
-        try:
-            with zipfile.ZipFile(zip_file_path, "r") as zip_ref:
-                all_members = zip_ref.namelist()
-                actual_main_folder = all_members[0].split("/")[0]
-                if not os.path.exists(os.path.join(os.getcwd(), "hotfix")):
-                    os.makedirs(os.path.join(os.getcwd(), "hotfix"))
-                zip_ref.extractall(extract_to)
-
-            return actual_main_folder
-        except Exception as e:
-            logger.exception("解压文件时出错")
-            return False
-
-    def run(self):
-        self.stop_flag = False
-        project_url = maa_config_data.interface_config.get("url", None)
-        if not project_url:
-            logger.warning("项目地址未配置，无法进行更新检查")
-            signalBus.update_download_finished.emit(
-                {
-                    "status": "failed",
-                    "msg": self.tr(
-                        "Project address configuration not found, unable to perform update check"
-                    ),
-                }
-            )
-            return
-
-        url = for_config_get_url(project_url, "download")
-        if url is None:
-            logger.warning("项目地址配置错误，无法进行更新检查")
-            signalBus.update_download_finished.emit(
-                {
-                    "status": "failed",
-                    "msg": self.tr(
-                        "Project address configuration error, unable to perform update check"
-                    ),
-                }
-            )
-            return
-
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            self.update_dict: dict = response.json()
-            self.update_dict["update_name"] = "update"
-            self.update_dict["update_status"] = "success"
-            logger.debug(
-                f"更新检查结果: {json.dumps(self.update_dict, indent=4, ensure_ascii=False)}"
-            )
-            if self.update_dict.get(
-                "tag_name", None
-            ) == maa_config_data.interface_config.get("version"):
-                signalBus.update_download_finished.emit(
-                    {"status": "success", "msg": self.tr("current version is latest")}
-                )
-                return
-        except requests.exceptions.RequestException as e:
-            logger.warning(f"更新检查时出错: {e}")
-            signalBus.update_download_finished.emit({"status": "failed", "msg": str(e)})
-            return
-        except Exception as e:
-            logger.exception(f"更新检查时出现未知错误: {e}")
-            signalBus.update_download_finished.emit({"status": "failed", "msg": str(e)})
-            return
-
-        download_url: str = self.update_dict["zipball_url"]
-        hotfix_directory = os.path.join(os.getcwd(), "hotfix")
-        os.makedirs(hotfix_directory, exist_ok=True)
-        project_name = download_url.split("/")[5]
-        zip_file_path = os.path.join(
-            hotfix_directory, f"{project_name}-{self.update_dict['tag_name']}.zip"
-        )
-
-        if not self.download_file(
-            download_url, zip_file_path, signalBus.update_download_progress
-        ):
-            signalBus.update_download_finished.emit(
-                {"status": "failed", "msg": self.tr("Download failed")}
-            )
-            return
-
-        target_path = maa_config_data.resource_path
-        main_folder = self.extract_zip(
-            zip_file_path, os.path.join(os.getcwd(), "hotfix")
-        )
-        if not main_folder:
-            signalBus.update_download_finished.emit(
-                {"status": "failed", "msg": self.tr("Extraction failed")}
-            )
-            return
-
-        folder_to_extract = os.path.join(os.getcwd(), "hotfix", main_folder, "assets")
-        if not self.move_files(folder_to_extract, target_path):
-            signalBus.update_download_finished.emit(
-                {"status": "failed", "msg": self.tr("Move files failed")}
-            )
-            return
-
-        replace_ocr(target_path)
-        self.remove_temp_files(
-            os.path.join(os.getcwd(), "hotfix", main_folder), zip_file_path
-        )
-
-        interface_date = Read_Config(maa_config_data.interface_config_path)
-        interface_date["version"] = self.update_dict["tag_name"]
-        Save_Config(maa_config_data.interface_config_path, interface_date)
-        signalBus.resource_exist.emit(True)
-        signalBus.update_download_finished.emit(
-            {"status": "success", "msg": self.tr("Update successful")}
         )
 
     def stop(self):

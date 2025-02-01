@@ -22,7 +22,7 @@ from ..common.style_sheet import StyleSheet
 from ..components.line_edit_card import LineEditCard
 from ..components.combobox_setting_card_custom import ComboBoxSettingCardCustom
 from ..components.notic_setting_card import NoticeButtonSettingCard
-from ..utils.update import Update, UpdateSelf, MirrorUpdate
+from ..utils.update import Update, UpdateSelf
 from ..utils.tool import Save_Config, get_gpu_info, for_config_get_url, decrypt, encrypt
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
@@ -92,23 +92,17 @@ class SettingInterface(ScrollArea):
         if cfg.get(cfg.Mcdk) and maa_config_data.interface_config.get(
             "mirrorchyan_rid"
         ):
-            self.Updatethread = MirrorUpdate(self)
-            self.updateCard.button2.setText(self.tr("Check for updates from Mirror"))
             self.MirrorCard.setContent(
                 self.tr("Enter mirrorchyan CDK for stable update path")
             )
             logger.debug("使用镜像站更新")
 
         elif maa_config_data.interface_config.get("mirrorchyan_rid"):
-            self.Updatethread = Update(self)
             self.MirrorCard.setContent(
                 self.tr("Enter mirrorchyan CDK for stable update path")
             )
-            self.updateCard.button2.setText(self.tr("Check for updates from Github"))
             logger.debug("使用Github更新")
         else:
-            self.Updatethread = Update(self)
-            self.updateCard.button2.setText(self.tr("Check for updates from Github"))
             self.MirrorCard.setContent(
                 self.tr(
                     "Resource does not support Mirrorchyan, right-click about mirror to unlock input"
@@ -116,7 +110,7 @@ class SettingInterface(ScrollArea):
             )
             self.MirrorCard.lineEdit.setEnabled(False)
             logger.debug("使用Github更新")
-
+        self.Updatethread = Update(self)
         signalBus.update_download_stopped.connect(self.Updatethread.stop)
         self.update_self = UpdateSelf(self)
         signalBus.download_self_stopped.connect(self.update_self.stop)
@@ -698,12 +692,15 @@ class SettingInterface(ScrollArea):
                 duration=10000,
                 parent=self,
             )
-        if cfg.get(cfg.Mcdk) and maa_config_data.interface_config.get(
-            "mirrorchyan_rid"
-        ):
-            self.updateCard.button2.setText(self.tr("Check for updates from Mirror"))
-        else:
-            self.updateCard.button2.setText(self.tr("Check for updates from Github"))
+        elif data_dict["status"] == "info":
+            InfoBar.info(
+                self.tr("info"),
+                data_dict["msg"],
+                duration=5000,
+                parent=self,
+            )
+            return
+        self.updateCard.button2.setText(self.tr("Check for updates"))
         self.updateCard.button2.setEnabled(True)
 
     def __initWidget(self):
@@ -1025,18 +1022,6 @@ class SettingInterface(ScrollArea):
             key = file.read()
             Mcdk = encrypt(self.MirrorCard.lineEdit.text(), key)
         cfg.set(cfg.Mcdk, str(Mcdk))
-        if (
-            self.MirrorCard.lineEdit.text() == ""
-            or not maa_config_data.interface_config.get("mirrorchyan_rid")
-        ):
-            self.updateCard.button2.setText(self.tr("Check for updates from Github"))
-            self.Updatethread = Update(self)
-
-            logger.info("切换至GitHub更新")
-        else:
-            self.updateCard.button2.setText(self.tr("Check for updates from Mirror"))
-            self.Updatethread = MirrorUpdate(self)
-            logger.info("切换至镜像更新")
 
     def _onDEVmodeCardChange(self):
         """切换开发者模式的保存设置。"""
