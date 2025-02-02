@@ -49,14 +49,13 @@ class MaaFW:
             for subdir in os.listdir(module_type_dir):
                 subdir_path = os.path.join(module_type_dir, subdir)
                 if os.path.isdir(subdir_path):
-                    logger.info(f"加载自定义内容{subdir_path}")
                     entry_file = os.path.join(subdir_path, "main.py")
                     if not os.path.exists(entry_file):
                         logger.warning(f"{subdir_path} 没有main.py")
                         continue  # 如果没有找到main.py，则跳过该子目录
 
                     try:
-                        logger.info(f"加载自定义内容{entry_file}")
+
                         module_name = subdir  # 使用子目录名作为模块名
                         spec = importlib.util.spec_from_file_location(
                             module_name, entry_file
@@ -64,7 +63,6 @@ class MaaFW:
                         module = importlib.util.module_from_spec(spec)
                         spec.loader.exec_module(module)
                         if module_type == "action":
-                            logger.info(f"加载自定义动作{module_name}")
                             if self.resource.register_custom_action(
                                 f"{module_name}", getattr(module, module_name)()
                             ):
@@ -76,7 +74,6 @@ class MaaFW:
                                         {"type": "action", "name": module_name}
                                     )
                         elif module_type == "recognition":
-                            logger.info(f"加载自定义识别器{module_name}")
                             if self.resource.register_custom_recognition(
                                 f"{module_name}", getattr(module, module_name)()
                             ):

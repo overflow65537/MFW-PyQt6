@@ -70,6 +70,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.show_error(self.tr("Resource file not detected"))
 
     def resizeEvent(self, event):
+        """
+        当窗口大小改变时，重新设置所有 任务选项下拉框和doc 的宽度。
+        """
         super().resizeEvent(event)
         scroll_area_width = self.scroll_area.width()
         for i in range(self.Option_Label.count()):
@@ -83,6 +86,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         widget.setFixedWidth(scroll_area_width - 20)
 
     def resource_exist(self, status: bool):
+        """
+        资源文件是否存在
+        """
         if status:
             logger.info("收到信号,初始化界面和信号连接")
             self.enable_widgets(True)
@@ -97,7 +103,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.Finish_combox_res.hide()
 
     def init_ui(self):
-
         # 初始化组件
         self.Start_Status(
             interface_Path=maa_config_data.interface_config_path,
@@ -128,6 +133,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             widget.setEnabled(enable)
 
     def init_finish_combox(self):
+        """
+        初始化 完成后运行 下拉框
+        """
         self.Finish_combox.clear()
         self.Finish_combox_res.clear()
         self.Finish_combox_cfg.clear()
@@ -155,6 +163,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Finish_combox_cfg.addItems(maa_config_data.config_name_list)
         self.Finish_combox_cfg.setCurrentIndex(finish_combox_cfg)
 
+    # region 信号槽
     def bind_signals(self):
         signalBus.custom_info.connect(self.show_custom_info)
         signalBus.resource_exist.connect(self.resource_exist)
@@ -182,7 +191,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Delete_label.dragEnterEvent = self.dragEnter
         self.Delete_label.dropEvent = self.drop
 
+    # endregion
     def show_custom_info(self, msg):
+        """
+        自定义动作/识别器信息
+        """
         if msg["type"] == "action":
             self.insert_colored_text(self.tr("Load Custom Action:") + " " + msg["name"])
         elif msg["type"] == "recognition":
@@ -190,13 +203,20 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 self.tr("Load Custom Recognition:") + " " + msg["name"]
             )
 
+    # region 拖动事件
     def dragEnter(self, event: QDropEvent):
+        """
+        拖动进入事件
+        """
         if event.mimeData().hasText():
             event.acceptProposedAction()
         else:
             event.ignore()
 
     def drop(self, event: QDropEvent):
+        """
+        拖动释放事件
+        """
         dropped_text = event.mimeData().text()
         self.Delete_label.setText(self.tr("Delete: ") + dropped_text)
         if " " in dropped_text:
@@ -223,13 +243,20 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Delete_label.setStyleSheet("background-color: rgba(255, 255, 255, 0);")
 
     def startDrag(self, item: QListWidgetItem):
+        """
+        开始拖动
+        """
         drag = QDrag(self)
         mimeData = QMimeData()
         mimeData.setText(item.text())
         drag.setMimeData(mimeData)
         drag.exec(Qt.DropAction.MoveAction)
 
+    # endregion
     def print_notice(self, message: str):
+        """
+        打印外部通知信息
+        """
         if "DingTalk Failed".lower() in message.lower():
             self.insert_colored_text(self.tr("DingTalk Failed"))
         elif "Lark Failed".lower() in message.lower():
@@ -250,6 +277,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.insert_colored_text(message)
 
     def callback(self, message: Dict):
+        """
+        任务回调
+        """
         if message["name"] == "on_controller_action":
             if message["status"] == 1:
                 self.insert_colored_text(self.tr("Starting Connection"))
@@ -296,6 +326,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     )
 
     def insert_colored_text(self, text, color_name: str = "black"):
+        """
+        插入带颜色的文本
+        """
         color = QColor(color_name.lower())
         if not color.isValid():
             color = QColor("black")
@@ -392,7 +425,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         maa_config_data.config["finish_option_cfg"] = finish_option_cfg
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
+    # region 完成后的动作
     def close_application(self):
+        """
+        关闭模拟器
+        """
         if maa_config_data.config.get("emu_path") != "":
             self.app_process.terminate()
             try:
@@ -416,7 +453,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
             print(multi_dict.get("created_timestamp", False))
             if multi_dict.get("created_timestamp", False):
-                logger.debug(f"单模拟器示例")
+                logger.debug(f"单模拟器")
                 logger.debug(f"MuMuManager.exe info -v all: {multi_dict}")
 
                 logger.debug(f"关闭序号{str(multi_dict.get("index"))}")
@@ -435,7 +472,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     )
                     print(str(multi_dict.get("index")))
                 return
-            logger.debug(f"多模拟器示例")
+            logger.debug(f"多模拟器")
             logger.debug(f"MuMuManager.exe info -v all: {multi_dict}")
 
             for emu_key, emu_data in multi_dict.items():
@@ -505,6 +542,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         }
         signalBus.switch_config.emit(data_dict)
 
+    # endregion
     def start_process(self, command):
         try:
             logger.debug(f"启动程序: {command}")
@@ -524,8 +562,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 self.start_again = True
                 signalBus.start_task_inmediately.emit()
 
+    # region 任务逻辑
     @asyncSlot()
     async def Start_Up(self):
+        """
+        开始任务
+        """
         if not cfg.get(cfg.resource_exist):
             return
         self.need_runing = True
@@ -562,13 +604,20 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.update_S2_Button("Start", self.Start_Up)
         self.start_again = True
 
+    # endregion
     def update_S2_Button(self, text, slot, enable=True):
+        """
+        更新按钮状态
+        """
         self.S2_Button.setText(self.tr(text))
         self.S2_Button.clicked.disconnect()
         self.S2_Button.clicked.connect(slot)
         self.S2_Button.setEnabled(enable)
 
     async def run_before_start_script(self):
+        """
+        运行前脚本
+        """
         run_before_start = []
         run_before_start_path = maa_config_data.config.get("run_before_start")
         if run_before_start_path and self.need_runing:
@@ -597,6 +646,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         return True
 
     async def load_resources(self, PROJECT_DIR):
+        """
+        加载资源
+        """
         if maafw.resource:
             maafw.resource.clear()  # 清除资源
         resource_path = ""
@@ -637,6 +689,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         return True
 
     async def load_pipelines(self, pipelines_path):
+        """
+        加载pipeline
+        """
         for filename in os.listdir(pipelines_path):
             if filename.endswith(".json"):
                 file_path = os.path.join(pipelines_path, filename)
@@ -658,6 +713,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         return True
 
     async def connect_controller(self, controller_type):
+        """
+        连接控制器
+        """
         if controller_type == "Adb" and self.need_runing:
             return await self.connect_adb_controller()
         elif controller_type == "Win32" and self.need_runing:
@@ -666,6 +724,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     @asyncSlot()
     async def connect_adb_controller(self):
+        """
+        连接 ADB 控制器
+        """
         # 尝试连接 ADB
         if not await self.connect_adb():
             # 如果连接失败，尝试启动模拟器
@@ -689,6 +750,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     @asyncSlot()
     async def connect_adb(self):
+        """
+        连接 ADB
+        """
         config = {} if self.start_again else maa_config_data.config["adb"]["config"]
         if (
             not await maafw.connect_adb(
@@ -705,6 +769,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     @asyncSlot()
     async def start_emulator(self):
+        """
+        启动模拟器
+        """
+
         emu = []
         emu_path = maa_config_data.config.get("emu_path")
         if emu_path and self.need_runing:
@@ -761,6 +829,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         return True
 
     async def connect_win32_controller(self):
+        """
+        连接 Win32 控制器
+        """
         exe = []
         exe_path = maa_config_data.config.get("exe_path")
         if exe_path and self.need_runing:
@@ -810,6 +881,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         return True
 
     async def run_tasks(self):
+        """
+        运行任务
+        """
         self.S2_Button.setEnabled(True)
         for task_list in maa_config_data.config["task"]:
             override_options = {}
@@ -854,11 +928,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.send_notice("completed")
 
     async def run_after_finish_script(self):
+        """
+        运行后脚本
+        """
         run_after_finish = []
         run_after_finish_path = maa_config_data.config.get("run_after_finish")
         if run_after_finish_path and self.need_runing:
             run_after_finish.append(run_after_finish_path)
-            run_after_finish_args = maa_config_data.config.get("run_after_finish_args")
+            run_after_finish_args: str = maa_config_data.config.get(
+                "run_after_finish_args"
+            )
             if run_after_finish_args:
                 run_after_finish.extend(run_after_finish_args.split())
             logger.info(f"运行后脚本{run_after_finish}")
@@ -871,22 +950,35 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 await asyncio.sleep(3)
 
     async def execute_finish_action(self):
+        """
+        执行完成后的动作
+        """
         target = self.Finish_combox.currentIndex()
         actions = {
-            0: logger.info("Do nothing"),
             1: self.close_application,
             2: QApplication.quit,
             3: self.close_application_and_quit,
             4: self.shutdown,
             5: self.run_other_config,
         }
+        actions_text = {
+            0: self.tr("Do Nothing"),
+            1: self.tr("Close emulator"),
+            2: self.tr("Quit Application"),
+            3: self.tr("Close Application and Quit"),
+            4: self.tr("Shutdown"),
+            5: self.tr("Run Other Config"),
+        }
         action = actions.get(target)
-        logger.info(f"选择的动作: {target}")
+        logger.info(f"选择的动作: {actions_text[target]}")
         if action and self.need_runing:
             action()
 
     @asyncSlot()
     async def Stop_task(self):
+        """
+        停止任务
+        """
         self.update_S2_Button("Start", self.Start_Up)
         self.insert_colored_text(self.tr("Stopping task..."))
         logger.info("停止任务")
@@ -1215,6 +1307,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 # 处理 doc 字段
                 doc = task.get("doc")
                 if doc:
+                    if isinstance(doc, list):
+                        doc = "\n".join(doc)
                     doc_layout = QVBoxLayout()
                     doc_label = ClickableLabel(self)
                     doc_label.setWordWrap(True)
