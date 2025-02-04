@@ -165,6 +165,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     # region 信号槽
     def bind_signals(self):
+        signalBus.update_download_finished.connect(self.show_update_info)
         signalBus.custom_info.connect(self.show_custom_info)
         signalBus.resource_exist.connect(self.resource_exist)
         signalBus.Notice_msg.connect(self.print_notice)
@@ -192,6 +193,29 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Delete_label.dropEvent = self.drop
 
     # endregion
+    def show_update_info(self, msg):
+        if msg["status"] == "success":
+            InfoBar.success(
+                self.tr("successful"),
+                msg["msg"],
+                duration=5000,
+                parent=self,
+            )
+        elif msg["status"] == "failed":
+            InfoBar.error(
+                self.tr("Update failed"),
+                msg["msg"],
+                duration=10000,
+                parent=self,
+            )
+        elif msg["status"] == "info":
+            InfoBar.info(
+                self.tr("info"),
+                msg["msg"],
+                duration=10000,
+                parent=self,
+            )
+
     def show_custom_info(self, msg):
         """
         自定义动作/识别器信息
