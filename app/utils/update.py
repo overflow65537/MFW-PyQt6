@@ -23,7 +23,7 @@ import json
 class BaseUpdate(QThread):
     stop_flag = False
 
-    def download_file(self, url, file_path, progress_signal):
+    def download_file(self, url, file_path, progress_signal: pyqtBoundSignal):
         try:
             response = requests.get(url, stream=True)
             response.raise_for_status()
@@ -90,6 +90,19 @@ class Update(BaseUpdate):
                 res_id=res_id, version=version, cdk=cdk, device_id=device_id
             )
             if not mirror_data:
+                github_dict = self.github_check(url)
+                if not github_dict:
+                    logger.error(f"GitHub更新检查失败: {url}")
+                    signalBus.update_download_finished.emit(
+                        {
+                            "status": "failed",
+                            "msg": self.tr(
+                                "unknow error, unable to perform update check"
+                            ),
+                        }
+                    )
+                    return
+                self.github_download(github_dict)
                 return
             if mirror_data.get("data").get("version_name") == version:
                 signalBus.update_download_finished.emit(
@@ -139,6 +152,13 @@ class Update(BaseUpdate):
         else:
             github_dict = self.github_check(url)
             if not github_dict:
+                logger.error(f"GitHub更新检查失败: {url}")
+                signalBus.update_download_finished.emit(
+                    {
+                        "status": "failed",
+                        "msg": self.tr("unknow error, unable to perform update check"),
+                    }
+                )
                 return
             self.github_download(github_dict)
 
@@ -173,14 +193,18 @@ class Update(BaseUpdate):
         """
 
         url = f"https://mirrorc.top/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&sp_id={device_id}&user_agent=MFW_PYQT6"
-        print(url)
+
         try:
             response = requests.get(url)
-            response.raise_for_status()
-            mirror_data: Dict[str, Dict] = response.json()
-        except requests.RequestException as e:
+        except (
+            requests.ConnectionError,
+            requests.Timeout,
+            requests.RequestException,
+        ) as e:
             signalBus.update_download_finished.emit({"status": "failed", "msg": str(e)})
             return False
+
+        mirror_data: Dict[str, Dict] = response.json()
 
         if mirror_data.get("code") != 0:
             logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
@@ -286,25 +310,29 @@ class Update(BaseUpdate):
             return False
         try:
             response = requests.get(url)
-            response.raise_for_status()
-            update_dict: dict = response.json()
-            logger.debug(
-                f"更新检查结果: {json.dumps(update_dict, indent=4, ensure_ascii=False)}"
-            )
-            if update_dict.get(
-                "tag_name", None
-            ) == maa_config_data.interface_config.get("version"):
-                signalBus.update_download_finished.emit(
-                    {"status": "success", "msg": self.tr("current version is latest")}
-                )
-                return False
-        except requests.exceptions.RequestException as e:
-            logger.warning(f"更新检查时出错: {e}")
+        except (
+            requests.ConnectionError,
+            requests.Timeout,
+            requests.RequestException,
+        ) as e:
             signalBus.update_download_finished.emit({"status": "failed", "msg": str(e)})
             return False
-        except Exception as e:
-            logger.exception(f"更新检查时出现未知错误: {e}")
-            signalBus.update_download_finished.emit({"status": "failed", "msg": str(e)})
+
+        update_dict: dict = response.json()
+        logger.debug(
+            f"更新检查结果: {json.dumps(update_dict, indent=4, ensure_ascii=False)}"
+        )
+        if update_dict.get("message"):
+            signalBus.update_download_finished.emit(
+                {"status": "failed", "msg": update_dict.get("message")}
+            )
+            return False
+        if update_dict.get("tag_name", None) == maa_config_data.interface_config.get(
+            "version"
+        ):
+            signalBus.update_download_finished.emit(
+                {"status": "success", "msg": self.tr("current version is latest")}
+            )
             return False
         return update_dict
 
@@ -376,12 +404,14 @@ class MirrorDownloadBundle(BaseUpdate):
         print(url)
         try:
             response = requests.get(url)
-            response.raise_for_status()
-            mirror_data: Dict[str, Dict] = response.json()
-        except requests.RequestException as e:
+        except (
+            requests.ConnectionError,
+            requests.Timeout,
+            requests.RequestException,
+        ) as e:
             signalBus.download_finished.emit({"status": "failed", "msg": str(e)})
-            return
-
+            return False
+        mirror_data: Dict[str, Dict] = response.json()
         if mirror_data.get("code") != 0:
             logger.warning(f"下载检查失败: {mirror_data.get('msg')}")
             signalBus.download_finished.emit(
