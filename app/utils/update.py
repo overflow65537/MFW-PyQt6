@@ -39,7 +39,7 @@ class BaseUpdate(QThread):
                     progress_signal.emit(downloaded_size, total_size)
             return True
         except Exception as e:
-            logger.exception("下载文件时出错")
+            logger.exception(f"下载文件时出错{url} -> {file_path}")
             return False
         finally:
             if response:
@@ -53,7 +53,7 @@ class BaseUpdate(QThread):
                 zip_ref.extractall(extract_to)
             return actual_main_folder
         except Exception as e:
-            logger.exception("解压文件时出错")
+            logger.exception(f"解压文件时出错 {zip_file_path}解压到{extract_to}")
             return False
 
     def move_files(self, src, dst):
@@ -61,7 +61,7 @@ class BaseUpdate(QThread):
             shutil.copytree(src, dst, dirs_exist_ok=True)
             return True
         except Exception as e:
-            logger.exception("移动文件时出错")
+            logger.exception(f"移动文件时出错{src} -> {dst}")
             return False
 
     def remove_temp_files(self, *paths):
@@ -510,8 +510,10 @@ class DownloadBundle(BaseUpdate):
                 {"status": "failed", "msg": self.tr("Download failed")}
             )
             return
-
-        if not self.extract_zip(zip_file_path, os.path.join(os.getcwd(), "hotfix")):
+        main_folder = self.extract_zip(
+            zip_file_path, os.path.join(os.getcwd(), "hotfix")
+        )
+        if not main_folder:
             signalBus.download_finished.emit(
                 {"status": "failed", "msg": self.tr("Extraction failed")}
             )
@@ -521,7 +523,7 @@ class DownloadBundle(BaseUpdate):
         if not os.path.exists(target_path):
             os.makedirs(target_path)
 
-        folder_to_extract = os.path.join(os.getcwd(), "hotfix", project_name, "assets")
+        folder_to_extract = os.path.join(os.getcwd(), "hotfix", main_folder, "assets")
         if not self.move_files(folder_to_extract, target_path):
             signalBus.download_finished.emit(
                 {"status": "failed", "msg": self.tr("Move files failed")}

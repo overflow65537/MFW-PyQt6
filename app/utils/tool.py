@@ -59,16 +59,13 @@ def Read_Config(paths: str) -> Dict:
         dict: 如果文件存在，返回解析后的字典
 
     """
-    try:
-        if os.path.exists(paths):
-            with open(paths, "r", encoding="utf-8") as MAA_Config:
-                MAA_data = json.load(MAA_Config)
-                return MAA_data
-        else:
-            raise FileNotFoundError("Config file not found.")
-    except:
-        logger.exception("Read_Config error")
-        show_error_message()
+
+    if os.path.exists(paths):
+        with open(paths, "r", encoding="utf-8") as MAA_Config:
+            MAA_data = json.load(MAA_Config)
+            return MAA_data
+    else:
+        return False
 
 
 def Save_Config(paths: str, data: Dict):
@@ -161,7 +158,10 @@ def Get_Values_list2(path: str, key1: str) -> List:
         list: 指定键的值列表。
     """
     List = []
-    for i in Read_Config(path)[key1]:
+    data = Read_Config(path)[key1]
+    if not data:
+        return False
+    for i in data:
         List.append(i)
     return List
 
@@ -178,7 +178,10 @@ def Get_Values_list(path: str, key1: str) -> List:
     """
     if key1 == "controller":
         List = []
-        for i in Read_Config(path)[key1]:
+        data = Read_Config(path)[key1]
+        if not data:
+            return
+        for i in data:
             if re.search(r"adb", i["name"], re.IGNORECASE) or re.search(
                 r"win", i["name"], re.IGNORECASE
             ):
@@ -188,7 +191,10 @@ def Get_Values_list(path: str, key1: str) -> List:
         return List
     else:
         List = []
-        for i in Read_Config(path)[key1]:
+        data = Read_Config(path)[key1]
+        if not data:
+            return
+        for i in data:
             List.append(i["name"])
         return List
 
@@ -204,7 +210,9 @@ def Get_Values_list_Option(path: str, key1: str) -> List:
         list: 组件及其选项列表。
     """
     List = []
-    for i in Read_Config(path)[key1]:
+    data = Read_Config(path)[key1]
+
+    for i in data:
         if i["option"] != []:
             Option_text = str(i["name"]) + " "
             Option_Lens = len(i["option"])
@@ -228,6 +236,8 @@ def Get_Task_List(path: str, target: str) -> List:
     """
     lists = []
     Task_Config = Read_Config(path)["option"][target]["cases"]
+    if not Task_Config:
+        return False
     Lens = len(Task_Config) - 1
     for i in range(Lens, -1, -1):
         lists.append(Task_Config[i]["name"])
@@ -559,6 +569,8 @@ def get_controller_type(select_value: str, interface_path: str) -> str | None:
         str or None: 控制器类型，如果未找到则返回None。
     """
     data = Read_Config(interface_path)
+    if not data:
+        return None
     for i in data["controller"]:
         if i["name"] == select_value or i["name"] == select_value[:-4]:
             return i["type"]

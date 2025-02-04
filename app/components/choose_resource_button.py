@@ -123,7 +123,7 @@ class CustomMessageBox(MessageBoxBase):
         print(message)
         if message["status"] == "failed":
             self.show_error(message.get("msg"))
-            self.w.close()
+
         else:
             self.show_info(message.get("msg"))
             self.folder = message["target_path"]
@@ -152,7 +152,7 @@ class CustomMessageBox(MessageBoxBase):
             project_name = self.interface_data.get("name", "")
             self.name_LineEdit.clear()
             self.name_LineEdit.setText(project_name)
-
+        self.w.close()
         self.search_button.setIcon(FIF.SEARCH)
         self.resourceid_button.setIcon(FIF.SEARCH)
 
