@@ -24,7 +24,7 @@ nuitka_command = [
     str(nuitka_path),
     "--standalone",
     "--plugin-enable=pyqt6",
-    "--include-data-dir=resource=resource",
+    "--include-data-dir=MFW_resource=MFW_resource",
     "main.py",
 ]
 

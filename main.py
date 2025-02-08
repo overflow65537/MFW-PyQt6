@@ -102,13 +102,13 @@ def main(resource: str, config: str, directly: bool):
 
     if locale == Language.CHINESE_SIMPLIFIED:
         galleryTranslator.load(
-            os.path.join(os.getcwd(), "resource", "i18n", "i18n.zh_CN.qm")
+            os.path.join(os.getcwd(), "MFW_resource", "i18n", "i18n.zh_CN.qm")
         )
         logger.info("加载简体中文翻译")
 
     elif locale == Language.CHINESE_TRADITIONAL:
         galleryTranslator.load(
-            os.path.join(os.getcwd(), "resource", "i18n", "i18n.zh_HK.qm")
+            os.path.join(os.getcwd(), "MFW_resource", "i18n", "i18n.zh_HK.qm")
         )
         logger.info("加载繁体中文翻译")
     elif locale == Language.ENGLISH:

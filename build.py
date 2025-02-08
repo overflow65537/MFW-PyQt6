@@ -56,14 +56,14 @@ command = [
 ]
 if sys.platform == "win32":
     command.insert(2, "--noconsole")
-    command.insert(2, "--icon=resource/icon/logo.ico")
+    command.insert(2, "--icon=MFW_resource/icon/logo.ico")
 
 # 运行 PyInstaller
 PyInstaller.__main__.run(command)
 
-# 确保 dist/MFW/resource 目录存在并复制
-resource_src = os.path.join(os.getcwd(), "resource")
-resource_dst = os.path.join(os.getcwd(), "dist", "MFW", "resource")
+# 确保 dist/MFW/MFW_resource 目录存在并复制
+resource_src = os.path.join(os.getcwd(), "MFW_resource")
+resource_dst = os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource")
 os.makedirs(resource_dst, exist_ok=True)
 shutil.copytree(resource_src, resource_dst, dirs_exist_ok=True)
 
