@@ -81,13 +81,13 @@ class Update(BaseUpdate):
 
     def run(self):
         url = maa_config_data.interface_config.get("url")
-        device_id = get_uuid()
+
         cdk = self.Mirror_ckd()
         res_id = maa_config_data.interface_config.get("mirrorchyan_rid")
         version = maa_config_data.interface_config.get("version")
         if res_id:
             mirror_data: Dict[str, Dict] = self.mirror_check(
-                res_id=res_id, version=version, cdk=cdk, device_id=device_id
+                res_id=res_id, version=version, cdk=cdk
             )
             if not mirror_data:
                 github_dict = self.github_check(url)
@@ -161,6 +161,7 @@ class Update(BaseUpdate):
                 )
                 return
             self.github_download(github_dict)
+        signalBus.resource_exist.emit(True)
 
     def assemble_gitHub_url(self, version: str, url: str) -> str:
         """
@@ -180,19 +181,19 @@ class Update(BaseUpdate):
         )
         return retuen_url
 
-    def mirror_check(self, res_id: str, version: str, cdk: str, device_id: str) -> Dict:
+    def mirror_check(self, res_id: str, version: str, cdk: str, ) -> Dict:
         """
         mirror检查更新
         Args:
             res_id (str): 资源id
             version (str): 版本号
             cdk (str): cdk
-            device_id (str): 设备id
+           
         Returns:
             Dict: 资源信息
         """
 
-        url = f"https://mirrorc.top/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&sp_id={device_id}&user_agent=MFW_PYQT6"
+        url = f"https://mirrorc.top/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&user_agent=MFW_PYQT6"
 
         try:
             response = requests.get(url)
@@ -282,9 +283,6 @@ class Update(BaseUpdate):
         Returns:
             Dict: 更新信息
         """
-        print(
-            "GitHub更新检查================================================================================================================="
-        )
         if not project_url:
             logger.warning("项目地址未配置，无法进行更新检查")
             signalBus.update_download_finished.emit(
@@ -398,9 +396,8 @@ class MirrorDownloadBundle(BaseUpdate):
 
     def run(self):
         self.stop_flag = False
-        device_id = get_uuid()
         cdk = self.Mirror_ckd()
-        url = f"https://mirrorc.top/api/resources/{self.res_id}/latest?current_version=&cdk={cdk}&sp_id={device_id}&user_agent=MFW_PYQT6"
+        url = f"https://mirrorc.top/api/resources/{self.res_id}/latest?current_version=&cdk={cdk}&user_agent=MFW_PYQT6"
         print(url)
         try:
             response = requests.get(url)
@@ -566,73 +563,118 @@ class Readme(QThread):
 
 class UpdateSelf(BaseUpdate):
     def run(self):
-        self.stop_flag = False
-        logger.debug("更新自身")
-        url = "https://api.github.com/repos/overflow65537/MFW-PyQt6/releases/latest"
         with open(
             os.path.join(os.getcwd(), "config", "version.txt"), "r", encoding="utf-8"
         ) as f:
             version_data = f.read().split()
+        cdk = self.Mirror_ckd()
+
+        mirror_data:Dict[str,Dict] = self.mirror_check(cdk,version_data)
+
+        if not mirror_data:
+            return
+        
+        elif mirror_data.get("code") != 0:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            signalBus.download_self_finished.emit(
+                {"status": "failed", "msg": mirror_data.get("msg")}
+            )
+            return 
+
+        elif mirror_data.get("data").get("version_name") == version_data[2]:
+            logger.warning(f"当前版本已是最新版本")
+            signalBus.download_self_finished.emit(
+                {"status": "no_need", "msg": self.tr("current version is latest")}
+            )
+            return 
+        elif mirror_data.get("data").get("url"):
+            signalBus.download_self_finished.emit(
+                {"status": "info", "msg": self.tr("MirrorChyan update check successful, starting download")}
+            )
+            logger.debug(f"mirror开始下载: {mirror_data.get('data').get('url')}")
+            self._download(mirror_data.get("data").get("url"))
+            version_data[3] = mirror_data["data"].get("version_name")
+            with open(
+                os.path.join(os.getcwd(), "config", "version.txt"), "w", encoding="utf-8"
+            ) as f:
+                f.write(" ".join(version_data))
+                print(" ".join(version_data))
+            return
+        else:
+            signalBus.download_self_finished.emit(
+                {"status": "info", "msg": self.tr("MirrorChyan update check successful, but no CDK found, switching to Github download")}
+            )
+            github_url = self.assemble_gitHub_url(
+                version_data,mirror_data["data"].get("version_name")
+            )
+            logger.debug(f"github开始下载: {github_url}")
+            self._download(github_url)
+            version_data[3] = mirror_data["data"].get("version_name")
+            with open(
+                os.path.join(os.getcwd(), "config", "version.txt"), "w", encoding="utf-8"
+            ) as f:
+                f.write(" ".join(version_data))
+                print(" ".join(version_data))
+            return
+            
+            
+    def assemble_gitHub_url(self, version_data: list, target_version: str) -> str:
+        """
+        输入版本号和项目地址，返回GitHub项目源代码压缩包下载地址
+        """
+        url = f"https://github.com/overflow65537/MFW-PyQt6/releases/download/{target_version}/MFW-PyQt6-{version_data[0]}-{version_data[1]}-{target_version}.zip"
+        return url
+    
+    def mirror_check(self,  cdk,version_data:list) -> Dict:
+        """
+        mirror检查更新
+        Args:
+            res_id (str): 资源id
+            
+            cdk (str): cdk
+            version_data (list): 系统,架构,版本号
+        Returns:
+            Dict: 资源信息
+        """
+
+        url = f"https://mirrorc.top/api/resources/MFW-PyQt6/latest?current_version={version_data[2]}&cdk={cdk}&os={version_data[0]}&arch={version_data[1]}"
 
         try:
             response = requests.get(url)
-            response.raise_for_status()
-            content = response.json()
-            logger.debug(f"更新检查结果: {content}")
-            if content.get("tag_name", None) == version_data[2]:
-                logger.info("当前版本已是最新")
-                signalBus.download_self_finished.emit(
-                    {"update_name": "update_self", "update_status": "no_need"}
-                )
-                return
+        except (
+            requests.ConnectionError,
+            requests.Timeout,
+            requests.RequestException,
+        ) as e:
+            signalBus.download_self_finished.emit({"status": "failed", "msg": str(e)})
+            return False
 
-            version_data[3] = content.get("tag_name")
-            assets_name = f"MFW-PyQt6-{version_data[0]}-{version_data[1]}-{content.get('tag_name')}.zip"
-            logger.debug(f"下载更新文件: {assets_name}")
-            for asset in content["assets"]:
-                logger.debug(f"检查更新文件: {asset['name']}")
-                if asset["name"] == assets_name:
-                    download_url = asset["browser_download_url"]
-                    break
-            else:
-                logger.error(f"未找到{assets_name}文件")
-                signalBus.download_self_finished.emit(
-                    {"update_name": "update_self", "update_status": "failed"}
-                )
-                return
+        mirror_data: Dict[str, Dict] = response.json()
 
-            zip_file_path = os.path.join(os.getcwd(), "update.zip")
-        except Exception as e:
-            logger.exception(f"更新检查时出现错误: {e}")
-            signalBus.download_self_finished.emit(
-                {
-                    "update_name": "update_self",
-                    "update_status": "failed",
-                    "error_msg": str(e),
-                }
-            )
-            return
 
+        return mirror_data
+
+    def _download(self,download_url):
+
+        self.stop_flag = False
+       
+        zip_file_path = os.path.join(os.getcwd(), "update.zip")
         if not self.download_file(
             download_url, zip_file_path, signalBus.download_self_progress
         ):
             signalBus.download_self_finished.emit(
                 {
-                    "update_name": "update_self",
-                    "update_status": "failed",
-                    "error_msg": self.tr("Download failed"),
+                    "status": "failed",
+                    "msg": self.tr("Download failed"),
                 }
             )
             return
 
         signalBus.download_self_finished.emit(
-            {"update_name": "update_self", "update_status": "success"}
+            {"status": "success"}
         )
 
-        with open(
-            os.path.join(os.getcwd(), "config", "version.txt"), "w", encoding="utf-8"
-        ) as f:
-            f.write(" ".join(version_data))
+
 
     def stop(self):
         self.stop_flag = True

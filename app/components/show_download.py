@@ -48,7 +48,7 @@ class ShowDownload(MessageBoxBase):
         signalBus.mirror_bundle_download_finished.connect(self.close)
 
         signalBus.download_self_progress.connect(self.setProgress)
-        signalBus.download_self_finished.connect(self.close)
+        signalBus.download_self_finished.connect(self.chooseclose)
 
         self.cancelButton.clicked.connect(self.cancelDownload)
 
@@ -65,7 +65,9 @@ class ShowDownload(MessageBoxBase):
             total_str = self.format_size(total)
             downloaded_str = self.format_size(downloaded)
             self.progressLabel.setText(f"{downloaded_str} / {total_str}")
-
+    def chooseclose(self,status: dict):
+        if status.get("status") != "info":
+            self.close()
     def format_size(self, size):
 
         units = ["B", "KB", "MB", "GB", "TB"]

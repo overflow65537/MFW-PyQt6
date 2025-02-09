@@ -872,7 +872,7 @@ class SettingInterface(ScrollArea):
 
     def update_self_finished(self, status: dict):
         """更新程序停止。"""
-        if status["update_status"] == "no_need":  # 无需更新
+        if status["status"] == "no_need":  # 无需更新
             InfoBar.info(
                 self.tr("info"),
                 self.tr("Already the latest version"),
@@ -881,13 +881,13 @@ class SettingInterface(ScrollArea):
             )
             self.aboutCard.button2.setEnabled(True)
             self.aboutCard.button2.setText(self.tr("Update"))
-        elif status["update_status"] == "failed":  # 下载失败
+        elif status["status"] == "failed":  # 下载失败
             self.aboutCard.button2.setEnabled(True)
             self.aboutCard.button2.setText(self.tr("Update"))
-            if status.get("error_msg"):
+            if status.get("msg"):
                 InfoBar.error(
                     self.tr("Update failed"),
-                    status.get("error_msg"),
+                    status.get("msg"),
                     duration=-1,
                     parent=self,
                 )
@@ -899,10 +899,17 @@ class SettingInterface(ScrollArea):
                 parent=self,
             )
 
-        elif status["update_status"] == "stoped":  # 手动停止
+        elif status["status"] == "stoped":  # 手动停止
             self.aboutCard.button2.setEnabled(True)
             self.aboutCard.button2.setText(self.tr("Update"))
-        elif status["update_status"] == "success":  # 更新成功
+        elif status["status"] == "info":  # 下载中
+            InfoBar.info(
+                self.tr("info"),
+                status.get("msg"),
+                duration=5000,
+                parent=self,
+            )
+        elif status["status"] == "success":  # 更新成功
             InfoBar.success(
                 self.tr("Update completed"),
                 self.tr("Successfully Downloaded updates"),
@@ -924,6 +931,8 @@ class SettingInterface(ScrollArea):
             self._rename_updater("MFWUpdater", "MFWUpdater1")
         elif sys.platform.startswith("linux"):
             self._rename_updater("MFWupdater.bin", "MFWupdater1.bin")
+
+        
 
         # 启动更新程序
         self._start_updater()
@@ -947,6 +956,19 @@ class SettingInterface(ScrollArea):
             subprocess.Popen(["./MFWUpdater1"])
         else:
             raise NotImplementedError("Unsupported platform")
+        with open(
+            os.path.join(os.getcwd(), "config", "version.txt"), "r", encoding="utf-8"
+        ) as f:
+            version_data = f.read().split()
+        version_data[2] = version_data[3]
+        with open(
+            os.path.join(os.getcwd(), "config", "version.txt"), "w", encoding="utf-8"
+        ) as f:
+            f.write(" ".join(version_data))
+            
+
+
+        logger.info("正在启动更新程序")
 
     def _update_config(self, card: LineEditCard, config_key: str):
         if maa_config_data.config_path == "":
