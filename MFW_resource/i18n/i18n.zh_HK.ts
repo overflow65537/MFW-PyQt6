@@ -1272,6 +1272,16 @@
         <source>Update successful</source>
         <translation>更新成功</translation>
     </message>
+    <message>
+        <location filename="app/utils/update.py" line="57"/>
+        <source>MirrorChyan update check successful, starting download</source>
+        <translation>Mirror醬檢查更新成功，開始下載</translation>
+    </message>
+    <message>
+        <location filename="app/utils/update.py" line="57"/>
+        <source>MirrorChyan update check successful, but no CDK found, switching to Github download</source>
+        <translation>Mirror醬檢查更新成功，但未檢測到CDK，轉為GitHub下載</translation>
+    </message>
 </context>
 <context>
     <message>

@@ -33,6 +33,8 @@ class BaseUpdate(QThread):
                 for data in response.iter_content(chunk_size=4096):
                     if self.stop_flag:
                         response.close()
+                        if os.path.exists("update.zip"):
+                            os.remove("update.zip")
                         return False
                     downloaded_size += len(data)
                     file.write(data)
@@ -602,7 +604,10 @@ class UpdateSelf(BaseUpdate):
             return
         else:
             signalBus.download_self_finished.emit(
-                {"status": "info", "msg": self.tr("MirrorChyan update check successful, but no CDK found, switching to Github download")}
+                {"status": "info",
+                        "msg": self.tr(
+                            "MirrorChyan update check successful, but no CDK found, switching to Github download"
+                        )}
             )
             github_url = self.assemble_gitHub_url(
                 version_data,mirror_data["data"].get("version_name")

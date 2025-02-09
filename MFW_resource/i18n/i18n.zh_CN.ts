@@ -1241,7 +1241,6 @@
     </message>
 </context>
 <context>
-    <name>Update</name>
     <message>
         <location filename="app/utils/update.py" line="57"/>
         <source>current version is latest</source>
@@ -1253,7 +1252,7 @@
         <translation>Mirror酱检查成功,开始更新</translation>
     </message>
     <message>
-        <location filename="app/utils/update.py" line="118"/>
+        <location filename="app/utils/update.py"/>
         <source>MirrorChyan update check successful, but no CDK found, switching to Github download</source>
         <translation>Mirror酱检查成功,但未找到CDK.转为Github下载</translation>
     </message>
@@ -1282,9 +1281,11 @@
         <source>Project address configuration error, unable to perform update check</source>
         <translation>项目更新地址填写错误,无法进行更新</translation>
     </message>
-
-</context>
-<context>
+    <message>
+        <location filename="app/utils/update.py" line="57"/>
+        <source>MirrorChyan update check successful, starting download</source>
+        <translation>mirror酱检查更新成功,开始下载</translation>
+    </message>
     <message>
         <location filename="app/utils/update.py" line="123"/>
         <source>Download successful</source>
