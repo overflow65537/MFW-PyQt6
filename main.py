@@ -14,10 +14,11 @@ from app.utils.logger import logger
 from app.view.main_window import MainWindow
 from app.common.config import Language
 from app.common.signal_bus import signalBus
-from app.common.maa_config_data import maa_config_data
-from app.utils.tool import show_error_message
+from app.common.maa_config_data import maa_config_data, init_maa_config_data
+from app.utils.tool import show_error_message, Save_Config
 import argparse
 from typing import Dict
+import json
 from cryptography.fernet import Fernet
 
 
@@ -44,14 +45,82 @@ def main(resource: str, config: str, directly: bool):
         or maa_config_list == {}
         or maa_resource_list == {}
     ):
-        logger.error("资源文件不存在")
-        cfg.set(cfg.resource_exist, False)
-        maa_config_name = ""
-        maa_config_path = ""
-        maa_resource_name = ""
-        maa_resource_path = ""
-        maa_config_list = {}
-        maa_resource_list = {}
+        if os.path.exists("interface.json") and os.path.exists("resource"):
+            logger.info("检测到旧版本配置文件,开始转换")
+
+            with open("interface.json", "r", encoding="utf-8") as f:
+                interface_config: dict = json.load(f)
+            cfg.set(cfg.maa_config_name, "default")
+            cfg.set(cfg.maa_resource_name, interface_config.get("name", "resource"))
+            cfg.set(
+                cfg.maa_config_path,
+                os.path.join(
+                    ".",
+                    "config",
+                    cfg.get(cfg.maa_resource_name),
+                    "config",
+                    cfg.get(cfg.maa_config_name),
+                    "maa_pi_config.json",
+                ),
+            )
+            cfg.set(cfg.maa_resource_path, os.path.join("."))
+            cfg.set(
+                cfg.maa_config_list,
+                {
+                    cfg.get(cfg.maa_resource_name): {
+                        cfg.get(cfg.maa_config_name): cfg.get(cfg.maa_config_path)
+                    }
+                },
+            )
+            cfg.set(
+                cfg.maa_resource_list,
+                {cfg.get(cfg.maa_resource_name): cfg.get(cfg.maa_resource_path)},
+            )
+
+            data = {
+                "adb": {
+                    "adb_path": "",
+                    "address": "",
+                    "input_method": 0,
+                    "screen_method": 0,
+                    "config": {},
+                },
+                "win32": {
+                    "hwnd": 0,
+                    "input_method": 0,
+                    "screen_method": 0,
+                },
+                "controller": {"name": ""},
+                "gpu": -1,
+                "resource": "",
+                "task": [],
+                "finish_option": 0,
+                "finish_option_res": 0,
+                "finish_option_cfg": 0,
+                "run_before_start": "",
+                "run_before_start_args": "",
+                "run_after_finish": "",
+                "run_after_finish_args": "",
+                "emu_path": "",
+                "emu_args": "",
+                "emu_wait_time": 10,
+                "exe_path": "",
+                "exe_args": "",
+                "exe_wait_time": 10,
+            }
+            Save_Config(cfg.get(cfg.maa_config_path), data)
+            cfg.set(cfg.resource_exist, True)
+            init_maa_config_data(True)
+
+        else:
+            logger.error("资源文件不存在")
+            cfg.set(cfg.resource_exist, False)
+            maa_config_name = ""
+            maa_config_path = ""
+            maa_resource_name = ""
+            maa_resource_path = ""
+            maa_config_list = {}
+            maa_resource_list = {}
     else:
         if resource in list(maa_resource_list.keys()):
             cfg.set(cfg.maa_resource_name, resource)
@@ -102,13 +171,13 @@ def main(resource: str, config: str, directly: bool):
 
     if locale == Language.CHINESE_SIMPLIFIED:
         galleryTranslator.load(
-            os.path.join(os.getcwd(), "MFW_resource", "i18n", "i18n.zh_CN.qm")
+            os.path.join(".", "MFW_resource", "i18n", "i18n.zh_CN.qm")
         )
         logger.info("加载简体中文翻译")
 
     elif locale == Language.CHINESE_TRADITIONAL:
         galleryTranslator.load(
-            os.path.join(os.getcwd(), "MFW_resource", "i18n", "i18n.zh_HK.qm")
+            os.path.join(".", "MFW_resource", "i18n", "i18n.zh_HK.qm")
         )
         logger.info("加载繁体中文翻译")
     elif locale == Language.ENGLISH:
@@ -135,13 +204,13 @@ def start_symbol():
 if __name__ == "__main__":
     try:
         with open(
-            os.path.join(os.getcwd(), "config", "version.txt"), "r", encoding="utf-8"
+            os.path.join(".", "config", "version.txt"), "r", encoding="utf-8"
         ) as f:
 
             version = f.read().split()[2]
     except:
         with open(
-            os.path.join(os.getcwd(), "config", "version.txt"), "w", encoding="utf-8"
+            os.path.join(".", "config", "version.txt"), "w", encoding="utf-8"
         ) as f:
             if sys.platform.startswith("linux"):
                 platf = "linux"
