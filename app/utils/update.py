@@ -197,6 +197,8 @@ class Update(BaseUpdate):
         """
 
         url = f"https://mirrorc.top/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&user_agent=MFW_PYQT6"
+        
+        cfg.set(cfg.is_change_cdk, False)
 
         try:
             response = requests.get(url)
@@ -562,6 +564,17 @@ class UpdateSelf(BaseUpdate):
         ) as f:
             version_data = f.read().split()
         cdk = self.Mirror_ckd()
+        if cfg.get(cfg.is_change_cdk):
+            logger.info(f"CDK被更改过")
+            res_id = maa_config_data.interface_config.get("mirrorchyan_rid")
+            url = f"https://mirrorc.top/api/resources/{res_id}/latest?current_version=v0.0.1&cdk={cdk}&user_agent=MFW_PYQT6"
+            cfg.set(cfg.is_change_cdk, False)
+
+            try:
+                response = requests.get(url)
+            except:
+                pass
+
 
         mirror_data:Dict[str,Dict] = self.mirror_check(cdk,version_data)
 

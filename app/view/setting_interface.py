@@ -1044,6 +1044,7 @@ class SettingInterface(ScrollArea):
             key = file.read()
             Mcdk = encrypt(self.MirrorCard.lineEdit.text(), key)
         cfg.set(cfg.Mcdk, str(Mcdk))
+        cfg.set(cfg.is_change_cdk, True)
 
     def _onDEVmodeCardChange(self):
         """切换开发者模式的保存设置。"""

@@ -44,6 +44,7 @@ class Config(QConfig):
 
     # Mirror酱cdk
     Mcdk = ConfigItem("program", "cdk", "")
+    is_change_cdk = ConfigItem("program", "is_change_cdk", True, BoolValidator())
     # 强制更新
     force_update = ConfigItem("program", "force_update", False, BoolValidator())
     # 标题
