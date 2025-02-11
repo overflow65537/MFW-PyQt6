@@ -37,7 +37,7 @@ jobs:
             fi
             tag=$(date "+$tag-%y%m%d-$(git rev-parse --short HEAD)")
           fi
-          if ! $is_release ; then
+          if ! $($is_release) ; then
             prefix=${tag%-*-*}
             suffix=${tag#$prefix-}
             tag="$prefix-ci.$suffix"
@@ -49,105 +49,12 @@ jobs:
       tag: ${{ steps.set_tag.outputs.tag }}
       is_release: ${{ steps.set_tag.outputs.is_release }}
 
-  windows:
-    needs: meta
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        arch: [aarch64, x86_64]
-      fail-fast: false
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-
-      - name: Download MaaFramework
-        uses: robinraju/release-downloader@v1
-        with:
-          repository: MaaXYZ/MaaFramework
-          fileName: "MAA-win-${{ matrix.arch }}*"
-          latest: true
-          out-file-path: "deps"
-          extract: true
-        
-      - name: Install
-        shell: bash
-        run: |
-          python ./install.py ${{ needs.meta.outputs.tag }}
-  
-      - name: Download MFW
-        uses: robinraju/release-downloader@v1
-        with:
-          repository: overflow65537/MFW-PyQt6
-          fileName: "MFW-PyQt6-win-${{ matrix.arch }}*"
-          latest: true
-          out-file-path: "install"
-          extract: true
-
-      - name: Install MFW
-        shell: bash
-        run: |
-          rm install/MFW-PyQt6-win-${{ matrix.arch }}* 
-          python ./deploy.py
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: MaaXXX-win-${{ matrix.arch }}-MFW-PyQt
-          path: "install"
-
-  ubuntu:
-    needs: meta
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [aarch64, x86_64]
-      fail-fast: false
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-
-      - name: Download MaaFramework
-        uses: robinraju/release-downloader@v1
-        with:
-          repository: MaaXYZ/MaaFramework
-          fileName: "MAA-linux-${{ matrix.arch }}*"
-          latest: true
-          out-file-path: "deps"
-          extract: true
-
-      - name: Install
-        shell: bash
-        run: |
-          python ./install.py ${{ needs.meta.outputs.tag }}
-
-      - name: Download MFW
-        uses: robinraju/release-downloader@v1
-        with:
-          repository: overflow65537/MFW-PyQt6
-          fileName: "MFW-PyQt6-linux-${{ matrix.arch }}*"
-          latest: true
-          out-file-path: "install"
-          extract: true
-
-      - name: Install MFW
-        shell: bash
-        run: |
-          rm install/MFW-PyQt6-linux-${{ matrix.arch }}* 
-          python ./deploy.py
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: MaaXXX-linux-${{ matrix.arch }}-MFW-PyQt
-          path: "install"
-
-  macos:
+  install:
     needs: meta
     runs-on: macos-latest
     strategy:
       matrix:
+        os: [win, macos, linux, android]
         arch: [aarch64, x86_64]
       fail-fast: false
 
@@ -160,7 +67,7 @@ jobs:
         uses: robinraju/release-downloader@v1
         with:
           repository: MaaXYZ/MaaFramework
-          fileName: "MAA-macos-${{ matrix.arch }}*"
+          fileName: "MAA-${{ matrix.os }}-${{ matrix.arch }}*"
           latest: true
           out-file-path: "deps"
           extract: true
@@ -171,31 +78,31 @@ jobs:
           python ./install.py ${{ needs.meta.outputs.tag }}
 
       - name: Download MFW
+        if: ${{ matrix.os != 'android' }}
         uses: robinraju/release-downloader@v1
         with:
           repository: overflow65537/MFW-PyQt6
-          fileName: "MFW-PyQt6-macos-${{ matrix.arch }}*"
+          fileName: "MFW-PyQt6-${{ matrix.os }}-${{ matrix.arch }}*"
           latest: true
-          out-file-path: "install"
+          out-file-path: "MFW-PyQt6"
           extract: true
 
-      - name: Install MFW
+      - name: Install MFW-PyQt6
+        if: ${{ matrix.os != 'android' }}
         shell: bash
         run: |
-          rm install/MFW-PyQt6-macos-${{ matrix.arch }}*
-          python ./deploy.py
+          rm -rf MFW-PyQt6/MFW_resource/model
+          cp -r MFW-PyQt6/* install
 
       - uses: actions/upload-artifact@v4
         with:
-          name: MaaXXX-macos-${{ matrix.arch }}-MFW-PyQt
+          name: MaaXXX-${{ matrix.os }}-${{ matrix.arch }}
           path: "install"
 
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
-    needs: [meta, windows, ubuntu, macos]
+    needs: install
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -206,7 +113,9 @@ jobs:
           for f in *; do
             (cd $f && zip -r ../$f-${{ needs.meta.outputs.tag }}.zip .)
           done
+
       - uses: softprops/action-gh-release@v2
         with:
           files: assets/*
           tag_name: ${{ needs.meta.outputs.tag }}
+          generate_release_notes: true
