@@ -149,6 +149,7 @@ class Update(BaseUpdate):
                 github_dict = {
                     "zipball_url": github_url,
                     "tag_name": mirror_data["data"].get("version_name"),
+                    "body": mirror_data["data"].get("release_note"),
                 }
                 self.github_download(github_dict)
                 return
@@ -197,7 +198,7 @@ class Update(BaseUpdate):
         """
 
         url = f"https://mirrorc.top/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&user_agent=MFW_PYQT6"
-        
+
         cfg.set(cfg.is_change_cdk, False)
 
         try:
@@ -267,7 +268,7 @@ class Update(BaseUpdate):
 
         signalBus.resource_exist.emit(True)
         signalBus.update_download_finished.emit(
-            {"status": "success", "msg": self.tr("Update successful")}
+            {"status": "success", "msg": self.tr("Update successful")+"\n"+mirror_data.get("data").get("custom_data")+"\n"+mirror_data.get("data").get("release_note")}
         )
         return True
 
@@ -380,7 +381,7 @@ class Update(BaseUpdate):
         Save_Config(maa_config_data.interface_config_path, interface_date)
         signalBus.resource_exist.emit(True)
         signalBus.update_download_finished.emit(
-            {"status": "success", "msg": self.tr("Update successful")}
+            {"status": "success", "msg": self.tr("Update successful")+"\n"+update_dict.get("body")}
         )
 
     def stop(self):

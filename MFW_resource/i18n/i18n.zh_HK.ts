@@ -121,22 +121,22 @@
 <context>
     <name>DownloadBundle</name>
     <message>
-        <location filename="../../app/utils/update.py" line="501"/>
+        <location filename="../../app/utils/update.py" line="503"/>
         <source>Download failed</source>
         <translation>下載失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="509"/>
+        <location filename="../../app/utils/update.py" line="511"/>
         <source>Extraction failed</source>
         <translation>解壓失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="520"/>
+        <location filename="../../app/utils/update.py" line="522"/>
         <source>Move files failed</source>
         <translation>移動文件失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="532"/>
+        <location filename="../../app/utils/update.py" line="534"/>
         <source>Download successful</source>
         <translation>更新成功</translation>
     </message>
@@ -214,27 +214,27 @@
 <context>
     <name>MirrorDownloadBundle</name>
     <message>
-        <location filename="../../app/utils/update.py" line="409"/>
+        <location filename="../../app/utils/update.py" line="411"/>
         <source>switching to Github download</source>
         <translation>轉為 GitHub 下載</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="426"/>
+        <location filename="../../app/utils/update.py" line="428"/>
         <source>Download failed</source>
         <translation>下載失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="432"/>
+        <location filename="../../app/utils/update.py" line="434"/>
         <source>Extraction failed</source>
         <translation>解壓失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="441"/>
+        <location filename="../../app/utils/update.py" line="443"/>
         <source>Move files failed</source>
         <translation>移動文件失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="456"/>
+        <location filename="../../app/utils/update.py" line="458"/>
         <source>Download successful</source>
         <translation>更新成功</translation>
     </message>
@@ -481,7 +481,7 @@
 <context>
     <name>SettingInterface</name>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="921"/>
+        <location filename="../../app/view/setting_interface.py" line="925"/>
         <location filename="../../app/view/setting_interface.py" line="57"/>
         <source>Update Now</source>
         <translation>立即更新</translation>
@@ -779,9 +779,9 @@
         <translation>如果開啟,會保存截圖至./debug/vision</translation>
     </message>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="904"/>
+        <location filename="../../app/view/setting_interface.py" line="907"/>
+        <location filename="../../app/view/setting_interface.py" line="889"/>
         <location filename="../../app/view/setting_interface.py" line="886"/>
-        <location filename="../../app/view/setting_interface.py" line="883"/>
         <location filename="../../app/view/setting_interface.py" line="597"/>
         <source>Update</source>
         <translation>更新</translation>
@@ -813,7 +813,7 @@
         <translation>關於</translation>
     </message>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="703"/>
+        <location filename="../../app/view/setting_interface.py" line="706"/>
         <location filename="../../app/view/setting_interface.py" line="642"/>
         <location filename="../../app/view/setting_interface.py" line="636"/>
         <location filename="../../app/view/setting_interface.py" line="633"/>
@@ -836,61 +836,61 @@
         <translation>檢查更新中...</translation>
     </message>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="682"/>
+        <location filename="../../app/view/setting_interface.py" line="683"/>
         <source>successful</source>
         <translation>成功</translation>
     </message>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="896"/>
-        <location filename="../../app/view/setting_interface.py" line="889"/>
-        <location filename="../../app/view/setting_interface.py" line="690"/>
+        <location filename="../../app/view/setting_interface.py" line="899"/>
+        <location filename="../../app/view/setting_interface.py" line="892"/>
+        <location filename="../../app/view/setting_interface.py" line="692"/>
         <source>Update failed</source>
         <translation>更新失敗</translation>
     </message>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="907"/>
-        <location filename="../../app/view/setting_interface.py" line="877"/>
-        <location filename="../../app/view/setting_interface.py" line="697"/>
+        <location filename="../../app/view/setting_interface.py" line="911"/>
+        <location filename="../../app/view/setting_interface.py" line="880"/>
+        <location filename="../../app/view/setting_interface.py" line="700"/>
         <source>info</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="743"/>
+        <location filename="../../app/view/setting_interface.py" line="746"/>
         <source>Updated successfully</source>
         <translation>更新成功</translation>
     </message>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="744"/>
+        <location filename="../../app/view/setting_interface.py" line="747"/>
         <source>Configuration takes effect after restart</source>
         <translation>配置保存,重啟後生效</translation>
     </message>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="772"/>
+        <location filename="../../app/view/setting_interface.py" line="775"/>
         <source>Choose file</source>
         <translation>选择文件</translation>
     </message>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="869"/>
+        <location filename="../../app/view/setting_interface.py" line="872"/>
         <source>Updating...</source>
         <translation>更新中...</translation>
     </message>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="878"/>
+        <location filename="../../app/view/setting_interface.py" line="881"/>
         <source>Already the latest version</source>
         <translation>已經是最新版本</translation>
     </message>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="897"/>
+        <location filename="../../app/view/setting_interface.py" line="900"/>
         <source>Please check your internet connection</source>
         <translation>請檢查網絡連接</translation>
     </message>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="914"/>
+        <location filename="../../app/view/setting_interface.py" line="918"/>
         <source>Update completed</source>
         <translation>更新完成</translation>
     </message>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="915"/>
+        <location filename="../../app/view/setting_interface.py" line="919"/>
         <source>Successfully Downloaded updates</source>
         <translation>成功下載更新</translation>
     </message>
@@ -998,36 +998,36 @@
         <translation>未找到資源文件</translation>
     </message>
     <message>
+        <location filename="../../app/view/task_interface.py" line="75"/>
+        <source>Task</source>
+        <translation>任務</translation>
+    </message>
+    <message>
         <location filename="../../app/view/task_interface.py" line="1042"/>
         <location filename="../../app/view/task_interface.py" line="276"/>
-        <location filename="../../app/view/task_interface.py" line="75"/>
+        <location filename="../../app/view/task_interface.py" line="76"/>
         <source>Add Task</source>
         <translation>添加</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="76"/>
+        <location filename="../../app/view/task_interface.py" line="77"/>
         <source>Resource</source>
         <translation>資源</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="77"/>
+        <location filename="../../app/view/task_interface.py" line="78"/>
         <source>Controller</source>
         <translation>控制端</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="78"/>
+        <location filename="../../app/view/task_interface.py" line="79"/>
         <source>Auto Detect</source>
         <translation>自动检测</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="79"/>
+        <location filename="../../app/view/task_interface.py" line="80"/>
         <source>Finish</source>
         <translation>完成後</translation>
-    </message>
-    <message>
-        <location filename="../../app/view/task_interface.py" line="80"/>
-        <source>Delete</source>
-        <translation>刪除</translation>
     </message>
     <message>
         <location filename="../../app/view/task_interface.py" line="81"/>
@@ -1316,6 +1316,10 @@
         <location filename="../../app/view/task_interface.py" line="1596"/>
         <source>Error</source>
         <translation>錯誤</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation type="vanished">刪除</translation>
     </message>
 </context>
 <context>
@@ -1610,8 +1614,8 @@
         <translation>未知錯誤，無法執行更新檢查</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="326"/>
-        <location filename="../../app/utils/update.py" line="222"/>
+        <location filename="../../app/utils/update.py" line="328"/>
+        <location filename="../../app/utils/update.py" line="224"/>
         <location filename="../../app/utils/update.py" line="114"/>
         <source>current version is latest</source>
         <translation>當前已經是最新版</translation>
@@ -1632,40 +1636,40 @@
         <translation>項目未找到，無法執行更新檢查</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="216"/>
+        <location filename="../../app/utils/update.py" line="218"/>
         <source>switching to Github download</source>
         <translation>切換至 GitHub 下載</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="350"/>
-        <location filename="../../app/utils/update.py" line="244"/>
+        <location filename="../../app/utils/update.py" line="352"/>
+        <location filename="../../app/utils/update.py" line="246"/>
         <source>Download failed</source>
         <translation>下載失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="360"/>
-        <location filename="../../app/utils/update.py" line="250"/>
+        <location filename="../../app/utils/update.py" line="362"/>
+        <location filename="../../app/utils/update.py" line="252"/>
         <source>Extraction failed</source>
         <translation>解壓失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="381"/>
-        <location filename="../../app/utils/update.py" line="268"/>
+        <location filename="../../app/utils/update.py" line="383"/>
+        <location filename="../../app/utils/update.py" line="270"/>
         <source>Update successful</source>
-        <translation>更新成功</translation>
+        <translation type="unfinished">更新成功</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="285"/>
+        <location filename="../../app/utils/update.py" line="287"/>
         <source>Project address configuration not found, unable to perform update check</source>
         <translation>未找到項目地址配置，無法執行更新檢查</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="297"/>
+        <location filename="../../app/utils/update.py" line="299"/>
         <source>Project address configuration error, unable to perform update check</source>
         <translation>項目地址配置錯誤，無法執行更新檢查</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="367"/>
+        <location filename="../../app/utils/update.py" line="369"/>
         <source>Move files failed</source>
         <translation>移動文件失敗</translation>
     </message>
@@ -1677,27 +1681,27 @@
 <context>
     <name>UpdateSelf</name>
     <message>
-        <location filename="../../app/utils/update.py" line="574"/>
+        <location filename="../../app/utils/update.py" line="587"/>
         <source>switching to Github download</source>
         <translation>轉為 GitHub 下載</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="581"/>
+        <location filename="../../app/utils/update.py" line="594"/>
         <source>current version is latest</source>
         <translation>當前已經是最新版</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="586"/>
+        <location filename="../../app/utils/update.py" line="599"/>
         <source>MirrorChyan update check successful, starting download</source>
         <translation>Mirror醬檢查更新成功，開始下載</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="600"/>
+        <location filename="../../app/utils/update.py" line="613"/>
         <source>MirrorChyan update check successful, but no CDK found, switching to Github download</source>
         <translation>Mirror醬檢查更新成功，但未檢測到CDK，轉為GitHub下載</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="665"/>
+        <location filename="../../app/utils/update.py" line="678"/>
         <source>Download failed</source>
         <translation>下載失敗</translation>
     </message>

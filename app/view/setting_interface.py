@@ -678,25 +678,28 @@ class SettingInterface(ScrollArea):
                 + " "
                 + self.project_version,
             )
+            duration = max(len(data_dict.get("msg", "")) * 100, 2000)
             InfoBar.success(
                 self.tr("successful"),
                 data_dict["msg"],
-                duration=5000,
+                duration=duration,
                 parent=self,
             )
 
         elif data_dict["status"] == "failed":
+            duration = max(len(data_dict.get("msg", "")) * 100, 2000)
             InfoBar.error(
                 self.tr("Update failed"),
                 data_dict["msg"],
-                duration=10000,
+                duration=duration,
                 parent=self,
             )
         elif data_dict["status"] == "info":
+            duration = max(len(data_dict.get("msg", "")) * 100, 2000)
             InfoBar.info(
                 self.tr("info"),
                 data_dict["msg"],
-                duration=10000,
+                duration=duration,
                 parent=self,
             )
             return
@@ -903,10 +906,11 @@ class SettingInterface(ScrollArea):
             self.aboutCard.button2.setEnabled(True)
             self.aboutCard.button2.setText(self.tr("Update"))
         elif status["status"] == "info":  # 下载中
+            duration = max(len(status.get("msg", "")) * 100, 2000)
             InfoBar.info(
                 self.tr("info"),
-                status.get("msg"),
-                duration=5000,
+                status.get("msg", ""),
+                duration=duration,
                 parent=self,
             )
         elif status["status"] == "success":  # 更新成功
