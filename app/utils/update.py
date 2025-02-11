@@ -4,7 +4,6 @@ import zipfile
 from ..utils.tool import (
     for_config_get_url,
     replace_ocr,
-    get_uuid,
     Read_Config,
     Save_Config,
     decrypt,
@@ -103,6 +102,8 @@ class Update(BaseUpdate):
                             ),
                         }
                     )
+                    return
+                elif github_dict is True:
                     return
                 self.github_download(github_dict)
                 return
@@ -212,7 +213,7 @@ class Update(BaseUpdate):
         if mirror_data.get("code") != 0:
             logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
             signalBus.update_download_finished.emit(
-                {"status": "failed", "msg": mirror_data.get("msg")}
+                {"status": "failed", "msg": mirror_data.get("msg")+"\n"+self.tr("switching to Github download")}
             )
             return False
 
@@ -244,18 +245,9 @@ class Update(BaseUpdate):
             )
             return False
 
-        if not self.extract_zip(zip_file_path, os.path.join(os.getcwd(), "hotfix")):
+        if not self.extract_zip(zip_file_path, maa_config_data.resource_path):
             signalBus.update_download_finished.emit(
                 {"status": "failed", "msg": self.tr("Extraction failed")}
-            )
-            return False
-
-        target_path = maa_config_data.resource_path
-        if not self.move_files(
-            os.path.join(os.getcwd(), "hotfix", "assets"), target_path
-        ):
-            signalBus.update_download_finished.emit(
-                {"status": "failed", "msg": self.tr("Move files failed")}
             )
             return False
 
@@ -333,7 +325,7 @@ class Update(BaseUpdate):
             signalBus.update_download_finished.emit(
                 {"status": "success", "msg": self.tr("current version is latest")}
             )
-            return False
+            return True
         return update_dict
 
     def github_download(self, update_dict: Dict):
@@ -414,7 +406,7 @@ class MirrorDownloadBundle(BaseUpdate):
         if mirror_data.get("code") != 0:
             logger.warning(f"下载检查失败: {mirror_data.get('msg')}")
             signalBus.download_finished.emit(
-                {"status": "failed", "msg": mirror_data.get("msg")}
+                {"status": "failed", "msg": mirror_data.get("msg")+"\n"+self.tr("switching to Github download")}
             )
             return
 
@@ -579,7 +571,7 @@ class UpdateSelf(BaseUpdate):
         elif mirror_data.get("code") != 0:
             logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
             signalBus.download_self_finished.emit(
-                {"status": "failed", "msg": mirror_data.get("msg")}
+                {"status": "failed", "msg": mirror_data.get("msg")+"\n"+self.tr("switching to Github download")}
             )
             return 
 
