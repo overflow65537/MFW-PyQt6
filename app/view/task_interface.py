@@ -61,13 +61,24 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         maafw.notification_handler = MyNotificationHandler()
         self.bind_signals()
-
+        self.init_widget_text()
         if cfg.get(cfg.resource_exist):
             self.init_ui()
 
         else:
             logger.warning("资源缺失")
             self.show_error(self.tr("Resource file not detected"))
+    def init_widget_text(self):
+        """
+        初始化文本
+        """
+        self.AddTask_Button.setText(self.tr("Add Task"))
+        self.Resource_Title.setText(self.tr("Resource"))
+        self.Control_Title.setText(self.tr("Controller"))
+        self.AutoDetect_Button.setText(self.tr("Auto Detect"))
+        self.Finish_title.setText(self.tr("Finish"))
+        self.Delete_label.setText(self.tr("Delete"))
+        self.S2_Button.setText(self.tr("Start"))
 
     def resizeEvent(self, event):
         """

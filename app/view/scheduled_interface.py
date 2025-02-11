@@ -27,6 +27,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         signalBus.update_task_list.connect(self.update_task_list_passive)
         signalBus.switch_config.connect(self.switch_config)
         signalBus.readme_available.connect(self.update_readme)
+        self.init_widget_text()
         if cfg.get(cfg.resource_exist):
             self.initialize_config_combobox()
             self.List_widget.addItems(
@@ -39,6 +40,15 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.res_combox.currentTextChanged.connect(self.res_changed)
         self.add_res_button.clicked.connect(self.add_resource)
         self.delete_res_button.clicked.connect(self.res_delete)
+
+    def init_widget_text(self):
+        """初始化界面文本"""
+        self.Cfg_Combox_title.setText(self.tr("Configuration"))
+        self.res_title.setText(self.tr("Resource"))
+        self.Add_cfg_Button.setText(self.tr("Add"))
+        self.Delete_cfg_Button.setText(self.tr("Delete"))
+        self.add_res_button.setText(self.tr("Add"))
+        self.delete_res_button.setText(self.tr("Delete"))
 
     def init_text_browser(self):
         """初始化文本浏览器"""

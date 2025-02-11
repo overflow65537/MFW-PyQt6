@@ -641,7 +641,7 @@ class SettingInterface(ScrollArea):
             text=self.tr("About"),
             text2=self.tr("Check for updates"),
             icon=FIF.INFO,
-            title=self.tr("MFW-PyQt6 ") + MFW_Version,
+            title="MFW-PyQt6 "+ MFW_Version,
             content=self.tr(
                 "MFW-PyQt6 is open source under the GPLv3 license. Visit the project URL for more information."
             ),

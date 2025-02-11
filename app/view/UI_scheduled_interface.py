@@ -205,14 +205,7 @@ class Ui_Scheduled_Interface(object):
         Scheduled_Interface.setWindowTitle(
             _translate("Scheduled_Interface", "Scheduled Interface")
         )
-        self.Cfg_Combox_title.setText(
-            _translate("Scheduled_Interface", "Configuration")
-        )
-        self.res_title.setText(_translate("Scheduled_Interface", "Resource"))
-        self.Add_cfg_Button.setText(_translate("Scheduled_Interface", "Add"))
-        self.Delete_cfg_Button.setText(_translate("Scheduled_Interface", "Delete"))
-        self.add_res_button.setText(_translate("Scheduled_Interface", "Add"))
-        self.delete_res_button.setText(_translate("Scheduled_Interface", "Delete"))
+
         """self.Schedule_name_title.setText(
             _translate("Scheduled_Interface", "Scheduled name")
         )

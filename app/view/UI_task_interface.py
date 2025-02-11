@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from PyQt6.QtCore import QSize, QMetaObject, QCoreApplication, Qt
 from PyQt6.QtWidgets import (
     QSizePolicy,
@@ -192,16 +194,4 @@ class Ui_Task_Interface(object):
         self.main_layout.addLayout(self.middle_layout, 3)
         self.main_layout.addWidget(self.scroll_area, 3)
 
-        self.retranslateUi(Task_Interface)
         QMetaObject.connectSlotsByName(Task_Interface)
-
-    def retranslateUi(self, Task_Interface):
-        _translate = QCoreApplication.translate
-        Task_Interface.setWindowTitle(_translate("Task_Interface", "Task Interface"))
-        self.S2_Button.setText(_translate("Task_Interface", "Start"))
-        self.Resource_Title.setText(_translate("Task_Interface", "Resource"))
-        self.Control_Title.setText(_translate("Task_Interface", "Controller"))
-        self.TaskName_Title_1.setText(_translate("Task_Interface", "Task"))
-        self.AutoDetect_Button.setText(_translate("Task_Interface", "Auto Detect"))
-        self.Finish_title.setText(_translate("Task_Interface", "Finished"))
-        self.AddTask_Button.setText(_translate("Task_Interface", "Add Task"))
