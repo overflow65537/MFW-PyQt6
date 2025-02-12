@@ -852,7 +852,7 @@ class SettingInterface(ScrollArea):
         self.micaCard.checkedChanged.connect(signalBus.micaEnableChanged)
         # 连接更新信号
         self.MirrorCard.button.clicked.connect(
-            lambda: QDesktopServices.openUrl(QUrl("https://mirrorc.top/"))
+            lambda: QDesktopServices.openUrl(QUrl("https://mirrorchyan.com/"))
         )
         self.MirrorCard.lineEdit.textChanged.connect(self._onMirrorCardChange)
         self.updateCard.clicked2.connect(self.update_check)

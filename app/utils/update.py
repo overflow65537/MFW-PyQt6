@@ -197,7 +197,7 @@ class Update(BaseUpdate):
             Dict: 资源信息
         """
 
-        url = f"https://mirrorc.top/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&user_agent=MFW_PYQT6"
+        url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&user_agent=MFW_PYQT6"
 
         cfg.set(cfg.is_change_cdk, False)
 
@@ -394,7 +394,7 @@ class MirrorDownloadBundle(BaseUpdate):
     def run(self):
         self.stop_flag = False
         cdk = self.Mirror_ckd()
-        url = f"https://mirrorc.top/api/resources/{self.res_id}/latest?current_version=&cdk={cdk}&user_agent=MFW_PYQT6"
+        url = f"https://mirrorchyan.com/api/resources/{self.res_id}/latest?current_version=&cdk={cdk}&user_agent=MFW_PYQT6"
         print(url)
         try:
             response = requests.get(url)
@@ -568,7 +568,7 @@ class UpdateSelf(BaseUpdate):
         if cfg.get(cfg.is_change_cdk):
             logger.info(f"CDK被更改过")
             res_id = maa_config_data.interface_config.get("mirrorchyan_rid")
-            url = f"https://mirrorc.top/api/resources/{res_id}/latest?current_version=v0.0.1&cdk={cdk}&user_agent=MFW_PYQT6"
+            url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version=v0.0.1&cdk={cdk}&user_agent=MFW_PYQT6"
             cfg.set(cfg.is_change_cdk, False)
 
             try:
@@ -648,7 +648,7 @@ class UpdateSelf(BaseUpdate):
             Dict: 资源信息
         """
 
-        url = f"https://mirrorc.top/api/resources/MFW-PyQt6/latest?current_version={version_data[2]}&cdk={cdk}&os={version_data[0]}&arch={version_data[1]}"
+        url = f"https://mirrorchyan.com/api/resources/MFW-PyQt6/latest?current_version={version_data[2]}&cdk={cdk}&os={version_data[0]}&arch={version_data[1]}"
 
         try:
             response = requests.get(url)
