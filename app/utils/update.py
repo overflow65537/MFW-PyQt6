@@ -23,6 +23,7 @@ class BaseUpdate(QThread):
     stop_flag = False
 
     def download_file(self, url, file_path, progress_signal: pyqtBoundSignal):
+        need_clear_update = False
         try:
             response = requests.get(url, stream=True)
             response.raise_for_status()
