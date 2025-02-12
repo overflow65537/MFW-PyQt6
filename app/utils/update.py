@@ -33,14 +33,22 @@ class BaseUpdate(QThread):
                     if self.stop_flag:
                         response.close()
                         if os.path.exists("update.zip"):
-                            os.remove("update.zip")
-                        return False
+                            need_clear_update = True
+                        break
+                    
                     downloaded_size += len(data)
                     file.write(data)
                     progress_signal.emit(downloaded_size, total_size)
-            return True
+            if not need_clear_update and not self.stop_flag:
+                return True
+            else:
+                if os.path.exists("update.zip"):
+                    os.remove("update.zip")
+                return False
         except Exception as e:
             logger.exception(f"下载文件时出错{url} -> {file_path}")
+            if os.path.exists("update.zip"):
+                    os.remove("update.zip")
             return False
         finally:
             if response:
