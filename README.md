@@ -132,8 +132,10 @@
             "type": "recognition"
         }
     }
+```
 
 - 其中,动作名字1,动作名字2,识别器名字1,识别器名字2为在pipeline中所使用的名字,比如
+- 
 ```json
 "我的自定义任务": {
         "recognition": "Custom",
@@ -210,6 +212,8 @@
     A fluent design widgets library based on C++ Qt/PyQt/PySide. Make Qt Great Again.
 - **[MaaFramework](https://github.com/MaaAssistantArknights/MaaFramework)**\
     基于图像识别的自动化黑盒测试框架。
+- **[MirrorChyan](https://github.com/MirrorChyan/docs)**\
+    Mirror酱更新服务
 
 ### 开发者
 
