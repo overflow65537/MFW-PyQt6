@@ -2,7 +2,8 @@ import os
 import sys
 import ctypes
 
-from PyQt6.QtCore import QSize, QTimer
+from PyQt6.QtCore import QSize, QTimer, Qt
+
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication
 
@@ -12,6 +13,8 @@ from qfluentwidgets import (
     SplashScreen,
     SystemThemeListener,
     isDarkTheme,
+    InfoBar,
+    InfoBarPosition,
 )
 from qfluentwidgets import FluentIcon as FIF
 
@@ -53,10 +56,47 @@ class MainWindow(FluentWindow):
         self.themeListener.start()
         logger.info(" 主界面初始化完成。")
 
+    def show_info_bar(self, data_dict: dict):
+        """显示信息栏"""
+        duration = max(len(data_dict.get("msg", "")) * 100, 2000)
+        if data_dict["status"] == "error":
+            InfoBar.error(
+                title=self.tr("Error"),
+                content=data_dict.get("msg"),
+                duration=duration,
+                parent=self,
+            )
+        elif data_dict["status"] == "warning":
+            InfoBar.warning(
+                title=self.tr("Warning"),
+                content=data_dict.get("msg"),
+                duration=duration,
+                parent=self,
+            )
+        elif data_dict["status"] == "success":
+            InfoBar.success(
+                title=self.tr("Success"),
+                content=data_dict.get("msg"),
+                duration=duration,
+                parent=self,
+            )
+        elif data_dict["status"] == "info":
+            InfoBar.info(
+                title=self.tr("Info"),
+                content=data_dict.get("msg"),
+                duration=duration,
+                parent=self,
+            )
+
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
         signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
         signalBus.title_changed.connect(self.set_title)
+        signalBus.bundle_download_finished.connect(self.show_info_bar)
+        signalBus.download_finished.connect(self.show_info_bar)
+        signalBus.update_download_finished.connect(self.show_info_bar)
+        signalBus.mirror_bundle_download_finished.connect(self.show_info_bar)
+        signalBus.download_self_finished.connect(self.show_info_bar)
 
     def initNavigation(self):
         """初始化导航界面。"""

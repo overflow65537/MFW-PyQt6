@@ -678,30 +678,7 @@ class SettingInterface(ScrollArea):
                 + " "
                 + self.project_version,
             )
-            duration = max(len(data_dict.get("msg", "")) * 100, 2000)
-            InfoBar.success(
-                self.tr("successful"),
-                data_dict["msg"],
-                duration=duration,
-                parent=self,
-            )
-
-        elif data_dict["status"] == "failed":
-            duration = max(len(data_dict.get("msg", "")) * 100, 2000)
-            InfoBar.error(
-                self.tr("Update failed"),
-                data_dict["msg"],
-                duration=duration,
-                parent=self,
-            )
         elif data_dict["status"] == "info":
-            duration = max(len(data_dict.get("msg", "")) * 100, 2000)
-            InfoBar.info(
-                self.tr("info"),
-                data_dict["msg"],
-                duration=duration,
-                parent=self,
-            )
             return
         self.updateCard.button2.setText(self.tr("Check for updates"))
         self.updateCard.button2.setEnabled(True)
@@ -875,56 +852,17 @@ class SettingInterface(ScrollArea):
 
     def update_self_finished(self, status: dict):
         """更新程序停止。"""
-        if status["status"] == "no_need":  # 无需更新
-            InfoBar.info(
-                self.tr("info"),
-                self.tr("Already the latest version"),
-                duration=2000,
-                parent=self,
-            )
-            self.aboutCard.button2.setEnabled(True)
-            self.aboutCard.button2.setText(self.tr("Update"))
-        elif status["status"] == "failed":  # 下载失败
-            self.aboutCard.button2.setEnabled(True)
-            self.aboutCard.button2.setText(self.tr("Update"))
-            if status.get("msg"):
-                InfoBar.error(
-                    self.tr("Update failed"),
-                    status.get("msg"),
-                    duration=-1,
-                    parent=self,
-                )
-                return
-            InfoBar.error(
-                self.tr("Update failed"),
-                self.tr("Please check your internet connection"),
-                duration=-1,
-                parent=self,
-            )
+        button = self.aboutCard.button2
+        button.setEnabled(True)
 
-        elif status["status"] == "stoped":  # 手动停止
-            self.aboutCard.button2.setEnabled(True)
-            self.aboutCard.button2.setText(self.tr("Update"))
-        elif status["status"] == "info":  # 下载中
-            duration = max(len(status.get("msg", "")) * 100, 2000)
-            InfoBar.info(
-                self.tr("info"),
-                status.get("msg", ""),
-                duration=duration,
-                parent=self,
-            )
-        elif status["status"] == "success":  # 更新成功
-            InfoBar.success(
-                self.tr("Update completed"),
-                self.tr("Successfully Downloaded updates"),
-                duration=2000,
-                parent=self,
-            )
+        status_type = status["status"]
+        if status_type in ["no_need", "failed", "stoped"]:
+            button.setText(self.tr("Update"))
+        elif status_type == "success":
+            button.setText(self.tr("Update Now"))
+            button.clicked.disconnect()
+            button.clicked.connect(self.update_self_start)
 
-            self.aboutCard.button2.setEnabled(True)
-            self.aboutCard.button2.setText(self.tr("Update Now"))
-            self.aboutCard.button2.clicked.disconnect()
-            self.aboutCard.button2.clicked.connect(self.update_self_start)
 
     def update_self_start(self):
         """开始更新程序。"""

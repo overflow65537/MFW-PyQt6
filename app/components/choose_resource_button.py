@@ -121,11 +121,7 @@ class CustomMessageBox(MessageBoxBase):
 
     def download_finished(self, message: Dict[str, str]) -> None:
         print(message)
-        if message["status"] == "failed":
-            self.show_error(message.get("msg"))
-
-        else:
-            self.show_info(message.get("msg"))
+        if not message["status"] == "failed":
             self.folder = message["target_path"]
             if os.path.basename(self.folder) == "resource":
                 interface_path = os.path.join(
@@ -156,16 +152,7 @@ class CustomMessageBox(MessageBoxBase):
         self.search_button.setIcon(FIF.SEARCH)
         self.resourceid_button.setIcon(FIF.SEARCH)
 
-    def show_info(self, message) -> None:
-        InfoBar.info(
-            title=self.tr("Info"),
-            content=message,
-            orient=Qt.Orientation.Horizontal,
-            isClosable=True,
-            position=InfoBarPosition.BOTTOM_RIGHT,
-            duration=-1,
-            parent=self,
-        )
+
 
     def type_resource_name(self) -> None:
         self.folder = QFileDialog.getExistingDirectory(

@@ -176,7 +176,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     # region 信号槽
     def bind_signals(self):
-        signalBus.update_download_finished.connect(self.show_update_info)
         signalBus.custom_info.connect(self.show_custom_info)
         signalBus.resource_exist.connect(self.resource_exist)
         signalBus.Notice_msg.connect(self.print_notice)
@@ -204,29 +203,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Delete_label.dropEvent = self.drop
 
     # endregion
-    def show_update_info(self, msg):
-        if msg["status"] == "success":
-            InfoBar.success(
-                self.tr("successful"),
-                msg["msg"],
-                duration=5000,
-                parent=self,
-            )
-        elif msg["status"] == "failed":
-            InfoBar.error(
-                self.tr("Update failed"),
-                msg["msg"],
-                duration=10000,
-                parent=self,
-            )
-        elif msg["status"] == "info":
-            InfoBar.info(
-                self.tr("info"),
-                msg["msg"],
-                duration=10000,
-                parent=self,
-            )
-
     def show_custom_info(self, msg):
         """
         自定义动作/识别器信息
@@ -606,7 +582,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if not cfg.get(cfg.resource_exist):
             return
         self.need_runing = True
-        self.update_S2_Button("Stop", self.Stop_task, enable=False)
+        self.update_S2_Button(self.tr("Stop"), self.Stop_task, enable=False)
         self.clear_layout()
 
         PROJECT_DIR = maa_config_data.resource_path
@@ -826,7 +802,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 await maafw.stop_task()
                 return False
             self.insert_colored_text(self.tr("waiting for emulator start..."))
-            self.update_S2_Button("Stop", self.Stop_task)
+            self.update_S2_Button(self.tr("Stop"), self.Stop_task)
             for i in range(int(emu_wait_time)):
                 if not self.need_runing:
                     await maafw.stop_task()
@@ -885,7 +861,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 await maafw.stop_task()
                 return False
             self.insert_colored_text(self.tr("Starting game..."))
-            self.update_S2_Button("Stop", self.Stop_task)
+            self.update_S2_Button(self.tr("Stop"), self.Stop_task)
             for i in range(int(exe_wait_time)):
                 if not self.need_runing:
                     await maafw.stop_task()
