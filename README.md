@@ -58,11 +58,13 @@
 
 ### 动态加载自定义动作/识别器
 
+#### 固定位置方法
+
 - 什么是[自定义动作/识别器](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md#%E4%BD%BF%E7%94%A8-json-%E4%BD%8E%E4%BB%A3%E7%A0%81%E7%BC%96%E7%A8%8B%E4%BD%86%E5%AF%B9%E5%A4%8D%E6%9D%82%E4%BB%BB%E5%8A%A1%E4%BD%BF%E7%94%A8%E8%87%AA%E5%AE%9A%E4%B9%89%E9%80%BB%E8%BE%91)
 - 要求自定义动作/识别器使用python3.12
 - 如果自定义动作/识别器中含有第三方库,需要将第三方库安装到`_internal`(windows和Macos)或者`MFW-PyQt6根目录`(linux)
 - 将自定义动作/识别器文件按照要求命名和放置
-- 要求的结构:[这是例子](https://github.com/overflow65537/MAA_Punish/tree/main/assets)
+- 要求的结构:[这是例子](https://github.com/overflow65537/MAA_SnowBreak/tree/main/assets)
 
 ```File Tree
 项目文件夹/custom/
@@ -101,7 +103,59 @@
 
  ```
 
+#### 配置文件方法
+
+- 编写`costom.json`并放置于custom文件夹内
+- 这是一个[例子](https://github.com/overflow65537/MAA_Punish/tree/main/assets)
+- 内容为
+
+```json
+{
+        "动作名字1": {
+            "file_path": "{custom_path}/任意位置/任意名字_动作1.py",
+            "class": "动作对象1",
+            "type": "action"
+        },
+        "动作名字2": {
+            "file_path": "{custom_path}/任意位置/任意名字_动作1.py",
+            "class": "动作对象2",
+            "type": "action"
+        },
+        "识别器名字1": {
+            "file_path": "{custom_path}/任意位置/任意名字_识别器1.py",
+            "class": "识别器对象1",
+            "type": "recognition"
+        },
+        "识别器名字2": {
+            "file_path": "{custom_path}/任意位置/任意名字_识别器2.py",
+            "class": "识别器对象2",
+            "type": "recognition"
+        }
+    }
+
+- 其中,动作名字1,动作名字2,识别器名字1,识别器名字2为在pipeline中所使用的名字,比如
+```json
+"我的自定义任务": {
+        "recognition": "Custom",
+        "custom_recognition": "识别器名字1",
+        "action": "Custom",
+        "custom_action": "动作名字1"
+    }
+
+```
+
+- 动作对象1,动作对象2,识别器对象1,识别器对象2为python文件中定义的对象名,比如
+
+```python
+  class 动作对象1(CustomAction):
+    def apply(context,...):
+        # 获取图片，然后进行自己的图像操作
+        image = context.tasker.controller.cached_image
+        # 返回图像分析结果
+
+- custom路径中的{custom_path}为MFW-PyQt6根目录中的custom文件夹
 ### Custom 程序配置
+```
 
 - 创建 `./config/custom.json`
 - 内容为
