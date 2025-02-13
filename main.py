@@ -22,6 +22,7 @@ import json
 from cryptography.fernet import Fernet
 
 
+   
 def main(resource: str, config: str, directly: bool):
     # 检查密钥文件是否存在
     if not os.path.exists("k.ey"):
@@ -154,6 +155,10 @@ def main(resource: str, config: str, directly: bool):
             f"资源版本:{maa_config_data.interface_config.get('version',"v0.0.1")}"
         )
         signalBus.resource_exist.emit(True)
+    if not os.path.exists(os.path.join(".", "debug","maa.log")):
+        os.mkdir(os.path.join(".", "config","maa.log"))
+    with open(os.path.join(".", "config","maa.log"), "a") as f:
+        f.write(f"MAA resource 版本:{maa_config_data.interface_config.get('version', 'v0.0.1')}\n")
 
     # enable dpi scale
     if cfg.get(cfg.dpiScale) != "Auto":
