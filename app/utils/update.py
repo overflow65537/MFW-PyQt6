@@ -173,6 +173,8 @@ class Update(BaseUpdate):
                     }
                 )
                 return
+            elif github_dict is True:
+                return
             self.github_download(github_dict)
         signalBus.resource_exist.emit(True)
 
