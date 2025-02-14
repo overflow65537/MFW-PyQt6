@@ -36,7 +36,7 @@ class BaseUpdate(QThread):
                         if os.path.exists("update.zip"):
                             need_clear_update = True
                         break
-                    
+
                     downloaded_size += len(data)
                     file.write(data)
                     progress_signal.emit(downloaded_size, total_size)
@@ -49,7 +49,7 @@ class BaseUpdate(QThread):
         except Exception as e:
             logger.exception(f"下载文件时出错{url} -> {file_path}")
             if os.path.exists("update.zip"):
-                    os.remove("update.zip")
+                os.remove("update.zip")
             return False
         finally:
             if response:
@@ -85,6 +85,34 @@ class BaseUpdate(QThread):
         with open("k.ey", "rb") as key_file:
             key = key_file.read()
             return decrypt(cfg.get(cfg.Mcdk), key)
+
+    def compare_versions(self,version1: str, version2: str) -> int:
+        """
+        比较两个版本号的大小。
+
+        参数：
+        version1 (str): 第一个版本号字符串。
+        version2 (str): 第二个版本号字符串。
+
+        返回：
+        int: 如果 version1 大于 version2，则返回 1；如果 version1 小于 version2，则返回 -1；如果 version1 等于 version2，则返回 0。
+
+        """
+        v1_parts = [int(part) for part in version1.split(".")]
+        v2_parts = [int(part) for part in version2.split(".")]
+
+        max_length = max(len(v1_parts), len(v2_parts))
+
+        v1_parts.extend([0] * (max_length - len(v1_parts)))
+        v2_parts.extend([0] * (max_length - len(v2_parts)))
+
+        for i in range(max_length):
+            if v1_parts[i] > v2_parts[i]:
+                return 1  # version1 大于 version2
+            elif v1_parts[i] < v2_parts[i]:
+                return -1  # version1 小于 version2
+
+        return 0  # version1 等于 version2
 
 
 class Update(BaseUpdate):
@@ -196,14 +224,19 @@ class Update(BaseUpdate):
         )
         return retuen_url
 
-    def mirror_check(self, res_id: str, version: str, cdk: str, ) -> Dict:
+    def mirror_check(
+        self,
+        res_id: str,
+        version: str,
+        cdk: str,
+    ) -> Dict:
         """
         mirror检查更新
         Args:
             res_id (str): 资源id
             version (str): 版本号
             cdk (str): cdk
-           
+
         Returns:
             Dict: 资源信息
         """
@@ -227,7 +260,12 @@ class Update(BaseUpdate):
         if mirror_data.get("code") != 0:
             logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
             signalBus.update_download_finished.emit(
-                {"status": "failed", "msg": mirror_data.get("msg")+"\n"+self.tr("switching to Github download")}
+                {
+                    "status": "failed",
+                    "msg": mirror_data.get("msg")
+                    + "\n"
+                    + self.tr("switching to Github download"),
+                }
             )
             return False
 
@@ -238,13 +276,16 @@ class Update(BaseUpdate):
             return False
         return mirror_data
 
-    def mirror_download(self, res_id, mirror_data):
+    def mirror_download(self, res_id, mirror_data: Dict[str, dict]):
         """
         mirror下载更新
         Args:
             res_id (str): 资源id
             mirror_data (Dict): 资源信息
         """
+        with open(os.path.join(".", "config", "version.txt"), "r") as version_file:
+            version = version_file.read().split()[2][1:]
+
         self.stop_flag = False
         download_url: str = mirror_data["data"].get("url")
         hotfix_directory = os.path.join(os.getcwd(), "hotfix")
@@ -258,19 +299,38 @@ class Update(BaseUpdate):
                 {"status": "failed", "msg": self.tr("Download failed")}
             )
             return False
-
-        if not self.extract_zip(zip_file_path, maa_config_data.resource_path):
+        target_path = os.path.join(os.getcwd(), "hotfix", "assets")
+        if not self.extract_zip(zip_file_path, target_path):
             signalBus.update_download_finished.emit(
                 {"status": "failed", "msg": self.tr("Extraction failed")}
             )
             return False
 
+        check_interface = Read_Config(os.path.join(target_path, "interface.json")).get(
+            "MFW_min_req_version", "0.0.0.1"
+        )
+        logger.debug(f"最低需求版本: {check_interface}")
+        logger.debug(f"当前版本: {version}")
+        compare_result = self.compare_versions(check_interface, version)
+        if compare_result == 1:
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "failed",
+                    "msg": self.tr("Current MFW version is too low,update aborted"),
+                }
+            )
+            return
+
+        if not self.move_files(target_path, maa_config_data.resource_path):
+            signalBus.update_download_finished.emit(
+                {"status": "failed", "msg": self.tr("Move files failed")}
+            )
+            return
+
         maa_config_data.interface_config["version"] = mirror_data["data"].get(
             "version_name"
         )
-        self.remove_temp_files(
-            os.path.join(os.getcwd(), "hotfix", "assets"), zip_file_path
-        )
+        self.remove_temp_files(os.path.join(os.getcwd(), "hotfix"))
 
         interface_date = Read_Config(maa_config_data.interface_config_path)
         interface_date["version"] = mirror_data["data"].get("version_name")
@@ -279,7 +339,14 @@ class Update(BaseUpdate):
 
         signalBus.resource_exist.emit(True)
         signalBus.update_download_finished.emit(
-            {"status": "success", "msg": self.tr("Update successful")+"\n"+mirror_data.get("data").get("custom_data")+"\n"+mirror_data.get("data").get("release_note")}
+            {
+                "status": "success",
+                "msg": self.tr("Update successful")
+                + "\n"
+                + mirror_data.get("data").get("custom_data")
+                + "\n"
+                + mirror_data.get("data").get("release_note"),
+            }
         )
         return True
 
@@ -348,6 +415,9 @@ class Update(BaseUpdate):
         Args:
             update_dict (Dict): 更新信息
         """
+        with open(os.path.join(".", "config", "version.txt"), "r") as version_file:
+            version = version_file.read().split()[2][1:]
+
         self.stop_flag = False
         download_url: str = update_dict["zipball_url"]
         hotfix_directory = os.path.join(os.getcwd(), "hotfix")
@@ -376,6 +446,21 @@ class Update(BaseUpdate):
             return
 
         folder_to_extract = os.path.join(os.getcwd(), "hotfix", main_folder, "assets")
+        check_interface = Read_Config(
+            os.path.join(folder_to_extract, "interface.json")
+        ).get("MFW_min_req_version", "0.0.0.1")
+        logger.debug(f"最低需求版本: {check_interface}")
+        logger.debug(f"当前版本: {version}")
+        compare_result = self.compare_versions(check_interface, version)
+        if compare_result == 1:
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "failed",
+                    "msg": self.tr("Current MFW version is too low,update aborted"),
+                }
+            )
+            return
+
         if not self.move_files(folder_to_extract, target_path):
             signalBus.update_download_finished.emit(
                 {"status": "failed", "msg": self.tr("Move files failed")}
@@ -383,16 +468,17 @@ class Update(BaseUpdate):
             return
 
         replace_ocr(target_path)
-        self.remove_temp_files(
-            os.path.join(os.getcwd(), "hotfix", main_folder), zip_file_path
-        )
+        self.remove_temp_files(os.path.join(os.getcwd(), "hotfix"))
 
         interface_date = Read_Config(maa_config_data.interface_config_path)
         interface_date["version"] = update_dict["tag_name"]
         Save_Config(maa_config_data.interface_config_path, interface_date)
         signalBus.resource_exist.emit(True)
         signalBus.update_download_finished.emit(
-            {"status": "success", "msg": self.tr("Update successful")+"\n"+update_dict.get("body")}
+            {
+                "status": "success",
+                "msg": self.tr("Update successful") + "\n" + update_dict.get("body"),
+            }
         )
 
     def stop(self):
@@ -420,7 +506,12 @@ class MirrorDownloadBundle(BaseUpdate):
         if mirror_data.get("code") != 0:
             logger.warning(f"下载检查失败: {mirror_data.get('msg')}")
             signalBus.download_finished.emit(
-                {"status": "failed", "msg": mirror_data.get("msg")+"\n"+self.tr("switching to Github download")}
+                {
+                    "status": "failed",
+                    "msg": mirror_data.get("msg")
+                    + "\n"
+                    + self.tr("switching to Github download"),
+                }
             )
             return
 
@@ -460,9 +551,7 @@ class MirrorDownloadBundle(BaseUpdate):
         interface_data["mirrorchyan_rid"] = self.res_id
         interface_data["version"] = mirror_data["data"].get("version_name")
         Save_Config(os.path.join(target_path, "interface.json"), interface_data)
-        self.remove_temp_files(
-            os.path.join(os.getcwd(), "hotfix", "assets"), zip_file_path
-        )
+        self.remove_temp_files(os.path.join(os.getcwd(), "hotfix"))
 
         signalBus.download_finished.emit(
             {
@@ -536,9 +625,7 @@ class DownloadBundle(BaseUpdate):
             return
 
         replace_ocr(target_path)
-        self.remove_temp_files(
-            os.path.join(os.getcwd(), "hotfix", project_name), zip_file_path
-        )
+        self.remove_temp_files(os.path.join(os.getcwd(), "hotfix"))
 
         signalBus.download_finished.emit(
             {
@@ -587,72 +674,86 @@ class UpdateSelf(BaseUpdate):
             except:
                 pass
 
-
-        mirror_data:Dict[str,Dict] = self.mirror_check(cdk,version_data)
+        mirror_data: Dict[str, Dict] = self.mirror_check(cdk, version_data)
 
         if not mirror_data:
             return
-        
+
         elif mirror_data.get("code") != 0:
             logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
             signalBus.download_self_finished.emit(
-                {"status": "failed", "msg": mirror_data.get("msg")+"\n"+self.tr("switching to Github download")}
+                {
+                    "status": "failed",
+                    "msg": mirror_data.get("msg")
+                    + "\n"
+                    + self.tr("switching to Github download"),
+                }
             )
-            return 
+            return
 
         elif mirror_data.get("data").get("version_name") == version_data[2]:
             logger.warning(f"当前版本已是最新版本")
             signalBus.download_self_finished.emit(
                 {"status": "no_need", "msg": self.tr("current version is latest")}
             )
-            return 
+            return
         elif mirror_data.get("data").get("url"):
             signalBus.download_self_finished.emit(
-                {"status": "info", "msg": self.tr("MirrorChyan update check successful, starting download")}
+                {
+                    "status": "info",
+                    "msg": self.tr(
+                        "MirrorChyan update check successful, starting download"
+                    ),
+                }
             )
             logger.debug(f"mirror开始下载: {mirror_data.get('data').get('url')}")
             self._download(mirror_data.get("data").get("url"))
             version_data[3] = mirror_data["data"].get("version_name")
             with open(
-                os.path.join(os.getcwd(), "config", "version.txt"), "w", encoding="utf-8"
+                os.path.join(os.getcwd(), "config", "version.txt"),
+                "w",
+                encoding="utf-8",
             ) as f:
                 f.write(" ".join(version_data))
                 print(" ".join(version_data))
             return
         else:
             signalBus.download_self_finished.emit(
-                {"status": "info",
-                        "msg": self.tr(
-                            "MirrorChyan update check successful, but no CDK found, switching to Github download"
-                        )}
+                {
+                    "status": "info",
+                    "msg": self.tr(
+                        "MirrorChyan update check successful, but no CDK found, switching to Github download"
+                    ),
+                }
             )
             github_url = self.assemble_gitHub_url(
-                version_data,mirror_data["data"].get("version_name")
+                version_data, mirror_data["data"].get("version_name")
             )
             logger.debug(f"github开始下载: {github_url}")
             self._download(github_url)
             version_data[3] = mirror_data["data"].get("version_name")
             with open(
-                os.path.join(os.getcwd(), "config", "version.txt"), "w", encoding="utf-8"
+                os.path.join(os.getcwd(), "config", "version.txt"),
+                "w",
+                encoding="utf-8",
             ) as f:
                 f.write(" ".join(version_data))
                 print(" ".join(version_data))
             return
-            
-            
+
     def assemble_gitHub_url(self, version_data: list, target_version: str) -> str:
         """
         输入版本号和项目地址，返回GitHub项目源代码压缩包下载地址
         """
         url = f"https://github.com/overflow65537/MFW-PyQt6/releases/download/{target_version}/MFW-PyQt6-{version_data[0]}-{version_data[1]}-{target_version}.zip"
         return url
-    
-    def mirror_check(self,  cdk,version_data:list) -> Dict:
+
+    def mirror_check(self, cdk, version_data: list) -> Dict:
         """
         mirror检查更新
         Args:
             res_id (str): 资源id
-            
+
             cdk (str): cdk
             version_data (list): 系统,架构,版本号
         Returns:
@@ -673,13 +774,12 @@ class UpdateSelf(BaseUpdate):
 
         mirror_data: Dict[str, Dict] = response.json()
 
-
         return mirror_data
 
-    def _download(self,download_url):
+    def _download(self, download_url):
 
         self.stop_flag = False
-       
+
         zip_file_path = os.path.join(os.getcwd(), "update.zip")
         if not self.download_file(
             download_url, zip_file_path, signalBus.download_self_progress
@@ -692,11 +792,7 @@ class UpdateSelf(BaseUpdate):
             )
             return
 
-        signalBus.download_self_finished.emit(
-            {"status": "success"}
-        )
-
-
+        signalBus.download_self_finished.emit({"status": "success"})
 
     def stop(self):
         self.stop_flag = True
