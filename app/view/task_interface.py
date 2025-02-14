@@ -68,6 +68,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         else:
             logger.warning("资源缺失")
             self.show_error(self.tr("Resource file not detected"))
+
     def init_widget_text(self):
         """
         初始化文本
@@ -564,14 +565,27 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def ready_Start_Up(self):
         if cfg.get(cfg.resource_exist):
-            if cfg.get(cfg.auto_update_resource):
+
+            if cfg.get(cfg.auto_update_resource) and (
+                cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg)
+            ):
+                logger.info("启动GUI后自动更新,启动GUI后运行任务")
+                signalBus.update_download_finished.connect(self.Auto_update_Start_up)
+                signalBus.auto_update.emit()
+
+            elif cfg.get(cfg.auto_update_resource):
                 logger.info("启动GUI后自动更新")
                 signalBus.auto_update.emit()
 
-            if cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg):
+            elif cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg):
                 logger.info("启动GUI后运行任务")
                 self.start_again = True
                 signalBus.start_task_inmediately.emit()
+
+    def Auto_update_Start_up(self, status_dict):
+        if status_dict.get("status") != "info":
+            self.start_again = True
+            signalBus.start_task_inmediately.emit()
 
     # region 任务逻辑
     @asyncSlot()
