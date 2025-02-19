@@ -15,7 +15,7 @@ from ..common.config import cfg
 from ..utils.tool import Read_Config, Save_Config
 from ..utils.logger import logger
 import os
-from ..utils.update import DownloadBundle, MirrorDownloadBundle
+from ..utils.update import DownloadBundle
 from ..common.signal_bus import signalBus
 from typing import Dict, List
 from ..common.maa_config_data import maa_config_data
@@ -28,10 +28,6 @@ class CustomMessageBox(MessageBoxBase):
         super().__init__(parent)
         self.download_bundle = DownloadBundle()
         signalBus.bundle_download_stopped.connect(self.download_bundle.stop)
-        self.mirror_download_bundle = MirrorDownloadBundle()
-        signalBus.mirror_bundle_download_stopped.connect(
-            self.mirror_download_bundle.stop
-        )
         transparent_color = QColor(255, 255, 255, 0)
         self.setMaskColor(transparent_color)
         self.folder = None
@@ -43,14 +39,7 @@ class CustomMessageBox(MessageBoxBase):
         self.name_LineEdit.setPlaceholderText(self.tr("Enter the name of the resource"))
         self.name_LineEdit.setClearButtonEnabled(True)
 
-        self.resourceid_button = ToolButton(FIF.SEARCH, self)
-        self.resourceid_button.setSizePolicy(
-            QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed
-        )
-        self.resourceid_button.clicked.connect(self.search_bundle_mirror)
-
         self.name_layout.addWidget(self.name_LineEdit)
-        self.name_layout.addWidget(self.resourceid_button)
 
         self.path_layout = QHBoxLayout()
         self.path_LineEdit = LineEdit(self)
@@ -93,9 +82,6 @@ class CustomMessageBox(MessageBoxBase):
         self.widget.setMinimumWidth(350)
         self.yesButton.clicked.connect(self.click_yes_button)
 
-        if not cfg.get(cfg.Mcdk):
-            self.resourceid_button.hide()
-
     def search_bundle(self) -> None:
         if self.update_LineEdit.text() == "":
             self.show_error(self.tr("Please enter the update link"))
@@ -107,15 +93,6 @@ class CustomMessageBox(MessageBoxBase):
         self.download_bundle.project_url = updata_link
 
         self.download_bundle.start()
-        self.w = ShowDownload(self)
-        self.w.show()
-
-    def search_bundle_mirror(self) -> None:
-        self.search_button.setIcon(FIF.MORE)
-        res_id = self.name_LineEdit.text()
-        logger.info(f"资源id {res_id}")
-        self.mirror_download_bundle.res_id = res_id
-        self.mirror_download_bundle.start()
         self.w = ShowDownload(self)
         self.w.show()
 
@@ -150,7 +127,6 @@ class CustomMessageBox(MessageBoxBase):
             self.name_LineEdit.setText(project_name)
         self.w.close()
         self.search_button.setIcon(FIF.SEARCH)
-        self.resourceid_button.setIcon(FIF.SEARCH)
 
 
 
