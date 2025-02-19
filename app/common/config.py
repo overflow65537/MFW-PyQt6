@@ -77,6 +77,7 @@ class Config(QConfig):
     auto_update_resource = ConfigItem(
         "Maa", "auto_update_resource", False, BoolValidator()
     )
+    click_update = ConfigItem("Maa", "click_update", False, BoolValidator())
     # 外部通知
     Notice_DingTalk_status = ConfigItem("Notice", "DingTalk_status", False)
     Notice_DingTalk_url = ConfigItem("Notice", "DingTalk_url", "")

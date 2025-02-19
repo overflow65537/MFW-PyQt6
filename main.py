@@ -150,6 +150,7 @@ def main(resource: str, config: str, directly: bool):
             cfg.set(cfg.run_after_startup_arg, True)
 
         logger.info("资源文件存在")
+        cfg.set(cfg.click_update,False)
         cfg.set(cfg.resource_exist, True)
         logger.info(
             f"资源版本:{maa_config_data.interface_config.get('version',"v0.0.1")}"

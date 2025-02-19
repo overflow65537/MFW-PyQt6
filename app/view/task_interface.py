@@ -583,6 +583,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 signalBus.start_task_inmediately.emit()
 
     def Auto_update_Start_up(self, status_dict):
+        if cfg.get(cfg.click_update):
+            return
         if status_dict.get("status") != "info":
             self.start_again = True
             signalBus.start_task_inmediately.emit()

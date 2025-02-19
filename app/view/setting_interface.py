@@ -832,8 +832,10 @@ class SettingInterface(ScrollArea):
             lambda: QDesktopServices.openUrl(QUrl("https://mirrorchyan.com/"))
         )
         self.MirrorCard.lineEdit.textChanged.connect(self._onMirrorCardChange)
-        self.updateCard.clicked2.connect(self.update_check)
+        
         # 连接关于信号
+        self.updateCard.clicked2.connect(self.update_check)
+        self.updateCard.clicked2.connect(lambda: cfg.set(cfg.click_update,True))
         self.updateCard.clicked.connect(
             lambda: QDesktopServices.openUrl(
                 QUrl(for_config_get_url(self.project_url, "issue"))
