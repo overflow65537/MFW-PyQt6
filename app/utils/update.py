@@ -18,7 +18,7 @@ import requests
 import shutil
 import json
 
-
+# region 更新
 class BaseUpdate(QThread):
     stop_flag = False
 
@@ -114,7 +114,9 @@ class BaseUpdate(QThread):
 
         return 0  # version1 等于 version2
 
+# endregion
 
+# region 资源更新
 class Update(BaseUpdate):
 
     def run(self):
@@ -483,8 +485,8 @@ class Update(BaseUpdate):
 
     def stop(self):
         self.stop_flag = True
-
-
+# endregion
+# region mirror下载资源包
 class MirrorDownloadBundle(BaseUpdate):
     res_id = ""
 
@@ -564,7 +566,9 @@ class MirrorDownloadBundle(BaseUpdate):
 
     def stop(self):
         self.stop_flag = True
+# endregion
 
+# region github下载资源包
 
 class DownloadBundle(BaseUpdate):
     project_url = ""
@@ -639,7 +643,9 @@ class DownloadBundle(BaseUpdate):
     def stop(self):
         self.stop_flag = True
 
+# endregion
 
+# region 读取README文件
 class Readme(QThread):
     readme_url = ""
 
@@ -655,7 +661,9 @@ class Readme(QThread):
             logger.exception(f"读取README文件时出错: {e}")
             signalBus.readme_available.emit(f"读取README文件时出错: {e}")
 
+# endregion
 
+# region 更新自身
 class UpdateSelf(BaseUpdate):
     def run(self):
         with open(
@@ -796,3 +804,4 @@ class UpdateSelf(BaseUpdate):
 
     def stop(self):
         self.stop_flag = True
+# endregion
