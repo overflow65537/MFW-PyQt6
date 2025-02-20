@@ -23,8 +23,8 @@ from app.utils.logger import logger
 
 def replace_ocr(path):
     """替换OCR模型"""
-    bundle_dir1 = os.path.join(path, "MFW_resource", "base", "model", "ocr")
-    bundle_dir2 = os.path.join(path, "MFW_resource", "model", "ocr")
+    bundle_dir1 = os.path.join(path,"resource", "base", "model", "ocr")
+    bundle_dir2 = os.path.join(path, "resource","model", "ocr")
     main_ocr_path = os.path.join(os.getcwd(), "MFW_resource", "model", "ocr")
     if os.path.exists(os.path.dirname(bundle_dir1)):
         if not os.path.exists(bundle_dir1):
