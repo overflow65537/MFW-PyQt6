@@ -67,6 +67,11 @@ class BaseUpdate(QThread):
             return False
 
     def move_files(self, src, dst):
+        """
+        移动文件或文件夹。
+        移动 src 到 dst。
+
+        """
         try:
             shutil.copytree(src, dst, dirs_exist_ok=True)
             return True
@@ -113,6 +118,67 @@ class BaseUpdate(QThread):
                 return -1  # version1 小于 version2
 
         return 0  # version1 等于 version2
+    
+    def handle_ocr_assets(self, target_path: str) -> bool:
+        """处理 OCR 资源的核心方法
+        Args:
+            target_path (str): 目标存放路径
+        Returns:
+            bool: 操作成功返回 True，失败返回 False
+        """
+        # 自动定位 pipeline 目录
+        pipeline_path = None
+        for root, dirs, _ in os.walk(target_path):
+            if 'pipeline' in dirs:
+                pipeline_path = os.path.dirname(root)  # 获取父级目录
+                break
+        
+        if not pipeline_path:
+            logger.error(f"在 {target_path} 下未找到 pipeline 目录")
+            return False
+
+        # 构建标准 OCR 路径
+        valid_ocr_path = os.path.join(pipeline_path, "ocr")
+        local_ocr = os.path.join("MFW_resource", "ocr")
+        
+        # 本地已有 OCR 资源
+        if os.path.exists(local_ocr):
+            logger.info("从本地缓存复制 OCR 文件")
+            return self.move_files(local_ocr, valid_ocr_path)
+
+        # 需要下载 OCR 资源
+        try:
+            response = requests.get("https://api.github.com/repos/MaaXYZ/MaaCommonAssets/releases/latest")
+            release_data = response.json()
+        except Exception as e:
+            logger.error(f"获取OCR资源失败: {e}")
+            return False
+
+        # 下载和解压流程
+        temp_dir = os.path.join(os.getcwd(), "temp_ocr")
+        zip_path = os.path.join(temp_dir, "maa_common_assets.zip")
+        
+        if not self.download_file(release_data["zipball_url"], zip_path):
+            return False
+
+        # 解压并定位 OCR 文件
+        extracted_folder = self.extract_zip(zip_path, temp_dir)
+        ocr_source = os.path.join(temp_dir, extracted_folder, "assets", "OCR")
+        
+        if not extracted_folder or not os.path.exists(ocr_source):
+            logger.error("OCR 资源目录不存在")
+            self.remove_temp_files(temp_dir)
+            return False
+
+        # 保存到本地缓存
+        if not self.move_files(ocr_source, local_ocr):
+            self.remove_temp_files(temp_dir)
+            return False
+            
+        # 复制到目标路径
+        result = self.move_files(local_ocr, valid_ocr_path)
+        self.remove_temp_files(temp_dir)
+        return result
 
 # endregion
 
@@ -322,6 +388,22 @@ class Update(BaseUpdate):
                 }
             )
             return
+        change_data = os.path.join(target_path, "changes.json")
+        if os.path.exists(change_data):
+
+            change_data = Read_Config(change_data).get(
+            "deleted", [] 
+        )
+            logger.debug(f"准备删除以下文件: {change_data}")
+            for file in change_data:
+                if  "install" in file[:10]:
+                    file = file.replace("install", maa_config_data.resource_path, 1)
+                elif "resource" in file[:10]:
+                    file = file.replace("resource", f"{maa_config_data.resource_path}/resource", 1)
+                file_path = os.path.join(os.getcwd(),"bundles", file)
+                logger.debug(f"删除文件: {file_path}")
+                if os.path.exists(file_path):
+                    os.remove(file_path)
 
         if not self.move_files(target_path, maa_config_data.resource_path):
             signalBus.update_download_finished.emit(
@@ -345,9 +427,9 @@ class Update(BaseUpdate):
                 "status": "success",
                 "msg": self.tr("Update successful")
                 + "\n"
-                + mirror_data.get("data").get("custom_data")
+                + mirror_data.get("data",{}).get("custom_data","")
                 + "\n"
-                + mirror_data.get("data").get("release_note"),
+                + mirror_data.get("data",{}).get("release_note",""),
             }
         )
         return True
@@ -462,7 +544,9 @@ class Update(BaseUpdate):
                 }
             )
             return
-
+        # 删除旧的资源包
+        if os.path.exists(target_path):
+            shutil.rmtree(target_path)
         if not self.move_files(folder_to_extract, target_path):
             signalBus.update_download_finished.emit(
                 {"status": "failed", "msg": self.tr("Move files failed")}
