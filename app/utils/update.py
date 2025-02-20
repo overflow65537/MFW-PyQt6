@@ -400,6 +400,9 @@ class Update(BaseUpdate):
                     file_path = file.replace("install", maa_config_data.resource_path, 1)
                 elif "resource" in file[:10]:
                     file_path = file.replace("resource", f"{maa_config_data.resource_path}/resource", 1)
+                else:
+                    logger.error(f"未知文件: {file}")
+                    continue
                 logger.debug(f"删除文件: {file_path}")
                 if os.path.exists(file_path):
                     os.remove(file_path)
