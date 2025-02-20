@@ -59,6 +59,21 @@ shutil.copytree(
     os.path.join(os.getcwd(), "main.dist", "maa"),
     dirs_exist_ok=True,
 )
+# 移动maa/bin至根目录
+src_bin = os.path.join(os.getcwd(), "main.dist", "maa", "bin")
+dst_root = os.path.join(os.getcwd(), "main.dist")
+if os.path.exists(src_bin):
+    for item in os.listdir(src_bin):
+        src = os.path.join(src_bin, item)
+        dst = os.path.join(dst_root, item)
+        if os.path.exists(dst):
+            if os.path.isdir(dst):
+                shutil.rmtree(dst)
+            else:
+                os.remove(dst)
+        shutil.move(src, dst)
+    # 删除空文件夹
+    os.rmdir(src_bin)
 
 # 移动 MaaAgentBinary 到 dist 目录
 shutil.copytree(

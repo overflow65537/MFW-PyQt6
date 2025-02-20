@@ -1,6 +1,8 @@
 # coding:utf-8
 
 import os
+os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
+import maa
 import sys
 from qasync import QEventLoop
 from qfluentwidgets import ConfigItem
@@ -27,7 +29,6 @@ def main(resource: str, config: str, directly: bool):
     # 检查密钥文件是否存在
     if not os.path.exists("k.ey"):
         key = Fernet.generate_key()
-
         with open("k.ey", "wb") as key_file:
             key_file.write(key)
     # 检查资源文件是否存在
@@ -47,7 +48,7 @@ def main(resource: str, config: str, directly: bool):
         or maa_resource_list == {}
     ):
         if os.path.exists("interface.json") and os.path.exists("resource"):
-            logger.info("检测到旧版本配置文件,开始转换")
+            logger.info("检测到配置文件,开始转换")
 
             with open("interface.json", "r", encoding="utf-8") as f:
                 interface_config: dict = json.load(f)
@@ -153,13 +154,13 @@ def main(resource: str, config: str, directly: bool):
         cfg.set(cfg.click_update,False)
         cfg.set(cfg.resource_exist, True)
         logger.info(
-            f"资源版本:{maa_config_data.interface_config.get('version',"v0.0.1")}"
+            f"资源版本:{maa_config_data.interface_config.get('version',"None")}"
         )
         signalBus.resource_exist.emit(True)
     if not os.path.exists(os.path.join(".", "debug","maa.log")):
         os.mkdir(os.path.join(".", "config","maa.log"))
     with open(os.path.join(".", "config","maa.log"), "a") as f:
-        f.write(f"MAA resource 版本:{maa_config_data.interface_config.get('version', 'v0.0.1')}\n")
+        f.write(f"MAA resource 版本:{maa_config_data.interface_config.get('version', 'None')}")
 
     # enable dpi scale
     if cfg.get(cfg.dpiScale) != "Auto":
@@ -208,6 +209,7 @@ def start_symbol():
 
 
 if __name__ == "__main__":
+    
     try:
         with open(
             os.path.join(".", "config", "version.txt"), "r", encoding="utf-8"

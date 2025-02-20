@@ -60,7 +60,21 @@ if sys.platform == "win32":
 
 # 运行 PyInstaller
 PyInstaller.__main__.run(command)
-
+# 移动maa/bin至根目录
+src_bin = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")
+dst_root = os.path.join(os.getcwd(), "dist", "MFW")
+if os.path.exists(src_bin):
+    for item in os.listdir(src_bin):
+        src = os.path.join(src_bin, item)
+        dst = os.path.join(dst_root, item)
+        if os.path.exists(dst):
+            if os.path.isdir(dst):
+                shutil.rmtree(dst)
+            else:
+                os.remove(dst)
+        shutil.move(src, dst)
+    # 删除空文件夹
+    os.rmdir(src_bin)
 # 确保 dist/MFW/MFW_resource 目录存在并复制
 resource_src = os.path.join(os.getcwd(), "MFW_resource")
 resource_dst = os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource")
@@ -84,10 +98,7 @@ shutil.copy(emulator_json_src, emulator_json_dst)
 print(sys.argv)
 print(len(sys.argv))
 if len(sys.argv) != 4:
-    error_message = "args error, should be: platform architecture version"
-    with open("ERROR.log", "a") as log_file:
-        log_file.write(error_message + "\n")
-    sys.exit(error_message)
+    sys.argv = [sys.argv[0],"unknown", "unknown", "unknown"]
 
 platform = sys.argv[1]
 architecture = sys.argv[2]
