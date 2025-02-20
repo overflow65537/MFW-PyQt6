@@ -1,7 +1,8 @@
 # coding:utf-8
 
 import os
-os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
+if not os.path.exists("main.py"):
+    os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
 import maa
 import sys
 from qasync import QEventLoop
