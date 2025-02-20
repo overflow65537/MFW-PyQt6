@@ -123,7 +123,7 @@ jobs:
       - name: Install
         shell: bash
         run: |
-          python ./build_linux.py linux ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          python ./build.py linux ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
