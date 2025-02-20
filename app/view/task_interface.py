@@ -438,7 +438,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     # region 完成后的动作
-    def close_application(self):
+    def close_application(self, close_MFW: bool = False):
         """
         关闭模拟器
         """
@@ -535,9 +535,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         elif emu_dict["type"] == "Memu":
             pass
 
-    def close_application_and_quit(self):
-        self.close_application()
-        QApplication.quit()
+        if close_MFW:
+            QApplication.quit()
 
     def shutdown(self):
         shutdown_commands = {
@@ -981,25 +980,24 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         执行完成后的动作
         """
         target = self.Finish_combox.currentIndex()
-        actions = {
-            1: self.close_application,
-            2: QApplication.quit,
-            3: self.close_application_and_quit,
-            4: self.shutdown,
-            5: self.run_other_config,
-        }
-        actions_text = {
-            0: self.tr("Do Nothing"),
-            1: self.tr("Close emulator"),
-            2: self.tr("Quit Application"),
-            3: self.tr("Close Application and Quit"),
-            4: self.tr("Shutdown"),
-            5: self.tr("Run Other Config"),
-        }
-        action = actions.get(target)
-        logger.info(f"选择的动作: {actions_text[target]}")
-        if action and self.need_runing:
-            action()
+        if target == 0:
+            logger.debug("选择的动作: 不做任何操作")
+            return
+        elif target == 1:
+            logger.debug("选择的动作: 关闭模拟器")
+            self.close_application()
+        elif target == 2:
+            logger.debug("选择的动作: 退出应用程序")
+            QApplication.quit()
+        elif target == 3:
+            logger.debug("选择的动作: 关闭应用程序并退出")
+            self.close_application(True)
+        elif target == 4:
+            logger.debug("选择的动作: 关机")
+            self.shutdown()
+        elif target == 5:
+            logger.debug("选择的动作: 运行其他配置")
+            self.run_other_config()
 
     @asyncSlot()
     async def Stop_task(self):
