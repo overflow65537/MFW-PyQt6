@@ -396,11 +396,10 @@ class Update(BaseUpdate):
         )
             logger.debug(f"准备删除以下文件: {change_data}")
             for file in change_data:
-                if  "install" in file[:10]:
-                    file = file.replace("install", maa_config_data.resource_path, 1)
+                if "install" in file[:10]:
+                    file_path = file.replace("install", maa_config_data.resource_path, 1)
                 elif "resource" in file[:10]:
-                    file = file.replace("resource", f"{maa_config_data.resource_path}/resource", 1)
-                file_path = os.path.join(os.getcwd(),"bundles", file)
+                    file_path = file.replace("resource", f"{maa_config_data.resource_path}/resource", 1)
                 logger.debug(f"删除文件: {file_path}")
                 if os.path.exists(file_path):
                     os.remove(file_path)
