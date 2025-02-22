@@ -1,6 +1,16 @@
-from PyQt6.QtCore import QThread, pyqtBoundSignal
+import json
 import os
+import shutil
 import zipfile
+from typing import Dict
+
+import requests
+from PyQt6.QtCore import QThread, pyqtBoundSignal
+
+from ..common.signal_bus import signalBus
+from ..utils.logger import logger
+from ..common.maa_config_data import maa_config_data
+from ..common.config import cfg
 from ..utils.tool import (
     for_config_get_url,
     replace_ocr,
@@ -8,15 +18,7 @@ from ..utils.tool import (
     Save_Config,
     decrypt,
 )
-from ..common.signal_bus import signalBus
-from ..utils.logger import logger
-from ..common.maa_config_data import maa_config_data
-from ..common.config import cfg
 
-from typing import Dict
-import requests
-import shutil
-import json
 
 # region 更新
 class BaseUpdate(QThread):
@@ -91,7 +93,7 @@ class BaseUpdate(QThread):
             key = key_file.read()
             return decrypt(cfg.get(cfg.Mcdk), key)
 
-    def compare_versions(self,version1: str, version2: str) -> int:
+    def compare_versions(self, version1: str, version2: str) -> int:
         """
         比较两个版本号的大小。
 
@@ -118,7 +120,7 @@ class BaseUpdate(QThread):
                 return -1  # version1 小于 version2
 
         return 0  # version1 等于 version2
-    
+
     def handle_ocr_assets(self, target_path: str) -> bool:
         """处理 OCR 资源的核心方法
         Args:
@@ -129,10 +131,10 @@ class BaseUpdate(QThread):
         # 自动定位 pipeline 目录
         pipeline_path = None
         for root, dirs, _ in os.walk(target_path):
-            if 'pipeline' in dirs:
+            if "pipeline" in dirs:
                 pipeline_path = os.path.dirname(root)  # 获取父级目录
                 break
-        
+
         if not pipeline_path:
             logger.error(f"在 {target_path} 下未找到 pipeline 目录")
             return False
@@ -140,7 +142,7 @@ class BaseUpdate(QThread):
         # 构建标准 OCR 路径
         valid_ocr_path = os.path.join(pipeline_path, "ocr")
         local_ocr = os.path.join("MFW_resource", "ocr")
-        
+
         # 本地已有 OCR 资源
         if os.path.exists(local_ocr):
             logger.info("从本地缓存复制 OCR 文件")
@@ -148,7 +150,9 @@ class BaseUpdate(QThread):
 
         # 需要下载 OCR 资源
         try:
-            response = requests.get("https://api.github.com/repos/MaaXYZ/MaaCommonAssets/releases/latest")
+            response = requests.get(
+                "https://api.github.com/repos/MaaXYZ/MaaCommonAssets/releases/latest"
+            )
             release_data = response.json()
         except Exception as e:
             logger.error(f"获取OCR资源失败: {e}")
@@ -157,14 +161,14 @@ class BaseUpdate(QThread):
         # 下载和解压流程
         temp_dir = os.path.join(os.getcwd(), "temp_ocr")
         zip_path = os.path.join(temp_dir, "maa_common_assets.zip")
-        
+
         if not self.download_file(release_data["zipball_url"], zip_path):
             return False
 
         # 解压并定位 OCR 文件
         extracted_folder = self.extract_zip(zip_path, temp_dir)
         ocr_source = os.path.join(temp_dir, extracted_folder, "assets", "OCR")
-        
+
         if not extracted_folder or not os.path.exists(ocr_source):
             logger.error("OCR 资源目录不存在")
             self.remove_temp_files(temp_dir)
@@ -174,13 +178,15 @@ class BaseUpdate(QThread):
         if not self.move_files(ocr_source, local_ocr):
             self.remove_temp_files(temp_dir)
             return False
-            
+
         # 复制到目标路径
         result = self.move_files(local_ocr, valid_ocr_path)
         self.remove_temp_files(temp_dir)
         return result
 
+
 # endregion
+
 
 # region 资源更新
 class Update(BaseUpdate):
@@ -391,15 +397,17 @@ class Update(BaseUpdate):
         change_data = os.path.join(target_path, "changes.json")
         if os.path.exists(change_data):
 
-            change_data = Read_Config(change_data).get(
-            "deleted", [] 
-        )
+            change_data = Read_Config(change_data).get("deleted", [])
             logger.debug(f"准备删除以下文件: {change_data}")
             for file in change_data:
                 if "install" in file[:10]:
-                    file_path = file.replace("install", maa_config_data.resource_path, 1)
+                    file_path = file.replace(
+                        "install", maa_config_data.resource_path, 1
+                    )
                 elif "resource" in file[:10]:
-                    file_path = file.replace("resource", f"{maa_config_data.resource_path}/resource", 1)
+                    file_path = file.replace(
+                        "resource", f"{maa_config_data.resource_path}/resource", 1
+                    )
                 else:
                     logger.error(f"未知文件: {file}")
                     continue
@@ -429,9 +437,9 @@ class Update(BaseUpdate):
                 "status": "success",
                 "msg": self.tr("Update successful")
                 + "\n"
-                + mirror_data.get("data",{}).get("custom_data","")
+                + mirror_data.get("data", {}).get("custom_data", "")
                 + "\n"
-                + mirror_data.get("data",{}).get("release_note",""),
+                + mirror_data.get("data", {}).get("release_note", ""),
             }
         )
         return True
@@ -571,6 +579,8 @@ class Update(BaseUpdate):
 
     def stop(self):
         self.stop_flag = True
+
+
 # endregion
 # region mirror下载资源包
 class MirrorDownloadBundle(BaseUpdate):
@@ -652,9 +662,12 @@ class MirrorDownloadBundle(BaseUpdate):
 
     def stop(self):
         self.stop_flag = True
+
+
 # endregion
 
 # region github下载资源包
+
 
 class DownloadBundle(BaseUpdate):
     project_url = ""
@@ -729,7 +742,9 @@ class DownloadBundle(BaseUpdate):
     def stop(self):
         self.stop_flag = True
 
+
 # endregion
+
 
 # region 读取README文件
 class Readme(QThread):
@@ -747,7 +762,9 @@ class Readme(QThread):
             logger.exception(f"读取README文件时出错: {e}")
             signalBus.readme_available.emit(f"读取README文件时出错: {e}")
 
+
 # endregion
+
 
 # region 更新自身
 class UpdateSelf(BaseUpdate):
@@ -890,4 +907,6 @@ class UpdateSelf(BaseUpdate):
 
     def stop(self):
         self.stop_flag = True
+
+
 # endregion
