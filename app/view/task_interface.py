@@ -337,7 +337,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         pipeline.get("focus_failed_color", "black"),
                     )
 
-    def insert_colored_text(self, text, color_name: str = "black"):
+    def insert_colored_text(self, text, color_name = "black"):
         """
         插入带颜色的文本
         """
@@ -985,13 +985,20 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             return
         elif target == 1:
             logger.debug("选择的动作: 关闭模拟器")
-            self.close_application()
+            try:
+                self.close_application()
+            except Exception as e:
+                logger.error(f"关闭应用程序失败: {e}")
         elif target == 2:
             logger.debug("选择的动作: 退出应用程序")
             QApplication.quit()
         elif target == 3:
             logger.debug("选择的动作: 关闭应用程序并退出")
-            self.close_application(True)
+            try:
+                self.close_application(True)
+            except Exception as e:
+                logger.error(f"关闭应用程序失败: {e}")
+                QApplication.quit()
         elif target == 4:
             logger.debug("选择的动作: 关机")
             self.shutdown()
