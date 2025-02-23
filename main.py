@@ -1,16 +1,18 @@
 # coding:utf-8
 
+import argparse
+import json
 import os
-if not os.path.exists("main.py"):
-    os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
-import maa
 import sys
+from typing import Dict
+
+import maa
 from qasync import QEventLoop
 from qfluentwidgets import ConfigItem
-
 from PyQt6.QtCore import Qt, QTranslator, QTimer
 from PyQt6.QtWidgets import QApplication
 from qfluentwidgets import FluentTranslator
+from cryptography.fernet import Fernet
 
 from app.common.config import cfg
 from app.utils.logger import logger
@@ -19,13 +21,11 @@ from app.common.config import Language
 from app.common.signal_bus import signalBus
 from app.common.maa_config_data import maa_config_data, init_maa_config_data
 from app.utils.tool import show_error_message, Save_Config
-import argparse
-from typing import Dict
-import json
-from cryptography.fernet import Fernet
+
+if not os.path.exists("main.py"):
+    os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
 
 
-   
 def main(resource: str, config: str, directly: bool):
     # 检查密钥文件是否存在
     if not os.path.exists("k.ey"):
@@ -152,16 +152,18 @@ def main(resource: str, config: str, directly: bool):
             cfg.set(cfg.run_after_startup_arg, True)
 
         logger.info("资源文件存在")
-        cfg.set(cfg.click_update,False)
+        cfg.set(cfg.click_update, False)
         cfg.set(cfg.resource_exist, True)
         logger.info(
             f"资源版本:{maa_config_data.interface_config.get('version',"None")}"
         )
         signalBus.resource_exist.emit(True)
-    if not os.path.exists(os.path.join(".", "debug","maa.log")):
-        os.mkdir(os.path.join(".", "config","maa.log"))
-    with open(os.path.join(".", "config","maa.log"), "a") as f:
-        f.write(f"MAA resource 版本:{maa_config_data.interface_config.get('version', 'None')}")
+    if not os.path.exists(os.path.join(".", "debug", "maa.log")):
+        os.mkdir(os.path.join(".", "config", "maa.log"))
+    with open(os.path.join(".", "config", "maa.log"), "a") as f:
+        f.write(
+            f"MAA resource 版本:{maa_config_data.interface_config.get('version', 'None')}"
+        )
 
     # enable dpi scale
     if cfg.get(cfg.dpiScale) != "Auto":
@@ -210,7 +212,7 @@ def start_symbol():
 
 
 if __name__ == "__main__":
-    
+
     try:
         with open(
             os.path.join(".", "config", "version.txt"), "r", encoding="utf-8"
