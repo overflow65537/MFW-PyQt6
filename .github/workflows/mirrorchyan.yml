@@ -26,6 +26,34 @@ jobs:
         if: always()
         with:
           filetype: latest-release
+          fileName: "MFW*-macos-aarch64-*.zip"
+          mirrorchyan_rid: MFW-PyQt6
+
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          upload_token: ${{ secrets.MirrorChyanUploadToken }}
+          os: macos
+          arch: aarch64
+
+      - uses: MirrorChyan/uploading-action@v1
+        if: always()
+        with:
+          filetype: latest-release
+          fileName: "MFW*-macos-x86_64-*.zip"
+          mirrorchyan_rid: MFW-PyQt6
+
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          upload_token: ${{ secrets.MirrorChyanUploadToken }}
+          os: macos
+          arch: x86_64
+
+      - uses: MirrorChyan/uploading-action@v1
+        if: always()
+        with:
+          filetype: latest-release
           fileName: "MFW*-win-aarch64-*.zip"
           mirrorchyan_rid: MFW-PyQt6
 
@@ -62,32 +90,4 @@ jobs:
           repo: ${{ github.event.repository.name }}
           upload_token: ${{ secrets.MirrorChyanUploadToken }}
           os: linux
-          arch: x86_64
-
-      - uses: MirrorChyan/uploading-action@v1
-        if: always()
-        with:
-          filetype: latest-release
-          fileName: "MFW*-macos-aarch64-*.zip"
-          mirrorchyan_rid: MFW-PyQt6
-
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          owner: ${{ github.repository_owner }}
-          repo: ${{ github.event.repository.name }}
-          upload_token: ${{ secrets.MirrorChyanUploadToken }}
-          os: macos
-          arch: aarch64
-
-      - uses: MirrorChyan/uploading-action@v1
-        if: always()
-        with:
-          filetype: latest-release
-          fileName: "MFW*-macos-x86_64-*.zip"
-          mirrorchyan_rid: MFW-PyQt6
-
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          owner: ${{ github.repository_owner }}
-          repo: ${{ github.event.repository.name }}
-          upload_token: ${{ secrets.MirrorChyanUploadToken }}
-          os: macos
           arch: x86_64
