@@ -6,22 +6,88 @@ on:
 jobs:
   mirrorchyan:
     runs-on: macos-latest
-    strategy:
-      matrix:
-        os: [win, macos, linux]
-        arch: [aarch64, x86_64]
 
     steps:
-      - id: uploading
-        uses: MirrorChyan/uploading-action@v1
+      - uses: MirrorChyan/uploading-action@v1
+        if: always()
         with:
           filetype: latest-release
-          fileName: "MFW*-${{ matrix.os }}-${{ matrix.arch }}-*.zip"
+          fileName: "MFW*-win-x86_64-*.zip"
           mirrorchyan_rid: MFW-PyQt6
 
           github_token: ${{ secrets.GITHUB_TOKEN }}
           owner: ${{ github.repository_owner }}
           repo: ${{ github.event.repository.name }}
           upload_token: ${{ secrets.MirrorChyanUploadToken }}
-          os: ${{ matrix.os }}
-          arch: ${{ matrix.arch }}
+          os: win
+          arch: x86_64
+
+      - uses: MirrorChyan/uploading-action@v1
+        if: always()
+        with:
+          filetype: latest-release
+          fileName: "MFW*-macos-aarch64-*.zip"
+          mirrorchyan_rid: MFW-PyQt6
+
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          upload_token: ${{ secrets.MirrorChyanUploadToken }}
+          os: macos
+          arch: aarch64
+
+      - uses: MirrorChyan/uploading-action@v1
+        if: always()
+        with:
+          filetype: latest-release
+          fileName: "MFW*-macos-x86_64-*.zip"
+          mirrorchyan_rid: MFW-PyQt6
+
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          upload_token: ${{ secrets.MirrorChyanUploadToken }}
+          os: macos
+          arch: x86_64
+
+      - uses: MirrorChyan/uploading-action@v1
+        if: always()
+        with:
+          filetype: latest-release
+          fileName: "MFW*-win-aarch64-*.zip"
+          mirrorchyan_rid: MFW-PyQt6
+
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          upload_token: ${{ secrets.MirrorChyanUploadToken }}
+          os: win
+          arch: aarch64
+
+      - uses: MirrorChyan/uploading-action@v1
+        if: always()
+        with:
+          filetype: latest-release
+          fileName: "MFW*-linux-aarch64-*.zip"
+          mirrorchyan_rid: MFW-PyQt6
+
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          upload_token: ${{ secrets.MirrorChyanUploadToken }}
+          os: linux
+          arch: aarch64
+
+      - uses: MirrorChyan/uploading-action@v1
+        if: always()
+        with:
+          filetype: latest-release
+          fileName: "MFW*-linux-x86_64-*.zip"
+          mirrorchyan_rid: MFW-PyQt6
+
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          upload_token: ${{ secrets.MirrorChyanUploadToken }}
+          os: linux
+          arch: x86_64
