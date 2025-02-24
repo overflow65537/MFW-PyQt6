@@ -438,11 +438,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     # region 完成后的动作
-    def close_application(self, close_MFW: bool = False):
+    def close_application(self):
         """
         关闭模拟器
         """
-        if maa_config_data.config.get("emu_path") != "":
+        if maa_config_data.config.get("emu_path") != "" and self.app_process is not None:
             self.app_process.terminate()
             try:
                 self.app_process.wait(timeout=5)
@@ -534,9 +534,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             pass
         elif emu_dict["type"] == "Memu":
             pass
-
-        if close_MFW:
-            QApplication.quit()
 
     def shutdown(self):
         shutdown_commands = {
@@ -742,6 +739,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         连接控制器
         """
+        self.app_process = None
         if controller_type == "Adb" and self.need_runing:
             return await self.connect_adb_controller()
         elif controller_type == "Win32" and self.need_runing:
@@ -995,7 +993,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         elif target == 3:
             logger.debug("选择的动作: 关闭应用程序并退出")
             try:
-                self.close_application(True)
+                self.close_application()
+                QApplication.quit()
             except Exception as e:
                 logger.error(f"关闭应用程序失败: {e}")
                 QApplication.quit()

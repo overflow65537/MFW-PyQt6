@@ -5,7 +5,8 @@ import json
 import os
 import sys
 from typing import Dict
-
+if not os.path.exists("main.py"):
+    os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
 import maa
 from qasync import QEventLoop
 from qfluentwidgets import ConfigItem
@@ -22,8 +23,7 @@ from app.common.signal_bus import signalBus
 from app.common.maa_config_data import maa_config_data, init_maa_config_data
 from app.utils.tool import show_error_message, Save_Config
 
-if not os.path.exists("main.py"):
-    os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
+
 
 
 def main(resource: str, config: str, directly: bool):
