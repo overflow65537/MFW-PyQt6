@@ -319,23 +319,66 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             task = message["task"]
             pipeline: dict = self.pipeline_override.get(task)
             if pipeline:
-                if message["status"] == 1 and pipeline.get("focus_tip"):
-                    self.insert_colored_text(
+                if message["status"] == 1 and pipeline.get("focus_tip"):# 有焦点提示
+                    if isinstance(pipeline["focus_tip"], str):# 单条 直接输出
+                        self.insert_colored_text(
                         pipeline["focus_tip"],
                         pipeline.get("focus_tip_color", "black"),
                     )
+                    elif isinstance(pipeline["focus_tip"], list):# 多条 看看颜色类型
+                        if isinstance(pipeline.get("focus_tip_color","black"), list):# 颜色多条 循环输出
+                            for i, tip in enumerate(pipeline["focus_tip"]):
+                                self.insert_colored_text(
+                                    tip,
+                                    self.list_get(pipeline.get("focus_tip_color", "black"), i, "black"),
+                                )
+                        else:# 颜色单条 循环
+                            for tip in pipeline["focus_tip"]:
+                                self.insert_colored_text(
+                                    tip,
+                                    pipeline.get("focus_tip_color", "black"),
+                                )
 
                 elif message["status"] == 2 and pipeline.get("focus_succeeded"):
-                    self.insert_colored_text(
-                        pipeline["focus_succeeded"],
-                        pipeline.get("focus_succeeded_color", "black"),
-                    )
+                    if isinstance(pipeline["focus_succeeded"], str):
+                        self.insert_colored_text(
+                            pipeline["focus_succeeded"],
+                            pipeline.get("focus_succeeded_color", "black"),
+                        )
+                    elif isinstance(pipeline["focus_succeeded"], list):
+                        if isinstance(pipeline.get("focus_succeeded_color", "black"), list):
+                            for i, text in enumerate(pipeline["focus_succeeded"]):
+                                self.insert_colored_text(
+                                    text,
+                                    self.list_get(pipeline.get("focus_succeeded_color", "black"), i, "black"),
+                                )
+                        else:
+                            for text in pipeline["focus_succeeded"]:
+                                self.insert_colored_text(
+                                    text,
+                                    pipeline.get("focus_succeeded_color", "black"),
+                                )
 
                 elif message["status"] == 3 and pipeline.get("focus_failed"):
-                    self.insert_colored_text(
-                        pipeline["focus_failed"],
-                        pipeline.get("focus_failed_color", "black"),
-                    )
+                    if isinstance(pipeline["focus_failed"], str):
+                        self.insert_colored_text(
+                            pipeline["focus_failed"],
+                            pipeline.get("focus_failed_color", "black"),
+                        )
+                    elif isinstance(pipeline["focus_failed"], list):
+                        if isinstance(pipeline.get("focus_failed_color", "black"), list):
+                            for i, text in enumerate(pipeline["focus_failed"]):
+                                self.insert_colored_text(
+                                    text,
+                                    self.list_get(pipeline.get("focus_failed_color", "black"), i, "black"),
+                                )
+                        else:
+                            for text in pipeline["focus_failed"]:
+                                self.insert_colored_text(
+                                    text,
+                                    pipeline.get("focus_failed_color", "black"),
+                                )
+
 
     def insert_colored_text(self, text, color_name = "black"):
         """
@@ -1625,3 +1668,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             if result:
                 maa_config_data.config["win32"]["hwnd"] = result.hwnd
                 Save_Config(maa_config_data.config_path, maa_config_data.config)
+    def list_get(self,lst, index, default=None):
+        try:
+            return lst[index]
+        except IndexError:
+            return default
