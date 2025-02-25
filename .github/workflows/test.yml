@@ -42,17 +42,12 @@ jobs:
           mode: standalone
           enable-plugins: pyqt6
 
-      - name: mv file
-        run: |
-          python b.py win ${{ matrix.arch }} v1.0.0
-          
       # Uploads artifact
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: test${{ matrix.arch }}
           path: build/main.dist
-          include-hidden-files: true
 
   linux-build:  # 新增 Linux 构建任务
     runs-on: ubuntu-latest
@@ -86,12 +81,9 @@ jobs:
           mode: standalone
           enable-plugins: pyqt6
 
-      - name: Process artifacts
-        run: |
-          python b.py linux ${{ matrix.arch }} v1.0.0
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-${{ matrix.arch }}
-          path: main.dist
+          path: bulid/main.dist
