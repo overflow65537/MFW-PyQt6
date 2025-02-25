@@ -46,7 +46,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: test${{ matrix.arch }}
+          name: win-${{ matrix.arch }}
           path: build/main.dist
 
   linux-build:  # 新增 Linux 构建任务
@@ -86,4 +86,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-${{ matrix.arch }}
-          path: bulid/main.dist
+          path: main.dist
