@@ -4,12 +4,12 @@ import shutil
 import sys
 
 
-
 def write_version_file(platform, architecture, version):
-    version_file_path = os.path.join(".","bulid", "main.dist", "config", "version.txt")
+    version_file_path = os.path.join(".", "bulid", "main.dist", "config", "version.txt")
     with open(version_file_path, "w") as version_file:
         version_file.write(f"{platform} {architecture} {version} v0.0.0.1\n")
         print(f"[INFO] Version file generated at: {version_file_path}")
+
 
 site_packages_paths = site.getsitepackages()
 
@@ -38,12 +38,12 @@ if maa_bin_path2 is None:
 # 移动 maa/bin 到 dist 目录
 shutil.copytree(
     maa_bin_path,
-    os.path.join(".","bulid", "main.dist", "maa"),
+    os.path.join(".", "bulid", "main.dist", "maa"),
     dirs_exist_ok=True,
 )
 # 移动maa/bin至根目录
-src_bin = os.path.join(".","bulid", "main.dist", "maa", "bin")
-dst_root = os.path.join(".","bulid", "main.dist")
+src_bin = os.path.join(".", "bulid", "main.dist", "maa", "bin")
+dst_root = os.path.join(".", "bulid", "main.dist")
 if os.path.exists(src_bin):
     for item in os.listdir(src_bin):
         src = os.path.join(src_bin, item)
@@ -60,15 +60,15 @@ if os.path.exists(src_bin):
 # 移动 MaaAgentBinary 到 dist 目录
 shutil.copytree(
     maa_bin_path2,
-    os.path.join(".","bulid", "main.dist", "MaaAgentBinary"),
+    os.path.join(".", "bulid", "main.dist", "MaaAgentBinary"),
     dirs_exist_ok=True,
 )
 print(f"[INFO] Copied MaaAgentBinary to distribution directory")
 
-# 复制 emulator.json 后添加提示
+# 复制 emulator.json 
 shutil.copy(
-    os.path.join(".","bulid", "config", "emulator.json"),
-    os.path.join(".","bulid", "main.dist", "config", "emulator.json"),
+    os.path.join(".", "config", "emulator.json"),
+    os.path.join(".", "bulid", "main.dist", "config", "emulator.json"),
 )
 print("[INFO] Configuration file emulator.json copied")
 
@@ -86,12 +86,13 @@ architecture = sys.argv[2]
 version = sys.argv[3]
 # 重命名main至MFW
 # 获取 main.dist 目录路径
-main_dist_path = os.path.join(".","bulid", "main.dist")
+main_dist_path = os.path.join(".", "bulid", "main.dist")
 
 # 动态识别原始文件名（支持 .exe/.bin/无扩展名）
 src_files = [
-    f for f in os.listdir(main_dist_path) 
-    if f.startswith('main') and os.path.isfile(os.path.join(main_dist_path, f))
+    f
+    for f in os.listdir(main_dist_path)
+    if f.startswith("main") and os.path.isfile(os.path.join(main_dist_path, f))
 ]
 
 if not src_files:
@@ -100,22 +101,14 @@ if not src_files:
 
 src_file = os.path.join(main_dist_path, src_files[0])  # 取第一个匹配项
 
-dst_ext = {
-    'win': 'MFW.exe',
-    'macos': 'MFW.app',
-    'linux': 'MFW.bin'
-}.get(platform, 'MFW.bin')
-
-shutil.move(
-    src_file,  # 使用动态获取的源文件路径
-    os.path.join(main_dist_path, dst_ext)
+dst_ext = {"win": "MFW.exe", "macos": "MFW.app", "linux": "MFW.bin"}.get(
+    platform
 )
+
+shutil.move(src_file, os.path.join(main_dist_path, dst_ext))  # 使用动态获取的源文件路径
 # 重命名文件时添加日志
 print(f"[DEBUG] Renaming {src_files[0]} to {dst_ext}")
-shutil.move(
-    src_file,
-    os.path.join(main_dist_path, dst_ext)
-)
+shutil.move(src_file, os.path.join(main_dist_path, dst_ext))
 print(f"[SUCCESS] Executable renamed to {dst_ext}")
 
 # 写入版本信息
