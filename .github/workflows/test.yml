@@ -19,10 +19,10 @@ jobs:
         include:
           - platform: win
             runs-on: windows-latest
-            arch: x86_64  # 独立 x86_64 任务
+            arch: x86_64 
           - platform: win
             runs-on: windows-latest
-            arch: aarch64  # 独立 aarch64 任务
+            arch: aarch64  
           - platform: linux
             runs-on: ubuntu-latest
             arch: x86_64
@@ -55,9 +55,17 @@ jobs:
         uses: Nuitka/Nuitka-Action@main
         with:
           nuitka-version: main
+          script-name: updater.py
+          mode: standalone
+
+      - name: Qt GUI with Pyqt6
+        uses: Nuitka/Nuitka-Action@main
+        with:
+          nuitka-version: main
           script-name: main.py
           mode: standalone
           enable-plugins: pyqt6
+          
       - name: Install Dependencies
         run: |
           python b.py ${{ matrix.platform }} ${{ matrix.arch }} v0.0.1
@@ -66,3 +74,4 @@ jobs:
         with:
           name: ${{ matrix.platform }}-${{ matrix.arch }}
           path: build/main.dist
+          include-hidden-files: true
