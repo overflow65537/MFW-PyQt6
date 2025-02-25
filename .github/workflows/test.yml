@@ -42,10 +42,56 @@ jobs:
           mode: standalone
           enable-plugins: pyqt6
 
+      - name: mv file
+        run: |
+          python b.py win ${{ matrix.arch }} v1.0.0
+          
       # Uploads artifact
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: test${{ matrix.arch }}
-          path: build/
+          path: build/main.dist
           include-hidden-files: true
+
+  linux-build:  # 新增 Linux 构建任务
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [x86_64, aarch64]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-dev qt6-base-dev
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          pip install nuitka
+
+      - name: Qt GUI with Pyqt6
+        uses: Nuitka/Nuitka-Action@main
+        with:
+          nuitka-version: main
+          script-name: main.py
+          mode: standalone
+          enable-plugins: pyqt6
+
+      - name: Process artifacts
+        run: |
+          python b.py linux ${{ matrix.arch }} v1.0.0
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: main.dist
