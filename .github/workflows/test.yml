@@ -86,4 +86,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-${{ matrix.arch }}
-          path: main.dist
+          path: build/main.dist
