@@ -1,5 +1,4 @@
 import os
-import subprocess
 import site
 import shutil
 import sys
@@ -84,7 +83,21 @@ platform = sys.argv[1]
 architecture = sys.argv[2]
 version = sys.argv[3]
 # 重命名main至MFW
-src_file = os.path.join(os.getcwd(), "main.dist", "main.bin")
+# 获取 main.dist 目录路径
+main_dist_path = os.path.join(os.getcwd(), "main.dist")
+
+# 动态识别原始文件名（支持 .exe/.bin/无扩展名）
+src_files = [
+    f for f in os.listdir(main_dist_path) 
+    if f.startswith('main') and os.path.isfile(os.path.join(main_dist_path, f))
+]
+
+if not src_files:
+    print(f"Error: No main executable found in {main_dist_path}")
+    sys.exit(1)
+
+src_file = os.path.join(main_dist_path, src_files[0])  # 取第一个匹配项
+
 dst_ext = {
     'win': 'MFW.exe',
     'macos': 'MFW.app',
@@ -92,8 +105,8 @@ dst_ext = {
 }.get(platform, 'MFW.bin')
 
 shutil.move(
-    src_file,
-    os.path.join(os.getcwd(), "main.dist", dst_ext)
+    src_file,  # 使用动态获取的源文件路径
+    os.path.join(main_dist_path, dst_ext)
 )
 # 写入版本信息
 write_version_file(platform, architecture, version)
