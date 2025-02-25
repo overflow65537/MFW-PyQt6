@@ -27,6 +27,13 @@ jobs:
         with:
           python-version: '3.12' # Version range or exact version of a Python version to use, using SemVer's version range syntax
 
+      # Install dependencies
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          pip install nuitka
+
       - name: Qt GUI with Pyqt6
         uses: Nuitka/Nuitka-Action@main
         with:
