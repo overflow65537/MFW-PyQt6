@@ -5,7 +5,7 @@ import sys
 
 
 def write_version_file(platform, architecture, version):
-    version_file_path = os.path.join(".", "bulid", "main.dist", "config", "version.txt")
+    version_file_path = os.path.join(".", "build", "main.dist", "config", "version.txt")
     with open(version_file_path, "w") as version_file:
         version_file.write(f"{platform} {architecture} {version} v0.0.0.1\n")
         print(f"[INFO] Version file generated at: {version_file_path}")
@@ -38,12 +38,12 @@ if maa_bin_path2 is None:
 # 移动 maa/bin 到 dist 目录
 shutil.copytree(
     maa_bin_path,
-    os.path.join(".", "bulid", "main.dist", "maa"),
+    os.path.join(".", "build", "main.dist", "maa"),
     dirs_exist_ok=True,
 )
 # 移动maa/bin至根目录
-src_bin = os.path.join(".", "bulid", "main.dist", "maa", "bin")
-dst_root = os.path.join(".", "bulid", "main.dist")
+src_bin = os.path.join(".", "build", "main.dist", "maa", "bin")
+dst_root = os.path.join(".", "build", "main.dist")
 if os.path.exists(src_bin):
     for item in os.listdir(src_bin):
         src = os.path.join(src_bin, item)
@@ -60,7 +60,7 @@ if os.path.exists(src_bin):
 # 移动 MaaAgentBinary 到 dist 目录
 shutil.copytree(
     maa_bin_path2,
-    os.path.join(".", "bulid", "main.dist", "MaaAgentBinary"),
+    os.path.join(".", "build", "main.dist", "MaaAgentBinary"),
     dirs_exist_ok=True,
 )
 print(f"[INFO] Copied MaaAgentBinary to distribution directory")
@@ -68,7 +68,7 @@ print(f"[INFO] Copied MaaAgentBinary to distribution directory")
 # 复制 emulator.json 
 shutil.copy(
     os.path.join(".", "config", "emulator.json"),
-    os.path.join(".", "bulid", "main.dist", "config", "emulator.json"),
+    os.path.join(".", "build", "main.dist", "config", "emulator.json"),
 )
 print("[INFO] Configuration file emulator.json copied")
 
@@ -86,7 +86,7 @@ architecture = sys.argv[2]
 version = sys.argv[3]
 # 重命名main至MFW
 # 获取 main.dist 目录路径
-main_dist_path = os.path.join(".", "bulid", "main.dist")
+main_dist_path = os.path.join(".", "build", "main.dist")
 
 # 动态识别原始文件名（支持 .exe/.bin/无扩展名）
 src_files = [
@@ -115,6 +115,6 @@ print(f"[SUCCESS] Executable renamed to {dst_ext}")
 write_version_file(platform, architecture, version)
 # 复制updater.bin
 """shutil.copy(
-    os.path.join(".","bulid", "updater.dist", "updater.bin"),
-    os.path.join(".","bulid", "main.dist", "updater.bin"),
+    os.path.join(".","build", "updater.dist", "updater.bin"),
+    os.path.join(".","build", "main.dist", "updater.bin"),
 )"""
