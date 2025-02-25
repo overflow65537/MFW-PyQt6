@@ -5,6 +5,7 @@ import json
 import os
 import sys
 from typing import Dict
+
 if not os.path.exists("main.py"):
     os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
 import maa
@@ -22,8 +23,6 @@ from app.common.config import Language
 from app.common.signal_bus import signalBus
 from app.common.maa_config_data import maa_config_data, init_maa_config_data
 from app.utils.tool import show_error_message, Save_Config
-
-
 
 
 def main(resource: str, config: str, directly: bool):
@@ -158,12 +157,6 @@ def main(resource: str, config: str, directly: bool):
             f"资源版本:{maa_config_data.interface_config.get('version',"None")}"
         )
         signalBus.resource_exist.emit(True)
-    if not os.path.exists(os.path.join(".", "debug", "maa.log")):
-        os.mkdir(os.path.join(".", "config", "maa.log"))
-    with open(os.path.join(".", "config", "maa.log"), "a") as f:
-        f.write(
-            f"MAA resource 版本:{maa_config_data.interface_config.get('version', 'None')}"
-        )
 
     # enable dpi scale
     if cfg.get(cfg.dpiScale) != "Auto":

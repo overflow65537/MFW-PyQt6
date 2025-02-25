@@ -59,31 +59,31 @@ class MainWindow(FluentWindow):
     def show_info_bar(self, data_dict: dict):
         """显示信息栏"""
         duration = max(len(data_dict.get("msg", "")) * 100, 2000)
-        if data_dict["status"] == "error":
+        if data_dict["status"] == "failed":
             InfoBar.error(
                 title=self.tr("Error"),
-                content=data_dict.get("msg"),
+                content=data_dict.get("msg",""),
                 duration=duration,
                 parent=self,
             )
         elif data_dict["status"] == "warning":
             InfoBar.warning(
                 title=self.tr("Warning"),
-                content=data_dict.get("msg"),
+                content=data_dict.get("msg",""),
                 duration=duration,
                 parent=self,
             )
         elif data_dict["status"] == "success":
             InfoBar.success(
                 title=self.tr("Success"),
-                content=data_dict.get("msg"),
+                content=data_dict.get("msg",""),
                 duration=duration,
                 parent=self,
             )
         elif data_dict["status"] == "info":
             InfoBar.info(
                 title=self.tr("Info"),
-                content=data_dict.get("msg"),
+                content=data_dict.get("msg",""),
                 duration=duration,
                 parent=self,
             )
