@@ -6,10 +6,10 @@ import sys
 
 
 def write_version_file(platform, architecture, version):
-    version_file_path = os.path.join(os.getcwd(), "main.dist", "config", "version.txt")
+    version_file_path = os.path.join(".","bulid", "main.dist", "config", "version.txt")
     with open(version_file_path, "w") as version_file:
         version_file.write(f"{platform} {architecture} {version} v0.0.0.1\n")
-        print(f"write version to {version_file_path}")
+        print(f"[INFO] Version file generated at: {version_file_path}")
 
 site_packages_paths = site.getsitepackages()
 
@@ -38,12 +38,12 @@ if maa_bin_path2 is None:
 # 移动 maa/bin 到 dist 目录
 shutil.copytree(
     maa_bin_path,
-    os.path.join(os.getcwd(), "main.dist", "maa"),
+    os.path.join(".","bulid", "main.dist", "maa"),
     dirs_exist_ok=True,
 )
 # 移动maa/bin至根目录
-src_bin = os.path.join(os.getcwd(), "main.dist", "maa", "bin")
-dst_root = os.path.join(os.getcwd(), "main.dist")
+src_bin = os.path.join(".","bulid", "main.dist", "maa", "bin")
+dst_root = os.path.join(".","bulid", "main.dist")
 if os.path.exists(src_bin):
     for item in os.listdir(src_bin):
         src = os.path.join(src_bin, item)
@@ -60,31 +60,33 @@ if os.path.exists(src_bin):
 # 移动 MaaAgentBinary 到 dist 目录
 shutil.copytree(
     maa_bin_path2,
-    os.path.join(os.getcwd(), "main.dist", "MaaAgentBinary"),
+    os.path.join(".","bulid", "main.dist", "MaaAgentBinary"),
     dirs_exist_ok=True,
 )
+print(f"[INFO] Copied MaaAgentBinary to distribution directory")
 
-# 确保 config 目录存在并复制 emulator.json 文件
-os.makedirs(os.path.join(os.getcwd(), "main.dist", "config"), exist_ok=True)
+# 复制 emulator.json 后添加提示
 shutil.copy(
-    os.path.join(os.getcwd(), "config", "emulator.json"),
-    os.path.join(os.getcwd(), "main.dist", "config", "emulator.json"),
+    os.path.join(".","bulid", "config", "emulator.json"),
+    os.path.join(".","bulid", "main.dist", "config", "emulator.json"),
 )
+print("[INFO] Configuration file emulator.json copied")
 
-# 获取参数
+# 参数错误提示修改
 if len(sys.argv) != 4:
-    error_message = "args error, should be: platform architecture version"
+    error_message = "Argument error. Required format: platform architecture version"
     with open("ERROR.log", "a") as log_file:
         log_file.write(error_message + "\n")
-    print(error_message)
+    print(f"[ERROR] {error_message}")
     sys.exit(1)
+
 
 platform = sys.argv[1]
 architecture = sys.argv[2]
 version = sys.argv[3]
 # 重命名main至MFW
 # 获取 main.dist 目录路径
-main_dist_path = os.path.join(os.getcwd(), "main.dist")
+main_dist_path = os.path.join(".","bulid", "main.dist")
 
 # 动态识别原始文件名（支持 .exe/.bin/无扩展名）
 src_files = [
@@ -108,10 +110,18 @@ shutil.move(
     src_file,  # 使用动态获取的源文件路径
     os.path.join(main_dist_path, dst_ext)
 )
+# 重命名文件时添加日志
+print(f"[DEBUG] Renaming {src_files[0]} to {dst_ext}")
+shutil.move(
+    src_file,
+    os.path.join(main_dist_path, dst_ext)
+)
+print(f"[SUCCESS] Executable renamed to {dst_ext}")
+
 # 写入版本信息
 write_version_file(platform, architecture, version)
 # 复制updater.bin
 """shutil.copy(
-    os.path.join(os.getcwd(), "updater.dist", "updater.bin"),
-    os.path.join(os.getcwd(), "main.dist", "updater.bin"),
+    os.path.join(".","bulid", "updater.dist", "updater.bin"),
+    os.path.join(".","bulid", "main.dist", "updater.bin"),
 )"""
