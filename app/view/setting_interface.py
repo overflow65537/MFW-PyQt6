@@ -678,8 +678,9 @@ class SettingInterface(ScrollArea):
                 + " "
                 + self.project_version,
             )
-        elif data_dict["status"] == "info":
+        elif "info" in data_dict["status"]:
             return
+        
         self.updateCard.button2.setText(self.tr("Check for updates"))
         self.updateCard.button2.setEnabled(True)
 
@@ -855,15 +856,19 @@ class SettingInterface(ScrollArea):
     def update_self_finished(self, status: dict):
         """更新程序停止。"""
         button = self.aboutCard.button2
-        button.setEnabled(True)
+        
 
         status_type = status["status"]
-        if status_type in ["no_need", "failed", "stoped"]:
-            button.setText(self.tr("Update"))
+        if status_type in ["no_need","failed", "stoped"]:
+            button.setText(self.tr("Check for updates"))
+            button.setEnabled(True)
+        elif status_type == "failed_info":
+            return
         elif status_type == "success":
             button.setText(self.tr("Update Now"))
             button.clicked.disconnect()
             button.clicked.connect(self.update_self_start)
+            button.setEnabled(True)
 
 
     def update_self_start(self):

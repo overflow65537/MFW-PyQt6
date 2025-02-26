@@ -66,7 +66,7 @@ class ShowDownload(MessageBoxBase):
             downloaded_str = self.format_size(downloaded)
             self.progressLabel.setText(f"{downloaded_str} / {total_str}")
     def chooseclose(self,status: dict):
-        if status.get("status") != "info":
+        if status.get("status") != "info" and status.get("status") != "failed_info":
             self.close()
     def format_size(self, size):
 

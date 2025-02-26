@@ -87,7 +87,21 @@ class MainWindow(FluentWindow):
                 duration=duration,
                 parent=self,
             )
-
+        elif data_dict["status"] == "failed_info":
+            InfoBar.error(
+                title=self.tr("Error"),
+                content=data_dict.get("msg",""),
+                duration=duration,
+                parent=self,
+            
+            )
+        elif data_dict["status"] == "no_need":  
+            InfoBar.success(
+                title=self.tr("Success"),
+                content=data_dict.get("msg",""),
+                duration=duration,
+                parent=self,
+            )
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
         signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
