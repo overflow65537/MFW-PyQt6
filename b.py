@@ -66,6 +66,7 @@ shutil.copytree(
 print(f"[INFO] Copied MaaAgentBinary to distribution directory")
 
 # 复制 emulator.json 
+os.makedirs(os.path.join(".", "build", "main.dist", "config"), exist_ok=True)
 shutil.copy(
     os.path.join(".", "config", "emulator.json"),
     os.path.join(".", "build", "main.dist", "config", "emulator.json"),
