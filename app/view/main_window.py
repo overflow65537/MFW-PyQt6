@@ -93,6 +93,14 @@ class MainWindow(FluentWindow):
                 content=data_dict.get("msg",""),
                 duration=duration,
                 parent=self,
+            
+            )
+        elif data_dict["status"] == "no_need":  
+            InfoBar.success(
+                title=self.tr("Success"),
+                content=data_dict.get("msg",""),
+                duration=duration,
+                parent=self,
             )
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
