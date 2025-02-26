@@ -70,13 +70,7 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     strategy:
       matrix:
-        include:
-          - platform: win
-            runs-on: windows-latest
-            arch: x86_64 
-          - platform: win
-            runs-on: windows-latest
-            arch: aarch64  
+        include: 
           - platform: linux
             runs-on: ubuntu-latest
             arch: x86_64
@@ -130,10 +124,23 @@ jobs:
 
   pyinstaller:
     needs: meta
-    runs-on: macos-latest
+    name: pyinstaller Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.runs-on }}
     strategy:
       matrix:
-        arch: [x86_64,aarch64]
+        include: 
+          - platform: macos
+            runs-on: macos-latest
+            arch: x86_64
+          - platform: macos
+            runs-on: macos-latest
+            arch: aarch64
+          - platform: win
+            runs-on: windows-latest
+            arch: x86_64
+          - platform: win
+            runs-on: windows-latest
+            arch: aarch64
       fail-fast: false
 
     steps:
@@ -154,13 +161,13 @@ jobs:
 
       - name: Install
         run: |
-          python ./build_pyinstaller.py macos ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
         shell: pwsh  
         
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MFW-PyQt6-macos-${{ matrix.arch }}
+          name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
           path: "dist/MFW"
 
 
