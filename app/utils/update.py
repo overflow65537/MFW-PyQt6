@@ -89,9 +89,12 @@ class BaseUpdate(QThread):
                 os.remove(path)
 
     def Mirror_ckd(self):
-        with open("k.ey", "rb") as key_file:
-            key = key_file.read()
-            return decrypt(cfg.get(cfg.Mcdk), key)
+        try:
+            with open("k.ey", "rb") as key_file:
+                key = key_file.read()
+                return decrypt(cfg.get(cfg.Mcdk), key)
+        except Exception as e:
+            logger.exception("获取ckd失败")
 
     def compare_versions(self, version1: str, version2: str) -> int:
         """
@@ -105,21 +108,25 @@ class BaseUpdate(QThread):
         int: 如果 version1 大于 version2，则返回 1；如果 version1 小于 version2，则返回 -1；如果 version1 等于 version2，则返回 0。
 
         """
-        v1_parts = [int(part) for part in version1.split(".")]
-        v2_parts = [int(part) for part in version2.split(".")]
+        try:
+            v1_parts = [int(part) for part in version1.split(".")]
+            v2_parts = [int(part) for part in version2.split(".")]
 
-        max_length = max(len(v1_parts), len(v2_parts))
+            max_length = max(len(v1_parts), len(v2_parts))
 
-        v1_parts.extend([0] * (max_length - len(v1_parts)))
-        v2_parts.extend([0] * (max_length - len(v2_parts)))
+            v1_parts.extend([0] * (max_length - len(v1_parts)))
+            v2_parts.extend([0] * (max_length - len(v2_parts)))
 
-        for i in range(max_length):
-            if v1_parts[i] > v2_parts[i]:
-                return 1  # version1 大于 version2
-            elif v1_parts[i] < v2_parts[i]:
-                return -1  # version1 小于 version2
+            for i in range(max_length):
+                if v1_parts[i] > v2_parts[i]:
+                    return 1  # version1 大于 version2
+                elif v1_parts[i] < v2_parts[i]:
+                    return -1  # version1 小于 version2
 
-        return 0  # version1 等于 version2
+            return 0  # version1 等于 version2
+        except Exception as e:
+            logger.exception(f"比较版本号时出错: {e}")
+            return 0
 
     def handle_ocr_assets(self, target_path: str) -> bool:
         """处理 OCR 资源的核心方法
@@ -570,8 +577,28 @@ class Update(BaseUpdate):
             return
         # 删除旧的资源包
         if os.path.exists(target_path):
-            shutil.rmtree(target_path)
+            logger.debug("开始清理旧资源文件")
+            try:
+                shutil.rmtree(os.path.join(target_path,"resource"))
+                logger.debug("成功删除 resource 目录")
+            except Exception as e:
+                logger.error(f"删除 resource 失败: {e}")
+
+            try:
+                os.remove(os.path.join(target_path,"interface.json"))
+                logger.debug("成功删除 interface.json")
+            except Exception as e:
+                logger.error(f"删除 interface.json 失败: {e}")
+
+        if os.path.exists(os.path.join(target_path,"custom")):
+            logger.debug("开始清理 custom 目录")
+            try:
+                shutil.rmtree(os.path.join(target_path,"custom"))
+                logger.debug("成功删除 custom 目录")
+            except Exception as e:
+                logger.error(f"删除 custom 目录失败: {e}")
         if not self.move_files(folder_to_extract, target_path):
+            logger.error(f"移动文件失败: {folder_to_extract} -> {target_path}")
             signalBus.update_download_finished.emit(
                 {"status": "failed", "msg": self.tr("Move files failed")}
             )
