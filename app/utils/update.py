@@ -737,6 +737,7 @@ class UpdateSelf(BaseUpdate):
             if (
                 github_dict.get("status") == "failed"
                 or github_dict.get("status") == "success"
+                or github_dict.get("status") == "no_need"
             ):  # github检查失败:
                 signalBus.download_self_finished.emit(github_dict)
                 return
