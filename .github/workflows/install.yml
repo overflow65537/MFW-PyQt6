@@ -173,9 +173,8 @@ jobs:
 
       - run: |
           cd assets
-          sudo apt-get install p7zip-full
           for f in *; do
-            7z a -mx=9 ../$f-${{ needs.meta.outputs.tag }}.7z $f/*
+            (cd $f && zip -r -9 ../$f-${{ needs.meta.outputs.tag }}.zip .)
           done
 
       - uses: softprops/action-gh-release@v2
