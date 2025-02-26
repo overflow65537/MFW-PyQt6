@@ -40,7 +40,7 @@ jobs:
           path: |
             ~/.cache/pip
             ~/.cache/Nuitka
-          key: ${{ runner.os }}-${{ matrix.platform }}-${{ matrix.arch }}-${{ hashFiles('requirements.txt') }}
+          key: ${{ runner.os }}-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.sha }}-${{ hashFiles('requirements.txt') }}
 
       - uses: actions/setup-python@v5
         with:
@@ -74,4 +74,11 @@ jobs:
         with:
           name: ${{ matrix.platform }}-${{ matrix.arch }}
           path: build/main.dist
+          include-hidden-files: true
+      
+      - name: Upload updater
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-${{ matrix.arch }}-updater
+          path: build/updater.dist
           include-hidden-files: true
