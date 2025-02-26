@@ -126,6 +126,13 @@ jobs:
           path: build/main.dist
           include-hidden-files: true
 
+      - name: Upload Artifact updater
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-${{ matrix.platform }}-${{ matrix.arch }}
+          path: build/updater.dist
+          include-hidden-files: true
+
   pyinstaller:
     needs: meta
     runs-on: macos-latest
