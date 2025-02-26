@@ -121,8 +121,8 @@ shutil.copytree(
 # 写入版本信息
 write_version_file(platform, architecture, version)
 # 复制updater.bin
-shutil.copytree(
+"""shutil.copytree(
     os.path.join(".","build", "updater.dist" ),
     os.path.join(".","build", "main.dist"),
     dirs_exist_ok=True,
-)
+)"""
