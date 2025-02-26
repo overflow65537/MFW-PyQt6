@@ -678,8 +678,9 @@ class SettingInterface(ScrollArea):
                 + " "
                 + self.project_version,
             )
-        elif data_dict["status"] == "info":
+        elif "info" in data_dict["status"]:
             return
+        
         self.updateCard.button2.setText(self.tr("Check for updates"))
         self.updateCard.button2.setEnabled(True)
 
