@@ -35,7 +35,7 @@ for path in site_packages_paths:
 if maa_bin_path2 is None:
     exit(1)
 
-# 移动 maa/bin 到 dist 目录
+# 移动 maa 到 dist 目录
 shutil.copytree(
     maa_bin_path,
     os.path.join(".", "build", "main.dist", "maa"),
@@ -89,33 +89,34 @@ version = sys.argv[3]
 # 获取 main.dist 目录路径
 main_dist_path = os.path.join(".", "build", "main.dist")
 
-# 动态识别原始文件名（支持 .exe/.bin/无扩展名）
-src_files = [
-    f
-    for f in os.listdir(main_dist_path)
-    if f.startswith("main") and os.path.isfile(os.path.join(main_dist_path, f))
-]
-
-if not src_files:
-    print(f"Error: No main executable found in {main_dist_path}")
-    sys.exit(1)
-
-src_file = os.path.join(main_dist_path, src_files[0])  # 取第一个匹配项
-
-dst_ext = {"win": "MFW.exe", "macos": "MFW.app", "linux": "MFW.bin"}.get(
-    platform
+print(f"[DEBUG] Renaming")
+if platform == "win":
+    shutil.move(
+        os.path.join(main_dist_path, "main.exe"),
+        os.path.join(main_dist_path, "MFW.exe"),
+    )
+elif platform ==  "linux":
+    shutil.move(
+        os.path.join(main_dist_path, "main.bin"),
+        os.path.join(main_dist_path, "MFW.bin"),
+    )
+else:
+    shutil.move(
+        os.path.join(main_dist_path, "main"),
+        os.path.join(main_dist_path, "MFW"),
+    )
+print(f"[SUCCESS] Executable renamed")
+#复制资源文件
+shutil.copytree(
+    os.path.join(".", "MFW_resource"),
+    os.path.join(".", "build", "main.dist", "MFW_resource"),
+    dirs_exist_ok=True, 
 )
-
-shutil.move(src_file, os.path.join(main_dist_path, dst_ext))  # 使用动态获取的源文件路径
-# 重命名文件时添加日志
-print(f"[DEBUG] Renaming {src_files[0]} to {dst_ext}")
-shutil.move(src_file, os.path.join(main_dist_path, dst_ext))
-print(f"[SUCCESS] Executable renamed to {dst_ext}")
-
 # 写入版本信息
 write_version_file(platform, architecture, version)
 # 复制updater.bin
-"""shutil.copy(
-    os.path.join(".","build", "updater.dist", "updater.bin"),
-    os.path.join(".","build", "main.dist", "updater.bin"),
-)"""
+shutil.copytree(
+    os.path.join(".","build", "updater.dist" ),
+    os.path.join(".","build", "main.dist"),
+    dirs_exist_ok=True,
+)
