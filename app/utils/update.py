@@ -150,7 +150,8 @@ class BaseUpdate(QThread):
                     + self.tr("switching to Github download"),
                 }
             else:
-                return {"status": "failed_info", "msg": "Github ERROR" + "\n" + str(e)}
+                return {"status": "failed", "msg": "Github ERROR" + "\n" + str(e)}
+
         if response.status_code >= 500:
             logger.error(f"更新检查失败: {response.status_code}")
             if used_by == "mirror":
@@ -160,7 +161,7 @@ class BaseUpdate(QThread):
                 }
             else:
                 return {
-                    "status": "failed_info",
+                    "status": "failed",
                     "msg": self.tr("Github Update check failed"),
                 }
         return response
@@ -248,12 +249,15 @@ class Update(BaseUpdate):
             if mirror_data.get("status") == "failed_info":  # mirror检查失败
                 signalBus.update_download_finished.emit(mirror_data)
                 github_dict = self.github_check(url)
-                if github_dict.get("status") == "failed" or github_dict.get("status") == "success":  # github检查失败:
+                if (
+                    github_dict.get("status") == "failed"
+                    or github_dict.get("status") == "success"
+                ):  # github检查失败:
                     signalBus.update_download_finished.emit(github_dict)
                     return
-
-                self.github_download(github_dict)
-                return
+                else:
+                    self.github_download(github_dict)
+                    return
             elif mirror_data.get("status") == "success":  # 无需更新
                 signalBus.update_download_finished.emit(mirror_data)
                 return
@@ -298,7 +302,10 @@ class Update(BaseUpdate):
                 return
         else:
             github_dict = self.github_check(url)
-            if github_dict.get("status") == "failed" or github_dict.get("status") == "success":  # github检查失败:
+            if (
+                github_dict.get("status") == "failed"
+                or github_dict.get("status") == "success"
+            ):  # github检查失败:
                 signalBus.update_download_finished.emit(github_dict)
                 return
 
@@ -727,16 +734,11 @@ class UpdateSelf(BaseUpdate):
                 f"https://api.github.com/repos/overflow65537/MFW-PyQt6/releases/latest"
             )
             github_dict = self.github_check(update_url, version_data[2])
-            if not github_dict:
-                logger.error(f"GitHub更新检查失败: {update_url}")
-                signalBus.download_self_finished.emit(
-                    {
-                        "status": "failed",
-                        "msg": self.tr("unknow error, unable to perform update check"),
-                    }
-                )
-                return
-            elif github_dict is True:
+            if (
+                github_dict.get("status") == "failed"
+                or github_dict.get("status") == "success"
+            ):  # github检查失败:
+                signalBus.download_self_finished.emit(github_dict)
                 return
             for i in github_dict.get("assets"):
                 if (
@@ -745,7 +747,10 @@ class UpdateSelf(BaseUpdate):
                 ):
                     download_url = i.get("browser_download_url")
                     break
-            self._download(download_url)
+            logger.debug(f"github开始下载: {download_url}")
+
+            if not self._download(download_url):
+                return
             version_data[3] = github_dict.get("tag_name")
             with open(
                 os.path.join(os.getcwd(), "config", "version.txt"),
@@ -783,7 +788,9 @@ class UpdateSelf(BaseUpdate):
                 }
             )
             logger.debug(f"mirror开始下载: {mirror_data.get('data').get('url')}")
-            self._download(mirror_data.get("data").get("url"))
+            if not self._download(mirror_data.get("data").get("url")):
+                return
+
             version_data[3] = mirror_data["data"].get("version_name")
             with open(
                 os.path.join(os.getcwd(), "config", "version.txt"),
@@ -806,7 +813,8 @@ class UpdateSelf(BaseUpdate):
                 version_data, mirror_data["data"].get("version_name")
             )
             logger.debug(f"github开始下载: {github_url}")
-            self._download(github_url)
+            if not self._download(github_url):
+                return
             version_data[3] = mirror_data["data"].get("version_name")
             with open(
                 os.path.join(os.getcwd(), "config", "version.txt"),
@@ -827,22 +835,17 @@ class UpdateSelf(BaseUpdate):
         """
         response = self._response(project_url, used_by="github")
         if isinstance(response, dict):
-            signalBus.download_self_finished.emit(response)
-            return False
+            return response
+
         update_dict: dict = response.json()
         logger.debug(
             f"更新检查结果: {json.dumps(update_dict, indent=4, ensure_ascii=False)}"
         )
         if update_dict.get("message"):
-            signalBus.download_self_finished.emit(
-                {"status": "failed", "msg": update_dict.get("message")}
-            )
-            return False
+            return {"status": "failed", "msg": update_dict.get("message")}
+
         if update_dict.get("tag_name", None) == version:
-            signalBus.download_self_finished.emit(
-                {"status": "no_need", "msg": self.tr("current version is latest")}
-            )
-            return True
+            return {"status": "no_need", "msg": self.tr("current version is latest")}
         return update_dict
 
     def assemble_gitHub_url(self, version_data: list, target_version: str) -> str:
@@ -888,9 +891,10 @@ class UpdateSelf(BaseUpdate):
                     "msg": self.tr("Download failed"),
                 }
             )
-            return
+            return False
 
         signalBus.download_self_finished.emit({"status": "success"})
+        return True
 
     def stop(self):
         self.stop_flag = True
