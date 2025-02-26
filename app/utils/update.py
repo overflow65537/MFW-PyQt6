@@ -667,7 +667,9 @@ class DownloadBundle(BaseUpdate):
                 {"status": "failed", "msg": self.tr("Move files failed")}
             )
             return
-
+        interface_data = Read_Config(os.path.join(target_path, "interface.json"))
+        interface_data["version"] = content["tag_name"]
+        Save_Config(os.path.join(target_path, "interface.json"), interface_data)
         replace_ocr(target_path)
         self.remove_temp_files(os.path.join(os.getcwd(), "hotfix"))
 
@@ -710,22 +712,34 @@ class Readme(QThread):
 # region 更新自身
 class UpdateSelf(BaseUpdate):
     def run(self):
-        with open(
-            os.path.join(os.getcwd(), "config", "version.txt"), "r", encoding="utf-8"
-        ) as f:
-            version_data = f.read().split()
+        try:
+            version_file_path = os.path.join(os.getcwd(), "config", "version.txt")
+            logger.info(f"正在读取版本文件: {version_file_path}")
+            with open(version_file_path, "r", encoding="utf-8") as f:
+                version_data = f.read().split()
+                logger.debug(f"版本数据: {version_data}")
+        except Exception as e:
+            logger.exception("读取版本文件失败")
+            signalBus.download_self_finished.emit({
+                "status": "failed",
+                "msg": self.tr("无法读取版本信息")
+            })
+            return
+
+        
         cdk = self.Mirror_ckd()
+        logger.debug(f"获取到CDK: {cdk[:4]}****")
         if cfg.get(cfg.is_change_cdk):
-            logger.info(f"CDK被更改过")
+            logger.warning("检测到CDK变更")
             res_id = maa_config_data.interface_config.get("mirrorchyan_rid")
             url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version=v0.0.1&cdk={cdk}&user_agent=MFW_PYQT6"
             cfg.set(cfg.is_change_cdk, False)
-
             try:
-                response = requests.get(url)
-            except:
-                pass
-
+                logger.info(f"发送CDK验证请求: {url}")
+                response = requests.get(url, timeout=10)
+                response.raise_for_status()
+            except Exception as e:
+                logger.error(f"CDK验证请求失败: {str(e)}")
         mirror_data: Dict[str, Dict] = self.mirror_check(cdk, version_data)
 
         if mirror_data.get("status") == "failed_info":  # mirror检查失败

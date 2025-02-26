@@ -77,6 +77,12 @@ jobs:
           - platform: linux
             runs-on: ubuntu-latest
             arch: aarch64
+          - platform: win
+            runs-on: windows-latest
+            arch: x86_64
+          - platform: win
+            runs-on: windows-latest
+            arch: aarch64
 
       fail-fast: false
 
@@ -134,12 +140,6 @@ jobs:
             arch: x86_64
           - platform: macos
             runs-on: macos-latest
-            arch: aarch64
-          - platform: win
-            runs-on: windows-latest
-            arch: x86_64
-          - platform: win
-            runs-on: windows-latest
             arch: aarch64
       fail-fast: false
 

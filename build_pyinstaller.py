@@ -114,7 +114,7 @@ PyInstaller.__main__.run([updater_src, "--name=MFWUpdater", "--clean"])
 # 移动updater到dist\MFW目录
 shutil.copytree(
     os.path.join(".","dist", "MFWUpdater" ),
-    os.path.join(".","dist", "main"),
+    os.path.join(".","dist", "MFW"),
     dirs_exist_ok=True,
 )
 
