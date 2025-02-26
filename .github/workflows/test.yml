@@ -67,7 +67,6 @@ jobs:
           windows-console-mode: disable
           windows-icon-from-ico: ./MFW_resource/icon/logo.ico
           linux-icon: ./MFW_resource/icon/logo.ico
-          macos-app-icon: ./MFW_resource/icon/logo.ico
           
       - name: Install Dependencies
         run: |
