@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - "v*"
+  pull_request:  
+    branches:    
+      - main    
   workflow_dispatch:
 
 jobs:
@@ -60,78 +63,70 @@ jobs:
       tag: ${{ steps.set_tag.outputs.tag }}
       is_release: ${{ steps.set_tag.outputs.is_release }}
 
-  windows:
+  nuitka:
     needs: meta
-    runs-on: windows-latest
+    name: nuitka Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.runs-on }}
     strategy:
       matrix:
-        arch: [x86_64, aarch64]
+        include:
+          - platform: win
+            runs-on: windows-latest
+            arch: x86_64 
+          - platform: win
+            runs-on: windows-latest
+            arch: aarch64  
+          - platform: linux
+            runs-on: ubuntu-latest
+            arch: x86_64
+          - platform: linux
+            runs-on: ubuntu-latest
+            arch: aarch64
+
       fail-fast: false
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: true
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller
-          pip install -r ./requirements.txt
+          python -m pip install -r requirements.txt
 
-      - name: Install
-        run: |
-          python ./build.py win ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+      - name: updater build
+        uses: Nuitka/Nuitka-Action@main
+        with:
+          nuitka-version: main
+          script-name: updater.py
+          mode: standalone
+
+      - name: Qt GUI with Pyqt6
+        uses: Nuitka/Nuitka-Action@main
+        with:
+          nuitka-version: main
+          script-name: main.py
+          mode: standalone
+          enable-plugins: pyqt6
+          windows-console-mode: disable
+          windows-icon-from-ico: ./MFW_resource/icon/logo.ico
+          linux-icon: ./MFW_resource/icon/logo.ico
           
-        shell: pwsh  
+      - name: Install Dependencies
+        run: |
+          python build_nuitka.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
 
-      - name: Upload artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MFW-PyQt6-win-${{ matrix.arch }}
-          path: "dist/MFW"
+          name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
+          path: build/main.dist
+          include-hidden-files: true
 
-  ubuntu:
-    needs: meta
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [x86_64,aarch64]
-      fail-fast: false
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install nuitka
-          pip install -r ./requirements.txt
-          
-      - name: Install
-        shell: bash
-        run: |
-          python ./build_linux.py linux ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: MFW-PyQt6-linux-${{ matrix.arch }}
-          path: "main.dist"
-
-  macos:
+  pyinstaller:
     needs: meta
     runs-on: macos-latest
     strategy:
@@ -157,8 +152,7 @@ jobs:
 
       - name: Install
         run: |
-          python ./build.py macos ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
-
+          python ./build_pyinstaller.py macos ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
         shell: pwsh  
         
       - name: Upload artifact
@@ -170,7 +164,7 @@ jobs:
 
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
-    needs: [meta, windows, ubuntu, macos,changelog]
+    needs: [meta,nuitka, pyinstaller,changelog]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -180,7 +174,7 @@ jobs:
       - run: |
           cd assets
           for f in *; do
-            (cd $f && zip -r ../$f-${{ needs.meta.outputs.tag }}.zip .)
+            (cd $f && zip -r -9 ../$f-${{ needs.meta.outputs.tag }}.zip .)
           done
 
       - uses: softprops/action-gh-release@v2
