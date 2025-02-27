@@ -696,6 +696,7 @@ class Update(BaseUpdate):
                 return
 
             # 更新配置
+            replace_ocr(target_path)
             logger.info("更新接口配置版本号")
             interface_date = Read_Config(maa_config_data.interface_config_path)
             interface_date["version"] = update_dict["tag_name"]
