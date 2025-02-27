@@ -117,18 +117,3 @@ shutil.copytree(
     os.path.join(".", "dist", "MFW"),
     dirs_exist_ok=True,
 )
-if sys.platform == "win32":
-    shutil.move(
-        os.path.join(".", "dist", "MFW", "updater.exe"),
-        os.path.join(".", "dist", "MFW", "MFWUpdater.exe"),
-    )
-elif sys.platform == "darwin":
-    shutil.move(
-        os.path.join(".", "dist", "MFW", "updater"),
-        os.path.join(".", "dist", "MFW", "MFWUpdater"),
-    )
-elif sys.platform == "linux":
-    shutil.move(
-        os.path.join(".", "dist", "MFW", "updater.bin"),
-        os.path.join(".", "dist", "MFW", "MFWUpdater.bin"),
-    )
