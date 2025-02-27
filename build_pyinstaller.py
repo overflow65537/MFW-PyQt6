@@ -98,7 +98,7 @@ shutil.copy(emulator_json_src, emulator_json_dst)
 print(sys.argv)
 print(len(sys.argv))
 if len(sys.argv) != 4:
-    sys.argv = [sys.argv[0],"unknown", "unknown", "unknown"]
+    sys.argv = [sys.argv[0], "unknown", "unknown", "unknown"]
 
 platform = sys.argv[1]
 architecture = sys.argv[2]
@@ -113,12 +113,17 @@ PyInstaller.__main__.run([updater_src, "--name=MFWUpdater", "--clean"])
 
 # 移动updater到dist\MFW目录
 shutil.copytree(
-    os.path.join(".","dist", "MFWUpdater" ),
-    os.path.join(".","dist", "MFW"),
+    os.path.join(".", "dist", "MFWUpdater"),
+    os.path.join(".", "dist", "MFW"),
     dirs_exist_ok=True,
 )
-shutil.move(
-    os.path.join(".","dist", "MFW", "updater.py"),
-    os.path.join(".","dist", "MFW", "MFWUpdater.exe"),
-)
-
+if sys.platform == "win32":
+    shutil.move(
+        os.path.join(".", "dist", "MFW", "updater.exe"),
+        os.path.join(".", "dist", "MFW", "MFWUpdater.exe"),
+    )
+elif sys.platform == "darwin":
+    shutil.move(
+        os.path.join(".", "dist", "MFW", "updater"),
+        os.path.join(".", "dist", "MFW", "MFWUpdater"),
+    )
