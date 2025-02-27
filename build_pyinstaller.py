@@ -98,7 +98,7 @@ shutil.copy(emulator_json_src, emulator_json_dst)
 print(sys.argv)
 print(len(sys.argv))
 if len(sys.argv) != 4:
-    sys.argv = [sys.argv[0],"unknown", "unknown", "unknown"]
+    sys.argv = [sys.argv[0], "unknown", "unknown", "unknown"]
 
 platform = sys.argv[1]
 architecture = sys.argv[2]
@@ -109,13 +109,11 @@ write_version_file(platform, architecture, version)
 
 # 更新器
 updater_src = os.path.join(os.getcwd(), "updater.py")
-
-PyInstaller.__main__.run([updater_src, "--name=MFWUpdater", "--onefile", "--clean"])
+PyInstaller.__main__.run([updater_src, "--name=MFWUpdater", "--clean"])
 
 # 移动updater到dist\MFW目录
-if sys.platform == "win32":
-    updater_dst = os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater.exe")
-    shutil.move(os.path.join(os.getcwd(), "dist", "MFWUpdater.exe"), updater_dst)
-else:
-    updater_dst = os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater")
-    shutil.move(os.path.join(os.getcwd(), "dist", "MFWUpdater"), updater_dst)
+shutil.copytree(
+    os.path.join(".", "dist", "MFWUpdater"),
+    os.path.join(".", "dist", "MFW"),
+    dirs_exist_ok=True,
+)
