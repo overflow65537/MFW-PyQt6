@@ -49,7 +49,7 @@ class BaseUpdate(QThread):
                     os.remove("update.zip")
                 return False
         except Exception as e:
-            logger.exception(f"下载文件时出错{url} -> {file_path}")
+            logger.exception(f"下载文件时出错{url} -> {file_path}\n{e}")
             if os.path.exists("update.zip"):
                 os.remove("update.zip")
             return False
@@ -547,8 +547,8 @@ class Update(BaseUpdate):
                 logger.exception(f"GitHub请求失败: {str(e)}")
                 return {
                     "status": "failed",
-                    "msg": self.tr("Failed to connect to GitHub")
-                }
+                    "msg": str(e)
+                }      
 
             # 解析响应
             try:
