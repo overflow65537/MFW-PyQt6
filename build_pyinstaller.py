@@ -127,3 +127,8 @@ elif sys.platform == "darwin":
         os.path.join(".", "dist", "MFW", "updater"),
         os.path.join(".", "dist", "MFW", "MFWUpdater"),
     )
+elif sys.platform == "linux":
+    shutil.move(
+        os.path.join(".", "dist", "MFW", "updater.bin"),
+        os.path.join(".", "dist", "MFW", "MFWUpdater.bin"),
+    )
