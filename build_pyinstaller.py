@@ -117,4 +117,8 @@ shutil.copytree(
     os.path.join(".","dist", "MFW"),
     dirs_exist_ok=True,
 )
+shutil.move(
+    os.path.join(".","dist", "MFW", "updater.py"),
+    os.path.join(".","dist", "MFW", "MFWUpdater.exe"),
+)
 
