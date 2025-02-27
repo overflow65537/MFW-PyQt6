@@ -133,7 +133,7 @@ class BaseUpdate(QThread):
         发送 GET 请求并返回响应。
         """
         try:
-            response = requests.get(url)
+            response = requests.get(url,verify=False)
         except (
             requests.ConnectionError,
             requests.Timeout,
