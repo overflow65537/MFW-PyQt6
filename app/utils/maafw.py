@@ -59,47 +59,43 @@ class MaaFW:
                 ):
                     logger.warning(f"配置项 {custom} 缺少必要信息，跳过")
                     continue
+                print(
+                    f"custom_type: {custom_type}, custom_name: {custom_name}, custom_class_name: {custom_class_name}, custom_file_path: {custom_file_path}"
+                )
+                module_name = os.path.splitext(os.path.basename(custom_file_path))[
+                    0
+                ]
+                # 动态导入模块
+                spec = importlib.util.spec_from_file_location(
+                    module_name, custom_file_path
+                )
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                print(f"模块 {module} 导入成功")
 
-                try:
-                    print(
-                        f"custom_type: {custom_type}, custom_name: {custom_name}, custom_class_name: {custom_class_name}, custom_file_path: {custom_file_path}"
-                    )
-                    module_name = os.path.splitext(os.path.basename(custom_file_path))[
-                        0
-                    ]
-                    # 动态导入模块
-                    spec = importlib.util.spec_from_file_location(
-                        module_name, custom_file_path
-                    )
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
-                    print(f"模块 {module} 导入成功")
+                # 获取类对象
+                class_obj = getattr(module, custom_class_name)
 
-                    # 获取类对象
-                    class_obj = getattr(module, custom_class_name)
+                # 实例化类
+                instance = class_obj()
 
-                    # 实例化类
-                    instance = class_obj()
-
-                    if custom_type == "action":
-                        if self.resource.register_custom_action(custom_name, instance):
-                            logger.info(f"加载自定义动作{custom_name}")
-                            if self.need_register_report:
-                                signalBus.custom_info.emit(
-                                    {"type": "action", "name": custom_name}
-                                )
-                    elif custom_type == "recognition":
-                        if self.resource.register_custom_recognition(
-                            custom_name, instance
-                        ):
-                            logger.info(f"加载自定义识别器{custom_name}")
-                            if self.need_register_report:
-                                signalBus.custom_info.emit(
-                                    {"type": "recognition", "name": custom_name}
-                                )
-                except (ImportError, AttributeError, FileNotFoundError) as e:
-                    logger.error(f"加载自定义 {custom_name} 时出错: {e}")
-
+                if custom_type == "action":
+                    if self.resource.register_custom_action(custom_name, instance):
+                        logger.info(f"加载自定义动作{custom_name}")
+                        if self.need_register_report:
+                            signalBus.custom_info.emit(
+                                {"type": "action", "name": custom_name}
+                            )
+                elif custom_type == "recognition":
+                    if self.resource.register_custom_recognition(
+                        custom_name, instance
+                    ):
+                        logger.info(f"加载自定义识别器{custom_name}")
+                        if self.need_register_report:
+                            signalBus.custom_info.emit(
+                                {"type": "recognition", "name": custom_name}
+                            )
+                
         for module_type in ["action", "recognition"]:
 
             module_type_dir = os.path.join(custom_dir, module_type)
@@ -242,8 +238,10 @@ class MaaFW:
             maa_config_data.resource_path,
             "custom",
         )
-
-        self.load_custom_objects(custom_dir)
+        try:
+            self.load_custom_objects(custom_dir)
+        except Exception as e:
+            logger.error(f"加载自定义内容时发生错误: {e}")
         self.activate_resource = maa_config_data.resource_name
         self.need_register_report = False
         if not self.tasker.inited:
