@@ -1058,7 +1058,7 @@ class UpdateSelf(BaseUpdate):
         url = f"https://mirrorchyan.com/api/resources/MFW-PyQt6/latest?current_version={version_data[2]}&cdk={cdk}&os={version_data[0]}&arch={version_data[1]}"
 
         response = self._response(url)
-        if response.get("status") == "failed_info":
+        if isinstance(response, dict):
             return response
 
         mirror_data: Dict[str, Dict] = response.json()
