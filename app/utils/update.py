@@ -363,7 +363,7 @@ class Update(BaseUpdate):
                 + self.tr("switching to Github download"),
             }
 
-        if mirror_data.get("msg") == "current version is latest":
+        if mirror_data.get("data").get("version_name")==version :
             return {"status": "success", "msg": self.tr("current version is latest")}
         return mirror_data
 
