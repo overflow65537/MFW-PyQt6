@@ -1844,7 +1844,7 @@
     <message>
         <location filename="../../app/utils/update.py" line="973"/>
         <source>MirrorChyan update check successful, but no CDK found, switching to Github download</source>
-        <translation>Mirror酱更新检查成功,开始下载</translation>
+        <translation>Mirror酱更新检查成功,但未找到CDK,转为Github下载</translation>
     </message>
     <message>
         <location filename="../../app/utils/update.py" line="990"/>
