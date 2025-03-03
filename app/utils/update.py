@@ -133,7 +133,7 @@ class BaseUpdate(QThread):
         发送 GET 请求并返回响应。
         """
         try:
-            response = requests.get(url,verify=False)
+            response = requests.get(url)
         except (
             requests.ConnectionError,
             requests.Timeout,
@@ -363,7 +363,7 @@ class Update(BaseUpdate):
                 + self.tr("switching to Github download"),
             }
 
-        if mirror_data.get("data").get("version_name")==version :
+        if mirror_data.get("data").get("version_name") == version:
             return {"status": "success", "msg": self.tr("current version is latest")}
         return mirror_data
 
@@ -378,17 +378,15 @@ class Update(BaseUpdate):
                 logger.debug(f"当前版本: {version}")
         except FileNotFoundError:
             logger.exception("版本文件未找到")
-            signalBus.update_download_finished.emit({
-                "status": "failed_info", 
-                "msg": self.tr("version file not found")
-            })
+            signalBus.update_download_finished.emit(
+                {"status": "failed_info", "msg": self.tr("version file not found")}
+            )
             return False
         except IndexError:
             logger.exception("版本文件格式错误")
-            signalBus.update_download_finished.emit({
-                "status": "failed_info",
-                "msg": self.tr("version file format error")
-            })
+            signalBus.update_download_finished.emit(
+                {"status": "failed_info", "msg": self.tr("version file format error")}
+            )
             return False
 
         self.stop_flag = False
@@ -396,7 +394,7 @@ class Update(BaseUpdate):
             # 下载过程
             download_url: str = mirror_data["data"].get("url")
             logger.info(f"开始下载镜像资源 [URL: {download_url}]")
-            
+
             hotfix_directory = os.path.join(os.getcwd(), "hotfix")
             os.makedirs(hotfix_directory, exist_ok=True)
             zip_file_path = os.path.join(hotfix_directory, f"{res_id}.zip")
@@ -405,10 +403,9 @@ class Update(BaseUpdate):
                 download_url, zip_file_path, signalBus.update_download_progress
             ):
                 logger.error(f"镜像下载失败 [URL: {download_url}]")
-                signalBus.update_download_finished.emit({
-                    "status": "failed_info", 
-                    "msg": self.tr("Download failed")
-                })
+                signalBus.update_download_finished.emit(
+                    {"status": "failed_info", "msg": self.tr("Download failed")}
+                )
                 return False
 
             # 解压过程
@@ -416,10 +413,9 @@ class Update(BaseUpdate):
             logger.info(f"开始解压文件到: {target_path}")
             if not self.extract_zip(zip_file_path, target_path):
                 logger.error(f"解压失败 [路径: {zip_file_path}]")
-                signalBus.update_download_finished.emit({
-                    "status": "failed_info",
-                    "msg": self.tr("Extraction failed")
-                })
+                signalBus.update_download_finished.emit(
+                    {"status": "failed_info", "msg": self.tr("Extraction failed")}
+                )
                 return False
 
             # 版本兼容性检查
@@ -428,14 +424,18 @@ class Update(BaseUpdate):
                 "MFW_min_req_version", "0.0.0.1"
             )
             logger.info(f"版本检查 - 最低需求: {check_interface} | 当前: {version}")
-            
+
             compare_result = self.compare_versions(check_interface, version)
             if compare_result == 1:
                 logger.warning("当前版本过低，已中止更新")
-                signalBus.update_download_finished.emit({
-                    "status": "failed_info",
-                    "msg": self.tr("Current MFW version is too low, update aborted")
-                })
+                signalBus.update_download_finished.emit(
+                    {
+                        "status": "failed_info",
+                        "msg": self.tr(
+                            "Current MFW version is too low, update aborted"
+                        ),
+                    }
+                )
                 return False
 
             # 清理旧文件
@@ -444,7 +444,7 @@ class Update(BaseUpdate):
                 try:
                     change_data = Read_Config(change_data_path).get("deleted", [])
                     logger.info(f"需要清理 {len(change_data)} 个文件")
-                    
+
                     for file in change_data:
                         if "install" in file[:10]:
                             file_path = file.replace(
@@ -452,12 +452,14 @@ class Update(BaseUpdate):
                             )
                         elif "resource" in file[:10]:
                             file_path = file.replace(
-                                "resource", f"{maa_config_data.resource_path}/resource", 1
+                                "resource",
+                                f"{maa_config_data.resource_path}/resource",
+                                1,
                             )
                         else:
                             logger.error(f"未知文件格式: {file}")
                             continue
-                            
+
                         logger.debug(f"尝试删除: {file_path}")
                         if os.path.exists(file_path):
                             try:
@@ -469,24 +471,29 @@ class Update(BaseUpdate):
                                 logger.error(f"删除失败 [{file_path}]: {str(e)}")
                 except Exception as e:
                     logger.exception("清理旧文件时发生错误")
-                    signalBus.update_download_finished.emit({
-                        "status": "failed_info",
-                        "msg": self.tr("Failed to clean up temporary files")
-                    })
+                    signalBus.update_download_finished.emit(
+                        {
+                            "status": "failed_info",
+                            "msg": self.tr("Failed to clean up temporary files"),
+                        }
+                    )
                     return False
 
             # 移动文件
             logger.info(f"移动文件到资源目录: {maa_config_data.resource_path}")
             if not self.move_files(target_path, maa_config_data.resource_path):
-                logger.error(f"文件移动失败: {target_path} -> {maa_config_data.resource_path}")
-                signalBus.update_download_finished.emit({
-                    "status": "failed_info",
-                    "msg": self.tr("Move file failed")
-                })
+                logger.error(
+                    f"文件移动失败: {target_path} -> {maa_config_data.resource_path}"
+                )
+                signalBus.update_download_finished.emit(
+                    {"status": "failed_info", "msg": self.tr("Move file failed")}
+                )
                 return False
 
             # 更新配置
-            maa_config_data.interface_config["version"] = mirror_data["data"].get("version_name")
+            maa_config_data.interface_config["version"] = mirror_data["data"].get(
+                "version_name"
+            )
             logger.info(f"版本号更新为: {maa_config_data.interface_config['version']}")
 
             # 清理临时文件
@@ -494,24 +501,29 @@ class Update(BaseUpdate):
             logger.debug("临时文件清理完成")
 
             signalBus.resource_exist.emit(True)
-            signalBus.update_download_finished.emit({
-                "status": "success",
-                "msg": self.tr("update success") + "\n" + mirror_data.get("data", {}).get("release_note", "")
-            })
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "success",
+                    "msg": self.tr("update success")
+                    + "\n"
+                    + mirror_data.get("data", {}).get("release_note", ""),
+                }
+            )
             return True
 
         except KeyError as e:
             logger.exception(f"数据字段缺失: {str(e)}")
-            signalBus.update_download_finished.emit({
-                "status": "failed_info",
-                "msg": self.tr("incomplete update data")
-            })
+            signalBus.update_download_finished.emit(
+                {"status": "failed_info", "msg": self.tr("incomplete update data")}
+            )
         except Exception as e:
             logger.exception(f"未预期的错误: {str(e)}")
-            signalBus.update_download_finished.emit({
-                "status": "failed_info",
-                "msg": self.tr("unexpected error during update")
-            })
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "failed_info",
+                    "msg": self.tr("unexpected error during update"),
+                }
+            )
             return False
 
     def github_check(self, project_url: str) -> Dict:
@@ -522,7 +534,7 @@ class Update(BaseUpdate):
                 logger.error("项目地址未配置")
                 return {
                     "status": "failed",
-                    "msg": self.tr("Project address configuration not found")
+                    "msg": self.tr("Project address configuration not found"),
                 }
 
             # URL构造
@@ -534,7 +546,7 @@ class Update(BaseUpdate):
                 logger.exception("项目地址格式错误")
                 return {
                     "status": "failed",
-                    "msg": self.tr("Invalid project URL format")
+                    "msg": self.tr("Invalid project URL format"),
                 }
 
             # 发送请求
@@ -545,16 +557,13 @@ class Update(BaseUpdate):
                 response.raise_for_status()
             except requests.exceptions.RequestException as e:
                 logger.exception(f"GitHub请求失败: {str(e)}")
-                return {
-                    "status": "failed",
-                    "msg": str(e)
-                }      
+                return {"status": "failed", "msg": str(e)}
 
             # 解析响应
             try:
                 update_dict = response.json()
                 logger.debug(f"API响应: {json.dumps(update_dict, indent=2)}")
-                
+
                 if "message" in update_dict:
                     error_msg = f"GitHub API错误: {update_dict['message']}"
                     logger.error(error_msg)
@@ -563,7 +572,7 @@ class Update(BaseUpdate):
                 logger.exception("响应解析失败")
                 return {
                     "status": "failed",
-                    "msg": self.tr("Invalid response from GitHub")
+                    "msg": self.tr("Invalid response from GitHub"),
                 }
 
             # 版本比较
@@ -572,7 +581,7 @@ class Update(BaseUpdate):
                 logger.info("当前已是最新版本")
                 return {
                     "status": "success",
-                    "msg": self.tr("current version is latest")
+                    "msg": self.tr("current version is latest"),
                 }
 
             return update_dict
@@ -581,8 +590,9 @@ class Update(BaseUpdate):
             logger.exception("未预期的检查错误")
             return {
                 "status": "failed",
-                "msg": self.tr("Update check failed due to unexpected error")
+                "msg": self.tr("Update check failed due to unexpected error"),
             }
+
     def github_download(self, update_dict: Dict):
         """github下载更新"""
         try:
@@ -660,7 +670,9 @@ class Update(BaseUpdate):
                 signalBus.update_download_finished.emit(
                     {
                         "status": "failed",
-                        "msg": self.tr("Current MFW version is too low, update aborted"),
+                        "msg": self.tr(
+                            "Current MFW version is too low, update aborted"
+                        ),
                     }
                 )
                 return
@@ -890,7 +902,10 @@ class UpdateSelf(BaseUpdate):
             except Exception as e:
                 logger.exception("获取下载地址失败")
                 signalBus.download_self_finished.emit(
-                    {"status": "failed", "msg": self.tr("Failed to get download address")}
+                    {
+                        "status": "failed",
+                        "msg": self.tr("Failed to get download address"),
+                    }
                 )
                 return
 
@@ -935,20 +950,24 @@ class UpdateSelf(BaseUpdate):
             signalBus.download_self_finished.emit(
                 {
                     "status": "info",
-                    "msg": self.tr("MirrorChyan update check successful, starting download"),
+                    "msg": self.tr(
+                        "MirrorChyan update check successful, starting download"
+                    ),
                 }
             )
-            
+
             try:
-                if not self._download(mirror_data['data']['url']):
+                if not self._download(mirror_data["data"]["url"]):
                     logger.error("镜像下载失败")
                     return
             except Exception as e:
                 logger.exception("镜像下载过程中发生未预期错误")
-                signalBus.download_self_finished.emit({
-                    "status": "failed",
-                    "msg": self.tr("Unexpected error during download")
-                })
+                signalBus.download_self_finished.emit(
+                    {
+                        "status": "failed",
+                        "msg": self.tr("Unexpected error during download"),
+                    }
+                )
                 return
 
             version_data[3] = mirror_data["data"].get("version_name")
@@ -959,10 +978,9 @@ class UpdateSelf(BaseUpdate):
                     logger.info(f"版本文件更新成功: {version_data}")
             except IOError as e:
                 logger.error(f"版本文件写入失败: {str(e)}")
-                signalBus.download_self_finished.emit({
-                    "status": "failed",
-                    "msg": self.tr("Version file write failed")
-                })
+                signalBus.download_self_finished.emit(
+                    {"status": "failed", "msg": self.tr("Version file write failed")}
+                )
                 return
             return
         else:
@@ -970,25 +988,29 @@ class UpdateSelf(BaseUpdate):
             signalBus.download_self_finished.emit(
                 {
                     "status": "info",
-                    "msg": self.tr("MirrorChyan update check successful, but no CDK found, switching to Github download"),
+                    "msg": self.tr(
+                        "MirrorChyan update check successful, but no CDK found, switching to Github download"
+                    ),
                 }
             )
-            
+
             try:
                 github_url = self.assemble_gitHub_url(
                     version_data, mirror_data["data"].get("version_name")
                 )
                 logger.debug(f"GitHub下载地址: {github_url}")
-                
+
                 if not self._download(github_url):
                     logger.error("GitHub下载失败")
                     return
             except KeyError as e:
                 logger.error(f"构造GitHub URL参数缺失: {str(e)}")
-                signalBus.download_self_finished.emit({
-                    "status": "failed",
-                    "msg": self.tr("GitHub URL construction failed")
-                })
+                signalBus.download_self_finished.emit(
+                    {
+                        "status": "failed",
+                        "msg": self.tr("GitHub URL construction failed"),
+                    }
+                )
                 return
 
             version_data[3] = mirror_data["data"].get("version_name")
@@ -1002,10 +1024,9 @@ class UpdateSelf(BaseUpdate):
                     logger.info(f"版本信息已更新: {version_data}")
             except Exception as e:
                 logger.exception("版本文件更新失败")
-                signalBus.download_self_finished.emit({
-                    "status": "failed",
-                    "msg": self.tr("Version file update failed")
-                })
+                signalBus.download_self_finished.emit(
+                    {"status": "failed", "msg": self.tr("Version file update failed")}
+                )
             return
 
     def github_check(self, project_url: str, version) -> Dict:
@@ -1019,15 +1040,18 @@ class UpdateSelf(BaseUpdate):
 
             update_dict: dict = response.json()
             logger.debug(f"GitHub响应数据: {json.dumps(update_dict, indent=2)}")
-            
+
             if update_dict.get("message"):
                 logger.error(f"GitHub API错误: {update_dict.get('message')}")
                 return {"status": "failed", "msg": update_dict.get("message")}
 
             if update_dict.get("tag_name", None) == version:
                 logger.info("当前已是最新版本")
-                return {"status": "no_need", "msg": self.tr("current version is latest")}
-                
+                return {
+                    "status": "no_need",
+                    "msg": self.tr("current version is latest"),
+                }
+
             return update_dict
         except json.JSONDecodeError as e:
             logger.exception(f"GitHub响应解析失败: {response.text[:200]}")
