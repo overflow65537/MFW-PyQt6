@@ -153,10 +153,11 @@ def main(resource: str, config: str, directly: bool):
         logger.info("资源文件存在")
         cfg.set(cfg.click_update, False)
         cfg.set(cfg.resource_exist, True)
+        
+        signalBus.resource_exist.emit(True)
         logger.info(
             f"资源版本:{maa_config_data.interface_config.get('version',"None")}"
         )
-        signalBus.resource_exist.emit(True)
 
     # enable dpi scale
     if cfg.get(cfg.dpiScale) != "Auto":
