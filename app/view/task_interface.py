@@ -671,7 +671,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         await self.run_after_finish_script()
 
         # 完成后运行
-        await self.execute_finish_action()
+        if self.S2_Button.text() == self.tr("Stop"):
+            await self.execute_finish_action()
 
         # 更改按钮状态
         self.update_S2_Button("Start", self.Start_Up)
