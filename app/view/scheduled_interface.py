@@ -84,6 +84,8 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         """添加资源"""
         w = CustomMessageBox(self)
         if w.exec():
+            if w.name_data =="":
+                return
             logger.debug(f"添加资源{w.name_data}")
             self.res_combox.clear()
             self.Cfg_Combox.clear()

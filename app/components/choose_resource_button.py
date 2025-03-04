@@ -125,10 +125,11 @@ class CustomMessageBox(MessageBoxBase):
             project_name = self.interface_data.get("name", "")
             self.name_LineEdit.clear()
             self.name_LineEdit.setText(project_name)
-        self.w.close()
+            try:
+                self.w.close()
+            except:
+                pass
         self.search_button.setIcon(FIF.SEARCH)
-
-
 
     def type_resource_name(self) -> None:
         self.folder = QFileDialog.getExistingDirectory(
@@ -192,10 +193,10 @@ class CustomMessageBox(MessageBoxBase):
         resource_list = list(resource_data)
         resource_path_list = list(resource_data.values())
         maa_config_list = cfg.get(cfg.maa_config_list)
-        if self.name_data == "":
+        if self.name_data == "" :
             self.show_error(self.tr("Resource name cannot be empty"))
             return
-        elif path_data == "":
+        elif not path_data:
             self.show_error(self.tr("Resource path cannot be empty"))
             return
         elif self.name_data in resource_list or path_data in resource_path_list:
