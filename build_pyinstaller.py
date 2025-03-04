@@ -55,7 +55,7 @@ command = [
     "--clean",
 ]
 if sys.platform == "win32":
-    #command.insert(2, "--noconsole")
+    # command.insert(2, "--noconsole")
     command.insert(2, "--icon=MFW_resource/icon/logo.ico")
 
 # 运行 PyInstaller
@@ -112,8 +112,21 @@ updater_src = os.path.join(os.getcwd(), "updater.py")
 PyInstaller.__main__.run([updater_src, "--name=MFWUpdater", "--onefile", "--clean"])
 
 # 移动updater到dist\MFW目录
-shutil.copytree(
-    os.path.join(".", "dist", "MFWUpdater"),
-    os.path.join(".", "dist", "MFW"),
-    dirs_exist_ok=True,
-)
+if sys.platform == "win32":
+    updater_file = os.path.join("dist", "MFWUpdater.exe")
+elif sys.platform.startswith("linux"):
+    updater_file = os.path.join("dist", "MFWUpdater.bin")
+elif sys.platform == "darwin":
+    updater_file = os.path.join("dist", "MFWUpdater")
+else:
+    exit("Unsupported platform")
+
+mfw_dir = os.path.join("dist", "MFW")
+
+# 移动文件到 MFW 目录
+if os.path.exists(updater_file):
+    dst_path = os.path.join(mfw_dir, os.path.basename(updater_file))
+    shutil.move(updater_file, dst_path)
+    print(f"Moved {updater_file} to {dst_path}")
+else:
+    print(f"File {updater_file} not found.")
