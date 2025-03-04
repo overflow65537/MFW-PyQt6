@@ -109,7 +109,7 @@ write_version_file(platform, architecture, version)
 
 # 更新器
 updater_src = os.path.join(os.getcwd(), "updater.py")
-PyInstaller.__main__.run([updater_src, "--name=MFWUpdater", "--clean"])
+PyInstaller.__main__.run([updater_src, "--name=MFWUpdater", "--onefile", "--clean"])
 
 # 移动updater到dist\MFW目录
 shutil.copytree(
