@@ -1456,6 +1456,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             if name and selected_value:
                 selected_options.append({"name": name, "value": selected_value})
 
+            # 重置变量
+            name = None
+            selected_value = None
+
         return selected_options
 
     def clear_extra_widgets(self):
