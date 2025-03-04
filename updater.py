@@ -33,21 +33,18 @@ if os.path.exists(zip_file_name):
     try:
         with zipfile.ZipFile(zip_file_name, "r") as zip_ref:
             for file_info in zip_ref.infolist():
-                zip_ref.extract(file_info, os.getcwd())
-                print(f"Extracted: {file_info.filename}")
+                try:
+                    zip_ref.extract(file_info, os.getcwd())
+                    print(f"Extracted: {file_info.filename}")
+                except PermissionError as e:
+                    error_message = f"Permission denied while extracting {file_info.filename}: {e}"
+                    with open("ERROR.log", "a") as log_file:
+                        log_file.write(error_message + "\n")
     except zipfile.BadZipFile:
         error_message = f"file {zip_file_name} is not a zip file"
         with open("ERROR.log", "a") as log_file:
             log_file.write(error_message + "\n")
         clear_zip_file()
-
-else:
-    error_message = f"file {zip_file_name} not found"
-    with open("ERROR.log", "a") as log_file:
-        log_file.write(error_message + "\n")
-
-# 删除ZIP文件
-clear_zip_file()
 
 
 # 重启程序
