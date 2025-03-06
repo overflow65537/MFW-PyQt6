@@ -274,7 +274,8 @@ class MaaFW:
 
         self.agent.bind(self.resource)
         characters = string.ascii_letters + string.digits
-        socket_id = "".join(random.choice(characters) for i in range(8))
+        socket_id = self.agent.create_socket("".join(random.choice(characters) for i in range(8)))
+        
 
         subprocess.Popen(
             [
