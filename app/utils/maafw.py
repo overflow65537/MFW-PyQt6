@@ -269,6 +269,8 @@ class MaaFW:
         return self.tasker.post_task(entry, pipeline_override).wait().succeeded
 
     def agent_load(self, child_args):
+        if not child_args :
+            return False
 
         self.agent.bind(self.resource)
         characters = string.ascii_letters + string.digits
