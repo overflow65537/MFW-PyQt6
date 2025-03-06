@@ -29,6 +29,7 @@ class MaaFW:
     controller: AdbController | Win32Controller | None
     tasker: Tasker | None
     notification_handler: NotificationHandler | None
+    agent: AgentClient | None
 
     def __init__(self):
         Toolkit.init_option("./")
@@ -38,6 +39,7 @@ class MaaFW:
         self.controller = None
         self.tasker = None
         self.notification_handler = None
+        self.agent = None
 
     def load_custom_objects(self, custom_dir):
         if not os.path.exists(custom_dir):
@@ -250,7 +252,8 @@ class MaaFW:
         self.need_register_report = False
 
         # agent加载
-        self.agents = []
+        if not self.agent:
+            self.agent = AgentClient()
 
         agent_data = maa_config_data.interface_config.get("agent", {})
         if agent_data.get("child_exec", False) == sys.platform:
@@ -266,8 +269,8 @@ class MaaFW:
         return self.tasker.post_task(entry, pipeline_override).wait().succeeded
 
     def agent_load(self, child_args):
-        agent = AgentClient()
-        agent.bind(self.resource)
+
+        self.agent.bind(self.resource)
         characters = string.ascii_letters + string.digits
         socket_id = "".join(random.choice(characters) for i in range(8))
 
@@ -278,12 +281,13 @@ class MaaFW:
                 socket_id,
             ],
         )
-        logger.debug(f"agent启动: {child_args}\nMAA库地址{os.getenv("MAAFW_BINARY_PATH", os.getcwd())}\nsocket_id: {socket_id}")
+        logger.debug(
+            f"agent启动: {child_args}\nMAA库地址{os.getenv("MAAFW_BINARY_PATH", os.getcwd())}\nsocket_id: {socket_id}"
+        )
 
-        if not agent.connect():
+        if not self.agent.connect():
             logger.error("agent连接 失败")
             return False
-        self.agents.append(agent)
         return True
 
     @asyncify
@@ -291,6 +295,9 @@ class MaaFW:
         if not self.tasker:
             return
         self.tasker.post_stop().wait()
+        maafw.tasker = None
+        maafw.agent.disconnect()
+        maafw.agent = None
 
 
 maafw = MaaFW()
