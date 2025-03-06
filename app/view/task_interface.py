@@ -673,6 +673,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         # 完成后运行
         if self.S2_Button.text() == self.tr("Stop"):
             await self.execute_finish_action()
+        
+        del maafw.tasker
+        for i in maafw.agents:
+            i.disconnect()
+            del i
 
         # 更改按钮状态
         self.update_S2_Button("Start", self.Start_Up)

@@ -2,10 +2,16 @@ import re
 import os
 import importlib.util
 from typing import List, Dict
+import subprocess
+import string
+import random
+import sys
+
 
 from asyncify import asyncify
 from maa.controller import AdbController, Win32Controller
 from maa.tasker import Tasker, NotificationHandler
+from maa.agent_client import AgentClient
 from maa.resource import Resource
 from maa.toolkit import Toolkit, AdbDevice, DesktopWindow
 from maa.define import MaaAdbScreencapMethodEnum, MaaAdbInputMethodEnum
@@ -62,9 +68,7 @@ class MaaFW:
                 print(
                     f"custom_type: {custom_type}, custom_name: {custom_name}, custom_class_name: {custom_class_name}, custom_file_path: {custom_file_path}"
                 )
-                module_name = os.path.splitext(os.path.basename(custom_file_path))[
-                    0
-                ]
+                module_name = os.path.splitext(os.path.basename(custom_file_path))[0]
                 # 动态导入模块
                 spec = importlib.util.spec_from_file_location(
                     module_name, custom_file_path
@@ -87,15 +91,13 @@ class MaaFW:
                                 {"type": "action", "name": custom_name}
                             )
                 elif custom_type == "recognition":
-                    if self.resource.register_custom_recognition(
-                        custom_name, instance
-                    ):
+                    if self.resource.register_custom_recognition(custom_name, instance):
                         logger.info(f"加载自定义识别器{custom_name}")
                         if self.need_register_report:
                             signalBus.custom_info.emit(
                                 {"type": "recognition", "name": custom_name}
                             )
-                
+
         for module_type in ["action", "recognition"]:
 
             module_type_dir = os.path.join(custom_dir, module_type)
@@ -230,6 +232,8 @@ class MaaFW:
             return False
 
         self.tasker.bind(self.resource, self.controller)
+
+        # 动态加载.py
         if self.activate_resource != maa_config_data.resource_name:
             self.need_register_report = True
         self.resource.clear_custom_recognition()
@@ -244,11 +248,43 @@ class MaaFW:
             logger.error(f"加载自定义内容时发生错误: {e}")
         self.activate_resource = maa_config_data.resource_name
         self.need_register_report = False
+
+        # agent加载
+        self.agents = []
+
+        agent_data = maa_config_data.interface_config.get("agent", {})
+        if agent_data.get("child_exec", False) == sys.platform:
+            for i in agent_data.get("child_args", []):
+                if not self.agent_load(i):
+                    logger.error("agent加载失败")
+                    return False
+
         if not self.tasker.inited:
             print("Failed to init MaaFramework instance")
             return False
         self.tasker.set_save_draw(cfg.get(cfg.save_draw))
         return self.tasker.post_task(entry, pipeline_override).wait().succeeded
+
+    def agent_load(self, child_args):
+        agent = AgentClient()
+        agent.bind(self.resource)
+        characters = string.ascii_letters + string.digits
+        socket_id = "".join(random.choice(characters) for i in range(8))
+
+        subprocess.Popen(
+            [
+                child_args,
+                os.getenv("MAAFW_BINARY_PATH", os.getcwd()),
+                socket_id,
+            ],
+        )
+        logger.debug(f"agent启动: {child_args}\nMAA库地址{os.getenv("MAAFW_BINARY_PATH", os.getcwd())}\nsocket_id: {socket_id}")
+
+        if not agent.connect():
+            logger.error("agent连接 失败")
+            return False
+        self.agents.append(agent)
+        return True
 
     @asyncify
     def stop_task(self):
