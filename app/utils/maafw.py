@@ -252,8 +252,7 @@ class MaaFW:
         self.need_register_report = False
 
         # agent加载
-        if not self.agent:
-            self.agent = AgentClient()
+        self.agent = AgentClient()
         self.agent.bind(self.resource)
         characters = string.ascii_letters + string.digits
         socket_id = self.agent.create_socket(
@@ -289,9 +288,14 @@ class MaaFW:
 
     @asyncify
     def stop_task(self):
-        if not self.tasker:
-            return
-        self.tasker.post_stop().wait()
+        if self.tasker:
+            self.tasker.post_stop().wait()
+            print("任务停止")
+            self.tasker = None
+        if self.agent:
+            self.agent.disconnect()
+            print("agent断开连接")
+            self.agent = None
 
 
 
