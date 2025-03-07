@@ -230,7 +230,7 @@ class MaaFW:
             self.tasker = Tasker(notification_handler=self.notification_handler)
 
         if not self.resource or not self.controller:
-            print("Resource or Controller not initialized")
+            signalBus.custom_info.emit({"type": "error_r"})
             return False
 
         self.tasker.bind(self.resource, self.controller)
@@ -254,44 +254,38 @@ class MaaFW:
         # agent加载
         if not self.agent:
             self.agent = AgentClient()
+        self.agent.bind(self.resource)
+        characters = string.ascii_letters + string.digits
+        socket_id = self.agent.create_socket(
+            "".join(random.choice(characters) for i in range(8))
+        )
 
         agent_data = maa_config_data.interface_config.get("agent", {})
-        if agent_data.get("child_exec", False) == sys.platform:
-            for i in agent_data.get("child_args", []):
-                if not self.agent_load(i):
-                    logger.error("agent加载失败")
-                    return False
+        if agent_data:
+            try:
+                subprocess.Popen(
+                    [
+                        agent_data.get("child_exec"),
+                        *agent_data.get("child_args",[]),
+                        os.getenv("MAAFW_BINARY_PATH", os.getcwd()),
+                        socket_id,
+                    ],
+                )
+                logger.debug(
+                    f"agent启动: {agent_data}\nMAA库地址{os.getenv('MAAFW_BINARY_PATH', os.getcwd())}\nsocket_id: {socket_id}"
+                )
+            except Exception as e:
+                logger.error(f"agent启动失败: {e}")
+                signalBus.custom_info.emit({"type": "error_a"})
+        if not self.agent.connect():
+            logger.error(f"agent连接失败")
+            signalBus.custom_info.emit({"type": "error_c"})
 
         if not self.tasker.inited:
-            print("Failed to init MaaFramework instance")
+            signalBus.custom_info.emit({"type": "error_t"})
             return False
         self.tasker.set_save_draw(cfg.get(cfg.save_draw))
         return self.tasker.post_task(entry, pipeline_override).wait().succeeded
-
-    def agent_load(self, child_args):
-        if not child_args :
-            return False
-
-        self.agent.bind(self.resource)
-        characters = string.ascii_letters + string.digits
-        socket_id = self.agent.create_socket("".join(random.choice(characters) for i in range(8)))
-        
-
-        subprocess.Popen(
-            [
-                child_args,
-                os.getenv("MAAFW_BINARY_PATH", os.getcwd()),
-                socket_id,
-            ],
-        )
-        logger.debug(
-            f"agent启动: {child_args}\nMAA库地址{os.getenv("MAAFW_BINARY_PATH", os.getcwd())}\nsocket_id: {socket_id}"
-        )
-
-        if not self.agent.connect():
-            logger.error("agent连接 失败")
-            return False
-        return True
 
     @asyncify
     def stop_task(self):

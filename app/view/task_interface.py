@@ -225,6 +225,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.insert_colored_text(
                 self.tr("Load Custom Recognition:") + " " + msg["name"]
             )
+        elif msg["type"] == "error_c":
+            self.insert_colored_text(self.tr("Agent server connect failed"),"Tomato")
+        elif msg["type"] == "error_a":
+            self.insert_colored_text(self.tr("Agent server registration failed"),"Tomato")
+        elif msg["type"] == "error_t":
+            self.insert_colored_text(self.tr("Failed to init MaaFramework instance"),"Tomato")
+        elif msg["type"] == "error_r":
+            self.insert_colored_text(self.tr("Resource or Controller not initialized"),"Tomato")
 
     # region 拖动事件
     def dragEnter(self, event: QDropEvent):
