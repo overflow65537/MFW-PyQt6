@@ -292,9 +292,7 @@ class MaaFW:
         if not self.tasker:
             return
         self.tasker.post_stop().wait()
-        maafw.tasker = None
-        maafw.agent.disconnect()
-        maafw.agent = None
+
 
 
 maafw = MaaFW()

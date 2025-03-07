@@ -876,7 +876,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 maa_config_data.config["adb"]["address"],
                 maa_config_data.config["adb"]["input_method"],
                 maa_config_data.config["adb"]["screen_method"],
-                config,
+                maa_config_data.config["adb"]["config"],
             )
             and self.need_runing
         ):
@@ -1102,6 +1102,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         停止任务
         """
+        maafw.tasker = None
+        maafw.agent.disconnect()
+        maafw.agent = None
         self.update_S2_Button("Start", self.Start_Up)
         self.insert_colored_text(self.tr("Stopping task..."))
         logger.info("停止任务")
