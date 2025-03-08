@@ -63,9 +63,10 @@ jobs:
     outputs:
       tag: ${{ steps.set_tag.outputs.tag }}
       is_release: ${{ steps.set_tag.outputs.is_release }}
+
   Nuitka:
     needs: meta
-    name: pyinstaller Build (${{ matrix.platform }})
+    name: Nuitkar Build (${{ matrix.platform }})
     runs-on: ${{ matrix.runs-on }}
     strategy:
       matrix:
@@ -104,7 +105,7 @@ jobs:
           with:
             nuitka-version: main
             script-name: updater.py
-            mode: Onefile
+            mode: onefile
     
         - name: Qt GUI with Pyqt6
           uses: Nuitka/Nuitka-Action@main
