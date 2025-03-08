@@ -252,15 +252,15 @@ class MaaFW:
         self.need_register_report = False
 
         # agent加载
-        self.agent = AgentClient()
-        self.agent.bind(self.resource)
-        characters = string.ascii_letters + string.digits
-        socket_id = self.agent.create_socket(
-            "".join(random.choice(characters) for i in range(8))
-        )
-
         agent_data = maa_config_data.interface_config.get("agent", {})
         if agent_data and agent_data.get("child_exec"):
+            self.agent = AgentClient()
+            self.agent.bind(self.resource)
+            characters = string.ascii_letters + string.digits
+            socket_id = self.agent.create_socket(
+                "".join(random.choice(characters) for i in range(8))
+            )
+            print("agent启动")
             try:
                 
                 maa_bin = os.getenv("MAAFW_BINARY_PATH")
@@ -283,10 +283,10 @@ class MaaFW:
             except Exception as e:
                 logger.error(f"agent启动失败: {e}")
                 signalBus.custom_info.emit({"type": "error_a"})
-        if not self.agent.connect():
-            logger.error(f"agent连接失败")
-            signalBus.custom_info.emit({"type": "error_c"})
-
+            if not self.agent.connect():
+                logger.error(f"agent连接失败")
+                signalBus.custom_info.emit({"type": "error_c"})
+            print("cusotm加载完毕 ")
         if not self.tasker.inited:
             signalBus.custom_info.emit({"type": "error_t"})
             return False

@@ -710,8 +710,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             await self.execute_finish_action()
 
         maafw.tasker = None
-        maafw.agent.disconnect()
-        maafw.agent = None
+        if maafw.agent:
+            maafw.agent.disconnect()
+            maafw.agent = None
 
         # 更改按钮状态
         self.update_S2_Button("Start", self.Start_Up)
