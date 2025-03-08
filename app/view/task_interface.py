@@ -675,6 +675,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         if not cfg.get(cfg.resource_exist):
             return
+        elif self.Task_List.count() == 0:
+            self.show_error(self.tr("No task selected"))
+            return
         self.need_runing = True
         self.update_S2_Button(self.tr("Stop"), self.Stop_task, enable=False)
         self.clear_layout()

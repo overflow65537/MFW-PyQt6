@@ -262,19 +262,23 @@ class MaaFW:
         agent_data = maa_config_data.interface_config.get("agent", {})
         if agent_data and agent_data.get("child_exec"):
             try:
+                
+                maa_bin = os.getenv("MAAFW_BINARY_PATH")
+                if not maa_bin:
+                    maa_bin = os.getcwd()
                 print(
-                    f"agent启动: {agent_data.get("child_exec").replace("{PROJECT_DIR}",  maa_config_data.resource_path)}\nMAA库地址{os.getcwd()}\nsocket_id: {socket_id}"
+                    f"agent启动: {agent_data.get("child_exec").replace("{PROJECT_DIR}",  maa_config_data.resource_path)}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
                 )
                 subprocess.Popen(
                     [
                         agent_data.get("child_exec").replace("{PROJECT_DIR}", maa_config_data.resource_path),
                         *agent_data.get("child_args",[]),
-                        os.getcwd(),
+                        maa_bin,
                         socket_id,
                     ],
                 )
                 logger.debug(
-                    f"agent启动: {agent_data}\nMAA库地址{os.getcwd()}\nsocket_id: {socket_id}"
+                    f"agent启动: {agent_data.get("child_exec").replace("{PROJECT_DIR}", maa_config_data.resource_path)}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
                 )
             except Exception as e:
                 logger.error(f"agent启动失败: {e}")
