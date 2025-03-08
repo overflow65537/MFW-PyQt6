@@ -122,11 +122,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             resource_Path=maa_config_data.resource_path,
         )
         self.init_finish_combox()
+
     def no_ADB_config(self):
         """
         没有ADB配置
         """
-        if maa_config_data.config.get("adb",{}).get("adb_path") == "" and "adb" not in self.Control_Combox.currentText():
+        if (
+            maa_config_data.config.get("adb", {}).get("adb_path") == ""
+            and "adb" not in self.Control_Combox.currentText()
+        ):
             self.AutoDetect_Button.click()
 
     def clear_content(self):
@@ -221,6 +225,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.insert_colored_text(
                 self.tr("Load Custom Recognition:") + " " + msg["name"]
             )
+        elif msg["type"] == "error_c":
+            self.insert_colored_text(self.tr("Agent server connect failed"),"Tomato")
+        elif msg["type"] == "error_a":
+            self.insert_colored_text(self.tr("Agent server registration failed"),"Tomato")
+        elif msg["type"] == "error_t":
+            self.insert_colored_text(self.tr("Failed to init MaaFramework instance"),"Tomato")
+        elif msg["type"] == "error_r":
+            self.insert_colored_text(self.tr("Resource or Controller not initialized"),"Tomato")
 
     # region 拖动事件
     def dragEnter(self, event: QDropEvent):
@@ -326,20 +338,26 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             task = message["task"]
             pipeline: dict = self.pipeline_override.get(task)
             if pipeline:
-                if message["status"] == 1 and pipeline.get("focus_tip"):# 有焦点提示
-                    if isinstance(pipeline["focus_tip"], str):# 单条 直接输出
+                if message["status"] == 1 and pipeline.get("focus_tip"):  # 有焦点提示
+                    if isinstance(pipeline["focus_tip"], str):  # 单条 直接输出
                         self.insert_colored_text(
-                        pipeline["focus_tip"],
-                        pipeline.get("focus_tip_color", "black"),
-                    )
-                    elif isinstance(pipeline["focus_tip"], list):# 多条 看看颜色类型
-                        if isinstance(pipeline.get("focus_tip_color","black"), list):# 颜色多条 循环输出
+                            pipeline["focus_tip"],
+                            pipeline.get("focus_tip_color", "black"),
+                        )
+                    elif isinstance(pipeline["focus_tip"], list):  # 多条 看看颜色类型
+                        if isinstance(
+                            pipeline.get("focus_tip_color", "black"), list
+                        ):  # 颜色多条 循环输出
                             for i, tip in enumerate(pipeline["focus_tip"]):
                                 self.insert_colored_text(
                                     tip,
-                                    self.list_get(pipeline.get("focus_tip_color", "black"), i, "black"),
+                                    self.list_get(
+                                        pipeline.get("focus_tip_color", "black"),
+                                        i,
+                                        "black",
+                                    ),
                                 )
-                        else:# 颜色单条 循环
+                        else:  # 颜色单条 循环
                             for tip in pipeline["focus_tip"]:
                                 self.insert_colored_text(
                                     tip,
@@ -353,11 +371,17 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             pipeline.get("focus_succeeded_color", "black"),
                         )
                     elif isinstance(pipeline["focus_succeeded"], list):
-                        if isinstance(pipeline.get("focus_succeeded_color", "black"), list):
+                        if isinstance(
+                            pipeline.get("focus_succeeded_color", "black"), list
+                        ):
                             for i, text in enumerate(pipeline["focus_succeeded"]):
                                 self.insert_colored_text(
                                     text,
-                                    self.list_get(pipeline.get("focus_succeeded_color", "black"), i, "black"),
+                                    self.list_get(
+                                        pipeline.get("focus_succeeded_color", "black"),
+                                        i,
+                                        "black",
+                                    ),
                                 )
                         else:
                             for text in pipeline["focus_succeeded"]:
@@ -373,11 +397,17 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             pipeline.get("focus_failed_color", "black"),
                         )
                     elif isinstance(pipeline["focus_failed"], list):
-                        if isinstance(pipeline.get("focus_failed_color", "black"), list):
+                        if isinstance(
+                            pipeline.get("focus_failed_color", "black"), list
+                        ):
                             for i, text in enumerate(pipeline["focus_failed"]):
                                 self.insert_colored_text(
                                     text,
-                                    self.list_get(pipeline.get("focus_failed_color", "black"), i, "black"),
+                                    self.list_get(
+                                        pipeline.get("focus_failed_color", "black"),
+                                        i,
+                                        "black",
+                                    ),
                                 )
                         else:
                             for text in pipeline["focus_failed"]:
@@ -386,8 +416,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                     pipeline.get("focus_failed_color", "black"),
                                 )
 
-
-    def insert_colored_text(self, text, color_name = "black"):
+    def insert_colored_text(self, text, color_name="black"):
         """
         插入带颜色的文本
         """
@@ -492,7 +521,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         关闭模拟器
         """
-        if maa_config_data.config.get("emu_path") != "" and self.app_process is not None:
+        if (
+            maa_config_data.config.get("emu_path") != ""
+            and self.app_process is not None
+        ):
             self.app_process.terminate()
             try:
                 self.app_process.wait(timeout=5)
@@ -674,6 +706,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if self.S2_Button.text() == self.tr("Stop"):
             await self.execute_finish_action()
 
+        maafw.tasker = None
+        maafw.agent.disconnect()
+        maafw.agent = None
+
         # 更改按钮状态
         self.update_S2_Button("Start", self.Start_Up)
         self.start_again = True
@@ -776,12 +812,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             self.pipelines.update(data)
                         logger.debug(f"成功读取并解析 JSON 文件: {file_path}")
                     except json.JSONDecodeError as e:
-                        logger.error(f"解析 JSON 文件时出错: {file_path}, 错误信息: {e}")
+                        logger.error(
+                            f"解析 JSON 文件时出错: {file_path}, 错误信息: {e}"
+                        )
                         await maafw.stop_task()
                         self.update_S2_Button("Start", self.Start_Up)
                         return False
                     except Exception as e:
-                        logger.error(f"读取 JSON 文件时出错: {file_path}, 错误信息: {e}")
+                        logger.error(
+                            f"读取 JSON 文件时出错: {file_path}, 错误信息: {e}"
+                        )
                         await maafw.stop_task()
                         self.update_S2_Button("Start", self.Start_Up)
                         return False
@@ -836,7 +876,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 maa_config_data.config["adb"]["address"],
                 maa_config_data.config["adb"]["input_method"],
                 maa_config_data.config["adb"]["screen_method"],
-                config,
+                maa_config_data.config["adb"]["config"],
             )
             and self.need_runing
         ):
@@ -1680,7 +1720,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             if result:
                 maa_config_data.config["win32"]["hwnd"] = result.hwnd
                 Save_Config(maa_config_data.config_path, maa_config_data.config)
-    def list_get(self,lst, index, default=None):
+
+    def list_get(self, lst, index, default=None):
         try:
             return lst[index]
         except IndexError:
