@@ -63,7 +63,71 @@ jobs:
     outputs:
       tag: ${{ steps.set_tag.outputs.tag }}
       is_release: ${{ steps.set_tag.outputs.is_release }}
+  Nuitka:
+    needs: meta
+    name: pyinstaller Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      matrix:
+        include: 
+          - platform: linux
+            runs-on: ubuntu-latest
+            arch: x86_64
+          - platform: linux
+            runs-on: ubuntu-latest
+            arch: aarch64
+          - platform: win
+            runs-on: windows-latest
+            arch: x86_64
+          - platform: win
+            runs-on: windows-latest
+            arch: aarch64
+      fail-fast: false
 
+    steps:
+        - uses: actions/checkout@v4
+          with:
+            submodules: true
+  
+        - name: Set up Python
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.12'
+  
+        - name: Install dependencies
+          run: |
+            python -m pip install --upgrade pip
+            pip install -r ./requirements.txt
+
+        - name: updater build
+          uses: Nuitka/Nuitka-Action@main
+          with:
+            nuitka-version: main
+            script-name: updater.py
+            mode: Onefile
+    
+        - name: Qt GUI with Pyqt6
+          uses: Nuitka/Nuitka-Action@main
+          with:
+            nuitka-version: main
+            script-name: main.py
+            mode: standalone
+            enable-plugins: pyqt6
+            windows-console-mode: disable
+            windows-icon-from-ico: ./MFW_resource/icon/logo.ico
+            linux-icon: ./MFW_resource/icon/logo.ico
+
+        - name: Install
+          run: |
+            python ./build_nuitka.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          shell: pwsh  
+          
+        - name: Upload artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
+            path: "dist/MFW"
+  
   pyinstaller:
     needs: meta
     name: pyinstaller Build (${{ matrix.platform }})
@@ -76,18 +140,6 @@ jobs:
             arch: x86_64
           - platform: macos
             runs-on: macos-latest
-            arch: aarch64
-          - platform: linux
-            runs-on: ubuntu-latest
-            arch: x86_64
-          - platform: linux
-            runs-on: ubuntu-latest
-            arch: aarch64
-          - platform: win
-            runs-on: windows-latest
-            arch: x86_64
-          - platform: win
-            runs-on: windows-latest
             arch: aarch64
       fail-fast: false
 
