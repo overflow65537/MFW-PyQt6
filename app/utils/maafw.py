@@ -260,7 +260,7 @@ class MaaFW:
         )
 
         agent_data = maa_config_data.interface_config.get("agent", {})
-        if agent_data:
+        if agent_data and agent_data.get("child_exec"):
             try:
                 subprocess.Popen(
                     [
