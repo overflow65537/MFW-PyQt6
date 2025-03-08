@@ -1,7 +1,7 @@
 qasync
 asyncify
 requests
-MaaFw
+--pre MaaFw
 psutil
 PyQt6-Fluent-Widgets
 wmi
