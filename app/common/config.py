@@ -77,6 +77,7 @@ class Config(QConfig):
     auto_update_resource = ConfigItem(
         "Maa", "auto_update_resource", False, BoolValidator()
     )
+    force_github = ConfigItem("Maa", "force_github", False, BoolValidator())
     click_update = ConfigItem("Maa", "click_update", False, BoolValidator())
     # 外部通知
     Notice_DingTalk_status = ConfigItem("Notice", "DingTalk_status", False)

@@ -615,8 +615,19 @@ class SettingInterface(ScrollArea):
             parent=self.updateGroup,
         )
 
+        self.force_github = SwitchSettingCard(
+            FIF.UPDATE,
+            self.tr("Force use GitHub"),
+            self.tr("Force use GitHub for resource update"),
+            configItem=cfg.force_github,
+            parent=self.updateGroup,
+        )
+
         self.updateGroup.addSettingCard(self.MirrorCard)
         self.updateGroup.addSettingCard(self.auto_update)
+        self.updateGroup.addSettingCard(self.force_github)
+
+
 
     def initialize_about_settings(self):
         """初始化关于设置。"""

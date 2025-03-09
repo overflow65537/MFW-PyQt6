@@ -242,7 +242,7 @@ class Update(BaseUpdate):
         cdk = self.Mirror_ckd()
         res_id = maa_config_data.interface_config.get("mirrorchyan_rid")
         version = maa_config_data.interface_config.get("version")
-        if res_id:
+        if res_id and (not cfg.get(cfg.force_github)):
             mirror_data: Dict[str, Dict] = self.mirror_check(
                 res_id=res_id, version=version, cdk=cdk
             )
