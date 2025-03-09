@@ -1,7 +1,7 @@
 qasync
 asyncify
 requests
-MaaFw == 4.0.0-beta.4
+MaaFw >= 4.0.0
 psutil
 PyQt6-Fluent-Widgets
 wmi
