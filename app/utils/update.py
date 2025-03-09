@@ -726,7 +726,18 @@ class Update(BaseUpdate):
                     "msg": self.tr("update success") + "\n" + update_dict.get("body"),
                 }
             )
-
+        # 网络错误
+        except requests.exceptions.RequestException as e:
+            logger.exception(f"GitHub请求失败: {str(e)}")
+            signalBus.update_download_finished.emit(
+                {"status": "failed", "msg": self.tr("GitHub request failed")}
+            )
+        # http错误
+        except requests.exceptions.HTTPError as e:
+            logger.exception(f"HTTP错误: {str(e)}")
+            signalBus.update_download_finished.emit(
+                {"status": "failed", "msg": self.tr("HTTP error")+str(e)}
+            )
         except KeyError as e:
             logger.exception(f"关键数据缺失: {str(e)}")
             signalBus.update_download_finished.emit(
