@@ -491,89 +491,88 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         adb_path = maa_config_data.config.get("adb").get("adb_path")
 
         emu_dict = get_console_path(adb_path)
-        if emu_dict["type"] == "mumu":
-            adb_port = maa_config_data.config.get("adb").get("address").split(":")[1]
-            emu = subprocess.run(
-                [emu_dict["path"], "info", "-v", "all"],
-                shell=True,
-                capture_output=True,
-                text=True,
-                check=True,
-                encoding="utf-8",
-            )
-            multi_dict: Dict[str, Dict[str, str]] = json.loads(emu.stdout.strip())
-
-            print(multi_dict.get("created_timestamp", False))
-            if multi_dict.get("created_timestamp", False):
-                logger.debug(f"单模拟器")
-                logger.debug(f"MuMuManager.exe info -v all: {multi_dict}")
-
-                logger.debug(f"关闭序号{str(multi_dict.get("index"))}")
-                if str(multi_dict.get("adb_port")) == adb_port:
-                    subprocess.run(
-                        [
-                            emu_dict["path"],
-                            "control",
-                            "-v",
-                            str(multi_dict.get("index")),
-                            "shutdown",
-                        ],
-                        shell=True,
-                        check=True,
-                        encoding="utf-8",
-                    )
-                    print(str(multi_dict.get("index")))
-                return
-            logger.debug(f"多模拟器")
-            logger.debug(f"MuMuManager.exe info -v all: {multi_dict}")
-
-            for emu_key, emu_data in multi_dict.items():
-                logger.debug(f"设备信息: {emu_data}")
-                if str(emu_data.get("adb_port")) == adb_port:
-
-                    subprocess.run(
-                        [
-                            emu_dict["path"],
-                            "control",
-                            "-v",
-                            str(emu_data.get("index")),
-                            "shutdown",
-                        ],
-                        shell=True,
-                        check=True,
-                        encoding="utf-8",
-                    )
-                    logger.debug(f"关闭序号{str(emu_data.get("index"))}")
-            return
-        elif emu_dict["type"] == "LD":
-            ld_pid = (
-                maa_config_data.config.get("adb")
-                .get("config")
-                .get("extras")
-                .get("ld")
-                .get("pid")
-            )
-            if ld_pid:
-                logger.debug(f"关闭LD进程: {ld_pid}")
-                subprocess.run(
-                    [
-                        "taskkill",
-                        "/F",
-                        "/PID",
-                        str(ld_pid),
-                    ],
+        match emu_dict["type"]:
+            case "mumu":
+                adb_port = maa_config_data.config.get("adb").get("address").split(":")[1]
+                emu = subprocess.run(
+                    [emu_dict["path"], "info", "-v", "all"],
                     shell=True,
+                    capture_output=True,
+                    text=True,
                     check=True,
                     encoding="utf-8",
                 )
-            return
+                multi_dict: Dict[str, Dict[str, str]] = json.loads(emu.stdout.strip())
 
-        elif emu_dict["type"] == "BlueStacks":
-            pass
-        elif emu_dict["type"] == "Nox":
-            pass
-        elif emu_dict["type"] == "Memu":
-            pass
+                print(multi_dict.get("created_timestamp", False))
+                if multi_dict.get("created_timestamp", False):
+                    logger.debug(f"单模拟器")
+                    logger.debug(f"MuMuManager.exe info -v all: {multi_dict}")
+
+                    logger.debug(f"关闭序号{str(multi_dict.get('index'))}")
+                    if str(multi_dict.get("adb_port")) == adb_port:
+                        subprocess.run(
+                            [
+                                emu_dict["path"],
+                                "control",
+                                "-v",
+                                str(multi_dict.get("index")),
+                                "shutdown",
+                            ],
+                            shell=True,
+                            check=True,
+                            encoding="utf-8",
+                        )
+                        print(str(multi_dict.get("index")))
+                    return
+                logger.debug(f"多模拟器")
+                logger.debug(f"MuMuManager.exe info -v all: {multi_dict}")
+
+                for emu_key, emu_data in multi_dict.items():
+                    logger.debug(f"设备信息: {emu_data}")
+                    if str(emu_data.get("adb_port")) == adb_port:
+                        subprocess.run(
+                            [
+                                emu_dict["path"],
+                                "control",
+                                "-v",
+                                str(emu_data.get("index")),
+                                "shutdown",
+                            ],
+                            shell=True,
+                            check=True,
+                            encoding="utf-8",
+                        )
+                        logger.debug(f"关闭序号{str(emu_data.get('index'))}")
+                return
+            case "LD":
+                ld_pid = (
+                    maa_config_data.config.get("adb")
+                    .get("config")
+                    .get("extras")
+                    .get("ld")
+                    .get("pid")
+                )
+                if ld_pid:
+                    logger.debug(f"关闭LD进程: {ld_pid}")
+                    subprocess.run(
+                        [
+                            "taskkill",
+                            "/F",
+                            "/PID",
+                            str(ld_pid),
+                        ],
+                        shell=True,
+                        check=True,
+                        encoding="utf-8",
+                    )
+                return
+            case "BlueStacks":
+                pass
+            case "Nox":
+                pass
+            case "Memu":
+                pass
 
     def shutdown(self):
         shutdown_commands = {
