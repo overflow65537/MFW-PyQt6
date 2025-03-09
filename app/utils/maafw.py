@@ -260,6 +260,7 @@ class MaaFW:
             socket_id = self.agent.create_socket(
                 "".join(random.choice(characters) for i in range(8))
             )
+            signalBus.custom_info.emit({"type": "agent_start"})
             print("agent启动")
             try:
                 

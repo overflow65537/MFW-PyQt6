@@ -219,20 +219,23 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         自定义动作/识别器信息
         """
-        if msg["type"] == "action":
-            self.insert_colored_text(self.tr("Load Custom Action:") + " " + msg["name"])
-        elif msg["type"] == "recognition":
-            self.insert_colored_text(
-                self.tr("Load Custom Recognition:") + " " + msg["name"]
-            )
-        elif msg["type"] == "error_c":
-            self.insert_colored_text(self.tr("Agent server connect failed"),"Tomato")
-        elif msg["type"] == "error_a":
-            self.insert_colored_text(self.tr("Agent server registration failed"),"Tomato")
-        elif msg["type"] == "error_t":
-            self.insert_colored_text(self.tr("Failed to init MaaFramework instance"),"Tomato")
-        elif msg["type"] == "error_r":
-            self.insert_colored_text(self.tr("Resource or Controller not initialized"),"Tomato")
+        match msg["type"]:
+            case "action":
+                self.insert_colored_text(self.tr("Load Custom Action:") + " " + msg["name"])
+            case "recognition":
+                self.insert_colored_text(
+                    self.tr("Load Custom Recognition:") + " " + msg["name"]
+                )
+            case "error_c":
+                self.insert_colored_text(self.tr("Agent server connect failed"), "Tomato")
+            case "error_a":
+                self.insert_colored_text(self.tr("Agent server registration failed"), "Tomato")
+            case "error_t":
+                self.insert_colored_text(self.tr("Failed to init MaaFramework instance"), "Tomato")
+            case "error_r":
+                self.insert_colored_text(self.tr("Resource or Controller not initialized"), "Tomato")
+            case "agent_start":
+                self.insert_colored_text(self.tr("Agent service start"))
 
     # region 拖动事件
     def dragEnter(self, event: QDropEvent):
@@ -307,114 +310,69 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         else:
             self.insert_colored_text(message)
 
+    def insert_pipeline_text(self, text, color_list, index):
+        """
+        插入管道配置中的文本，根据颜色列表和索引选择颜色
+        """
+        color = self.list_get(color_list, index, "black")
+        self.insert_colored_text(text, color)
+
+    def process_pipeline_text(self, pipeline, key, status):
+        """
+        处理管道配置中的文本，根据状态和文本类型插入彩色文本
+        """
+        text = pipeline.get(key)
+        color_key = f"{key}_color"
+        color_list = pipeline.get(color_key, "black")
+        if isinstance(text, str):
+            self.insert_pipeline_text(text, color_list, 0)
+        elif isinstance(text, list):
+            if isinstance(color_list, list):
+                for i, tip in enumerate(text):
+                    self.insert_pipeline_text(tip, color_list, i)
+            else:
+                for tip in text:
+                    self.insert_pipeline_text(tip, color_list, 0)
+
     def callback(self, message: Dict):
         """
         任务回调
         """
-        if message["name"] == "on_controller_action":
-            if message["status"] == 1:
-                self.insert_colored_text(self.tr("Starting Connection"))
-            elif message["status"] == 2:
-                self.insert_colored_text(self.tr("Connection Success"))
-            elif message["status"] == 3:
-                self.insert_colored_text(self.tr("Connection Failed"), "red")
-            elif message["status"] == 4:
-                self.insert_colored_text(self.tr("Unknown Error"), "red")
-        elif message["name"] == "on_tasker_task":
-            if not self.need_runing or message["task"] == "MaaNS::Tasker::post_stop":
-                return
-            elif message["status"] == 1:
-                self.insert_colored_text(message["task"] + " " + self.tr("Started"))
-            elif message["status"] == 2:
-                self.insert_colored_text(message["task"] + " " + self.tr("Succeeded"))
-                logger.debug(f"{message['task']} 任务成功")
-            elif message["status"] == 3:
-                self.insert_colored_text(
-                    message["task"] + " " + self.tr("Failed"), "red"
-                )
-                logger.debug(f"{message["task"]} 任务失败")
-                self.send_notice("failed", message["task"])
-        if message["name"] == "on_task_recognition":
-            task = message["task"]
-            pipeline: dict = self.pipeline_override.get(task)
-            if pipeline:
-                if message["status"] == 1 and pipeline.get("focus_tip"):  # 有焦点提示
-                    if isinstance(pipeline["focus_tip"], str):  # 单条 直接输出
-                        self.insert_colored_text(
-                            pipeline["focus_tip"],
-                            pipeline.get("focus_tip_color", "black"),
-                        )
-                    elif isinstance(pipeline["focus_tip"], list):  # 多条 看看颜色类型
-                        if isinstance(
-                            pipeline.get("focus_tip_color", "black"), list
-                        ):  # 颜色多条 循环输出
-                            for i, tip in enumerate(pipeline["focus_tip"]):
-                                self.insert_colored_text(
-                                    tip,
-                                    self.list_get(
-                                        pipeline.get("focus_tip_color", "black"),
-                                        i,
-                                        "black",
-                                    ),
-                                )
-                        else:  # 颜色单条 循环
-                            for tip in pipeline["focus_tip"]:
-                                self.insert_colored_text(
-                                    tip,
-                                    pipeline.get("focus_tip_color", "black"),
-                                )
-
-                elif message["status"] == 2 and pipeline.get("focus_succeeded"):
-                    if isinstance(pipeline["focus_succeeded"], str):
-                        self.insert_colored_text(
-                            pipeline["focus_succeeded"],
-                            pipeline.get("focus_succeeded_color", "black"),
-                        )
-                    elif isinstance(pipeline["focus_succeeded"], list):
-                        if isinstance(
-                            pipeline.get("focus_succeeded_color", "black"), list
-                        ):
-                            for i, text in enumerate(pipeline["focus_succeeded"]):
-                                self.insert_colored_text(
-                                    text,
-                                    self.list_get(
-                                        pipeline.get("focus_succeeded_color", "black"),
-                                        i,
-                                        "black",
-                                    ),
-                                )
-                        else:
-                            for text in pipeline["focus_succeeded"]:
-                                self.insert_colored_text(
-                                    text,
-                                    pipeline.get("focus_succeeded_color", "black"),
-                                )
-
-                elif message["status"] == 3 and pipeline.get("focus_failed"):
-                    if isinstance(pipeline["focus_failed"], str):
-                        self.insert_colored_text(
-                            pipeline["focus_failed"],
-                            pipeline.get("focus_failed_color", "black"),
-                        )
-                    elif isinstance(pipeline["focus_failed"], list):
-                        if isinstance(
-                            pipeline.get("focus_failed_color", "black"), list
-                        ):
-                            for i, text in enumerate(pipeline["focus_failed"]):
-                                self.insert_colored_text(
-                                    text,
-                                    self.list_get(
-                                        pipeline.get("focus_failed_color", "black"),
-                                        i,
-                                        "black",
-                                    ),
-                                )
-                        else:
-                            for text in pipeline["focus_failed"]:
-                                self.insert_colored_text(
-                                    text,
-                                    pipeline.get("focus_failed_color", "black"),
-                                )
+        match message["name"]:
+            case "on_controller_action":
+                match message["status"]:
+                    case 1:
+                        self.insert_colored_text(self.tr("Starting Connection"))
+                    case 2:
+                        self.insert_colored_text(self.tr("Connection Success"))
+                    case 3:
+                        self.insert_colored_text(self.tr("Connection Failed"), "red")
+                    case 4:
+                        self.insert_colored_text(self.tr("Unknown Error"), "red")
+            case "on_tasker_task":
+                if not self.need_runing or message["task"] == "MaaNS::Tasker::post_stop":
+                    return
+                match message["status"]:
+                    case 1:
+                        self.insert_colored_text(message["task"] + " " + self.tr("Started"))
+                    case 2:
+                        self.insert_colored_text(message["task"] + " " + self.tr("Succeeded"))
+                        logger.debug(f"{message['task']} 任务成功")
+                    case 3:
+                        self.insert_colored_text(message["task"] + " " + self.tr("Failed"), "red")
+                        logger.debug(f"{message['task']} 任务失败")
+                        self.send_notice("failed", message["task"])
+            case "on_task_recognition":
+                task = message["task"]
+                pipeline: dict = self.pipeline_override.get(task)
+                if pipeline:
+                    match message["status"]:
+                        case 1:
+                            self.process_pipeline_text(pipeline, "focus_tip", 1)
+                        case 2:
+                            self.process_pipeline_text(pipeline, "focus_succeeded", 2)
+                        case 3:
+                            self.process_pipeline_text(pipeline, "focus_failed", 3)
 
     def insert_colored_text(self, text, color_name="black"):
         """
