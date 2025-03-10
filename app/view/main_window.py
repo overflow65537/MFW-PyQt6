@@ -13,8 +13,8 @@ from qfluentwidgets import (
     SplashScreen,
     SystemThemeListener,
     isDarkTheme,
-    InfoBar,
-    InfoBarPosition,
+    InfoBar
+
 )
 from qfluentwidgets import FluentIcon as FIF
 
@@ -26,6 +26,7 @@ from ..common.config import cfg
 from ..common.signal_bus import signalBus
 from ..common import resource
 from ..utils.logger import logger
+from ..common.maa_config_data import maa_config_data
 
 
 class MainWindow(FluentWindow):
@@ -158,12 +159,20 @@ class MainWindow(FluentWindow):
         title = cfg.get(cfg.title)
         resource_name = cfg.get(cfg.maa_resource_name)
         config_name = cfg.get(cfg.maa_config_name)
+        version = maa_config_data.interface_config.get("version", "")
+        version_file_path = os.path.join(os.getcwd(), "config", "version.txt")
+        with open(version_file_path, "r", encoding="utf-8") as f:
+                version_data = f.read().split()
         if resource_name != "":
             title += f" {resource_name}"
         if config_name != "":
             title += f" {config_name}"
         if self.is_admin():
             title += " " + self.tr("admin")
+        if version != "":
+            title +=" "+self.tr("Resource")+ f" {version}"
+        if version_data[2]:
+            title += f" {version_data[2]}"
         logger.info(f" 设置窗口标题：{title}")
         self.setWindowTitle(title)
 

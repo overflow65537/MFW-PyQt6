@@ -875,17 +875,6 @@ class UpdateSelf(BaseUpdate):
 
         cdk = self.Mirror_ckd()
         logger.debug(f"获取到CDK: {cdk[:4]}****")
-        if cfg.get(cfg.is_change_cdk):
-            logger.warning("检测到CDK变更")
-            res_id = maa_config_data.interface_config.get("mirrorchyan_rid")
-            url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version=v0.0.1&cdk={cdk}&user_agent=MFW_PYQT6"
-            cfg.set(cfg.is_change_cdk, False)
-            try:
-                logger.info(f"发送CDK验证请求: {url}")
-                response = requests.get(url, timeout=10)
-                response.raise_for_status()
-            except Exception as e:
-                logger.error(f"CDK验证请求失败: {str(e)}")
         mirror_data: Dict[str, Dict] = self.mirror_check(cdk, version_data)
         logger.debug(f"镜像检查结果: {mirror_data}")
         if mirror_data.get("status") == "failed_info":  # mirror检查失败
