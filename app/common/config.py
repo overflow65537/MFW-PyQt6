@@ -75,7 +75,7 @@ class Config(QConfig):
     maa_resource_list = ConfigItem("Maa", "maa_resource_list", {})
     # 自动更新资源
     auto_update_resource = ConfigItem(
-        "Maa", "auto_update_resource", False, BoolValidator()
+        "Maa", "auto_update_resource", True, BoolValidator()
     )
     force_github = ConfigItem("Maa", "force_github", False, BoolValidator())
     click_update = ConfigItem("Maa", "click_update", False, BoolValidator())
