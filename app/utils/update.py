@@ -59,7 +59,7 @@ class BaseUpdate(QThread):
 
     def extract_zip(self, zip_file_path, extract_to):
         try:
-            with zipfile.ZipFile(zip_file_path, "r") as zip_ref:
+            with zipfile.ZipFile(zip_file_path, "r", metadata_encoding='utf-8') as zip_ref:
                 all_members = zip_ref.namelist()
                 actual_main_folder = all_members[0].split("/")[0]
                 zip_ref.extractall(extract_to)
