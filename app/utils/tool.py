@@ -14,6 +14,7 @@ from typing import Literal, Optional, List, Dict, Any
 from cryptography.fernet import Fernet
 import base64
 import logging
+from datetime import datetime, timedelta
 
 
 from PyQt6.QtWidgets import QMessageBox
@@ -23,8 +24,8 @@ from app.utils.logger import logger
 
 def replace_ocr(path):
     """替换OCR模型"""
-    bundle_dir1 = os.path.join(path,"resource", "base", "model", "ocr")
-    bundle_dir2 = os.path.join(path, "resource","model", "ocr")
+    bundle_dir1 = os.path.join(path, "resource", "base", "model", "ocr")
+    bundle_dir2 = os.path.join(path, "resource", "model", "ocr")
     main_ocr_path = os.path.join(os.getcwd(), "MFW_resource", "model", "ocr")
     if os.path.exists(os.path.dirname(bundle_dir1)):
         if not os.path.exists(bundle_dir1):
@@ -698,3 +699,82 @@ def decrypt(encrypted_text: str, key: bytes) -> str:
     except Exception as e:
         logging.error("Failed to decrypt text: " + str(e))
         return encrypted_text
+
+
+def is_task_run_today(last_run_timestamp, refresh_hour):
+    """
+    检查任务是否在今天已经运行过，考虑每天的刷新时间。
+    """
+    # 获取当前时间
+    current_time = datetime.now()
+
+    current_date = current_time.date()
+    refresh_time = current_time.replace(
+        hour=refresh_hour, minute=0, second=0, microsecond=0
+    )
+
+    if current_time < refresh_time:
+        current_date = (current_time - timedelta(days=1)).date()
+
+    if last_run_timestamp is None:
+        return False
+
+    try:
+
+        last_run_time = datetime.fromtimestamp(float(last_run_timestamp))
+    except ValueError:
+        try:
+
+            last_run_time = datetime.strptime(
+                last_run_timestamp, "%Y-%m-%d %H:%M:%S.%f"
+            )
+        except ValueError:
+
+            logger.error(f"无法解析 last_run_timestamp: {last_run_timestamp}")
+            return False
+
+    last_run_date = last_run_time.date()
+
+    return last_run_date == current_date
+
+
+def is_task_run_this_week(last_run_time, week_start_day=1, day_start_hour=0):
+    """
+    检查任务是否在本周已经运行过，考虑每周的开始日期和每天的开始时间。
+    """
+
+    week_start_day = int(week_start_day)
+    py_weekday = (week_start_day - 1) % 7
+
+    if isinstance(last_run_time, str):  # 尝试将字符串解析为datetime对象
+        try:
+            last_run_time = datetime.strptime(last_run_time, "%Y-%m-%d %H:%M:%S.%f")
+        except ValueError:
+            try:
+                last_run_time = datetime.strptime(last_run_time, "%Y-%m-%d %H:%M:%S")
+            except ValueError as e:
+                print(f"时间解析失败: {str(e)}")
+                return False
+
+    current_time = datetime.now()
+
+    if (current_time - last_run_time).days > 7:  # 超过一周，返回False
+        return False
+
+    days_to_next = (py_weekday - last_run_time.weekday()) % 7
+
+    if days_to_next == 0:  # 生成前一个触发时间
+
+        if (
+            last_run_time.time() >= datetime.min.replace(hour=day_start_hour).time()
+        ):  # 如果上次运行时间超过了指定的小时
+            days_to_next = 7
+
+    threshold_time = last_run_time + timedelta(days=days_to_next)
+    threshold_time = threshold_time.replace(
+        hour=day_start_hour, minute=0, second=0, microsecond=0
+    )
+
+    result = current_time <= threshold_time  # 比较当前时间和阈值时间
+
+    return result

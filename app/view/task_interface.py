@@ -7,6 +7,7 @@ from pathlib import Path
 import json
 from typing import List, Dict
 import re
+import time
 
 
 from PyQt6.QtCore import Qt, QMimeData
@@ -40,6 +41,8 @@ from ..utils.tool import (
     find_process_by_name,
     show_error_message,
     get_console_path,
+    is_task_run_today,
+    is_task_run_this_week,
 )
 from ..utils.maafw import maafw
 from ..common.config import cfg
@@ -54,6 +57,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     devices = []
     start_again = False
     need_runing = False
+    task_failed = False
+    in_progress_error = None
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -221,19 +226,29 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         match msg["type"]:
             case "action":
-                self.insert_colored_text(self.tr("Load Custom Action:") + " " + msg["name"])
+                self.insert_colored_text(
+                    self.tr("Load Custom Action:") + " " + msg["name"]
+                )
             case "recognition":
                 self.insert_colored_text(
                     self.tr("Load Custom Recognition:") + " " + msg["name"]
                 )
             case "error_c":
-                self.insert_colored_text(self.tr("Agent server connect failed"), "Tomato")
+                self.insert_colored_text(
+                    self.tr("Agent server connect failed"), "Tomato"
+                )
             case "error_a":
-                self.insert_colored_text(self.tr("Agent server registration failed"), "Tomato")
+                self.insert_colored_text(
+                    self.tr("Agent server registration failed"), "Tomato"
+                )
             case "error_t":
-                self.insert_colored_text(self.tr("Failed to init MaaFramework instance"), "Tomato")
+                self.insert_colored_text(
+                    self.tr("Failed to init MaaFramework instance"), "Tomato"
+                )
             case "error_r":
-                self.insert_colored_text(self.tr("Resource or Controller not initialized"), "Tomato")
+                self.insert_colored_text(
+                    self.tr("Resource or Controller not initialized"), "Tomato"
+                )
             case "agent_start":
                 self.insert_colored_text(self.tr("Agent service start"))
 
@@ -329,6 +344,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             elif message["status"] == 1:
                 self.insert_colored_text(message["task"] + " " + self.tr("Started"))
             elif message["status"] == 2:
+                if self.in_progress_error == message["task"]:
+                    self.in_progress_error = None
+                    return
                 self.insert_colored_text(message["task"] + " " + self.tr("Succeeded"))
                 logger.debug(f"{message['task']} 任务成功")
             elif message["status"] == 3:
@@ -340,6 +358,17 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if message["name"] == "on_task_recognition":
             task = message["task"]
             pipeline: dict = self.focus_tips.get(task)
+            on_error = self.on_error_list
+            self.in_progress_error = None
+
+            if message["task"] in on_error:
+                self.insert_colored_text(
+                    self.tr("The task has timed out"),
+                    "tomato",
+                )
+                self.in_progress_error = self.entry
+                self.task_failed = True
+
             if pipeline:
                 if message["status"] == 1 and pipeline.get("focus_tip"):  # 有焦点提示
                     if isinstance(pipeline["focus_tip"], str):  # 单条 直接输出
@@ -438,10 +467,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     color = QColor(r, g, b, a)
                 else:
                     color = QColor("black")
-                    logger.error(f"无效颜色格式 '{color_name}', 应为 (r, g, b) 或 (r, g, b, a), 使用默认颜色 'black'")
+                    logger.error(
+                        f"无效颜色格式 '{color_name}', 应为 (r, g, b) 或 (r, g, b, a), 使用默认颜色 'black'"
+                    )
             except ValueError:
                 color = QColor("black")
-                logger.error(f"无效颜色格式 '{color_name}', 颜色值必须为整数, 使用默认颜色 'black'")
+                logger.error(
+                    f"无效颜色格式 '{color_name}', 颜色值必须为整数, 使用默认颜色 'black'"
+                )
         else:
             color = QColor(color_name.lower())
             if not color.isValid():
@@ -558,7 +591,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         emu_dict = get_console_path(adb_path)
         match emu_dict["type"]:
             case "mumu":
-                adb_port = maa_config_data.config.get("adb").get("address").split(":")[1]
+                adb_port = (
+                    maa_config_data.config.get("adb").get("address").split(":")[1]
+                )
                 emu = subprocess.run(
                     [emu_dict["path"], "info", "-v", "all"],
                     shell=True,
@@ -802,6 +837,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             return False
 
         self.focus_tips = {}
+        self.on_error_list = []
         for i in resource_path:
             resource = (
                 i.replace("{PROJECT_DIR}", PROJECT_DIR)
@@ -811,6 +847,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.debug(f"加载资源: {resource}")
             focus_tips_path = os.path.join(resource, "focus_msg.json")
             pipelines_path = os.path.join(resource, "pipeline")
+            default_pipelines_path = os.path.join(resource, "default_pipeline.json")
 
             if not (os.path.exists(pipelines_path) and os.path.isdir(pipelines_path)):
                 logger.error(f"资源目录不存在: {pipelines_path}")
@@ -824,10 +861,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 with open(focus_tips_path, "r", encoding="utf-8") as f:
                     self.focus_tips.update(json.load(f))
                     logger.info(f"加载焦点提示: {focus_tips_path}")
-
+            if os.path.exists(default_pipelines_path):
+                with open(default_pipelines_path, "r", encoding="utf-8") as f:
+                    self.on_error_list = (
+                        (json.load(f)).get("Default", {}).get("on_error", [])
+                    )
+                    logger.info(f"加载默认pipeline: {default_pipelines_path}")
             await maafw.load_resource(resource)
             logger.debug(f"资源加载完成: {resource}")
         return True
+
     async def load_pipelines(self, pipelines_path):
         """
         加载pipeline
@@ -1030,20 +1073,65 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         运行任务
         """
+        self.task_failed = False
+        break_symbol = False
         self.S2_Button.setEnabled(True)
-        for task_list in maa_config_data.config["task"]:
+        for self.config_index, task_list in enumerate(maa_config_data.config["task"]):
             override_options = {}
             if not self.need_runing:
                 await maafw.stop_task()
                 return
+            # 找到task的entry
             for index, task_enter in enumerate(
                 maa_config_data.interface_config["task"]
             ):
                 if task_enter["name"] == task_list["name"]:
+                    if task_enter.get("periodic", 0) == 1:
+                        # 检查任务是否已经运行过 每日
+                        last_run = task_list.get("last_run", 0)
+                        if is_task_run_today(
+                            last_run,
+                            maa_config_data.interface_config["task"][index].get(
+                                "daily_start", 0
+                            ),
+                        ):
+                            logger.info(f"任务{task_enter['name']}已运行于{last_run}")
+                            self.insert_colored_text(
+                                self.tr("Task ")
+                                + f"{task_enter['name']}"
+                                + self.tr(" has been run today, skipping")
+                            )
+                            break_symbol = True
+                            break
+                    elif task_enter.get("periodic", 0) == 2:
+                        last_run = task_list.get("last_run", 0)
+                        if is_task_run_this_week(
+                            last_run,
+                            maa_config_data.interface_config["task"][index].get(
+                                "weekly_start", 0
+                            ),
+                            maa_config_data.interface_config["task"][index].get(
+                                "daily_end", 0
+                            ),
+                        ):
+                            # 检查任务是否已经运行过 每周
+                            logger.info(f"任务{task_enter['name']}已运行于{last_run}")
+                            self.insert_colored_text(
+                                self.tr("Task ")
+                                + f"{task_enter['name']}"
+                                + self.tr(" has been run this week, skipping")
+                            )
+
+                            break_symbol = True
+                            
+                            break
                     self.entry = task_enter["entry"]
                     enter_index = index
                     break
-            #解析task中的pipeline_override
+            if break_symbol:
+                break_symbol = False
+                continue
+            # 解析task中的pipeline_override
             if maa_config_data.interface_config["task"][enter_index].get(
                 "pipeline_override", False
             ):
@@ -1052,7 +1140,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         "pipeline_override"
                     ]
                 )
-            #解析task中的option
+            # 解析task中的option
             if task_list["option"] != []:
                 for task_option in task_list["option"]:
                     for override in maa_config_data.interface_config["option"][
@@ -1060,15 +1148,29 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     ]["cases"]:
                         if override["name"] == task_option["value"]:
 
-                            override_options.update(override.get("pipeline_override",{}))
-                            self.focus_tips.update(override.get("focus_msg_override",{}))
+                            override_options.update(
+                                override.get("pipeline_override", {})
+                            )
+                            self.focus_tips.update(
+                                override.get("focus_msg_override", {})
+                            )
                             print(self.focus_tips)
 
             logger.info(
                 f"运行任务:{self.entry}\n任务选项:\n{json.dumps(override_options, indent=4,ensure_ascii=False)}"
             )
-    
+
             await maafw.run_task(self.entry, override_options)
+            if not self.task_failed and maa_config_data.interface_config["task"][
+                enter_index
+            ].get("periodic", False):
+                maa_config_data.config["task"][self.config_index]["last_run"] = str(
+                    datetime.now()
+                )
+                Save_Config(maa_config_data.config_path, maa_config_data.config)
+                logger.info(
+                    f"更新任务{maa_config_data.config['task'][self.config_index]['name']}的启动时间"
+                )
         logger.info("任务完成")
         self.send_notice("completed")
 
