@@ -54,6 +54,7 @@
 
 ### Focus通知
 
+- 需要启用对应node的`Focus`功能
 - 在`pipeline`文件夹同级目录下新建`focus_msg.json`文件
 - 格式为
 
