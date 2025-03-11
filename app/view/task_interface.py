@@ -339,7 +339,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 self.send_notice("failed", message["task"])
         if message["name"] == "on_task_recognition":
             task = message["task"]
-            pipeline: dict = self.pipeline_override.get(task)
+            pipeline: dict = self.focus_tips.get(task)
             if pipeline:
                 if message["status"] == 1 and pipeline.get("focus_tip"):  # 有焦点提示
                     if isinstance(pipeline["focus_tip"], str):  # 单条 直接输出
@@ -781,7 +781,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.update_S2_Button("Start", self.Start_Up)
             return False
 
-        self.pipelines = {}
+        self.focus_tips = {}
         for i in resource_path:
             resource = (
                 i.replace("{PROJECT_DIR}", PROJECT_DIR)
@@ -789,48 +789,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 .replace("\\", os.sep)
             )
             logger.debug(f"加载资源: {resource}")
-            pipelines_path = os.path.join(resource, "pipeline")
-
-            if not (os.path.exists(pipelines_path) and os.path.isdir(pipelines_path)):
-                logger.error(f"资源目录不存在: {pipelines_path}")
-                await maafw.stop_task()
-                self.update_S2_Button("Start", self.Start_Up)
-                return False
-
-            if not await self.load_pipelines(pipelines_path):
-                return False
+            focus_tips_path = os.path.join(resource, "focus_msg.json")
+            if os.path.exists(focus_tips_path):
+                with open(focus_tips_path, "r", encoding="utf-8") as f:
+                    self.focus_tips.update(json.load(f))
+                    logger.info(f"加载焦点提示: {focus_tips_path}")
 
             await maafw.load_resource(resource)
             logger.debug(f"资源加载完成: {resource}")
-        return True
-
-    async def load_pipelines(self, pipelines_path):
-        """
-        加载pipeline
-        """
-        for root, dirs, files in os.walk(pipelines_path):
-            for filename in files:
-                if filename.endswith(".json"):
-                    file_path = os.path.join(root, filename)
-                    try:
-                        with open(file_path, "r", encoding="utf-8") as file:
-                            data = json.load(file)
-                            self.pipelines.update(data)
-                        logger.debug(f"成功读取并解析 JSON 文件: {file_path}")
-                    except json.JSONDecodeError as e:
-                        logger.error(
-                            f"解析 JSON 文件时出错: {file_path}, 错误信息: {e}"
-                        )
-                        await maafw.stop_task()
-                        self.update_S2_Button("Start", self.Start_Up)
-                        return False
-                    except Exception as e:
-                        logger.error(
-                            f"读取 JSON 文件时出错: {file_path}, 错误信息: {e}"
-                        )
-                        await maafw.stop_task()
-                        self.update_S2_Button("Start", self.Start_Up)
-                        return False
         return True
 
     async def connect_controller(self, controller_type):
@@ -1019,6 +985,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     self.entry = task_enter["entry"]
                     enter_index = index
                     break
+            #解析task中的pipeline_override
             if maa_config_data.interface_config["task"][enter_index].get(
                 "pipeline_override", False
             ):
@@ -1027,13 +994,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         "pipeline_override"
                     ]
                 )
-                self.pipeline_override: dict = self.pipelines
-                self.pipeline_override.update(override_options)
-                logger.debug(
-                    f"覆盖选项:\n{json.dumps(override_options, indent=4,ensure_ascii=False)}"
-                )
-            else:
-                self.pipeline_override: dict = self.pipelines
+            #解析task中的option
             if task_list["option"] != []:
                 for task_option in task_list["option"]:
                     for override in maa_config_data.interface_config["option"][
@@ -1041,10 +1002,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     ]["cases"]:
                         if override["name"] == task_option["value"]:
                             override_options.update(override["pipeline_override"])
+                            self.focus_tips.update(override["focus_msg_override"])
+
             logger.info(
                 f"运行任务:{self.entry}\n任务选项:\n{json.dumps(override_options, indent=4,ensure_ascii=False)}"
             )
-            self.pipeline_override.update(override_options)
+    
             await maafw.run_task(self.entry, override_options)
         logger.info("任务完成")
         self.send_notice("completed")
