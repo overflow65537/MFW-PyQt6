@@ -281,6 +281,10 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         logger.info(f" 切换到 {resource_name} 资源")
         self.refresh_combobox()
         self.init_text_browser()
+        if cfg.get(cfg.auto_update_resource):
+            logger.debug("res_changed发送信号")
+            signalBus.auto_update.emit()
+        
 
     def res_delete(self):
         """删除当前选定的资源"""
