@@ -72,6 +72,33 @@
 ```
 
 - 其中`node名`为pipeline中的节点名`
+- 如果希望通过`option`来控制`focus`的显示,可以在`option`-`cases`中的对应选项内添加`focus_msg_override`字段
+- 格式为
+
+```json
+{
+      "option": {
+        "选项组": {
+            "cases": [
+                {
+                    "name": "选项",
+                    "pipeline_override": {},
+                    "focus_msg_override": {
+                        "node名": {
+                            "focus_tip": "任务执行前显示在右侧的内容",
+                            "focus_tip_color": "#000000",
+                            "focus_succeeded": ["任务执行成功后显示在右侧的内容", "成功"],
+                            "focus_succeeded_color": ["(0,255,0)", "(0,255,0,50)"],
+                            "focus_failed": "任务执行失败后显示在右侧的内容",
+                            "focus_failed_color": "red"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}
+```
 
 ### 动态加载自定义动作/识别器
 

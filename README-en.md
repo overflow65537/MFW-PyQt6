@@ -64,6 +64,35 @@ A general-purpose GUI project for **[MAAFramework](https://github.com/MaaXYZ/Maa
 ```
 
 - Here, the Node Name refers to the node name in the pipeline.
+- If you want to control the display of `focus` through `option`, you can add the `focus_msg_override` field to the corresponding option in `option` - `cases`.
+- The format is as follows:
+
+```json
+{
+  {
+    "option": {
+        "Option Group": {
+            "cases": [
+                {
+                    "name": "Option",
+                    "pipeline_override": {},
+                    "focus_msg_override": {
+                        "Node Name": {
+                            "focus_tip": "Content displayed on the right before task execution",
+                            "focus_tip_color": "#000000",
+                            "focus_succeeded": ["Content displayed on the right after successful task execution", "Success"],
+                            "focus_succeeded_color": ["(0,255,0)", "(0,255,0,50)"],
+                            "focus_failed": "Content displayed on the right after task execution fails",
+                            "focus_failed_color": "red"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}
+}
+```
 
 ### Dynamic Loading of Custom Actions/Recognizers
 
