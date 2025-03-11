@@ -810,6 +810,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             )
             logger.debug(f"加载资源: {resource}")
             focus_tips_path = os.path.join(resource, "focus_msg.json")
+            pipelines_path = os.path.join(resource, "pipeline")
+
+            if not (os.path.exists(pipelines_path) and os.path.isdir(pipelines_path)):
+                logger.error(f"资源目录不存在: {pipelines_path}")
+                await maafw.stop_task()
+                self.update_S2_Button("Start", self.Start_Up)
+                return False
+
+            if not await self.load_pipelines(pipelines_path):
+                return False
             if os.path.exists(focus_tips_path):
                 with open(focus_tips_path, "r", encoding="utf-8") as f:
                     self.focus_tips.update(json.load(f))
@@ -817,6 +827,34 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
             await maafw.load_resource(resource)
             logger.debug(f"资源加载完成: {resource}")
+        return True
+    async def load_pipelines(self, pipelines_path):
+        """
+        加载pipeline
+        """
+        for root, dirs, files in os.walk(pipelines_path):
+            for filename in files:
+                if filename.endswith(".json"):
+                    file_path = os.path.join(root, filename)
+                    try:
+                        with open(file_path, "r", encoding="utf-8") as file:
+                            data = json.load(file)
+                            self.focus_tips.update(data)
+                        logger.debug(f"成功读取并解析 JSON 文件: {file_path}")
+                    except json.JSONDecodeError as e:
+                        logger.error(
+                            f"解析 JSON 文件时出错: {file_path}, 错误信息: {e}"
+                        )
+                        await maafw.stop_task()
+                        self.update_S2_Button("Start", self.Start_Up)
+                        return False
+                    except Exception as e:
+                        logger.error(
+                            f"读取 JSON 文件时出错: {file_path}, 错误信息: {e}"
+                        )
+                        await maafw.stop_task()
+                        self.update_S2_Button("Start", self.Start_Up)
+                        return False
         return True
 
     async def connect_controller(self, controller_type):
