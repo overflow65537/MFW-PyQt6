@@ -46,7 +46,8 @@ if os.path.exists(zip_file_name):
             log_file.write(error_message + "\n")
         clear_zip_file()
 
-
+#删除ZIP文件
+clear_zip_file()
 # 重启程序
 if sys.platform.startswith("win32"):
     subprocess.Popen(".\\MFW.exe")
