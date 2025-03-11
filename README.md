@@ -52,9 +52,25 @@
 
 - 目前支持 钉钉,飞书,SMTP,WxPusher 四种通知方式
 
-### 更新资源
+### Focus通知
 
-- 添加资源时如果填写了更新地址,可以进行一键更新
+- 在`pipeline`文件夹同级目录下新建`focus_msg.json`文件
+- 格式为
+
+```json
+{
+    "node名": {
+        "focus_tip": "任务执行前显示在右侧的内容",
+        "focus_tip_color": "#000000",
+        "focus_succeeded": ["任务执行成功后显示在右侧的内容", "成功"],
+        "focus_succeeded_color": ["(0,255,0)", "(0,255,0,50)"],
+        "focus_failed": "任务执行失败后显示在右侧的内容",
+        "focus_failed_color": "red"
+    }
+}
+```
+
+- 其中`node名`为pipeline中的节点名`
 
 ### 动态加载自定义动作/识别器
 
@@ -135,7 +151,8 @@
 ```
 
 - 其中,动作名字1,动作名字2,识别器名字1,识别器名字2为在pipeline中所使用的名字,比如
-- 
+-
+
 ```json
 "我的自定义任务": {
         "recognition": "Custom",

@@ -44,9 +44,26 @@ A general-purpose GUI project for **[MAAFramework](https://github.com/MaaXYZ/Maa
 
 - Currently supports four notification methods: DingTalk, Feishu, SMTP, and WxPusher
 
-### Resource Update
+### Focus Notification
 
-- If the update address is filled in when adding a resource, one-click update can be performed
+- Create a new focus_msg.json file in the same directory as the pipeline folder.
+- The format is as follows:
+
+```json
+{
+    "Node Name": {
+        "focus_tip": "Content to be displayed on the right before task execution",
+        "focus_tip_color": "#000000",
+        "focus_succeeded": ["Content to be displayed on the right after successful task execution", "Success"],
+        "focus_succeeded_color": ["(0,255,0)", "(0,255,0,50)"],
+        "focus_failed": "Content to be displayed on the right after task execution fails",
+        "focus_failed_color": "red"
+    }
+}
+
+```
+
+- Here, the Node Name refers to the node name in the pipeline.
 
 ### Dynamic Loading of Custom Actions/Recognizers
 

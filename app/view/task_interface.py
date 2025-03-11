@@ -423,10 +423,30 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         插入带颜色的文本
         """
-        color = QColor(color_name.lower())
-        if not color.isValid():
-            color = QColor("black")
-            logger.error(f"无效颜色 '{color_name}', 使用默认颜色 'black'")
+
+        if "," in color_name and color_name[0] == "(" and color_name[-1] == ")":
+            color_str = color_name[1:-1]
+            color_parts = color_str.split(",")
+            try:
+                # 转换为整数列表
+                color_values = [int(part.strip()) for part in color_parts]
+                if len(color_values) == 3:
+                    r, g, b = color_values
+                    color = QColor(r, g, b)
+                elif len(color_values) == 4:
+                    r, g, b, a = color_values
+                    color = QColor(r, g, b, a)
+                else:
+                    color = QColor("black")
+                    logger.error(f"无效颜色格式 '{color_name}', 应为 (r, g, b) 或 (r, g, b, a), 使用默认颜色 'black'")
+            except ValueError:
+                color = QColor("black")
+                logger.error(f"无效颜色格式 '{color_name}', 颜色值必须为整数, 使用默认颜色 'black'")
+        else:
+            color = QColor(color_name.lower())
+            if not color.isValid():
+                color = QColor("black")
+                logger.error(f"无效颜色 '{color_name}', 使用默认颜色 'black'")
 
         now = datetime.now().strftime("%H:%M")
         time = ClickableLabel(self)
