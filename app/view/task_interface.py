@@ -1021,8 +1021,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         task_option["name"]
                     ]["cases"]:
                         if override["name"] == task_option["value"]:
-                            override_options.update(override["pipeline_override"])
-                            self.focus_tips.update(override["focus_msg_override"])
+
+                            override_options.update(override.get("pipeline_override",{}))
+                            self.focus_tips.update(override.get("focus_msg_override",{}))
+                            print(self.focus_tips)
 
             logger.info(
                 f"运行任务:{self.entry}\n任务选项:\n{json.dumps(override_options, indent=4,ensure_ascii=False)}"
