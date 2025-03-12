@@ -5,7 +5,7 @@ from qasync import asyncSlot
 import asyncio
 from pathlib import Path
 import json
-from typing import List, Dict
+from typing import List, Dict, Optional
 import re
 import time
 
@@ -19,8 +19,9 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
     QSpacerItem,
+    QHBoxLayout,
 )
-from qfluentwidgets import InfoBar, InfoBarPosition, BodyLabel, ComboBox
+from qfluentwidgets import InfoBar, InfoBarPosition, BodyLabel, ComboBox, SwitchButton
 
 from ..view.UI_task_interface import Ui_Task_Interface
 from ..utils.notification import MyNotificationHandler
@@ -59,6 +60,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     need_runing = False
     task_failed = False
     in_progress_error = None
+    main_label = None
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -1086,9 +1088,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 maa_config_data.interface_config["task"]
             ):
                 if task_enter["name"] == task_list["name"]:
-                    if task_enter.get("periodic", 0) == 1:
+                    if task_enter.get("periodic", 0) == 1 and maa_config_data.config[
+                        "task"
+                    ][self.config_index].get("switch_enabled", False):
                         # 检查任务是否已经运行过 每日
-                        last_run = task_list.get("last_run", 0)
+                        last_run = task_list.get("last_run", "2000-01-01 00:00:00")
                         if is_task_run_today(
                             last_run,
                             maa_config_data.interface_config["task"][index].get(
@@ -1101,17 +1105,22 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                 + f"{task_enter['name']}"
                                 + self.tr(" has been run today, skipping")
                             )
+                            self.insert_colored_text(
+                                self.tr("Last runing time: ") + f"{last_run}"
+                            )
                             break_symbol = True
                             break
-                    elif task_enter.get("periodic", 0) == 2:
-                        last_run = task_list.get("last_run", 0)
+                    elif task_enter.get("periodic", 0) == 2 and maa_config_data.config[
+                        "task"
+                    ][self.config_index].get("switch_enabled", False):
+                        last_run = task_list.get("last_run", "2000-01-01 00:00:00")
                         if is_task_run_this_week(
                             last_run,
                             maa_config_data.interface_config["task"][index].get(
                                 "weekly_start", 0
                             ),
                             maa_config_data.interface_config["task"][index].get(
-                                "daily_end", 0
+                                "daily_start", 0
                             ),
                         ):
                             # 检查任务是否已经运行过 每周
@@ -1121,9 +1130,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                 + f"{task_enter['name']}"
                                 + self.tr(" has been run this week, skipping")
                             )
+                            self.insert_colored_text(
+                                self.tr("Last runing time: ") + f"{last_run}"
+                            )
 
                             break_symbol = True
-                            
+
                             break
                     self.entry = task_enter["entry"]
                     enter_index = index
@@ -1164,9 +1176,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             if not self.task_failed and maa_config_data.interface_config["task"][
                 enter_index
             ].get("periodic", False):
-                maa_config_data.config["task"][self.config_index]["last_run"] = str(
-                    datetime.now()
-                )
+                maa_config_data.config["task"][self.config_index][
+                    "last_run"
+                ] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 Save_Config(maa_config_data.config_path, maa_config_data.config)
                 logger.info(
                     f"更新任务{maa_config_data.config['task'][self.config_index]['name']}的启动时间"
@@ -1271,21 +1283,20 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             Select_index = self.Task_List.currentRow()
             Select_Target = self.SelectTask_Combox_1.currentText()
             Option = self.get_selected_options()
-            del maa_config_data.config["task"][Select_index]
-            maa_config_data.config["task"].insert(
-                Select_index,
-                {
-                    "name": Select_Target,
-                    "option": Option,
-                },
-            )
+            maa_config_data.config["task"][Select_index]["name"] = Select_Target
+            maa_config_data.config["task"][Select_index]["option"] = Option
+            if self.get_switch_value() is not None:
+                maa_config_data.config["task"][Select_index][
+                    "switch_enabled"
+                ] = self.get_switch_value()
 
         else:
             Select_Target = self.SelectTask_Combox_1.currentText()
             Option = self.get_selected_options()
-            maa_config_data.config["task"].append(
-                {"name": Select_Target, "option": Option}
-            )
+            task_data = {"name": Select_Target, "option": Option}
+            if self.get_switch_value() is not None:
+                task_data["switch_enabled"] = self.get_switch_value()
+            maa_config_data.config["task"].append(task_data)
 
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
@@ -1453,10 +1464,17 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.SelectTask_Combox_1.setCurrentText(
             maa_config_data.config["task"][Select_Target]["name"]
         )
+        if self.main_label is not None:
+            self.test_switch.setChecked(
+                maa_config_data.config["task"][Select_Target].get(
+                    "switch_enabled", False
+                )
+            )
         self.restore_options(maa_config_data.config["task"][Select_Target]["option"])
 
     def restore_options(self, selected_options: List[Dict[str, str]]):
         layout = self.Option_Label
+
         for option in selected_options:
             name = option.get("name")
             value = option.get("value")
@@ -1523,6 +1541,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def show_task_options(
         self, select_target, MAA_Pi_Config: Dict[str, List[Dict[str, str]]]
     ):
+
         self.clear_extra_widgets()
 
         layout = self.Option_Label
@@ -1558,6 +1577,51 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
                         layout.addLayout(v_layout)
 
+                # 时间限制运行
+                if task.get("periodic") in [1, 2]:  # 暂时用True作为生成条件
+                    switch_v_layout = QVBoxLayout()
+
+                    # 添加主标签
+                    self.main_label = BodyLabel(self)
+                    text = ""
+                    checked = True
+
+                    if self.Task_List.currentRow() != -1:
+                        checked = maa_config_data.config["task"][
+                            self.Task_List.currentRow()
+                        ].get("switch_enabled", True)
+                    if task.get("periodic") == 1:
+                        # 将小时转换为中文时间格式
+                        hour = task.get("daily_start", 0)
+                        text += f"刷新时间:每日 {self._format_hour(hour)}"
+                    elif task.get("periodic") == 2:
+                        # 转换星期和小时
+                        weekday = task.get("weekly_start", 0)
+                        hour = task.get("daily_start", 0)
+                        text += f"刷新时间:每周{self._format_weekday(weekday)} {self._format_hour(hour)}"
+                    self.main_label.setText(text)
+                    switch_v_layout.addWidget(self.main_label)
+
+                    # 添加水平布局
+                    h_layout = QHBoxLayout()
+                    h_layout.setContentsMargins(0, 0, 0, 10)  # 增加底部间距
+
+                    # 添加开关标签
+                    switch_label = BodyLabel(self)
+                    switch_label.setText("是否启用")
+                    h_layout.addWidget(switch_label)
+
+                    # 添加开关控件
+                    self.test_switch = SwitchButton(self)
+                    self.test_switch.setChecked(checked)
+
+                    h_layout.addWidget(self.test_switch)
+
+                    switch_v_layout.addLayout(h_layout)
+
+                    # 添加间隔防止重叠
+                    switch_v_layout.addSpacerItem(QSpacerItem(0, 10))
+                    layout.addLayout(switch_v_layout)
                 # 处理 doc 字段
                 doc = task.get("doc")
                 if doc:
@@ -1608,6 +1672,25 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
                 break
 
+    def get_switch_value(self) -> Optional[bool]:
+        """获取开关的布尔值，未找到开关则返回None"""
+        layout = self.Option_Label
+
+        # 遍历布局查找SwitchButton
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            if isinstance(item.layout(), QVBoxLayout):
+                v_layout = item.layout()
+                for j in range(v_layout.count()):
+                    child_item = v_layout.itemAt(j)
+                    if isinstance(child_item.layout(), QHBoxLayout):
+                        h_layout = child_item.layout()
+                        for k in range(h_layout.count()):
+                            widget = h_layout.itemAt(k).widget()
+                            if isinstance(widget, SwitchButton):
+                                return widget.isChecked()
+        return None
+
     def get_selected_options(self):
         selected_options = []
         layout = self.Option_Label
@@ -1639,27 +1722,18 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if layout is None:
             return
 
-        while layout.count():
-            item = layout.takeAt(0)
-            if item is None:
-                continue
+        def recursive_clear(layout):
+            while layout.count():
+                item = layout.takeAt(0)
+                if item.widget():
+                    item.widget().deleteLater()
+                elif item.spacerItem():
+                    pass  # 保留SpacerItem
+                elif item.layout():
+                    recursive_clear(item.layout())
+                    item.layout().deleteLater()
 
-            if isinstance(item, QSpacerItem):
-                continue
-
-            sub_layout = item.layout()
-            if sub_layout is None:
-                continue
-
-            while sub_layout.count():
-                sub_item = sub_layout.takeAt(0)
-                if sub_item is None:
-                    continue
-
-                widget = sub_item.widget()
-                if widget is not None:
-                    print(f"{widget} 删除")
-                    widget.deleteLater()
+        recursive_clear(layout)
 
     @asyncSlot()
     async def Start_Detection(self):
@@ -1857,3 +1931,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             return lst[index]
         except IndexError:
             return default
+
+    def _format_hour(self, hour: int) -> str:
+        """将小时数格式化为中文时间"""
+        return f"{hour:02d}:00"  # 示例: 14 -> "14:00"
+
+    def _format_weekday(self, weekday: int) -> str:
+        """将数字转换为中文星期"""
+        weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"]
+        return weekdays[weekday % 7]
