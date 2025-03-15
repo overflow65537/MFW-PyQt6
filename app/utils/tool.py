@@ -701,41 +701,37 @@ def decrypt(encrypted_text: str, key: bytes) -> str:
         return encrypted_text
 
 
-def is_task_run_today(last_run_timestamp, refresh_hour):
+def is_task_run_today(last_run_time, refresh_hour):
     """
-    检查任务是否在今天已经运行过，考虑每天的刷新时间。
+    检查任务是否在今天已经运行过，考虑每天的刷新时间（基于周检查逻辑重构）
     """
-    # 获取当前时间
     current_time = datetime.now()
-
-    current_date = current_time.date()
-    refresh_time = current_time.replace(
-        hour=refresh_hour, minute=0, second=0, microsecond=0
-    )
-
-    if current_time < refresh_time:
-        current_date = (current_time - timedelta(days=1)).date()
-
-    if last_run_timestamp is None:
+    
+    if last_run_time is None:
         return False
 
-    try:
-
-        last_run_time = datetime.fromtimestamp(float(last_run_timestamp))
-    except ValueError:
+    # 解析最后运行时间（保留原有异常处理）
+    if isinstance(last_run_time, str):  # 尝试将字符串解析为datetime对象
         try:
-
-            last_run_time = datetime.strptime(
-                last_run_timestamp, "%Y-%m-%d %H:%M:%S.%f"
-            )
+            last_run_time = datetime.strptime(last_run_time, "%Y-%m-%d %H:%M:%S.%f")
         except ValueError:
+            try:
+                last_run_time = datetime.strptime(last_run_time, "%Y-%m-%d %H:%M:%S")
+            except ValueError as e:
+                print(f"时间解析失败: {str(e)}")
+                return False
 
-            logger.error(f"无法解析 last_run_timestamp: {last_run_timestamp}")
-            return False
-
-    last_run_date = last_run_time.date()
-
-    return last_run_date == current_date
+    # 计算当日刷新阈值时间
+    threshold_time = current_time.replace(
+        hour=refresh_hour, minute=0, second=0, microsecond=0
+    )
+    
+    # 调整阈值逻辑（如果当前时间在刷新时间之前，则阈值时间向前推一天）
+    if current_time < threshold_time:
+        threshold_time -= timedelta(days=1)
+    
+    # 最终判断：最后运行时间 >= 阈值时间 且 当前时间 >= 阈值时间
+    return last_run_time >= threshold_time and current_time >= threshold_time
 
 
 def is_task_run_this_week(last_run_time, week_start_day=1, day_start_hour=0):

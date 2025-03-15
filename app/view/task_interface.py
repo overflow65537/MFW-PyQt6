@@ -60,7 +60,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     need_runing = False
     task_failed = False
     in_progress_error = None
-    main_label = None
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -1088,9 +1087,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 maa_config_data.interface_config["task"]
             ):
                 if task_enter["name"] == task_list["name"]:
-                    if task_enter.get("periodic", 0) == 1 and maa_config_data.config[
-                        "task"
-                    ][self.config_index].get("switch_enabled", False):
+                    if task_enter.get("periodic", 0) == 1:
                         # 检查任务是否已经运行过 每日
                         last_run = task_list.get("last_run", "2000-01-01 00:00:00")
                         if is_task_run_today(
@@ -1110,9 +1107,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             )
                             break_symbol = True
                             break
-                    elif task_enter.get("periodic", 0) == 2 and maa_config_data.config[
-                        "task"
-                    ][self.config_index].get("switch_enabled", False):
+                    elif task_enter.get("periodic", 0) == 2:
                         last_run = task_list.get("last_run", "2000-01-01 00:00:00")
                         if is_task_run_this_week(
                             last_run,
@@ -1464,12 +1459,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.SelectTask_Combox_1.setCurrentText(
             maa_config_data.config["task"][Select_Target]["name"]
         )
-        if self.main_label is not None:
-            self.test_switch.setChecked(
-                maa_config_data.config["task"][Select_Target].get(
-                    "switch_enabled", False
-                )
-            )
+        
+
         self.restore_options(maa_config_data.config["task"][Select_Target]["option"])
 
     def restore_options(self, selected_options: List[Dict[str, str]]):
@@ -1578,32 +1569,38 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         layout.addLayout(v_layout)
 
                 # 时间限制运行
-                if task.get("periodic") in [1, 2]:  # 暂时用True作为生成条件
+                if task.get("periodic") in [1, 2]: 
                     switch_v_layout = QVBoxLayout()
 
                     # 添加主标签
                     self.main_label = BodyLabel(self)
                     text = ""
-                    checked = True
+                    """checked = True
 
                     if self.Task_List.currentRow() != -1:
                         checked = maa_config_data.config["task"][
                             self.Task_List.currentRow()
-                        ].get("switch_enabled", True)
+                        ].get("switch_enabled", True)"""
                     if task.get("periodic") == 1:
                         # 将小时转换为中文时间格式
                         hour = task.get("daily_start", 0)
-                        text += f"刷新时间:每日 {self._format_hour(hour)}"
+                        text += (
+                            self.tr("Refresh time: Daily ")
+                            + f"{self._format_hour(hour)}"
+                        )
                     elif task.get("periodic") == 2:
                         # 转换星期和小时
                         weekday = task.get("weekly_start", 0)
                         hour = task.get("daily_start", 0)
-                        text += f"刷新时间:每周{self._format_weekday(weekday)} {self._format_hour(hour)}"
+                        text += (
+                            self.tr("Refresh time: Every ")
+                            + f"{self._format_weekday(weekday)} {self._format_hour(hour)}"
+                        )
                     self.main_label.setText(text)
                     switch_v_layout.addWidget(self.main_label)
 
                     # 添加水平布局
-                    h_layout = QHBoxLayout()
+                    """h_layout = QHBoxLayout()
                     h_layout.setContentsMargins(0, 0, 0, 10)  # 增加底部间距
 
                     # 添加开关标签
@@ -1617,7 +1614,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
                     h_layout.addWidget(self.test_switch)
 
-                    switch_v_layout.addLayout(h_layout)
+                    switch_v_layout.addLayout(h_layout)"""
 
                     # 添加间隔防止重叠
                     switch_v_layout.addSpacerItem(QSpacerItem(0, 10))
@@ -1938,5 +1935,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def _format_weekday(self, weekday: int) -> str:
         """将数字转换为中文星期"""
-        weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"]
+        weekdays = [
+            self.tr("Sunday"),
+            self.tr("Monday"),
+            self.tr("Tuesday"),
+            self.tr("Wednesday"),
+            self.tr("Thursday"),
+            self.tr("Friday"),
+            self.tr("Saturday"),
+        ]
         return weekdays[weekday % 7]
