@@ -163,16 +163,17 @@ class MainWindow(FluentWindow):
         version_file_path = os.path.join(os.getcwd(), "config", "version.txt")
         with open(version_file_path, "r", encoding="utf-8") as f:
                 version_data = f.read().split()
+        if version_data[2]:
+            title += f" {version_data[2]}"
         if resource_name != "":
             title += f" {resource_name}"
+        if version != "":
+            title +=f" {version}"
         if config_name != "":
             title += f" {config_name}"
         if self.is_admin():
             title += " " + self.tr("admin")
-        if version != "":
-            title +=" "+self.tr("Resource")+ f" {version}"
-        if version_data[2]:
-            title += f" {version_data[2]}"
+
         logger.info(f" 设置窗口标题：{title}")
         self.setWindowTitle(title)
 
