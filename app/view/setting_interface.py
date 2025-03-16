@@ -81,7 +81,8 @@ class SettingInterface(ScrollArea):
         self.initialize_start_settings()
         self.initialize_personalization_settings()
         self.initialize_notice_settings()
-        self.initialize_dev_settings()
+        self.initialize_VI_settings()
+        self.initialize_advanced_settings()
         self.initialize_update_settings()
         self.initialize_about_settings()
         self.__initWidget()
@@ -186,7 +187,8 @@ class SettingInterface(ScrollArea):
         self.run_before_start_args.lineEdit.clear()
         self.run_after_finish.lineEdit.clear()
         self.run_after_finish_args.lineEdit.clear()
-        self.DEVmodeCard.switchButton.setChecked(False)
+
+
         self.updateCard.setContent(
             self.tr("Current")
             + " "
@@ -453,12 +455,11 @@ class SettingInterface(ScrollArea):
         self.noticeGroup.addSettingCard(self.SMTP_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.WxPusher_noticeTypeCard)
 
-    def initialize_dev_settings(self):
+    def initialize_VI_settings(self):
         """初始化开发者设置。"""
-        self.DEVGroup = SettingCardGroup(self.tr("DEV Mode"), self.scrollWidget)
-
-        # 设置开发者配置
-        cfg.set(cfg.save_draw, False)
+        self.VisionAndInputGroup = SettingCardGroup(
+            self.tr("Vision & Input"), self.scrollWidget
+        )
 
         gpu_mapping = get_gpu_info()
         logger.debug(f"GPU列表: {gpu_mapping}")
@@ -510,7 +511,7 @@ class SettingInterface(ScrollArea):
             texts=gpu_combox_list,
             target=["gpu"],
             path=maa_config_data.config_path,
-            parent=self.DEVGroup,
+            parent=self.VisionAndInputGroup,
             mode="setting",
             mapping=gpu_mapping,
         )
@@ -521,7 +522,7 @@ class SettingInterface(ScrollArea):
             texts=win32_input_combox_list,
             target=["win32", "input_method"],
             path=maa_config_data.config_path,
-            parent=self.DEVGroup,
+            parent=self.VisionAndInputGroup,
             mode="setting",
             mapping=win32_input_mapping,
         )
@@ -532,7 +533,7 @@ class SettingInterface(ScrollArea):
             texts=[self.tr("default"), "GDI", "FramePool", "DXGI_DesktopDup"],
             target=["win32", "screen_method"],
             path=maa_config_data.config_path,
-            parent=self.DEVGroup,
+            parent=self.VisionAndInputGroup,
             mode="setting",
             mapping=win32_screencap_mapping,
         )
@@ -549,7 +550,7 @@ class SettingInterface(ScrollArea):
             ],
             target=["adb", "input_method"],
             path=maa_config_data.config_path,
-            parent=self.DEVGroup,
+            parent=self.VisionAndInputGroup,
             mode="setting",
             mapping=ADB_input_mapping,
         )
@@ -569,25 +570,71 @@ class SettingInterface(ScrollArea):
             ],
             target=["adb", "screen_method"],
             path=maa_config_data.config_path,
-            parent=self.DEVGroup,
+            parent=self.VisionAndInputGroup,
             mode="setting",
             mapping=ADB_screencap_mapping,
         )
 
-        self.DEVmodeCard = SwitchSettingCard(
-            FIF.PHOTO,
-            self.tr("DEV Mode"),
-            self.tr("If enabled, screenshots will be saved in ./debug/vision"),
-            configItem=cfg.save_draw,
-            parent=self.DEVGroup,
+        self.VisionAndInputGroup.addSettingCard(self.use_GPU)
+        self.VisionAndInputGroup.addSettingCard(self.win32_input_mode)
+        self.VisionAndInputGroup.addSettingCard(self.win32_screencap_mode)
+        self.VisionAndInputGroup.addSettingCard(self.ADB_input_mode)
+        self.VisionAndInputGroup.addSettingCard(self.ADB_screencap_mode)
+        try:
+            gpu_mapping[maa_config_data.config.get("gpu", -1)]
+        except:
+            self.use_GPU.comboBox.setCurrentText(self.tr("Auto"))
+            maa_config_data.config["gpu"] = -1
+            Save_Config(maa_config_data.config_path, maa_config_data.config)
+
+    def initialize_advanced_settings(self):
+        """初始化高级设置。"""
+        self.advancedGroup = SettingCardGroup(self.tr("Advanced"), self.scrollWidget)
+        # 设置开发者配置
+        cfg.set(cfg.recording, False)
+        cfg.set(cfg.save_draw, False)
+        cfg.set(cfg.show_hit_draw, False)
+        self.RecordingCard = SwitchSettingCard(
+            FIF.VIDEO,
+            self.tr("Recording"),
+            self.tr(
+                "The video recording and saving function saves all screenshots and operation data during the runtime. You can use the DbgController for reproduction and debugging."
+            ),
+            configItem=cfg.recording,
+            parent=self.advancedGroup,
         )
 
-        self.DEVGroup.addSettingCard(self.DEVmodeCard)
-        self.DEVGroup.addSettingCard(self.use_GPU)
-        self.DEVGroup.addSettingCard(self.win32_input_mode)
-        self.DEVGroup.addSettingCard(self.win32_screencap_mode)
-        self.DEVGroup.addSettingCard(self.ADB_input_mode)
-        self.DEVGroup.addSettingCard(self.ADB_screencap_mode)
+        self.SaveDrawCard = SwitchSettingCard(
+            FIF.PHOTO,
+            self.tr("Save Draw"),
+            self.tr(
+                "Saving the visualization results of image recognition will save all the drawn diagrams of the visualization results of image recognition during the runtime."
+            ),
+            configItem=cfg.save_draw,
+            parent=self.advancedGroup,
+        )
+        self.show_hit_draw = SwitchSettingCard(
+            FIF.PHOTO,
+            self.tr("Show Hit Draw"),
+            self.tr(
+                "Show the node hit pop-up window. A pop-up window will appear to display the recognition results every time the recognition is successful."
+            ),
+            configItem=cfg.show_hit_draw,
+            parent=self.advancedGroup,
+        )
+
+        self.advancedGroup.addSettingCard(self.RecordingCard)
+        self.advancedGroup.addSettingCard(self.SaveDrawCard)
+        self.advancedGroup.addSettingCard(self.show_hit_draw)
+        self.RecordingCard.switchButton.checkedChanged.connect(
+            lambda: signalBus.title_changed.emit()
+        )
+        self.SaveDrawCard.switchButton.checkedChanged.connect(
+            lambda: signalBus.title_changed.emit()
+        )
+        self.show_hit_draw.switchButton.checkedChanged.connect(
+            lambda: signalBus.title_changed.emit()
+        )
 
     def initialize_update_settings(self):
         """初始化更新设置。"""
@@ -627,8 +674,6 @@ class SettingInterface(ScrollArea):
         self.updateGroup.addSettingCard(self.auto_update)
         self.updateGroup.addSettingCard(self.force_github)
 
-
-
     def initialize_about_settings(self):
         """初始化关于设置。"""
         self.aboutGroup = SettingCardGroup(self.tr("About"), self.scrollWidget)
@@ -652,7 +697,7 @@ class SettingInterface(ScrollArea):
             text=self.tr("About"),
             text2=self.tr("Check for updates"),
             icon=FIF.INFO,
-            title="MFW-PyQt6 "+ MFW_Version,
+            title="MFW-PyQt6 " + MFW_Version,
             content=self.tr(
                 "MFW-PyQt6 is open source under the GPLv3 license. Visit the project URL for more information."
             ),
@@ -691,7 +736,7 @@ class SettingInterface(ScrollArea):
             )
         elif "info" in data_dict["status"]:
             return
-        
+
         self.updateCard.button2.setText(self.tr("Check for updates"))
         self.updateCard.button2.setEnabled(True)
 
@@ -725,7 +770,8 @@ class SettingInterface(ScrollArea):
         self.expandLayout.addWidget(self.start_Setting)
         self.expandLayout.addWidget(self.personalGroup)
         self.expandLayout.addWidget(self.noticeGroup)
-        self.expandLayout.addWidget(self.DEVGroup)
+        self.expandLayout.addWidget(self.VisionAndInputGroup)
+        self.expandLayout.addWidget(self.advancedGroup)
         self.expandLayout.addWidget(self.updateGroup)
         self.expandLayout.addWidget(self.aboutGroup)
 
@@ -790,6 +836,7 @@ class SettingInterface(ScrollArea):
 
     def __connectSignalToSlot(self):
         """连接信号到对应的槽函数。"""
+        signalBus.setting_Visible.connect(self.Switch_Controller)
         signalBus.update_download_finished.connect(self.on_update_finished)
         cfg.appRestartSig.connect(self.__showRestartTooltip)
         signalBus.update_adb.connect(self.update_adb)
@@ -832,9 +879,6 @@ class SettingInterface(ScrollArea):
             self._onRunAfterFinishArgsCardChange
         )
 
-        # 连接开发者模式信号
-        self.DEVmodeCard.checkedChanged.connect(self._onDEVmodeCardChange)
-
         # 连接个性化信号
         cfg.themeChanged.connect(setTheme)
         self.themeColorCard.colorChanged.connect(lambda c: setThemeColor(c))
@@ -844,10 +888,10 @@ class SettingInterface(ScrollArea):
             lambda: QDesktopServices.openUrl(QUrl("https://mirrorchyan.com/"))
         )
         self.MirrorCard.lineEdit.textChanged.connect(self._onMirrorCardChange)
-        
+
         # 连接关于信号
         self.updateCard.clicked2.connect(self.update_check)
-        self.updateCard.clicked2.connect(lambda: cfg.set(cfg.click_update,True))
+        self.updateCard.clicked2.connect(lambda: cfg.set(cfg.click_update, True))
         self.updateCard.clicked.connect(
             lambda: QDesktopServices.openUrl(
                 QUrl(for_config_get_url(self.project_url, "issue"))
@@ -867,10 +911,9 @@ class SettingInterface(ScrollArea):
     def update_self_finished(self, status: dict):
         """更新程序停止。"""
         button = self.aboutCard.button2
-        
 
         status_type = status["status"]
-        if status_type in ["no_need","failed", "stoped"]:
+        if status_type in ["no_need", "failed", "stoped"]:
             button.setText(self.tr("Check for updates"))
             button.setEnabled(True)
         elif status_type == "failed_info":
@@ -881,7 +924,6 @@ class SettingInterface(ScrollArea):
             button.clicked.connect(self.update_self_start)
             button.setEnabled(True)
 
-
     def update_self_start(self):
         """开始更新程序。"""
         # 重命名更新程序防止占用
@@ -891,8 +933,6 @@ class SettingInterface(ScrollArea):
             self._rename_updater("MFWUpdater", "MFWUpdater1")
         elif sys.platform.startswith("linux"):
             self._rename_updater("MFWupdater.bin", "MFWupdater1.bin")
-
-        
 
         # 启动更新程序
         self._start_updater()
@@ -925,8 +965,6 @@ class SettingInterface(ScrollArea):
             os.path.join(os.getcwd(), "config", "version.txt"), "w", encoding="utf-8"
         ) as f:
             f.write(" ".join(version_data))
-            
-
 
         logger.info("正在启动更新程序")
 
@@ -1006,14 +1044,6 @@ class SettingInterface(ScrollArea):
         cfg.set(cfg.Mcdk, str(Mcdk))
         cfg.set(cfg.is_change_cdk, True)
 
-    def _onDEVmodeCardChange(self):
-        """切换开发者模式的保存设置。"""
-        if maa_config_data.config_path == "":
-            return
-        state = self.DEVmodeCard.isChecked()
-        maa_config_data.config["save_draw"] = state
-        Save_Config(maa_config_data.config_path, maa_config_data.config)
-
     def update_adb(self):
         """根据外部消息更新 ADB 路径和端口。"""
         logger.info(f"adb_信息更新")
@@ -1026,13 +1056,20 @@ class SettingInterface(ScrollArea):
 
     def Switch_Controller(self, controller):
         """在 ADB 和 Win32 控制器设置之间切换。"""
-        if controller == "Win32":
-            self.ADB_input_mode.hide()
-            self.ADB_screencap_mode.hide()
-            self.win32_input_mode.show()
-            self.win32_screencap_mode.show()
-        elif controller == "Adb":
-            self.win32_input_mode.hide()
-            self.win32_screencap_mode.hide()
-            self.ADB_input_mode.show()
-            self.ADB_screencap_mode.show()
+        if controller == "win32":
+            self.ADB_Setting.setHidden(True)
+            # self.ADB_input_mode.setHidden(True)
+            # self.ADB_screencap_mode.setHidden(True)
+
+            self.Win32_Setting.setHidden(False)
+            # self.win32_input_mode.setHidden(False)
+            # self.win32_screencap_mode.setHidden(False)
+
+        elif controller == "adb":
+            self.ADB_Setting.setHidden(False)
+            # self.ADB_input_mode.setHidden(False)
+            # self.ADB_screencap_mode.setHidden(False)
+
+            self.Win32_Setting.setHidden(True)
+            # self.win32_input_mode.setHidden(True)
+            # self.win32_screencap_mode.setHidden(True)

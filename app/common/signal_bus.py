@@ -36,6 +36,7 @@ class SignalBus(QObject):
     mirror_bundle_download_finished = pyqtSignal()  # mirror bundle下载完成信号
     mirror_bundle_download_stopped = pyqtSignal()  # mirror bundle下载停止信号
     custom_info = pyqtSignal(dict)  # 自定义动作/识别器成功信号
+    setting_Visible = pyqtSignal(str)  # 设置界面可见信号
 
 
 signalBus = SignalBus()

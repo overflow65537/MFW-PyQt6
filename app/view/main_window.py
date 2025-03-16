@@ -55,6 +55,11 @@ class MainWindow(FluentWindow):
 
         # 启动主题监听器
         self.themeListener.start()
+        if "adb" in self.taskInterface.Control_Combox.currentText().lower():
+            signalBus.setting_Visible.emit("adb")
+        elif "win32" in self.taskInterface.Control_Combox.currentText().lower():
+            signalBus.setting_Visible.emit("win32")
+        
         logger.info(" 主界面初始化完成。")
 
     def show_info_bar(self, data_dict: dict):
@@ -173,6 +178,8 @@ class MainWindow(FluentWindow):
             title += f" {config_name}"
         if self.is_admin():
             title += " " + self.tr("admin")
+        if cfg.get(cfg.save_draw) or cfg.get(cfg.recording) or cfg.get(cfg.show_hit_draw):
+            title += " " + self.tr("Debug")
 
         logger.info(f" 设置窗口标题：{title}")
         self.setWindowTitle(title)

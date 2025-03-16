@@ -129,6 +129,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         )
         self.init_finish_combox()
 
+
     def no_ADB_config(self):
         """
         没有ADB配置
@@ -1497,9 +1498,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         )
         if controller_type == "Adb":
             self.add_Controller_combox()
+            signalBus.setting_Visible.emit("adb")
 
         elif controller_type == "Win32":
             self.Start_Detection()
+            signalBus.setting_Visible.emit("win32")
         logger.info(f"保存控制器配置: {Controller_Type_Select}")
         # 更新配置并保存
         maa_config_data.config["controller"]["name"] = Controller_Type_Select
@@ -1912,7 +1915,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 maa_config_data.config["adb"]["address"] = result.address
                 maa_config_data.config["adb"]["config"] = result.config
                 Save_Config(maa_config_data.config_path, maa_config_data.config)
-
                 signalBus.update_adb.emit()
         elif controller_type == "Win32":
             for i in self.win32_hwnd:
