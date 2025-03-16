@@ -194,6 +194,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     # region 信号槽
     def bind_signals(self):
+        signalBus.speedrun.connect(self.Add_Select_Task_More_Select)
         signalBus.custom_info.connect(self.show_custom_info)
         signalBus.resource_exist.connect(self.resource_exist)
         signalBus.Notice_msg.connect(self.print_notice)
@@ -364,6 +365,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.in_progress_error = None
 
             if message["task"] in on_error:
+                logger.debug(f"{message['task']} 任务超时")
                 self.insert_colored_text(
                     self.tr("The task has timed out"),
                     "tomato",
@@ -840,6 +842,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         self.focus_tips = {}
         self.on_error_list = []
+        
         for i in resource_path:
             resource = (
                 i.replace("{PROJECT_DIR}", PROJECT_DIR)
@@ -871,6 +874,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     logger.info(f"加载默认pipeline: {default_pipelines_path}")
             await maafw.load_resource(resource)
             logger.debug(f"资源加载完成: {resource}")
+            logger.debug(f"on_error任务{self.on_error_list}")
         return True
 
     async def load_pipelines(self, pipelines_path):
@@ -1088,7 +1092,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 maa_config_data.interface_config["task"]
             ):
                 if task_enter["name"] == task_list["name"]:
-                    if task_enter.get("periodic", 0) == 1:
+                    if task_enter.get("periodic", 0) == 1 and cfg.get(cfg.speedrun):
                         # 检查任务是否已经运行过 每日
                         last_run = task_list.get("last_run", "2000-01-01 00:00:00")
                         if is_task_run_today(
@@ -1108,7 +1112,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             )
                             break_symbol = True
                             break
-                    elif task_enter.get("periodic", 0) == 2:
+                    elif task_enter.get("periodic", 0) == 2 and cfg.get(cfg.speedrun):
                         last_run = task_list.get("last_run", "2000-01-01 00:00:00")
                         if is_task_run_this_week(
                             last_run,
@@ -1171,7 +1175,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             await maafw.run_task(self.entry, override_options)
             if not self.task_failed and maa_config_data.interface_config["task"][
                 enter_index
-            ].get("periodic", False):
+            ].get("periodic", False) and cfg.get(cfg.speedrun):
                 maa_config_data.config["task"][self.config_index][
                     "last_run"
                 ] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1572,7 +1576,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         layout.addLayout(v_layout)
 
                 # 时间限制运行
-                if task.get("periodic") in [1, 2]: 
+                if task.get("periodic") in [1, 2] and cfg.get(cfg.speedrun): 
                     switch_v_layout = QVBoxLayout()
 
                     # 添加主标签

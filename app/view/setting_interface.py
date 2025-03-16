@@ -351,11 +351,21 @@ class SettingInterface(ScrollArea):
             num_only=False,
             parent=self.start_Setting,
         )
+        self.speedrun = SwitchSettingCard(
+            FIF.SPEED_HIGH,
+            self.tr("Speedrun Mode"),
+            self.tr("In the speedrun mode, resource developers can specify the operation cycle of a certain task. The task will only run once within the cycle."),
+            configItem=cfg.speedrun,
+            parent=self.start_Setting,
+        )
+
         self.start_Setting.addSettingCard(self.run_after_startup)
         self.start_Setting.addSettingCard(self.run_before_start)
         self.start_Setting.addSettingCard(self.run_before_start_args)
         self.start_Setting.addSettingCard(self.run_after_finish)
         self.start_Setting.addSettingCard(self.run_after_finish_args)
+        self.start_Setting.addSettingCard(self.speedrun)
+        self.speedrun.switchButton.checkedChanged.connect(lambda: signalBus.speedrun.emit())
 
     def initialize_personalization_settings(self):
         """初始化个性化设置。"""
