@@ -40,6 +40,38 @@ A general-purpose GUI project for **[MAAFramework](https://github.com/MaaXYZ/Maa
 - The `-r` parameter can accept the resource name, for example `python main.py -r resource1` or `MFW.exe -r resource1`
 - The `-c` parameter can accept the configuration file name, for example `python main.py -c config1` or `MFW.exe -c config1`
 
+### Speedrun Mode
+
+- You can enable the `Speedrun Mode` in the settings.
+- Once enabled, tasks that have already run once within the cycle will be skipped.
+- The operation cycle is set by the resource developer.
+- If the global `on_error` is set in `default_pipeline.json`, you need to set the `focus` of the corresponding node to `True`. When a task enters the `on_error` state, it will be marked as failed, and the time will not be recorded.
+- In the `interface` file, the format is as follows:
+
+```json
+{
+    "task": [
+        {
+            "name": "Daily Task",
+            "entry": "Daily_Task",
+            "periodic": 1,      //Daily Task
+            "daily_start": 4    //Start at 4:00 every day
+        },
+        {
+            "name": "weekly Task",
+            "entry": "weekly_Task",
+            "periodic": 2,     //weekly Task
+            "weekly_start": 2, //Start every Tuesday
+            "daily_start": 4   //Start at 4:00 every day
+        },
+        {
+            "name": "Normal Task",
+            "entry": "Normal_Task",
+        }
+    ]
+}
+```
+
 ### External Notifications
 
 - Currently supports four notification methods: DingTalk, Feishu, SMTP, and WxPusher

@@ -48,6 +48,38 @@
 - -c参数可接受配置文件名称 例如 `python main.py -c config1`或者 `MFW.exe -c config1`
 - -d参数可以在运行后直接启动任务 例如 `python main.py -d`或者 `MFW.exe -d`
 
+### 速通模式
+
+- 在设置中可以启用`速通模式`
+- 启用后会跳过周期内已经运行过一次的任务
+- 运行周期为资源开发者设置
+- 如果设置了全局on_error(default_pipeline.json),需要打开对应node的`focus`为`True`,任务进入on_error后会显示失败,且不记录时间
+- 在interface文件中,格式为:
+
+```json
+{
+    "task": [
+        {
+            "name": "每日任务",
+            "entry": "每日任务",
+            "periodic": 1,      //每日任务
+            "daily_start": 4    //每天4点开始
+        },
+        {
+            "name": "每周任务",
+            "entry": "每周任务",
+            "periodic": 2,     //每周任务
+            "weekly_start": 2, //每周二开始
+            "daily_start": 4   //每天4点开始
+        },
+        {
+            "name": "正常任务",
+            "entry": "正常任务"
+        }
+    ]
+}
+```
+
 ### 外部通知
 
 - 目前支持 钉钉,飞书,SMTP,WxPusher 四种通知方式
