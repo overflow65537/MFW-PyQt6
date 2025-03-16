@@ -749,6 +749,7 @@ class SettingInterface(ScrollArea):
 
         self.updateCard.button2.setText(self.tr("Check for updates"))
         self.updateCard.button2.setEnabled(True)
+        signalBus.title_changed.emit()
 
     def __initWidget(self):
         self.resize(1000, 800)
