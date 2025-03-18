@@ -47,7 +47,9 @@
 - -r参数可接受资源名称 例如 `python main.py -r resource1`或者 `MFW.exe -r resource1`
 - -c参数可接受配置文件名称 例如 `python main.py -c config1`或者 `MFW.exe -c config1`
 - -d参数可以在运行后直接启动任务 例如 `python main.py -d`或者 `MFW.exe -d`
+
 ### 版本锁定
+
 - 在`interface.json`文件中添加`MFW_min_req_version`键,值为MFW的版本号
 
 ```json
@@ -55,6 +57,7 @@
 ```
 
 - 添加后,如果MFW在更新时发现新资源中`MFW_min_req_version`的值大于当前MFW的版本号,则会停止更新并提示原因
+
 ### 速通模式
 
 - 在设置中可以启用`速通模式`
