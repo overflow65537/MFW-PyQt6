@@ -27,6 +27,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         signalBus.update_task_list.connect(self.update_task_list_passive)
         signalBus.switch_config.connect(self.switch_config)
         signalBus.readme_available.connect(self.update_readme)
+        signalBus.lock_res_changed.connect(self.lock_res_changed)
         self.init_widget_text()
         if cfg.get(cfg.resource_exist):
             self.initialize_config_combobox()
@@ -40,6 +41,17 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.res_combox.currentTextChanged.connect(self.res_changed)
         self.add_res_button.clicked.connect(self.add_resource)
         self.delete_res_button.clicked.connect(self.res_delete)
+
+    def lock_res_changed(self, status):
+        if status:
+            self.res_combox.setEnabled(False)
+            self.add_res_button.setEnabled(False)
+            self.delete_res_button.setEnabled(False)
+
+        else:
+            self.res_combox.setEnabled(True)
+            self.add_res_button.setEnabled(True)
+            self.delete_res_button.setEnabled(True)
 
     def init_widget_text(self):
         """初始化界面文本"""
@@ -84,7 +96,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         """添加资源"""
         w = CustomMessageBox(self)
         if w.exec():
-            if w.name_data =="":
+            if w.name_data == "":
                 return
             logger.debug(f"添加资源{w.name_data}")
             self.res_combox.clear()
@@ -284,7 +296,6 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         if cfg.get(cfg.auto_update_resource):
             logger.debug("res_changed发送信号")
             signalBus.auto_update.emit()
-        
 
     def res_delete(self):
         """删除当前选定的资源"""

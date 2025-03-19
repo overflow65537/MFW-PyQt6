@@ -139,7 +139,6 @@ def main(resource: str, config: str, directly: bool):
             cfg.set(cfg.maa_config_path, maa_config_list[maa_resource_name][config])
             maa_config_name = config
             maa_config_path = maa_config_list[maa_resource_name][config]
-
         else:
             cfg.set(cfg.maa_config_name, "default")
             cfg.set(cfg.maa_config_path, maa_config_list[maa_resource_name]["default"])

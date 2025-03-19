@@ -38,6 +38,7 @@ class SignalBus(QObject):
     custom_info = pyqtSignal(dict)  # 自定义动作/识别器成功信号
     setting_Visible = pyqtSignal(str)  # 设置界面可见信号
     speedrun = pyqtSignal()  # 速通模式信号
+    lock_res_changed = pyqtSignal(bool)  # 锁定资源改变信号
 
 
 signalBus = SignalBus()

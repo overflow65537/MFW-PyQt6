@@ -729,6 +729,7 @@ class SettingInterface(ScrollArea):
         self.Updatethread.start()
         self.updateCard.button2.setEnabled(False)
         self.updateCard.button2.setText(self.tr("Checking for updates..."))
+        signalBus.lock_res_changed.emit(True)
 
     def on_update_finished(self, data_dict: dict):
         """更新检查完成的回调函数。"""
@@ -750,6 +751,7 @@ class SettingInterface(ScrollArea):
         self.updateCard.button2.setText(self.tr("Check for updates"))
         self.updateCard.button2.setEnabled(True)
         signalBus.title_changed.emit()
+        signalBus.lock_res_changed.emit(False)
 
     def __initWidget(self):
         self.resize(1000, 800)
