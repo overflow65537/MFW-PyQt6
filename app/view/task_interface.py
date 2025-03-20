@@ -129,7 +129,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         )
         self.init_finish_combox()
 
-
     def no_ADB_config(self):
         """
         没有ADB配置
@@ -254,6 +253,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 )
             case "agent_start":
                 self.insert_colored_text(self.tr("Agent service start"))
+            case "agent_info":
+                self.insert_colored_text(msg["data"])
 
     # region 拖动事件
     def dragEnter(self, event: QDropEvent):
@@ -842,7 +843,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         self.focus_tips = {}
         self.on_error_list = []
-        
+
         for i in resource_path:
             resource = (
                 i.replace("{PROJECT_DIR}", PROJECT_DIR)
@@ -1173,9 +1174,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             )
 
             await maafw.run_task(self.entry, override_options)
-            if not self.task_failed and maa_config_data.interface_config["task"][
-                enter_index
-            ].get("periodic", False) and cfg.get(cfg.speedrun):
+            if (
+                not self.task_failed
+                and maa_config_data.interface_config["task"][enter_index].get(
+                    "periodic", False
+                )
+                and cfg.get(cfg.speedrun)
+            ):
                 maa_config_data.config["task"][self.config_index][
                     "last_run"
                 ] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1464,7 +1469,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.SelectTask_Combox_1.setCurrentText(
             maa_config_data.config["task"][Select_Target]["name"]
         )
-        
 
         self.restore_options(maa_config_data.config["task"][Select_Target]["option"])
 
@@ -1576,7 +1580,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         layout.addLayout(v_layout)
 
                 # 时间限制运行
-                if task.get("periodic") in [1, 2] and cfg.get(cfg.speedrun): 
+                if task.get("periodic") in [1, 2] and cfg.get(cfg.speedrun):
                     switch_v_layout = QVBoxLayout()
 
                     # 添加主标签

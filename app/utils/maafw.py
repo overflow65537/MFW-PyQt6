@@ -270,17 +270,28 @@ class MaaFW:
                 print(
                     f"agent启动: {agent_data.get("child_exec").replace("{PROJECT_DIR}",  maa_config_data.resource_path)}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
                 )
-                subprocess.Popen(
+                agent_process = subprocess.Popen(
                     [
                         agent_data.get("child_exec").replace("{PROJECT_DIR}", maa_config_data.resource_path),
                         *agent_data.get("child_args",[]),
                         maa_bin,
                         socket_id,
                     ],
+                    stdout=subprocess.PIPE,  # 新增stdout管道
+                    stderr=subprocess.STDOUT,  # 合并stderr到stdout
+                    text=True,  # 以文本模式读取
+                    encoding=sys.getdefaultencoding(),  # 使用系统默认编码
                 )
-                logger.debug(
-                    f"agent启动: {agent_data.get("child_exec").replace("{PROJECT_DIR}", maa_config_data.resource_path)}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
-                )
+                
+                # 创建单独线程读取输出
+                def read_output():
+                    while agent_process.poll() is None:
+                        line = agent_process.stdout.readline()
+                        if line:
+                            signalBus.custom_info.emit({"type": "agent_output", "data": line.strip()})
+                
+                import threading
+                threading.Thread(target=read_output, daemon=True).start()
             except Exception as e:
                 logger.error(f"agent启动失败: {e}")
                 signalBus.custom_info.emit({"type": "error_a"})
