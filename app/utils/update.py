@@ -59,7 +59,9 @@ class BaseUpdate(QThread):
 
     def extract_zip(self, zip_file_path, extract_to):
         try:
-            with zipfile.ZipFile(zip_file_path, "r", metadata_encoding='utf-8') as zip_ref:
+            with zipfile.ZipFile(
+                zip_file_path, "r", metadata_encoding="utf-8"
+            ) as zip_ref:
                 all_members = zip_ref.namelist()
                 actual_main_folder = all_members[0].split("/")[0]
                 zip_ref.extractall(extract_to)
@@ -345,7 +347,7 @@ class Update(BaseUpdate):
         Returns:
             Dict: 资源信息
         """
-        if maa_config_data.interface_config.get("mirrorchyan_multiplatform",False):
+        if maa_config_data.interface_config.get("mirrorchyan_multiplatform", False):
             version_file_path = os.path.join(os.getcwd(), "config", "version.txt")
             logger.info(f"正在读取版本文件: {version_file_path}")
             with open(version_file_path, "r", encoding="utf-8") as f:
@@ -608,6 +610,8 @@ class Update(BaseUpdate):
             logger.info(f"正在读取版本文件: {version_file_path}")
             with open(version_file_path, "r") as version_file:
                 version = version_file.read().split()[2][1:]
+                os_type = version_file.read().split()[0]
+                arch = version_file.read().split()[1]
                 logger.debug(f"当前版本: {version}")
         except FileNotFoundError:
             logger.exception("版本文件未找到")
@@ -625,7 +629,22 @@ class Update(BaseUpdate):
         self.stop_flag = False
         try:
             # 下载过程
-            download_url = update_dict["zipball_url"]
+            if maa_config_data.interface_config.get("agent", False):
+                for release in update_dict["assets"]:
+                    if os_type in release["name"] and arch in release["name"]:
+                        download_url = release["browser_download_url"]
+                        break
+                    else:
+                        logger.warning("未找到匹配的资源")
+                        signalBus.update_download_finished.emit(
+                            {
+                                "status": "failed",
+                                "msg": self.tr("No matching resource found"),
+                            }
+                        )
+
+            else:
+                download_url = update_dict["zipball_url"]
             logger.info(f"开始下载更新包: {download_url}")
 
             hotfix_directory = os.path.join(os.getcwd(), "hotfix")
@@ -658,11 +677,29 @@ class Update(BaseUpdate):
                     {"status": "failed", "msg": self.tr("Extraction failed")}
                 )
                 return
+            if maa_config_data.interface_config.get("agent", False):
+                main_folder = os.path.join(os.getcwd(), "hotfix", main_folder)
+                files_to_keep = [
+                    "python",
+                    "resource",
+                    "interface.json",
+                    "custom",
+                    "agent",
+                ]
 
-            folder_to_extract = os.path.join(
-                os.getcwd(), "hotfix", main_folder, "assets"
-            )
-            logger.debug(f"资源解压路径: {folder_to_extract}")
+                for item in os.listdir(main_folder):
+                    if item not in files_to_keep:
+                        item_path = os.path.join(main_folder, item)
+                        if os.path.isdir(item_path):
+                            shutil.rmtree(item_path)
+                        else:
+                            os.remove(item_path)
+
+            else:
+                folder_to_extract = os.path.join(
+                    os.getcwd(), "hotfix", main_folder, "assets"
+                )
+                logger.debug(f"资源解压路径: {folder_to_extract}")
 
             # 版本兼容性检查
             interface_file = os.path.join(folder_to_extract, "interface.json")
@@ -689,15 +726,24 @@ class Update(BaseUpdate):
             if os.path.exists(target_path):
                 logger.info("开始清理旧资源")
                 try:
+                    if os.path.exists(os.path.join(target_path, "python")):
+                        shutil.rmtree(os.path.join(target_path, "python"))
+                        logger.debug("成功删除 python 目录")
+
+                    if os.path.exists(os.path.join(target_path, "custom")):
+                        shutil.rmtree(os.path.join(target_path, "custom"))
+                        logger.debug("成功删除 custom 目录")
+
+                    if os.path.exists(os.path.join(target_path, "agent")):
+                        shutil.rmtree(os.path.join(target_path, "agent"))
+                        logger.debug("成功删除 agent 目录")
+
                     shutil.rmtree(os.path.join(target_path, "resource"))
                     logger.debug("成功删除 resource 目录")
 
                     os.remove(os.path.join(target_path, "interface.json"))
                     logger.debug("成功删除 interface.json")
 
-                    if os.path.exists(os.path.join(target_path, "custom")):
-                        shutil.rmtree(os.path.join(target_path, "custom"))
-                        logger.debug("成功删除 custom 目录")
                 except Exception as e:
                     logger.error(f"清理旧资源失败: {str(e)}")
                     signalBus.update_download_finished.emit(
@@ -743,7 +789,7 @@ class Update(BaseUpdate):
         except requests.exceptions.HTTPError as e:
             logger.exception(f"HTTP错误: {str(e)}")
             signalBus.update_download_finished.emit(
-                {"status": "failed", "msg": self.tr("HTTP error")+str(e)}
+                {"status": "failed", "msg": self.tr("HTTP error") + str(e)}
             )
         except KeyError as e:
             logger.exception(f"关键数据缺失: {str(e)}")
