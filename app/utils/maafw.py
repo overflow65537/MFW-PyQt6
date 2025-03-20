@@ -292,6 +292,8 @@ class MaaFW:
             signalBus.custom_info.emit({"type": "error_t"})
             return False
         self.tasker.set_save_draw(cfg.get(cfg.save_draw))
+        self.tasker.set_recording(cfg.get(cfg.recording))
+        self.tasker.set_show_hit_draw(cfg.get(cfg.show_hit_draw))
         return self.tasker.post_task(entry, pipeline_override).wait().succeeded
 
     @asyncify
