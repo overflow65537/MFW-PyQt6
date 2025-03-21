@@ -363,7 +363,79 @@ class Update(BaseUpdate):
         if isinstance(response, dict):
             return response  # 返回错误信息给run方法
         mirror_data: Dict[str, Dict] = response.json()
-        if mirror_data.get("code") != 0:
+        if mirror_data.get("code") == 1001:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("INVALID_PARAMS")
+                + "\n"
+                + self.tr("switching to Github download"),
+            }
+        elif mirror_data.get("code") == 7001:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("KEY_EXPIRED")
+                + "\n"
+                + self.tr("switching to Github download"),
+            }
+        elif mirror_data.get("code") == 7002:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("KEY_INVALID")
+                + "\n"
+                + self.tr("switching to Github download"), 
+            }
+        elif mirror_data.get("code") == 7003:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("RESOURCE_QUOTA_EXHAUSTED")
+                + "\n"
+                + self.tr("switching to Github download"), 
+            }
+        elif mirror_data.get("code") == 7004:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("KEY_MISMATCHED")
+                + "\n"
+                + self.tr("switching to Github download"),
+            }
+        elif mirror_data.get("code") == 8001:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("RESOURCE_NOT_FOUND")
+                + "\n"
+                + self.tr("switching to Github download"),
+            }
+        elif mirror_data.get("code") == 8002:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("INVALID_OS")
+                + "\n"
+                + self.tr("switching to Github download"), 
+            }
+        elif mirror_data.get("code") == 8003:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("INVALID_ARCH")
+                + "\n"
+                + self.tr("switching to Github download"),
+            }
+        elif mirror_data.get("code") == 8004:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("INVALID_CHANNEL")
+                + "\n"
+                + self.tr("switching to Github download"),
+            }
+        elif mirror_data.get("code") != 0:
             logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
             return {
                 "status": "failed_info",
@@ -1139,6 +1211,87 @@ class UpdateSelf(BaseUpdate):
             return response
 
         mirror_data: Dict[str, Dict] = response.json()
+        if mirror_data.get("code") == 1001:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("INVALID_PARAMS")
+                + "\n"
+                + self.tr("switching to Github download"),
+            }
+        elif mirror_data.get("code") == 7001:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("KEY_EXPIRED")
+                + "\n"
+                + self.tr("switching to Github download"),
+            }
+        elif mirror_data.get("code") == 7002:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("KEY_INVALID")
+                + "\n"
+                + self.tr("switching to Github download"), 
+            }
+        elif mirror_data.get("code") == 7003:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("RESOURCE_QUOTA_EXHAUSTED")
+                + "\n"
+                + self.tr("switching to Github download"), 
+            }
+        elif mirror_data.get("code") == 7004:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("KEY_MISMATCHED")
+                + "\n"
+                + self.tr("switching to Github download"),
+            }
+        elif mirror_data.get("code") == 8001:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("RESOURCE_NOT_FOUND")
+                + "\n"
+                + self.tr("switching to Github download"),
+            }
+        elif mirror_data.get("code") == 8002:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("INVALID_OS")
+                + "\n"
+                + self.tr("switching to Github download"), 
+            }
+        elif mirror_data.get("code") == 8003:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("INVALID_ARCH")
+                + "\n"
+                + self.tr("switching to Github download"),
+            }
+        elif mirror_data.get("code") == 8004:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("INVALID_CHANNEL")
+                + "\n"
+                + self.tr("switching to Github download"),
+            }
+        elif mirror_data.get("code") != 0:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            return {
+                "status": "failed_info",
+                "msg": mirror_data.get("msg")
+                + "\n"
+                + self.tr("switching to Github download"),
+            }
+
 
         return mirror_data
 
