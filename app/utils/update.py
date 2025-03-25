@@ -455,7 +455,8 @@ class Update(BaseUpdate):
             version_file_path = os.path.join(".", "config", "version.txt")
             logger.info(f"正在读取版本文件: {version_file_path}")
             with open(version_file_path, "r") as version_file:
-                version = version_file.read().split()[2][1:]
+                v_data = version_file.read().split()
+                version = v_data[2][1:]
                 logger.debug(f"当前版本: {version}")
         except FileNotFoundError:
             logger.exception("版本文件未找到")
