@@ -385,7 +385,7 @@ class Update(BaseUpdate):
                 "status": "failed_info",
                 "msg": self.tr("KEY_INVALID")
                 + "\n"
-                + self.tr("switching to Github download"), 
+                + self.tr("switching to Github download"),
             }
         elif mirror_data.get("code") == 7003:
             logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
@@ -393,7 +393,7 @@ class Update(BaseUpdate):
                 "status": "failed_info",
                 "msg": self.tr("RESOURCE_QUOTA_EXHAUSTED")
                 + "\n"
-                + self.tr("switching to Github download"), 
+                + self.tr("switching to Github download"),
             }
         elif mirror_data.get("code") == 7004:
             logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
@@ -417,7 +417,7 @@ class Update(BaseUpdate):
                 "status": "failed_info",
                 "msg": self.tr("INVALID_OS")
                 + "\n"
-                + self.tr("switching to Github download"), 
+                + self.tr("switching to Github download"),
             }
         elif mirror_data.get("code") == 8003:
             logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
@@ -681,10 +681,12 @@ class Update(BaseUpdate):
             version_file_path = os.path.join(".", "config", "version.txt")
             logger.info(f"正在读取版本文件: {version_file_path}")
             with open(version_file_path, "r") as version_file:
-                version = version_file.read().split()[2][1:]
-                os_type = version_file.read().split()[0]
-                arch = version_file.read().split()[1]
-                logger.debug(f"当前版本: {version}")
+                v_data = version_file.read().split()
+                logger.debug(f"版本数据: {v_data}")
+                version = v_data[2]
+                arch = v_data[1]
+                os_type = v_data[0]
+                
         except FileNotFoundError:
             logger.exception("版本文件未找到")
             signalBus.update_download_finished.emit(
@@ -1233,7 +1235,7 @@ class UpdateSelf(BaseUpdate):
                 "status": "failed_info",
                 "msg": self.tr("KEY_INVALID")
                 + "\n"
-                + self.tr("switching to Github download"), 
+                + self.tr("switching to Github download"),
             }
         elif mirror_data.get("code") == 7003:
             logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
@@ -1241,7 +1243,7 @@ class UpdateSelf(BaseUpdate):
                 "status": "failed_info",
                 "msg": self.tr("RESOURCE_QUOTA_EXHAUSTED")
                 + "\n"
-                + self.tr("switching to Github download"), 
+                + self.tr("switching to Github download"),
             }
         elif mirror_data.get("code") == 7004:
             logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
@@ -1265,7 +1267,7 @@ class UpdateSelf(BaseUpdate):
                 "status": "failed_info",
                 "msg": self.tr("INVALID_OS")
                 + "\n"
-                + self.tr("switching to Github download"), 
+                + self.tr("switching to Github download"),
             }
         elif mirror_data.get("code") == 8003:
             logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
@@ -1291,7 +1293,6 @@ class UpdateSelf(BaseUpdate):
                 + "\n"
                 + self.tr("switching to Github download"),
             }
-
 
         return mirror_data
 
