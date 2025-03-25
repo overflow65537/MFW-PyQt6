@@ -683,9 +683,12 @@ class Update(BaseUpdate):
             with open(version_file_path, "r") as version_file:
                 v_data = version_file.read().split()
                 logger.debug(f"版本数据: {v_data}")
-                version = v_data[2]
+                version = v_data[2][1:]
                 arch = v_data[1]
                 os_type = v_data[0]
+                logger.debug(f"当前版本: {version}")
+                logger.debug(f"当前架构: {arch}")
+                logger.debug(f"当前系统: {os_type}")
                 
         except FileNotFoundError:
             logger.exception("版本文件未找到")
