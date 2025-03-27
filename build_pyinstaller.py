@@ -115,7 +115,7 @@ PyInstaller.__main__.run([updater_src, "--name=MFWUpdater", "--onefile", "--clea
 if sys.platform == "win32":
     updater_file = os.path.join("dist", "MFWUpdater.exe")
 elif sys.platform.startswith("linux"):
-    updater_file = os.path.join("dist", "MFWUpdater.bin")
+    updater_file = os.path.join("dist", "MFWUpdater")
 elif sys.platform == "darwin":
     updater_file = os.path.join("dist", "MFWUpdater")
 else:
