@@ -284,22 +284,8 @@ class Update(BaseUpdate):
                         ),
                     }
                 )
-                github_url = self.assemble_gitHub_url(
-                    mirror_data["data"].get("version_name"), url
-                )
-                if not github_url:
-                    signalBus.update_download_finished.emit(
-                        {
-                            "status": "failed",
-                            "msg": self.tr("Projeund, unable to perform update check"),
-                        }
-                    )
-                    return
-                github_dict = {
-                    "zipball_url": github_url,
-                    "tag_name": mirror_data["data"].get("version_name"),
-                    "body": mirror_data["data"].get("release_note"),
-                }
+                
+                github_dict = self.github_check(url)
                 self.github_download(github_dict)
                 return
         else:
@@ -705,31 +691,43 @@ class Update(BaseUpdate):
             return
 
         self.stop_flag = False
+        download_url = None
         try:
             # 下载过程
             if maa_config_data.interface_config.get("agent", False):
+                project_name_number = 4
+                signalBus.update_download_finished.emit(
+                    {
+                        "status": "info",
+                        "msg": self.tr(
+                            "Updating the Agent may take a long time."
+                        ),
+                    }
+                )
                 for release in update_dict["assets"]:
                     if os_type in release["name"] and arch in release["name"]:
                         download_url = release["browser_download_url"]
+                        logger.info(f"找到下载更新包: {download_url}")
                         break
-                    else:
-                        logger.warning("未找到匹配的资源")
-                        signalBus.update_download_finished.emit(
-                            {
-                                "status": "failed",
-                                "msg": self.tr("No matching resource found"),
-                            }
-                        )
-
             else:
+                project_name_number = 5
                 download_url = update_dict["zipball_url"]
+            if not download_url:
+                logger.warning("未找到匹配的资源")
+                signalBus.update_download_finished.emit(
+                    {
+                        "status": "failed",
+                        "msg": self.tr("No matching resource found"),
+                    }
+                )
+                return
             logger.info(f"开始下载更新包: {download_url}")
 
             hotfix_directory = os.path.join(os.getcwd(), "hotfix")
             os.makedirs(hotfix_directory, exist_ok=True)
             logger.debug(f"创建临时目录: {hotfix_directory}")
 
-            project_name = download_url.split("/")[5]
+            project_name = download_url.split("/")[project_name_number]
             zip_file_path = os.path.join(
                 hotfix_directory, f"{project_name}-{update_dict['tag_name']}.zip"
             )
@@ -756,28 +754,36 @@ class Update(BaseUpdate):
                 )
                 return
             if maa_config_data.interface_config.get("agent", False):
-                main_folder = os.path.join(os.getcwd(), "hotfix", main_folder)
+                # 修正路径处理：代理包直接解压到hotfix目录
+                main_folder = os.path.join(os.getcwd(), "hotfix")
                 files_to_keep = [
                     "python",
                     "resource",
                     "interface.json",
                     "custom",
                     "agent",
+                    "requirements.txt"
                 ]
 
+                # 添加路径有效性检查
+                if not os.path.isdir(main_folder):
+                    logger.error(f"无效的目录路径: {main_folder}")
+                    return
+
                 for item in os.listdir(main_folder):
-                    if item not in files_to_keep:
-                        item_path = os.path.join(main_folder, item)
-                        if os.path.isdir(item_path):
-                            shutil.rmtree(item_path)
-                        else:
-                            os.remove(item_path)
+                    item_path = os.path.join(main_folder, item)
+                    # 添加路径类型检查
+                    if os.path.isfile(item_path) and item not in files_to_keep:
+                        os.remove(item_path)
+                    elif os.path.isdir(item_path) and item not in files_to_keep:
+                        shutil.rmtree(item_path)
+                folder_to_extract = main_folder
 
             else:
                 folder_to_extract = os.path.join(
                     os.getcwd(), "hotfix", main_folder, "assets"
                 )
-                logger.debug(f"资源解压路径: {folder_to_extract}")
+            logger.debug(f"资源解压路径: {folder_to_extract}")
 
             # 版本兼容性检查
             interface_file = os.path.join(folder_to_extract, "interface.json")
