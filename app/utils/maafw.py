@@ -253,7 +253,7 @@ class MaaFW:
 
         # agent加载
         agent_data = maa_config_data.interface_config.get("agent", {})
-        if agent_data and agent_data.get("child_exec"):
+        if agent_data and agent_data.get("child_exec") and not self.agent:
             self.agent = AgentClient()
             self.agent.bind(self.resource)
             characters = string.ascii_letters + string.digits
