@@ -41,7 +41,8 @@ def isWin11():
 
 class Config(QConfig):
     """Config of application"""
-
+    # 展示agent命令行
+    show_agent_cmd = ConfigItem("program", "show_agent_cmd", False, BoolValidator())
     # Mirror酱cdk
     Mcdk = ConfigItem("program", "cdk", "")
     is_change_cdk = ConfigItem("program", "is_change_cdk", True, BoolValidator())

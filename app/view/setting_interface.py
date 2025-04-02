@@ -604,6 +604,14 @@ class SettingInterface(ScrollArea):
         cfg.set(cfg.recording, False)
         cfg.set(cfg.save_draw, False)
         cfg.set(cfg.show_hit_draw, False)
+
+        self.Show_Agent_CMD_Card = SwitchSettingCard(
+            FIF.APPLICATION,
+            self.tr("Show Agent CMD"),
+            self.tr("Show the agent command line"),
+            configItem=cfg.show_agent_cmd,
+            parent=self.advancedGroup,
+        )
         self.RecordingCard = SwitchSettingCard(
             FIF.VIDEO,
             self.tr("Recording"),
@@ -633,9 +641,12 @@ class SettingInterface(ScrollArea):
             parent=self.advancedGroup,
         )
 
+        self.advancedGroup.addSettingCard(self.Show_Agent_CMD_Card)
         self.advancedGroup.addSettingCard(self.RecordingCard)
         self.advancedGroup.addSettingCard(self.SaveDrawCard)
         self.advancedGroup.addSettingCard(self.show_hit_draw)
+
+        # 更改标题栏至调试模式
         self.RecordingCard.switchButton.checkedChanged.connect(
             lambda: signalBus.title_changed.emit()
         )

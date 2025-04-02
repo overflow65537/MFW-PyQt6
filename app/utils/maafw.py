@@ -21,6 +21,7 @@ from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 from ..common.config import cfg
 from ..utils.tool import Read_Config
+from ..utils.process_thread import ProcessThread
 
 
 class MaaFW:
@@ -40,6 +41,7 @@ class MaaFW:
         self.tasker = None
         self.notification_handler = None
         self.agent = None
+        self.agent_thread = None
 
     def load_custom_objects(self, custom_dir):
         if not os.path.exists(custom_dir):
@@ -279,7 +281,9 @@ class MaaFW:
                 print(
                     f"agent启动: {child_exec}\n参数{child_args}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
                 )
-                subprocess.Popen(
+
+                if cfg.get(cfg.show_agent_cmd) :
+                    subprocess.Popen(
                     [
                         child_exec,
                         *child_args,
@@ -287,6 +291,9 @@ class MaaFW:
                         socket_id,
                     ],
                 )
+                else:
+                    self.agent_thread = ProcessThread(child_exec, [*child_args, maa_bin, socket_id])
+                    self.agent_thread.start()
                 logger.debug(
                     f"agent启动: {agent_data.get("child_exec").replace("{PROJECT_DIR}", maa_config_data.resource_path)}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
                 )
@@ -305,7 +312,7 @@ class MaaFW:
         self.tasker.set_recording(cfg.get(cfg.recording))
         self.tasker.set_show_hit_draw(cfg.get(cfg.show_hit_draw))
         return self.tasker.post_task(entry, pipeline_override).wait().succeeded
-
+    
     @asyncify
     def stop_task(self):
         if self.tasker:
@@ -316,6 +323,9 @@ class MaaFW:
             self.agent.disconnect()
             print("agent断开连接")
             self.agent = None
+        if self.agent_thread:
+            self.agent_thread.stop()
+            self.agent_thread = None
 
 
 

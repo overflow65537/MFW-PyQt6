@@ -7,7 +7,6 @@ from pathlib import Path
 import json
 from typing import List, Dict, Optional
 import re
-import time
 
 
 from PyQt6.QtCore import Qt, QMimeData
@@ -193,6 +192,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     # region 信号槽
     def bind_signals(self):
+        signalBus.agent_info.connect(self.show_agnet_info)
         signalBus.speedrun.connect(self.Add_Select_Task_More_Select)
         signalBus.custom_info.connect(self.show_custom_info)
         signalBus.resource_exist.connect(self.resource_exist)
@@ -222,6 +222,19 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Delete_label.dropEvent = self.drop
 
     # endregion
+    def show_agnet_info(self, msg: str):
+        """
+        显示Agent信息
+        """
+        if msg.startswith("[INFO]"):
+            self.insert_colored_text(msg, "forestgreen")
+        elif msg.startswith("[WARNING]"):
+            self.insert_colored_text(msg, "orange")
+        elif msg.startswith("[ERROR]"):
+            self.insert_colored_text(msg, "Tomato")
+        else:
+            self.insert_colored_text(msg)
+
     def show_custom_info(self, msg):
         """
         自定义动作/识别器信息
@@ -457,7 +470,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         插入带颜色的文本
         """
-
+        logger.debug(f"插入文本: {text}, 颜色: {color_name}")
         if "," in color_name and color_name[0] == "(" and color_name[-1] == ")":
             color_str = color_name[1:-1]
             color_parts = color_str.split(",")
@@ -488,27 +501,27 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         now = datetime.now().strftime("%H:%M")
         time = ClickableLabel(self)
-        time.setAlignment(Qt.AlignmentFlag.AlignTop)
         time.setText(now)
 
         message = ClickableLabel(self)
-        message.setAlignment(Qt.AlignmentFlag.AlignTop)
+        message.setWordWrap(True)
         message.setText(text)
         message.setTextColor(color)
+        message.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)  # 水平扩展，垂直自适应
+        message.setMinimumWidth(100)  # 设置最小宽度
 
-        count = self.right_layout.rowCount()
-        index = count - 1 if count > 1 else 0
-        self.right_layout.insertRow(index, time, message)
-        scrollbar = self.scroll_area.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum())
+        # 插入到布局
+        row_position = self.right_layout.rowCount()
+        self.right_layout.insertRow(row_position, time, message)
+
+        # 将滑动区域滚动到新插入的文本
+        self.scroll_area.verticalScrollBar().setValue(
+            self.scroll_area.verticalScrollBar().maximum()
+        )
 
     def clear_layout(self):
         while self.right_layout.rowCount() > 0:
             self.right_layout.removeRow(0)
-        label = ClickableLabel()
-        label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-
-        self.right_layout.addRow(label, label)
 
     def Start_Status(
         self, interface_Path: str, maa_pi_config_Path: str, resource_Path: str

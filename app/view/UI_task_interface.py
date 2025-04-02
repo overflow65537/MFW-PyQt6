@@ -19,7 +19,7 @@ from qfluentwidgets import (
 )
 from ..components.listwidge_menu_draggable import ListWidge_Menu_Draggable
 from ..components.right_check_button import RightCheckButton
-from ..components.click_label import ClickableLabel
+
 
 
 class Ui_Task_Interface(object):
@@ -176,19 +176,19 @@ class Ui_Task_Interface(object):
 
         # 右侧布局（包含文本编辑区域）
         self.scroll_area = ScrollArea(Task_Interface)
+        self.scroll_area.setMinimumHeight(100) 
         self.scroll_area.setStyleSheet("background-color: transparent;")
         self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
 
         self.content_widget = QWidget()
         self.scroll_area.setWidget(self.content_widget)
-
+        self.scroll_area.setWidgetResizable(True)
+        
         self.right_layout = QFormLayout(self.content_widget)
-
-        label = ClickableLabel()
-        label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-
-        self.right_layout.addRow(label, label)
-
+        
         # 将子布局添加到主布局中
         self.main_layout.addLayout(self.left_layout, 3)
         self.main_layout.addLayout(self.middle_layout, 3)
