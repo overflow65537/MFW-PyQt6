@@ -226,14 +226,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         显示Agent信息
         """
-        if msg.startswith("[INFO]"):
+        if msg.startswith("| INFO |"):
             self.insert_colored_text(msg, "forestgreen")
-        elif msg.startswith("[WARNING]"):
+        elif msg.startswith("| WARNING |"):
             self.insert_colored_text(msg, "orange")
-        elif msg.startswith("[ERROR]"):
+        elif msg.startswith("| ERROR |"):
             self.insert_colored_text(msg, "Tomato")
-        else:
-            self.insert_colored_text(msg)
 
     def show_custom_info(self, msg):
         """

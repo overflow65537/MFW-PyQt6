@@ -17,8 +17,12 @@ for output_ts_file in output_ts_files:
         os.makedirs(translations_dir)
 
     # 查找项目内所有的 Python 文件
+    exclude_dir = os.path.join(project_root, "dist")
     python_files = []
     for root, dirs, files in os.walk(project_root):
+        if exclude_dir in root:
+            dirs[:] = []  # 跳过当前目录及其子目录
+            continue
         for file in files:
             if file.endswith('.py'):
                 python_files.append(os.path.join(root, file))
@@ -26,11 +30,10 @@ for output_ts_file in output_ts_files:
     # 构建 pylupdate6 命令
     command = ['pylupdate6', '-ts', output_ts_file] + python_files
 
+
     try:
         # 执行 pylupdate6 命令
         subprocess.run(command, check=True)
         print(f"成功生成 {output_ts_file} 文件。")
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         print(f"执行 pylupdate6 命令时出错: {e}")
-    except FileNotFoundError:
-        print("未找到 pylupdate6 命令，请确保 PyQt6 或 PySide6 已安装。")
