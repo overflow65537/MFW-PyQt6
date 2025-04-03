@@ -136,6 +136,19 @@ class BaseUpdate(QThread):
         """
         try:
             response = requests.get(url)
+
+        except requests.exceptions.SSLError as e:
+            logger.error(f"更新检查失败: {e}")
+            if used_by == "mirror":
+                return {
+                    "status": "failed",
+                    "msg": self.tr("MirrorChyan Update check failed SSL error"),
+                }
+            else:
+                return {
+                    "status": "failed",
+                    "msg": self.tr("Github Update check failed SSL error"),
+                }
         except (
             requests.ConnectionError,
             requests.Timeout,
@@ -623,6 +636,19 @@ class Update(BaseUpdate):
                 logger.info(f"开始GitHub更新检查 [URL: {url}]")
                 response = requests.get(url, timeout=10)
                 response.raise_for_status()
+            except requests.exceptions.SSLError as e:
+                print(f"SSL 错误发生: {e}")
+                return {
+                    "status": "failed",
+                    "msg": self.tr("SSL error occurred, please check your network connection"), 
+                }
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 403:
+                    logger.warning("GitHub API请求被限制")
+                    return {
+                        "status": "failed",
+                        "msg": self.tr("GitHub API request limit exceeded,please try again later"),
+                    }
             except requests.exceptions.RequestException as e:
                 logger.exception(f"GitHub请求失败: {str(e)}")
                 return {"status": "failed", "msg": str(e)}

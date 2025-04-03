@@ -4,17 +4,27 @@
 <context>
     <name>BaseUpdate</name>
     <message>
-        <location filename="../../app/utils/update.py" line="152"/>
+        <location filename="../../app/utils/update.py" line="145"/>
+        <source>MirrorChyan Update check failed SSL error</source>
+        <translation>Mirror醬檢查更新失敗 SSL錯誤</translation>
+    </message>
+    <message>
+        <location filename="../../app/utils/update.py" line="150"/>
+        <source>Github Update check failed SSL error</source>
+        <translation>Github檢查更新失敗 SSL錯誤</translation>
+    </message>
+    <message>
+        <location filename="../../app/utils/update.py" line="165"/>
         <source>switching to Github download</source>
         <translation>轉為 GitHub 下載</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="162"/>
+        <location filename="../../app/utils/update.py" line="175"/>
         <source>MirrorChyan Update check failed</source>
         <translation>Mirror醬檢查更新失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="167"/>
+        <location filename="../../app/utils/update.py" line="180"/>
         <source>Github Update check failed</source>
         <translation>Github檢查更新失敗</translation>
     </message>
@@ -138,27 +148,27 @@
 <context>
     <name>DownloadBundle</name>
     <message>
-        <location filename="../../app/utils/update.py" line="906"/>
+        <location filename="../../app/utils/update.py" line="931"/>
         <source>Project URL not configured</source>
         <translation>項目地址未配置</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="933"/>
+        <location filename="../../app/utils/update.py" line="958"/>
         <source>Download failed</source>
         <translation>下載失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="941"/>
+        <location filename="../../app/utils/update.py" line="966"/>
         <source>Extraction failed</source>
         <translation>解壓失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="952"/>
+        <location filename="../../app/utils/update.py" line="977"/>
         <source>Move file failed</source>
         <translation>移動文件失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="964"/>
+        <location filename="../../app/utils/update.py" line="989"/>
         <source>Download successful</source>
         <translation>更新成功</translation>
     </message>
@@ -1816,197 +1826,207 @@
 <context>
     <name>Update</name>
     <message>
-        <location filename="../../app/utils/update.py" line="271"/>
+        <location filename="../../app/utils/update.py" line="284"/>
         <source>MirrorChyan update check successful, starting downloa</source>
         <translation>Mirror醬檢查成功，開始更新</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="282"/>
+        <location filename="../../app/utils/update.py" line="295"/>
         <source>MirrorChyan update check successful, but no CDK found, switching to Github download</source>
         <translation>Mirror醬檢查成功，但未找到CDK，轉為Github下載</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="356"/>
+        <location filename="../../app/utils/update.py" line="369"/>
         <source>INVALID_PARAMS</source>
         <translation>參數不正確</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="430"/>
-        <location filename="../../app/utils/update.py" line="422"/>
-        <location filename="../../app/utils/update.py" line="414"/>
-        <location filename="../../app/utils/update.py" line="406"/>
-        <location filename="../../app/utils/update.py" line="398"/>
-        <location filename="../../app/utils/update.py" line="390"/>
-        <location filename="../../app/utils/update.py" line="382"/>
-        <location filename="../../app/utils/update.py" line="374"/>
-        <location filename="../../app/utils/update.py" line="366"/>
-        <location filename="../../app/utils/update.py" line="358"/>
+        <location filename="../../app/utils/update.py" line="443"/>
+        <location filename="../../app/utils/update.py" line="435"/>
+        <location filename="../../app/utils/update.py" line="427"/>
+        <location filename="../../app/utils/update.py" line="419"/>
+        <location filename="../../app/utils/update.py" line="411"/>
+        <location filename="../../app/utils/update.py" line="403"/>
+        <location filename="../../app/utils/update.py" line="395"/>
+        <location filename="../../app/utils/update.py" line="387"/>
+        <location filename="../../app/utils/update.py" line="379"/>
+        <location filename="../../app/utils/update.py" line="371"/>
         <source>switching to Github download</source>
         <translation>切換至 GitHub 下載</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="364"/>
+        <location filename="../../app/utils/update.py" line="377"/>
         <source>KEY_EXPIRED</source>
         <translation>CDK已過期</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="372"/>
+        <location filename="../../app/utils/update.py" line="385"/>
         <source>KEY_INVALID</source>
         <translation>CDK錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="380"/>
+        <location filename="../../app/utils/update.py" line="393"/>
         <source>RESOURCE_QUOTA_EXHAUSTED</source>
         <translation>CDK 今日下載次數已達上限</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="388"/>
+        <location filename="../../app/utils/update.py" line="401"/>
         <source>KEY_MISMATCHED</source>
         <translation>CDK 類型和待下載的資源不匹配</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="396"/>
+        <location filename="../../app/utils/update.py" line="409"/>
         <source>RESOURCE_NOT_FOUND</source>
         <translation>對應架構和系統下的資源不存在</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="404"/>
+        <location filename="../../app/utils/update.py" line="417"/>
         <source>INVALID_OS</source>
         <translation>錯誤的系統參數</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="412"/>
+        <location filename="../../app/utils/update.py" line="425"/>
         <source>INVALID_ARCH</source>
         <translation>錯誤的架構參數</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="420"/>
+        <location filename="../../app/utils/update.py" line="433"/>
         <source>INVALID_CHANNEL</source>
         <translation>錯誤的更新通道參數</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="652"/>
-        <location filename="../../app/utils/update.py" line="434"/>
+        <location filename="../../app/utils/update.py" line="677"/>
+        <location filename="../../app/utils/update.py" line="447"/>
         <source>current version is latest</source>
         <translation>當前已經是最新版</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="450"/>
+        <location filename="../../app/utils/update.py" line="463"/>
         <source>version file not found</source>
         <translation>版本文件未找到</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="456"/>
+        <location filename="../../app/utils/update.py" line="469"/>
         <source>version file format error</source>
         <translation>版本文件格式錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="741"/>
-        <location filename="../../app/utils/update.py" line="475"/>
+        <location filename="../../app/utils/update.py" line="766"/>
+        <location filename="../../app/utils/update.py" line="488"/>
         <source>Download failed</source>
         <translation>下載失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="753"/>
-        <location filename="../../app/utils/update.py" line="485"/>
+        <location filename="../../app/utils/update.py" line="778"/>
+        <location filename="../../app/utils/update.py" line="498"/>
         <source>Extraction failed</source>
         <translation>解壓失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="801"/>
-        <location filename="../../app/utils/update.py" line="502"/>
+        <location filename="../../app/utils/update.py" line="826"/>
+        <location filename="../../app/utils/update.py" line="515"/>
         <source>Current MFW version is too low, update aborted</source>
         <translation>當前MFW版本過低，中止更新</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="545"/>
+        <location filename="../../app/utils/update.py" line="558"/>
         <source>Failed to clean up temporary files</source>
         <translation>清理文件時發生錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="843"/>
-        <location filename="../../app/utils/update.py" line="557"/>
+        <location filename="../../app/utils/update.py" line="868"/>
+        <location filename="../../app/utils/update.py" line="570"/>
         <source>Move file failed</source>
         <translation>移動文件失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="863"/>
-        <location filename="../../app/utils/update.py" line="575"/>
+        <location filename="../../app/utils/update.py" line="888"/>
+        <location filename="../../app/utils/update.py" line="588"/>
         <source>update success</source>
         <translation>更新成功</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="585"/>
+        <location filename="../../app/utils/update.py" line="598"/>
         <source>incomplete update data</source>
         <translation>更新數據字段缺失</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="592"/>
+        <location filename="../../app/utils/update.py" line="605"/>
         <source>unexpected error during update</source>
         <translation>未預期的錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="605"/>
+        <location filename="../../app/utils/update.py" line="618"/>
         <source>Project address configuration not found</source>
         <translation>項目地址未配置</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="617"/>
+        <location filename="../../app/utils/update.py" line="630"/>
         <source>Invalid project URL format</source>
         <translation>無效的項目URL格式</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="643"/>
+        <location filename="../../app/utils/update.py" line="642"/>
+        <source>SSL error occurred, please check your network connection</source>
+        <translation>發生SSL錯誤，請檢查你的網絡連接</translation>
+    </message>
+    <message>
+        <location filename="../../app/utils/update.py" line="649"/>
+        <source>GitHub API request limit exceeded,please try again later</source>
+        <translation>GitHub API 請求次數已達上限，請稍後再試</translation>
+    </message>
+    <message>
+        <location filename="../../app/utils/update.py" line="668"/>
         <source>Invalid response from GitHub</source>
         <translation>来自 GitHub 的响应无效</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="661"/>
+        <location filename="../../app/utils/update.py" line="686"/>
         <source>Update check failed due to unexpected error</source>
         <translation>由于意外错误，更新检查失败</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="683"/>
+        <location filename="../../app/utils/update.py" line="708"/>
         <source>Version file not found</source>
         <translation>版本文件未找到</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="689"/>
+        <location filename="../../app/utils/update.py" line="714"/>
         <source>Version file format error</source>
         <translation>版本文件格式錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="702"/>
+        <location filename="../../app/utils/update.py" line="727"/>
         <source>Updating the Agent may take a long time.</source>
         <translation>更新Agent程式中，可能會需要更長時間。</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="720"/>
+        <location filename="../../app/utils/update.py" line="745"/>
         <source>No matching resource found</source>
         <translation>未找到匹配資源</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="834"/>
+        <location filename="../../app/utils/update.py" line="859"/>
         <source>Clean up failed</source>
         <translation>清理文件時發生錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="870"/>
+        <location filename="../../app/utils/update.py" line="895"/>
         <source>GitHub request failed</source>
         <translation>GitHub請求失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="876"/>
+        <location filename="../../app/utils/update.py" line="901"/>
         <source>HTTP error</source>
         <translation>HTTP錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="881"/>
+        <location filename="../../app/utils/update.py" line="906"/>
         <source>Incomplete update data</source>
         <translation>更新數據字段缺失</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="886"/>
+        <location filename="../../app/utils/update.py" line="911"/>
         <source>Unexpected error during update</source>
         <translation>未預期的錯誤</translation>
     </message>
@@ -2042,114 +2062,114 @@
 <context>
     <name>UpdateSelf</name>
     <message>
-        <location filename="../../app/utils/update.py" line="1009"/>
+        <location filename="../../app/utils/update.py" line="1034"/>
         <source>Cannot read version file</source>
         <translation>无法读取版本文件</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1044"/>
+        <location filename="../../app/utils/update.py" line="1069"/>
         <source>Failed to get download address</source>
         <translation>获取下载地址失败</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1165"/>
-        <location filename="../../app/utils/update.py" line="1064"/>
+        <location filename="../../app/utils/update.py" line="1190"/>
+        <location filename="../../app/utils/update.py" line="1089"/>
         <source>Version file update failed</source>
         <translation>版本文件更新失败</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1304"/>
-        <location filename="../../app/utils/update.py" line="1296"/>
-        <location filename="../../app/utils/update.py" line="1288"/>
-        <location filename="../../app/utils/update.py" line="1280"/>
-        <location filename="../../app/utils/update.py" line="1272"/>
-        <location filename="../../app/utils/update.py" line="1264"/>
-        <location filename="../../app/utils/update.py" line="1256"/>
-        <location filename="../../app/utils/update.py" line="1248"/>
-        <location filename="../../app/utils/update.py" line="1240"/>
-        <location filename="../../app/utils/update.py" line="1232"/>
-        <location filename="../../app/utils/update.py" line="1074"/>
+        <location filename="../../app/utils/update.py" line="1329"/>
+        <location filename="../../app/utils/update.py" line="1321"/>
+        <location filename="../../app/utils/update.py" line="1313"/>
+        <location filename="../../app/utils/update.py" line="1305"/>
+        <location filename="../../app/utils/update.py" line="1297"/>
+        <location filename="../../app/utils/update.py" line="1289"/>
+        <location filename="../../app/utils/update.py" line="1281"/>
+        <location filename="../../app/utils/update.py" line="1273"/>
+        <location filename="../../app/utils/update.py" line="1265"/>
+        <location filename="../../app/utils/update.py" line="1257"/>
+        <location filename="../../app/utils/update.py" line="1099"/>
         <source>switching to Github download</source>
         <translation>轉為 GitHub 下載</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1189"/>
-        <location filename="../../app/utils/update.py" line="1082"/>
+        <location filename="../../app/utils/update.py" line="1214"/>
+        <location filename="../../app/utils/update.py" line="1107"/>
         <source>current version is latest</source>
         <translation>當前已經是最新版</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1090"/>
+        <location filename="../../app/utils/update.py" line="1115"/>
         <source>MirrorChyan update check successful, starting download</source>
         <translation>Mirror醬檢查更新成功，開始下載</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1105"/>
+        <location filename="../../app/utils/update.py" line="1130"/>
         <source>Unexpected error during download</source>
         <translation>下载过程中出现意外错误</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1119"/>
+        <location filename="../../app/utils/update.py" line="1144"/>
         <source>Version file write failed</source>
         <translation>版本文件写入失败</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1128"/>
+        <location filename="../../app/utils/update.py" line="1153"/>
         <source>MirrorChyan update check successful, but no CDK found, switching to Github download</source>
         <translation>Mirror醬檢查更新成功，但未檢測到CDK，轉為GitHub下載</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1148"/>
+        <location filename="../../app/utils/update.py" line="1173"/>
         <source>GitHub URL construction failed</source>
         <translation>GitHub URL 构建失败</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1230"/>
+        <location filename="../../app/utils/update.py" line="1255"/>
         <source>INVALID_PARAMS</source>
         <translation>參數不正確</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1238"/>
+        <location filename="../../app/utils/update.py" line="1263"/>
         <source>KEY_EXPIRED</source>
         <translation>CDK已過期</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1246"/>
+        <location filename="../../app/utils/update.py" line="1271"/>
         <source>KEY_INVALID</source>
         <translation>CDK錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1254"/>
+        <location filename="../../app/utils/update.py" line="1279"/>
         <source>RESOURCE_QUOTA_EXHAUSTED</source>
         <translation>CDK 今日下載次數已達上限</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1262"/>
+        <location filename="../../app/utils/update.py" line="1287"/>
         <source>KEY_MISMATCHED</source>
         <translation>CDK 類型和待下載的資源不匹配</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1270"/>
+        <location filename="../../app/utils/update.py" line="1295"/>
         <source>RESOURCE_NOT_FOUND</source>
         <translation>對應架構和系統下的資源不存在</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1278"/>
+        <location filename="../../app/utils/update.py" line="1303"/>
         <source>INVALID_OS</source>
         <translation>錯誤的系統參數</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1286"/>
+        <location filename="../../app/utils/update.py" line="1311"/>
         <source>INVALID_ARCH</source>
         <translation>錯誤的架構參數</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1294"/>
+        <location filename="../../app/utils/update.py" line="1319"/>
         <source>INVALID_CHANNEL</source>
         <translation>錯誤的更新通道參數</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1320"/>
+        <location filename="../../app/utils/update.py" line="1345"/>
         <source>Download failed</source>
         <translation>下載失敗</translation>
     </message>
