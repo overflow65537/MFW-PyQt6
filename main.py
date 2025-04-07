@@ -1,8 +1,9 @@
 # coding:utf-8
 import os
 import sys
+
 # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
-os.chdir(os.path.dirname(sys.executable) if getattr(sys, 'frozen', False)else os.path.dirname(os.path.abspath(__file__)))
+# os.chdir(os.path.dirname(sys.executable) if getattr(sys, 'frozen', False)else os.path.dirname(os.path.abspath(__file__)))
 import argparse
 import json
 
@@ -154,7 +155,7 @@ def main(resource: str, config: str, directly: bool):
         logger.info("资源文件存在")
         cfg.set(cfg.click_update, False)
         cfg.set(cfg.resource_exist, True)
-        
+
         signalBus.resource_exist.emit(True)
         logger.info(
             f"资源版本:{maa_config_data.interface_config.get('version',"None")}"
