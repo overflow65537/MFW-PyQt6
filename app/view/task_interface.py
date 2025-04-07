@@ -344,6 +344,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         任务回调
         """
+        print(message)
         if message["name"] == "on_controller_action":
             if message["status"] == 1:
                 self.insert_colored_text(self.tr("Starting Connection"))
