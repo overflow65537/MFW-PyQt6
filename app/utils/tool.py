@@ -8,7 +8,6 @@ import socket
 import asyncio
 import traceback
 import shutil
-import wmi
 import uuid
 from typing import Literal, Optional, List, Dict, Any
 from cryptography.fernet import Fernet
@@ -646,6 +645,7 @@ def get_uuid():
 def get_cpu_serial():
     system = platform.system()
     if system == "Windows":
+        import wmi
         try:
             c = wmi.WMI()
             return c.Win32_Processor()[0].ProcessorId
