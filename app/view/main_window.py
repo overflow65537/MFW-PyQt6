@@ -1,6 +1,5 @@
 import os
 import sys
-import ctypes
 
 from PyQt6.QtCore import QSize, QTimer, Qt
 
@@ -153,6 +152,9 @@ class MainWindow(FluentWindow):
 
     def is_admin(self):
         """判断是否为管理员权限"""
+        if not sys.platform.startswith("win32"):
+            return False
+        import ctypes
         try:
             return ctypes.windll.shell32.IsUserAnAdmin()
         except Exception as e:
