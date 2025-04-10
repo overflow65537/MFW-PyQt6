@@ -514,6 +514,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         # 解析删除线
         html_text = html_text.replace("[s]", "<s>").replace("[/s]", "</s>")
 
+        html_text = re.sub(r"\[align:left\]", '<div style="text-align: left;">', html_text)
+        html_text = re.sub(r"\[align:center\]", '<div style="text-align: center;">', html_text)
+        html_text = re.sub(r"\[align:right\]", '<div style="text-align: right;">', html_text)
+        html_text = re.sub(r"\[/align\]", "</div>", html_text)
+
         # 将换行符替换为 <br>
         html_text = html_text.replace("\n", "<br>")
 
@@ -1695,6 +1700,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
                     # 解析删除线
                     html_text = html_text.replace("[s]", "<s>").replace("[/s]", "</s>")
+
+                    # 解析对齐方式
+                    html_text = re.sub(r"\[align:left\]", '<div style="text-align: left;">', html_text)
+                    html_text = re.sub(r"\[align:center\]", '<div style="text-align: center;">', html_text)
+                    html_text = re.sub(r"\[align:right\]", '<div style="text-align: right;">', html_text)
+                    html_text = re.sub(r"\[/align\]", "</div>", html_text)
 
                     # 将换行符替换为 <br>
                     html_text = html_text.replace("\n", "<br>")
