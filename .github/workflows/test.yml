@@ -1,4 +1,4 @@
-name: install
+name: test
 
 on:
   push:
@@ -56,6 +56,18 @@ jobs:
           - platform: macos
             runs-on: macos-latest
             arch: aarch64
+          - platform: linux
+            runs-on: ubuntu-latest
+            arch: x86_64
+          - platform: linux
+            runs-on: ubuntu-latest
+            arch: aarch64
+          - platform: win
+            runs-on: windows-latest
+            arch: x86_64
+          - platform: win
+            runs-on: windows-latest
+            arch: aarch64
       fail-fast: false
 
     steps:
@@ -79,9 +91,27 @@ jobs:
           python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
         shell: pwsh  
         
-      - name: test MFW
+      - name: test MFW win
+        if: ${{ matrix.platform == 'win' }}
+        run: |
+          cd dist/MFW
+          ./MFW
+        shell: pwsh   
+
+      - name: test MFW linux
+        if: ${{ matrix.platform =='linux' }}
         run: |
           cd dist/MFW
           chmod +x ./MFW
           ./MFW
-        shell: pwsh  
+        shell: pwsh
+
+      - name: test MFW macos
+        if: ${{ matrix.platform == 'macos' }}
+        run: |
+          cd dist/MFW
+          chmod +x ./MFW
+          ./MFW
+        shell: pwsh
+
+
