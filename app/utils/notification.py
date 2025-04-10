@@ -40,6 +40,6 @@ class MyNotificationHandler(NotificationHandler):
                 "name": "on_task_recognition",
                 "task": detail.name,
                 "status": noti_type.value,
-                "focus": detail.focus[focus_mapping[noti_type.value]],
+                "focus": detail.focus.get(focus_mapping[noti_type.value],""),
             }
         )

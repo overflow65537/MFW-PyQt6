@@ -481,11 +481,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         插入带颜色的文本
         """
+
+
+        time = ClickableLabel(self)
+        message = ClickableLabel(self)
         # 初始化 HTML 文本
         html_text = text
 
+
         # 解析颜色
-        if "\[color:" in html_text:
+        if "[color:" in html_text:
             html_text = re.sub(
                 r"\[color:(.*?)\]", r'<span style="color:\1">', html_text
             )
@@ -494,7 +499,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             color = QColor(color_name)
             if not color.isValid():
                 color_name = "black"
-            html_text = f'<span style="color:{color_name}">{html_text}</span>'
+            message.setTextColor(QColor(color_name))
 
         # 解析字号
         html_text = re.sub(
@@ -523,10 +528,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         html_text = html_text.replace("\n", "<br>")
 
         now = datetime.now().strftime("%H:%M")
-        time = ClickableLabel(self)
+        
         time.setText(now)
 
-        message = ClickableLabel(self)
+
         message.setWordWrap(True)
         message.setText(html_text)
         message.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)  # 水平扩展，垂直自适应
