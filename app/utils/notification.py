@@ -30,11 +30,16 @@ class MyNotificationHandler(NotificationHandler):
         noti_type: NotificationType,
         detail: NotificationHandler.NodeRecognitionDetail,
     ):
-
+        focus_mapping = {
+            1:"start",
+            2:"succeeded",
+            3:"failed",
+        }
         self.callbackSignal.callback.emit(
             {
                 "name": "on_task_recognition",
                 "task": detail.name,
                 "status": noti_type.value,
+                "focus": detail.focus[focus_mapping[noti_type.value]],
             }
         )

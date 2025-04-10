@@ -344,7 +344,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         任务回调
         """
-        print(message)
         if message["name"] == "on_controller_action":
             if message["status"] == 1:
                 self.insert_colored_text(self.tr("Starting Connection"))
@@ -372,6 +371,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 logger.debug(f"{message["task"]} 任务失败")
                 self.send_notice("failed", message["task"])
         if message["name"] == "on_task_recognition":
+            
             task = message["task"]
             pipeline: dict = self.focus_tips.get(task)
             on_error = self.on_error_list
@@ -385,7 +385,19 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 )
                 self.in_progress_error = self.entry
                 self.task_failed = True
-
+            # 新的focus通知
+            if message.get("focus"):
+                if isinstance(message["focus"], str):  # 单条 直接输出
+                    self.insert_colored_text(
+                        message["focus"],  
+                    )
+                elif isinstance(message["focus"], list):  
+                    for i in message["focus"]: 
+                        self.insert_colored_text(
+                        i,
+                        )
+            
+            # 旧版的focus通知,预计会在未来版本中删除
             if pipeline:
                 if message["status"] == 1 and pipeline.get("focus_tip"):  # 有焦点提示
                     if isinstance(pipeline["focus_tip"], str):  # 单条 直接输出
@@ -469,34 +481,41 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         插入带颜色的文本
         """
-        logger.debug(f"插入文本: {text}, 颜色: {color_name}")
-        if "," in color_name and color_name[0] == "(" and color_name[-1] == ")":
-            color_str = color_name[1:-1]
-            color_parts = color_str.split(",")
-            try:
-                # 转换为整数列表
-                color_values = [int(part.strip()) for part in color_parts]
-                if len(color_values) == 3:
-                    r, g, b = color_values
-                    color = QColor(r, g, b)
-                elif len(color_values) == 4:
-                    r, g, b, a = color_values
-                    color = QColor(r, g, b, a)
-                else:
-                    color = QColor("black")
-                    logger.error(
-                        f"无效颜色格式 '{color_name}', 应为 (r, g, b) 或 (r, g, b, a), 使用默认颜色 'black'"
-                    )
-            except ValueError:
-                color = QColor("black")
-                logger.error(
-                    f"无效颜色格式 '{color_name}', 颜色值必须为整数, 使用默认颜色 'black'"
-                )
+        # 初始化 HTML 文本
+        html_text = text
+
+        # 解析颜色
+        if "\[color:" in html_text:
+            html_text = re.sub(
+                r"\[color:(.*?)\]", r'<span style="color:\1">', html_text
+            )
+            html_text = re.sub(r"\[/color\]", "</span>", html_text)
         else:
-            color = QColor(color_name.lower())
+            color = QColor(color_name)
             if not color.isValid():
-                color = QColor("black")
-                logger.error(f"无效颜色 '{color_name}', 使用默认颜色 'black'")
+                color_name = "black"
+            html_text = f'<span style="color:{color_name}">{html_text}</span>'
+
+        # 解析字号
+        html_text = re.sub(
+            r"\[size:(.*?)\]", r'<span style="font-size:\1px">', html_text
+        )
+        html_text = re.sub(r"\[/size\]", "</span>", html_text)
+
+        # 解析粗体
+        html_text = html_text.replace("[b]", "<b>").replace("[/b]", "</b>")
+
+        # 解析斜体
+        html_text = html_text.replace("[i]", "<i>").replace("[/i]", "</i>")
+
+        # 解析下划线
+        html_text = html_text.replace("[u]", "<u>").replace("[/u]", "</u>")
+
+        # 解析删除线
+        html_text = html_text.replace("[s]", "<s>").replace("[/s]", "</s>")
+
+        # 将换行符替换为 <br>
+        html_text = html_text.replace("\n", "<br>")
 
         now = datetime.now().strftime("%H:%M")
         time = ClickableLabel(self)
@@ -504,8 +523,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         message = ClickableLabel(self)
         message.setWordWrap(True)
-        message.setText(text)
-        message.setTextColor(color)
+        message.setText(html_text)
         message.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)  # 水平扩展，垂直自适应
         message.setMinimumWidth(100)  # 设置最小宽度
 
