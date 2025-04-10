@@ -4,10 +4,17 @@
 
 # MFW-PyQt6
 
-**[Simplified Chinese](./README.md) | [English](./README-en.md)**
+**[简体中文](./README.md) | [English](./README-en.md)**
 
-A general-purpose GUI project for **[MAAFramework](https://github.com/MaaXYZ/MaaFramework)** based on **[PyQT6](https://doc.qt.io/qtforpython-6)**
+Universal GUI project for **[MAAFramework](https://github.com/MaaXYZ/MaaFramework)** based on **[PyQT6](https://doc.qt.io/qtforpython-6)**
 </div>
+
+<p align="center">
+  <img alt="license" src="https://img.shields.io/github/license/overflow65537/MFW-PyQt6">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white">
+  <img alt="platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blueviolet">
+  <img alt="commit" src="https://img.shields.io/github/commit-activity/m/overflow65537/MFW-PyQt6">
+</p>
 
 ## Development Environment
 
@@ -15,58 +22,62 @@ A general-purpose GUI project for **[MAAFramework](https://github.com/MaaXYZ/Maa
 
 ## Usage
 
-### Direct Use
+### Direct Usage
 
 - `pip install -r requirements.txt`
 - `python main.py`
 
-### Using GitHub Actions for Automatic Building
+### Using GitHub Actions for Auto Deployment
 
-- Modify the project name and project address in `depoly\deploy.py` to your project name and project address, and upload it to the `GitHub repository root directory`
-- Modify MaaXXX in `deploy\install.yml` to your project name and upload it to the `.github/workflows` directory of the GitHub repository
-- Push a new version
+- Modify the project name and URL in `deploy/deploy.py` and upload to the GitHub repository root
+- Rename MaaXXX in `deploy/install.yml` to your project name and upload to `.github/workflows` directory
+- Push new releases
 
-## Feature Description
+## Features
 
-### Multi-Configuration Startup
+### Multi-configuration Launch
 
-- Click the add button for resources in the scheduled task interface to add resources
-- Each resource can have multiple configurations, independent of each other
-- The operation after completion can choose to start a certain configuration file in other resources
-- Combined with the task executed after startup, seamless startup of multiple resources can be achieved
+- Click the add button in Scheduled Tasks interface to add resources
+- Each resource can have multiple independent configurations
+- Post-completion actions can trigger configurations from other resources
+- Combined with post-execution tasks to achieve seamless multi-resource startup
 
-### Parameter Startup
+### Parameter Launch
 
-- The `-r` parameter can accept the resource name, for example `python main.py -r resource1` or `MFW.exe -r resource1`
-- The `-c` parameter can accept the configuration file name, for example `python main.py -c config1` or `MFW.exe -c config1`
+- -r parameter accepts resource names e.g. `python main.py -r resource1` or `MFW.exe -r resource1`
+- -c parameter accepts configuration names e.g. `python main.py -c config1` or `MFW.exe -c config1`
+- -d parameter starts task immediately after launch e.g. `python main.py -d` or `MFW.exe -d`
+
+### Version Locking
+
+- Add `MFW_min_req_version` key in `interface.json` with MFW version number:
+
+```json
+"MFW_min_req_version": "1.5.4"
+```
+
+- Updates will be blocked if new resources require higher MFW version
 
 ### Speedrun Mode
 
-- You can enable the `Speedrun Mode` in the settings.
-- Once enabled, tasks that have already run once within the cycle will be skipped.
-- The operation cycle is set by the resource developer.
-- If the global `on_error` is set in `default_pipeline.json`, you need to set the `focus` of the corresponding node to `True`. When a task enters the `on_error` state, it will be marked as failed, and the time will not be recorded.
-- In the `interface` file, the format is as follows:
+- Enable in Settings to skip tasks already completed in current cycle
+- Developers can set operation cycles in interface file:
 
 ```json
 {
     "task": [
         {
-            "name": "Daily Task",
-            "entry": "Daily_Task",
-            "periodic": 1,      //Daily Task
-            "daily_start": 4    //Start at 4:00 every day
+            "name": "Daily Tasks",
+            "entry": "Daily Tasks",
+            "periodic": 1,
+            "daily_start": 4
         },
         {
-            "name": "weekly Task",
-            "entry": "weekly_Task",
-            "periodic": 2,     //weekly Task
-            "weekly_start": 2, //Start every Tuesday
-            "daily_start": 4   //Start at 4:00 every day
-        },
-        {
-            "name": "Normal Task",
-            "entry": "Normal_Task",
+            "name": "Weekly Tasks",
+            "entry": "Weekly Tasks",
+            "periodic": 2,
+            "weekly_start": 2,
+            "daily_start": 4
         }
     ]
 }
@@ -74,171 +85,97 @@ A general-purpose GUI project for **[MAAFramework](https://github.com/MaaXYZ/Maa
 
 ### External Notifications
 
-- Currently supports four notification methods: DingTalk, Feishu, SMTP, and WxPusher
+- Currently supports DingTalk, Feishu, SMTP, and WxPusher
 
-### Focus Notification
+### `doc` Protocol
 
-- Create a new focus_msg.json file in the same directory as the pipeline folder.
-- The format is as follows:
+#### Use markup like `[color:red]Text[/color]` for styling
 
-```json
-{
-    "Node Name": {
-        "focus_tip": "Content to be displayed on the right before task execution",
-        "focus_tip_color": "#000000",
-        "focus_succeeded": ["Content to be displayed on the right after successful task execution", "Success"],
-        "focus_succeeded_color": ["(0,255,0)", "(0,255,0,50)"],
-        "focus_failed": "Content to be displayed on the right after task execution fails",
-        "focus_failed_color": "red"
-    }
-}
+#### Supported Markup
 
-```
+- `[color:color_name]`: Text color
+- `[size:font_size]`: Font size
+- `[b]`: Bold
+- `[i]`: Italic
+- `[u]`: Underline
+- `[s]`: Strikethrough
+- `[align:left/center/right]`: Text alignment (must be used on separate lines)
 
-- Here, the Node Name refers to the node name in the pipeline.
-- If you want to control the display of `focus` through `option`, you can add the `focus_msg_override` field to the corresponding option in `option` - `cases`.
-- The format is as follows:
+### Task Notifications
+
+- Requires enabling node's Focus feature
+- Format using doc protocol:
 
 ```json
 {
-  {
-    "option": {
-        "Option Group": {
-            "cases": [
-                {
-                    "name": "Option",
-                    "pipeline_override": {},
-                    "focus_msg_override": {
-                        "Node Name": {
-                            "focus_tip": "Content displayed on the right before task execution",
-                            "focus_tip_color": "#000000",
-                            "focus_succeeded": ["Content displayed on the right after successful task execution", "Success"],
-                            "focus_succeeded_color": ["(0,255,0)", "(0,255,0,50)"],
-                            "focus_failed": "Content displayed on the right after task execution fails",
-                            "focus_failed_color": "red"
-                        }
-                    }
-                }
-            ]
+    "task": {
+        "focus": {
+            "start": "[size:15][color:gray]Task start notification[/color][/size]",
+            "succeeded": "[size:15][color:green]Task success notification[/color][/size]"
         }
     }
 }
+```
+
+### Custom Action/Recognizer Integration
+
+#### Fixed Location Method
+
+- Requires Python 3.12 for custom components
+- Third-party libraries must be installed in `_internal` folder
+- Create `costom.json` in custom folder:
+
+```json
+{
+    "CustomAction1": {
+        "file_path": "{custom_path}/actions/action1.py",
+        "class": "CustomActionClass",
+        "type": "action"
+    }
 }
 ```
 
-### Dynamic Loading of Custom Actions/Recognizers
-
-- What is a [Custom Action/Recognizer](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md#%E4%BD%BF%E7%94%A8-json-%E4%BD%8E%E4%BB%A3%E7%A0%81%E7%BC%96%E7%A8%8B%E4%BD%86%E5%AF%B9%E5%A4%8D%E6%9D%82%E4%BB%BB%E5%8A%A1%E4%BD%BF%E7%94%A8%E8%87%AA%E5%AE%9A%E4%B9%89%E9%80%BB%E8%BE%91)
-- Requires custom actions/recognizers to use Python 3.12
-- If the custom action/recognizer contains third-party libraries, the third-party libraries need to be installed in `_internal` (Windows and macOS) or the `MFW-PyQt6 root directory` (Linux)
-- Name and place the custom action/recognizer files as required
-- Required structure: [Here is an example](https://github.com/overflow65537/MAA_Punish/tree/main/assets)
-
-```File Tree
-Project Folder/custom/
-├── action/
-│   ├── Action1
-│   │    └── main.py
-│   └── Action2
-│        └── main.py
-└── Recognition/
-    ├── Recognizer1
-    │    └── main.py
-    └── Recognizer2
-         └── main.py
-```
-
-- Among them, Action1, Action2, Recognizer1, Recognizer2 are the names used in the pipeline, for example
+- Use in pipeline:
 
 ```json
-
-
-### Custom Program Configuration
-
-- Create `./config/custom.json`.
-- The content should be:
-
-```json
-"my_custom_task": {
-        "recognition": "Custom",
-        "custom_recognition": "Recognizer1",
-        "action": "Custom",
-        "custom_action": "Action1"
-    }
-
+"MyCustomTask": {
+    "recognition": "Custom",
+    "custom_recognition": "CustomRecognizer1",
+    "action": "Custom",
+    "custom_action": "CustomAction1"
+}
 ```
 
-- The object name in main.py is required to be the same as the folder name, for example
+### Custom Configuration
 
-```python
-  class Recognizer1(CustomRecognition):
-    def analyze(context, ...):
-        # Get the image, then perform your own image operations
-        image = context.tasker.controller.cached_image
-        # Return the image analysis result
-        return AnalyzeResult(box=(10, 10, 100, 100))
-```
-
-### Custom Program Configuration
-
-- Create ```./config/custom.json```.
-- The content should be:
+- Create `./config/custom.json`:
 
 ```json
 {
     "option1": {
-        "optionname": "option1",
         "optiontype": "switch",
-        "optioncontent": false,
         "text": {
-            "title": "Switch",
-            "content": "This is a switch"
-        }
-    },
-    "option2": {
-        "optionname": "option2",
-        "optiontype": "combox",
-        "optioncontent": [
-            "content1",
-            "content2",
-            "content3"
-        ],
-        "text": {
-            "title": "Combobox",
-            "content": "This is a combobox"
-        }
-    },
-    "option3": {
-        "optionname": "option3",
-        "optiontype": "lineedit",
-        "optioncontent": "content3",
-        "text": {
-            "title": "Lineedit",
-            "content": "This is a lineedit"
+            "title": "Toggle",
+            "content": "Example toggle"
         }
     }
 }
 ```
 
-- The processed data will be saved to `./config/custom_config.json` for custom programs to read.
-
 ## License
 
-**PyQt-MAA** is licensed under **[GPL-3.0 License](./LICENSE)**.
+**MFW-PyQt6** is open source under **[GPL-3.0 License](./LICENSE)**
 
 ## Acknowledgments
 
-### Open Source Libraries
+### Open Source Projects
 
-- **[PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)**\
-    A fluent design widgets library based on C++ Qt/PyQt/PySide. Make Qt Great Again.
-- **[MaaFramework](https://github.com/MaaAssistantArknights/MaaFramework)**\
-    An automation black-box testing framework based on image recognition
+- **[PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)**
+- **[MaaFramework](https://github.com/MaaAssistantArknights/MaaFramework)**
+- **[MirrorChyan](https://github.com/MirrorChyan/docs)**
 
-### Developers
-
-Thanks to the following developers for their contributions to PyQt-MAA.
+### Contributors
 
 <a href="https://github.com/overflow65537/PYQT-MAA/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=overflow65537/PYQT-MAA&max=1000" alt="Contributors to MFW-PyQt6"/>
+  <img src="https://contrib.rocks/image?repo=overflow65537/PYQT-MAA" alt="Project contributors"/>
 </a>

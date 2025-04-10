@@ -94,53 +94,64 @@
 
 - 目前支持 钉钉,飞书,SMTP,WxPusher 四种通知方式
 
-### Focus通知
+### `doc`协议
+
+#### 使用类似`[color:red]`文本内容`[/color]`的标记来定义文本样式
+
+#### 支持的标记包括
+
+- `[color:color_name]`：颜色，例如`[color:red]`。
+
+- `[size:font_size]`：字号，例如`[size:20]`。
+
+- `[b]`：粗体。
+
+- `[i]`：斜体。
+
+- `[u]`：下划线。
+
+- `[s]`：删除线。
+
+- `[align:left/center/right]`：居左，居中或者居右，只能在一整行中使用。
+
+### 任务通知
 
 - 需要启用对应node的`Focus`功能
-- 在`pipeline`文件夹同级目录下新建`focus_msg.json`文件
-- 格式为
+- 格式为doc协议
+- 例子:
 
 ```json
 {
-    "node名": {
-        "focus_tip": "任务执行前显示在右侧的内容",
-        "focus_tip_color": "#000000",
-        "focus_succeeded": ["任务执行成功后显示在右侧的内容", "成功"],
-        "focus_succeeded_color": ["(0,255,0)", "(0,255,0,50)"],
-        "focus_failed": "任务执行失败后显示在右侧的内容",
-        "focus_failed_color": "red"
+    "task": {
+        "focus": {
+            "start": "[size:15][color:gray]任务启动时通知[/color][/size]",
+            "succeeded": "[size:15][color:green]任务成功时通知[/color][/size]",
+            "failed": "[size:15][color:tomato]任务失败时通知[/color][/size]"
+        },
+        "next": [
+            "next_task"
+        ]
+
+        
     }
 }
 ```
 
-- 其中`node名`为pipeline中的节点名`
-- 如果希望通过`option`来控制`focus`的显示,可以在`option`-`cases`中的对应选项内添加`focus_msg_override`字段
-- 格式为
+### 任务说明
+
+- 格式为doc协议
+- 在interface文件中,格式为:
 
 ```json
 {
-      "option": {
-        "选项组": {
-            "cases": [
-                {
-                    "name": "选项",
-                    "pipeline_override": {},
-                    "focus_msg_override": {
-                        "node名": {
-                            "focus_tip": "任务执行前显示在右侧的内容",
-                            "focus_tip_color": "#000000",
-                            "focus_succeeded": ["任务执行成功后显示在右侧的内容", "成功"],
-                            "focus_succeeded_color": ["(0,255,0)", "(0,255,0,50)"],
-                            "focus_failed": "任务执行失败后显示在右侧的内容",
-                            "focus_failed_color": "red"
-                        }
-                    }
-                }
-            ]
+    "task": [
+        {
+            "name": "任务名称",
+            "entry": "任务入口",
+            "doc": "[size:15][color:tomato]任务说明[/color][/size]"
         }
-    }
+    ]
 }
-```
 
 ### 动态加载自定义动作/识别器
 
@@ -148,49 +159,7 @@
 
 - 什么是[自定义动作/识别器](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md#%E4%BD%BF%E7%94%A8-json-%E4%BD%8E%E4%BB%A3%E7%A0%81%E7%BC%96%E7%A8%8B%E4%BD%86%E5%AF%B9%E5%A4%8D%E6%9D%82%E4%BB%BB%E5%8A%A1%E4%BD%BF%E7%94%A8%E8%87%AA%E5%AE%9A%E4%B9%89%E9%80%BB%E8%BE%91)
 - 要求自定义动作/识别器使用python3.12
-- 如果自定义动作/识别器中含有第三方库,需要将第三方库安装到`_internal`(windows和Macos)或者`MFW-PyQt6根目录`(linux)
-- 将自定义动作/识别器文件按照要求命名和放置
-- 要求的结构:[这是例子](https://github.com/overflow65537/MAA_SnowBreak/tree/main/assets)
-
-```File Tree
-项目文件夹/custom/
-├── action/
-│   ├── 动作1
-│   │    └── main.py
-│   └── 动作2
-│        └── main.py
-└── Recognition/
-    ├── 识别器1
-    │    └── main.py
-    └── 识别器2
-         └── main.py
-```
-
-- 其中,动作1,动作2,识别器1,识别器2为在pipeline中所使用的名字,比如
-
-```json
-"我的自定义任务": {
-        "recognition": "Custom",
-        "custom_recognition": "识别器1",
-        "action": "Custom",
-        "custom_action": "动作1"
-    }
-```
-
-- main.py中要求对象名和文件夹相同,比如
-
-```python
-  class 识别器1(CustomRecognition):
-    def analyze(context, ...):
-        # 获取图片，然后进行自己的图像操作
-        image = context.tasker.controller.cached_image
-        # 返回图像分析结果
-        return AnalyzeResult(box=(10, 10, 100, 100))
-
- ```
-
-#### 配置文件方法
-
+- 如果自定义动作/识别器中含有第三方库,需要将第三方库安装到`_internal`文件夹中
 - 编写`costom.json`并放置于custom文件夹内
 - 这是一个[例子](https://github.com/overflow65537/MAA_Punish/tree/main/assets)
 - 内容为
