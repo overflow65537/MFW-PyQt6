@@ -737,6 +737,9 @@ class Update(BaseUpdate):
                         break
             else:
                 project_name_number = 5
+                if update_dict.get("status"):
+                    signalBus.update_download_finished.emit(update_dict)
+                    return
                 download_url = update_dict["zipball_url"]
             if not download_url:
                 logger.warning("未找到匹配的资源")
