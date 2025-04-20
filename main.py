@@ -158,7 +158,7 @@ def main(resource: str, config: str, directly: bool):
 
         signalBus.resource_exist.emit(True)
         logger.info(
-            f"资源版本:{maa_config_data.interface_config.get('version',"None")}"
+            f"资源版本:{maa_config_data.interface_config.get('version','unknown')}"
         )
 
     # enable dpi scale
