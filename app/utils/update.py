@@ -299,6 +299,12 @@ class Update(BaseUpdate):
                 )
                 
                 github_dict = self.github_check(url)
+                if (
+                    github_dict.get("status") == "failed"
+                    or github_dict.get("status") == "success"
+                ):  # github检查失败:
+                    signalBus.update_download_finished.emit(github_dict)
+                    return
                 self.github_download(github_dict)
                 return
         else:
