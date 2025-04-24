@@ -136,8 +136,29 @@ class Ui_Task_Interface(object):
 
         self.scroll_area_content = QWidget()
         self.scroll_area_content.setContentsMargins(0, 0, 10, 0)
-        self.Option_Label = QVBoxLayout(self.scroll_area_content)
 
+        # 选项区域
+        self.option_widget = QWidget()
+        self.option_layout = QVBoxLayout(self.option_widget)
+        self.option_widget.setSizePolicy(
+            QSizePolicy.Policy.Preferred,  # 水平策略保持不变
+            QSizePolicy.Policy.Minimum   # 垂直策略根据内容自动调整
+        )
+        
+        # doc区域
+        self.doc_widget = QWidget()
+        self.doc_layout = QVBoxLayout(self.doc_widget)
+        self.doc_widget.setSizePolicy(
+            QSizePolicy.Policy.Preferred,  # 水平策略保持不变
+            QSizePolicy.Policy.Minimum     # 垂直策略根据内容自动调整
+        )
+        
+        # 主滚动区域布局
+        self.main_scroll_layout = QVBoxLayout(self.scroll_area_content)
+        self.main_scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.main_scroll_layout.addWidget(self.option_widget)
+        self.main_scroll_layout.addWidget(self.doc_widget)
+        
         self.scroll_area.setWidget(self.scroll_area_content)
 
         self.Option_area_Label = QVBoxLayout()

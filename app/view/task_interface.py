@@ -92,8 +92,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         super().resizeEvent(event)
         scroll_area_width = self.scroll_area.width()
-        for i in range(self.Option_Label.count()):
-            layout = self.Option_Label.itemAt(i).layout()
+        for i in range(self.option_layout.count()):
+            layout = self.option_layout.itemAt(i).layout()
             if layout is not None:
                 for j in range(layout.count()):
                     widget = layout.itemAt(j).widget()
@@ -371,7 +371,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 logger.debug(f"{message["task"]} 任务失败")
                 self.send_notice("failed", message["task"])
         if message["name"] == "on_task_recognition":
-            
+
             task = message["task"]
             pipeline: dict = self.focus_tips.get(task)
             on_error = self.on_error_list
@@ -389,14 +389,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             if message.get("focus"):
                 if isinstance(message["focus"], str):  # 单条 直接输出
                     self.insert_colored_text(
-                        message["focus"],  
+                        message["focus"],
                     )
-                elif isinstance(message["focus"], list):  
-                    for i in message["focus"]: 
+                elif isinstance(message["focus"], list):
+                    for i in message["focus"]:
                         self.insert_colored_text(
-                        i,
+                            i,
                         )
-            
+
             # 旧版的focus通知,预计会在未来版本中删除
             if pipeline:
                 if message["status"] == 1 and pipeline.get("focus_tip"):  # 有焦点提示
@@ -482,12 +482,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         插入带颜色的文本
         """
 
-
         time = ClickableLabel(self)
         message = ClickableLabel(self)
         # 初始化 HTML 文本
         html_text = text
-
 
         # 解析颜色
         if "[color:" in html_text:
@@ -519,22 +517,29 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         # 解析删除线
         html_text = html_text.replace("[s]", "<s>").replace("[/s]", "</s>")
 
-        html_text = re.sub(r"\[align:left\]", '<div style="text-align: left;">', html_text)
-        html_text = re.sub(r"\[align:center\]", '<div style="text-align: center;">', html_text)
-        html_text = re.sub(r"\[align:right\]", '<div style="text-align: right;">', html_text)
+        html_text = re.sub(
+            r"\[align:left\]", '<div style="text-align: left;">', html_text
+        )
+        html_text = re.sub(
+            r"\[align:center\]", '<div style="text-align: center;">', html_text
+        )
+        html_text = re.sub(
+            r"\[align:right\]", '<div style="text-align: right;">', html_text
+        )
         html_text = re.sub(r"\[/align\]", "</div>", html_text)
 
         # 将换行符替换为 <br>
         html_text = html_text.replace("\n", "<br>")
 
         now = datetime.now().strftime("%H:%M")
-        
-        time.setText(now)
 
+        time.setText(now)
 
         message.setWordWrap(True)
         message.setText(html_text)
-        message.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)  # 水平扩展，垂直自适应
+        message.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )  # 水平扩展，垂直自适应
         message.setMinimumWidth(100)  # 设置最小宽度
 
         # 插入到布局
@@ -1513,7 +1518,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.restore_options(maa_config_data.config["task"][Select_Target]["option"])
 
     def restore_options(self, selected_options: List[Dict[str, str]]):
-        layout = self.Option_Label
+        layout = self.option_layout
 
         for option in selected_options:
             name = option.get("name")
@@ -1586,7 +1591,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         self.clear_extra_widgets()
 
-        layout = self.Option_Label
+        option_layout = self.option_layout
+        doc_layout = self.doc_layout
 
         for task in MAA_Pi_Config["task"]:
             if task["name"] == select_target:
@@ -1617,8 +1623,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
                         v_layout.addWidget(select_box)
 
-                        layout.addLayout(v_layout)
-
+                        option_layout.addLayout(v_layout)
                 # 时间限制运行
                 if task.get("periodic") in [1, 2] and cfg.get(cfg.speedrun):
                     switch_v_layout = QVBoxLayout()
@@ -1669,13 +1674,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
                     # 添加间隔防止重叠
                     switch_v_layout.addSpacerItem(QSpacerItem(0, 10))
-                    layout.addLayout(switch_v_layout)
+                    doc_layout.addLayout(switch_v_layout)
                 # 处理 doc 字段
                 doc = task.get("doc")
                 if doc:
                     if isinstance(doc, list):
                         doc = "\n".join(doc)
-                    doc_layout = QVBoxLayout()
                     doc_label = ClickableLabel(self)
                     doc_label.setWordWrap(True)
 
@@ -1692,7 +1696,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     html_text = re.sub(
                         r"\[size:(.*?)\]", r'<span style="font-size:\1px">', html_text
                     )
-                    html_text = re.sub(r"\[/size\]", "</span>", html_text)
+                    html_text = re.sub(r"\[/size]", "</span>", html_text)
 
                     # 解析粗体
                     html_text = html_text.replace("[b]", "<b>").replace("[/b]", "</b>")
@@ -1707,9 +1711,19 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     html_text = html_text.replace("[s]", "<s>").replace("[/s]", "</s>")
 
                     # 解析对齐方式
-                    html_text = re.sub(r"\[align:left\]", '<div style="text-align: left;">', html_text)
-                    html_text = re.sub(r"\[align:center\]", '<div style="text-align: center;">', html_text)
-                    html_text = re.sub(r"\[align:right\]", '<div style="text-align: right;">', html_text)
+                    html_text = re.sub(
+                        r"\[align:left\]", '<div style="text-align: left;">', html_text
+                    )
+                    html_text = re.sub(
+                        r"\[align:center\]",
+                        '<div style="text-align: center;">',
+                        html_text,
+                    )
+                    html_text = re.sub(
+                        r"\[align:right\]",
+                        '<div style="text-align: right;">',
+                        html_text,
+                    )
                     html_text = re.sub(r"\[/align\]", "</div>", html_text)
 
                     # 将换行符替换为 <br>
@@ -1717,18 +1731,18 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
                     doc_label.setText(html_text)
                     doc_layout.addWidget(doc_label)
-                    layout.addLayout(doc_layout)
 
                 spacer = QSpacerItem(
                     0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
                 )
-                layout.addItem(spacer)
+                self.main_scroll_layout.addItem(spacer)
+
 
                 break
 
     def get_switch_value(self) -> Optional[bool]:
         """获取开关的布尔值，未找到开关则返回None"""
-        layout = self.Option_Label
+        layout = self.option_layout
 
         # 遍历布局查找SwitchButton
         for i in range(layout.count()):
@@ -1747,7 +1761,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def get_selected_options(self):
         selected_options = []
-        layout = self.Option_Label
+        layout = self.option_layout
         name = None
         selected_value = None
 
@@ -1772,22 +1786,28 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def clear_extra_widgets(self):
         print("清除额外的控件")
-        layout = self.Option_Label
-        if layout is None:
-            return
+        for layout in [self.option_layout, self.doc_layout]:
+            if not layout:
+                continue
 
-        def recursive_clear(layout):
-            while layout.count():
-                item = layout.takeAt(0)
-                if item.widget():
-                    item.widget().deleteLater()
-                elif item.spacerItem():
-                    pass  # 保留SpacerItem
-                elif item.layout():
-                    recursive_clear(item.layout())
-                    item.layout().deleteLater()
+            def recursive_clear(layout: QVBoxLayout):
+                while layout.count():
+                    item = layout.takeAt(0)
+                    widget = item.widget()
+                    if widget:  # 处理普通控件
+                        widget.deleteLater()
+                    elif item.layout():  # 处理嵌套布局
+                        recursive_clear(item.layout())
+                    elif item.spacerItem():  # 处理间隔项
+                        layout.removeItem(item)
 
-        recursive_clear(layout)
+            recursive_clear(layout)
+            #清空self.main_scroll_layout中的spacerItem
+            for i in reversed(range(self.main_scroll_layout.count())):
+                item = self.main_scroll_layout.itemAt(i)
+                if isinstance(item, QSpacerItem):
+                    self.main_scroll_layout.removeItem(item)
+            
 
     @asyncSlot()
     async def Start_Detection(self):
