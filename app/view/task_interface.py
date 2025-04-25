@@ -372,8 +372,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 self.send_notice("failed", message["task"])
         if message["name"] == "on_task_recognition":
 
-            task = message["task"]
-            pipeline: dict = self.focus_tips.get(task)
             on_error = self.on_error_list
             self.in_progress_error = None
 
@@ -396,86 +394,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         self.insert_colored_text(
                             i,
                         )
-
-            # 旧版的focus通知,预计会在未来版本中删除
-            if pipeline:
-                if message["status"] == 1 and pipeline.get("focus_tip"):  # 有焦点提示
-                    if isinstance(pipeline["focus_tip"], str):  # 单条 直接输出
-                        self.insert_colored_text(
-                            pipeline["focus_tip"],
-                            pipeline.get("focus_tip_color", "black"),
-                        )
-                    elif isinstance(pipeline["focus_tip"], list):  # 多条 看看颜色类型
-                        if isinstance(
-                            pipeline.get("focus_tip_color", "black"), list
-                        ):  # 颜色多条 循环输出
-                            for i, tip in enumerate(pipeline["focus_tip"]):
-                                self.insert_colored_text(
-                                    tip,
-                                    self.list_get(
-                                        pipeline.get("focus_tip_color", "black"),
-                                        i,
-                                        "black",
-                                    ),
-                                )
-                        else:  # 颜色单条 循环
-                            for tip in pipeline["focus_tip"]:
-                                self.insert_colored_text(
-                                    tip,
-                                    pipeline.get("focus_tip_color", "black"),
-                                )
-
-                elif message["status"] == 2 and pipeline.get("focus_succeeded"):
-                    if isinstance(pipeline["focus_succeeded"], str):
-                        self.insert_colored_text(
-                            pipeline["focus_succeeded"],
-                            pipeline.get("focus_succeeded_color", "black"),
-                        )
-                    elif isinstance(pipeline["focus_succeeded"], list):
-                        if isinstance(
-                            pipeline.get("focus_succeeded_color", "black"), list
-                        ):
-                            for i, text in enumerate(pipeline["focus_succeeded"]):
-                                self.insert_colored_text(
-                                    text,
-                                    self.list_get(
-                                        pipeline.get("focus_succeeded_color", "black"),
-                                        i,
-                                        "black",
-                                    ),
-                                )
-                        else:
-                            for text in pipeline["focus_succeeded"]:
-                                self.insert_colored_text(
-                                    text,
-                                    pipeline.get("focus_succeeded_color", "black"),
-                                )
-
-                elif message["status"] == 3 and pipeline.get("focus_failed"):
-                    if isinstance(pipeline["focus_failed"], str):
-                        self.insert_colored_text(
-                            pipeline["focus_failed"],
-                            pipeline.get("focus_failed_color", "black"),
-                        )
-                    elif isinstance(pipeline["focus_failed"], list):
-                        if isinstance(
-                            pipeline.get("focus_failed_color", "black"), list
-                        ):
-                            for i, text in enumerate(pipeline["focus_failed"]):
-                                self.insert_colored_text(
-                                    text,
-                                    self.list_get(
-                                        pipeline.get("focus_failed_color", "black"),
-                                        i,
-                                        "black",
-                                    ),
-                                )
-                        else:
-                            for text in pipeline["focus_failed"]:
-                                self.insert_colored_text(
-                                    text,
-                                    pipeline.get("focus_failed_color", "black"),
-                                )
 
     def insert_colored_text(self, text, color_name="black"):
         """
@@ -886,7 +804,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.update_S2_Button("Start", self.Start_Up)
             return False
 
-        self.focus_tips = {}
         self.on_error_list = []
 
         for i in resource_path:
@@ -896,22 +813,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 .replace("\\", os.sep)
             )
             logger.debug(f"加载资源: {resource}")
-            focus_tips_path = os.path.join(resource, "focus_msg.json")
-            pipelines_path = os.path.join(resource, "pipeline")
             default_pipelines_path = os.path.join(resource, "default_pipeline.json")
-
-            if not (os.path.exists(pipelines_path) and os.path.isdir(pipelines_path)):
-                logger.error(f"资源目录不存在: {pipelines_path}")
-                await maafw.stop_task()
-                self.update_S2_Button("Start", self.Start_Up)
-                return False
-
-            if not await self.load_pipelines(pipelines_path):
-                return False
-            if os.path.exists(focus_tips_path):
-                with open(focus_tips_path, "r", encoding="utf-8") as f:
-                    self.focus_tips.update(json.load(f))
-                    logger.info(f"加载焦点提示: {focus_tips_path}")
             if os.path.exists(default_pipelines_path):
                 with open(default_pipelines_path, "r", encoding="utf-8") as f:
                     self.on_error_list = (
@@ -921,35 +823,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             await maafw.load_resource(resource)
             logger.debug(f"资源加载完成: {resource}")
             logger.debug(f"on_error任务{self.on_error_list}")
-        return True
-
-    async def load_pipelines(self, pipelines_path):
-        """
-        加载pipeline
-        """
-        for root, dirs, files in os.walk(pipelines_path):
-            for filename in files:
-                if filename.endswith(".json"):
-                    file_path = os.path.join(root, filename)
-                    try:
-                        with open(file_path, "r", encoding="utf-8") as file:
-                            data = json.load(file)
-                            self.focus_tips.update(data)
-                        logger.debug(f"成功读取并解析 JSON 文件: {file_path}")
-                    except json.JSONDecodeError as e:
-                        logger.error(
-                            f"解析 JSON 文件时出错: {file_path}, 错误信息: {e}"
-                        )
-                        await maafw.stop_task()
-                        self.update_S2_Button("Start", self.Start_Up)
-                        return False
-                    except Exception as e:
-                        logger.error(
-                            f"读取 JSON 文件时出错: {file_path}, 错误信息: {e}"
-                        )
-                        await maafw.stop_task()
-                        self.update_S2_Button("Start", self.Start_Up)
-                        return False
         return True
 
     async def connect_controller(self, controller_type):
@@ -1209,10 +1082,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             override_options.update(
                                 override.get("pipeline_override", {})
                             )
-                            self.focus_tips.update(
-                                override.get("focus_msg_override", {})
-                            )
-                            print(self.focus_tips)
 
             logger.info(
                 f"运行任务:{self.entry}\n任务选项:\n{json.dumps(override_options, indent=4,ensure_ascii=False)}"
