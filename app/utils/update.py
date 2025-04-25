@@ -987,6 +987,15 @@ class DownloadBundle(BaseUpdate):
                 {"status": "failed", "msg": self.tr("Move file failed")}
             )
             return
+        LICENSE_path = os.path.join(os.getcwd(), "hotfix", main_folder, "LICENSE")
+        #移动文件
+        if os.path.exists(LICENSE_path):
+            shutil.move(LICENSE_path, target_path)
+        README_path = os.path.join(
+            os.getcwd(), "hotfix", main_folder, "README.md"
+        )
+        if os.path.exists(README_path):
+            shutil.move(README_path, target_path)
         interface_data = Read_Config(os.path.join(target_path, "interface.json"))
         interface_data["version"] = content["tag_name"]
         Save_Config(os.path.join(target_path, "interface.json"), interface_data)
