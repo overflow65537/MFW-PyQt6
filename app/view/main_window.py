@@ -116,6 +116,7 @@ class MainWindow(FluentWindow):
         signalBus.update_download_finished.connect(self.show_info_bar)
         signalBus.mirror_bundle_download_finished.connect(self.show_info_bar)
         signalBus.download_self_finished.connect(self.show_info_bar)
+        signalBus.infobar_message.connect(self.show_info_bar)
 
     def initNavigation(self):
         """初始化导航界面。"""

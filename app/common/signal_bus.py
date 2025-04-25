@@ -40,6 +40,7 @@ class SignalBus(QObject):
     speedrun = pyqtSignal()  # 速通模式信号
     lock_res_changed = pyqtSignal(bool)  # 锁定资源改变信号
     agent_info = pyqtSignal(str)  # agent信息信号
+    infobar_message = pyqtSignal(dict)  # 信息栏消息信号
 
 
 signalBus = SignalBus()

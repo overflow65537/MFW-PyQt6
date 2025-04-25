@@ -180,7 +180,53 @@ class BaseUpdate(QThread):
                     "msg": self.tr("Github Update check failed"),
                 }
         return response
+    def check_interface_change(self):
+        """检查配置文件是否发生变化"""
+        if not cfg.get(cfg.resource_exist):
+            return False
+        logger.info("检查配置文件是否发生变化")
+        old_interface_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(maa_config_data.config_path))),
+            "interface.json",
+        )
+        print(old_interface_path)
+        if os.path.exists(old_interface_path):
+            old_interface = Read_Config(old_interface_path)
+            old_interface["version"] = ""
+            new_interface = Read_Config(
+               maa_config_data.interface_config_path
+            )
+            new_interface["version"] = ""
+            if old_interface != new_interface:
+                logger.info("配置文件发生变化")
+                Save_Config(old_interface_path, new_interface)
+                signalBus.infobar_message.emit(
+                    {
+                      "status": "warning",
+                    "msg": self.tr("The interface file has been changed. Clear the task configuration."),
+                }
+                )
+                config_path = os.path.join(
+                    os.path.dirname(os.path.dirname((maa_config_data.config_path)))
+                )
 
+                for root, dirs, files in os.walk(config_path):
+                    for file in files:
+                        
+                        if file == "maa_pi_config.json":
+                            full_path = os.path.join(root, file)
+                            self._clear_config_task(os.path.join(root, full_path))
+
+        else:
+            Save_Config(old_interface_path, maa_config_data.interface_config)
+
+    def _clear_config_task(self,path):
+        """清空配置文件"""
+        logger.info(f"清空配置文件: {path}")
+        config = Read_Config(path)
+        config["task"] = []
+        Save_Config(path, config)
+        return True
     def handle_ocr_assets(self, target_path: str) -> bool:
         """处理 OCR 资源的核心方法
         Args:
@@ -586,6 +632,7 @@ class Update(BaseUpdate):
             # 清理临时文件
             self.remove_temp_files(os.path.join(os.getcwd(), "hotfix"))
             logger.debug("临时文件清理完成")
+            self.check_interface_change()
 
             signalBus.resource_exist.emit(True)
             signalBus.update_download_finished.emit(
@@ -889,6 +936,8 @@ class Update(BaseUpdate):
             # 清理临时文件
             logger.debug("清理临时文件")
             self.remove_temp_files(os.path.join(os.getcwd(), "hotfix"))
+
+            self.check_interface_change()
 
             logger.info("更新流程完成")
             signalBus.resource_exist.emit(True)

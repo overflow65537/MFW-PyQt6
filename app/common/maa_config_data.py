@@ -76,6 +76,7 @@ def init_maa_config_data(status: bool):
             logger.debug(f"resource_data: {maa_config_data.resource_data}")
             logger.debug("配置文件初始化完成")
 
+
         else:
             maa_config_data.interface_config_path = ""
             maa_config_data.interface_config = {}
