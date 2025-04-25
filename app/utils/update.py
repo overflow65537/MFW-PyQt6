@@ -978,8 +978,9 @@ class DownloadBundle(BaseUpdate):
             return
 
         target_path = os.path.join(os.getcwd(), "bundles", project_name)
-        if not os.path.exists(target_path):
-            os.makedirs(target_path)
+        if os.path.exists(target_path):
+            shutil.rmtree(target_path)
+        os.makedirs(target_path)
 
         folder_to_extract = os.path.join(os.getcwd(), "hotfix", main_folder, "assets")
         if not self.move_files(folder_to_extract, target_path):
@@ -991,11 +992,6 @@ class DownloadBundle(BaseUpdate):
         #移动文件
         if os.path.exists(LICENSE_path):
             shutil.move(LICENSE_path, target_path)
-        README_path = os.path.join(
-            os.getcwd(), "hotfix", main_folder, "README.md"
-        )
-        if os.path.exists(README_path):
-            shutil.move(README_path, target_path)
         interface_data = Read_Config(os.path.join(target_path, "interface.json"))
         interface_data["version"] = content["tag_name"]
         Save_Config(os.path.join(target_path, "interface.json"), interface_data)
