@@ -28,7 +28,7 @@ from app.common.maa_config_data import maa_config_data, init_maa_config_data
 from app.utils.tool import show_error_message, Save_Config
 
 
-def main(resource: str, config: str, directly: bool):
+def main(resource: str, config: str, directly: bool, DEV: bool):
     # 检查密钥文件是否存在
     if not os.path.exists("k.ey"):
         key = Fernet.generate_key()
@@ -151,6 +151,10 @@ def main(resource: str, config: str, directly: bool):
         if directly:
             logger.info("检查到 -d 参数,直接启动")
             cfg.set(cfg.run_after_startup_arg, True)
+        if DEV:
+            logger.info("检查到 -DEV 参数,使用DEV模式")
+            cfg.set(cfg.run_after_startup_arg, False)
+            cfg.set(cfg.click_update, False)
 
         logger.info("资源文件存在")
         cfg.set(cfg.click_update, False)
@@ -236,10 +240,11 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--resource", default=False)
     parser.add_argument("-c", "--config", default=False)
     parser.add_argument("-d", "--directly", action="store_true")
+    parser.add_argument("-DEV","--DEV", action="store_true")
 
     args = parser.parse_args()
     try:
-        main(args.resource, args.config, args.directly)
+        main(args.resource, args.config, args.directly, args.DEV)
 
     except:
         logger.exception("GUI Process Error")
