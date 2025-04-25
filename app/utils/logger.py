@@ -16,7 +16,12 @@ logging.basicConfig(
     format="[%(asctime)s][%(levelname)s][%(filename)s][L%(lineno)d][%(funcName)s] | %(message)s",
     level=logging.DEBUG,
     handlers=[
-        logging.FileHandler("./debug/gui.log", encoding="utf-8"),
+        TimedRotatingFileHandler(
+            "./debug/gui.log",
+            when="midnight",  
+            backupCount=3,    
+            encoding="utf-8"
+        ),
         logging.StreamHandler(),
     ],
 )
