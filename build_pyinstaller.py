@@ -68,7 +68,7 @@ command = [
 if sys.platform == "darwin":
     command.insert(2, f"--add-data={site.getsitepackages()[0]}/darkdetect{os.pathsep}darkdetect")
     if architecture == "x64":
-        command.insert(2, "--target-arch X86_64")
+        command.insert(2, "--target-arch=X86_64")
 
 if sys.platform == "win32":
     command.insert(2, "--noconsole")
