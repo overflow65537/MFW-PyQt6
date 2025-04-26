@@ -102,6 +102,13 @@ jobs:
         with:
           submodules: true
 
+      - name: Set up Python (macOS arm64)
+        if: matrix.os == 'macos-latest' && matrix.arch == 'arm64'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          architecture: 'arm64'  # 明确指定arm64架构
+
       - name: Set up Python (macOS x64)
         if: matrix.os == 'macos-latest' && matrix.arch == 'x64'
         uses: actions/setup-python@v4
