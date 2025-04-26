@@ -13,6 +13,15 @@ def write_version_file(platform, architecture, version):
         version_file.write(f"{platform} {architecture} {version} v0.0.0.1\n")
         print(f"write version file to {version_file_path}")
 
+# 获取参数
+print(sys.argv)
+print(len(sys.argv))
+if len(sys.argv) != 4:
+    sys.argv = [sys.argv[0], "unknown", "unknown", "unknown"]
+
+platform = sys.argv[1]
+architecture = sys.argv[2]
+version = sys.argv[3]
 
 if os.path.exists("dist"):
     shutil.rmtree("dist")
@@ -58,6 +67,8 @@ command = [
 ]
 if sys.platform == "darwin":
     command.insert(2, f"--add-data={site.getsitepackages()[0]}/darkdetect{os.pathsep}darkdetect")
+    if architecture == "x86_64":
+        command.insert(2, "--target-arch X86_64")
 
 if sys.platform == "win32":
     command.insert(2, "--noconsole")
@@ -121,15 +132,7 @@ emulator_json_dst = os.path.join(os.getcwd(), "dist", "MFW", "config", "emulator
 os.makedirs(os.path.dirname(emulator_json_dst), exist_ok=True)
 shutil.copy(emulator_json_src, emulator_json_dst)
 
-# 获取参数
-print(sys.argv)
-print(len(sys.argv))
-if len(sys.argv) != 4:
-    sys.argv = [sys.argv[0], "unknown", "unknown", "unknown"]
 
-platform = sys.argv[1]
-architecture = sys.argv[2]
-version = sys.argv[3]
 
 # 写入版本信息
 write_version_file(platform, architecture, version)
