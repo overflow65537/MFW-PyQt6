@@ -48,16 +48,17 @@ if maa_bin_path2 is None:
 add_data_param2 = f"{maa_bin_path2}{os.pathsep}MaaAgentBinary"
 
 # 在已有的 --add-data 参数后添加新的数据收集
-add_data_param3 = f"{site.getsitepackages()[0]}/darkdetect{os.pathsep}darkdetect"
 
 command = [
     "main.py",
     "--name=MFW",
     f"--add-data={add_data_param}",
     f"--add-data={add_data_param2}",
-    f"--add-data={add_data_param3}",  # 新增 darkdetect
     "--clean",
 ]
+if sys.platform == "darwin":
+    command.insert(2, f"--add-data={site.getsitepackages()[0]}/darkdetect{os.pathsep}darkdetect")
+
 if sys.platform == "win32":
     command.insert(2, "--noconsole")
     command.insert(2, "--icon=MFW_resource/icon/logo.ico")
