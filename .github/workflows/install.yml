@@ -66,29 +66,35 @@ jobs:
 
   pyinstaller:
     needs: meta
-    name: pyinstaller Build (${{ matrix.platform }})
-    runs-on: ${{ matrix.runs-on }}
+    name: Build (${{ matrix.platform }}-${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        include: 
-          - platform: macos
-            runs-on: macos-latest
-            arch: x86_64
-          - platform: macos
-            runs-on: macos-latest
-            arch: aarch64
-          - platform: linux
-            runs-on: ubuntu-latest
-            arch: x86_64
-          - platform: linux
-            runs-on: ubuntu-latest
-            arch: aarch64
-          - platform: win
-            runs-on: windows-latest
-            arch: x86_64
-          - platform: win
-            runs-on: windows-latest
-            arch: aarch64
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            
+          - os: ubuntu-latest
+            platform: linux
+            arch: arm64
+            
+          - os: macos-latest
+            platform: osx       
+            arch: x64
+         
+          - os: macos-latest
+            platform: osx
+            arch: arm64
+            
+          - os: windows-latest
+            platform: win
+            arch: x64
+            
+          - os: windows-latest
+            platform: win
+            arch: arm64
+
       fail-fast: false
 
     steps:
