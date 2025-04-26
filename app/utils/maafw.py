@@ -102,52 +102,6 @@ class MaaFW:
                                 {"type": "recognition", "name": custom_name}
                             )
 
-        for module_type in ["action", "recognition"]:
-
-            module_type_dir = os.path.join(custom_dir, module_type)
-            if not os.path.exists(module_type_dir):
-                logger.warning(f"{module_type} 文件夹不存在于 {custom_dir}")
-                continue
-            logger.info(f"文件夹方案{module_type}")
-            for subdir in os.listdir(module_type_dir):
-                subdir_path = os.path.join(module_type_dir, subdir)
-                if os.path.isdir(subdir_path):
-                    entry_file = os.path.join(subdir_path, "main.py")
-                    if not os.path.exists(entry_file):
-                        logger.warning(f"{subdir_path} 没有main.py")
-                        continue  # 如果没有找到main.py，则跳过该子目录
-
-                    try:
-
-                        module_name = subdir  # 使用子目录名作为模块名
-                        spec = importlib.util.spec_from_file_location(
-                            module_name, entry_file
-                        )
-                        module = importlib.util.module_from_spec(spec)
-                        spec.loader.exec_module(module)
-                        if module_type == "action":
-                            if self.resource.register_custom_action(
-                                f"{module_name}", getattr(module, module_name)()
-                            ):
-                                logger.info(
-                                    f"加载自定义动作{module_name},{getattr(module, module_name)()}"
-                                )
-                                if self.need_register_report:
-                                    signalBus.custom_info.emit(
-                                        {"type": "action", "name": module_name}
-                                    )
-                        elif module_type == "recognition":
-                            if self.resource.register_custom_recognition(
-                                f"{module_name}", getattr(module, module_name)()
-                            ):
-                                logger.info(f"加载自定义识别器{module_name}")
-                                if self.need_register_report:
-                                    signalBus.custom_info.emit(
-                                        {"type": "recognition", "name": module_name}
-                                    )
-                    except Exception as e:
-                        logger.error(f"加载自定义内容时发生错误{entry_file}: {e}")
-
     @staticmethod
     @asyncify
     def detect_adb() -> List[AdbDevice]:
