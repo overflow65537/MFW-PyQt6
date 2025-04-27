@@ -49,7 +49,7 @@ from ..common.config import cfg
 from maa.toolkit import AdbDevice
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
-from ..utils.notice import dingtalk_send, lark_send, SMTP_send, WxPusher_send
+from ..utils.notice import dingtalk_send, lark_send, SMTP_send, WxPusher_send, QYWX_send
 from datetime import datetime
 
 
@@ -329,6 +329,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.insert_colored_text(self.tr("SMTP Failed"))
         elif "WxPusher Failed".lower() in message.lower():
             self.insert_colored_text(self.tr("WxPusher Failed"))
+        elif "QYWX Failed".lower() in message.lower():
+            self.insert_colored_text(self.tr("QYWX Failed"))
         elif "DingTalk Success".lower() in message.lower():
             self.insert_colored_text(self.tr("DingTalk Success"))
         elif "Lark Success".lower() in message.lower():
@@ -337,6 +339,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.insert_colored_text(self.tr("SMTP Success"))
         elif "WxPusher Success".lower() in message.lower():
             self.insert_colored_text(self.tr("WxPusher Success"))
+        elif "QYWX Success".lower() in message.lower():
+            self.insert_colored_text(self.tr("QYWX Success"))
         else:
             self.insert_colored_text(message)
 
@@ -1819,6 +1823,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         lark_send(msg, cfg.get(cfg.Notice_Lark_status))
         SMTP_send(msg, cfg.get(cfg.Notice_SMTP_status))
         WxPusher_send(msg, cfg.get(cfg.Notice_WxPusher_status))
+        QYWX_send(msg, cfg.get(cfg.Notice_QYWX_status))
 
     def show_success(self, message):
         InfoBar.success(

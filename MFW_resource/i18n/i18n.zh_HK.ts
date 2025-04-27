@@ -309,12 +309,12 @@
 <context>
     <name>NoticeButtonSettingCard</name>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="352"/>
+        <location filename="../../app/components/notic_setting_card.py" line="380"/>
         <source>Notification Enabled</source>
         <translation>通知已啟用</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="354"/>
+        <location filename="../../app/components/notic_setting_card.py" line="382"/>
         <source>Notification disabled</source>
         <translation>通知已禁用</translation>
     </message>
@@ -337,119 +337,129 @@
         <translation>清除</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="84"/>
+        <location filename="../../app/components/notic_setting_card.py" line="85"/>
         <source>send test message success</source>
         <translation>發送測試成功</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="88"/>
+        <location filename="../../app/components/notic_setting_card.py" line="89"/>
         <source>send test message failed</source>
         <translation>發送測試失敗</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="97"/>
+        <location filename="../../app/components/notic_setting_card.py" line="98"/>
         <source>Error</source>
         <translation>錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="108"/>
+        <location filename="../../app/components/notic_setting_card.py" line="109"/>
         <source>Success</source>
         <translation>成功</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="187"/>
+        <location filename="../../app/components/notic_setting_card.py" line="197"/>
         <source>DingTalk Webhook URL:</source>
         <translation>釘釘 Webhook 地址：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="188"/>
+        <location filename="../../app/components/notic_setting_card.py" line="198"/>
         <source>DingTalk Secret:</source>
         <translation>釘釘密鑰：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="189"/>
+        <location filename="../../app/components/notic_setting_card.py" line="199"/>
         <source>DingTalk Status:</source>
         <translation>釘釘狀態：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="208"/>
+        <location filename="../../app/components/notic_setting_card.py" line="218"/>
         <source>Lark Webhook URL:</source>
         <translation>飛書 Webhook 地址：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="209"/>
+        <location filename="../../app/components/notic_setting_card.py" line="219"/>
         <source>Lark App Key:</source>
         <translation>飛書應用密鑰：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="210"/>
+        <location filename="../../app/components/notic_setting_card.py" line="220"/>
         <source>Lark Status:</source>
         <translation>飛書狀態：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="234"/>
+        <location filename="../../app/components/notic_setting_card.py" line="244"/>
         <source>Server:</source>
         <translation>伺服器：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="235"/>
+        <location filename="../../app/components/notic_setting_card.py" line="245"/>
         <source>Key:</source>
         <translation>密鑰：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="236"/>
+        <location filename="../../app/components/notic_setting_card.py" line="246"/>
         <source>User QQ:</source>
         <translation>使用者 QQ：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="237"/>
+        <location filename="../../app/components/notic_setting_card.py" line="247"/>
         <source>Robot QQ:</source>
         <translation>機器人 QQ：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="238"/>
+        <location filename="../../app/components/notic_setting_card.py" line="248"/>
         <source>Qmsg Status:</source>
         <translation>QQ機器人狀態：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="268"/>
+        <location filename="../../app/components/notic_setting_card.py" line="278"/>
         <source>Server Address:</source>
         <translation>伺服器地址：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="269"/>
+        <location filename="../../app/components/notic_setting_card.py" line="279"/>
         <source>Server Port:</source>
         <translation>伺服器連接埠：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="270"/>
+        <location filename="../../app/components/notic_setting_card.py" line="280"/>
         <source>User Name:</source>
         <translation>使用者名稱：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="271"/>
+        <location filename="../../app/components/notic_setting_card.py" line="281"/>
         <source>Password:</source>
         <translation>密碼：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="272"/>
+        <location filename="../../app/components/notic_setting_card.py" line="282"/>
         <source>Receive Mail:</source>
         <translation>接收電子郵件：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="273"/>
+        <location filename="../../app/components/notic_setting_card.py" line="283"/>
         <source>SMTP Status:</source>
         <translation>SMTP狀態：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="297"/>
+        <location filename="../../app/components/notic_setting_card.py" line="307"/>
         <source>WxPusher Spt:</source>
         <translation>微信推送SPT：</translation>
     </message>
     <message>
-        <location filename="../../app/components/notic_setting_card.py" line="298"/>
+        <location filename="../../app/components/notic_setting_card.py" line="308"/>
         <source>WxPusher Status:</source>
         <translation>微信推送狀態:</translation>
+    </message>
+    <message>
+        <location filename="../../app/components/notic_setting_card.py" line="324"/>
+        <source>WxPusher Spt:</source>
+        <translation>企業微信推送KEY:</translation>
+    </message>
+    <message>
+        <location filename="../../app/components/notic_setting_card.py" line="325"/>
+        <source>WxPusher Status:</source>
+        <translation>企業微信推送狀態:</translation>
     </message>
     <message>
         <source>Resource does not support MirrorChan, right-click about mirror to unlock input</source>
