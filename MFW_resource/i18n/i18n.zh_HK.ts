@@ -796,9 +796,14 @@
         <translation>SMTP</translation>
     </message>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="458"/>
+        <location filename="../../app/view/setting_interface.py" line="459"/>
         <source>WxPusher</source>
         <translation>微信</translation>
+    </message>
+    <message>
+    <location filename="../../app/view/setting_interface.py" line="467"/>
+    <source>WxPusher</source>
+    <translation>企业微信</translation>
     </message>
     <message>
         <location filename="../../app/view/setting_interface.py" line="471"/>
