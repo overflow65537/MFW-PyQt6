@@ -68,10 +68,13 @@ command = [
 if sys.platform == "darwin":
     # macOS专属配置
     command += [
-        "--collect-all", "PyQt6",  # 仅macOS需要完整收集Qt资源
+        "--collect-all", "PyQt6",
         "--hidden-import=PyQt6.QtCore",
         "--hidden-import=PyQt6.QtGui",
-        f"--add-data={site.getsitepackages()[0]}/darkdetect{os.pathsep}darkdetect"
+        "--exclude-module=QtBluetooth",  # 新增排除冲突模块
+        "--exclude-module=QtDBus",
+        f"--add-data={site.getsitepackages()[0]}/darkdetect{os.pathsep}darkdetect",
+        "--runtime-hook=pyi_rth_qt6.py"  # 新增运行时钩子
     ]
     if architecture == "x64":
         command.insert(2, "--target-arch=x86_64")
@@ -231,3 +234,16 @@ if sys.platform == "darwin":
         f.write(f"export QT_QPA_PLATFORM_PLUGIN_PATH=\"${{0%%/*}}/_internal/PyQt6/Qt6/plugins\"\n")
         f.write("exec \"${0%%/*}\"/_internal/MFW \"$@\"")
     os.chmod(app_entry, 0o755)
+
+# 在darkdetect处理部分之后添加
+if sys.platform == "darwin":
+    # 删除自动收集的冲突框架目录
+    conflict_frameworks = [
+        "QtBluetooth.framework",
+        "QtDBus.framework",
+        "QtNetwork.framework"
+    ]
+    for framework in conflict_frameworks:
+        framework_path = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "PyQt6", "Qt6", "lib", framework)
+        if os.path.exists(framework_path):
+            shutil.rmtree(framework_path)
