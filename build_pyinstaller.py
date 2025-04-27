@@ -76,7 +76,7 @@ if sys.platform == "darwin":
     if architecture == "x64":
         command.insert(2, "--target-arch=x86_64")
 
-elif sys.platform == "win32":
+if sys.platform == "win32":
     command.insert(2, "--noconsole")
     command.insert(2, "--icon=MFW_resource/icon/logo.ico")
 
@@ -187,10 +187,42 @@ if sys.platform == "darwin":
         if os.path.exists(detect_bin):
             os.chmod(detect_bin, 0o755)
 
+    # 修改Qt插件复制方式
     qt_plugins_src = os.path.join(os.path.dirname(sys.executable), "lib/python3.9/site-packages/PyQt6/Qt6/plugins")
     qt_plugins_dst = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "PyQt6", "Qt6", "plugins")
+    
     if os.path.exists(qt_plugins_src):
-        shutil.copytree(qt_plugins_src, qt_plugins_dst, dirs_exist_ok=True)
+        # 创建目标目录
+        os.makedirs(qt_plugins_dst, exist_ok=True)
+        
+        # 使用shutil.copy2替代copytree
+        for root, dirs, files in os.walk(qt_plugins_src):
+            # 计算相对路径
+            rel_path = os.path.relpath(root, qt_plugins_src)
+            dest_dir = os.path.join(qt_plugins_dst, rel_path)
+            
+            # 创建目标目录（跳过已存在的符号链接）
+            if not os.path.lexists(dest_dir):
+                os.makedirs(dest_dir, exist_ok=True)
+            
+            # 复制文件
+            for file in files:
+                src_file = os.path.join(root, file)
+                dest_file = os.path.join(dest_dir, file)
+                
+                # 删除已存在的文件/链接
+                if os.path.exists(dest_file) or os.path.lexists(dest_file):
+                    if os.path.isdir(dest_file):
+                        shutil.rmtree(dest_file)
+                    else:
+                        os.remove(dest_file)
+                
+                # 保留符号链接属性
+                if os.path.islink(src_file):
+                    linkto = os.readlink(src_file)
+                    os.symlink(linkto, dest_file)
+                else:
+                    shutil.copy2(src_file, dest_file)
     
     # 仅macOS需要创建启动脚本
     app_entry = os.path.join(dst_root, "MFW")
