@@ -200,7 +200,7 @@ class QYWX:
 
     def send(self, msg_type: dict) -> bool:
         QYWX_KEY = cfg.get(cfg.Notice_QYWX_key)
-        url = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={QYWX_KEY}"
+        url = f"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={QYWX_KEY}"
         msg = self.msg(msg_type)
         try:
             response = requests.post(url=url, json=msg)
