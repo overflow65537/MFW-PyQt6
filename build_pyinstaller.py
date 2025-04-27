@@ -56,6 +56,8 @@ if maa_bin_path2 is None:
 # 构建 --add-data 参数
 add_data_param2 = f"{maa_bin_path2}{os.pathsep}MaaAgentBinary"
 
+# 在已有的 --add-data 参数后添加新的数据收集
+
 command = [
     "main.py",
     "--name=MFW",
@@ -63,14 +65,21 @@ command = [
     f"--add-data={add_data_param2}",
     "--clean",
 ]
-
-if sys.platform == "win32":
-    command.insert(2, "--noconsole")
-    command.insert(2, "--icon=MFW_resource/icon/logo.ico")
-#如果运行在macos
-elif sys.platform == "darwin":
+if sys.platform == "darwin":
+    # macOS专属配置
+    command += [
+        "--collect-all", "PyQt6",  # 仅macOS需要完整收集Qt资源
+        "--hidden-import=PyQt6.QtCore",
+        "--hidden-import=PyQt6.QtGui",
+        f"--add-data={site.getsitepackages()[0]}/darkdetect{os.pathsep}darkdetect"
+    ]
     if architecture == "x64":
         command.insert(2, "--target-arch=x86_64")
+
+elif sys.platform == "win32":
+    command.insert(2, "--noconsole")
+    command.insert(2, "--icon=MFW_resource/icon/logo.ico")
+
 # 运行 PyInstaller
 PyInstaller.__main__.run(command)
 # 移动maa/bin至根目录
@@ -86,6 +95,28 @@ if os.path.exists(src_bin):
             else:
                 os.remove(dst)
         shutil.move(src, dst)
+    
+    # 修复 macOS 动态库依赖
+    if sys.platform == "darwin":
+        from subprocess import run
+        lib_dir = dst_root 
+        
+        libs_to_fix = [
+            "libMaaToolkit.dylib",
+            "libMaaFramework.dylib",
+            "libMaaUtils.dylib",
+            "libopencv_world4.4.8.0.dylib"
+        ]
+        
+        for lib in libs_to_fix:
+            lib_path = os.path.join(lib_dir, lib)
+            if os.path.exists(lib_path):
+                # 添加 RPATH 设置
+                run(["install_name_tool", "-add_rpath", "@executable_path", lib_path], check=True)
+                # 修复系统库路径（针对 libc++.1.dylib）
+                run(["install_name_tool", "-change", "@rpath/libc++.1.dylib", 
+                    "/usr/lib/libc++.1.dylib", lib_path], check=True)
+
     # 删除空文件夹
     os.rmdir(src_bin)
 # 确保 dist/MFW/MFW_resource 目录存在并复制
@@ -106,6 +137,8 @@ emulator_json_src = os.path.join(os.getcwd(), "config", "emulator.json")
 emulator_json_dst = os.path.join(os.getcwd(), "dist", "MFW", "config", "emulator.json")
 os.makedirs(os.path.dirname(emulator_json_dst), exist_ok=True)
 shutil.copy(emulator_json_src, emulator_json_dst)
+
+
 
 # 写入版本信息
 write_version_file(platform, architecture, version)
@@ -133,3 +166,36 @@ if os.path.exists(updater_file):
     print(f"Moved {updater_file} to {dst_path}")
 else:
     print(f"File {updater_file} not found.")
+
+# 在资源复制后添加 darkdetect 特殊处理
+# 修改 darkdetect 处理部分
+if sys.platform == "darwin":
+    # 自动查找 darkdetect 安装路径
+    darkdetect_path = None
+    for path in site.getsitepackages():
+        potential_path = os.path.join(path, "darkdetect")
+        if os.path.exists(potential_path):
+            darkdetect_path = potential_path
+            break
+    
+    if darkdetect_path:
+        # 复制整个 darkdetect 目录
+        darkdetect_dst = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "darkdetect")
+        shutil.copytree(darkdetect_path, darkdetect_dst, dirs_exist_ok=True)
+        # 修复可执行文件权限
+        detect_bin = os.path.join(darkdetect_dst, "detect")
+        if os.path.exists(detect_bin):
+            os.chmod(detect_bin, 0o755)
+
+    qt_plugins_src = os.path.join(os.path.dirname(sys.executable), "lib/python3.9/site-packages/PyQt6/Qt6/plugins")
+    qt_plugins_dst = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "PyQt6", "Qt6", "plugins")
+    if os.path.exists(qt_plugins_src):
+        shutil.copytree(qt_plugins_src, qt_plugins_dst, dirs_exist_ok=True)
+    
+    # 仅macOS需要创建启动脚本
+    app_entry = os.path.join(dst_root, "MFW")
+    with open(app_entry, "w") as f:
+        f.write("#!/bin/sh\n")
+        f.write(f"export QT_QPA_PLATFORM_PLUGIN_PATH=\"${{0%%/*}}/_internal/PyQt6/Qt6/plugins\"\n")
+        f.write("exec \"${0%%/*}\"/_internal/MFW \"$@\"")
+    os.chmod(app_entry, 0o755)
