@@ -61,17 +61,32 @@ add_data_param2 = f"{maa_bin_path2}{os.pathsep}MaaAgentBinary"
 command = [
     "main.py",
     "--name=MFW",
-    f"--add-data={add_data_param}",
+    f"--add-data={add_data_param}", 
     f"--add-data={add_data_param2}",
     "--clean",
 ]
+
+# 平台特定参数应该集中处理
+darwin_args = []
+win_args = []
+
 if sys.platform == "darwin":
     if architecture == "x64":
-        command.insert(2, "--target-arch=x86_64")
+        darwin_args.append("--target-arch=x86_64")
+    # macOS 专用参数
+    darwin_args.extend([
+        "--hidden-import=darkdetect",
+        "--collect-data=darkdetect",
+        "--add-binary=darkdetect/detect:darkdetect"
+    ])
+    command += darwin_args
 
 if sys.platform == "win32":
-    command.insert(2, "--noconsole")
-    command.insert(2, "--icon=MFW_resource/icon/logo.ico")
+    win_args.extend([
+        "--noconsole",
+        "--icon=MFW_resource/icon/logo.ico"
+    ])
+    command += win_args
 
 # 运行 PyInstaller
 PyInstaller.__main__.run(command)
@@ -160,21 +175,8 @@ if os.path.exists(updater_file):
 else:
     print(f"File {updater_file} not found.")
 # 在资源复制后添加 darkdetect 特殊处理
-# 修改 darkdetect 处理部分
 if sys.platform == "darwin":
-    # 自动查找 darkdetect 安装路径
-    darkdetect_path = None
-    for path in site.getsitepackages():
-        potential_path = os.path.join(path, "darkdetect")
-        if os.path.exists(potential_path):
-            darkdetect_path = potential_path
-            break
-    
-    if darkdetect_path:
-        # 复制整个 darkdetect 目录
-        darkdetect_dst = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "darkdetect")
-        shutil.copytree(darkdetect_path, darkdetect_dst, dirs_exist_ok=True)
-        # 修复可执行文件权限
-        detect_bin = os.path.join(darkdetect_dst, "detect")
-        if os.path.exists(detect_bin):
-            os.chmod(detect_bin, 0o755)
+    # 修复 darkdetect 可执行文件权限
+    detect_bin = os.path.join(os.getcwd(), "dist", "MFW", "darkdetect", "detect")
+    if os.path.exists(detect_bin):
+        os.chmod(detect_bin, 0o755)
