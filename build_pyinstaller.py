@@ -154,8 +154,3 @@ if os.path.exists(updater_file):
     print(f"Moved {updater_file} to {dst_path}")
 else:
     print(f"File {updater_file} not found.")
-
-# 在移动maa/bin后添加macOS签名步骤
-if sys.platform == "darwin":
-    print("Performing macOS code signing...")
-    os.system(f"codesign --force --deep --sign - {os.path.join(dst_root, 'MFW.app')}")
