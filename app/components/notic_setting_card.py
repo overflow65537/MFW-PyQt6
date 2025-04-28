@@ -314,14 +314,14 @@ class NoticeType(QDialog):
         self.main_layout.addRow(wxpusher_status_title, self.wxpusher_status_switch)
 
     def add_qywx_fields(self):
-        """添加 企业微信 相关的输入框"""
+        """添加 企业微信机器人 相关的输入框"""
         qywx_key_title = BodyLabel(self)
         qywx_status_title = BodyLabel(self)
 
         self.qywx_key_input = PasswordLineEdit(self)
         self.qywx_status_switch = SwitchButton(self)
 
-        qywx_key_title.setText(self.tr("QYWXbot Key"))
+        qywx_key_title.setText(self.tr("QYWXbot Key:"))
         qywx_status_title.setText(self.tr("QYWXbot Status:"))
 
         self.qywx_key_input.setText(cfg.get(cfg.Notice_QYWX_key))
