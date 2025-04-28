@@ -74,6 +74,22 @@ if sys.platform == "darwin":
     if architecture == "x64":
         darwin_args.append("--target-arch=x86_64")
     # macOS 专用参数
+
+    pyqt6_path = None
+    for path in site_packages_paths:
+        qt_path = os.path.join(path, 'PyQt6', 'Qt6')
+        if os.path.exists(qt_path):
+            pyqt6_path = qt_path
+            break
+    
+    if pyqt6_path:
+        # 添加Qt核心资源
+        darwin_args.extend([
+            f'--add-data={os.path.join(pyqt6_path, "plugins/platforms/*")}:PyQt6/Qt6/plugins/platforms',
+            f'--add-data={os.path.join(pyqt6_path, "resources/*")}:PyQt6/Qt6/resources'
+        ])
+    
+    # macOS 专用参数
     command += darwin_args
 
 if sys.platform == "win32":
@@ -108,8 +124,14 @@ if os.path.exists(src_bin):
             "libMaaToolkit.dylib",
             "libMaaFramework.dylib",
             "libMaaUtils.dylib",
-            "libopencv_world4.4.8.0.dylib"
+            "libopencv_world4.4.8.0.dylib",
+            "PyQt6/Qt6/lib/libQt6Core.abi3.dylib"
         ]
+        # 创建qt.conf配置文件
+        qt_conf_dir = os.path.join(lib_dir, "PyQt6", "Qt6", "libexec")
+        os.makedirs(qt_conf_dir, exist_ok=True)
+        with open(os.path.join(qt_conf_dir, "qt.conf"), "w") as f:
+            f.write("[Paths]\nPlugins = ../../plugins\n")
         
         for lib in libs_to_fix:
             lib_path = os.path.join(lib_dir, lib)
@@ -119,7 +141,14 @@ if os.path.exists(src_bin):
                 # 修复系统库路径（针对 libc++.1.dylib）
                 run(["install_name_tool", "-change", "@rpath/libc++.1.dylib", 
                     "/usr/lib/libc++.1.dylib", lib_path], check=True)
-
+        # 添加Qt框架符号链接
+        qt_lib_path = os.path.join(lib_dir, "PyQt6", "Qt6", "lib")
+        if os.path.exists(qt_lib_path):
+            libcpp_path = os.path.join(qt_lib_path, "libc++.1.dylib")
+            if not os.path.exists(libcpp_path):
+                os.symlink("/usr/lib/libc++.1.dylib", libcpp_path)
+                print("Created libc++ symlink for Qt")
+                
     # 删除空文件夹
     os.rmdir(src_bin)
 # 确保 dist/MFW/MFW_resource 目录存在并复制
