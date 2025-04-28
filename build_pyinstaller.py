@@ -73,6 +73,12 @@ win_args = []
 if sys.platform == "darwin":
     if architecture == "x64":
         darwin_args.append("--target-arch=x86_64")
+
+    darwin_args.extend([
+        "--osx-bundle-identifier=com.overflow65537.MFWPYQT6",  
+        "--windowed", 
+        "--add-binary=/usr/lib/libc++.dylib:." 
+    ])
     
     # macOS 专用参数
     command += darwin_args
@@ -148,3 +154,8 @@ if os.path.exists(updater_file):
     print(f"Moved {updater_file} to {dst_path}")
 else:
     print(f"File {updater_file} not found.")
+
+# 在移动maa/bin后添加macOS签名步骤
+if sys.platform == "darwin":
+    print("Performing macOS code signing...")
+    os.system(f"codesign --force --deep --sign - {os.path.join(dst_root, 'MFW.app')}")
