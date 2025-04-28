@@ -22,7 +22,17 @@ from app.common.signal_bus import signalBus
 from app.utils.tool import show_error_message
 from app.utils.check_utils import check
 
+# 必须在创建QApplication之前设置
+if sys.platform == "darwin":
+    os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = os.path.join(
+        sys._MEIPASS, 'PyQt6', 'Qt6', 'plugins'
+    )
+    QCoreApplication.addLibraryPath(os.path.join(
+        sys._MEIPASS, 'PyQt6', 'Qt6', 'plugins'
+    ))
+    QLibraryInfo.setPaths()
 
+    
 def main(resource: str, config: str, directly: bool, DEV: bool):
     check(resource, config, directly, DEV)
 

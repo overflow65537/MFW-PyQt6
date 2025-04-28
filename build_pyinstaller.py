@@ -75,8 +75,14 @@ if sys.platform == "darwin":
         darwin_args.append("--target-arch=x86_64")
 
     darwin_args.extend([
-        "--osx-bundle-identifier=com.overflow65537.MFWPYQT6",  
-        "--windowed"
+        "--osx-bundle-identifier=com.overflow65537.MFWPYQT6",
+        "--windowed",
+        # 添加Qt插件路径设置
+        "--paths", os.path.join(sys._MEIPASS, "PyQt6", "Qt6", "plugins"),
+        # 添加Qt资源文件
+        "--add-binary", f"{os.path.join(sys._MEIPASS, 'PyQt6', 'Qt6', 'lib', 'Qt6Core.framework')}{os.pathsep}PyQt6/Qt6/lib",
+        # 添加必要的Qt库
+        "--add-binary", f"{os.path.join(sys._MEIPASS, 'PyQt6', 'Qt6', 'lib', 'Qt6Core')}{os.pathsep}PyQt6/Qt6/lib"
     ])
     
     # macOS 专用参数

@@ -134,6 +134,17 @@ jobs:
           python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
         shell: pwsh  
 
+      - name: Debug macOS binary (x64)
+        if: matrix.os == 'macos-latest' && matrix.arch == 'x64' && always()
+        run: |
+          cd dist/MFW
+          otool -L MFW
+          file MFW
+          codesign -dv --verbose=4 MFW.app
+          ./MFW
+        shell: bash
+        continue-on-error: true
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -170,3 +181,5 @@ jobs:
           gh workflow run --repo $GITHUB_REPOSITORY mirrorchyan_release_note
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      
