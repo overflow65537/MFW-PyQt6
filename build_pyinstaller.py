@@ -74,15 +74,26 @@ if sys.platform == "darwin":
     if architecture == "x64":
         darwin_args.append("--target-arch=x86_64")
 
+    # 获取PyQt6安装路径
+    pyqt6_path = None
+    for path in site_packages_paths:
+        potential_path = os.path.join(path, "PyQt6")
+        if os.path.exists(potential_path):
+            pyqt6_path = potential_path
+            break
+
+    if pyqt6_path is None:
+        raise FileNotFoundError("PyQt6 not found in site-packages")
+
     darwin_args.extend([
         "--osx-bundle-identifier=com.overflow65537.MFWPYQT6",
         "--windowed",
-        # 添加Qt插件路径设置
-        "--paths", os.path.join(sys._MEIPASS, "PyQt6", "Qt6", "plugins"),
+        # 修改为使用实际路径
+        "--paths", os.path.join(pyqt6_path, "Qt6", "plugins"),
         # 添加Qt资源文件
-        "--add-binary", f"{os.path.join(sys._MEIPASS, 'PyQt6', 'Qt6', 'lib', 'Qt6Core.framework')}{os.pathsep}PyQt6/Qt6/lib",
+        "--add-binary", f"{os.path.join(pyqt6_path, 'Qt6', 'lib', 'Qt6Core.framework')}{os.pathsep}PyQt6/Qt6/lib",
         # 添加必要的Qt库
-        "--add-binary", f"{os.path.join(sys._MEIPASS, 'PyQt6', 'Qt6', 'lib', 'Qt6Core')}{os.pathsep}PyQt6/Qt6/lib"
+        "--add-binary", f"{os.path.join(pyqt6_path, 'Qt6', 'lib', 'Qt6Core')}{os.pathsep}PyQt6/Qt6/lib"
     ])
     
     # macOS 专用参数
