@@ -85,15 +85,20 @@ if sys.platform == "darwin":
     if pyqt6_path is None:
         raise FileNotFoundError("PyQt6 not found in site-packages")
 
+    # 检查Qt6框架路径是否存在
+    qt6_framework_path = os.path.join(pyqt6_path, "Qt6", "lib", "Qt6Core.framework")
+    if not os.path.exists(qt6_framework_path):
+        # 尝试备用路径
+        qt6_framework_path = os.path.join(pyqt6_path, "Qt6", "lib", "Qt6Core")
+        if not os.path.exists(qt6_framework_path):
+            raise FileNotFoundError(f"Qt6Core framework not found at {qt6_framework_path}")
+
     darwin_args.extend([
         "--osx-bundle-identifier=com.overflow65537.MFWPYQT6",
         "--windowed",
-        # 修改为使用实际路径
         "--paths", os.path.join(pyqt6_path, "Qt6", "plugins"),
-        # 添加Qt资源文件
-        "--add-binary", f"{os.path.join(pyqt6_path, 'Qt6', 'lib', 'Qt6Core.framework')}{os.pathsep}PyQt6/Qt6/lib",
-        # 添加必要的Qt库
-        "--add-binary", f"{os.path.join(pyqt6_path, 'Qt6', 'lib', 'Qt6Core')}{os.pathsep}PyQt6/Qt6/lib"
+        # 使用实际找到的路径
+        "--add-binary", f"{qt6_framework_path}{os.pathsep}PyQt6/Qt6/lib"
     ])
     
     # macOS 专用参数

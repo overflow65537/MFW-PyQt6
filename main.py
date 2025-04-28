@@ -34,6 +34,15 @@ if sys.platform == "darwin":
 
     
 def main(resource: str, config: str, directly: bool, DEV: bool):
+    # 添加Qt环境初始化
+    if getattr(sys, 'frozen', False):
+        # 打包后运行时
+        base_path = sys._MEIPASS
+        os.environ['QT_PLUGIN_PATH'] = os.path.join(base_path, 'PyQt6', 'Qt6', 'plugins')
+    else:
+        # 开发时运行时
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    
     check(resource, config, directly, DEV)
 
     # enable dpi scale
