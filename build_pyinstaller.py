@@ -76,8 +76,7 @@ if sys.platform == "darwin":
 
     darwin_args.extend([
         "--osx-bundle-identifier=com.overflow65537.MFWPYQT6",  
-        "--windowed", 
-        "--add-binary=/usr/lib/libc++.dylib:." 
+        "--windowed"
     ])
     
     # macOS 专用参数
