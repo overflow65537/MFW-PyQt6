@@ -205,8 +205,7 @@ if sys.platform == "darwin":
             dest_dir = os.path.join(qt_plugins_dst, rel_path)
             
             # 创建目标目录（跳过已存在的符号链接）
-            if not os.path.lexists(dest_dir):
-                os.makedirs(dest_dir, exist_ok=True)
+            os.makedirs(dest_dir, exist_ok=True)
             
             # 复制文件
             for file in files:
@@ -246,4 +245,10 @@ if sys.platform == "darwin":
     for framework in conflict_frameworks:
         framework_path = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "PyQt6", "Qt6", "lib", framework)
         if os.path.exists(framework_path):
-            shutil.rmtree(framework_path)
+            try:
+                if os.path.islink(framework_path):
+                    os.unlink(framework_path)
+                else:
+                    shutil.rmtree(framework_path, ignore_errors=True)
+            except Exception as e:
+                print(f"Error removing {framework}: {str(e)}")
