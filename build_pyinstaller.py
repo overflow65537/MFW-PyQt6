@@ -83,10 +83,10 @@ if sys.platform == "darwin":
             break
     
     if pyqt6_path:
-        # 添加Qt核心资源
+        # 修复路径拼接方式，使用正斜杠并保留通配符
         darwin_args.extend([
-            f'--add-data={os.path.join(pyqt6_path, "plugins/platforms/*")}:PyQt6/Qt6/plugins/platforms',
-            f'--add-data={os.path.join(pyqt6_path, "resources/*")}:PyQt6/Qt6/resources'
+            f'--add-data={pyqt6_path}/plugins/platforms/*:PyQt6/Qt6/plugins/platforms',
+            f'--add-data={pyqt6_path}/Resources/*:PyQt6/Qt6/resources'  # 修正资源目录名为Resources
         ])
     
     # macOS 专用参数
@@ -136,8 +136,8 @@ if os.path.exists(src_bin):
         for lib in libs_to_fix:
             lib_path = os.path.join(lib_dir, lib)
             if os.path.exists(lib_path):
-                # 添加 RPATH 设置
-                run(["install_name_tool", "-add_rpath", "@executable_path", lib_path], check=True)
+                # 使用正确的install_name_tool命令路径
+                run(["/usr/bin/install_name_tool", "-add_rpath", "@executable_path", lib_path], check=True)
                 # 修复系统库路径（针对 libc++.1.dylib）
                 run(["install_name_tool", "-change", "@rpath/libc++.1.dylib", 
                     "/usr/lib/libc++.1.dylib", lib_path], check=True)
