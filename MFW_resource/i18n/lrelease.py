@@ -15,7 +15,7 @@ for ts_file in ts_files:
 
     try:
         # 调用 lrelease 命令进行转换
-        subprocess.run(["D:\Anaconda\Library\\bin\lrelease.exe", ts_file_path], check=True)
+        subprocess.run(["lrelease", ts_file_path], check=True)
         print(f"成功将 {ts_file} 转换为 {qm_file}")
     except subprocess.CalledProcessError as e:
         print(f"转换 {ts_file} 时出错: {e}")
