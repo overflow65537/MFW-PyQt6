@@ -66,16 +66,6 @@ command = [
     "--clean",
 ]
 if sys.platform == "darwin":
-    # macOS专属配置
-    command += [
-        "--collect-all", "PyQt6",
-        "--hidden-import=PyQt6.QtCore",
-        "--hidden-import=PyQt6.QtGui",
-        "--exclude-module=QtBluetooth",  # 新增排除冲突模块
-        "--exclude-module=QtDBus",
-        f"--add-data={site.getsitepackages()[0]}/darkdetect{os.pathsep}darkdetect",
-        "--runtime-hook=pyi_rth_qt6.py"  # 新增运行时钩子
-    ]
     if architecture == "x64":
         command.insert(2, "--target-arch=x86_64")
 
@@ -169,7 +159,6 @@ if os.path.exists(updater_file):
     print(f"Moved {updater_file} to {dst_path}")
 else:
     print(f"File {updater_file} not found.")
-
 # 在资源复制后添加 darkdetect 特殊处理
 # 修改 darkdetect 处理部分
 if sys.platform == "darwin":
@@ -189,66 +178,3 @@ if sys.platform == "darwin":
         detect_bin = os.path.join(darkdetect_dst, "detect")
         if os.path.exists(detect_bin):
             os.chmod(detect_bin, 0o755)
-
-    # 修改Qt插件复制方式
-    qt_plugins_src = os.path.join(os.path.dirname(sys.executable), "lib/python3.9/site-packages/PyQt6/Qt6/plugins")
-    qt_plugins_dst = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "PyQt6", "Qt6", "plugins")
-    
-    if os.path.exists(qt_plugins_src):
-        # 创建目标目录
-        os.makedirs(qt_plugins_dst, exist_ok=True)
-        
-        # 使用shutil.copy2替代copytree
-        for root, dirs, files in os.walk(qt_plugins_src):
-            # 计算相对路径
-            rel_path = os.path.relpath(root, qt_plugins_src)
-            dest_dir = os.path.join(qt_plugins_dst, rel_path)
-            
-            # 创建目标目录（跳过已存在的符号链接）
-            os.makedirs(dest_dir, exist_ok=True)
-            
-            # 复制文件
-            for file in files:
-                src_file = os.path.join(root, file)
-                dest_file = os.path.join(dest_dir, file)
-                
-                # 删除已存在的文件/链接
-                if os.path.exists(dest_file) or os.path.lexists(dest_file):
-                    if os.path.isdir(dest_file):
-                        shutil.rmtree(dest_file)
-                    else:
-                        os.remove(dest_file)
-                
-                # 保留符号链接属性
-                if os.path.islink(src_file):
-                    linkto = os.readlink(src_file)
-                    os.symlink(linkto, dest_file)
-                else:
-                    shutil.copy2(src_file, dest_file)
-    
-    # 仅macOS需要创建启动脚本
-    app_entry = os.path.join(dst_root, "MFW")
-    with open(app_entry, "w") as f:
-        f.write("#!/bin/sh\n")
-        f.write(f"export QT_QPA_PLATFORM_PLUGIN_PATH=\"${{0%%/*}}/_internal/PyQt6/Qt6/plugins\"\n")
-        f.write("exec \"${0%%/*}\"/_internal/MFW \"$@\"")
-    os.chmod(app_entry, 0o755)
-
-# 在darkdetect处理部分之后添加
-if sys.platform == "darwin":
-    # 删除自动收集的冲突框架目录
-    conflict_frameworks = [
-        "QtBluetooth.framework",
-        "QtDBus.framework",
-        "QtNetwork.framework"
-    ]
-    for framework in conflict_frameworks:
-        framework_path = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "PyQt6", "Qt6", "lib", framework)
-        if os.path.exists(framework_path):
-            try:
-                if os.path.islink(framework_path):
-                    os.unlink(framework_path)
-                else:
-                    shutil.rmtree(framework_path, ignore_errors=True)
-            except Exception as e:
-                print(f"Error removing {framework}: {str(e)}")
