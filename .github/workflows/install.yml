@@ -102,12 +102,28 @@ jobs:
         with:
           submodules: true
 
-      - name: Set up Python
+      - name: Set up Python (macOS x64)
+        if: matrix.os == 'macos-latest' && matrix.arch == 'x64'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          architecture: 'x64' 
+
+      - name: Set up Python (other)
+        if: matrix.os != 'macos-latest' || matrix.arch != 'x64'
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
 
-      - name: Install dependencies
+      - name: Install dependencies (macOS x64)
+        if: matrix.os == 'macos-latest' && matrix.arch == 'x64'
+        run: |
+          arch -x86_64 python -m pip install --upgrade pip
+          arch -x86_64 pip install pyinstaller
+          arch -x86_64 pip install -r./requirements.txt
+
+      - name: Install dependencies (other)
+        if: matrix.os != 'macos-latest' || matrix.arch != 'x64'
         run: |
           python -m pip install --upgrade pip
           python -m pip install pyinstaller
