@@ -73,21 +73,6 @@ win_args = []
 if sys.platform == "darwin":
     if architecture == "x64":
         darwin_args.append("--target-arch=x86_64")
-    # macOS 专用参数
-
-    pyqt6_path = None
-    for path in site_packages_paths:
-        qt_path = os.path.join(path, 'PyQt6', 'Qt6')
-        if os.path.exists(qt_path):
-            pyqt6_path = qt_path
-            break
-    
-    if pyqt6_path:
-        # 修复路径拼接方式，使用正斜杠并保留通配符
-        darwin_args.extend([
-            f'--add-data={pyqt6_path}/plugins/platforms/*:PyQt6/Qt6/plugins/platforms',
-            f'--add-data={pyqt6_path}/Resources/*:PyQt6/Qt6/resources'  # 修正资源目录名为Resources
-        ])
     
     # macOS 专用参数
     command += darwin_args
@@ -114,41 +99,6 @@ if os.path.exists(src_bin):
             else:
                 os.remove(dst)
         shutil.move(src, dst)
-    
-    # 修复 macOS 动态库依赖
-    if sys.platform == "darwin":
-        from subprocess import run
-        lib_dir = dst_root 
-        
-        libs_to_fix = [
-            "libMaaToolkit.dylib",
-            "libMaaFramework.dylib",
-            "libMaaUtils.dylib",
-            "libopencv_world4.4.8.0.dylib",
-            "PyQt6/Qt6/lib/libQt6Core.abi3.dylib"
-        ]
-        # 创建qt.conf配置文件
-        qt_conf_dir = os.path.join(lib_dir, "PyQt6", "Qt6", "libexec")
-        os.makedirs(qt_conf_dir, exist_ok=True)
-        with open(os.path.join(qt_conf_dir, "qt.conf"), "w") as f:
-            f.write("[Paths]\nPlugins = ../../plugins\n")
-        
-        for lib in libs_to_fix:
-            lib_path = os.path.join(lib_dir, lib)
-            if os.path.exists(lib_path):
-                # 使用正确的install_name_tool命令路径
-                run(["/usr/bin/install_name_tool", "-add_rpath", "@executable_path", lib_path], check=True)
-                # 修复系统库路径（针对 libc++.1.dylib）
-                run(["install_name_tool", "-change", "@rpath/libc++.1.dylib", 
-                    "/usr/lib/libc++.1.dylib", lib_path], check=True)
-        # 添加Qt框架符号链接
-        qt_lib_path = os.path.join(lib_dir, "PyQt6", "Qt6", "lib")
-        if os.path.exists(qt_lib_path):
-            libcpp_path = os.path.join(qt_lib_path, "libc++.1.dylib")
-            if not os.path.exists(libcpp_path):
-                os.symlink("/usr/lib/libc++.1.dylib", libcpp_path)
-                print("Created libc++ symlink for Qt")
-                
     # 删除空文件夹
     os.rmdir(src_bin)
 # 确保 dist/MFW/MFW_resource 目录存在并复制
@@ -198,20 +148,3 @@ if os.path.exists(updater_file):
     print(f"Moved {updater_file} to {dst_path}")
 else:
     print(f"File {updater_file} not found.")
-if sys.platform == "darwin":
-    # 自动查找 darkdetect 安装路径
-    darkdetect_path = None
-    for path in site.getsitepackages():
-        potential_path = os.path.join(path, "darkdetect")
-        if os.path.exists(potential_path):
-            darkdetect_path = potential_path
-            break
-    
-    if darkdetect_path:
-        # 复制整个 darkdetect 目录
-        darkdetect_dst = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "darkdetect")
-        shutil.copytree(darkdetect_path, darkdetect_dst, dirs_exist_ok=True)
-        # 修复可执行文件权限
-        detect_bin = os.path.join(darkdetect_dst, "detect")
-        if os.path.exists(detect_bin):
-            os.chmod(detect_bin, 0o755)
