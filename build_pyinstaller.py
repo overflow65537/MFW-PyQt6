@@ -124,7 +124,7 @@ if sys.platform == "darwin":
         "--paths", qt6_qml_path,
         "--paths", qt6_qsci_path,
         "--paths", qt6_translations_path,
-        "--target-arch", "x86_64" if architecture == "x64" else "arm64"
+        "--target-arch", "x86_64" if architecture == "x86_64" else "arm64"
     ])
     
     # 设置环境变量
