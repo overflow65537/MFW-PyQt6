@@ -99,7 +99,7 @@ if sys.platform == "darwin":
     if not os.path.exists(qt6_lib_path):
         raise FileNotFoundError(f"Qt6 lib not found at {qt6_lib_path}")
     
-    qt_qsci_path = os.path.join(pyqt6_path, "Qt6", "lib", "qsci")
+    qt_qsci_path = os.path.join(pyqt6_path, "Qt6",  "qsci")
     if not os.path.exists(qt_qsci_path):
         raise FileNotFoundError(f"Qt6 Qsci not found at {qt_qsci_path}")
     
