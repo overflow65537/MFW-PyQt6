@@ -67,78 +67,9 @@ command = [
 ]
 
 # 平台特定参数应该集中处理
-darwin_args = []
 win_args = []
 
-if sys.platform == "darwin":
-    # 获取PyQt6安装路径
-    pyqt6_path = None
-    for path in site_packages_paths:
-        potential_path = os.path.join(path, "PyQt6")
-        if os.path.exists(potential_path):
-            pyqt6_path = potential_path
-            break
-    
-
-    if pyqt6_path is None:
-        raise FileNotFoundError("PyQt6 not found in site-packages")
-    
-    # 查找Qt库路径
-    qt6_plugins_path = os.path.join(pyqt6_path, "Qt6", "plugins")
-    if not os.path.exists(qt6_plugins_path):
-        raise FileNotFoundError(f"Qt plugins not found at {qt6_plugins_path}")
-
-    qt6_qml_path = os.path.join(pyqt6_path, "Qt6", "qml")
-    if not os.path.exists(qt6_qml_path):
-        raise FileNotFoundError(f"Qt6 QML not found at {qt6_qml_path}")
-
-    qt6_lib_path = os.path.join(pyqt6_path, "Qt6", "lib")
-    if not os.path.exists(qt6_lib_path):
-        raise FileNotFoundError(f"Qt6 lib not found at {qt6_lib_path}")
-    
-    qt6_qsci_path = os.path.join(pyqt6_path, "Qt6",  "qsci")
-    if not os.path.exists(qt6_qsci_path):
-        raise FileNotFoundError(f"Qt6 Qsci not found at {qt6_qsci_path}")
-    
-    qt6_translations_path = os.path.join(pyqt6_path, "Qt6", "translations")
-    if not os.path.exists(qt6_translations_path):
-        raise FileNotFoundError(f"Qt6 translations not found at {qt6_translations_path}")
-    
-    qt6_qtcore_path = os.path.join(qt6_lib_path,  "QtCore.framework")
-    if qt6_qtcore_path is None:
-        raise FileNotFoundError(f"Qt6Core framework not found in {qt6_lib_path}")
-    
-    qt6_qtgui_path = os.path.join(qt6_lib_path,  "QtGui.framework")
-    if qt6_qtgui_path is None:
-        raise FileNotFoundError(f"Qt6Gui framework not found in {qt6_lib_path}")
-
-    qt6_qtwidgets_path = os.path.join(qt6_lib_path,  "QtWidgets.framework")
-    if qt6_qtwidgets_path is None:
-        raise FileNotFoundError(f"Qt6Widgets framework not found in {qt6_lib_path}")
-
-    darwin_args.extend([
-        "--osx-bundle-identifier=com.overflow65537.MFWPYQT6",
-        "--windowed",
-        "--paths", qt6_plugins_path,
-        "--paths", qt6_lib_path,
-        "--paths", qt6_qml_path,
-        "--paths", qt6_qsci_path,
-        "--paths", qt6_translations_path,
-        # 修正为正确的格式：SOURCE:DEST
-        f"--add-binary={qt6_qtcore_path}{os.pathsep}PyQt6/Qt6/lib",
-        f"--add-binary={qt6_qtgui_path}{os.pathsep}PyQt6/Qt6/lib", 
-        f"--add-binary={qt6_qtwidgets_path}{os.pathsep}PyQt6/Qt6/lib",
-        "--target-arch", "x86_64" if architecture == "x86_64" else "arm64"
-    ])
-    
-    # 设置环境变量
-    os.environ['MACOSX_DEPLOYMENT_TARGET'] = '12.1'
-    os.environ['QT_PLUGIN_PATH'] = qt6_plugins_path
-    os.environ['QML2_IMPORT_PATH'] = qt6_qml_path
-    os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = qt6_plugins_path
-    # macOS 专用参数
-    command += darwin_args
-
+# 移除所有macOS相关的代码，只保留Windows部分
 if sys.platform == "win32":
     win_args.extend([
         "--noconsole",
@@ -195,12 +126,8 @@ PyInstaller.__main__.run([updater_src, "--name=MFWUpdater", "--onefile", "--clea
 # 移动updater到dist\MFW目录
 if sys.platform == "win32":
     updater_file = os.path.join("dist", "MFWUpdater.exe")
-elif sys.platform.startswith("linux"):
+elif sys.platform == "linux":
     updater_file = os.path.join("dist", "MFWUpdater")
-elif sys.platform == "darwin":
-    updater_file = os.path.join("dist", "MFWUpdater")
-else:
-    exit("Unsupported platform")
 
 mfw_dir = os.path.join("dist", "MFW")
 
