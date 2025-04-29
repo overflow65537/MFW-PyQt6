@@ -6,9 +6,6 @@ import sys
 
 
 def write_version_file(platform, architecture, version):
-    # 使用规范化后的参数
-    platform = 'macos' if platform == 'osx' else platform
-    architecture = 'x86_64' if architecture == 'x64' else architecture
     version_file_path = os.path.join(
         os.getcwd(), "dist", "MFW", "config", "version.txt"
     )
@@ -22,18 +19,9 @@ print(len(sys.argv))
 if len(sys.argv) != 4:
     sys.argv = [sys.argv[0], "unknown", "unknown", "unknown"]
 
-# 规范化平台和架构参数
 platform = sys.argv[1]
 architecture = sys.argv[2]
 version = sys.argv[3]
-
-# 统一平台命名规范
-if platform == 'osx':
-    platform = 'macos'
-
-# 统一架构命名规范
-if architecture == 'x64':
-    architecture = 'x86_64'
 
 if os.path.exists("dist"):
     shutil.rmtree("dist")
@@ -83,18 +71,68 @@ darwin_args = []
 win_args = []
 
 if sys.platform == "darwin":
-    # macOS专用构建配置
-    spec_file = f"{platform}_{architecture}.spec"
-    if not os.path.exists(spec_file):
-        raise FileNotFoundError(f"Missing macOS spec file: {spec_file}")
+    if architecture == "x64":
+        darwin_args.append("--target-arch=x86_64")
+
+    # 获取PyQt6安装路径
+    pyqt6_path = None
+    for path in site_packages_paths:
+        potential_path = os.path.join(path, "PyQt6")
+        if os.path.exists(potential_path):
+            pyqt6_path = potential_path
+            break
     
-    # 清空原有参数，改用spec文件
-    command = [
-        "--specpath", os.getcwd(),
-        "--name=MFW",
-        "--clean",
-        spec_file
+
+    if pyqt6_path is None:
+        raise FileNotFoundError("PyQt6 not found in site-packages")
+    
+    qt_plugins_path = os.path.join(pyqt6_path, "Qt6", "plugins")
+    if not os.path.exists(qt_plugins_path):
+        raise FileNotFoundError(f"Qt plugins not found at {qt_plugins_path}")
+
+    # 添加额外的Qt资源路径
+    qt_lib_path = os.path.join(pyqt6_path, "Qt6", "lib")
+    qt_qml_path = os.path.join(pyqt6_path, "Qt6", "qml")
+    
+    # 查找Qt6框架文件
+    qt6_lib_path = os.path.join(pyqt6_path, "Qt6", "lib")
+    qt6_framework_path = None
+    
+    # 检查可能的框架文件路径
+    possible_paths = [
+        os.path.join(qt6_lib_path, "Qt6Core.framework", "Qt6Core"),
+        os.path.join(qt6_lib_path, "Qt6Core"),
+        os.path.join(qt6_lib_path, "Qt6Core.framework"),
+        os.path.join(qt6_lib_path,  "QtCore.framework")
     ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            qt6_framework_path = path
+            break
+
+    if qt6_framework_path is None:
+        raise FileNotFoundError(f"Qt6Core framework not found in {qt6_lib_path}")
+
+    darwin_args.extend([
+        "--osx-bundle-identifier=com.overflow65537.MFWPYQT6",
+        "--windowed",
+        "--paths", qt_plugins_path,
+        "--paths", qt_lib_path,
+        "--paths", qt_qml_path,
+        "--add-binary", f"{qt6_framework_path}{os.pathsep}PyQt6/Qt6/lib",
+        "--add-binary", f"{os.path.join(qt_lib_path, 'QtCore')}{os.pathsep}PyQt6/Qt6/lib",
+        "--add-binary", f"{os.path.join(qt_lib_path, 'QtGui')}{os.pathsep}PyQt6/Qt6/lib",
+        "--add-binary", f"{os.path.join(qt_lib_path, 'QtWidgets')}{os.pathsep}PyQt6/Qt6/lib",
+        "--target-arch", "x86_64" if architecture == "x64" else "arm64"
+    ])
+    
+    # 设置环境变量
+    os.environ['MACOSX_DEPLOYMENT_TARGET'] = '12.1'
+    os.environ['QT_PLUGIN_PATH'] = qt_plugins_path
+    os.environ['QML2_IMPORT_PATH'] = qt_qml_path
+    # macOS 专用参数
+    command += darwin_args
 
 if sys.platform == "win32":
     win_args.extend([
@@ -104,12 +142,7 @@ if sys.platform == "win32":
     command += win_args
 
 # 运行 PyInstaller
-if sys.platform == "darwin":
-    # macOS使用spec文件构建
-    PyInstaller.__main__.run(["--clean", "--noconfirm", spec_file])
-else:
-    # 其他平台保持原有构建方式
-    PyInstaller.__main__.run(command)
+PyInstaller.__main__.run(command)
 # 移动maa/bin至根目录
 src_bin = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")
 dst_root = os.path.join(os.getcwd(), "dist", "MFW")
@@ -143,6 +176,8 @@ emulator_json_src = os.path.join(os.getcwd(), "config", "emulator.json")
 emulator_json_dst = os.path.join(os.getcwd(), "dist", "MFW", "config", "emulator.json")
 os.makedirs(os.path.dirname(emulator_json_dst), exist_ok=True)
 shutil.copy(emulator_json_src, emulator_json_dst)
+
+
 
 # 写入版本信息
 write_version_file(platform, architecture, version)
