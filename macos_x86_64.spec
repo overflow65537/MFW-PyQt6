@@ -1,4 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
+import site
 
 block_cipher = None
 
@@ -10,10 +12,14 @@ _base = [
     ('PyQt6/Qt/translations', 'PyQt6/Qt/translations')
 ]
 
+pyqt_path = next((p for p in site.getsitepackages() if 'PyQt6' in os.listdir(p)), '')
+qt_lib_path = os.path.join(pyqt_path, 'PyQt6', 'Qt6', 'lib')
+qt_plugins_path = os.path.join(pyqt_path, 'PyQt6', 'Qt6', 'plugins')
+
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=[Tree('PyQt6/Qt/lib'), Tree('PyQt6/Qt/plugins')],
+    binaries=[Tree(qt_lib_path), Tree(qt_plugins_path)],
     datas=_base + [
         ('/path/to/maa/**', 'maa'),
         ('/path/to/MaaAgentBinary/**', 'MaaAgentBinary')

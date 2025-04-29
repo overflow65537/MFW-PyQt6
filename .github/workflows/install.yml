@@ -73,23 +73,23 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux
-            arch: x64
+            arch: x86_64
             
           - os: ubuntu-latest
             platform: linux
             arch: arm64
             
           - os: macos-latest
-            platform: osx       
-            arch: x64
+            platform: macos       
+            arch: x86_64
          
           - os: macos-latest
-            platform: osx
+            platform: macos
             arch: arm64
             
           - os: windows-latest
             platform: win
-            arch: x64
+            arch: x86_64
             
           - os: windows-latest
             platform: win
@@ -102,28 +102,28 @@ jobs:
         with:
           submodules: true
 
-      - name: Set up Python (macOS x64)
-        if: matrix.os == 'macos-latest' && matrix.arch == 'x64'
+      - name: Set up Python (macOS x86_64)
+        if: matrix.os == 'macos-latest' && matrix.arch == 'x86_64'
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
-          architecture: 'x64' 
+          architecture: 'x86_64' 
 
       - name: Set up Python (other)
-        if: matrix.os != 'macos-latest' || matrix.arch != 'x64'
+        if: matrix.os != 'macos-latest' || matrix.arch != 'x86_64'
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
 
-      - name: Install dependencies (macOS x64)
-        if: matrix.os == 'macos-latest' && matrix.arch == 'x64'
+      - name: Install dependencies (macOS x86_64)
+        if: matrix.os == 'macos-latest' && matrix.arch == 'x86_64'
         run: |
           arch -x86_64 python -m pip install --upgrade pip
           arch -x86_64 pip install pyinstaller
           arch -x86_64 pip install -r./requirements.txt
 
       - name: Install dependencies (other)
-        if: matrix.os != 'macos-latest' || matrix.arch != 'x64'
+        if: matrix.os != 'macos-latest' || matrix.arch != 'x86_64'
         run: |
           python -m pip install --upgrade pip
           python -m pip install pyinstaller
@@ -133,17 +133,6 @@ jobs:
         run: |
           python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
         shell: pwsh  
-
-      - name: Debug macOS binary (x64)
-        if: matrix.os == 'macos-latest' && matrix.arch == 'x64' && always()
-        run: |
-          cd dist/MFW
-          otool -L MFW
-          file MFW
-          codesign -dv --verbose=4 MFW.app
-          ./MFW
-        shell: bash
-        continue-on-error: true
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
