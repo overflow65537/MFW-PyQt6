@@ -125,9 +125,9 @@ if sys.platform == "darwin":
         "--paths", qt6_qsci_path,
         "--paths", qt6_translations_path,
         # 修正为正确的字符串格式
-        "--add-binary", qt6_qtcore_path,
-        "--add-binary", qt6_qtgui_path,
-        "--add-binary", qt6_qtwidgets_path,
+        f"--add-binary={qt6_qtcore_path}",
+        f"--add-binary={qt6_qtgui_path}",
+        f"--add-binary={qt6_qtwidgets_path}",
         "--target-arch", "x86_64" if architecture == "x86_64" else "arm64"
     ])
     
