@@ -142,6 +142,7 @@ if sys.platform == "win32":
     command += win_args
 
 # 运行 PyInstaller
+print(f"Running PyInstaller with command: {command}\n")
 PyInstaller.__main__.run(command)
 # 移动maa/bin至根目录
 src_bin = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")
