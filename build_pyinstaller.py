@@ -114,9 +114,7 @@ if sys.platform == "darwin":
         "--osx-bundle-identifier=com.overflow65537.MFWPYQT6",
         "--windowed",
         "--paths", os.path.join(pyqt6_path, "Qt6", "plugins"),
-        "--add-binary", f"{qt6_framework_path}{os.pathsep}PyQt6/Qt6/lib", 
-        "--target-version-min", "12.1", 
-        "--macos-target-sdk-version", "12.1", 
+        "--add-binary", f"{qt6_framework_path}{os.pathsep}PyQt6/Qt6/lib",  
         "--paths", os.path.join(pyqt6_path, "Qt6", "lib"), 
         "--paths", os.path.join(pyqt6_path, "Qt6", "qml")  
     ])
