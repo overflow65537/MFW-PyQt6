@@ -86,45 +86,47 @@ if sys.platform == "darwin":
     if pyqt6_path is None:
         raise FileNotFoundError("PyQt6 not found in site-packages")
     
+    # 查找Qt库路径
     qt_plugins_path = os.path.join(pyqt6_path, "Qt6", "plugins")
     if not os.path.exists(qt_plugins_path):
         raise FileNotFoundError(f"Qt plugins not found at {qt_plugins_path}")
 
-    # 添加额外的Qt资源路径
-    qt_lib_path = os.path.join(pyqt6_path, "Qt6", "lib")
-    qt_qml_path = os.path.join(pyqt6_path, "Qt6", "qml")
-    
-    # 查找Qt6框架文件
-    qt6_lib_path = os.path.join(pyqt6_path, "Qt6", "lib")
-    qt6_framework_path = None
-    
-    # 检查可能的框架文件路径
-    possible_paths = [
-        os.path.join(qt6_lib_path, "Qt6Core.framework", "Qt6Core"),
-        os.path.join(qt6_lib_path, "Qt6Core"),
-        os.path.join(qt6_lib_path, "Qt6Core.framework"),
-        os.path.join(qt6_lib_path,  "QtCore.framework")
-    ]
-    
-    for path in possible_paths:
-        if os.path.exists(path):
-            qt6_framework_path = path
-            break
+    qt6_qml_path = os.path.join(pyqt6_path, "Qt6", "qml")
+    if not os.path.exists(qt6_qml_path):
+        raise FileNotFoundError(f"Qt6 QML not found at {qt6_qml_path}")
 
-    if qt6_framework_path is None:
+    qt6_lib_path = os.path.join(pyqt6_path, "Qt6", "lib")
+    if not os.path.exists(qt6_lib_path):
+        raise FileNotFoundError(f"Qt6 lib not found at {qt6_lib_path}")
+    
+    qt_qsci_path = os.path.join(pyqt6_path, "Qt6", "lib", "qsci")
+    if not os.path.exists(qt_qsci_path):
+        raise FileNotFoundError(f"Qt6 Qsci not found at {qt_qsci_path}")
+    
+    qt6_translations_path = os.path.join(pyqt6_path, "Qt6", "translations")
+    if not os.path.exists(qt6_translations_path):
+        raise FileNotFoundError(f"Qt6 translations not found at {qt6_translations_path}")
+    
+    qt6_qtcore_path = os.path.join(qt6_lib_path,  "QtCore.framework")
+    if qt6_qtcore_path is None:
         raise FileNotFoundError(f"Qt6Core framework not found in {qt6_lib_path}")
+    
+    qt6_qtgui_path = os.path.join(qt6_lib_path,  "QtGui.framework")
+    if qt6_qtgui_path is None:
+        raise FileNotFoundError(f"Qt6Gui framework not found in {qt6_lib_path}")
+
+    qt6_qtwidgets_path = os.path.join(qt6_lib_path,  "QtWidgets.framework")
+    if qt6_qtwidgets_path is None:
+        raise FileNotFoundError(f"Qt6Widgets framework not found in {qt6_lib_path}")
 
     darwin_args.extend([
         "--osx-bundle-identifier=com.overflow65537.MFWPYQT6",
         "--windowed",
         "--paths", qt_plugins_path,
-        "--paths", qt_lib_path,
-        "--paths", qt_qml_path,
-        "--add-binary", f"{qt6_framework_path}{os.pathsep}PyQt6/Qt6/lib",
-        "--add-binary", f"{os.path.join(qt_lib_path, 'QtCore')}{os.pathsep}PyQt6/Qt6/lib",
-        "--add-binary", f"{os.path.join(qt_lib_path, 'QtGui')}{os.pathsep}PyQt6/Qt6/lib",
-        "--add-binary", f"{os.path.join(qt_lib_path, 'QtWidgets')}{os.pathsep}PyQt6/Qt6/lib",
-        "--target-arch", "x86_64" if architecture == "x64" else "arm64"
+        "--paths", qt6_lib_path,
+        "--paths", qt6_qml_path,
+        "--paths", qt_qsci_path,
+        "--paths", qt6_translations_path,
     ])
     
     # 设置环境变量
