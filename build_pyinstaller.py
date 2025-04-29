@@ -1,6 +1,5 @@
 import PyInstaller.__main__
 import os
-import site
 import shutil
 import sys
 
@@ -12,6 +11,7 @@ def write_version_file(platform, architecture, version):
     with open(version_file_path, "w") as version_file:
         version_file.write(f"{platform} {architecture} {version} v0.0.0.1\n")
         print(f"write version file to {version_file_path}")
+
 
 # 获取参数
 print(sys.argv)
@@ -25,124 +25,22 @@ version = sys.argv[3]
 
 if os.path.exists("dist"):
     shutil.rmtree("dist")
-# 获取 site-packages 目录列表
-site_packages_paths = site.getsitepackages()
 
-# 查找包含 maa/bin 的路径
-maa_bin_path = None
-for path in site_packages_paths:
-    potential_path = os.path.join(path, "maa")
-    if os.path.exists(potential_path):
-        maa_bin_path = potential_path
-        break
+# 定义spec文件映射
+spec_mapping = {
+    ('darwin', 'x64'): 'macos_x86_64.spec',
+    ('darwin', 'arm64'): 'macos_arm64.spec',
+    ('win32', 'x64'): 'win_x86_64.spec',
+    ('linux', 'x86_64'): 'linux_x86_64.spec',
+    ('linux', 'arm64'): 'linux_arm64.spec'
+}
 
-if maa_bin_path is None:
-    raise FileNotFoundError("not found maa")
+# 根据平台和架构选择spec文件
+if (sys.platform, architecture) not in spec_mapping:
+    raise ValueError(f'Unsupported platform-arch combination: {sys.platform}-{architecture}')
+spec_file = spec_mapping[(sys.platform, architecture)]
+PyInstaller.__main__.run([spec_file, '--clean'])
 
-# 构建 --add-data 参数
-add_data_param = f"{maa_bin_path}{os.pathsep}maa"
-
-# 查找包含 MaaAgentBinary 的路径
-maa_bin_path2 = None
-for path in site_packages_paths:
-    potential_path = os.path.join(path, "MaaAgentBinary")
-    if os.path.exists(potential_path):
-        maa_bin_path2 = potential_path
-        break
-
-if maa_bin_path2 is None:
-    raise FileNotFoundError("not found MaaAgentBinary")
-
-# 构建 --add-data 参数
-add_data_param2 = f"{maa_bin_path2}{os.pathsep}MaaAgentBinary"
-
-# 在已有的 --add-data 参数后添加新的数据收集
-
-command = [
-    "main.py",
-    "--name=MFW",
-    f"--add-data={add_data_param}", 
-    f"--add-data={add_data_param2}",
-    "--clean",
-]
-
-# 平台特定参数应该集中处理
-darwin_args = []
-win_args = []
-
-if sys.platform == "darwin":
-    if architecture == "x64":
-        darwin_args.append("--target-arch=x86_64")
-
-    # 获取PyQt6安装路径
-    pyqt6_path = None
-    for path in site_packages_paths:
-        potential_path = os.path.join(path, "PyQt6")
-        if os.path.exists(potential_path):
-            pyqt6_path = potential_path
-            break
-    
-
-    if pyqt6_path is None:
-        raise FileNotFoundError("PyQt6 not found in site-packages")
-    
-    qt_plugins_path = os.path.join(pyqt6_path, "Qt6", "plugins")
-    if not os.path.exists(qt_plugins_path):
-        raise FileNotFoundError(f"Qt plugins not found at {qt_plugins_path}")
-
-    # 添加额外的Qt资源路径
-    qt_lib_path = os.path.join(pyqt6_path, "Qt6", "lib")
-    qt_qml_path = os.path.join(pyqt6_path, "Qt6", "qml")
-    
-    # 查找Qt6框架文件
-    qt6_lib_path = os.path.join(pyqt6_path, "Qt6", "lib")
-    qt6_framework_path = None
-    
-    # 检查可能的框架文件路径
-    possible_paths = [
-        os.path.join(qt6_lib_path, "Qt6Core.framework", "Qt6Core"),
-        os.path.join(qt6_lib_path, "Qt6Core"),
-        os.path.join(qt6_lib_path, "Qt6Core.framework"),
-        os.path.join(qt6_lib_path,  "QtCore.framework")
-    ]
-    
-    for path in possible_paths:
-        if os.path.exists(path):
-            qt6_framework_path = path
-            break
-
-    if qt6_framework_path is None:
-        raise FileNotFoundError(f"Qt6Core framework not found in {qt6_lib_path}")
-
-    darwin_args.extend([
-        "--osx-bundle-identifier=com.overflow65537.MFWPYQT6",
-        "--windowed",
-        "--paths", qt_plugins_path,
-        "--paths", qt_lib_path,
-        "--paths", qt_qml_path,
-        "--add-binary", f"{qt6_framework_path}{os.pathsep}PyQt6/Qt6/lib",
-        "--add-binary", f"{os.path.join(qt_lib_path, 'QtCore')}{os.pathsep}PyQt6/Qt6/lib",
-        "--add-binary", f"{os.path.join(qt_lib_path, 'QtGui')}{os.pathsep}PyQt6/Qt6/lib",
-        "--add-binary", f"{os.path.join(qt_lib_path, 'QtWidgets')}{os.pathsep}PyQt6/Qt6/lib",
-        "--target-arch", "x86_64" if architecture == "x64" else "arm64"
-    ])
-    
-    # 设置环境变量
-    os.environ['MACOSX_DEPLOYMENT_TARGET'] = '12.1'
-    os.environ['QT_PLUGIN_PATH'] = qt_plugins_path
-    os.environ['QML2_IMPORT_PATH'] = qt_qml_path
-    # macOS 专用参数
-    command += darwin_args
-
-if sys.platform == "win32":
-    win_args.extend([
-        "--noconsole",
-        "--icon=MFW_resource/icon/logo.ico"
-    ])
-    command += win_args
-
-# 运行 PyInstaller
-PyInstaller.__main__.run(command)
 # 移动maa/bin至根目录
 src_bin = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")
 dst_root = os.path.join(os.getcwd(), "dist", "MFW")
@@ -176,8 +74,6 @@ emulator_json_src = os.path.join(os.getcwd(), "config", "emulator.json")
 emulator_json_dst = os.path.join(os.getcwd(), "dist", "MFW", "config", "emulator.json")
 os.makedirs(os.path.dirname(emulator_json_dst), exist_ok=True)
 shutil.copy(emulator_json_src, emulator_json_dst)
-
-
 
 # 写入版本信息
 write_version_file(platform, architecture, version)
