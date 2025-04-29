@@ -89,6 +89,10 @@ if sys.platform == "darwin":
     qt_plugins_path = os.path.join(pyqt6_path, "Qt6", "plugins")
     if not os.path.exists(qt_plugins_path):
         raise FileNotFoundError(f"Qt plugins not found at {qt_plugins_path}")
+
+    # 添加额外的Qt资源路径
+    qt_lib_path = os.path.join(pyqt6_path, "Qt6", "lib")
+    qt_qml_path = os.path.join(pyqt6_path, "Qt6", "qml")
     
     # 查找Qt6框架文件
     qt6_lib_path = os.path.join(pyqt6_path, "Qt6", "lib")
@@ -113,11 +117,16 @@ if sys.platform == "darwin":
     darwin_args.extend([
         "--osx-bundle-identifier=com.overflow65537.MFWPYQT6",
         "--windowed",
-        "--paths", os.path.join(pyqt6_path, "Qt6", "plugins"),
-        "--add-binary", f"{qt6_framework_path}{os.pathsep}PyQt6/Qt6/lib",  
-        "--paths", os.path.join(pyqt6_path, "Qt6", "lib"), 
-        "--paths", os.path.join(pyqt6_path, "Qt6", "qml")  
+        "--paths", qt_plugins_path,
+        "--paths", qt_lib_path,
+        "--paths", qt_qml_path,
+        "--add-binary", f"{qt6_framework_path}{os.pathsep}PyQt6/Qt6/lib",
+        "--target-arch", "x86_64" if architecture == "x64" else "arm64"
     ])
+    
+    # 设置环境变量
+    os.environ['MACOSX_DEPLOYMENT_TARGET'] = '12.1'
+    os.environ['QT_PLUGIN_PATH'] = qt_plugins_path
     
     # macOS 专用参数
     command += darwin_args
