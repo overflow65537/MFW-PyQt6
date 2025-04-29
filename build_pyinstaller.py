@@ -121,13 +121,16 @@ if sys.platform == "darwin":
         "--paths", qt_lib_path,
         "--paths", qt_qml_path,
         "--add-binary", f"{qt6_framework_path}{os.pathsep}PyQt6/Qt6/lib",
+        "--add-binary", f"{os.path.join(qt_lib_path, 'QtCore')}{os.pathsep}PyQt6/Qt6/lib",
+        "--add-binary", f"{os.path.join(qt_lib_path, 'QtGui')}{os.pathsep}PyQt6/Qt6/lib",
+        "--add-binary", f"{os.path.join(qt_lib_path, 'QtWidgets')}{os.pathsep}PyQt6/Qt6/lib",
         "--target-arch", "x86_64" if architecture == "x64" else "arm64"
     ])
     
     # 设置环境变量
     os.environ['MACOSX_DEPLOYMENT_TARGET'] = '12.1'
     os.environ['QT_PLUGIN_PATH'] = qt_plugins_path
-    
+    os.environ['QML2_IMPORT_PATH'] = qt_qml_path
     # macOS 专用参数
     command += darwin_args
 
