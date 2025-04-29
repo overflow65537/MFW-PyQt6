@@ -81,10 +81,15 @@ if sys.platform == "darwin":
         if os.path.exists(potential_path):
             pyqt6_path = potential_path
             break
+    
 
     if pyqt6_path is None:
         raise FileNotFoundError("PyQt6 not found in site-packages")
-
+    
+    qt_plugins_path = os.path.join(pyqt6_path, "Qt6", "plugins")
+    if not os.path.exists(qt_plugins_path):
+        raise FileNotFoundError(f"Qt plugins not found at {qt_plugins_path}")
+    
     # 查找Qt6框架文件
     qt6_lib_path = os.path.join(pyqt6_path, "Qt6", "lib")
     qt6_framework_path = None
@@ -108,8 +113,12 @@ if sys.platform == "darwin":
     darwin_args.extend([
         "--osx-bundle-identifier=com.overflow65537.MFWPYQT6",
         "--windowed",
-        "--paths", os.path.join(pyqt6_path, "Qt6", "plugins"),
-        "--add-binary", f"{qt6_framework_path}{os.pathsep}PyQt6/Qt6/lib"
+        f"--paths{os.path.join(pyqt6_path, "Qt6", "plugins")}", 
+        f"--add-binary={qt6_framework_path}{os.pathsep}PyQt6/Qt6/lib"
+        ,        "--target-version-min=12.1",
+        "--macos-target-sdk-version=12.1",
+        f"--paths={os.path.join(pyqt6_path, "Qt6", "lib")}",
+        f"--paths={os.path.join(pyqt6_path, "Qt6", "qml")}"
     ])
     
     # macOS 专用参数
