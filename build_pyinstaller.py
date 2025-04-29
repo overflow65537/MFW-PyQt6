@@ -71,9 +71,6 @@ darwin_args = []
 win_args = []
 
 if sys.platform == "darwin":
-    if architecture == "x64":
-        darwin_args.append("--target-arch=x86_64")
-
     # 获取PyQt6安装路径
     pyqt6_path = None
     for path in site_packages_paths:
@@ -127,6 +124,7 @@ if sys.platform == "darwin":
         "--paths", qt6_qml_path,
         "--paths", qt6_qsci_path,
         "--paths", qt6_translations_path,
+        "--target-arch", "x86_64" if architecture == "x64" else "arm64"
     ])
     
     # 设置环境变量
