@@ -6,6 +6,9 @@ import sys
 
 
 def write_version_file(platform, architecture, version):
+    # 使用规范化后的参数
+    platform = 'macos' if platform == 'osx' else platform
+    architecture = 'x86_64' if architecture == 'x64' else architecture
     version_file_path = os.path.join(
         os.getcwd(), "dist", "MFW", "config", "version.txt"
     )
@@ -19,9 +22,18 @@ print(len(sys.argv))
 if len(sys.argv) != 4:
     sys.argv = [sys.argv[0], "unknown", "unknown", "unknown"]
 
+# 规范化平台和架构参数
 platform = sys.argv[1]
 architecture = sys.argv[2]
 version = sys.argv[3]
+
+# 统一平台命名规范
+if platform == 'osx':
+    platform = 'macos'
+
+# 统一架构命名规范
+if architecture == 'x64':
+    architecture = 'x86_64'
 
 if os.path.exists("dist"):
     shutil.rmtree("dist")
@@ -72,7 +84,7 @@ win_args = []
 
 if sys.platform == "darwin":
     # macOS专用构建配置
-    spec_file = f"macos_{architecture}.spec"
+    spec_file = f"{platform}_{architecture}.spec"
     if not os.path.exists(spec_file):
         raise FileNotFoundError(f"Missing macOS spec file: {spec_file}")
     
