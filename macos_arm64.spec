@@ -1,6 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 block_cipher = None
+import os
+import site
 
 _base = [
     ('MFW_resource/**', 'MFW_resource'),
@@ -13,7 +15,10 @@ _base = [
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=[Tree('PyQt6/Qt/lib'), Tree('PyQt6/Qt/plugins')],
+    pyqt_path = next((p for p in site.getsitepackages() if 'PyQt6' in os.listdir(p)), '')
+    qt_lib_path = os.path.join(pyqt_path, 'PyQt6', 'Qt6', 'lib')
+    qt_plugins_path = os.path.join(pyqt_path, 'PyQt6', 'Qt6', 'plugins')
+    binaries=[Tree(qt_lib_path), Tree(qt_plugins_path)],
     datas=_base + [
         ('/path/to/maa/**', 'maa'),
         ('/path/to/MaaAgentBinary/**', 'MaaAgentBinary')

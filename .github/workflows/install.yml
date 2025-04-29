@@ -107,7 +107,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
-          architecture: 'x86_64' 
+          architecture: 'x64' 
 
       - name: Set up Python (other)
         if: matrix.os != 'macos-latest' || matrix.arch != 'x86_64'
