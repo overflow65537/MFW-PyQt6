@@ -87,9 +87,9 @@ if sys.platform == "darwin":
         raise FileNotFoundError("PyQt6 not found in site-packages")
     
     # 查找Qt库路径
-    qt_plugins_path = os.path.join(pyqt6_path, "Qt6", "plugins")
-    if not os.path.exists(qt_plugins_path):
-        raise FileNotFoundError(f"Qt plugins not found at {qt_plugins_path}")
+    qt6_plugins_path = os.path.join(pyqt6_path, "Qt6", "plugins")
+    if not os.path.exists(qt6_plugins_path):
+        raise FileNotFoundError(f"Qt plugins not found at {qt6_plugins_path}")
 
     qt6_qml_path = os.path.join(pyqt6_path, "Qt6", "qml")
     if not os.path.exists(qt6_qml_path):
@@ -99,9 +99,9 @@ if sys.platform == "darwin":
     if not os.path.exists(qt6_lib_path):
         raise FileNotFoundError(f"Qt6 lib not found at {qt6_lib_path}")
     
-    qt_qsci_path = os.path.join(pyqt6_path, "Qt6",  "qsci")
-    if not os.path.exists(qt_qsci_path):
-        raise FileNotFoundError(f"Qt6 Qsci not found at {qt_qsci_path}")
+    qt6_qsci_path = os.path.join(pyqt6_path, "Qt6",  "qsci")
+    if not os.path.exists(qt6_qsci_path):
+        raise FileNotFoundError(f"Qt6 Qsci not found at {qt6_qsci_path}")
     
     qt6_translations_path = os.path.join(pyqt6_path, "Qt6", "translations")
     if not os.path.exists(qt6_translations_path):
@@ -122,17 +122,18 @@ if sys.platform == "darwin":
     darwin_args.extend([
         "--osx-bundle-identifier=com.overflow65537.MFWPYQT6",
         "--windowed",
-        "--paths", qt_plugins_path,
+        "--paths", qt6_plugins_path,
         "--paths", qt6_lib_path,
         "--paths", qt6_qml_path,
-        "--paths", qt_qsci_path,
+        "--paths", qt6_qsci_path,
         "--paths", qt6_translations_path,
     ])
     
     # 设置环境变量
     os.environ['MACOSX_DEPLOYMENT_TARGET'] = '12.1'
-    os.environ['QT_PLUGIN_PATH'] = qt_plugins_path
-    os.environ['QML2_IMPORT_PATH'] = qt_qml_path
+    os.environ['QT_PLUGIN_PATH'] = qt6_plugins_path
+    os.environ['QML2_IMPORT_PATH'] = qt6_qml_path
+    os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = qt6_plugins_path
     # macOS 专用参数
     command += darwin_args
 
