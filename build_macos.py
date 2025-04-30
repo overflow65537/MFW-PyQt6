@@ -15,22 +15,22 @@ def clean_build():
 
 
 # 创建应用包
-def build_app():
+def build_app(version=None):
     # 配置py2app选项
     APP = ["main.py"]
-
+    
     DATA_FILES = [
         "MFW_resource",
         "config",
     ]
-
+    
     OPTIONS = {
         "argv_emulation": True,
         "plist": {
             "CFBundleName": "MFW",
             "CFBundleDisplayName": "MFW",
             "CFBundleIdentifier": "com.overflow65537.MFWPYQT6",
-            "CFBundleVersion": sys.argv[-1],
+            "CFBundleVersion": version if version else "v0.0.0",
             "NSHumanReadableCopyright": "Copyright © 2025 Overflow65537",
             "LSMinimumSystemVersion": "12.1",
             "PyRuntimeLocations": [
@@ -122,17 +122,17 @@ def create_dmg():
     shutil.rmtree(temp_dir)
 
 
-if __name__ == "__main__":
-    # 清理旧构建
-    clean_build()
-
-    # 构建主程序
-    build_app()
-
-    # 构建更新器
+def main():
+    if len(sys.argv) > 1:
+        version = sys.argv[1]
+    else:
+        version = "v0.0.0"
+    
+    build_app(version)
     build_updater()
-
-    # 创建dmg安装包
     create_dmg()
+
+if __name__ == "__main__":
+    main()
 
     print("构建完成！完整安装包位于 dist/MFW_Complete.dmg")
