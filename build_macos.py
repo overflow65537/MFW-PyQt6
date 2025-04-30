@@ -15,7 +15,7 @@ def clean_build():
 
 
 # 创建应用包
-def build_app(version=None):
+def build_app():
     # 配置py2app选项
     APP = ["main.py"]
     
@@ -30,7 +30,7 @@ def build_app(version=None):
             "CFBundleName": "MFW",
             "CFBundleDisplayName": "MFW",
             "CFBundleIdentifier": "com.overflow65537.MFWPYQT6",
-            "CFBundleVersion": version if version else "v0.0.1",
+            "CFBundleVersion": "v0.0.1",
             "NSHumanReadableCopyright": "Copyright © 2025 Overflow65537",
             "LSMinimumSystemVersion": "12.1",
             "PyRuntimeLocations": [
@@ -46,6 +46,7 @@ def build_app(version=None):
         app=APP,
         options={"py2app": OPTIONS},
         setup_requires=["py2app"],
+        script_args=["py2app"],  # 添加构建命令参数
     )
 
 
@@ -55,7 +56,7 @@ def build_updater():
     updater_src = "updater.py"
     if os.path.exists(updater_src):
         setup(
-            script_args=["py2app"],
+            script_args=["py2app"],  # 确保参数位置正确
             app=[updater_src],
             options={
                 "py2app": {
@@ -123,20 +124,8 @@ def create_dmg():
 
 
 def main():
-    # 保存原始参数
-    original_argv = sys.argv.copy()
-    
-    # 提取版本参数（如果有）
-    version = "v0.0.1"
-    for i, arg in enumerate(original_argv[1:]):
-        if arg.startswith('v'):
-            version = arg
-            # 从参数列表中移除版本参数
-            sys.argv.pop(i+1)
-            break
-    
     clean_build()
-    build_app(version)  # 确保传递版本参数
+    build_app()
     build_updater()
     create_dmg()
 
