@@ -125,13 +125,13 @@ jobs:
             platform: macos
             arch: x86_64
             build_script: build_macos.py
-            build_command: python3 ./build_macos.py ${{ needs.meta.outputs.tag }}
+            build_command: python3 ./build_macos.py 
          
           - os: macos-latest
             platform: macos
             arch: arm64
             build_script: build_macos.py
-            build_command: python3 ./build_macos.py ${{ needs.meta.outputs.tag }}
+            build_command: python3 ./build_macos.py 
 
     steps:
       - uses: actions/checkout@v4

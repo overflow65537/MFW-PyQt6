@@ -30,7 +30,7 @@ def build_app(version=None):
             "CFBundleName": "MFW",
             "CFBundleDisplayName": "MFW",
             "CFBundleIdentifier": "com.overflow65537.MFWPYQT6",
-            "CFBundleVersion": version if version else "v0.0.0",
+            "CFBundleVersion": version if version else "v0.0.1",
             "NSHumanReadableCopyright": "Copyright © 2025 Overflow65537",
             "LSMinimumSystemVersion": "12.1",
             "PyRuntimeLocations": [
@@ -128,7 +128,7 @@ def main():
     else:
         version = "v0.0.0"
     
-    build_app(version)
+    build_app()
     build_updater()
     create_dmg()
 
