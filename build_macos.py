@@ -123,16 +123,23 @@ def create_dmg():
 
 
 def main():
-    if len(sys.argv) > 1:
-        version = sys.argv[1]
-    else:
-        version = "v0.0.0"
+    # 保存原始参数
+    original_argv = sys.argv.copy()
     
-    build_app()
+    # 提取版本参数（如果有）
+    version = "v0.0.1"
+    for i, arg in enumerate(original_argv[1:]):
+        if arg.startswith('v'):
+            version = arg
+            # 从参数列表中移除版本参数
+            sys.argv.pop(i+1)
+            break
+    
+    clean_build()
+    build_app(version)  # 确保传递版本参数
     build_updater()
     create_dmg()
 
 if __name__ == "__main__":
     main()
-
     print("构建完成！完整安装包位于 dist/MFW_Complete.dmg")
