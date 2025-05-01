@@ -36,7 +36,7 @@ def build_app():
                 "/Library/Frameworks/Python.framework/Versions/Current/lib/python3.12/python3"
             ],
         },
-        "arch": ["x86_64", "arm64"],  # 修改为列表格式
+        "arch": "x86_64,arm64",  # 改回逗号分隔字符串
         "includes": ["PyQt6", "maa"],
         "resources": DATA_FILES,
         "frameworks": [],
