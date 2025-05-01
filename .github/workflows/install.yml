@@ -96,39 +96,57 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
-          architecture: 'x64'  # 必须指定x64架构以兼容Universal2
-      
-      - name: Install dependencies  # 将依赖安装移到构建前
+
+      - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller
+          python -m pip install -r requirements.txt
+
+      - name: Build package
+        run: |
+          python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+        shell: pwsh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
+          path: "dist/MFW"
+
+  macos_build:
+    needs: meta
+    name: Build macOS (Universal2)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          export ARCHFLAGS="-arch x86_64 -arch arm64"
           python3 -m pip install --upgrade pip
           python3 -m pip install py2app
           python3 -m pip install -r requirements.txt
 
       - name: Build application
-        run: |
-          python build_macos.py
-        env:
-          ARCHFLAGS: '-arch x86_64 -arch arm64'
-
-      - name: Install dependencies
-        run: |  # 确保该步骤在Build application之前
-          python3 -m pip install --upgrade pip
-          python3 -m pip install py2app
-          python3 -m pip install -r requirements.txt
-
-      - name: Build macOS package
-        run: python3 build_macos.py  # 替换为直接调用命令
-        shell: bash
+        run: python3 build_macos.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MFW-PyQt6-macos-universal2  # 修改名称
+          name: MFW-PyQt6-macos-universal2
           path: "dist/MFW_Complete.dmg"
 
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
-    needs: [meta, pyinstaller, macos_build, changelog]
+    needs: [meta, pyinstaller, macos_build, changelog] 
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
