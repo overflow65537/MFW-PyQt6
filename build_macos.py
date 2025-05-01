@@ -16,13 +16,11 @@ def clean_build():
 
 # 创建应用包
 def build_app():
-    # 配置py2app选项
-    APP = ["main.py"]
-    
-    DATA_FILES = [
-        "MFW_resource",
-        "config",
-    ]
+    # 添加架构验证
+    if sys.platform == 'darwin':
+        from platform import machine
+        if machine() not in ('x86_64', 'arm64'):
+            raise RuntimeError("Unsupported architecture")
     
     OPTIONS = {
         "argv_emulation": True,
@@ -34,9 +32,11 @@ def build_app():
             "NSHumanReadableCopyright": "Copyright © 2025 Overflow65537",
             "LSMinimumSystemVersion": "12.1",
             "PyRuntimeLocations": [
-                "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/python3"
+                # 更新为通用架构路径
+                "/Library/Frameworks/Python.framework/Versions/Current/lib/python3.12/python3"
             ],
         },
+        "archs": "x86_64,arm64",  # 关键参数：指定双架构
         "includes": ["PyQt6", "maa"],
         "resources": DATA_FILES,
         "frameworks": [],
