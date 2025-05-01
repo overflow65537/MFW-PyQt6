@@ -130,9 +130,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          export ARCHFLAGS="-arch x86_64 -arch arm64"
           python3 -m pip install --upgrade pip
-          python3 -m pip install py2app==0.28.6
+          python3 -m pip install "py2app>=0.29"  # 安装最新版
           python3 -m pip install -r requirements.txt
 
       - name: Build application
