@@ -32,15 +32,16 @@ def build_app():
             "NSHumanReadableCopyright": "Copyright © 2025 Overflow65537",
             "LSMinimumSystemVersion": "12.1",
             "PyRuntimeLocations": [
-                # 更新为通用架构路径
-                "/Library/Frameworks/Python.framework/Versions/Current/Python",
-                "/Library/Frameworks/Python.framework/Versions/Current/lib/python3.12/python3",
+                # 更新为相对路径配置
+                "@executable_path/../Frameworks/Python.framework/Versions/Current/Python",
+                "~/Library/Frameworks/Python.framework/Versions/Current/Python"
             ],
         },
-        "arch": "universal2",  # 使用苹果官方定义的架构标识符
+        "arch": "universal2",
         "includes": ["PyQt6", "maa"],
         "resources": DATA_FILES,
         "frameworks": [],
+        "no_strip": True,  # 添加此参数跳过字节编译
     }
 
     setup(
