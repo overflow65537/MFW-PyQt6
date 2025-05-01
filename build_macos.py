@@ -16,12 +16,12 @@ def clean_build():
 def build_app():
     # 配置py2app选项
     APP = ["main.py"]
-    
+
     DATA_FILES = [  # 添加此定义
         "MFW_resource",
         "config",
     ]
-    
+
     OPTIONS = {
         "argv_emulation": True,
         "plist": {
@@ -33,10 +33,11 @@ def build_app():
             "LSMinimumSystemVersion": "12.1",
             "PyRuntimeLocations": [
                 # 更新为通用架构路径
-                "/Library/Frameworks/Python.framework/Versions/Current/lib/python3.12/python3"
+                "/Library/Frameworks/Python.framework/Versions/Current/Python",
+                "/Library/Frameworks/Python.framework/Versions/Current/lib/python3.12/python3",
             ],
         },
-        "arch": "x86_64,arm64",  # 改回逗号分隔字符串
+        "arch": "universal2",  # 使用苹果官方定义的架构标识符
         "includes": ["PyQt6", "maa"],
         "resources": DATA_FILES,
         "frameworks": [],
@@ -129,6 +130,7 @@ def main():
     build_app()
     build_updater()
     create_dmg()
+
 
 if __name__ == "__main__":
     main()
