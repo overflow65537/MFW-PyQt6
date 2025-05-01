@@ -1,8 +1,6 @@
 import os
-import sys
 import shutil
 import subprocess
-import site
 from setuptools import setup
 
 
@@ -16,11 +14,13 @@ def clean_build():
 
 # 创建应用包
 def build_app():
-    # 添加架构验证
-    if sys.platform == 'darwin':
-        from platform import machine
-        if machine() not in ('x86_64', 'arm64'):
-            raise RuntimeError("Unsupported architecture")
+    # 配置py2app选项
+    APP = ["main.py"]
+    
+    DATA_FILES = [  # 添加此定义
+        "MFW_resource",
+        "config",
+    ]
     
     OPTIONS = {
         "argv_emulation": True,
@@ -38,7 +38,7 @@ def build_app():
         },
         "archs": "x86_64,arm64",  # 关键参数：指定双架构
         "includes": ["PyQt6", "maa"],
-        "resources": DATA_FILES,
+        "resources": DATA_FILES,  # 现在可以正确引用
         "frameworks": [],
     }
 
