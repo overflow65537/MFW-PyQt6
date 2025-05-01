@@ -34,18 +34,19 @@ def build_app():
             "LSMinimumSystemVersion": "12.1",
             "PyRuntimeLocations": [
                 "@executable_path/../Frameworks/Python.framework/Versions/3.12/Python",
-                "@executable_path/../Frameworks/Python.framework/Versions/Current/Python"
+                "@executable_path/../Frameworks/Python.framework/Versions/Current/Python",
             ],
-            "LSArchitecturePriority": ["arm64", "x86_64"]
+            "LSArchitecturePriority": ["arm64", "x86_64"],
         },
-        "semi_standalone": False,
         "frameworks": ["/Library/Frameworks/Python.framework"],
         "includes": ["PyQt6", "maa"],
         "resources": ["MFW_resource", "config"],
+        "excludes": ["tkinter"],
         "no_strip": True,
-        "optimize": 0,
-        "excludes": ["tkinter"]
+        "optimize": 0,  # 新增配置：禁用字节编译
+        "semi_standalone": True, 
     }
+
 
     setup(
         app=APP,
