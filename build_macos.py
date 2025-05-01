@@ -85,18 +85,26 @@ def create_dmg():
     # 创建临时目录结构
     os.makedirs(temp_dir, exist_ok=True)
 
-    # 复制主程序
-    shutil.copytree(
-        os.path.join("dist", "MFW.app"),
-        os.path.join(temp_dir, "MFW.app"),
-        dirs_exist_ok=True,
-    )
+    # 复制主程序（添加存在性检查）
+    src_app = os.path.join("dist", "MFW.app")
+    if os.path.exists(src_app):
+        shutil.copytree(
+            src_app,
+            os.path.join(temp_dir, "MFW.app"),
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns('*.pyc', '__pycache__')  # 添加忽略模式
+        )
+    else:
+        raise FileNotFoundError(f"主程序未找到: {src_app}")
 
-    # 复制更新器
+    # 复制更新器（添加存在性检查）
     updater_src = os.path.join("dist", "MFWUpdater.app")
     if os.path.exists(updater_src):
         shutil.copytree(
-            updater_src, os.path.join(temp_dir, "MFWUpdater.app"), dirs_exist_ok=True
+            updater_src,
+            os.path.join(temp_dir, "MFWUpdater.app"),
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns('*.pyc', '__pycache__')
         )
 
     # 创建Applications快捷方式
