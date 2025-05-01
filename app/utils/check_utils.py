@@ -42,8 +42,10 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
             bundle_path = os.path.join(
                 ".", "bundles", cfg.get(cfg.maa_resource_name)
             )
+            if not os.path.exists(bundle_path):
+                os.makedirs(bundle_path)
             #移动resource文件夹到bundle_path目录下
-            os.rename("resource", bundle_path)
+            os.rename("resource", os.path.join(bundle_path, "resource"))
             #移动interface.json到bundle_path目录下
             os.rename("interface.json", os.path.join(bundle_path, "interface.json"))
             #移动custom文件夹到bundle_path目录下
