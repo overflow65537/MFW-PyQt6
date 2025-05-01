@@ -131,7 +131,7 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install "py2app>=0.29"  # 安装最新版
+          python3 -m pip install "py2app>=0.28.6,<0.29"  # 使用可用版本范围
           python3 -m pip install -r requirements.txt
 
       - name: Build application
