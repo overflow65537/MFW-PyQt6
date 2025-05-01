@@ -140,6 +140,7 @@ jobs:
       - name: Build application
         run: |
           source venv/bin/activate
+          export PYTHONOPTIMIZE=0 
           python3 build_macos.py
 
       - name: Upload artifact

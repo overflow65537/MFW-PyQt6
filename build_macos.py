@@ -41,13 +41,16 @@ def build_app():
         "includes": ["PyQt6", "maa"],
         "resources": DATA_FILES,
         "frameworks": [],
-        "no_strip": True,  # 添加此参数跳过字节编译
+        "no_strip": True,
+        "optimize": 0,  # 新增配置：禁用字节编译
+        "semi_standalone": True,  # 新增配置：半独立模式
+        "excludes": ["tkinter"],  # 排除系统相关模块
     }
 
     setup(
         app=APP,
         options={"py2app": OPTIONS},
-        setup_requires=["py2app>=0.28.6"],  # 调整版本要求
+        setup_requires=["py2app>=0.28.6"],
         python_requires=">=3.10",
         script_args=["py2app"],
     )
