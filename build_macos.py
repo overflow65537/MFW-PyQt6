@@ -47,7 +47,7 @@ def build_app():
         app=APP,
         options={"py2app": OPTIONS},
         setup_requires=["py2app"],
-        # 移除 script_args 参数
+        script_args=["py2app"],  # 必须保留此参数来触发构建
     )
 
 
@@ -57,7 +57,7 @@ def build_updater():
     updater_src = "updater.py"
     if os.path.exists(updater_src):
         setup(
-            script_args=["py2app"],  # 确保参数位置正确
+            script_args=["py2app"],  # 保留参数
             app=[updater_src],
             options={
                 "py2app": {
