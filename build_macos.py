@@ -24,6 +24,7 @@ def build_app():
 
     OPTIONS = {
         "argv_emulation": True,
+        "arch": "universal2",
         "plist": {
             "CFBundleName": "MFW",
             "CFBundleDisplayName": "MFW",
@@ -32,19 +33,18 @@ def build_app():
             "NSHumanReadableCopyright": "Copyright © 2025 Overflow65537",
             "LSMinimumSystemVersion": "12.1",
             "PyRuntimeLocations": [
-                # 更新为相对路径配置
-                "@executable_path/../Frameworks/Python.framework/Versions/Current/Python",
-                "~/Library/Frameworks/Python.framework/Versions/Current/Python"
+                "@executable_path/../Frameworks/Python.framework/Versions/3.12/Python",
+                "@executable_path/../Frameworks/Python.framework/Versions/Current/Python"
             ],
+            "LSArchitecturePriority": ["arm64", "x86_64"]
         },
-        "arch": "universal2",
+        "semi_standalone": False,
+        "frameworks": ["/Library/Frameworks/Python.framework"],
         "includes": ["PyQt6", "maa"],
-        "resources": DATA_FILES,
-        "frameworks": [],
+        "resources": ["MFW_resource", "config"],
         "no_strip": True,
-        "optimize": 0,  # 新增配置：禁用字节编译
-        "semi_standalone": True,  # 新增配置：半独立模式
-        "excludes": ["tkinter"],  # 排除系统相关模块
+        "optimize": 0,
+        "excludes": ["tkinter"]
     }
 
     setup(
@@ -88,19 +88,15 @@ def create_dmg():
     updater_src = os.path.join("dist", "MFWUpdater.app")
 
     # 修改后的复制逻辑
-    ignore_patterns = shutil.ignore_patterns(
-        '*.pyc', 
-        '__pycache__',
-        'config-3.12-*'
-    )
-    
+    ignore_patterns = shutil.ignore_patterns("*.pyc", "__pycache__", "config-3.12-*")
+
     # 复制主程序
     if os.path.exists(src_app):
         shutil.copytree(
             src_app,
             os.path.join(temp_dir, "MFW.app"),
             dirs_exist_ok=True,
-            ignore=ignore_patterns
+            ignore=ignore_patterns,
         )
 
     # 复制更新器
@@ -109,7 +105,7 @@ def create_dmg():
             updater_src,
             os.path.join(temp_dir, "MFWUpdater.app"),
             dirs_exist_ok=True,
-            ignore=ignore_patterns
+            ignore=ignore_patterns,
         )
 
     # 创建Applications快捷方式
