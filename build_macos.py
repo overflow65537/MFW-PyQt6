@@ -36,17 +36,18 @@ def build_app():
                 "/Library/Frameworks/Python.framework/Versions/Current/lib/python3.12/python3"
             ],
         },
-        "archs": "x86_64,arm64",  # 关键参数：指定双架构
+        "arch": "arm64,x86_64",  # 修改参数名为 arch，使用逗号分隔值
         "includes": ["PyQt6", "maa"],
-        "resources": DATA_FILES,  # 现在可以正确引用
+        "resources": DATA_FILES,
         "frameworks": [],
     }
 
+    # 更新构建参数配置
     setup(
         app=APP,
         options={"py2app": OPTIONS},
         setup_requires=["py2app"],
-        script_args=["py2app"],  # 添加构建命令参数
+        # 移除 script_args 参数
     )
 
 
