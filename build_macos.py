@@ -6,10 +6,10 @@ from setuptools import setup
 
 # 清理之前的构建目录
 def clean_build():
-    build_dirs = ["dist", "build"]
+    build_dirs = ["dist", "build", "MFW.app", "MFWUpdater.app"]
     for dir in build_dirs:
         if os.path.exists(dir):
-            shutil.rmtree(dir)
+            shutil.rmtree(dir, ignore_errors=True)  # 添加容错处理
 
 
 # 创建应用包
@@ -42,7 +42,10 @@ def build_app():
         "includes": ["PyQt6", "maa"],
         "resources": ["MFW_resource", "config"],
         "excludes": ["tkinter"],
-        "no_strip": True,
+        "frameworks": [],  # 移除非必要框架声明
+        "semi_standalone": False,  # 关闭半独立模式
+        "use_pythonpath": True,  # 允许继承系统路径
+        "no_strip": False,  # 禁用符号表保留
         "optimize": 0,  # 新增配置：禁用字节编译
         "semi_standalone": True, 
     }
