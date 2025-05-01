@@ -26,9 +26,9 @@ def build_app():
             "LSMinimumSystemVersion": "12.1",
             "PyRuntimeLocations": [
                 "@executable_path/../Frameworks/Python.framework/Versions/3.12/Python",
-                "@executable_path/../Frameworks/Python.framework/Versions/Current/Python"
+                "@executable_path/../Frameworks/Python.framework/Versions/Current/Python",
             ],
-            "LSArchitecturePriority": ["arm64", "x86_64"]
+            "LSArchitecturePriority": ["arm64", "x86_64"],
         },
         "frameworks": ["/Library/Frameworks/Python.framework"],
         "includes": [
@@ -46,29 +46,13 @@ def build_app():
         "runtime_library_dirs": [
             "@executable_path/../Frameworks/Python.framework/Versions/3.12/lib"  # 运行时库路径
         ],
-        "argv_emulation": True,
-        "arch": "universal2",
-        "plist": {
-            "CFBundleName": "MFW",
-            "CFBundleDisplayName": "MFW",
-            "CFBundleIdentifier": "com.overflow65537.MFWPYQT6",
-            "CFBundleVersion": "v0.0.1",
-            "NSHumanReadableCopyright": "Copyright © 2025 Overflow65537",
-            "LSMinimumSystemVersion": "12.1",
-            "PyRuntimeLocations": [
-                "@executable_path/../Frameworks/Python.framework/Versions/3.12/Python",
-                "@executable_path/../Frameworks/Python.framework/Versions/Current/Python",
-            ],
-            "LSArchitecturePriority": ["arm64", "x86_64"],
-        },
-        "frameworks": ["/Library/Frameworks/Python.framework"],
-        "includes": ["PyQt6", "maa"],
-        "resources": ["MFW_resource", "config"],
         "excludes": ["tkinter"],
         "semi_standalone": True,
         "use_pythonpath": True,
         "no_strip": False,
-        "optimize": 0
+        "optimize": 0,
+        "compatible_arch": "arm64,x86_64",
+        "use_2to3": False,
     }
 
     APP = [
