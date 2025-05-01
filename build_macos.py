@@ -81,30 +81,35 @@ def create_dmg():
     """创建包含主程序和所有资源的DMG"""
     dmg_path = os.path.join("dist", "MFW_Complete.dmg")
     temp_dir = os.path.join("dist", "temp_dmg")
-
-    # 创建临时目录结构
     os.makedirs(temp_dir, exist_ok=True)
 
-    # 复制主程序（添加存在性检查）
+    # 定义路径变量
     src_app = os.path.join("dist", "MFW.app")
+    updater_src = os.path.join("dist", "MFWUpdater.app")
+
+    # 修改后的复制逻辑
+    ignore_patterns = shutil.ignore_patterns(
+        '*.pyc', 
+        '__pycache__',
+        'config-3.12-*'
+    )
+    
+    # 复制主程序
     if os.path.exists(src_app):
         shutil.copytree(
             src_app,
             os.path.join(temp_dir, "MFW.app"),
             dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns('*.pyc', '__pycache__')  # 添加忽略模式
+            ignore=ignore_patterns
         )
-    else:
-        raise FileNotFoundError(f"主程序未找到: {src_app}")
 
-    # 复制更新器（添加存在性检查）
-    updater_src = os.path.join("dist", "MFWUpdater.app")
+    # 复制更新器
     if os.path.exists(updater_src):
         shutil.copytree(
             updater_src,
             os.path.join(temp_dir, "MFWUpdater.app"),
             dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns('*.pyc', '__pycache__')
+            ignore=ignore_patterns
         )
 
     # 创建Applications快捷方式
