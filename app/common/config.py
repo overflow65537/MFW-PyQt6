@@ -109,6 +109,9 @@ class Config(QConfig):
     Notice_WxPusher_status = ConfigItem("Notice", "WxPush_status", False)
     Notice_WxPusher_SPT_token = ConfigItem("Notice", "WxPusher_SPT_token", "")
 
+    Notice_QYWX_status = ConfigItem("Notice", "QYWX_status", False)
+    Notice_QYWX_key = ConfigItem("Notice", "QYWX_key", "")
+
     # main window
     micaEnabled = ConfigItem("MainWindow", "MicaEnabled", isWin11(), BoolValidator())
 

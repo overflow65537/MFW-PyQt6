@@ -452,6 +452,7 @@ class SettingInterface(ScrollArea):
             notice_type="SMTP",
             parent=self.noticeGroup,
         )
+
         self.WxPusher_noticeTypeCard = NoticeButtonSettingCard(
             text=self.tr("Modify"),
             icon=FIF.SEND,
@@ -460,10 +461,19 @@ class SettingInterface(ScrollArea):
             parent=self.noticeGroup,
         )
 
+        self.QYWX_noticeTypeCard = NoticeButtonSettingCard(
+            text=self.tr("Modify"),
+            icon=FIF.SEND,
+            title=self.tr("QYWX"),
+            notice_type="QYWX",
+            parent=self.noticeGroup,
+        )
+
         self.noticeGroup.addSettingCard(self.dingtalk_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.lark_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.SMTP_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.WxPusher_noticeTypeCard)
+        self.noticeGroup.addSettingCard(self.QYWX_noticeTypeCard)
 
     def initialize_VI_settings(self):
         """初始化开发者设置。"""

@@ -23,7 +23,7 @@ from qfluentwidgets import (
 )
 from ..common.config import cfg
 from ..utils.logger import logger
-from ..utils.notice import lark_send, dingtalk_send, WxPusher_send, SMTP_send
+from ..utils.notice import lark_send, dingtalk_send, WxPusher_send, SMTP_send, QYWX_send
 
 
 class NoticeType(QDialog):
@@ -73,6 +73,7 @@ class NoticeType(QDialog):
                 "Lark": lark_send,
                 "SMTP": SMTP_send,
                 "WxPusher": WxPusher_send,
+                "QYWX": QYWX_send,
             }
 
             # 获取对应的发送函数
@@ -126,6 +127,8 @@ class NoticeType(QDialog):
             self.add_smtp_fields()
         elif self.notice_type == "WxPusher":
             self.add_wxpusher_fields()
+        elif self.notice_type == "QYWX":
+            self.add_qywx_fields()
 
     def save_noticetype(self):
         """保存通知类型"""
@@ -139,6 +142,8 @@ class NoticeType(QDialog):
             self.save_smtp_fields()
         elif self.notice_type == "WxPusher":
             self.save_wxpusher_fields()
+        elif self.notice_type == "QYWX":
+            self.save_qywx_fields()
 
     def save_dingtalk_fields(self):
         """保存钉钉相关的输入框"""
@@ -174,6 +179,11 @@ class NoticeType(QDialog):
         """保存 WxPusher 相关的输入框"""
         cfg.set(cfg.Notice_WxPusher_SPT_token, self.wxpusher_spt_input.text())
         cfg.set(cfg.Notice_WxPusher_status, self.wxpusher_status_switch.isChecked())
+
+    def save_qywx_fields(self):
+        """保存 QYWX 相关的输入框"""
+        cfg.set(cfg.Notice_QYWX_key, self.qywx_key_input.text())
+        cfg.set(cfg.Notice_QYWX_status, self.qywx_status_switch.isChecked())
 
     def add_dingtalk_fields(self):
         """添加钉钉相关的输入框"""
@@ -303,6 +313,23 @@ class NoticeType(QDialog):
         self.main_layout.addRow(wxpusher_spt_title, self.wxpusher_spt_input)
         self.main_layout.addRow(wxpusher_status_title, self.wxpusher_status_switch)
 
+    def add_qywx_fields(self):
+        """添加 企业微信机器人 相关的输入框"""
+        qywx_key_title = BodyLabel(self)
+        qywx_status_title = BodyLabel(self)
+
+        self.qywx_key_input = PasswordLineEdit(self)
+        self.qywx_status_switch = SwitchButton(self)
+
+        qywx_key_title.setText(self.tr("QYWXbot Key:"))
+        qywx_status_title.setText(self.tr("QYWXbot Status:"))
+
+        self.qywx_key_input.setText(cfg.get(cfg.Notice_QYWX_key))
+        self.qywx_status_switch.setChecked(cfg.get(cfg.Notice_QYWX_status))
+
+        self.main_layout.addRow(qywx_key_title, self.qywx_key_input)
+        self.main_layout.addRow(qywx_status_title, self.qywx_status_switch)
+
     def on_ok(self):
         self.save_noticetype()
         logger.info(f"保存{self.notice_type}设置")
@@ -344,6 +371,7 @@ class NoticeButtonSettingCard(SettingCard):
             "Qmsg": cfg.Notice_Qmsg_status,
             "SMTP": cfg.Notice_SMTP_status,
             "WxPusher": cfg.Notice_WxPusher_status,
+            "QYWX": cfg.Notice_QYWX_status,
         }
 
         if self.notice_type in notification_types:

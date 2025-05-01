@@ -186,6 +186,36 @@ class WxPusher:
         else:
             return True
 
+class QYWX:
+    def msg(self, msg_dict: dict) -> dict:
+        sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+        msg_text = f"{sendtime}: {msg_dict["text"]}"
+        msg = {
+            "msgtype": "text",
+            "text": {
+                "content": msg_dict["title"] + msg_text
+            }
+        }
+        return msg
+
+    def send(self, msg_type: dict) -> bool:
+        QYWX_KEY = cfg.get(cfg.Notice_QYWX_key)
+        url = f"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={QYWX_KEY}"
+        msg = self.msg(msg_type)
+        try:
+            response = requests.post(url=url, json=msg)
+            status_code = response.json()["errcode"]
+        except Exception as e:
+            logger.error(f"企业微信机器人消息 发送失败 {e}")
+            return False
+
+        if status_code != 0:
+            logger.error(f"企业微信机器人消息 发送失败 {response.json()}")
+            return False
+
+        else:
+            return True
+
 
 def dingtalk_send(
     msg_text: dict = {"title": "Test", "text": "Test"}, status: bool = False
@@ -303,4 +333,22 @@ def WxPusher_send(
 
     else:
         logger.info(f"WxPusher 未启用")
+        return False
+
+def QYWX_send(
+    msg_dict: str = {"title": "Test", "text": "Test"}, status: bool = False
+) -> bool:
+    if status:
+        status = QYWX().send(msg_dict)
+        if status:
+            logger.info(f"企业微信机器人消息 发送成功")
+            signalBus.Notice_msg.emit(f"QYWX success")
+            return True
+        else:
+            cfg.set(cfg.Notice_QYWX_status, False)
+            signalBus.Notice_msg.emit(f"QYWX failed")
+            return False
+
+    else:
+        logger.info(f"企业微信机器人消息 未启用")
         return False
