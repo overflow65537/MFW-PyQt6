@@ -15,7 +15,18 @@ def clean_build():
 # 创建应用包
 def build_app():
     # 配置py2app选项
-    APP = ["main.py"]
+    APP = [{
+        'script': 'main.py',
+        'plist': {
+            'PyRuntimeLocations': [
+                '@executable_path/../Frameworks/libpython3.12.dylib',  # 嵌入式Python路径
+                '/usr/local/bin/python3',  # Homebrew安装路径
+                '/Library/Frameworks/Python.framework/Versions/3.12/Python'  # 官方Python安装路径
+            ],
+            'CFBundleSupportedPlatforms': ['MacOSX'],
+            'LSRequiresNativeExecution': True,
+        }
+    }]
 
     DATA_FILES = [  # 添加此定义
         "MFW_resource",
