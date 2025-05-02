@@ -5,7 +5,7 @@ import sys
 
 
 def write_version_file(platform, architecture, version):
-    version_file_path = os.path.join(".", "build", "main.dist", "config", "version.txt")
+    version_file_path = os.path.join(".", "build", "main.dist", "dist", "config", "version.txt")
     with open(version_file_path, "w") as version_file:
         version_file.write(f"{platform} {architecture} {version} v0.0.0.1\n")
         print(f"[INFO] Version file generated at: {version_file_path}")
@@ -106,23 +106,38 @@ else:
         os.path.join(main_dist_path, "MFW"),
     )
 print(f"[SUCCESS] Executable renamed")
-#复制资源文件
+# 创建dist子目录
+dist_path = os.path.join(main_dist_path, 'dist')
+os.makedirs(dist_path, exist_ok=True)
+
+# 移动依赖文件到dist目录
+for folder in ['maa', 'MaaAgentBinary', 'MFW_resource', 'dll', 'config', 'updater.dist']:
+    src = os.path.join(main_dist_path, folder)
+    if os.path.exists(src):
+        shutil.move(src, os.path.join(dist_path, folder))
+
+# 复制资源文件
 shutil.copytree(
     os.path.join(".", "MFW_resource"),
-    os.path.join(".", "build", "main.dist", "MFW_resource"),
-    dirs_exist_ok=True, 
+    os.path.join(dist_path, "MFW_resource"),
+    dirs_exist_ok=True,
 )
 #复制dll文件
 shutil.copytree(
     os.path.join(".", "dll"),
-    os.path.join(".", "build", "main.dist"),
-    dirs_exist_ok=True, 
+    os.path.join(dist_path, "dll"),
+    dirs_exist_ok=True,
 )
 # 写入版本信息
 write_version_file(platform, architecture, version)
-# 复制updater.bin
+
+# 移动配置文件到dist目录
+config_src = os.path.join(main_dist_path, 'config')
+if os.path.exists(config_src):
+    shutil.move(config_src, os.path.join(dist_path, 'config'))
+# 复制updater.bin到dist目录
 shutil.copytree(
-    os.path.join(".","build", "updater.dist" ),
-    os.path.join(".","build", "main.dist"),
+    os.path.join(".","build", "updater.dist"),
+    os.path.join(dist_path),
     dirs_exist_ok=True,
 )

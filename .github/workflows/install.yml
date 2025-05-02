@@ -110,7 +110,9 @@ jobs:
           windows-console-mode: disable
           windows-icon-from-ico: ./MFW_resource/icon/logo.ico
           linux-icon: ./MFW_resource/icon/logo.ico
-          
+          macos-signed-app-name: "com.overflow65537.MFW"
+          macos-create-app-bundle: true
+
       - name: Install Dependencies
         run: |
           python build_nuitka.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
