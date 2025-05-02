@@ -16,7 +16,6 @@ def clean_build():
 def build_app():
     OPTIONS = {
         "argv_emulation": True,
-        "arch": "universal2",
         "plist": {
             "CFBundleName": "MFW",
             "CFBundleDisplayName": "MFW",
@@ -29,26 +28,22 @@ def build_app():
                 "@executable_path/../Frameworks/Python.framework/Versions/Current/Python",
             ],
             "LSArchitecturePriority": ["arm64", "x86_64"],
+            "LSRequiresNativeExecution": True
         },
-        "frameworks": ["/Library/Frameworks/Python.framework"],
+        "frameworks": ["Python.framework"], 
         "includes": [
             "PyQt6",
             "maa",
-            "python3.12",  # 显式包含 Python 解释器
-            "site",  # 包含 Python 站点模块
+            "site"
         ],
-        "packages": ["os", "sys", "encodings", "sqlite3"],  # 基础编码模块  # 数据库支持
+        "packages": ["os", "sys", "encodings", "sqlite3"],
         "resources": [
             "MFW_resource",
             "config",
-            "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12",  # 添加系统级库路径
         ],
         "excludes": ["tkinter"],
-        "semi_standalone": True,
-        "use_pythonpath": True,
-        "no_strip": False,
-        "optimize": 0,
-        "use_2to3": False,
+        "strip": True,
+        "use_faulthandler": False
     }
 
     APP = [
@@ -56,12 +51,8 @@ def build_app():
             "script": "main.py",
             "plist": {
                 "PyRuntimeLocations": [
-                    "@executable_path/../Frameworks/libpython3.12.dylib",  # 嵌入式Python路径
-                    "/usr/local/bin/python3",  # Homebrew安装路径
-                    "/Library/Frameworks/Python.framework/Versions/3.12/Python",  # 官方Python安装路径
+                    "@executable_path/../Frameworks/Python.framework/Versions/Current/Python",
                 ],
-                "CFBundleSupportedPlatforms": ["MacOSX"],
-                "LSRequiresNativeExecution": True,
             },
         }
     ]
