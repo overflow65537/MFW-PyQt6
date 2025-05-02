@@ -43,9 +43,6 @@ def build_app():
             "config",
             "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12",  # 添加系统级库路径
         ],
-        "runtime_library_dirs": [
-            "@executable_path/../Frameworks/Python.framework/Versions/3.12/lib"  # 运行时库路径
-        ],
         "excludes": ["tkinter"],
         "semi_standalone": True,
         "use_pythonpath": True,
