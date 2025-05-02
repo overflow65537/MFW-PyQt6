@@ -55,7 +55,7 @@ jobs:
     outputs:
       tag: ${{ steps.set_tag.outputs.tag }}
       is_release: ${{ steps.set_tag.outputs.is_release }}
-      
+
   nuitka:
     needs: meta
     name: ${{ matrix.runs-on }} (${{ matrix.platform }})
@@ -87,23 +87,26 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
+
       - name: updater build
         uses: Nuitka/Nuitka-Action@main
         with:
           nuitka-version: main
           script-name: updater.py
           mode: standalone
+
       - name: Qt GUI with Pyqt6
         uses: Nuitka/Nuitka-Action@main
         with:
           nuitka-version: main
           script-name: main.py
           mode: standalone
-          enable-plugins: pyqt6
+          enable-plugins: pyside6
           windows-console-mode: disable
           windows-icon-from-ico: ./MFW_resource/icon/logo.ico
           linux-icon: ./MFW_resource/icon/logo.ico
