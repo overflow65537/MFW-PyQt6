@@ -48,7 +48,6 @@ def build_app():
         "use_pythonpath": True,
         "no_strip": False,
         "optimize": 0,
-        "compatible_arch": "arm64,x86_64",
         "use_2to3": False,
     }
 
