@@ -7,7 +7,7 @@ os.chdir(os.path.dirname(sys.executable) if getattr(sys, 'frozen', False)else os
 import argparse
 if not os.path.exists("main.py"):
     os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
-import maa
+import maa.context
 from qasync import QEventLoop
 from qfluentwidgets import ConfigItem
 from PySide6.QtCore import Qt, QTranslator, QTimer
