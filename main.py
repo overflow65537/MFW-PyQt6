@@ -10,8 +10,8 @@ if not os.path.exists("main.py"):
 import maa
 from qasync import QEventLoop
 from qfluentwidgets import ConfigItem
-from PyQt6.QtCore import Qt, QTranslator, QTimer
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtCore import Qt, QTranslator, QTimer
+from PySide6.QtWidgets import QApplication
 from qfluentwidgets import FluentTranslator
 
 from app.common.config import cfg
@@ -21,28 +21,8 @@ from app.common.config import Language
 from app.common.signal_bus import signalBus
 from app.utils.tool import show_error_message
 from app.utils.check_utils import check
-
-# 必须在创建QApplication之前设置
-if sys.platform == "darwin":
-    os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = os.path.join(
-        sys._MEIPASS, 'PyQt6', 'Qt6', 'plugins'
-    )
-    QCoreApplication.addLibraryPath(os.path.join(
-        sys._MEIPASS, 'PyQt6', 'Qt6', 'plugins'
-    ))
-    QLibraryInfo.setPaths()
-
     
 def main(resource: str, config: str, directly: bool, DEV: bool):
-    # 添加Qt环境初始化
-    if getattr(sys, 'frozen', False):
-        # 打包后运行时
-        base_path = sys._MEIPASS
-        os.environ['QT_PLUGIN_PATH'] = os.path.join(base_path, 'PyQt6', 'Qt6', 'plugins')
-    else:
-        # 开发时运行时
-        base_path = os.path.dirname(os.path.abspath(__file__))
-    
     check(resource, config, directly, DEV)
 
     # enable dpi scale

@@ -1,10 +1,10 @@
 import os
 from typing import Union
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QIcon
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 from qfluentwidgets import (
     FluentIconBase,
-    pyqtSignal,
+    Signal,
     SwitchButton,
     IndicatorPosition,
     SettingCard,
@@ -16,7 +16,7 @@ from ..utils.logger import logger
 class SwitchSettingCardCustom(SettingCard):
     """自定义切换设置卡片"""
 
-    checkedChanged = pyqtSignal(bool)
+    checkedChanged = Signal(bool)
 
     def __init__(
         self,

@@ -1,6 +1,6 @@
 import os
 from typing import Union
-from PyQt6.QtGui import QIcon, QIntValidator
+from PySide6.QtGui import QIcon, QIntValidator
 from qfluentwidgets import (
     SettingCard,
     FluentIconBase,

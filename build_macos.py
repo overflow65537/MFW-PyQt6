@@ -62,7 +62,7 @@ def build_app():
         options={"py2app": OPTIONS},
         setup_requires=["py2app>=0.28.6"],
         python_requires=">=3.10",
-        script_args=["py2app"],
+        script_args=["py2app", "--arch=x86_64,arm64"],
     )
 
 
@@ -95,6 +95,10 @@ def create_dmg():
 
     # 定义路径变量
     src_app = os.path.join("dist", "MFW.app")
+    # 重命名应用包
+    final_app = os.path.join("dist", "MFW.app")
+    if os.path.exists(src_app):
+        shutil.move(src_app, final_app)
     updater_src = os.path.join("dist", "MFWUpdater.app")
 
     # 修改后的复制逻辑
