@@ -71,17 +71,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
-            platform: linux
-            arch: x86_64
-            
-          - os: ubuntu-latest
-            platform: linux
-            arch: arm64
-            
+          # 合并 macOS 架构配置
           - os: macos-latest
-            platform: macos       
-            arch: x86_64
+            platform: macos
+            arch: universal2  # 替换原有的 x86_64 和 arm64
          
           - os: macos-latest
             platform: macos
@@ -115,12 +108,15 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install dependencies (macOS x86_64)
-        if: matrix.os == 'macos-latest' && matrix.arch == 'x86_64'
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos-latest'
         run: |
-          arch -x86_64 python -m pip install --upgrade pip
-          arch -x86_64 pip install pyinstaller
-          arch -x86_64 pip install -r./requirements.txt
+          export ARCHFLAGS="-arch x86_64 -arch arm64"
+          export PIP_IGNORE_INSTALLED=0
+          python -m pip install --upgrade --force-reinstall pip
+          pip install --force-reinstall pyinstaller
+          pip install --force-reinstall -r requirements.txt
+          pip install --force-reinstall cffi  
 
       - name: Install dependencies (other)
         if: matrix.os != 'macos-latest' || matrix.arch != 'x86_64'
