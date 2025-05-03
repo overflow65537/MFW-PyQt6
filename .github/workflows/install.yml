@@ -108,7 +108,6 @@ jobs:
       - name: Install universal2 dependencies
         if: matrix.os == 'macos-latest'
         run: |
-          # 安装conda环境来支持universal2
           conda create -n py312-universal python=3.12
           conda activate py312-universal
           
