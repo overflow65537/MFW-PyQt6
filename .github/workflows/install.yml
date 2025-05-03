@@ -81,8 +81,12 @@ jobs:
             
           - os: macos-latest
             platform: macos       
-            arch: universal2  # 合并为单个通用架构
+            arch: x86_64
          
+          - os: macos-latest
+            platform: macos
+            arch: arm64
+            
           - os: windows-latest
             platform: win
             arch: x86_64
@@ -98,45 +102,12 @@ jobs:
         with:
           submodules: true
 
-      - name: Set up Python (macOS)
-        if: matrix.os == 'macos-latest'
+      - name: Set up Python (macOS x86_64)
+        if: matrix.os == 'macos-latest' && matrix.arch == 'x86_64'
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
-          architecture: 'x64'  # 必须使用x64架构安装
-
-      - name: Install conda
-        if: matrix.os == 'macos-latest'
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          miniconda-version: "latest"
-          auto-update-conda: true
-          python-version: "3.12"
-          channels: conda-forge
-
-      - name: Create universal2 environment
-        if: matrix.os == 'macos-latest'
-        shell: bash -l {0}
-        run: |
-          unset CONDA_SUBDIR
-          
-          conda create -n py312-universal python=3.12 -c conda-forge
-          conda activate py312-universal
-          
-          # 重新启用universal2架构
-          conda config --env --set subdir osx-universal2
-          conda env config vars set CONDA_SUBDIR=osx-universal2
-          
-          pip install pyinstaller==6.2.0
-          pip install -r requirements.txt
-
-      - name: Build universal2
-        if: matrix.os == 'macos-latest'
-        shell: bash -l {0}
-        run: |
-          conda activate py312-universal
-          python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
-          pyinstaller --target-arch universal2 --clean
+          architecture: 'x64' 
 
       - name: Set up Python (other)
         if: matrix.os != 'macos-latest' || matrix.arch != 'x86_64'
@@ -144,6 +115,12 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install dependencies (macOS x86_64)
+        if: matrix.os == 'macos-latest' && matrix.arch == 'x86_64'
+        run: |
+          arch -x86_64 python -m pip install --upgrade pip
+          arch -x86_64 pip install pyinstaller
+          arch -x86_64 pip install -r./requirements.txt
 
       - name: Install dependencies (other)
         if: matrix.os != 'macos-latest' || matrix.arch != 'x86_64'
