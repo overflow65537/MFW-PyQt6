@@ -3,10 +3,7 @@ import os
 
 from logging.handlers import TimedRotatingFileHandler
 
-
-# 创建日志目录
-if not os.path.exists("./debug"):
-    os.makedirs("./debug")
+os.makedirs("./debug", exist_ok=True)
 # 获取requests模块的日志记录器
 requests_logger = logging.getLogger("urllib3")
 # 关闭requests模块的日志输出

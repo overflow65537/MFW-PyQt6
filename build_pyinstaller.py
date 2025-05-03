@@ -154,3 +154,11 @@ if os.path.exists(updater_file):
     print(f"Moved {updater_file} to {dst_path}")
 else:
     print(f"File {updater_file} not found.")
+
+if sys.platform == "darwin":
+    for root, dirs, files in os.walk(dst_root):
+        for file in files:
+            if file.endswith(('.dylib', '.so')):
+                file_path = os.path.join(root, file)
+                os.chmod(file_path, 0o755)  # 设置可执行权限
+                print(f"Set execute permission for {file_path}")
