@@ -120,7 +120,7 @@ jobs:
           script-name: main.py
           enable-plugins: pyside6
           macos-signed-app-name: "com.overflow65537.MFW"
-          macos-create-app-bundle: true
+          mode: app
 
       - name: Install Dependencies
         run: |
