@@ -87,32 +87,45 @@ architecture = sys.argv[2]
 version = sys.argv[3]
 # 重命名main至MFW
 # 获取 main.dist 目录路径
-main_dist_path = os.path.join(".", "build", "main.dist")
+dist_path = os.path.join(".", "build", "main.dist")
 
 print(f"[DEBUG] Renaming")
 if platform == "win":
     shutil.move(
-        os.path.join(main_dist_path, "main.exe"),
-        os.path.join(main_dist_path, "MFW.exe"),
+        os.path.join(dist_path, "main.exe"),
+        os.path.join(dist_path, "MFW.exe"),
     )
 elif platform ==  "linux":
     shutil.move(
-        os.path.join(main_dist_path, "main.bin"),
-        os.path.join(main_dist_path, "MFW.bin"),
+        os.path.join(dist_path, "main.bin"),
+        os.path.join(dist_path, "MFW.bin"),
     )
+if platform == "macos":
+    # macOS 的可执行文件位于.app包内
+    src_binary = os.path.join(dist_path, "main.app", "Contents", "MacOS", "main")
+    dest_binary = os.path.join(dist_path, "MFW.app", "Contents", "MacOS", "MFW")
+    
+    # 确保目标目录存在
+    os.makedirs(os.path.dirname(dest_binary), exist_ok=True)
 else:
-    shutil.move(
-        os.path.join(main_dist_path, "main"),
-        os.path.join(main_dist_path, "MFW"),
-    )
+    src_binary = os.path.join(dist_path, "main")
+    dest_binary = os.path.join(dist_path, "MFW")
+
+try:
+    shutil.move(src_binary, dest_binary)
+except FileNotFoundError as e:
+    print(f"Warning: File not found during move: {e}")
+except Exception as e:
+    print(f"Error moving file: {e}")
+    raise
 print(f"[SUCCESS] Executable renamed")
 # 创建dist子目录
-dist_path = os.path.join(main_dist_path, 'dist')
+dist_path = os.path.join(dist_path, 'dist')
 os.makedirs(dist_path, exist_ok=True)
 
 # 移动依赖文件到dist目录
 for folder in ['maa', 'MaaAgentBinary', 'MFW_resource', 'dll', 'config', 'updater.dist']:
-    src = os.path.join(main_dist_path, folder)
+    src = os.path.join(dist_path, folder)
     if os.path.exists(src):
         shutil.move(src, os.path.join(dist_path, folder))
 
@@ -132,7 +145,7 @@ shutil.copytree(
 write_version_file(platform, architecture, version)
 
 # 移动配置文件到dist目录
-config_src = os.path.join(main_dist_path, 'config')
+config_src = os.path.join(dist_path, 'config')
 if os.path.exists(config_src):
     shutil.move(config_src, os.path.join(dist_path, 'config'))
 # 复制updater.bin到dist目录
