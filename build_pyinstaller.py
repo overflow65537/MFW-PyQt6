@@ -72,7 +72,7 @@ win_args = []
 # 添加 macOS 通用二进制支持
 if sys.platform == "darwin":
     if architecture == "x86_64":
-        command += ["--arch=x86_64"]
+        command += ["--target-arch=x86_64"]
     command +=[
         "--osx-bundle-identifier=com.overflow65537.MFW",
     ]
