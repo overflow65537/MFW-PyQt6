@@ -71,9 +71,13 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-latest
+          - os: macos-13
             platform: macos
-            arch: x86_64  
+            arch: x86_64
+
+          - os: macos-13
+            platform: macos
+            arch: arm64
 
           - os: ubuntu-latest
             platform: linux
@@ -98,33 +102,30 @@ jobs:
         with:
           submodules: true
 
-      - name: Set up Python (macOS universal2)
-        if: matrix.os == 'macos-latest'
+      - name: Set up Python (macOS x86_64)
+        if: matrix.os == 'macos-13' && matrix.arch == 'x86_64'
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
           architecture: 'x64' 
 
       - name: Set up Python (other)
-        if: matrix.os != 'macos-latest' 
+        if: matrix.os != 'macos-13'  && matrix.arch != 'x86_64'
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
 
-      - name: Install dependencies (macOS)
-        if: matrix.os == 'macos-latest'
+      - name: Install dependencies (macOS x86_64)
+        if: matrix.os == 'macos-13' && matrix.arch == 'x86_64'
         run: |
-          export ARCHFLAGS="-arch x86_64 -arch arm64"
-          export CC="/usr/bin/clang"
-          export CXX="/usr/bin/clang++"
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade pip
-          python -m pip install --force-reinstall --no-cache-dir pyinstaller 
-          python -m pip install --force-reinstall --no-cache-dir cffi 
-          python -m pip install --force-reinstall --no-cache-dir -r requirements.txt
+          export ARCHFLAGS="-arch x86_64"
+          arch -x86_64 python -m pip install --upgrade pip
+          arch -x86_64 python -m pip install pyinstaller
+          arch -x86_64 python -m pip install -r requirements.txt
+
 
       - name: Install dependencies (other)
-        if: matrix.os != 'macos-latest'
+        if: matrix.os != 'macos-13'  && matrix.arch!= 'x86_64'
         run: |
           python -m pip install --upgrade pip
           python -m pip install pyinstaller

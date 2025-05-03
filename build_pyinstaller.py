@@ -71,10 +71,12 @@ win_args = []
 
 # 添加 macOS 通用二进制支持
 if sys.platform == "darwin":
-    command += [
-        "--target-arch=universal2",
-        "--osx-bundle-identifier=com.overflow65537.MFW"
+    if architecture == "x86_64":
+        command += ["--arch=x86_6"]
+    command +=[
+        "--osx-bundle-identifier=com.overflow65537.MFW",
     ]
+
 
 elif sys.platform == "win32":
     win_args.extend([
