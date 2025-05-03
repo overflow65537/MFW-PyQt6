@@ -69,6 +69,13 @@ command = [
 # 平台特定参数应该集中处理
 win_args = []
 
+# 添加 macOS 通用二进制支持
+if sys.platform == "darwin":
+    command += [
+        "--target-arch=universal2",
+        "--osx-bundle-identifier=com.overflow65537.MFW"
+    ]
+
 # 移除所有macOS相关的代码，只保留Windows部分
 if sys.platform == "win32":
     win_args.extend([

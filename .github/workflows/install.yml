@@ -81,12 +81,8 @@ jobs:
             
           - os: macos-latest
             platform: macos       
-            arch: x86_64
+            arch: universal2  # 合并为单个通用架构
          
-          - os: macos-latest
-            platform: macos
-            arch: arm64
-            
           - os: windows-latest
             platform: win
             arch: x86_64
@@ -102,12 +98,30 @@ jobs:
         with:
           submodules: true
 
-      - name: Set up Python (macOS x86_64)
-        if: matrix.os == 'macos-latest' && matrix.arch == 'x86_64'
+      - name: Set up Python (macOS)
+        if: matrix.os == 'macos-latest'
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
-          architecture: 'x64' 
+          architecture: 'x64'  # 必须使用x64架构安装
+
+      - name: Install universal2 dependencies
+        if: matrix.os == 'macos-latest'
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller==6.2.0
+          python -m pip install -r requirements.txt --target=.python-universal-deps
+          
+          lipo -create -output .venv-universal \
+            $(python -c "import sys; print(sys.base_prefix)") \
+            $(python -c "import sys; print(sys.base_prefix.replace('x86_64', 'arm64'))")
+
+      - name: Build universal2
+        if: matrix.os == 'macos-latest'
+        run: |
+          export PATH=.venv-universal/bin:$PATH
+          python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          pyinstaller --target-arch universal2 --clean
 
       - name: Set up Python (other)
         if: matrix.os != 'macos-latest' || matrix.arch != 'x86_64'
@@ -115,12 +129,6 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install dependencies (macOS x86_64)
-        if: matrix.os == 'macos-latest' && matrix.arch == 'x86_64'
-        run: |
-          arch -x86_64 python -m pip install --upgrade pip
-          arch -x86_64 pip install pyinstaller
-          arch -x86_64 pip install -r./requirements.txt
 
       - name: Install dependencies (other)
         if: matrix.os != 'macos-latest' || matrix.arch != 'x86_64'
