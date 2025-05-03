@@ -76,8 +76,7 @@ if sys.platform == "darwin":
         "--osx-bundle-identifier=com.overflow65537.MFW"
     ]
 
-# 移除所有macOS相关的代码，只保留Windows部分
-if sys.platform == "win32":
+elif sys.platform == "win32":
     win_args.extend([
         "--noconsole",
         "--icon=MFW_resource/icon/logo.ico"
