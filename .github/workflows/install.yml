@@ -135,7 +135,13 @@ jobs:
           python -m pip install pyinstaller
           python -m pip install -r./requirements.txt
 
-      - name: Install
+      - name: Install(macos)
+        if: matrix.os == 'macos-13'
+        run: |
+          sudo python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+        shell: pwsh  
+
+      - name: Install(other)
         run: |
           python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
         shell: pwsh  

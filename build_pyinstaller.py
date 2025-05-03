@@ -160,5 +160,5 @@ if sys.platform == "darwin":
         for file in files:
             if file.endswith(('.dylib', '.so')):
                 file_path = os.path.join(root, file)
-                os.chmod(file_path, 0o755)  # 设置可执行权限
+                os.chmod(file_path, 0o755)
                 print(f"Set execute permission for {file_path}")
