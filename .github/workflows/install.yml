@@ -97,10 +97,6 @@ jobs:
       - name: Build Executable
         run: |
           python build_pyinstaller.py ${{ needs.meta.outputs.tag }}
-
-      - name: Install Dependencies
-        run: |
-          python build_nuitka.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
