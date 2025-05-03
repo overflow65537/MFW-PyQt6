@@ -115,9 +115,11 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           export ARCHFLAGS="-arch x86_64 -arch arm64"
-          python -m pip install --force-reinstall --no-cache-dir 
-          python -m pip install pyinstaller cffi 
-          python -m pip install -r requirements.txt
+          python -m pip install --upgrade pip
+          python -m pip install --force-reinstall --no-cache-dir \
+            pyinstaller \
+            cffi \
+            -r requirements.txt
 
       - name: Install dependencies (other)
         if: matrix.os != 'macos-latest'
