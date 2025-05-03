@@ -118,13 +118,14 @@ jobs:
         if: matrix.os == 'macos-latest'
         shell: bash -l {0}
         run: |
-          export CONDA_SUBDIR=osx-universal2
-          export PYTHON_CONFIGURE_OPTS="--enable-universalsdk --with-universal-archs=universal2"
+          unset CONDA_SUBDIR
           
           conda create -n py312-universal python=3.12 -c conda-forge
           conda activate py312-universal
-
-          conda install -y --force-reinstall python=3.12
+          
+          # 重新启用universal2架构
+          conda config --env --set subdir osx-universal2
+          conda env config vars set CONDA_SUBDIR=osx-universal2
           
           pip install pyinstaller==6.2.0
           pip install -r requirements.txt
