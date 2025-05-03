@@ -108,18 +108,19 @@ jobs:
       - name: Install universal2 dependencies
         if: matrix.os == 'macos-latest'
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install pyinstaller==6.2.0
-          python -m pip install -r requirements.txt --target=.python-universal-deps
+          # 安装conda环境来支持universal2
+          conda create -n py312-universal python=3.12
+          conda activate py312-universal
           
-          lipo -create -output .venv-universal \
-            $(python -c "import sys; print(sys.base_prefix)") \
-            $(python -c "import sys; print(sys.base_prefix.replace('x86_64', 'arm64'))")
+          pip install pyinstaller==6.2.0
+          pip install -r requirements.txt
+          
+          lipo -archs $(python -c "import sys; print(sys.executable)")
 
       - name: Build universal2
         if: matrix.os == 'macos-latest'
         run: |
-          export PATH=.venv-universal/bin:$PATH
+          conda activate py312-universal
           python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
           pyinstaller --target-arch universal2 --clean
 
