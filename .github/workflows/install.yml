@@ -91,36 +91,12 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
+          python -m pip install pyinstaller
           python -m pip install -r requirements.txt
 
-      - name: updater build
-        uses: Nuitka/Nuitka-Action@main
-        with:
-          nuitka-version: main
-          script-name: updater.py
-          mode: standalone
-
-      - name: Qt GUI with Pyqt6
-        if: matrix.platform !='macos'
-        uses: Nuitka/Nuitka-Action@main
-        with:
-          nuitka-version: main
-          script-name: main.py
-          mode: standalone
-          enable-plugins: pyside6
-          windows-console-mode: disable
-          windows-icon-from-ico: ./MFW_resource/icon/logo.ico
-          linux-icon: ./MFW_resource/icon/logo.ico
-
-      - name: Qt GUI with Pyqt6
-        if: matrix.platform == 'macos'
-        uses: Nuitka/Nuitka-Action@main
-        with:
-          nuitka-version: main
-          script-name: main.py
-          enable-plugins: pyside6
-          macos-signed-app-name: "com.overflow65537.MFW"
-          mode: app
+      - name: Build Executable
+        run: |
+          python build_pyinstaller.py ${{ needs.meta.outputs.tag }}
 
       - name: Install Dependencies
         run: |
@@ -129,7 +105,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
-          path: build/main.dist
+          path: dist/MFW
           include-hidden-files: true
 
   release:

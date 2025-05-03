@@ -95,6 +95,12 @@ if os.path.exists(src_bin):
         shutil.move(src, dst)
     # 删除空文件夹
     os.rmdir(src_bin)
+    #在macos中设置dylib权限
+    if sys.platform == "darwin":
+        for item in os.listdir(dst_root):
+            src = os.path.join(dst_root, item)
+            if os.path.isfile(src) and src.endswith(".dylib"):
+                os.chmod(src, 0o755)
 # 确保 dist/MFW/MFW_resource 目录存在并复制
 resource_src = os.path.join(os.getcwd(), "MFW_resource")
 resource_dst = os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource")
@@ -127,6 +133,8 @@ PyInstaller.__main__.run([updater_src, "--name=MFWUpdater", "--onefile", "--clea
 if sys.platform == "win32":
     updater_file = os.path.join("dist", "MFWUpdater.exe")
 elif sys.platform == "linux":
+    updater_file = os.path.join("dist", "MFWUpdater")
+elif sys.platform == "darwin":
     updater_file = os.path.join("dist", "MFWUpdater")
 
 mfw_dir = os.path.join("dist", "MFW")
