@@ -81,7 +81,7 @@ jobs:
             platform: macos
             arch: arm64  
             target_arch: arm64
-            python_arch: auto
+            python_arch: arm64
 
           - os: ubuntu-latest
             platform: linux
@@ -114,7 +114,7 @@ jobs:
           architecture: ${{ matrix.python_arch }}
 
       - name: Set up Python (other)
-        if: matrix.os != 'macos-13'  && matrix.arch != 'x86_64'
+        if: matrix.os != 'macos-13' 
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
@@ -129,7 +129,7 @@ jobs:
           fi
 
       - name: Install dependencies (other)
-        if: matrix.os != 'macos-13' && matrix.arch!= 'x86_64'
+        if: matrix.os != 'macos-13' 
         run: |
           python -m pip install --upgrade pip
           python -m pip install pyinstaller
