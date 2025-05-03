@@ -156,9 +156,14 @@ else:
     print(f"File {updater_file} not found.")
 
 if sys.platform == "darwin":
-    for root, dirs, files in os.walk(dst_root):
-        for file in files:
-            if file.endswith(('.dylib', '.so')):
-                file_path = os.path.join(root, file)
-                os.chmod(file_path, 0o755)
-                print(f"Set execute permission for {file_path}")
+    # 确保目录已存在
+    if os.path.exists(dst_root):
+        for root, dirs, files in os.walk(dst_root):
+            for file in files:
+                if file.endswith(('.dylib', '.so')):
+                    file_path = os.path.join(root, file)
+                    if os.path.exists(file_path):  # 添加存在性检查
+                        os.chmod(file_path, 0o755)
+                        print(f"Set execute permission for {file_path}")
+                    else:
+                        print(f"Warning: File not found - {file_path}")
