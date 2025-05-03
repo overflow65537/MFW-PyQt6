@@ -105,19 +105,28 @@ jobs:
           python-version: '3.12'
           architecture: 'x64'  # 必须使用x64架构安装
 
-      - name: Install universal2 dependencies
+      - name: Install conda
         if: matrix.os == 'macos-latest'
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniconda-version: "latest"
+          auto-update-conda: true
+          python-version: "3.12"
+          channels: conda-forge
+
+      - name: Create universal2 environment
+        if: matrix.os == 'macos-latest'
+        shell: bash -l {0}
         run: |
-          conda create -n py312-universal python=3.12
+          conda create -n py312-universal python=3.12 -c conda-forge
           conda activate py312-universal
-          
+          conda config --env --set subdir osx-universal2
           pip install pyinstaller==6.2.0
           pip install -r requirements.txt
-          
-          lipo -archs $(python -c "import sys; print(sys.executable)")
 
       - name: Build universal2
         if: matrix.os == 'macos-latest'
+        shell: bash -l {0}
         run: |
           conda activate py312-universal
           python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
