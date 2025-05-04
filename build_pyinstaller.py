@@ -80,15 +80,17 @@ elif sys.platform == "win32":
         "--noconsole",
         "--icon=MFW_resource/icon/logo.ico",
         # Windows 运行时依赖
-        f"--add-binary={os.path.join('DLL', 'msvcp140.dll')}:.",
-        f"--add-binary={os.path.join('DLL', 'vcruntime140.dll')}:.",
+        f"--add-binary={os.path.join('DLL', 'msvcp140.dll')}{os.pathsep}.",
+        f"--add-binary={os.path.join('DLL', 'vcruntime140.dll')}{os.pathsep}.",
     ]
 
 # === 二进制文件处理 ===
-# 收集 MAA 的本地库文件（.dylib/.so/.dll）
+# 收集 MAA 的本地库文件
 bin_dir = os.path.join(maa_path, "bin")
-bin_files = [f for f in os.listdir(bin_dir) if f.endswith((".dylib", ".so", ".dll"))]
-base_command += [f"--add-binary={os.path.join(bin_dir, f)}:." for f in bin_files]
+bin_files = []
+for f in os.listdir(bin_dir):
+    bin_files.append(f)
+    base_command += [f"--add-binary={os.path.join(bin_dir, f)}{os.pathsep}."]
 
 
 # === 开始构建 ===
