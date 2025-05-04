@@ -107,12 +107,12 @@ if os.path.exists(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "
 
 # 移动 MAA 的本地库文件到 dist/MFW 目录
 dst_root = os.path.join(os.getcwd(), "dist", "MFW")
-print(f"[DEBUG] Moving MAA binary files to {dst_root}")
+print(f"[DEBUG] Moving MAA binary files to {bin_files}")
 for file in bin_files:
     src = os.path.join(os.getcwd(), "dist", "MFW", "_internal", file)
     dst = os.path.join(dst_root, file)
     if os.path.exists(src):
-        shutil.move(src, dst)
+        os.rename(src, dst)
         print(f"Moved {src} to {dst}")
 
 
