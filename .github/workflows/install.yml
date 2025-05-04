@@ -74,26 +74,32 @@ jobs:
           - os: macos-13
             platform: macos
             arch: x64 
+            piparch: x86_64
 
           - os: macos-13
             platform: macos
             arch: arm64  
+            piparch: arm64
 
           - os: ubuntu-latest
             platform: linux
             arch: x64
+            piparch: x86_64
 
           - os: ubuntu-latest
             platform: linux
             arch: arm64
+            piparch: arm64
             
           - os: windows-latest
             platform: win
             arch: x64
+            piparch: x86_64
             
           - os: windows-latest
             platform: win
             arch: arm64
+            piparch: arm64
 
       fail-fast: false
 
@@ -110,7 +116,7 @@ jobs:
 
       - name: Install dependencies 
         run: |
-          arch ${{ matrix.arch }} python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+          arch ${{ matrix.piparch }} python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
 
       - name: Install(macos)
         run: |
