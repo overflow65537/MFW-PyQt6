@@ -66,7 +66,7 @@ jobs:
 
   Nuitka:
     needs: meta
-    name: Nuitkar Build (${{ matrix.platform }})
+    name: ${{ matrix.platform }} (${{ matrix.arch }}))
     runs-on: ${{ matrix.runs-on }}
     strategy:
       matrix:
@@ -77,7 +77,7 @@ jobs:
 
           - platform: linux
             runs-on: ubuntu-latest
-            arch: aarch64
+            arch: arm64
 
           - platform: win
             runs-on: windows-latest
@@ -85,7 +85,7 @@ jobs:
 
           - platform: win
             runs-on: windows-latest
-            arch: aarch64
+            arch: arm64
 
           - platform: macos
             runs-on: macos-latest
@@ -93,7 +93,7 @@ jobs:
 
           - platform: macos
             runs-on: macos-latest
-            arch: aarch64
+            arch: arm64
 
       fail-fast: false
 
@@ -149,53 +149,10 @@ jobs:
           with:
             name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
             path: "build/main.dist"
-  
-  pyinstaller:
-    needs: meta
-    name: pyinstaller Build (${{ matrix.platform }})
-    runs-on: ${{ matrix.runs-on }}
-    strategy:
-      matrix:
-        include: 
-          - platform: macos
-            runs-on: macos-latest
-            arch: x86_64
-          - platform: macos
-            runs-on: macos-latest
-            arch: aarch64
-      fail-fast: false
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller
-          pip install -r ./requirements.txt
-
-      - name: Install
-        run: |
-          python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
-        shell: pwsh  
-        
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
-          path: "dist/MFW"
-
 
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
-    needs: [meta, pyinstaller,changelog]
+    needs: [meta, Nuitka,changelog]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
