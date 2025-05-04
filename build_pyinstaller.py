@@ -15,103 +15,91 @@ def write_version_file(platform, architecture, version):
 
 
 # 获取参数
-print(sys.argv)
-print(len(sys.argv))
-if len(sys.argv) != 4:
+# === 构建参数处理 ===
+print("[INFO] 接收命令行参数:", sys.argv)
+if len(sys.argv) != 4:  # 参数校验：平台/架构/版本号
     sys.argv = [sys.argv[0], "unknown", "unknown", "unknown"]
-
 platform = sys.argv[1]
 architecture = sys.argv[2]
 version = sys.argv[3]
 
-if os.path.exists("dist"):
-    shutil.rmtree("dist")
-# 获取 site-packages 目录列表
-site_packages_paths = site.getsitepackages()
 
-# 查找包含 maa/bin 的路径
-maa_path = None
-for path in site_packages_paths:
-    potential_path = os.path.join(path, "maa")
-    if os.path.exists(potential_path):
-        maa_path = potential_path
-        break
-
-if maa_path is None:
-    raise FileNotFoundError("not found maa")
-
-# 查找包含 MaaAgentBinary 的路径
-MaaAgentBinary_path = None
-for path in site_packages_paths:
-    potential_path = os.path.join(path, "MaaAgentBinary")
-    if os.path.exists(potential_path):
-        MaaAgentBinary_path = potential_path
-        break
-
-if MaaAgentBinary_path is None:
-    raise FileNotFoundError("not found MaaAgentBinary")
-
-# 查找 darkdetect 路径
-darkdetect_path = None
-for path in site_packages_paths:
-    potential_path = os.path.join(path, "darkdetect")
-    if os.path.exists(potential_path):
-        darkdetect_path = potential_path
-        break
-
-if darkdetect_path is None:
-    raise FileNotFoundError("darkdetect binaries not found")
+# === 依赖包路径发现 ===
+def locate_package(package_name):
+    """在 site-packages 中定位指定包的安装路径"""
+    for path in site.getsitepackages():
+        candidate = os.path.join(path, package_name)
+        if os.path.exists(candidate):
+            return candidate
+    raise FileNotFoundError(f"未找到 {package_name} 包")
 
 
-# PyInstaller 命令参数
-command = [
+try:
+    # 核心依赖包定位
+    maa_path = locate_package("maa")  # MAA 框架核心库
+    agent_path = locate_package("MaaAgentBinary")  # 设备连接组件
+    darkdetect_path = locate_package("darkdetect")  # 系统主题检测库
+except FileNotFoundError as e:
+    print(f"[FATAL] 依赖缺失: {str(e)}")
+    sys.exit(1)
+
+# === PyInstaller 配置生成 ===
+base_command = [
     "main.py",
     "--name=MFW",
-    f"--add-data={maa_path}{os.pathsep}MaaAgentBinary",
-    f"--add-data={MaaAgentBinary_path}{os.pathsep}MaaAgentBinary",
-    f"--add-data={darkdetect_path}{os.pathsep}darkdetect",  
     "--clean",
-    "--collect-data=darkdetect", 
-    "--collect-data=maa", 
+    "--noconfirm",  # 禁用确认提示
+    # 资源包含规则（格式：源路径{分隔符}目标目录）
+    f"--add-data={maa_path}{os.pathsep}maa",
+    f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
+    f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
+    # 自动收集包数据
+    "--collect-data=darkdetect",
+    "--collect-data=maa",
     "--collect-data=MaaAgentBinary",
-    "--hidden-import=darkdetect", 
+    # 隐式依赖声明
+    "--hidden-import=darkdetect",
     "--hidden-import=maa",
     "--hidden-import=MaaAgentBinary",
 ]
-maa_bin = []
-src_bin = os.path.join(os.getcwd(), maa_path, "bin")
-for file in os.listdir(src_bin):
-    if file.endswith(".dylib") or file.endswith(".so") or file.endswith(".dll"):
-        maa_bin.append(file)
-        command += [f"--add-binary={os.path.join(src_bin, file)}:."]
 
-# 添加 macOS 通用二进制支持
+# === 平台特定配置 ===
+print(f"[DEBUG] 平台: {sys.platform}")
+
 if sys.platform == "darwin":
-    if architecture == "x86_64":
-        command += ["--target-arch=x86_64"]
-    command += [
+    base_command += [
         "--osx-bundle-identifier=com.overflow65537.MFW",
+        "--target-arch=x86_64" if architecture == "x86_64" else "",
     ]
-
 elif sys.platform == "win32":
-    command += [
+    base_command += [
         "--noconsole",
         "--icon=MFW_resource/icon/logo.ico",
-        f"--add-binary={os.path.join(os.getcwd(), 'DLL', 'msvcp140.dll')}:.",
-        f"--add-binary={os.path.join(os.getcwd(), 'DLL','vcruntime140.dll')}:.",
+        # Windows 运行时依赖
+        f"--add-binary={os.path.join('DLL', 'msvcp140.dll')}:.",
+        f"--add-binary={os.path.join('DLL', 'vcruntime140.dll')}:.",
     ]
 
-# 运行 PyInstaller
-print(f"Running PyInstaller with command: {command}\n")
-PyInstaller.__main__.run(command)
+# === 二进制文件处理 ===
+# 收集 MAA 的本地库文件（.dylib/.so/.dll）
+bin_dir = os.path.join(maa_path, "bin")
+bin_files = [f for f in os.listdir(bin_dir) if f.endswith((".dylib", ".so", ".dll"))]
+base_command += [f"--add-binary={os.path.join(bin_dir, f)}:." for f in bin_files]
 
-#删除dist/MFW/_internal/maa/bin目录,内部有文件
+
+# === 开始构建 ===
+print("[INFO] 开始构建 MFW")
+PyInstaller.__main__.run(base_command)
+
+# === 构建后处理 ===
+
+# 删除maa的bin目录
 if os.path.exists(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")):
     shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin"))
-dst_root = os.path.join(os.getcwd(), "dist", "MFW")
 
-# 移动os.path.join(os.getcwd(),"dist", "MFW", "_internal", "maa", "bin")内的文件到根目录
-for file in maa_bin:
+# 移动 MAA 的本地库文件到 dist/MFW 目录
+dst_root = os.path.join(os.getcwd(), "dist", "MFW")
+for file in bin_files:
     src = os.path.join(os.getcwd(), "dist", "MFW", "_internal", file)
     dst = os.path.join(dst_root, file)
     if os.path.exists(src):
@@ -119,14 +107,14 @@ for file in maa_bin:
         print(f"Moved {src} to {dst}")
 
 
-# 确保 dist/MFW/MFW_resource 目录存在并复制
+# 移动资源文件
 resource_src = os.path.join(os.getcwd(), "MFW_resource")
 resource_dst = os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource")
 os.makedirs(resource_dst, exist_ok=True)
 shutil.copytree(resource_src, resource_dst, dirs_exist_ok=True)
 
 
-# 确保 dist/MFW/config/emulator.json 文件存在并复制
+# 移动配置文件
 emulator_json_src = os.path.join(os.getcwd(), "config", "emulator.json")
 emulator_json_dst = os.path.join(os.getcwd(), "dist", "MFW", "config", "emulator.json")
 os.makedirs(os.path.dirname(emulator_json_dst), exist_ok=True)
@@ -136,7 +124,7 @@ shutil.copy(emulator_json_src, emulator_json_dst)
 # 写入版本信息
 write_version_file(platform, architecture, version)
 
-# 更新器
+# === 构建updater ===
 updater_src = os.path.join(os.getcwd(), "updater.py")
 PyInstaller.__main__.run([updater_src, "--name=MFWUpdater", "--onefile", "--clean"])
 
@@ -153,5 +141,3 @@ if os.path.exists(updater_file):
     dst_path = os.path.join(mfw_path, os.path.basename(updater_file))
     shutil.move(updater_file, dst_path)
     print(f"Moved {updater_file} to {dst_path}")
-else:
-    print(f"File {updater_file} not found.")
