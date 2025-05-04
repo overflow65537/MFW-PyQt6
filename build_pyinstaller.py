@@ -57,14 +57,30 @@ if maa_bin_path2 is None:
 # 构建 --add-data 参数
 add_data_param2 = f"{maa_bin_path2}{os.pathsep}MaaAgentBinary"
 
-# 在已有的 --add-data 参数后添加新的数据收集
+# 在现有 MaaAgentBinary 收集代码后添加以下内容
+# 查找 darkdetect 二进制路径
+darkdetect_path = None
+for path in site_packages_paths:
+    potential_path = os.path.join(path, 'darkdetect')
+    if os.path.exists(potential_path):
+        darkdetect_path = potential_path
+        break
 
+if darkdetect_path is None:
+    raise FileNotFoundError("darkdetect binaries not found")
+
+add_data_param3 = f"{darkdetect_path}{os.pathsep}darkdetect"
+
+# 修改 PyInstaller 命令参数
 command = [
     "main.py",
     "--name=MFW",
     f"--add-data={add_data_param}",
     f"--add-data={add_data_param2}",
+    f"--add-data={add_data_param3}",  # 新增 darkdetect 二进制
     "--clean",
+    "--collect-data=darkdetect",  # 确保收集所有数据文件
+    "--hidden-import=darkdetect"  # 显式声明隐藏依赖
 ]
 
 # 平台特定参数应该集中处理
@@ -72,6 +88,7 @@ win_args = []
 
 # 添加 macOS 通用二进制支持
 if sys.platform == "darwin":
+    maa_dylib = []
     if architecture == "x86_64":
         command += ["--target-arch=x86_64"]
     command += [
@@ -80,6 +97,7 @@ if sys.platform == "darwin":
     src_bin = os.path.join(os.getcwd(), maa_bin_path, "bin")
     for file in os.listdir(src_bin):
         if file.endswith(".dylib"):
+            maa_dylib.append(file)
             command += [f"--add-binary={os.path.join(src_bin, file)}:."]
 
 
@@ -91,20 +109,38 @@ elif sys.platform == "win32":
 print(f"Running PyInstaller with command: {command}\n")
 PyInstaller.__main__.run(command)
 # 移动maa/bin至根目录
-src_bin = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")
-dst_root = os.path.join(os.getcwd(), "dist", "MFW")
-if os.path.exists(src_bin):
-    for item in os.listdir(src_bin):
-        src = os.path.join(src_bin, item)
-        dst = os.path.join(dst_root, item)
-        if os.path.exists(dst):
-            if os.path.isdir(dst):
-                shutil.rmtree(dst)
-            else:
-                os.remove(dst)
-        shutil.move(src, dst)
-    # 删除空文件夹
-    os.rmdir(src_bin)
+if sys.platform == "darwin":
+    #将maa_dylib内的文件从dist/MFW/maa/bin移动到dist/MFW目录下
+    src_bin = os.path.join(os.getcwd(), "dist", "MFW", "maa", "bin")
+    dst_root = os.path.join(os.getcwd(), "dist", "MFW")
+    if os.path.exists(src_bin):
+        for item in os.listdir(src_bin):
+            src = os.path.join(src_bin, item)
+            dst = os.path.join(dst_root, item)
+            if os.path.exists(dst):
+                if os.path.isdir(dst):
+                    shutil.rmtree(dst)
+                else:
+                    os.remove(dst)
+            shutil.move(src, dst)
+        # 删除空文件夹
+        os.rmdir(src_bin)
+
+else:
+    src_bin = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")
+    dst_root = os.path.join(os.getcwd(), "dist", "MFW")
+    if os.path.exists(src_bin):
+        for item in os.listdir(src_bin):
+            src = os.path.join(src_bin, item)
+            dst = os.path.join(dst_root, item)
+            if os.path.exists(dst):
+                if os.path.isdir(dst):
+                    shutil.rmtree(dst)
+                else:
+                    os.remove(dst)
+            shutil.move(src, dst)
+        # 删除空文件夹
+        os.rmdir(src_bin)
 
 # 确保 dist/MFW/MFW_resource 目录存在并复制
 resource_src = os.path.join(os.getcwd(), "MFW_resource")
