@@ -142,6 +142,7 @@ jobs:
         shell: pwsh  
 
       - name: Install(other)
+        if: matrix.os != 'macos-13'
         run: |
           python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
         shell: pwsh  
