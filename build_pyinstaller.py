@@ -89,6 +89,7 @@ elif sys.platform == "win32":
 bin_dir = os.path.join(maa_path, "bin")
 bin_files = []
 for f in os.listdir(bin_dir):
+    print(f"[DEBUG] Found binary file: {f}")
     bin_files.append(f)
     base_command += [f"--add-binary={os.path.join(bin_dir, f)}{os.pathsep}."]
 
@@ -102,7 +103,7 @@ PyInstaller.__main__.run(base_command)
 
 # 删除maa的bin目录
 if os.path.exists(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")):
-    shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin"))
+    #shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin"))
     pass
 
 # 移动 MAA 的本地库文件到 dist/MFW 目录
