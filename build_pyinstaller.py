@@ -93,6 +93,7 @@ base_command += [f"--add-binary={os.path.join(bin_dir, f)}:." for f in bin_files
 
 # === 开始构建 ===
 print("[INFO] Starting MFW build")
+print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
 
 # === 构建后处理 ===
