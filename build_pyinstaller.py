@@ -13,6 +13,7 @@ def write_version_file(platform, architecture, version):
         version_file.write(f"{platform} {architecture} {version} v0.0.0.1\n")
         print(f"write version file to {version_file_path}")
 
+
 # 获取参数
 print(sys.argv)
 print(len(sys.argv))
@@ -61,7 +62,7 @@ add_data_param2 = f"{maa_bin_path2}{os.pathsep}MaaAgentBinary"
 command = [
     "main.py",
     "--name=MFW",
-    f"--add-data={add_data_param}", 
+    f"--add-data={add_data_param}",
     f"--add-data={add_data_param2}",
     "--clean",
 ]
@@ -73,20 +74,17 @@ win_args = []
 if sys.platform == "darwin":
     if architecture == "x86_64":
         command += ["--target-arch=x86_64"]
-    command +=[
+    command += [
         "--osx-bundle-identifier=com.overflow65537.MFW",
     ]
-    src_bin = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")
+    src_bin = os.path.join(os.getcwd(), maa_bin_path, "bin")
     for file in os.listdir(src_bin):
         if file.endswith(".dylib"):
             command += [f"--add-binary={os.path.join(src_bin, file)}:."]
 
 
 elif sys.platform == "win32":
-    win_args.extend([
-        "--noconsole",
-        "--icon=MFW_resource/icon/logo.ico"
-    ])
+    win_args.extend(["--noconsole", "--icon=MFW_resource/icon/logo.ico"])
     command += win_args
 
 # 运行 PyInstaller
@@ -126,7 +124,6 @@ emulator_json_src = os.path.join(os.getcwd(), "config", "emulator.json")
 emulator_json_dst = os.path.join(os.getcwd(), "dist", "MFW", "config", "emulator.json")
 os.makedirs(os.path.dirname(emulator_json_dst), exist_ok=True)
 shutil.copy(emulator_json_src, emulator_json_dst)
-
 
 
 # 写入版本信息
