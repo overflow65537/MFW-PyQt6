@@ -76,6 +76,10 @@ if sys.platform == "darwin":
     command +=[
         "--osx-bundle-identifier=com.overflow65537.MFW",
     ]
+    src_bin = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")
+    for file in os.listdir(src_bin):
+        if file.endswith(".dylib"):
+            command += [f"--add-binary={os.path.join(src_bin, file)}:."]
 
 
 elif sys.platform == "win32":
@@ -103,12 +107,7 @@ if os.path.exists(src_bin):
         shutil.move(src, dst)
     # 删除空文件夹
     os.rmdir(src_bin)
-    #在macos中设置dylib权限
-    if sys.platform == "darwin":
-        for item in os.listdir(dst_root):
-            src = os.path.join(dst_root, item)
-            if os.path.isfile(src) and src.endswith(".dylib"):
-                os.chmod(src, 0o755)
+
 # 确保 dist/MFW/MFW_resource 目录存在并复制
 resource_src = os.path.join(os.getcwd(), "MFW_resource")
 resource_dst = os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource")
@@ -154,16 +153,3 @@ if os.path.exists(updater_file):
     print(f"Moved {updater_file} to {dst_path}")
 else:
     print(f"File {updater_file} not found.")
-
-if sys.platform == "darwin":
-    # 确保目录已存在
-    if os.path.exists(dst_root):
-        for root, dirs, files in os.walk(dst_root):
-            for file in files:
-                if file.endswith(('.dylib', '.so')):
-                    file_path = os.path.join(root, file)
-                    if os.path.exists(file_path):  # 添加存在性检查
-                        os.chmod(file_path, 0o755)
-                        print(f"Set execute permission for {file_path}")
-                    else:
-                        print(f"Warning: File not found - {file_path}")
