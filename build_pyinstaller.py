@@ -16,7 +16,7 @@ def write_version_file(platform, architecture, version):
 
 # 获取参数
 # === 构建参数处理 ===
-print("[INFO] 接收命令行参数:", sys.argv)
+print("[INFO] Received command line arguments:", sys.argv)
 if len(sys.argv) != 4:  # 参数校验：平台/架构/版本号
     sys.argv = [sys.argv[0], "unknown", "unknown", "unknown"]
 platform = sys.argv[1]
@@ -40,7 +40,7 @@ try:
     agent_path = locate_package("MaaAgentBinary")  # 设备连接组件
     darkdetect_path = locate_package("darkdetect")  # 系统主题检测库
 except FileNotFoundError as e:
-    print(f"[FATAL] 依赖缺失: {str(e)}")
+    print(f"[FATAL] Dependency missing: {str(e)}")
     sys.exit(1)
 
 # === PyInstaller 配置生成 ===
@@ -64,12 +64,16 @@ base_command = [
 ]
 
 # === 平台特定配置 ===
-print(f"[DEBUG] 平台: {sys.platform}")
+print(f"[DEBUG] Platform: {sys.platform}")
 
 if sys.platform == "darwin":
+    if architecture == "x86_64":  # intel芯片
+        base_command += [
+            "--target-arch=x86_64",
+        ]
     base_command += [
         "--osx-bundle-identifier=com.overflow65537.MFW",
-        "--target-arch=x86_64" if architecture == "x86_64" else "",
+        
     ]
 elif sys.platform == "win32":
     base_command += [
@@ -88,7 +92,7 @@ base_command += [f"--add-binary={os.path.join(bin_dir, f)}:." for f in bin_files
 
 
 # === 开始构建 ===
-print("[INFO] 开始构建 MFW")
+print("[INFO] Starting MFW build")
 PyInstaller.__main__.run(base_command)
 
 # === 构建后处理 ===
