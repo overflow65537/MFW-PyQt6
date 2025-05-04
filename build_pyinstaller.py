@@ -10,7 +10,7 @@ def write_version_file(platform, architecture, version):
         os.getcwd(), "dist", "MFW", "config", "version.txt"
     )
     with open(version_file_path, "w") as version_file:
-        version_file.write(f"{platform} {architecture} {version} v0.0.0.1\n")
+        version_file.write(f"{platform} {architecture} {version}\n")
         print(f"write version file to {version_file_path}")
 
 
@@ -30,38 +30,31 @@ if os.path.exists("dist"):
 site_packages_paths = site.getsitepackages()
 
 # 查找包含 maa/bin 的路径
-maa_bin_path = None
+maa_path = None
 for path in site_packages_paths:
     potential_path = os.path.join(path, "maa")
     if os.path.exists(potential_path):
-        maa_bin_path = potential_path
+        maa_path = potential_path
         break
 
-if maa_bin_path is None:
+if maa_path is None:
     raise FileNotFoundError("not found maa")
 
-# 构建 --add-data 参数
-add_data_param = f"{maa_bin_path}{os.pathsep}maa"
-
 # 查找包含 MaaAgentBinary 的路径
-maa_bin_path2 = None
+MaaAgentBinary_path = None
 for path in site_packages_paths:
     potential_path = os.path.join(path, "MaaAgentBinary")
     if os.path.exists(potential_path):
-        maa_bin_path2 = potential_path
+        MaaAgentBinary_path = potential_path
         break
 
-if maa_bin_path2 is None:
+if MaaAgentBinary_path is None:
     raise FileNotFoundError("not found MaaAgentBinary")
 
-# 构建 --add-data 参数
-add_data_param2 = f"{maa_bin_path2}{os.pathsep}MaaAgentBinary"
-
-# 在现有 MaaAgentBinary 收集代码后添加以下内容
-# 查找 darkdetect 二进制路径
+# 查找 darkdetect 路径
 darkdetect_path = None
 for path in site_packages_paths:
-    potential_path = os.path.join(path, 'darkdetect')
+    potential_path = os.path.join(path, "darkdetect")
     if os.path.exists(potential_path):
         darkdetect_path = potential_path
         break
@@ -69,78 +62,62 @@ for path in site_packages_paths:
 if darkdetect_path is None:
     raise FileNotFoundError("darkdetect binaries not found")
 
-add_data_param3 = f"{darkdetect_path}{os.pathsep}darkdetect"
 
-# 修改 PyInstaller 命令参数
+# PyInstaller 命令参数
 command = [
     "main.py",
     "--name=MFW",
-    f"--add-data={add_data_param}",
-    f"--add-data={add_data_param2}",
-    f"--add-data={add_data_param3}",  # 新增 darkdetect 二进制
+    f"--add-data={maa_path}{os.pathsep}MaaAgentBinary",
+    f"--add-data={MaaAgentBinary_path}{os.pathsep}MaaAgentBinary",
+    f"--add-data={darkdetect_path}{os.pathsep}darkdetect",  
     "--clean",
-    "--collect-data=darkdetect",  # 确保收集所有数据文件
-    "--hidden-import=darkdetect"  # 显式声明隐藏依赖
+    "--collect-data=darkdetect", 
+    "--collect-data=maa", 
+    "--collect-data=MaaAgentBinary",
+    "--hidden-import=darkdetect", 
+    "--hidden-import=maa",
+    "--hidden-import=MaaAgentBinary",
 ]
-
-# 平台特定参数应该集中处理
-win_args = []
+maa_bin = []
+src_bin = os.path.join(os.getcwd(), maa_path, "bin")
+for file in os.listdir(src_bin):
+    if file.endswith(".dylib") or file.endswith(".so") or file.endswith(".dll"):
+        maa_bin.append(file)
+        command += [f"--add-binary={os.path.join(src_bin, file)}:."]
 
 # 添加 macOS 通用二进制支持
 if sys.platform == "darwin":
-    maa_dylib = []
     if architecture == "x86_64":
         command += ["--target-arch=x86_64"]
     command += [
         "--osx-bundle-identifier=com.overflow65537.MFW",
     ]
-    src_bin = os.path.join(os.getcwd(), maa_bin_path, "bin")
-    for file in os.listdir(src_bin):
-        if file.endswith(".dylib"):
-            maa_dylib.append(file)
-            command += [f"--add-binary={os.path.join(src_bin, file)}:."]
-
 
 elif sys.platform == "win32":
-    win_args.extend(["--noconsole", "--icon=MFW_resource/icon/logo.ico"])
-    command += win_args
+    command += [
+        "--noconsole",
+        "--icon=MFW_resource/icon/logo.ico",
+        f"--add-binary={os.path.join(os.getcwd(), 'DLL', 'msvcp140.dll')}:.",
+        f"--add-binary={os.path.join(os.getcwd(), 'DLL','vcruntime140.dll')}:.",
+    ]
 
 # 运行 PyInstaller
 print(f"Running PyInstaller with command: {command}\n")
 PyInstaller.__main__.run(command)
-# 移动maa/bin至根目录
-if sys.platform == "darwin":
-    #将maa_dylib内的文件从dist/MFW/maa/bin移动到dist/MFW目录下
-    src_bin = os.path.join(os.getcwd(), "dist", "MFW", "maa", "bin")
-    dst_root = os.path.join(os.getcwd(), "dist", "MFW")
-    if os.path.exists(src_bin):
-        for item in os.listdir(src_bin):
-            src = os.path.join(src_bin, item)
-            dst = os.path.join(dst_root, item)
-            if os.path.exists(dst):
-                if os.path.isdir(dst):
-                    shutil.rmtree(dst)
-                else:
-                    os.remove(dst)
-            shutil.move(src, dst)
-        # 删除空文件夹
-        os.rmdir(src_bin)
 
-else:
-    src_bin = os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")
-    dst_root = os.path.join(os.getcwd(), "dist", "MFW")
-    if os.path.exists(src_bin):
-        for item in os.listdir(src_bin):
-            src = os.path.join(src_bin, item)
-            dst = os.path.join(dst_root, item)
-            if os.path.exists(dst):
-                if os.path.isdir(dst):
-                    shutil.rmtree(dst)
-                else:
-                    os.remove(dst)
-            shutil.move(src, dst)
-        # 删除空文件夹
-        os.rmdir(src_bin)
+#删除dist/MFW/_internal/maa/bin目录,内部有文件
+if os.path.exists(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")):
+    shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin"))
+dst_root = os.path.join(os.getcwd(), "dist", "MFW")
+
+# 移动os.path.join(os.getcwd(),"dist", "MFW", "_internal", "maa", "bin")内的文件到根目录
+for file in maa_bin:
+    src = os.path.join(os.getcwd(), "dist", "MFW", "_internal", file)
+    dst = os.path.join(dst_root, file)
+    if os.path.exists(src):
+        shutil.move(src, dst)
+        print(f"Moved {src} to {dst}")
+
 
 # 确保 dist/MFW/MFW_resource 目录存在并复制
 resource_src = os.path.join(os.getcwd(), "MFW_resource")
@@ -148,12 +125,6 @@ resource_dst = os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource")
 os.makedirs(resource_dst, exist_ok=True)
 shutil.copytree(resource_src, resource_dst, dirs_exist_ok=True)
 
-# 确保 dist/MFW/dll 目录存在并复制（仅在 Windows 上）
-if sys.platform == "win32":
-    dll_src = os.path.join(os.getcwd(), "dll")
-    dll_dst = os.path.join(os.getcwd(), "dist", "MFW")
-    os.makedirs(dll_dst, exist_ok=True)
-    shutil.copytree(dll_src, dll_dst, dirs_exist_ok=True)
 
 # 确保 dist/MFW/config/emulator.json 文件存在并复制
 emulator_json_src = os.path.join(os.getcwd(), "config", "emulator.json")
@@ -172,16 +143,14 @@ PyInstaller.__main__.run([updater_src, "--name=MFWUpdater", "--onefile", "--clea
 # 移动updater到dist\MFW目录
 if sys.platform == "win32":
     updater_file = os.path.join("dist", "MFWUpdater.exe")
-elif sys.platform == "linux":
-    updater_file = os.path.join("dist", "MFWUpdater")
-elif sys.platform == "darwin":
+elif sys.platform == "linux" or sys.platform == "darwin":
     updater_file = os.path.join("dist", "MFWUpdater")
 
-mfw_dir = os.path.join("dist", "MFW")
+mfw_path = os.path.join("dist", "MFW")
 
 # 移动文件到 MFW 目录
 if os.path.exists(updater_file):
-    dst_path = os.path.join(mfw_dir, os.path.basename(updater_file))
+    dst_path = os.path.join(mfw_path, os.path.basename(updater_file))
     shutil.move(updater_file, dst_path)
     print(f"Moved {updater_file} to {dst_path}")
 else:
