@@ -119,6 +119,8 @@ for i in bin_files:
     shutil.copy(
         os.path.join(os.getcwd(), "dist", "MFW", "_internal", i), os.path.join(os.getcwd(), "dist", "MFW")
     )
+    # 删除临时文件
+    os.remove(os.path.join(os.getcwd(), "dist", "MFW", "_internal", i))
     
 
 # 写入版本信息

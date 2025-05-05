@@ -13,6 +13,7 @@ from qfluentwidgets import ConfigItem
 from PySide6.QtCore import Qt, QTranslator, QTimer
 from PySide6.QtWidgets import QApplication
 from qfluentwidgets import FluentTranslator
+import asyncio
 
 from app.common.config import cfg
 from app.utils.logger import logger
@@ -25,6 +26,11 @@ from app.utils.check_utils import check
 def main(resource: str, config: str, directly: bool, DEV: bool):
     check(resource, config, directly, DEV)
 
+    # 添加macOS信号处理
+    if sys.platform == "darwin":
+        import signal
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+
     # enable dpi scale
     if cfg.get(cfg.dpiScale) != "Auto":
         os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
@@ -33,6 +39,10 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
     # create application
     app = QApplication(sys.argv)
     app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
+
+    # 修复事件循环初始化
+    loop = QEventLoop(app)
+    asyncio.set_event_loop(loop)
 
     # internationalization
     locale: ConfigItem = cfg.get(cfg.language)
@@ -58,9 +68,19 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
     # create main window
     w = MainWindow()
     w.show()
-    QTimer.singleShot(0, lambda: signalBus.start_finish.emit())
-    loop = QEventLoop(app)
-    loop.run_forever()
+    
+    # 添加窗口关闭时的清理逻辑
+    w.destroyed.connect(lambda: loop.stop())  # 修改quit为stop
+    
+    # 使用async执行事件循环
+    with loop:
+        QTimer.singleShot(0, lambda: signalBus.start_finish.emit())
+        loop.run_forever()
+    
+    # 显式清理资源 (Windows特调)
+    app.quit()
+    # del app  # Windows下需要注释这行
+    # sys.exit(0)  # 移除强制退出
 
 
 def start_symbol():
