@@ -109,6 +109,8 @@ shutil.copytree(
     os.path.join(os.getcwd(), "dist", "MFW"),
     dirs_exist_ok=True,
 )
+# 删除临时目录
+shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"))
 
 # 写入版本信息
 write_version_file(platform, architecture, version)
