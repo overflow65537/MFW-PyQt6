@@ -92,6 +92,7 @@ bin_dir = os.path.join(maa_path, "bin")
 bin_files = []
 for f in os.listdir(bin_dir):
     print(f"[DEBUG] Found binary file: {f}")
+    print(f"[DEBUG] Adding binary file: {os.path.join(bin_dir, f)}")
     bin_files.append(f)
     base_command += [f"--add-binary={os.path.join(bin_dir, f)}{os.pathsep}."]
 
@@ -108,9 +109,17 @@ shutil.copytree(
     os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"),
     os.path.join(os.getcwd(), "dist", "MFW"),
     dirs_exist_ok=True,
+
 )
 # 删除临时目录
 shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"))
+
+for i in bin_files:
+    # 复制二进制文件到 dist/MFW 目录
+    shutil.copy(
+        os.path.join(os.getcwd(), "dist", "MFW", "_internal", i), os.path.join(os.getcwd(), "dist", "MFW")
+    )
+    
 
 # 写入版本信息
 write_version_file(platform, architecture, version)
