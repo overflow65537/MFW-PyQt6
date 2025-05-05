@@ -31,7 +31,7 @@ def locate_package(package_name):
         candidate = os.path.join(path, package_name)
         if os.path.exists(candidate):
             return candidate
-    raise FileNotFoundError(f"未找到 {package_name} 包")
+    raise FileNotFoundError(f"Can't find {package_name} package")
 
 
 try:
@@ -53,6 +53,8 @@ base_command = [
     f"--add-data={maa_path}{os.pathsep}maa",
     f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
     f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
+    f"--add-data={os.path.join(os.getcwd(), 'MFW_resource')}{os.pathsep}TEM_files{os.sep}MFW_resource",
+    f"--add-data={os.path.join(os.getcwd(), 'config','emulator.json')}{os.pathsep}TEM_files{os.sep}config",
     # 自动收集包数据
     "--collect-data=darkdetect",
     "--collect-data=maa",
@@ -67,14 +69,14 @@ base_command = [
 print(f"[DEBUG] Platform: {sys.platform}")
 
 if sys.platform == "darwin":
-    if architecture == "x86_64":  # intel芯片
+    if architecture == "x86_64":  # intel CPU
         base_command += [
             "--target-arch=x86_64",
         ]
     base_command += [
         "--osx-bundle-identifier=com.overflow65537.MFW",
-        
     ]
+
 elif sys.platform == "win32":
     base_command += [
         "--noconsole",
@@ -91,7 +93,7 @@ bin_files = []
 for f in os.listdir(bin_dir):
     print(f"[DEBUG] Found binary file: {f}")
     bin_files.append(f)
-    base_command += [f"--add-binary={os.path.join(bin_dir, f)}{os.pathsep}."]
+    base_command += [f"--add-binary={os.path.join(bin_dir, f)}{os.pathsep}TEM_files"]
 
 
 # === 开始构建 ===
@@ -101,53 +103,25 @@ PyInstaller.__main__.run(base_command)
 
 # === 构建后处理 ===
 
-# 移动 MAA 的本地库文件到 dist/MFW 目录
-"""dst_root = os.path.join(os.getcwd(), "dist", "MFW")
-print(f"[DEBUG] Moving MAA binary {bin_files}")
-for file in bin_files:
-    src = os.path.join(os.getcwd(), "dist", "MFW", "_internal", file)
-    dst = os.path.join(dst_root, file)
-    if os.path.exists(src):
-        os.rename(src, dst)
-        print(f"Moved {src} to {dst}")
-"""
-
-# 移动资源文件
-resource_src = os.path.join(os.getcwd(), "MFW_resource")
-resource_dst = os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource")
-os.makedirs(resource_dst, exist_ok=True)
-shutil.copytree(resource_src, resource_dst, dirs_exist_ok=True)
-
-
-# 移动配置文件
-emulator_json_src = os.path.join(os.getcwd(), "config", "emulator.json")
-emulator_json_dst = os.path.join(os.getcwd(), "dist", "MFW", "config", "emulator.json")
-os.makedirs(os.path.dirname(emulator_json_dst), exist_ok=True)
-shutil.copy(emulator_json_src, emulator_json_dst)
-
+# 复制TEM_files的内容到 dist/MFW 目录
+shutil.copytree(
+    os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"),
+    os.path.join(os.getcwd(), "dist", "MFW"),
+    dirs_exist_ok=True,
+)
 
 # 写入版本信息
 write_version_file(platform, architecture, version)
 
 # === 构建updater ===
-updater_src = os.path.join(os.getcwd(), "updater.py")
-PyInstaller.__main__.run([updater_src, "--name=MFWUpdater", "--onefile", "--clean"])
-
-# 移动updater到dist\MFW目录
-if sys.platform == "win32":
-    updater_file = os.path.join("dist", "MFWUpdater.exe")
-elif sys.platform == "linux" or sys.platform == "darwin":
-    updater_file = os.path.join("dist", "MFWUpdater")
-
-mfw_path = os.path.join("dist", "MFW")
-
-# 移动文件到 MFW 目录
-if os.path.exists(updater_file):
-    dst_path = os.path.join(mfw_path, os.path.basename(updater_file))
-    shutil.move(updater_file, dst_path)
-    print(f"Moved {updater_file} to {dst_path}")
-
-# 删除maa的bin目录
-if os.path.exists(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")):
-    shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin"))
-
+PyInstaller.__main__.run(
+    [
+        "updater.py",
+        "--name=MFWUpdater",
+        "--onefile",
+        "--clean",
+        "--noconfirm",  # 禁用确认提示
+        "--distpath",
+        os.path.join("dist", "MFW"),
+    ]
+)
