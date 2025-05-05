@@ -81,6 +81,8 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
     app.quit()
     # del app  # Windows下需要注释这行
     # sys.exit(0)  # 移除强制退出
+    logger.debug("GUI Process End")
+    logger.debug("\n" * 10)
 
 
 def start_symbol():
