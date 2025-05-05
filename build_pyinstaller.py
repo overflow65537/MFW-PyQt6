@@ -93,7 +93,7 @@ bin_files = []
 for f in os.listdir(bin_dir):
     print(f"[DEBUG] Found binary file: {f}")
     bin_files.append(f)
-    base_command += [f"--add-binary={os.path.join(bin_dir, f)}{os.pathsep}TEM_files"]
+    base_command += [f"--add-binary={os.path.join(bin_dir, f)}{os.pathsep}."]
 
 
 # === 开始构建 ===
