@@ -59,6 +59,8 @@ class MainWindow(FluentWindow):
         elif "win32" in self.taskInterface.Control_Combox.currentText().lower():
             signalBus.setting_Visible.emit("win32")
         
+        signalBus.start_finish.emit()
+
         logger.info(" 主界面初始化完成。")
 
     def show_info_bar(self, data_dict: dict):

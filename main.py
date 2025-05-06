@@ -1,19 +1,20 @@
 # coding:utf-8
 import os
 import sys
+import time
 
 # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
 os.chdir(os.path.dirname(sys.executable) if getattr(sys, 'frozen', False)else os.path.dirname(os.path.abspath(__file__)))
 import argparse
 if not os.path.exists("main.py"):
     os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
-import maa.context
-from qasync import QEventLoop
+from maa.context import Context
+from maa.custom_action import CustomAction
+from qasync import QEventLoop, asyncio
 from qfluentwidgets import ConfigItem
 from PySide6.QtCore import Qt, QTranslator, QTimer
 from PySide6.QtWidgets import QApplication
 from qfluentwidgets import FluentTranslator
-import asyncio
 
 from app.common.config import cfg
 from app.utils.logger import logger
@@ -22,14 +23,10 @@ from app.common.config import Language
 from app.common.signal_bus import signalBus
 from app.utils.tool import show_error_message
 from app.utils.check_utils import check
-    
+
+
 def main(resource: str, config: str, directly: bool, DEV: bool):
     check(resource, config, directly, DEV)
-
-    # 添加macOS信号处理
-    if sys.platform == "darwin":
-        import signal
-        signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     # enable dpi scale
     if cfg.get(cfg.dpiScale) != "Auto":
@@ -39,10 +36,6 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
     # create application
     app = QApplication(sys.argv)
     app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
-
-    # 修复事件循环初始化
-    loop = QEventLoop(app)
-    asyncio.set_event_loop(loop)
 
     # internationalization
     locale: ConfigItem = cfg.get(cfg.language)
@@ -68,21 +61,10 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
     # create main window
     w = MainWindow()
     w.show()
-    
-    # 添加窗口关闭时的清理逻辑
-    w.destroyed.connect(lambda: loop.stop())  # 修改quit为stop
-    
-    # 使用async执行事件循环
-    with loop:
-        QTimer.singleShot(0, lambda: signalBus.start_finish.emit())
-        loop.run_forever()
-    
-    # 显式清理资源 (Windows特调)
-    app.quit()
-    # del app  # Windows下需要注释这行
-    # sys.exit(0)  # 移除强制退出
-    logger.debug("GUI Process End")
-    logger.debug("\n" * 10)
+    QTimer.singleShot(0, lambda: signalBus.start_finish.emit())
+    loop = QEventLoop(app)
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
 
 
 def start_symbol():
@@ -94,7 +76,19 @@ def start_symbol():
 
 
 if __name__ == "__main__":
-
+    # 重复运行检测
+    """
+    十分抽象的一个方法，使用pid文件来检测是否有其他实例在运行。
+    如果有其他实例在运行，就退出当前实例。
+    """
+    if os.path.exists("MFW.pid"):
+        with open("MFW.pid", "r") as f:
+            pid = f.read()
+        if str(os.getpid()) != pid:
+            sys.exit(0)
+            time.sleep(1)
+    with open("MFW.pid", "w") as f:
+        f.write(str(os.getpid()))
     try:
         with open(
             os.path.join(".", "config", "version.txt"), "r", encoding="utf-8"

@@ -1,8 +1,7 @@
 import os
 import subprocess
 import platform
-from qasync import asyncSlot
-import asyncio
+from qasync import asyncSlot,asyncio
 from pathlib import Path
 import json
 from typing import List, Dict, Optional
