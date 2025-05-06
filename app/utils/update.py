@@ -5,7 +5,7 @@ import zipfile
 from typing import Dict
 
 import requests
-from PyQt6.QtCore import QThread, pyqtBoundSignal
+from PySide6.QtCore import QThread, Signal
 
 from ..common.signal_bus import signalBus
 from ..utils.logger import logger
@@ -24,7 +24,7 @@ from ..utils.tool import (
 class BaseUpdate(QThread):
     stop_flag = False
 
-    def download_file(self, url, file_path, progress_signal: pyqtBoundSignal):
+    def download_file(self, url, file_path, progress_signal: Signal):
         need_clear_update = False
         try:
             response = requests.get(url, stream=True)
@@ -404,9 +404,9 @@ class Update(BaseUpdate):
             with open(version_file_path, "r", encoding="utf-8") as f:
                 version_data = f.read().split()
                 logger.debug(f"版本数据: {version_data}")
-            url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&os={version_data[0]}&arch={version_data[1]}&user_agent=MFW_PYQT6"
+            url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&os={version_data[0]}&arch={version_data[1]}&user_agent=MFW_PySide6"
         else:
-            url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&user_agent=MFW_PYQT6"
+            url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&user_agent=MFW_PySide6"
 
         cfg.set(cfg.is_change_cdk, False)
 
@@ -1106,7 +1106,7 @@ class UpdateSelf(BaseUpdate):
         if mirror_data.get("status") == "failed_info":  # mirror检查失败
             signalBus.download_self_finished.emit(mirror_data)
             update_url = (
-                f"https://api.github.com/repos/overflow65537/MFW-PyQt6/releases/latest"
+                f"https://api.github.com/repos/overflow65537/MFW-PySide6/releases/latest"
             )
             github_dict = self.github_check(update_url, version_data[2])
             if (
@@ -1120,7 +1120,7 @@ class UpdateSelf(BaseUpdate):
                 for i in github_dict.get("assets"):
                     if (
                         i.get("name")
-                        == f"MFW-PyQt6-{version_data[0]}-{version_data[1]}-{github_dict.get("tag_name")}.zip"
+                        == f"MFW-PySide6-{version_data[0]}-{version_data[1]}-{github_dict.get("tag_name")}.zip"
                     ):
                         download_url = i.get("browser_download_url")
                         break
@@ -1290,7 +1290,7 @@ class UpdateSelf(BaseUpdate):
         """
         输入版本号和项目地址，返回GitHub项目源代码压缩包下载地址
         """
-        url = f"https://github.com/overflow65537/MFW-PyQt6/releases/download/{target_version}/MFW-PyQt6-{version_data[0]}-{version_data[1]}-{target_version}.zip"
+        url = f"https://github.com/overflow65537/MFW-PySide6/releases/download/{target_version}/MFW-PySide6-{version_data[0]}-{version_data[1]}-{target_version}.zip"
         return url
 
     def mirror_check(self, cdk, version_data: list) -> Dict:
@@ -1305,7 +1305,7 @@ class UpdateSelf(BaseUpdate):
             Dict: 资源信息
         """
 
-        url = f"https://mirrorchyan.com/api/resources/MFW-PyQt6/latest?current_version={version_data[2]}&cdk={cdk}&os={version_data[0]}&arch={version_data[1]}"
+        url = f"https://mirrorchyan.com/api/resources/MFW-PySide6/latest?current_version={version_data[2]}&cdk={cdk}&os={version_data[0]}&arch={version_data[1]}"
 
         response = self._response(url)
         if isinstance(response, dict):

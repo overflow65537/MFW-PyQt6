@@ -1,12 +1,12 @@
-from PyQt6.QtCore import Qt, QSize, QMetaObject, QCoreApplication
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, QSize, QMetaObject, QCoreApplication
+from PySide6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
     QHBoxLayout,
     QAbstractItemView,
 )
 
-from PyQt6.QtWidgets import QFrame
+from PySide6.QtWidgets import QFrame
 from qfluentwidgets import (
     PushButton,
     BodyLabel,

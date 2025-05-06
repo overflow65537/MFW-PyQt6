@@ -1,7 +1,7 @@
 import sys
 from enum import Enum
 
-from PyQt6.QtCore import QLocale
+from PySide6.QtCore import QLocale
 from qfluentwidgets import (
     qconfig,
     QConfig,
@@ -49,7 +49,7 @@ class Config(QConfig):
     # 强制更新
     force_update = ConfigItem("program", "force_update", False, BoolValidator())
     # 标题
-    title = ConfigItem("MainWindow", "Title", "MFW-PyQt6")
+    title = ConfigItem("MainWindow", "Title", "MFW-PySide6")
 
     # 资源存在
     resource_exist = ConfigItem("program", "resource_exist", False, BoolValidator())
@@ -143,7 +143,7 @@ class Config(QConfig):
     )
 
 
-REPO_URL = "https://github.com/overflow65537/MFW-PyQt6/"
+REPO_URL = "https://github.com/overflow65537/MFW-PySide6/"
 
 cfg = Config()
 cfg.themeMode.value = Theme.AUTO

@@ -1,10 +1,10 @@
 import os
 import sys
 
-from PyQt6.QtCore import QSize, QTimer, Qt
+from PySide6.QtCore import QSize, QTimer, Qt
 
-from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QApplication
 
 from qfluentwidgets import (
     NavigationItemPosition,
@@ -59,6 +59,8 @@ class MainWindow(FluentWindow):
         elif "win32" in self.taskInterface.Control_Combox.currentText().lower():
             signalBus.setting_Visible.emit("win32")
         
+        signalBus.start_finish.emit()
+
         logger.info(" 主界面初始化完成。")
 
     def show_info_bar(self, data_dict: dict):

@@ -1,17 +1,19 @@
 # coding:utf-8
 import os
 import sys
+import time
 
 # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
 os.chdir(os.path.dirname(sys.executable) if getattr(sys, 'frozen', False)else os.path.dirname(os.path.abspath(__file__)))
 import argparse
 if not os.path.exists("main.py"):
     os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
-import maa
-from qasync import QEventLoop
+from maa.context import Context
+from maa.custom_action import CustomAction
+from qasync import QEventLoop, asyncio
 from qfluentwidgets import ConfigItem
-from PyQt6.QtCore import Qt, QTranslator, QTimer
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtCore import Qt, QTranslator, QTimer
+from PySide6.QtWidgets import QApplication
 from qfluentwidgets import FluentTranslator
 
 from app.common.config import cfg
@@ -61,6 +63,7 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
     w.show()
     QTimer.singleShot(0, lambda: signalBus.start_finish.emit())
     loop = QEventLoop(app)
+    asyncio.set_event_loop(loop)
     loop.run_forever()
 
 
@@ -73,7 +76,19 @@ def start_symbol():
 
 
 if __name__ == "__main__":
-
+    # 重复运行检测
+    """
+    十分抽象的一个方法，使用pid文件来检测是否有其他实例在运行。
+    如果有其他实例在运行，就退出当前实例。
+    """
+    if os.path.exists("MFW.pid"):
+        with open("MFW.pid", "r") as f:
+            pid = f.read()
+        if str(os.getpid()) != pid:
+            sys.exit(0)
+            time.sleep(1)
+    with open("MFW.pid", "w") as f:
+        f.write(str(os.getpid()))
     try:
         with open(
             os.path.join(".", "config", "version.txt"), "r", encoding="utf-8"

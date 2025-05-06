@@ -1,17 +1,16 @@
 import os
 import subprocess
 import platform
-from qasync import asyncSlot
-import asyncio
+from qasync import asyncSlot,asyncio
 from pathlib import Path
 import json
 from typing import List, Dict, Optional
 import re
 
 
-from PyQt6.QtCore import Qt, QMimeData
-from PyQt6.QtGui import QDrag, QDropEvent, QColor, QFont
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, QMimeData
+from PySide6.QtGui import QDrag, QDropEvent, QColor, QFont
+from PySide6.QtWidgets import (
     QApplication,
     QWidget,
     QListWidgetItem,
