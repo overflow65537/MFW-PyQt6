@@ -49,7 +49,6 @@ base_command = [
     "--name=MFW",
     "--clean",
     "--noconfirm",  # 禁用确认提示
-    "--noconsole",  # 禁用控制台窗口
     # 资源包含规则（格式：源路径{分隔符}目标目录）
     f"--add-data={maa_path}{os.pathsep}maa",
     f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
@@ -85,6 +84,7 @@ elif sys.platform == "win32":
         # Windows 运行时依赖
         f"--add-binary={os.path.join('DLL', 'msvcp140.dll')}{os.pathsep}.",
         f"--add-binary={os.path.join('DLL', 'vcruntime140.dll')}{os.pathsep}.",
+        "--noconsole",  # 禁用控制台窗口
     ]
 
 # === 二进制文件处理 ===
