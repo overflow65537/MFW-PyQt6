@@ -49,6 +49,7 @@ base_command = [
     "--name=MFW",
     "--clean",
     "--noconfirm",  # 禁用确认提示
+    "--noconsole",  # 禁用控制台窗口
     # 资源包含规则（格式：源路径{分隔符}目标目录）
     f"--add-data={maa_path}{os.pathsep}maa",
     f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
@@ -75,11 +76,11 @@ if sys.platform == "darwin":
         ]
     base_command += [
         "--osx-bundle-identifier=com.overflow65537.MFW",
+        "--windowed",
     ]
 
 elif sys.platform == "win32":
     base_command += [
-        "--noconsole",
         "--icon=MFW_resource/icon/logo.ico",
         # Windows 运行时依赖
         f"--add-binary={os.path.join('DLL', 'msvcp140.dll')}{os.pathsep}.",
@@ -109,7 +110,6 @@ shutil.copytree(
     os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"),
     os.path.join(os.getcwd(), "dist", "MFW"),
     dirs_exist_ok=True,
-
 )
 # 删除临时目录
 shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"))
@@ -117,11 +117,12 @@ shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files")
 for i in bin_files:
     # 复制二进制文件到 dist/MFW 目录
     shutil.copy(
-        os.path.join(os.getcwd(), "dist", "MFW", "_internal", i), os.path.join(os.getcwd(), "dist", "MFW")
+        os.path.join(os.getcwd(), "dist", "MFW", "_internal", i),
+        os.path.join(os.getcwd(), "dist", "MFW"),
     )
     # 删除临时文件
     os.remove(os.path.join(os.getcwd(), "dist", "MFW", "_internal", i))
-    
+
 
 # 写入版本信息
 write_version_file(platform, architecture, version)
