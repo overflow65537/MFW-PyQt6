@@ -3,6 +3,6 @@ asyncify
 requests
 MaaFw >= 4.1.0
 psutil
-PySide6-Fluent-Widgets
+PyQt6-Fluent-Widgets
 wmi
 cryptography

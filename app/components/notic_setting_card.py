@@ -1,8 +1,8 @@
 from typing import Union
 
-from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import (
+from PyQt6.QtCore import QSize, Qt, pyqtSignal
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import (
     QHBoxLayout,
     QFormLayout,
     QDialog,
@@ -341,7 +341,7 @@ class NoticeType(QDialog):
 
 
 class NoticeButtonSettingCard(SettingCard):
-    clicked = Signal()
+    clicked = pyqtSignal()
 
     def __init__(
         self,

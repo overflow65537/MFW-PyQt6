@@ -5,9 +5,9 @@ from qfluentwidgets import (
     ProgressBar,
     BodyLabel,
 )
-from PySide6.QtWidgets import QVBoxLayout
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor
+from PyQt6.QtWidgets import QVBoxLayout
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
 from ..common.signal_bus import signalBus
 
 # from ..utils.logger import logger

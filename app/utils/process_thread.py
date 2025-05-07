@@ -1,7 +1,7 @@
 import re
 import subprocess
 import sys
-from PySide6.QtCore import QThread
+from PyQt6.QtCore import QThread
 
 from ..common.signal_bus import signalBus
 

@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt
+from PyQt6.QtCore import Qt
 from qfluentwidgets import BodyLabel
 from ..common.signal_bus import signalBus
 

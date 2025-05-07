@@ -1,5 +1,5 @@
-from PySide6.QtWidgets import QWidget
-from PySide6.QtCore import Qt
+from PyQt6.QtWidgets import QWidget
+from PyQt6.QtCore import Qt
 from .UI_scheduled_interface import Ui_Scheduled_Interface
 from ..common.config import cfg
 from ..common.signal_bus import signalBus

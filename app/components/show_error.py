@@ -1,6 +1,6 @@
 import traceback
-from PySide6.QtWidgets import QMessageBox
-from PySide6.QtGui import QIcon
+from PyQt6.QtWidgets import QMessageBox
+from PyQt6.QtGui import QIcon
 from app.utils.logger import logger
 
 

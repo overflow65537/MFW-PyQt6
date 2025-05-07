@@ -1,21 +1,21 @@
 from qfluentwidgets import SettingCard, PrimaryPushButton, FluentIconBase
 
-from PySide6.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 
 from qfluentwidgets import SettingCard, PrimaryPushButton
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
 from typing import Union
-from PySide6.QtCore import Signal
+from PyQt6.QtCore import pyqtSignal
 
 
 class DoubleButtonSettingCard(SettingCard):
     """Setting card with a push button"""
 
-    clicked = Signal()
-    clicked2 = Signal()
+    clicked = pyqtSignal()
+    clicked2 = pyqtSignal()
 
     def __init__(
         self,

@@ -11,9 +11,9 @@ from qfluentwidgets import (
 )
 from qfluentwidgets import FluentIcon as FIF
 from qfluentwidgets import InfoBar
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import QWidget, QLabel, QFileDialog, QApplication
+from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtGui import QDesktopServices
+from PyQt6.QtWidgets import QWidget, QLabel, QFileDialog, QApplication
 
 
 from ..common.config import cfg, REPO_URL, isWin11
@@ -728,9 +728,9 @@ class SettingInterface(ScrollArea):
             text=self.tr("About"),
             text2=self.tr("Check for updates"),
             icon=FIF.INFO,
-            title="MFW-PySide6 " + MFW_Version,
+            title="MFW-PyQt6 " + MFW_Version,
             content=self.tr(
-                "MFW-PySide6 is open source under the GPLv3 license. Visit the project URL for more information."
+                "MFW-PyQt6 is open source under the GPLv3 license. Visit the project URL for more information."
             ),
             parent=self.aboutGroup,
         )

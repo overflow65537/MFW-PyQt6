@@ -1,10 +1,10 @@
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QMouseEvent
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QMouseEvent
 from qfluentwidgets import PushButton, PrimaryPushButton
 
 
 class RightCheckButton(PushButton):
-    rightClicked = Signal()
+    rightClicked = pyqtSignal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -16,7 +16,7 @@ class RightCheckButton(PushButton):
 
 
 class RightCheckPrimaryPushButton(PrimaryPushButton):
-    rightClicked = Signal()
+    rightClicked = pyqtSignal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

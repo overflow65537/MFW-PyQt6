@@ -2,8 +2,8 @@ import os
 from typing import Any, Literal
 from qfluentwidgets import SettingCardGroup, ScrollArea, ExpandLayout
 from qfluentwidgets import FluentIcon as FIF
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget, QLabel
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QWidget, QLabel
 
 from ..common.style_sheet import StyleSheet
 from ..components.line_edit_card import LineEditCard
