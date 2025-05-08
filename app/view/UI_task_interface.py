@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from PyQt6.QtCore import QSize, QMetaObject, QCoreApplication, Qt
+from PyQt6.QtCore import QSize, QMetaObject, Qt
 from PyQt6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
@@ -17,6 +17,7 @@ from qfluentwidgets import (
     ComboBox,
     ScrollArea,
 )
+from ..common.style_sheet import StyleSheet
 from ..components.listwidge_menu_draggable import ListWidge_Menu_Draggable
 from ..components.right_check_button import RightCheckButton
 

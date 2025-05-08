@@ -215,49 +215,6 @@
         # 返回图像分析结果
 
 - custom路径中的{custom_path}为MFW-PyQt6根目录中的custom文件夹
-### Custom 程序配置
-```
-
-- 创建 `./config/custom.json`
-- 内容为
-
-```json
-{
-    "option1": {
-        "optionname": "option1",
-        "optiontype": "switch",
-        "optioncontent": false,
-        "text": {
-            "title": "开关",
-            "content": "这是一个开关"
-        }
-    },
-    "option2": {
-        "optionname": "option2",
-        "optiontype": "combox",
-        "optioncontent": [
-            "content1",
-            "content2",
-            "content3"
-        ],
-        "text": {
-            "title": "下拉框",
-            "content": "这是一个下拉框"
-        }
-    },
-    "option3": {
-        "optionname": "option3",
-        "optiontype": "lineedit",
-        "optioncontent": "content3",
-        "text": {
-            "title": "输入框",
-            "content": "这是一个输入框"
-        }
-    }
-}
-```
-
-- 处理后的数据会保存至 `./config/custom_config.json` 以供custom程序读取。
 
 ## 许可证
 

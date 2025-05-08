@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QSpacerItem,
     QHBoxLayout,
 )
+
 from qfluentwidgets import InfoBar, InfoBarPosition, BodyLabel, ComboBox, SwitchButton
 
 from ..view.UI_task_interface import Ui_Task_Interface

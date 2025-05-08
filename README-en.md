@@ -146,22 +146,6 @@ Universal GUI project for **[MAAFramework](https://github.com/MaaXYZ/MaaFramewor
 }
 ```
 
-### Custom Configuration
-
-- Create `./config/custom.json`:
-
-```json
-{
-    "option1": {
-        "optiontype": "switch",
-        "text": {
-            "title": "Toggle",
-            "content": "Example toggle"
-        }
-    }
-}
-```
-
 ## License
 
 **MFW-PyQt6** is open source under **[GPL-3.0 License](./LICENSE)**

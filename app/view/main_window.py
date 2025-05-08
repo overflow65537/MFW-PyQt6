@@ -1,7 +1,7 @@
 import os
 import sys
 
-from PyQt6.QtCore import QSize, QTimer, Qt
+from PyQt6.QtCore import QSize, QTimer
 
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication
@@ -12,15 +12,13 @@ from qfluentwidgets import (
     SplashScreen,
     SystemThemeListener,
     isDarkTheme,
-    InfoBar
-
+    InfoBar,
 )
 from qfluentwidgets import FluentIcon as FIF
 
 from .setting_interface import SettingInterface
 from .task_interface import TaskInterface
-from .custom_setting_interface import CustomSettingInterface
-from .scheduled_interface import ScheduledInterface
+from .resource_setting_interface import ResourceSettingInterface
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
 from ..common import resource
@@ -39,9 +37,8 @@ class MainWindow(FluentWindow):
 
         # 创建子界面
         self.taskInterface = TaskInterface(self)
+        self.resourceSettingInterface = ResourceSettingInterface(self)
         self.settingInterface = SettingInterface(self)
-        self.scheduledInterface = ScheduledInterface(self)
-        self.customsettingInterface = CustomSettingInterface(self)
 
         # 启用Fluent主题效果
         self.navigationInterface.setAcrylicEnabled(True)
@@ -58,7 +55,7 @@ class MainWindow(FluentWindow):
             signalBus.setting_Visible.emit("adb")
         elif "win32" in self.taskInterface.Control_Combox.currentText().lower():
             signalBus.setting_Visible.emit("win32")
-        
+
         signalBus.start_finish.emit()
 
         logger.info(" 主界面初始化完成。")
@@ -69,46 +66,46 @@ class MainWindow(FluentWindow):
         if data_dict["status"] == "failed":
             InfoBar.error(
                 title=self.tr("Error"),
-                content=data_dict.get("msg",""),
+                content=data_dict.get("msg", ""),
                 duration=duration,
                 parent=self,
             )
         elif data_dict["status"] == "warning":
             InfoBar.warning(
                 title=self.tr("Warning"),
-                content=data_dict.get("msg",""),
+                content=data_dict.get("msg", ""),
                 duration=duration,
                 parent=self,
             )
         elif data_dict["status"] == "success":
             InfoBar.success(
                 title=self.tr("Success"),
-                content=data_dict.get("msg",""),
+                content=data_dict.get("msg", ""),
                 duration=duration,
                 parent=self,
             )
         elif data_dict["status"] == "info":
             InfoBar.info(
                 title=self.tr("Info"),
-                content=data_dict.get("msg",""),
+                content=data_dict.get("msg", ""),
                 duration=duration,
                 parent=self,
             )
         elif data_dict["status"] == "failed_info":
             InfoBar.error(
                 title=self.tr("Error"),
-                content=data_dict.get("msg",""),
+                content=data_dict.get("msg", ""),
                 duration=duration,
                 parent=self,
-            
             )
-        elif data_dict["status"] == "no_need":  
+        elif data_dict["status"] == "no_need":
             InfoBar.success(
                 title=self.tr("Success"),
-                content=data_dict.get("msg",""),
+                content=data_dict.get("msg", ""),
                 duration=duration,
                 parent=self,
             )
+
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
         signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
@@ -125,39 +122,25 @@ class MainWindow(FluentWindow):
 
         self.navigationInterface.addSeparator()
 
-        # 判断是否存在自定义配置文件
-        if os.path.exists(os.path.join(os.getcwd(), "config", "custom_setting.json")):
-            self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("Task"))
-            self.addSubInterface(
-                self.scheduledInterface, FIF.CALENDAR, self.tr("Scheduling tasks")
-            )
-            self.addSubInterface(
-                self.customsettingInterface, FIF.APPLICATION, self.tr("Custom Setting")
-            )
-            self.addSubInterface(
-                self.settingInterface,
-                FIF.SETTING,
-                self.tr("Setting"),
-                NavigationItemPosition.BOTTOM,
-            )
-        else:
-            logger.info(" 未检测到自定义配置文件，启用默认设置界面。")
-            self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("Task"))
-            self.addSubInterface(
-                self.scheduledInterface, FIF.CALENDAR, self.tr("Scheduling tasks")
-            )
-            self.addSubInterface(
-                self.settingInterface,
-                FIF.SETTING,
-                self.tr("Setting"),
-                NavigationItemPosition.BOTTOM,
-            )
+        self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("Task"))
+        self.addSubInterface(
+            self.resourceSettingInterface,
+            FIF.FOLDER,
+            self.tr("Resource Setting"),
+        )
+        self.addSubInterface(
+            self.settingInterface,
+            FIF.SETTING,
+            self.tr("Setting"),
+            NavigationItemPosition.BOTTOM,
+        )
 
     def is_admin(self):
         """判断是否为管理员权限"""
         if not sys.platform.startswith("win32"):
             return False
         import ctypes
+
         try:
             return ctypes.windll.shell32.IsUserAnAdmin()
         except Exception as e:
@@ -172,18 +155,22 @@ class MainWindow(FluentWindow):
         version = maa_config_data.interface_config.get("version", "")
         version_file_path = os.path.join(os.getcwd(), "config", "version.txt")
         with open(version_file_path, "r", encoding="utf-8") as f:
-                version_data = f.read().split()
+            version_data = f.read().split()
         if version_data[2]:
             title += f" {version_data[2]}"
         if resource_name != "":
             title += f" {resource_name}"
         if version != "":
-            title +=f" {version}"
+            title += f" {version}"
         if config_name != "":
             title += f" {config_name}"
         if self.is_admin():
             title += " " + self.tr("admin")
-        if cfg.get(cfg.save_draw) or cfg.get(cfg.recording) or cfg.get(cfg.show_hit_draw):
+        if (
+            cfg.get(cfg.save_draw)
+            or cfg.get(cfg.recording)
+            or cfg.get(cfg.show_hit_draw)
+        ):
             title += " " + self.tr("Debug")
 
         logger.info(f" 设置窗口标题：{title}")
