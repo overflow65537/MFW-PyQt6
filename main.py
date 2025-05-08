@@ -10,6 +10,7 @@ if not os.path.exists("main.py"):
     os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
 from maa.context import Context
 from maa.custom_action import CustomAction
+from maa.custom_recognition import CustomRecognition
 from qasync import QEventLoop, asyncio
 from qfluentwidgets import ConfigItem
 from PyQt6.QtCore import Qt, QTranslator, QTimer
@@ -81,7 +82,7 @@ if __name__ == "__main__":
     十分抽象的一个方法，使用pid文件来检测是否有其他实例在运行。
     如果有其他实例在运行，就退出当前实例。
     """
-    if os.path.exists("MFW.pid"):
+    if os.path.exists("MFW.pid") and not os.path.exists("main.py"):
         with open("MFW.pid", "r") as f:
             pid = f.read()
         if str(os.getpid()) != pid:
