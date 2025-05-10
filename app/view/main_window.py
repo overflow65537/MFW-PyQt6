@@ -3,7 +3,7 @@ import sys
 
 from PyQt6.QtCore import QSize, QTimer
 
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QShortcut, QKeySequence
 from PyQt6.QtWidgets import QApplication
 
 from qfluentwidgets import (
@@ -16,9 +16,11 @@ from qfluentwidgets import (
 )
 from qfluentwidgets import FluentIcon as FIF
 
-from .setting_interface import SettingInterface
+
 from .task_interface import TaskInterface
 from .resource_setting_interface import ResourceSettingInterface
+from .scheduled_interface import ScheduledInterface
+from .setting_interface import SettingInterface
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
 from ..common import resource
@@ -38,6 +40,7 @@ class MainWindow(FluentWindow):
         # 创建子界面
         self.taskInterface = TaskInterface(self)
         self.resourceSettingInterface = ResourceSettingInterface(self)
+        self.scheduledInterface = ScheduledInterface(self)
         self.settingInterface = SettingInterface(self)
 
         # 启用Fluent主题效果
@@ -55,10 +58,61 @@ class MainWindow(FluentWindow):
             signalBus.setting_Visible.emit("adb")
         elif "win32" in self.taskInterface.Control_Combox.currentText().lower():
             signalBus.setting_Visible.emit("win32")
+        self.initShortcuts()
 
         signalBus.start_finish.emit()
 
         logger.info(" 主界面初始化完成。")
+
+    def initShortcuts(self):
+        """初始化快捷键"""
+        # ALT+R 切换下一个资源
+        QShortcut(QKeySequence("Alt+R"), self).activated.connect(self.nextResource)
+
+        # ALT+SHIFT+R 切换上一个资源
+        QShortcut(QKeySequence("Alt+Shift+R"), self).activated.connect(
+            self.prevResource
+        )
+
+        # ALT+C 切换下一个配置
+        QShortcut(QKeySequence("Alt+C"), self).activated.connect(self.nextConfig)
+
+        # ALT+SHIFT+C 切换上一个配置
+        QShortcut(QKeySequence("Alt+Shift+C"), self).activated.connect(self.prevConfig)
+
+    def nextResource(self):
+        """切换到下一个资源"""
+        current_index = self.resourceSettingInterface.res_setting.combox.currentIndex()
+        count = self.resourceSettingInterface.res_setting.combox.count()
+        if current_index < count - 1:
+            self.resourceSettingInterface.res_setting.combox.setCurrentIndex(
+                current_index + 1
+            )
+
+    def prevResource(self):
+        """切换到上一个资源"""
+        current_index = self.resourceSettingInterface.res_setting.combox.currentIndex()
+        if current_index > 0:
+            self.resourceSettingInterface.res_setting.combox.setCurrentIndex(
+                current_index - 1
+            )
+
+    def nextConfig(self):
+        """切换到下一个配置"""
+        current_index = self.resourceSettingInterface.cfg_setting.combox.currentIndex()
+        count = self.resourceSettingInterface.cfg_setting.combox.count()
+        if current_index < count - 1:
+            self.resourceSettingInterface.cfg_setting.combox.setCurrentIndex(
+                current_index + 1
+            )
+
+    def prevConfig(self):
+        """切换到上一个配置"""
+        current_index = self.resourceSettingInterface.cfg_setting.combox.currentIndex()
+        if current_index > 0:
+            self.resourceSettingInterface.cfg_setting.combox.setCurrentIndex(
+                current_index - 1
+            )
 
     def show_info_bar(self, data_dict: dict):
         """显示信息栏"""
@@ -127,6 +181,11 @@ class MainWindow(FluentWindow):
             self.resourceSettingInterface,
             FIF.FOLDER,
             self.tr("Resource Setting"),
+        )
+        self.addSubInterface(
+            self.scheduledInterface,
+            FIF.CALENDAR,
+            self.tr("Scheduled"),
         )
         self.addSubInterface(
             self.settingInterface,

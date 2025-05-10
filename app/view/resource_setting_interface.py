@@ -1,7 +1,8 @@
 from qfluentwidgets import (
     SettingCardGroup,
     ScrollArea,
-    ExpandLayout,    InfoBar,
+    ExpandLayout,
+    InfoBar,
     InfoBarPosition,
 )
 import os
@@ -33,6 +34,7 @@ class ResourceSettingInterface(ScrollArea):
         self.resource_scrollWidget = QWidget()
         self.resource_expandLayout = ExpandLayout(self.resource_scrollWidget)
         # 初始化界面
+        signalBus.resource_exist.connect(self.resource_exist)
 
         self.init_ui()
         self.__connectSignalToSlot()
@@ -127,7 +129,6 @@ class ResourceSettingInterface(ScrollArea):
 
     def enable_widgets(self, enable: bool):
         """启用或禁用所有可交互控件。"""
-        # 遍历所有子控件
         if enable:
             logger.info("启用所有可交互控件")
         else:
@@ -135,6 +136,13 @@ class ResourceSettingInterface(ScrollArea):
         for widget in self.resource_scrollWidget.findChildren(QWidget):
             # 启用或禁用控件
             widget.setEnabled(enable)
+        # 确保可以添加资源
+        self.res_cfg_group.setEnabled(True)
+        self.res_setting.combox.setEnabled(True)
+        self.res_setting.add_button.setEnabled(True)
+        self.res_setting.delete_button.setEnabled(True)
+        self.res_cfg_group.setEnabled(True)
+        self.res_setting.setEnabled(True)
 
     def lock_res_changed(self, status):
         if status:
@@ -169,7 +177,6 @@ class ResourceSettingInterface(ScrollArea):
         self.res_setting.combox.addItems(maa_config_data.resource_name_list)
         self.res_setting.combox.setCurrentText(maa_config_data.resource_name)
 
-
     def switch_config(self, data_dict: dict = {}) -> None:
         """主动切换配置"""
 
@@ -179,8 +186,8 @@ class ResourceSettingInterface(ScrollArea):
             logger.debug(f"主动切换配置{data_dict}")
             self.res_setting.combox.setCurrentText(data_dict.get("resource_name"))
             self.cfg_setting.combox.setCurrentText(data_dict.get("config_name"))
-
-        signalBus.start_task_inmediately.emit()
+        if data_dict.get("start_task_inmediately", False):
+            signalBus.start_task_inmediately.emit()
 
     def add_config(self, config_name=None):
         """添加新的配置"""
@@ -304,7 +311,6 @@ class ResourceSettingInterface(ScrollArea):
         signalBus.update_finished_action.emit()
         self.clear_content()
         self.init_info()
-
 
     def res_changed(self, resource_name: str = ""):
         """资源下拉框改变时触发"""
@@ -431,17 +437,16 @@ class ResourceSettingInterface(ScrollArea):
         self.cfg_setting.combox.currentIndexChanged.connect(self.cfg_changed)
         self.cfg_setting.combox.addItems(maa_config_data.config_name_list)
 
-
     def initialize_res_cfg_setting(self):
         """资源配置设置"""
-        self.res_cfg_group = SettingCardGroup(self.tr("resource and config"), self.resource_scrollWidget)
-           
-        
+        self.res_cfg_group = SettingCardGroup(
+            self.tr("resource and config"), self.resource_scrollWidget
+        )
         self.res_setting = ComboWithActionSettingCard(
-            icon=FIF.FOLDER, title=self.tr("Resource Path"), parent=self.res_cfg_group
+            icon=FIF.FOLDER, title=self.tr("Resource Path"),content=self.tr("You can quickly switch to the next resource with ALT+R, and return to the previous resource with ALT+SHIFT+R"), parent=self.res_cfg_group,res=True
         )
         self.cfg_setting = ComboWithActionSettingCard(
-            icon=FIF.FOLDER, title=self.tr("Config Path"), parent=self.res_cfg_group
+            icon=FIF.FOLDER, title=self.tr("Config Path"),content=self.tr("You can quickly switch to the next config with ALT+C, and return to the previous config with ALT+SHIFT+C"), parent=self.res_cfg_group
         )
         self.initialize_config_combobox()
         self.res_cfg_group.addSettingCard(self.res_setting)
@@ -510,7 +515,9 @@ class ResourceSettingInterface(ScrollArea):
         exe_path = ""
         exe_args = ""
         exe_wait_time = "10"
-        self.Win32_Setting = SettingCardGroup(self.tr("Win32"), self.resource_scrollWidget)
+        self.Win32_Setting = SettingCardGroup(
+            self.tr("Win32"), self.resource_scrollWidget
+        )
         self.exe_path = LineEditCard(
             icon=FIF.APPLICATION,
             title=self.tr("Executable Path"),
