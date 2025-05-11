@@ -123,7 +123,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
                            "monthly",
             "refresh_time": {
                 "H": self.refresh_time_spinbox.value(),
-                "d": self.refresh_time_mo_spinbox.value() if self.monthly_mode_radio.isChecked() else 0,
+                "d": self.refresh_time_mo_spinbox.value() if self.monthly_mode_radio.isChecked() else 1,
                 "w": self.weekly_mode_combox.currentIndex() if self.weekly_mode_radio.isChecked() else 0
             },
             "interval": {# 单位: 0:分钟, 1:小时, 2:天

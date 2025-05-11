@@ -86,7 +86,7 @@ class Ui_Scheduled_Interface(object):
         self.weekly_mode_combox = ComboBox(self)
 
         self.refresh_time_mo_spinbox = SpinBox(self)
-        self.refresh_time_mo_spinbox.setMinimum(-1)
+        self.refresh_time_mo_spinbox.setMinimum(1)
         self.refresh_time_mo_unit_label = BodyLabel(self)
         self.refresh_time_mo_spinbox.hide()
         self.refresh_time_mo_unit_label.hide()
