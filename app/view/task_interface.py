@@ -1,14 +1,14 @@
 import os
 import subprocess
 import platform
-from qasync import asyncSlot,asyncio
+from qasync import asyncSlot, asyncio
 from pathlib import Path
 import json
 from typing import List, Dict, Optional
 import re
 
 
-from PyQt6.QtCore import Qt, QMimeData,QDateTime,QTime,QDate
+from PyQt6.QtCore import Qt, QMimeData, QDateTime, QTime, QDate
 from PyQt6.QtGui import QDrag, QDropEvent, QColor, QFont
 from PyQt6.QtWidgets import (
     QApplication,
@@ -57,7 +57,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def get_this_monday_5am(self):
         """获取本周一上午5点的时间
-        
+
         Returns:
             QDateTime: 本周一上午5点的QDateTime对象
         """
@@ -67,6 +67,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         monday = today + timedelta(days=days_until_monday)
         monday_5am = datetime(monday.year, monday.month, monday.day, 5, 0)
         return QDateTime.fromSecsSinceEpoch(int(monday_5am.timestamp()))
+
     devices = []
     start_again = False
     need_runing = False
@@ -1017,7 +1018,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         self.task_failed = False
         self.S2_Button.setEnabled(True)
-        for cfg_index, task_list in enumerate(maa_config_data.config["task"]):
+        for task_list in maa_config_data.config["task"]:
             override_options = {}
             if not self.need_runing:
                 await maafw.stop_task()
@@ -1056,83 +1057,152 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             )
             if task_list.get("speedrun", {}).get("enabled", False):
                 logger.info(f"{self.entry}速通已启用")
-                last_run = task_list.get("speedrun", {}).get("last_run", "1970-01-01 00:00:00")
-                if (
-                    task_list["speedrun"].get("schedule_mode") == "daily"
-                ):# 每天
-                    #时间化处理last_run,并算出下一次运行的时间,基于设置中的间隔
+                last_run = task_list.get("speedrun", {}).get(
+                    "last_run", "1970-01-01 00:00:00"
+                )
+                if task_list["speedrun"].get("schedule_mode") == "daily":  # 每天
+                    # 时间化处理last_run,并算出下一次运行的时间,基于设置中的间隔
                     last_run = QDateTime.fromString(last_run, "yyyy-MM-dd HH:mm:ss")
-                    if task_list["speedrun"].get ("interval",{}).get("unit") == 0:#每分
-                        next_run = last_run.addSecs(task_list["speedrun"].get ("interval",{}).get("item")*60)
-                    elif task_list["speedrun"].get ("interval",{}).get("unit") == 1:#每小时
-                        next_run = last_run.addSecs(task_list["speedrun"].get ("interval",{}).get("item")*60*60)
-                    elif task_list["speedrun"].get ("interval",{}).get("unit") == 2:#每天
-                        next_run = last_run.addSecs(task_list["speedrun"].get ("interval",{}).get("item")*60*60*24)
+                    if (
+                        task_list["speedrun"].get("interval", {}).get("unit") == 0
+                    ):  # 每分
+                        next_run = last_run.addSecs(
+                            task_list["speedrun"].get("interval", {}).get("item") * 60
+                        )
+                    elif (
+                        task_list["speedrun"].get("interval", {}).get("unit") == 1
+                    ):  # 每小时
+                        next_run = last_run.addSecs(
+                            task_list["speedrun"].get("interval", {}).get("item")
+                            * 60
+                            * 60
+                        )
+                    elif (
+                        task_list["speedrun"].get("interval", {}).get("unit") == 2
+                    ):  # 每天
+                        next_run = last_run.addSecs(
+                            task_list["speedrun"].get("interval", {}).get("item")
+                            * 60
+                            * 60
+                            * 24
+                        )
 
-                    logger.info(f"上次运行时间: {last_run.toString('yyyy-MM-dd HH:mm:ss')}")
-                    logger.info(f"下次运行时间: {next_run.toString('yyyy-MM-dd HH:mm:ss')}")
+                    logger.info(
+                        f"上次运行时间: {last_run.toString('yyyy-MM-dd HH:mm:ss')}"
+                    )
+                    logger.info(
+                        f"下次运行时间: {next_run.toString('yyyy-MM-dd HH:mm:ss')}"
+                    )
 
                     # 计算当前时间和下次运行时间的时间差
-                    current_time = refresh_time = QDateTime.currentDateTime()
-                    refresh_hour = task_list["speedrun"].get("refresh_time", {}).get("H", 0)
-                    refresh_time.setTime(QTime(refresh_hour, 0)) 
-                    print(f"刷新时间: {refresh_time.toString('yyyy-MM-dd HH:mm:ss')}")
-                    if current_time > next_run:# 如果当前时间超过了下次运行时间,则等待下次运行时间
-                        self.insert_colored_text(
-                            self.tr("Waiting for next run: ")+next_run.toString('yyyy-MM-dd HH:mm:ss')
-                        )
-                        continue
-
-                    if next_run< refresh_time :#如果刷新时间超过了下次运行时间,则重置循环次数
-                        task_list["speedrun"].get("interval",{})["current_loop"] = task_list["speedrun"].get("interval",{}).get("loop_item",0)
-                        logger.info(f"重置循环次数: {task_list['speedrun']['interval']['current_loop']}")
-
-                    # 计算当前循环次数
-                    current_loop = task_list["speedrun"].get ("interval",{}).get("current_loop")
-                    if current_loop >= 0:# 如果当前循环次数大于等于0，则运行任务
-
-                        task_list["speedrun"].get ("interval",{}).update({"current_loop": current_loop - 1}) # 减少当前循环次数并运行
-                        task_list["speedrun"]["last_run"] = QDateTime.currentDateTime().toString('yyyy-MM-dd HH:mm:ss')
-                        logger.info(f"剩余循环次数: {current_loop}")
-                        # 更新配置文件
-                        Save_Config(maa_config_data.config_path, maa_config_data.config)
-                    elif current_loop == -1:#如果当前循环次数等于-1，则不进行任务
-                        logger.info(f"当前循环次数: {current_loop}")
-                        self.insert_colored_text(
-                        self.tr("Loop count exhausted")
-                    )
-                        continue
-                elif task_list["speedrun"].get("schedule_mode") == "weekly":#每周
-                    last_run = QDateTime.fromString(last_run, "yyyy-MM-dd HH:mm:ss")
-                    if task_list["speedrun"].get ("interval",{}).get("unit") == 0:#每分
-                        next_run = last_run.addSecs(task_list["speedrun"].get ("interval",{}).get("item")*60)
-                    elif task_list["speedrun"].get ("interval",{}).get("unit") == 1:#每小时
-                        next_run = last_run.addSecs(task_list["speedrun"].get ("interval",{}).get("item")*60*60)
-                    elif task_list["speedrun"].get ("interval",{}).get("unit") == 2:#每天
-                        next_run = last_run.addSecs(task_list["speedrun"].get ("interval",{}).get("item")*60*60*24)
-                    # 计算当前时间与下次运行时间的时间差
-
-                    logger.info(f"上次运行时间: {last_run.toString('yyyy-MM-dd HH:mm:ss')}")
-                    logger.info(f"下次运行时间: {next_run.toString('yyyy-MM-dd HH:mm:ss')}")
-
-                    #如果上次运行时间小于刷新时间,则重置循环次数
                     current_time = QDateTime.currentDateTime()
-                    refresh_time = self.get_date_time_for_week_day_and_hour(task_list["speedrun"].get("refresh_time", {}).get("w", 0), task_list["speedrun"].get("refresh_time", {}).get("H", 0))
+                    refresh_time = QDateTime.currentDateTime()
+                    refresh_hour = (
+                        task_list["speedrun"].get("refresh_time", {}).get("H", 0)
+                    )
+                    refresh_time.setTime(QTime(refresh_hour, 0))
+                    if refresh_time < current_time:
+                        refresh_time = refresh_time.addDays(1)
                     print(f"刷新时间: {refresh_time.toString('yyyy-MM-dd HH:mm:ss')}")
-                    if current_time > next_run:
-                        self.insert_colored_text(
-                            self.tr("Waiting for next run: ")+next_run.toString('yyyy-MM-dd HH:mm:ss')
+
+                    if (
+                        next_run > refresh_time
+                    ):  # 如果刷新时间超过了下次运行时间,则重置循环次数
+                        task_list["speedrun"].get("interval", {})["current_loop"] = (
+                            task_list["speedrun"]
+                            .get("interval", {})
+                            .get("loop_item", 0)
                         )
-                        continue
-                    if next_run< refresh_time :
-                        task_list["speedrun"].get("interval",{})["current_loop"] = task_list["speedrun"].get("interval",{}).get("loop_item",0)
-                        logger.info(f"重置循环次数: {task_list['speedrun']['interval']['current_loop']}")
+                        logger.info(
+                            f"重置循环次数: {task_list['speedrun']['interval']['current_loop']}"
+                        )
+
                     # 计算当前循环次数
-                    current_loop = task_list["speedrun"].get ("interval",{}).get("current_loop")
+                    current_loop = (
+                        task_list["speedrun"].get("interval", {}).get("current_loop")
+                    )
+                    if current_loop >= 0:  # 如果当前循环次数大于等于0，则运行任务
+
+                        task_list["speedrun"].get("interval", {}).update(
+                            {"current_loop": current_loop - 1}
+                        )  # 减少当前循环次数并运行
+                        task_list["speedrun"][
+                            "last_run"
+                        ] = QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
+                        logger.info(f"剩余循环次数: {current_loop}")
+                        # 更新配置文件
+                        Save_Config(maa_config_data.config_path, maa_config_data.config)
+                    elif current_loop == -1:  # 如果当前循环次数等于-1，则不进行任务
+                        logger.info(f"当前循环次数: {current_loop}")
+                        self.insert_colored_text(self.tr("Loop count exhausted"))
+                        self.insert_colored_text(
+                            self.tr("Waiting for next run: ")
+                            + refresh_time.toString("yyyy-MM-dd HH:mm:ss")
+                        )
+
+                        continue
+                elif task_list["speedrun"].get("schedule_mode") == "weekly":  # 每周
+                    last_run = QDateTime.fromString(last_run, "yyyy-MM-dd HH:mm:ss")
+                    if (
+                        task_list["speedrun"].get("interval", {}).get("unit") == 0
+                    ):  # 每分
+                        next_run = last_run.addSecs(
+                            task_list["speedrun"].get("interval", {}).get("item") * 60
+                        )
+                    elif (
+                        task_list["speedrun"].get("interval", {}).get("unit") == 1
+                    ):  # 每小时
+                        next_run = last_run.addSecs(
+                            task_list["speedrun"].get("interval", {}).get("item")
+                            * 60
+                            * 60
+                        )
+                    elif (
+                        task_list["speedrun"].get("interval", {}).get("unit") == 2
+                    ):  # 每天
+                        next_run = last_run.addSecs(
+                            task_list["speedrun"].get("interval", {}).get("item")
+                            * 60
+                            * 60
+                            * 24
+                        )
+                    # 计算当前时间与下次运行时间的时间差
+
+                    logger.info(
+                        f"上次运行时间: {last_run.toString('yyyy-MM-dd HH:mm:ss')}"
+                    )
+                    logger.info(
+                        f"下次运行时间: {next_run.toString('yyyy-MM-dd HH:mm:ss')}"
+                    )
+
+                    # 如果上次运行时间小于刷新时间,则重置循环次数
+                    current_time = QDateTime.currentDateTime()
+                    refresh_time = self.get_date_time_for_week_day_and_hour(
+                        task_list["speedrun"].get("refresh_time", {}).get("w", 0),
+                        task_list["speedrun"].get("refresh_time", {}).get("H", 0),
+                    )
+                    print(f"刷新时间: {refresh_time.toString('yyyy-MM-dd HH:mm:ss')}")
+                    if next_run > refresh_time:
+                        task_list["speedrun"].get("interval", {})["current_loop"] = (
+                            task_list["speedrun"]
+                            .get("interval", {})
+                            .get("loop_item", 0)
+                        )
+                        logger.info(
+                            f"重置循环次数: {task_list['speedrun']['interval']['current_loop']}"
+                        )
+                    # 计算当前循环次数
+                    current_loop = (
+                        task_list["speedrun"].get("interval", {}).get("current_loop")
+                    )
                     if current_loop >= 0:
                         # 减少当前循环次数并运行
-                        task_list["speedrun"].get ("interval",{}).update({"current_loop": current_loop - 1})
-                        task_list["speedrun"]["last_run"] = QDateTime.currentDateTime().toString('yyyy-MM-dd HH:mm:ss')
+                        task_list["speedrun"].get("interval", {}).update(
+                            {"current_loop": current_loop - 1}
+                        )
+                        task_list["speedrun"][
+                            "last_run"
+                        ] = QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
                         logger.info(f"剩余循环次数: {current_loop}")
                         # 更新配置文件
                         Save_Config(maa_config_data.config_path, maa_config_data.config)
@@ -1142,82 +1212,108 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         # 更新配置文件
 
                         Save_Config(maa_config_data.config_path, maa_config_data.config)
+                        self.insert_colored_text(self.tr("Loop count exhausted"))
                         self.insert_colored_text(
-                        self.tr("Loop count exhausted")
-                    )
+                            self.tr("Waiting for next run: ")
+                            + refresh_time.toString("yyyy-MM-dd HH:mm:ss")
+                        )
                         continue
 
-                elif task_list["speedrun"].get("schedule_mode") == "monthly":#每月
-                    #时间化处理last_run
+                elif task_list["speedrun"].get("schedule_mode") == "monthly":  # 每月
+                    # 时间化处理last_run
                     last_run = QDateTime.fromString(last_run, "yyyy-MM-dd HH:mm:ss")
-                    if task_list["speedrun"].get ("interval",{}).get("unit") == 0:#每分
-                        next_run = last_run.addSecs(task_list["speedrun"].get ("interval",{}).get("item")*60)
-                    elif task_list["speedrun"].get ("interval",{}).get("unit") == 1:#每小时
-                        next_run = last_run.addSecs(task_list["speedrun"].get ("interval",{}).get("item")*60*60)
-                    elif task_list["speedrun"].get ("interval",{}).get("unit") == 2:#每天
-                        next_run = last_run.addSecs(task_list["speedrun"].get ("interval",{}).get("item")*60*60*24)
+                    if (
+                        task_list["speedrun"].get("interval", {}).get("unit") == 0
+                    ):  # 每分
+                        next_run = last_run.addSecs(
+                            task_list["speedrun"].get("interval", {}).get("item") * 60
+                        )
+                    elif (
+                        task_list["speedrun"].get("interval", {}).get("unit") == 1
+                    ):  # 每小时
+                        next_run = last_run.addSecs(
+                            task_list["speedrun"].get("interval", {}).get("item")
+                            * 60
+                            * 60
+                        )
+                    elif (
+                        task_list["speedrun"].get("interval", {}).get("unit") == 2
+                    ):  # 每天
+                        next_run = last_run.addSecs(
+                            task_list["speedrun"].get("interval", {}).get("item")
+                            * 60
+                            * 60
+                            * 24
+                        )
 
                     # 计算当前时间与下次运行时间的时间差
-                    logger.info(f"上次运行时间: {last_run.toString('yyyy-MM-dd HH:mm:ss')}")
-                    logger.info(f"下次运行时间: {next_run.toString('yyyy-MM-dd HH:mm:ss')}")
+                    logger.info(
+                        f"上次运行时间: {last_run.toString('yyyy-MM-dd HH:mm:ss')}"
+                    )
+                    logger.info(
+                        f"下次运行时间: {next_run.toString('yyyy-MM-dd HH:mm:ss')}"
+                    )
 
-                    if last_run > next_run:
-                        self.insert_colored_text(
-                            self.tr("Waiting for next run: ")+next_run.toString('yyyy-MM-dd HH:mm:ss')
-                        )
-                        continue
-
-                    current_time  = refresh_time = QDateTime.currentDateTime()
-                    refresh_day = task_list["speedrun"].get("refresh_time", {}).get("d", 0)
-                    refresh_hour = task_list["speedrun"].get("refresh_time", {}).get("H", 0)
-                    refresh_time = QDateTime(QDate(refresh_time.date().year(), refresh_time.date().month(), refresh_day), QTime(refresh_hour, 0))
+                    current_time = refresh_time = QDateTime.currentDateTime()
+                    refresh_day = (
+                        task_list["speedrun"].get("refresh_time", {}).get("d", 0)
+                    )
+                    refresh_hour = (
+                        task_list["speedrun"].get("refresh_time", {}).get("H", 0)
+                    )
+                    refresh_time = QDateTime(
+                        QDate(
+                            refresh_time.date().year(),
+                            refresh_time.date().month(),
+                            refresh_day,
+                        ),
+                        QTime(refresh_hour, 0),
+                    )
+                    if refresh_time < current_time:
+                        refresh_time = refresh_time.addMonths(1)
                     print(f"刷新时间: {refresh_time.toString('yyyy-MM-dd HH:mm:ss')}")
-
-                    if next_run< refresh_time :
-                        task_list["speedrun"].get("interval",{})["current_loop"] = task_list["speedrun"].get("interval",{}).get("loop_item",0)
-                        logger.info(f"重置循环次数: {task_list['speedrun']['interval']['current_loop']}")
+                    if next_run > refresh_time:
+                        task_list["speedrun"].get("interval", {})["current_loop"] = (
+                            task_list["speedrun"]
+                            .get("interval", {})
+                            .get("loop_item", 0)
+                        )
+                        logger.info(
+                            f"重置循环次数: {task_list['speedrun']['interval']['current_loop']}"
+                        )
                     # 计算当前循环次
-                    current_loop = task_list["speedrun"].get ("interval",{}).get("current_loop")
+                    current_loop = (
+                        task_list["speedrun"].get("interval", {}).get("current_loop")
+                    )
                     if current_loop >= 0:
                         # 减少当前循环次数并运行
-                        task_list["speedrun"].get ("interval",{}).update({"current_loop": current_loop - 1})
-                        task_list["speedrun"]["last_run"] = QDateTime.currentDateTime().toString('yyyy-MM-dd HH:mm:ss')
+                        task_list["speedrun"].get("interval", {}).update(
+                            {"current_loop": current_loop - 1}
+                        )
+                        task_list["speedrun"][
+                            "last_run"
+                        ] = QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
                         logger.info(f"剩余循环次数: {current_loop}")
                         # 更新配置文件
                         Save_Config(maa_config_data.config_path, maa_config_data.config)
                     elif current_loop == -1:
                         # 不进行任务
                         logger.info(f"当前循环次数: {current_loop}")
+                        self.insert_colored_text(self.tr("Loop count exhausted"))
                         self.insert_colored_text(
-                        self.tr("Loop count exhausted")
+                            self.tr("Waiting for next run: ")
+                            + refresh_time.toString("yyyy-MM-dd HH:mm:ss")
                         )
                         continue
 
-                       
-                        
-
-
-            
-
-
-
-
-
-                        
-                                                                               
             else:
                 logger.info(f"{self.entry}速通未启用")
 
-            await maafw.run_task(
-                self.entry, override_options
-            )
-                        
+            await maafw.run_task(self.entry, override_options)
 
-                        
-                    
-            
         logger.info("任务完成")
         self.send_notice("completed")
+
     def get_date_time_for_week_day_and_hour(self, target_week_day, target_hour):
         """
         获取指定周几和时间的QDateTime对象。
@@ -1228,20 +1324,21 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         # 获取当前日期和时间
         current_date_time = QDateTime.currentDateTime()
-        
+
         # 获取当前日期是星期几 (1=周一,7=周日)
         current_day_of_week = current_date_time.date().dayOfWeek() - 1
-        
+
         # 计算目标周几与当前周几的差异天数
         days_diff = (target_week_day - current_day_of_week) % 7
-        
+
         # 计算目标周几的日期
         target_date_time = current_date_time.addDays(days_diff)
-        
+
         # 设置时间为指定的小时数
         target_date_time.setTime(QTime(target_hour, 0))
-        
+
         return target_date_time
+
     async def run_after_finish_script(self):
         """
         运行后脚本
@@ -1743,7 +1840,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 )
                 self.main_scroll_layout.addItem(spacer)
 
-
                 break
 
     def get_switch_value(self) -> Optional[bool]:
@@ -1808,12 +1904,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         layout.removeItem(item)
 
             recursive_clear(layout)
-            #清空self.main_scroll_layout中的spacerItem
+            # 清空self.main_scroll_layout中的spacerItem
             for i in reversed(range(self.main_scroll_layout.count())):
                 item = self.main_scroll_layout.itemAt(i)
                 if isinstance(item, QSpacerItem):
                     self.main_scroll_layout.removeItem(item)
-            
 
     @asyncSlot()
     async def Start_Detection(self):
@@ -2014,7 +2109,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def _format_hour(self, hour: int) -> str:
         """将小时数格式化为中文时间"""
-        return f"{hour:02d}:00" 
+        return f"{hour:02d}:00"
 
     def _format_weekday(self, weekday: int) -> str:
         """将数字转换为中文星期"""

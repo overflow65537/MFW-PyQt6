@@ -145,7 +145,8 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
                 "item": self.interval_input.value(),
                 "loop_item": self.loop_input.value(),
                 "current_loop" : self.loop_input.value()
-            }
+            },
+            "last_run": self.last_run
         }
 
         # 更新配置数据
