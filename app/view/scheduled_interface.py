@@ -38,6 +38,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
 
     def bind_signals(self):
         signalBus.resource_exist.connect(self.change_target_task)
+        signalBus.resource_exist.connect(self.update_task_list_passive)
         signalBus.update_task_list.connect(self.update_task_list_passive)
         self.daily_mode_radio.clicked.connect(lambda: self.change_layout("daily"))
         self.weekly_mode_radio.clicked.connect(lambda: self.change_layout("weekly"))
@@ -50,8 +51,16 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.target_task_index = self.List_widget.currentIndex().row()
         if self.target_task_index == -1:
             self.target_task_index = 0
+
+        try:
+            title = maa_config_data.config["task"][self.target_task_index]["name"]
+        except Exception:
+            self.title_label.setText(
+            ""
+        )
+            return
         self.title_label.setText(
-            maa_config_data.config["task"][self.target_task_index]["name"]
+            title
         )
         maa_config_data.config["task"][self.target_task_index]
         self.schedule_enabled = (
@@ -187,6 +196,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.refresh_time_mo_unit_label.setText(self.tr("Day")),
         self.loop_label.setText(self.tr("Loop item"))
         self.data_label1.setText(self.tr("Last Run"))
+        #self.notic_label.setText(self.tr("The task will be executed at the specified time, and the interval will be executed for the specified number of times."))
 
     def get_list_items(self) -> list[str]:
         """获取列表中所有项的文本"""

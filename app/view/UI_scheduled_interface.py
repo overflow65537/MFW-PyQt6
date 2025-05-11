@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QAbstractItemView,
-    QWidget,
+    QWidget,QFrame
 )
 from PyQt6.QtGui import QIntValidator
 from qfluentwidgets import (
@@ -50,9 +50,11 @@ class Ui_Scheduled_Interface(object):
         self.title_label = BodyLabel()
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.main_layout.addWidget(self.title_label)
-
-        # 第二行 间隔时间
-
+        #添加一个横线
+        self.Hline2 = QFrame(Scheduled_Interface)
+        self.Hline2.setFrameShape(QFrame.Shape.HLine)
+        self.Hline2.setFrameShadow(QFrame.Shadow.Sunken)
+        self.main_layout.addWidget(self.Hline2)
 
         # 第三行：复合水平布局
         self.row3_layout = QHBoxLayout()
@@ -130,7 +132,12 @@ class Ui_Scheduled_Interface(object):
         self.right_layout.addWidget(self.current_layout)
 
         # 将左右两部分添加到水平布局
+        #添加一条竖线
+        self.Vline1 = QFrame()
+        self.Vline1.setFrameShape(QFrame.Shape.VLine)
+        self.Vline1.setFrameShadow(QFrame.Shadow.Sunken)
         self.row3_layout.addWidget(self.schedule_mode_widget)
+        self.row3_layout.addWidget(self.Vline1)
         self.row3_layout.addWidget(self.right_panel)
         self.main_layout.addLayout(self.row3_layout)
         
@@ -176,11 +183,23 @@ class Ui_Scheduled_Interface(object):
         self.main_layout.addLayout(self.button_layout)
 
         # 第四行：五个标签的垂直布局,可能会当教程使用
-        notic_label = BodyLabel()
-        self.main_layout.addWidget(notic_label)
+
+        #添加一条横线
+        self.Hline1 = QFrame()
+        self.Hline1.setFrameShape(QFrame.Shape.HLine)
+        self.Hline1.setFrameShadow(QFrame.Shadow.Sunken)
+        self.main_layout.addWidget(self.Hline1)
+        self.notic_label = BodyLabel()
+        self.main_layout.addWidget(self.notic_label)
         self.main_layout.addStretch()
+
+        #添加一条竖线
+        self.Vline1 = QFrame()
+        self.Vline1.setFrameShape(QFrame.Shape.VLine)
+        self.Vline1.setFrameShadow(QFrame.Shadow.Sunken)
         self.VBoxLayout = QHBoxLayout()
         self.VBoxLayout.addWidget(self.List_widget)
+        self.VBoxLayout.addWidget(self.Vline1)
         self.VBoxLayout.addLayout(self.main_layout)
 
 
