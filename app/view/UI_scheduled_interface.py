@@ -8,8 +8,7 @@ from PyQt6.QtWidgets import (
     QAbstractItemView,
     QWidget,
 )
-
-from PyQt6.QtWidgets import QFrame
+from PyQt6.QtGui import QIntValidator
 from qfluentwidgets import (
     PushButton,
     BodyLabel,
@@ -24,6 +23,7 @@ from qfluentwidgets import (
     CheckBox,
     SpinBox,
 )
+
 
 from ..common.style_sheet import StyleSheet
 from ..components.listwidge_menu_draggable import ListWidge_Menu_Draggable
@@ -54,22 +54,6 @@ class Ui_Scheduled_Interface(object):
         # 第二行 间隔时间
 
 
-        # 时间选择水平布局
-        self.time_selection_layout = QHBoxLayout()
-        self.date_label = BodyLabel()
-        self.date_picker = ZhDatePicker(Scheduled_Interface)
-        self.time_picker = TimePicker(Scheduled_Interface)
-
-        # 是否启动
-        self.is_start = CheckBox()
-
-        self.time_selection_layout.addWidget(self.is_start)
-        self.time_selection_layout.addWidget(self.date_label)
-        self.time_selection_layout.addWidget(self.date_picker)
-        self.time_selection_layout.addWidget(self.time_picker)
-        # 将时间选择布局添加到主布局
-        self.main_layout.addLayout(self.time_selection_layout)
-
         # 第三行：复合水平布局
         self.row3_layout = QHBoxLayout()
 
@@ -89,33 +73,44 @@ class Ui_Scheduled_Interface(object):
         self.schedule_mode_layout.addWidget(self.monthly_mode_radio)
 
         # 右侧：时间选择和操作按钮区域
-        self.right_panel = QWidget()
+        self.right_panel = QWidget(self)
         self.right_layout = QVBoxLayout(self.right_panel)
 
         # 按钮表格布局容器
-        widget = QWidget()
+        widget = QWidget(self)
 
-        self.layout = QVBoxLayout()
+        self.layout = QVBoxLayout(self)
 
-        self.refresh_time_layout = QHBoxLayout()
-        self.refresh_time_label = BodyLabel()
-        self.weekly_mode_combox = ComboBox()
+        self.refresh_time_layout = QHBoxLayout(self)
+        self.refresh_time_label = BodyLabel(self)
+        self.weekly_mode_combox = ComboBox(self)
+
+        self.refresh_time_mo_spinbox = SpinBox(self)
+        self.refresh_time_mo_spinbox.setMinimum(-1)
+        self.refresh_time_mo_unit_label = BodyLabel(self)
+        self.refresh_time_mo_spinbox.hide()
+        self.refresh_time_mo_unit_label.hide()
 
         self.refresh_time_spinbox = SpinBox(self)
-        self.refresh_time_unit_label = BodyLabel()
+        self.refresh_time_spinbox.setMinimum(-1)
+        self.refresh_time_unit_label = BodyLabel(self)
 
         self.refresh_time_layout.addWidget(self.refresh_time_label)
         self.refresh_time_layout.addWidget(self.weekly_mode_combox)
+        self.refresh_time_layout.addWidget(self.refresh_time_mo_spinbox)
+        self.refresh_time_layout.addWidget(self.refresh_time_mo_unit_label)
         self.refresh_time_layout.addWidget(self.refresh_time_spinbox)
         self.refresh_time_layout.addWidget(self.refresh_time_unit_label)
         self.weekly_mode_combox.hide()
 
         self.interval_layout = QHBoxLayout()
         self.interval_label = BodyLabel()
-        self.interval_input = SpinBox()
+        self.interval_input = SpinBox(self)
+        self.interval_input.setMinimum(-1)
         self.interval_unit = ComboBox()
         self.loop_label = BodyLabel()
-        self.loop_input = SpinBox()
+        self.loop_input = SpinBox(self)
+        self.loop_input.setMinimum(-1)
         self.loop_unit_label = BodyLabel()
 
         self.interval_layout.addWidget(self.interval_label)
@@ -137,11 +132,34 @@ class Ui_Scheduled_Interface(object):
         self.row3_layout.addWidget(self.schedule_mode_widget)
         self.row3_layout.addWidget(self.right_panel)
         self.main_layout.addLayout(self.row3_layout)
+        
+        # 时间选择水平布局
+        self.time_selection_layout = QHBoxLayout()
+        self.date_label = BodyLabel()
+
+        # 是否启动
+        self.is_start = CheckBox()
+
+        # 目前循环次数
+        self.loop_label = BodyLabel()
+        self.loop_input = SpinBox(self)
+        self.loop_input.setMinimum(-1)
+
+        self.time_selection_layout.addWidget(self.is_start)
+        self.time_selection_layout.addWidget(self.date_label)
+        self.time_selection_layout.addWidget(self.loop_label)
+        self.time_selection_layout.addWidget(self.loop_input)
+
+
+        # 将时间选择布局添加到主布局
+        self.main_layout.addLayout(self.time_selection_layout)
         # 第三行：三个按钮的水平布局
         self.button_layout = QHBoxLayout()
         self.confirm_button = PushButton()
-        #居中,固定大小
-        self.confirm_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        # 居中,固定大小
+        self.confirm_button.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
+        )
         self.confirm_button.setFixedSize(QSize(100, 30))
         self.button_layout.addWidget(self.confirm_button)
         self.main_layout.addLayout(self.button_layout)

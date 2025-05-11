@@ -64,14 +64,14 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             .get("speedrun", {})
             .get("schedule_time", datetime.now().strftime("%H:%M"))
         )
-        
-
-        schedule_date = QDate.fromString(self.schedule_data, "yyyy-MM-dd")
-        schedule_time = QTime.fromString(self.schedule_time, "HH:mm")
+        self.last_run = (
+            maa_config_data.config["task"][self.target_task_index]
+            .get("speedrun", {})
+            .get("last_run", "1970-01-01 00:00:00")
+        )
+    
         
         self.is_start.setChecked(self.schedule_enabled)
-        self.date_picker.setDate(schedule_date)  
-        self.time_picker.setTime(schedule_time)  
         self.schedule_mode = (
             maa_config_data.config["task"][self.target_task_index]
             .get("speedrun", {})
@@ -85,8 +85,9 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.interval = (
             maa_config_data.config["task"][self.target_task_index]
             .get("speedrun", {})
-            .get("interval", {"unit": 0, "item": 0, "loop_item": 0})
+            .get("interval", {"unit": 0, "item": 0, "loop_item": 0, "current_loop": 0})
         )
+
 
         print(
             f"任务{maa_config_data.config["task"][self.target_task_index]["name"]},index:{self.target_task_index}\n启用状态:{self.schedule_enabled}\n计划时间:{self.schedule_data}{self.schedule_time}\n计划模式:{self.schedule_mode}\n刷新时间:{self.refresh_time}\n间隔:{self.interval}"
@@ -106,33 +107,30 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
 
         self.interval_input.setValue(self.interval["item"])
         self.interval_unit.setCurrentIndex(self.interval["unit"])
-        self.loop_input.setValue(self.interval["loop_item"])
+        self.loop_input.setValue(self.interval["current_loop"])
+        self.date_label.setText(self.tr("last run  ")+self.last_run)
     def save_speedrun_info(self):
         """保存计划任务信息"""
         if self.target_task_index is None:
             return
 
         # 获取当前UI设置的值
-        if self.loop_input.value() == 0:
-            current_loop = -1
-        else:
-            current_loop = self.loop_input.value() 
+
         speedrun_config = {
             "enabled": self.is_start.isChecked(),
-            "schedule_time": f"{self.date_picker.getDate().toString('yyyy-MM-dd')} {self.time_picker.getTime().toString('HH:mm')}",
             "schedule_mode": "daily" if self.daily_mode_radio.isChecked() else 
                            "weekly" if self.weekly_mode_radio.isChecked() else 
                            "monthly",
             "refresh_time": {
                 "H": self.refresh_time_spinbox.value(),
-                "d": self.refresh_time_spinbox.value() if self.monthly_mode_radio.isChecked() else 0,
+                "d": self.refresh_time_mo_spinbox.value() if self.monthly_mode_radio.isChecked() else 0,
                 "w": self.weekly_mode_combox.currentIndex() if self.weekly_mode_radio.isChecked() else 0
             },
             "interval": {# 单位: 0:分钟, 1:小时, 2:天
                 "unit": self.interval_unit.currentIndex(),
                 "item": self.interval_input.value(),
                 "loop_item": self.loop_input.value(),
-                "current_loop" : current_loop
+                "current_loop" : self.loop_input.value()
             }
         }
 
@@ -181,6 +179,8 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.loop_unit_label.setText(self.tr("Times"))
         self.confirm_button.setText(self.tr("Confirm"))
         self.is_start.setText(self.tr("Start Automatically"))
+        self.refresh_time_mo_unit_label.setText(self.tr("Day")),
+        self.loop_label.setText(self.tr("Loop item"))
 
     def get_list_items(self) -> list[str]:
         """获取列表中所有项的文本"""
@@ -227,12 +227,17 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         if mode == "daily":
             self.weekly_mode_combox.hide()
             self.refresh_time_label.setText(self.tr("Refresh Time, Daily"))
-            self.refresh_time_unit_label.setText(self.tr("Hour"))
+
+            self.refresh_time_mo_spinbox.hide()
+            self.refresh_time_mo_unit_label.hide()
         elif mode == "weekly":
             self.weekly_mode_combox.show()
             self.refresh_time_label.setText(self.tr("Refresh Time, Weekly"))
-            self.refresh_time_unit_label.setText(self.tr("Hour"))
+            self.refresh_time_mo_spinbox.hide()
+            self.refresh_time_mo_unit_label.hide()
+
         elif mode == "monthly":
             self.weekly_mode_combox.hide()
             self.refresh_time_label.setText(self.tr("Refresh Time, Monthly"))
-            self.refresh_time_unit_label.setText(self.tr("Day"))
+            self.refresh_time_mo_spinbox.show()
+            self.refresh_time_mo_unit_label.show()
