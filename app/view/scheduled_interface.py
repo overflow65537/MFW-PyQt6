@@ -26,6 +26,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         super().__init__(parent=parent)
         self.setupUi(self)
         self.target_task = None
+        
 
         self.bind_signals()
         self.init_widget_text()
@@ -33,8 +34,10 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             self.List_widget.addItems(
                 Get_Values_list_Option(maa_config_data.config_path, "task")
             )
+            self.change_target_task()
 
     def bind_signals(self):
+        signalBus.resource_exist.connect(self.change_target_task)
         signalBus.update_task_list.connect(self.update_task_list_passive)
         self.daily_mode_radio.clicked.connect(lambda: self.change_layout("daily"))
         self.weekly_mode_radio.clicked.connect(lambda: self.change_layout("weekly"))
@@ -45,6 +48,8 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
     def change_target_task(self):
         """修改目标任务"""
         self.target_task_index = self.List_widget.currentIndex().row()
+        if self.target_task_index == -1:
+            self.target_task_index = 0
         self.title_label.setText(
             maa_config_data.config["task"][self.target_task_index]["name"]
         )
@@ -108,7 +113,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.interval_input.setValue(self.interval["item"])
         self.interval_unit.setCurrentIndex(self.interval["unit"])
         self.loop_input.setValue(self.interval["current_loop"])
-        self.date_label.setText(self.tr("last run  ")+self.last_run)
+        self.date_label.setText(self.last_run)
     def save_speedrun_info(self):
         """保存计划任务信息"""
         if self.target_task_index is None:
@@ -181,6 +186,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.is_start.setText(self.tr("Start Automatically"))
         self.refresh_time_mo_unit_label.setText(self.tr("Day")),
         self.loop_label.setText(self.tr("Loop item"))
+        self.data_label1.setText(self.tr("Last Run"))
 
     def get_list_items(self) -> list[str]:
         """获取列表中所有项的文本"""

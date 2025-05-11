@@ -87,6 +87,7 @@ class Ui_Scheduled_Interface(object):
 
         self.refresh_time_mo_spinbox = SpinBox(self)
         self.refresh_time_mo_spinbox.setMinimum(1)
+
         self.refresh_time_mo_unit_label = BodyLabel(self)
         self.refresh_time_mo_spinbox.hide()
         self.refresh_time_mo_unit_label.hide()
@@ -135,24 +136,34 @@ class Ui_Scheduled_Interface(object):
         
         # 时间选择水平布局
         self.time_selection_layout = QHBoxLayout()
-        self.date_label = BodyLabel()
+        
 
-        # 是否启动
-        self.is_start = CheckBox()
 
         # 目前循环次数
         self.loop_label = BodyLabel()
         self.loop_input = SpinBox(self)
         self.loop_input.setMinimum(-1)
 
-        self.time_selection_layout.addWidget(self.is_start)
-        self.time_selection_layout.addWidget(self.date_label)
+
         self.time_selection_layout.addWidget(self.loop_label)
         self.time_selection_layout.addWidget(self.loop_input)
+        self.main_layout.addLayout(self.time_selection_layout)
+
+        self.row4_layout = QHBoxLayout()
+
+        # 是否启动
+        self.is_start = CheckBox()
+        # 日期
+        self.date_label = BodyLabel()
+        self.data_label1 = BodyLabel()
+        self.row4_layout.addWidget(self.is_start)
+        self.row4_layout.addWidget(self.data_label1)
+        self.row4_layout.addWidget(self.date_label)
+        self.main_layout.addLayout(self.row4_layout)
 
 
         # 将时间选择布局添加到主布局
-        self.main_layout.addLayout(self.time_selection_layout)
+
         # 第三行：三个按钮的水平布局
         self.button_layout = QHBoxLayout()
         self.confirm_button = PushButton()
@@ -165,10 +176,15 @@ class Ui_Scheduled_Interface(object):
         self.main_layout.addLayout(self.button_layout)
 
         # 第四行：五个标签的垂直布局,可能会当教程使用
+        notic_label = BodyLabel()
+        self.main_layout.addWidget(notic_label)
+        self.main_layout.addStretch()
+        self.VBoxLayout = QHBoxLayout()
+        self.VBoxLayout.addWidget(self.List_widget)
+        self.VBoxLayout.addLayout(self.main_layout)
 
-        self.main_layout.addWidget(self.List_widget)
 
-        Scheduled_Interface.setLayout(self.main_layout)
+        Scheduled_Interface.setLayout(self.VBoxLayout)
         self.retranslateUi(Scheduled_Interface)
         QMetaObject.connectSlotsByName(Scheduled_Interface)
 
