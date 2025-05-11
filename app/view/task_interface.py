@@ -1446,7 +1446,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         else:
             Select_Target = self.SelectTask_Combox_1.currentText()
             Option = self.get_selected_options()
-            task_data = {"name": Select_Target, "option": Option}
+            speedrun = self.get_speedrun_value(Select_Target)
+            task_data = {"name": Select_Target, "option": Option,"speedrun":speedrun}
             if self.get_switch_value() is not None:
                 task_data["switch_enabled"] = self.get_switch_value()
             maa_config_data.config["task"].append(task_data)
@@ -1455,7 +1456,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         self.update_task_list()
         self.dragging_finished()
-
+    def get_speedrun_value(self, Select_Target=""):
+        for i in maa_config_data.interface_config['task']:
+            if i['name']==Select_Target:
+                return i.get('speedrun',{})
+        
     def Add_All_Tasks(self):
         if maa_config_data.config == {}:
             return

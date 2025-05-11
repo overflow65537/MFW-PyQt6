@@ -68,23 +68,12 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             .get("speedrun", {})
             .get("enabled", False)
         )
-        self.schedule_data = (
-            maa_config_data.config["task"][self.target_task_index]
-            .get("speedrun", {})
-            .get("schedule_time", datetime.now().strftime("%Y-%m-%d"))
-        )
-        self.schedule_time = (
-            maa_config_data.config["task"][self.target_task_index]
-            .get("speedrun", {})
-            .get("schedule_time", datetime.now().strftime("%H:%M"))
-        )
         self.last_run = (
             maa_config_data.config["task"][self.target_task_index]
             .get("speedrun", {})
             .get("last_run", "1970-01-01 00:00:00")
         )
     
-        
         self.is_start.setChecked(self.schedule_enabled)
         self.schedule_mode = (
             maa_config_data.config["task"][self.target_task_index]
@@ -104,7 +93,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
 
 
         print(
-            f"任务{maa_config_data.config["task"][self.target_task_index]["name"]},index:{self.target_task_index}\n启用状态:{self.schedule_enabled}\n计划时间:{self.schedule_data}{self.schedule_time}\n计划模式:{self.schedule_mode}\n刷新时间:{self.refresh_time}\n间隔:{self.interval}"
+            f"任务{maa_config_data.config["task"][self.target_task_index]["name"]},index:{self.target_task_index}\n启用状态:{self.schedule_enabled}\n计划模式:{self.schedule_mode}\n刷新时间:{self.refresh_time}\n间隔:{self.interval}"
         )
         self.is_start.setChecked(self.schedule_enabled)
         if self.schedule_mode == "daily":
@@ -123,6 +112,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.interval_unit.setCurrentIndex(self.interval["unit"])
         self.loop_input.setValue(self.interval["current_loop"])
         self.date_label.setText(self.last_run)
+
     def save_speedrun_info(self):
         """保存计划任务信息"""
         if self.target_task_index is None:
