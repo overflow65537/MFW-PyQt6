@@ -1,10 +1,12 @@
 from PyQt6.QtCore import Qt, QSize, QMetaObject, QCoreApplication
 from PyQt6.QtWidgets import (
-    QFormLayout,QSizePolicy,
+    QFormLayout,
+    QSizePolicy,
     QGridLayout,
     QVBoxLayout,
     QHBoxLayout,
-    QAbstractItemView,QWidget
+    QAbstractItemView,
+    QWidget,
 )
 
 from PyQt6.QtWidgets import QFrame
@@ -13,12 +15,14 @@ from qfluentwidgets import (
     BodyLabel,
     ComboBox,
     EditableComboBox,
-    ListWidget,ZhDatePicker,
+    ListWidget,
+    ZhDatePicker,
     LineEdit,
     DateTimeEdit,
-    TimePicker,RadioButton,CheckBox,
-    SpinBox
-    
+    TimePicker,
+    RadioButton,
+    CheckBox,
+    SpinBox,
 )
 
 from ..common.style_sheet import StyleSheet
@@ -37,54 +41,57 @@ class Ui_Scheduled_Interface(object):
         self.List_widget.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
 
         self.List_layout.addWidget(self.List_widget)
-        
-
 
         # 速通模式标题布局
         # 主垂直布局
         self.main_layout = QVBoxLayout()
-        
+
         # 第一行：标题
         self.title_label = BodyLabel()
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.main_layout.addWidget(self.title_label)
 
-        #第二行 间隔时间
+        # 第二行 间隔时间
+
+
         # 时间选择水平布局
         self.time_selection_layout = QHBoxLayout()
         self.date_label = BodyLabel()
         self.date_picker = ZhDatePicker(Scheduled_Interface)
         self.time_picker = TimePicker(Scheduled_Interface)
-        
+
+        # 是否启动
+        self.is_start = CheckBox()
+
+        self.time_selection_layout.addWidget(self.is_start)
         self.time_selection_layout.addWidget(self.date_label)
         self.time_selection_layout.addWidget(self.date_picker)
         self.time_selection_layout.addWidget(self.time_picker)
         # 将时间选择布局添加到主布局
         self.main_layout.addLayout(self.time_selection_layout)
-        
+
         # 第三行：复合水平布局
         self.row3_layout = QHBoxLayout()
-        
+
         # 计划任务模式选择容器
-        self.schedule_mode_widget = QWidget()  
+        self.schedule_mode_widget = QWidget()
         self.schedule_mode_layout = QVBoxLayout(self.schedule_mode_widget)
-        
+
         # 计划任务模式单选按钮
         self.schedule_mode_title = BodyLabel()
         self.daily_mode_radio = RadioButton()
-        self.weekly_mode_radio = RadioButton() 
+        self.weekly_mode_radio = RadioButton()
         self.monthly_mode_radio = RadioButton()
 
-        
         self.schedule_mode_layout.addWidget(self.schedule_mode_title)
         self.schedule_mode_layout.addWidget(self.daily_mode_radio)
         self.schedule_mode_layout.addWidget(self.weekly_mode_radio)
         self.schedule_mode_layout.addWidget(self.monthly_mode_radio)
-        
+
         # 右侧：时间选择和操作按钮区域
         self.right_panel = QWidget()
         self.right_layout = QVBoxLayout(self.right_panel)
-        
+
         # 按钮表格布局容器
         widget = QWidget()
 
@@ -93,8 +100,7 @@ class Ui_Scheduled_Interface(object):
         self.refresh_time_layout = QHBoxLayout()
         self.refresh_time_label = BodyLabel()
         self.weekly_mode_combox = ComboBox()
-        
-        
+
         self.refresh_time_spinbox = SpinBox(self)
         self.refresh_time_unit_label = BodyLabel()
 
@@ -121,24 +127,28 @@ class Ui_Scheduled_Interface(object):
 
         self.layout.addLayout(self.refresh_time_layout)
         self.layout.addLayout(self.interval_layout)
-        
+
         widget.setLayout(self.layout)
 
         self.current_layout = widget
         self.right_layout.addWidget(self.current_layout)
-        
-        
+
         # 将左右两部分添加到水平布局
         self.row3_layout.addWidget(self.schedule_mode_widget)
         self.row3_layout.addWidget(self.right_panel)
         self.main_layout.addLayout(self.row3_layout)
-        
-        # 第三行：五个标签的垂直布局,可能会当教程使用
+        # 第三行：三个按钮的水平布局
+        self.button_layout = QHBoxLayout()
+        self.confirm_button = PushButton()
+        #居中,固定大小
+        self.confirm_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.confirm_button.setFixedSize(QSize(100, 30))
+        self.button_layout.addWidget(self.confirm_button)
+        self.main_layout.addLayout(self.button_layout)
 
+        # 第四行：五个标签的垂直布局,可能会当教程使用
 
         self.main_layout.addWidget(self.List_widget)
-
-
 
         Scheduled_Interface.setLayout(self.main_layout)
         self.retranslateUi(Scheduled_Interface)
@@ -147,6 +157,3 @@ class Ui_Scheduled_Interface(object):
     def retranslateUi(self, Scheduled_Interface):
         _translate = QCoreApplication.translate
         Scheduled_Interface.setWindowTitle(_translate("Scheduled_Interface", "Form"))
-
-
-        
