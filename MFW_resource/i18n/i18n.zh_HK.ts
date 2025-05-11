@@ -766,12 +766,12 @@
     <message>
         <location filename="../../app/view/scheduled_interface.py" line="181"/>
         <source>Minutes</source>
-        <translation>分鐘</translation>
+        <translation>分</translation>
     </message>
     <message>
         <location filename="../../app/view/scheduled_interface.py" line="181"/>
         <source>Hours</source>
-        <translation>小時</translation>
+        <translation>時</translation>
     </message>
     <message>
         <location filename="../../app/view/scheduled_interface.py" line="181"/>

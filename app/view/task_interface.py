@@ -1456,6 +1456,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         self.update_task_list()
         self.dragging_finished()
+
     def get_speedrun_value(self, Select_Target=""):
         for i in maa_config_data.interface_config['task']:
             if i['name']==Select_Target:
@@ -1469,6 +1470,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             selected_value = []
             task_name = task.get("name")
             options = task.get("option")
+            speedrun = task.get("speedrun",{})
             if options:
                 for pipeline_option in options:
                     target = maa_config_data.interface_config["option"][
@@ -1484,8 +1486,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         {"name": option_name, "value": selected_value[i]}
                     )
             maa_config_data.config["task"].append(
-                {"name": task_name, "option": options_dicts}
+                {"name": task_name, "option": options_dicts,"speedrun":speedrun}
             )
+
 
         # 保存配置
         Save_Config(maa_config_data.config_path, maa_config_data.config)

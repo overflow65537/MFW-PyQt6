@@ -201,6 +201,11 @@ class Ui_Scheduled_Interface(object):
         self.VBoxLayout.addWidget(self.List_widget)
         self.VBoxLayout.addWidget(self.Vline1)
         self.VBoxLayout.addLayout(self.main_layout)
+        #设置布局比例50:0:50
+        self.VBoxLayout.setStretch(0, 50)
+        self.VBoxLayout.setStretch(2, 50)
+
+
 
 
         Scheduled_Interface.setLayout(self.VBoxLayout)

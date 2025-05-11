@@ -98,15 +98,15 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.is_start.setChecked(self.schedule_enabled)
         if self.schedule_mode == "daily":
             self.daily_mode_radio.setChecked(True)
-            self.refresh_time_spinbox.setValue(self.refresh_time["H"])
+            self.refresh_time_spinbox.setValue(self.refresh_time.get("H", 0))
         elif self.schedule_mode == "weekly":
             self.weekly_mode_radio.setChecked(True)
-            self.weekly_mode_combox.setCurrentText(self.refresh_time["w"])
-            self.refresh_time_spinbox.setValue(self.refresh_time["H"])
+            self.weekly_mode_combox.setCurrentText(self.refresh_time.get("w", 0))
+            self.refresh_time_spinbox.setValue(self.refresh_time.get("H", 0))
 
         elif self.schedule_mode == "monthly":
             self.monthly_mode_radio.setChecked(True)
-            self.refresh_time_spinbox.setValue(self.refresh_time["d"])
+            self.refresh_time_spinbox.setValue(self.refresh_time.get("d", 0))
 
         self.interval_input.setValue(self.interval["item"])
         self.interval_unit.setCurrentIndex(self.interval["unit"])
