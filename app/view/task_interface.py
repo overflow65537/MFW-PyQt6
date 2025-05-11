@@ -8,7 +8,7 @@ from typing import List, Dict, Optional
 import re
 
 
-from PyQt6.QtCore import Qt, QMimeData
+from PyQt6.QtCore import Qt, QMimeData,QDateTime,QTime
 from PyQt6.QtGui import QDrag, QDropEvent, QColor, QFont
 from PyQt6.QtWidgets import (
     QApplication,
@@ -1003,9 +1003,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         运行任务
         """
         self.task_failed = False
-        break_symbol = False
         self.S2_Button.setEnabled(True)
-        for self.config_index, task_list in enumerate(maa_config_data.config["task"]):
+        for cfg_index, task_list in enumerate(maa_config_data.config["task"]):
             override_options = {}
             if not self.need_runing:
                 await maafw.stop_task()
@@ -1015,57 +1014,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 maa_config_data.interface_config["task"]
             ):
                 if task_enter["name"] == task_list["name"]:
-                    if task_enter.get("periodic", 0) == 1 and cfg.get(cfg.speedrun):
-                        # 检查任务是否已经运行过 每日
-                        last_run = task_list.get("last_run", "2000-01-01 00:00:00")
-                        if is_task_run_today(
-                            last_run,
-                            maa_config_data.interface_config["task"][index].get(
-                                "daily_start", 0
-                            ),
-                        ):
-                            logger.info(f"任务{task_enter['name']}已运行于{last_run}")
-                            self.insert_colored_text(
-                                self.tr("Task ")
-                                + f"{task_enter['name']}"
-                                + self.tr(" has been run today, skipping")
-                            )
-                            self.insert_colored_text(
-                                self.tr("Last runing time: ") + f"{last_run}"
-                            )
-                            break_symbol = True
-                            break
-                    elif task_enter.get("periodic", 0) == 2 and cfg.get(cfg.speedrun):
-                        last_run = task_list.get("last_run", "2000-01-01 00:00:00")
-                        if is_task_run_this_week(
-                            last_run,
-                            maa_config_data.interface_config["task"][index].get(
-                                "weekly_start", 0
-                            ),
-                            maa_config_data.interface_config["task"][index].get(
-                                "daily_start", 0
-                            ),
-                        ):
-                            # 检查任务是否已经运行过 每周
-                            logger.info(f"任务{task_enter['name']}已运行于{last_run}")
-                            self.insert_colored_text(
-                                self.tr("Task ")
-                                + f"{task_enter['name']}"
-                                + self.tr(" has been run this week, skipping")
-                            )
-                            self.insert_colored_text(
-                                self.tr("Last runing time: ") + f"{last_run}"
-                            )
-
-                            break_symbol = True
-
-                            break
                     self.entry = task_enter["entry"]
                     enter_index = index
                     break
-            if break_symbol:
-                break_symbol = False
-                continue
             # 解析task中的pipeline_override
             if maa_config_data.interface_config["task"][enter_index].get(
                 "pipeline_override", False
@@ -1090,22 +1041,74 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.info(
                 f"运行任务:{self.entry}\n任务选项:\n{json.dumps(override_options, indent=4,ensure_ascii=False)}"
             )
+            if task_list.get("speedrun", {}).get("enabled", False):
+                logger.info(f"{self.entry}速通已启用")
+                last_run = task_list.get("speedrun", {}).get("last_run", "1970-01-01 00:00:00")
+                if (
+                    task_list["speedrun"].get("schedule_mode") == "daily"
+                ):
+                    #时间化处理last_run
+                    last_run = QDateTime.fromString(last_run, "yyyy-MM-dd HH:mm:ss")
+                    if task_list["speedrun"].get ("interval",{}).get("unit") == 0:#每分
+                        next_run = last_run.addSecs(task_list["speedrun"].get ("interval",{}).get("item")*60)
+                    elif task_list["speedrun"].get ("interval",{}).get("unit") == 1:#每小时
+                        next_run = last_run.addSecs(task_list["speedrun"].get ("interval",{}).get("item")*60*60)
+                    elif task_list["speedrun"].get ("interval",{}).get("unit") == 2:#每天
+                        next_run = last_run.addSecs(task_list["speedrun"].get ("interval",{}).get("item")*60*60*24)
+                    # 计算当前时间与下次运行时间的时间差
 
-            await maafw.run_task(self.entry, override_options)
-            if (
-                not self.task_failed
-                and maa_config_data.interface_config["task"][enter_index].get(
-                    "periodic", False
-                )
-                and cfg.get(cfg.speedrun)
-            ):
-                maa_config_data.config["task"][self.config_index][
-                    "last_run"
-                ] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                Save_Config(maa_config_data.config_path, maa_config_data.config)
-                logger.info(
-                    f"更新任务{maa_config_data.config['task'][self.config_index]['name']}的启动时间"
-                )
+                    logger.info(f"上次运行时间: {last_run.toString('yyyy-MM-dd HH:mm:ss')}")
+                    logger.info(f"下次运行时间: {next_run.toString('yyyy-MM-dd HH:mm:ss')}")
+                    if last_run > next_run:
+                        self.insert_colored_text(
+                            self.tr("Waiting for next run: ")+next_run.toString('yyyy-MM-dd HH:mm:ss')
+                        )
+                        continue
+                    elif last_run <= next_run:
+                        #如果上次运行时间小于刷新时间,则重置循环次数
+                        refresh_time = QDateTime.currentDateTime()
+                        refresh_hour = task_list["speedrun"].get("refresh_time", {}).get("H", 0)
+                        refresh_time.setTime(QTime(refresh_hour, 0))  # 设置为当天的 refresh_hour:00:00
+                        print(f"刷新时间: {refresh_time.toString('yyyy-MM-dd HH:mm:ss')}")
+                        
+                        if last_run < refresh_time < next_run and task_list["speedrun"].get("interval",{}).get("loop_item")!=0:
+                            task_list["speedrun"].get("interval",{})["current_loop"] = task_list["speedrun"].get("interval",{}).get("loop_item",-1)
+                            logger.info(f"重置循环次数: {task_list['speedrun']['interval']['current_loop']}")
+                        # 计算当前循环次数
+                        current_loop = task_list["speedrun"].get ("interval",{}).get("current_loop")
+                        if current_loop > 0:
+                            # 减少当前循环次数并运行
+                            task_list["speedrun"].get ("interval",{}).update({"current_loop": current_loop - 1})
+                            task_list["speedrun"]["last_run"] = QDateTime.currentDateTime().toString('yyyy-MM-dd HH:mm:ss')
+                            logger.info(f"剩余循环次数: {current_loop}")
+                            # 更新配置文件
+                            Save_Config(maa_config_data.config_path, maa_config_data.config)
+                        elif current_loop == 0:
+                            # 不进行任务
+                            logger.info(f"当前循环次数: {current_loop}")
+                            # 更新配置文件
+
+                            Save_Config(maa_config_data.config_path, maa_config_data.config)
+                            self.insert_colored_text(
+                            self.tr("Waiting for refresh_time: ")+refresh_time.toString('yyyy-MM-dd HH:mm:ss')
+                        )
+                            continue
+                        else:
+                            #直接运行
+                            task_list["speedrun"]["last_run"] = QDateTime.currentDateTime().toString('yyyy-MM-dd HH:mm:ss')
+                            # 更新配置文件
+                            Save_Config(maa_config_data.config_path, maa_config_data.config)
+            else:
+                logger.info(f"{self.entry}速通未启用")
+
+            await maafw.run_task(
+                self.entry, override_options
+            )
+                        
+
+                        
+                    
+            
         logger.info("任务完成")
         self.send_notice("completed")
 
@@ -1881,7 +1884,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def _format_hour(self, hour: int) -> str:
         """将小时数格式化为中文时间"""
-        return f"{hour:02d}:00"  # 示例: 14 -> "14:00"
+        return f"{hour:02d}:00" 
 
     def _format_weekday(self, weekday: int) -> str:
         """将数字转换为中文星期"""

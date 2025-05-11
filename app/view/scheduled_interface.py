@@ -113,6 +113,10 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             return
 
         # 获取当前UI设置的值
+        if self.loop_input.value() == 0:
+            current_loop = -1
+        else:
+            current_loop = self.loop_input.value() 
         speedrun_config = {
             "enabled": self.is_start.isChecked(),
             "schedule_time": f"{self.date_picker.getDate().toString('yyyy-MM-dd')} {self.time_picker.getTime().toString('HH:mm')}",
@@ -124,17 +128,18 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
                 "d": self.refresh_time_spinbox.value() if self.monthly_mode_radio.isChecked() else 0,
                 "w": self.weekly_mode_combox.currentIndex() if self.weekly_mode_radio.isChecked() else 0
             },
-            "interval": {
+            "interval": {# 单位: 0:分钟, 1:小时, 2:天
                 "unit": self.interval_unit.currentIndex(),
                 "item": self.interval_input.value(),
-                "loop_item": self.loop_input.value()
+                "loop_item": self.loop_input.value(),
+                "current_loop" : current_loop
             }
         }
 
         # 更新配置数据
-        maa_config_data.config["task"][self.target_task_index]["speedrun"] = speedrun_config
-        
-        # 保存到配置文件
+        if "speedrun" not in maa_config_data.config["task"][self.target_task_index]:
+            maa_config_data.config["task"][self.target_task_index]["speedrun"] = {}
+        maa_config_data.config["task"][self.target_task_index]["speedrun"].update(speedrun_config)
         Save_Config(maa_config_data.config_path, maa_config_data.config)
         
         # 显示保存成功提示
