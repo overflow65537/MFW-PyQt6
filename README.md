@@ -215,6 +215,7 @@
         # 返回图像分析结果
 
 - custom路径中的{custom_path}为MFW-PyQt6根目录中的custom文件夹
+```
 
 ## 许可证
 
