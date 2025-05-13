@@ -3,7 +3,7 @@ from qfluentwidgets import SettingCard, PrimaryPushButton, FluentIconBase
 from PyQt6.QtCore import Qt
 
 
-from qfluentwidgets import SettingCard, PrimaryPushButton
+from qfluentwidgets import SettingCard, PrimaryPushButton,ComboBox,ConfigItem,qconfig
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
@@ -23,6 +23,7 @@ class DoubleButtonSettingCard(SettingCard):
         text2,
         icon: Union[str, QIcon, FluentIconBase],
         title,
+        configItem: ConfigItem = None,
         content=None,
         parent=None,
     ):
@@ -48,9 +49,35 @@ class DoubleButtonSettingCard(SettingCard):
         super().__init__(icon, title, content, parent)
         self.button = PrimaryPushButton(text, self)
         self.button2 = PrimaryPushButton(text2, self)
+        self.combobox = ComboBox(self)
+        
+        self.hBoxLayout.addWidget(self.combobox, 0, Qt.AlignmentFlag.AlignRight)
+        self.hBoxLayout.addSpacing(16)
         self.hBoxLayout.addWidget(self.button2, 0, Qt.AlignmentFlag.AlignRight)
         self.hBoxLayout.addSpacing(16)
         self.hBoxLayout.addWidget(self.button, 0, Qt.AlignmentFlag.AlignRight)
-        self.hBoxLayout.addSpacing(16)
+
+        self.combobox.addItems([
+            self.tr("stable"),
+            self.tr("beta"),
+            self.tr("alpha"),
+        ])
+
+
+
         self.button.clicked.connect(self.clicked)
         self.button2.clicked.connect(self.clicked2)
+        self.combobox.currentIndexChanged.connect(self.setValue)
+        self.configItem = configItem
+        if configItem:
+            self.setValue(qconfig.get(configItem))
+            configItem.valueChanged.connect(self.setValue)
+
+    def setValue(self, value):
+        if self.configItem:
+            qconfig.set(self.configItem, value)
+
+    
+
+
+

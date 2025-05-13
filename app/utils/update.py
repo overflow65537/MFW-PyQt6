@@ -398,15 +398,17 @@ class Update(BaseUpdate):
         Returns:
             Dict: 资源信息
         """
+        channel_map = {0: "stable", 1: "beta", 2: "alpha"}
+        channel = channel_map.get(cfg.get(cfg.resource_update_channel))
         if maa_config_data.interface_config.get("mirrorchyan_multiplatform", False):
             version_file_path = os.path.join(os.getcwd(), "config", "version.txt")
             logger.info(f"正在读取版本文件: {version_file_path}")
             with open(version_file_path, "r", encoding="utf-8") as f:
                 version_data = f.read().split()
                 logger.debug(f"版本数据: {version_data}")
-            url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&os={version_data[0]}&arch={version_data[1]}&user_agent=MFW_PyQt6"
+            url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&os={version_data[0]}&arch={version_data[1]}&channel={channel}&user_agent=MFW_PyQt6"
         else:
-            url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&user_agent=MFW_PyQt6"
+            url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&channel={channel}&user_agent=MFW_PyQt6"
 
         cfg.set(cfg.is_change_cdk, False)
 
@@ -1304,8 +1306,9 @@ class UpdateSelf(BaseUpdate):
         Returns:
             Dict: 资源信息
         """
-
-        url = f"https://mirrorchyan.com/api/resources/MFW-PyQt6/latest?current_version={version_data[2]}&cdk={cdk}&os={version_data[0]}&arch={version_data[1]}"
+        channel_map = {0: "stable", 1: "beta", 2: "alpha"}
+        channel = channel_map.get(cfg.get("MFW_update_channel"))
+        url = f"https://mirrorchyan.com/api/resources/MFW-PyQt6/latest?current_version={version_data[2]}&cdk={cdk}&os={version_data[0]}&arch={version_data[1]}&channel={channel}"
 
         response = self._response(url)
         if isinstance(response, dict):

@@ -405,12 +405,16 @@ class SettingInterface(ScrollArea):
                 MFW_Version = f.read().split()[2]
             except:
                 MFW_Version = "Unknown"
+        MFW_update_channel = cfg.get(cfg.MFW_update_channel)
+        resource_update_channel = cfg.get(cfg.resource_update_channel)
+        
 
         self.updateCard = DoubleButtonSettingCard(
             text2=self.tr("Check for updates"),
             text=self.tr("Submit Feedback"),
             icon=FIF.UPDATE,
             title=self.tr("Check for updates"),
+            configItem=cfg.resource_update_channel,
             content=self.tr("Current") + " " + " " + self.tr("version:") + " ",
             parent=self.aboutGroup,
         )
@@ -419,11 +423,14 @@ class SettingInterface(ScrollArea):
             text2=self.tr("Check for updates"),
             icon=FIF.INFO,
             title="MFW-PyQt6 " + MFW_Version,
+            configItem=cfg.MFW_update_channel,
             content=self.tr(
                 "MFW-PyQt6 is open source under the GPLv3 license. Visit the project URL for more information."
             ),
             parent=self.aboutGroup,
         )
+        self.aboutCard.combobox.setCurrentIndex(MFW_update_channel)
+        self.updateCard.combobox.setCurrentIndex(resource_update_channel)
 
         self.aboutGroup.addSettingCard(self.updateCard)
         self.aboutGroup.addSettingCard(self.aboutCard)

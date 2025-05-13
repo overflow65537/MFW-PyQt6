@@ -41,6 +41,7 @@ def isWin11():
 
 class Config(QConfig):
     """Config of application"""
+
     # 展示agent命令行
     show_agent_cmd = ConfigItem("program", "show_agent_cmd", False, BoolValidator())
     # Mirror酱cdk
@@ -50,6 +51,16 @@ class Config(QConfig):
     force_update = ConfigItem("program", "force_update", False, BoolValidator())
     # 标题
     title = ConfigItem("MainWindow", "Title", "MFW-PyQt6")
+
+    # MFW更新通道
+    MFW_update_channel = ConfigItem(
+        "MFW", "MFW_update_channel", 0, OptionsValidator([0, 1, 2])
+    )
+    # 资源更新通道
+    resource_update_channel = ConfigItem(
+        "MFW", "resource_update_channel", 0, OptionsValidator([0, 1, 2])
+    )
+
 
     # 资源存在
     resource_exist = ConfigItem("program", "resource_exist", False, BoolValidator())
