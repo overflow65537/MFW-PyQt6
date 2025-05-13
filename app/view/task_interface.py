@@ -418,7 +418,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         插入带颜色的文本
         """
 
-        time = ClickableLabel(self)
         message = ClickableLabel(self)
         # 初始化 HTML 文本
         html_text = text
@@ -469,18 +468,26 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         now = datetime.now().strftime("%H:%M")
 
-        time.setText(now)
+        html_text = f'<span style="color:gray">{now}</span> {html_text}'
+        
 
         message.setWordWrap(True)
         message.setText(html_text)
         message.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
         )  # 水平扩展，垂直自适应
-        message.setMinimumWidth(100)  # 设置最小宽度
+
+
+
 
         # 插入到布局
-        row_position = self.right_layout.rowCount()
-        self.right_layout.insertRow(row_position, time, message)
+        count = self.right_layout.count()
+        if count >=2:
+            # 插入到倒数第二个位置
+            self.right_layout.insertWidget(count-1, message)
+        else:
+            # 插入到第一个位置
+            self.right_layout.insertWidget(0, message)
 
         # 将滑动区域滚动到新插入的文本
         self.scroll_area.verticalScrollBar().setValue(
@@ -488,8 +495,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         )
 
     def clear_layout(self):
-        while self.right_layout.rowCount() > 0:
-            self.right_layout.removeRow(0)
+        while self.right_layout.count():
+            item = self.right_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        self.right_layout.addStretch()
 
     def Start_Status(
         self, interface_Path: str, maa_pi_config_Path: str, resource_Path: str

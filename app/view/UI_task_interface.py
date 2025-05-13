@@ -198,7 +198,6 @@ class Ui_Task_Interface(object):
 
         # 右侧布局（包含文本编辑区域）
         self.scroll_area = ScrollArea(Task_Interface)
-        self.scroll_area.setMinimumHeight(100) 
         self.scroll_area.setStyleSheet("background-color: transparent;")
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(
@@ -209,7 +208,9 @@ class Ui_Task_Interface(object):
         self.scroll_area.setWidget(self.content_widget)
         self.scroll_area.setWidgetResizable(True)
         
-        self.right_layout = QFormLayout(self.content_widget)
+        self.right_layout = QVBoxLayout(self.content_widget)
+        self.right_layout.addStretch()
+        
         
         # 将子布局添加到主布局中
         self.main_layout.addLayout(self.left_layout, 3)
