@@ -8,6 +8,7 @@ os.chdir(os.path.dirname(sys.executable) if getattr(sys, 'frozen', False)else os
 import argparse
 if not os.path.exists("main.py"):
     os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
+import maa
 from maa.context import Context
 from maa.custom_action import CustomAction
 from maa.custom_recognition import CustomRecognition
