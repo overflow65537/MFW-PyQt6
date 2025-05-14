@@ -79,7 +79,7 @@ jobs:
 
           - os: macos-13
             platform: macos
-            arch: arm64  
+            arch: aarch64  
             target_arch: arm64
             python_arch: arm64
 
@@ -89,7 +89,7 @@ jobs:
 
           - os: ubuntu-latest
             platform: linux
-            arch: arm64
+            arch: aarch64
             
           - os: windows-latest
             platform: win
@@ -97,7 +97,7 @@ jobs:
             
           - os: windows-latest
             platform: win
-            arch: arm64
+            arch: aarch64
 
       fail-fast: false
 
