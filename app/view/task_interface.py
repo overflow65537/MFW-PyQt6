@@ -41,8 +41,6 @@ from ..utils.tool import (
     find_process_by_name,
     show_error_message,
     get_console_path,
-    is_task_run_today,
-    is_task_run_this_week,
 )
 from ..utils.maafw import maafw
 from ..common.config import cfg
@@ -1746,19 +1744,19 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         v_layout.addWidget(select_box)
 
                         option_layout.addLayout(v_layout)
-                # 时间限制运行
+                """# 时间限制运行
                 if task.get("periodic") in [1, 2] and cfg.get(cfg.speedrun):
                     switch_v_layout = QVBoxLayout()
 
                     # 添加主标签
                     self.main_label = BodyLabel(self)
                     text = ""
-                    """checked = True
+                    checked = True
 
                     if self.Task_List.currentRow() != -1:
                         checked = maa_config_data.config["task"][
                             self.Task_List.currentRow()
-                        ].get("switch_enabled", True)"""
+                        ].get("switch_enabled", True)
                     if task.get("periodic") == 1:
                         # 将小时转换为中文时间格式
                         hour = task.get("daily_start", 0)
@@ -1778,7 +1776,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     switch_v_layout.addWidget(self.main_label)
 
                     # 添加水平布局
-                    """h_layout = QHBoxLayout()
+                    h_layout = QHBoxLayout()
                     h_layout.setContentsMargins(0, 0, 0, 10)  # 增加底部间距
 
                     # 添加开关标签
@@ -1792,11 +1790,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
                     h_layout.addWidget(self.test_switch)
 
-                    switch_v_layout.addLayout(h_layout)"""
+                    switch_v_layout.addLayout(h_layout)
 
                     # 添加间隔防止重叠
                     switch_v_layout.addSpacerItem(QSpacerItem(0, 10))
-                    doc_layout.addLayout(switch_v_layout)
+                    doc_layout.addLayout(switch_v_layout)"""
                 # 处理 doc 字段
                 doc = task.get("doc")
                 if doc:
