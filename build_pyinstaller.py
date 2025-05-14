@@ -81,9 +81,6 @@ if sys.platform == "darwin":
 elif sys.platform == "win32":
     base_command += [
         "--icon=MFW_resource/icon/logo.ico",
-        # Windows 运行时依赖
-        f"--add-binary={os.path.join('DLL', 'msvcp140.dll')}{os.pathsep}.",
-        f"--add-binary={os.path.join('DLL', 'vcruntime140.dll')}{os.pathsep}.",
         "--noconsole",  # 禁用控制台窗口
     ]
 
@@ -104,6 +101,11 @@ print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
 
 # === 构建后处理 ===
+if sys.platform == "win32":
+    # 复制 DLL 到 dist/MFW 目录
+    shutil.copytree(
+        os.path.join(os.getcwd(), "DLL"), os.path.join(os.getcwd(), "dist", "MFW")
+    )
 
 # 复制TEM_files的内容到 dist/MFW 目录
 shutil.copytree(
