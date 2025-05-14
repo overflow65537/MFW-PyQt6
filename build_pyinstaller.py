@@ -104,7 +104,7 @@ PyInstaller.__main__.run(base_command)
 if sys.platform == "win32":
     # 复制 DLL 到 dist/MFW 目录
     shutil.copytree(
-        os.path.join(os.getcwd(), "dll"), os.path.join(os.getcwd(), "dist", "MFW")
+        os.path.join(os.getcwd(), "dll"), os.path.join(os.getcwd(), "dist", "MFW"), dirs_exist_ok=True
     )
 
 # 复制TEM_files的内容到 dist/MFW 目录
