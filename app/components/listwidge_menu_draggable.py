@@ -15,6 +15,7 @@ from PyQt6.QtGui import (
     QDragEnterEvent,
     QMouseEvent,
     QContextMenuEvent,
+    QCursor,
 )
 from PyQt6.QtWidgets import QAbstractItemView
 from ..common.signal_bus import signalBus
@@ -143,10 +144,17 @@ class ListWidge_Menu_Draggable(ListWidget):
     def startDrag(self, supportedActions):
         item = self.currentItem()
         if item is not None:
+            item_rect = self.visualItemRect(item)
+            pixmap = self.viewport().grab(item_rect)
+
             drag = QDrag(self)
             mimeData = QMimeData()
             mimeData.setText(item.text())
+
             drag.setMimeData(mimeData)
+            drag.setPixmap(pixmap)
+            drag.setHotSpot(self.mapFromGlobal(QCursor.pos()) - item_rect.topLeft())
+
             drag.exec(supportedActions)
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
