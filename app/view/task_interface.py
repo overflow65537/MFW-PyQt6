@@ -1066,40 +1066,42 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             )
             # 提取公共配置（简化嵌套访问）
             speedrun_cfg: dict = task_list.get("speedrun", {})
-            if not speedrun_cfg.get("enabled", False):
-                logger.info(f"{self.entry}速通未启用")
-                continue  # 未启用速通直接跳过
+            if speedrun_cfg.get("enabled", False):
+                logger.info(f"{self.entry}速通启用")
 
-            # 通用配置提取
-            schedule_mode:str = speedrun_cfg.get("schedule_mode")
-            interval_cfg: dict = speedrun_cfg.get("interval", {})
-            refresh_time_cfg: dict = speedrun_cfg.get("refresh_time", {})
-            last_run_str:str = speedrun_cfg.get("last_run", "1970-01-01 00:00:00")
-            
-            # 计算下次运行时间（提取公共函数）
-            next_run = self.calculate_next_run_time(last_run_str, interval_cfg)
-            # 计算刷新时间（提取公共函数）
-            refresh_time = self.calculate_refresh_time(schedule_mode, refresh_time_cfg,last_run_str)
-            
-            # 关键时间日志
-            logger.info(f"任务[{self.entry}]上次运行时间: {last_run_str}")
-            logger.info(f"任务[{self.entry}]下次运行时间: {next_run.toString('yyyy-MM-dd HH:mm:ss')}")
-            logger.info(f"任务[{self.entry}]刷新时间: {refresh_time.toString('yyyy-MM-dd HH:mm:ss')}")
+                # 通用配置提取
+                schedule_mode:str = speedrun_cfg.get("schedule_mode")
+                interval_cfg: dict = speedrun_cfg.get("interval", {})
+                refresh_time_cfg: dict = speedrun_cfg.get("refresh_time", {})
+                last_run_str:str = speedrun_cfg.get("last_run", "1970-01-01 00:00:00")
+                
+                # 计算下次运行时间（提取公共函数）
+                next_run = self.calculate_next_run_time(last_run_str, interval_cfg)
+                # 计算刷新时间（提取公共函数）
+                refresh_time = self.calculate_refresh_time(schedule_mode, refresh_time_cfg,last_run_str)
+                
+                # 关键时间日志
+                logger.info(f"任务[{self.entry}]上次运行时间: {last_run_str}")
+                logger.info(f"任务[{self.entry}]下次运行时间: {next_run.toString('yyyy-MM-dd HH:mm:ss')}")
+                logger.info(f"任务[{self.entry}]刷新时间: {refresh_time.toString('yyyy-MM-dd HH:mm:ss')}")
 
-            # 重置循环次数逻辑
-            if next_run > refresh_time:
-                interval_cfg["current_loop"] = interval_cfg.get("loop_item", 1)
-                logger.info(f"任务[{self.entry}]重置循环次数: {interval_cfg['current_loop']}")
+                # 重置循环次数逻辑
+                if next_run > refresh_time:
+                    interval_cfg["current_loop"] = interval_cfg.get("loop_item", 1)
+                    logger.info(f"任务[{self.entry}]重置循环次数: {interval_cfg['current_loop']}")
 
-            # 处理循环次数（封装状态更新）
-            remaining_loops = interval_cfg.get("current_loop", -1)
-            if remaining_loops > 0:
-                self.update_speedrun_state(speedrun_cfg, remaining_loops)
+                # 处理循环次数（封装状态更新）
+                remaining_loops = interval_cfg.get("current_loop", -1)
+                if remaining_loops > 0:
+                    self.update_speedrun_state(speedrun_cfg, remaining_loops)
+                    await maafw.run_task(self.entry, override_options)
+                    
+                else:
+                    self.handle_exhausted_loops(refresh_time)
+                    continue
             else:
-                self.handle_exhausted_loops(refresh_time)
-                continue
-
-            await maafw.run_task(self.entry, override_options)
+                logger.info(f"{self.entry}速通未启用")
+                await maafw.run_task(self.entry, override_options)
 
         logger.info("任务完成")
         self.send_notice("completed")
