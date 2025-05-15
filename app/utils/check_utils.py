@@ -64,30 +64,32 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
                 exclude_dirs = {"hotfix", "bundles", "config", "debug", "_internal", "MFW_resource"}
                 root_dir = os.getcwd()  # 当前根目录
 
-                # 遍历根目录下所有文件/文件夹
-                for entry in os.listdir(root_dir):
-                    src_path = os.path.join(root_dir, entry)
-                    dst_path = os.path.join(bundle_path, entry)
+                if not os.path.exists(os.path.join("main.py")):
 
-                    # 跳过排除项
-                    if (
-                        # 排除指定文件
-                        entry in exclude_files
-                        or fnmatch.fnmatch(entry, "*.dll")  # Windows动态库
-                        or fnmatch.fnmatch(entry, "*.so")   # Linux动态库
-                        or fnmatch.fnmatch(entry, "*.dylib")# macOS动态库
-                        # 排除指定目录（需验证是目录）
-                        or (os.path.isdir(src_path) and entry in exclude_dirs)
-                    ):
-                        logger.debug(f"跳过排除项: {src_path}")
-                        continue
+                    # 遍历根目录下所有文件/文件夹
+                    for entry in os.listdir(root_dir):
+                        src_path = os.path.join(root_dir, entry)
+                        dst_path = os.path.join(bundle_path, entry)
 
-                    # 执行移动操作（原逐个移动逻辑替换为通用逻辑）
-                    if os.path.exists(dst_path):
-                        logger.warning(f"目标路径已存在，跳过移动: {dst_path}")
-                        continue
-                    os.rename(src_path, dst_path)
-                    logger.debug(f"移动文件/目录: {src_path} -> {dst_path}")
+                        # 跳过排除项
+                        if (
+                            # 排除指定文件
+                            entry in exclude_files
+                            or fnmatch.fnmatch(entry, "*.dll")  # Windows动态库
+                            or fnmatch.fnmatch(entry, "*.so")   # Linux动态库
+                            or fnmatch.fnmatch(entry, "*.dylib")# macOS动态库
+                            # 排除指定目录（需验证是目录）
+                            or (os.path.isdir(src_path) and entry in exclude_dirs)
+                        ):
+                            logger.debug(f"跳过排除项: {src_path}")
+                            continue
+
+                        # 执行移动操作（原逐个移动逻辑替换为通用逻辑）
+                        if os.path.exists(dst_path):
+                            logger.warning(f"目标路径已存在，跳过移动: {dst_path}")
+                            continue
+                        os.rename(src_path, dst_path)
+                        logger.debug(f"移动文件/目录: {src_path} -> {dst_path}")
 
                 cfg.set(
                     cfg.maa_config_path,
@@ -200,5 +202,5 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
         logger.error("检查资源文件失败")
         cfg.set(cfg.resource_exist, False)
         signalBus.resource_exist.emit(False)
-        show_error_message("检查资源文件失败")
+        show_error_message()
         return False

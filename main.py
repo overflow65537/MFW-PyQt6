@@ -11,6 +11,7 @@ import maa
 from maa.context import Context
 from maa.custom_action import CustomAction
 from maa.custom_recognition import CustomRecognition
+import atexit
 from qasync import QEventLoop, asyncio
 from qfluentwidgets import ConfigItem
 from PySide6.QtCore import Qt, QTranslator, QTimer
@@ -78,8 +79,7 @@ def start_symbol():
 
 if __name__ == "__main__":
     if sys.platform.startswith("darwin"):
-        import atexit
-        import os
+
 
         PID_FILE = os.path.join(os.getcwd(), "MFW.pid")  # PID文件路径
 
