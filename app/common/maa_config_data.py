@@ -44,9 +44,13 @@ def init_maa_config_data(status: bool):
             maa_config_data.interface_config = Read_Config(
                 maa_config_data.interface_config_path
             )
+            if not maa_config_data.interface_config:
+                raise FileNotFoundError(f"interface.json load failed {maa_config_data.interface_config} is empty")
 
             maa_config_data.config_path = cfg.get(cfg.maa_config_path)
             maa_config_data.config = Read_Config(maa_config_data.config_path)
+            if not maa_config_data.config:
+                raise FileNotFoundError(f"config.json load failed {maa_config_data.config} is empty")
             maa_config_data.config_name = cfg.get(cfg.maa_config_name)
             maa_config_data.config_path = cfg.get(cfg.maa_config_path)
             maa_config_data.config_data = cfg.get(cfg.maa_config_list)

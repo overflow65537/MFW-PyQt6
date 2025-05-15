@@ -1,32 +1,19 @@
 from PyQt6.QtCore import Qt, QSize, QMetaObject, QCoreApplication
 from PyQt6.QtWidgets import (
-    QFormLayout,
     QSizePolicy,
-    QGridLayout,
     QVBoxLayout,
     QHBoxLayout,
-    QAbstractItemView,
     QWidget,QFrame
 )
-from PyQt6.QtGui import QIntValidator
+
 from qfluentwidgets import (
     PushButton,
     BodyLabel,
     ComboBox,
-    EditableComboBox,
-    ListWidget,
-    ZhDatePicker,
-    LineEdit,
-    DateTimeEdit,
-    TimePicker,
     RadioButton,
     CheckBox,
-    SpinBox,
+    SpinBox,ListWidget,
 )
-
-
-from ..common.style_sheet import StyleSheet
-from ..components.listwidge_menu_draggable import ListWidge_Menu_Draggable
 
 
 class Ui_Scheduled_Interface(object):
@@ -36,7 +23,7 @@ class Ui_Scheduled_Interface(object):
         Scheduled_Interface.setMinimumSize(QSize(0, 0))
         # 主窗口
         self.List_layout = QVBoxLayout()
-        self.List_widget = ListWidge_Menu_Draggable(Scheduled_Interface)
+        self.List_widget = ListWidget(Scheduled_Interface)
 
         self.List_layout.addWidget(self.List_widget)
 
