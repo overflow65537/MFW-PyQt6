@@ -37,8 +37,6 @@ class Ui_Scheduled_Interface(object):
         # 主窗口
         self.List_layout = QVBoxLayout()
         self.List_widget = ListWidge_Menu_Draggable(Scheduled_Interface)
-        self.List_widget.setDragEnabled(True)
-        self.List_widget.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
 
         self.List_layout.addWidget(self.List_widget)
 
@@ -204,9 +202,6 @@ class Ui_Scheduled_Interface(object):
         #设置布局比例50:0:50
         self.VBoxLayout.setStretch(0, 50)
         self.VBoxLayout.setStretch(2, 50)
-
-
-
 
         Scheduled_Interface.setLayout(self.VBoxLayout)
         self.retranslateUi(Scheduled_Interface)

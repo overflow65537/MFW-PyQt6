@@ -879,14 +879,18 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 return False
             # 再次尝试连接 ADB
             if not await self.connect_adb():
-                logger.error(
+                self.insert_colored_text(self.tr("Connection Failed,try to kill ADB process"))
+                if not self.kill_adb_process():
+                    self.insert_colored_text(self.tr("kill ADB Failed"))
+                if not await self.connect_adb():
+                    logger.error(
                     f"连接adb失败\n{maa_config_data.config['adb']['adb_path']}\n{maa_config_data.config['adb']['address']}\n{maa_config_data.config['adb']['input_method']}\n{maa_config_data.config['adb']['screen_method']}\n{maa_config_data.config['adb']['config']}"
-                )
-                self.send_notice("failed", self.tr("Connection"))
-                self.insert_colored_text(self.tr("Connection Failed"))
-                await maafw.stop_task()
-                self.update_S2_Button("Start", self.Start_Up)
-                return False
+                    )
+                    self.send_notice("failed", self.tr("Connection"))
+                    self.insert_colored_text(self.tr("Connection Failed"))
+                    await maafw.stop_task()
+                    self.update_S2_Button("Start", self.Start_Up)
+                    return False
         return True
 
     @asyncSlot()
@@ -1258,12 +1262,40 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def kill_adb_process(self):
         adb_path = maa_config_data.config["adb"]["adb_path"]
         if adb_path == "":
-            return
+            return False
         try:
             subprocess.run([adb_path, "kill-server"], check=True)
-            logger.info("杀死ADB进程")
+            logger.info("执行 adb kill-server 成功")
+            return True
         except subprocess.CalledProcessError as e:
-            logger.error(f"杀死ADB进程失败: {e}")
+            logger.error(f"adb kill-server 失败: {e}")
+
+        # 根据系统类型选择进程终止方式
+        system = platform.system()
+        try:
+            if system == "Windows":
+                subprocess.run(["taskkill", "/F", "/IM", "adb.exe"], check=True)
+                logger.info("使用 taskkill 杀死 ADB 进程成功")
+                return True
+            elif system in ("Darwin", "Linux"):
+                subprocess.run(["pkill", "-f", "adb"], check=True)
+                logger.info("使用 pkill 杀死 ADB 进程成功")
+                return True
+            else:
+                logger.warning(f"不支持的操作系统: {system}")
+            
+        except subprocess.CalledProcessError as e:
+            try:
+                if system == "Windows":
+                    subprocess.run(["wmic", "process", "where", "name='adb.exe'", "call", "terminate"], check=True)
+                    logger.info("使用 wmic 杀死 ADB 进程成功")
+                elif system in ("Darwin", "Linux"):
+                    subprocess.run(["killall", "adb"], check=True)
+                    logger.info("使用 killall 杀死 ADB 进程成功")
+                return True
+            except subprocess.CalledProcessError as e:
+                logger.error(f"最终杀死 ADB 进程失败: {e}")
+                return False
 
     def task_list_changed(self):
         self.Task_List.clear()
