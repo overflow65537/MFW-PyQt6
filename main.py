@@ -98,7 +98,6 @@ if __name__ == "__main__":
                 # 检查PID是否存活（macOS可用os.kill检测）
                 os.kill(existing_pid, 0)  # 发送0信号检测进程是否存在
                 logger.error(f"检测到已有实例运行（PID: {existing_pid}），当前实例退出")
-                time.sleep(10)
                 sys.exit(0)
             except (ValueError, ProcessLookupError):
                 # PID文件内容无效 或 进程已退出，清理旧文件
