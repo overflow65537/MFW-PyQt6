@@ -116,7 +116,6 @@ shutil.copytree(
 # 删除临时目录
 shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"))
 
-shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa","bin"))
 
 for i in bin_files:
     # 复制二进制文件到 dist/MFW 目录
@@ -127,6 +126,7 @@ for i in bin_files:
     # 删除临时文件
     os.remove(os.path.join(os.getcwd(), "dist", "MFW", "_internal", i))
 
+shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa","bin"))
 
 # 写入版本信息
 write_version_file(platform, architecture, version)
