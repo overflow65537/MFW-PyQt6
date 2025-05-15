@@ -1,21 +1,25 @@
-from qfluentwidgets import SettingCard, PrimaryPushButton, FluentIconBase
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QIcon
 
-from PyQt6.QtCore import Qt
+
+from qfluentwidgets import (
+    SettingCard,
+    PrimaryPushButton,
+    ComboBox,
+    ConfigItem,
+    qconfig,
+    FluentIconBase,
+)
 
 
-from qfluentwidgets import SettingCard, PrimaryPushButton,ComboBox,ConfigItem,qconfig
-
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QIcon
 from typing import Union
-from PyQt6.QtCore import pyqtSignal
 
 
 class DoubleButtonSettingCard(SettingCard):
     """Setting card with a push button"""
 
-    clicked = pyqtSignal()
-    clicked2 = pyqtSignal()
+    clicked = Signal()
+    clicked2 = Signal()
 
     def __init__(
         self,
@@ -50,20 +54,20 @@ class DoubleButtonSettingCard(SettingCard):
         self.button = PrimaryPushButton(text, self)
         self.button2 = PrimaryPushButton(text2, self)
         self.combobox = ComboBox(self)
-        
+
         self.hBoxLayout.addWidget(self.combobox, 0, Qt.AlignmentFlag.AlignRight)
         self.hBoxLayout.addSpacing(16)
         self.hBoxLayout.addWidget(self.button2, 0, Qt.AlignmentFlag.AlignRight)
         self.hBoxLayout.addSpacing(16)
         self.hBoxLayout.addWidget(self.button, 0, Qt.AlignmentFlag.AlignRight)
 
-        self.combobox.addItems([
-            self.tr("stable"),
-            self.tr("beta"),
-            self.tr("alpha"),
-        ])
-
-
+        self.combobox.addItems(
+            [
+                self.tr("stable"),
+                self.tr("beta"),
+                self.tr("alpha"),
+            ]
+        )
 
         self.button.clicked.connect(self.clicked)
         self.button2.clicked.connect(self.clicked2)
@@ -76,8 +80,3 @@ class DoubleButtonSettingCard(SettingCard):
     def setValue(self, value):
         if self.configItem:
             qconfig.set(self.configItem, value)
-
-    
-
-
-

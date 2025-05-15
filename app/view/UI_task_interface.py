@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from PyQt6.QtCore import QSize, QMetaObject, Qt
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QSize, QMetaObject, Qt
+from PySide6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
     QHBoxLayout,

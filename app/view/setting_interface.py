@@ -11,9 +11,9 @@ from qfluentwidgets import (
 )
 from qfluentwidgets import FluentIcon as FIF
 from qfluentwidgets import InfoBar
-from PyQt6.QtCore import Qt, QUrl
-from PyQt6.QtGui import QDesktopServices
-from PyQt6.QtWidgets import QWidget, QLabel, QApplication
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QDesktopServices
+from PySide6.QtWidgets import QWidget, QLabel, QApplication
 
 
 from ..common.config import cfg, REPO_URL, isWin11

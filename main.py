@@ -14,8 +14,8 @@ from maa.custom_action import CustomAction
 from maa.custom_recognition import CustomRecognition
 from qasync import QEventLoop, asyncio
 from qfluentwidgets import ConfigItem
-from PyQt6.QtCore import Qt, QTranslator, QTimer
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtCore import Qt, QTranslator, QTimer
+from PySide6.QtWidgets import QApplication
 from qfluentwidgets import FluentTranslator
 
 from app.common.config import cfg

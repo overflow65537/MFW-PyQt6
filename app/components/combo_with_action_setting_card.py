@@ -7,9 +7,9 @@ from qfluentwidgets import (
     ToolButton
 )
 from qfluentwidgets import FluentIcon as FIF
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import QSizePolicy
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QSizePolicy
 from typing import Union
 
 

@@ -9,9 +9,8 @@ import os
 import shutil
 from qfluentwidgets import FluentIcon as FIF
 from qfluentwidgets import InfoBar
-from PyQt6.QtCore import Qt
-
-from PyQt6.QtWidgets import QWidget, QLabel, QFileDialog
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QWidget, QLabel, QFileDialog
 
 from ..common.config import cfg
 from ..common.signal_bus import signalBus

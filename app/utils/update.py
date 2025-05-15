@@ -5,7 +5,7 @@ import zipfile
 from typing import Dict
 
 import requests
-from PyQt6.QtCore import QThread, pyqtSignal
+from PySide6.QtCore import QThread, Signal
 
 from ..common.signal_bus import signalBus
 from ..utils.logger import logger
@@ -24,7 +24,7 @@ from ..utils.tool import (
 class BaseUpdate(QThread):
     stop_flag = False
 
-    def download_file(self, url, file_path, progress_signal: pyqtSignal):
+    def download_file(self, url, file_path, progress_signal: Signal):
         need_clear_update = False
         try:
             response = requests.get(url, stream=True)

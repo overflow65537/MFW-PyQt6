@@ -1,10 +1,9 @@
 import os
 import sys
 
-from PyQt6.QtCore import QSize, QTimer
-
-from PyQt6.QtGui import QIcon, QShortcut, QKeySequence
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtCore import QSize, QTimer
+from PySide6.QtGui import QIcon, QShortcut, QKeySequence
+from PySide6.QtWidgets import QApplication
 
 from qfluentwidgets import (
     NavigationItemPosition,

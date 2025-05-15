@@ -8,9 +8,9 @@ from typing import List, Dict, Optional
 import re
 
 
-from PyQt6.QtCore import Qt, QMimeData, QDateTime, QTime, QDate
-from PyQt6.QtGui import QDrag, QDropEvent, QColor, QFont
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, QMimeData, QDateTime, QTime, QDate
+from PySide6.QtGui import QDrag, QDropEvent, QColor, QFont
+from PySide6.QtWidgets import (
     QApplication,
     QWidget,
     QListWidgetItem,

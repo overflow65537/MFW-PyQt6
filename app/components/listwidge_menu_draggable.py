@@ -7,8 +7,8 @@ from ..utils.tool import (
     Save_Config,
     Get_Values_list2,
 )
-from PyQt6.QtCore import Qt, QMimeData
-from PyQt6.QtGui import (
+from PySide6.QtCore import Qt, QMimeData
+from PySide6.QtGui import (
     QDrag,
     QDragMoveEvent,
     QDropEvent,
@@ -17,7 +17,7 @@ from PyQt6.QtGui import (
     QContextMenuEvent,
     QCursor,
 )
-from PyQt6.QtWidgets import QAbstractItemView
+from PySide6.QtWidgets import QAbstractItemView
 from ..common.signal_bus import signalBus
 from ..common.maa_config_data import maa_config_data
 
