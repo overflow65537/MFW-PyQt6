@@ -8,6 +8,7 @@ from app.common.config import cfg
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
 from app.utils.tool import show_error_message
+import fnmatch
 
 
 
@@ -46,22 +47,47 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
                 )
                 if not os.path.exists(bundle_path):
                     os.makedirs(bundle_path)
-                #移动resource文件夹到bundle_path目录下
-                os.rename("resource", os.path.join(bundle_path, "resource"))
-                #移动interface.json到bundle_path目录下
-                os.rename("interface.json", os.path.join(bundle_path, "interface.json"))
-                #移动custom文件夹到bundle_path目录下
-                if os.path.exists("custom"):
-                    os.rename("custom", os.path.join(bundle_path, "custom"))
-                #移动LICENSE文件到bundle_path目录下
-                if os.path.exists("LICENSE"):
-                    os.rename("LICENSE", os.path.join(bundle_path, "LICENSE"))
-                #移动README.md文件到bundle_path目录下
-                if os.path.exists("README.md"):
-                    os.rename("README.md", os.path.join(bundle_path, "README.md"))
-                #移动agent文件夹到bundle_path目录下
-                if os.path.exists("agent"):
-                    os.rename("agent", os.path.join(bundle_path, "agent"))
+                logger.info("检测到配置文件,开始转换")
+
+                with open("interface.json", "r", encoding="utf-8") as f:
+                    interface_config: dict = json.load(f)
+                cfg.set(cfg.maa_config_name, "default")
+                cfg.set(cfg.maa_resource_name, interface_config.get("name", "resource"))
+                bundle_path = os.path.join(
+                    ".", "bundles", cfg.get(cfg.maa_resource_name)
+                )
+                if not os.path.exists(bundle_path):
+                    os.makedirs(bundle_path)
+                
+                # 定义需要排除的文件和目录（根据需求调整）
+                exclude_files = {"MFW", "MFW.exe", "MFWupdater", "MFWupdater.exe", "k.ey"}
+                exclude_dirs = {"hotfix", "bundles", "config", "debug", "_internal", "MFW_resource"}
+                root_dir = os.getcwd()  # 当前根目录
+
+                # 遍历根目录下所有文件/文件夹
+                for entry in os.listdir(root_dir):
+                    src_path = os.path.join(root_dir, entry)
+                    dst_path = os.path.join(bundle_path, entry)
+
+                    # 跳过排除项
+                    if (
+                        # 排除指定文件
+                        entry in exclude_files
+                        or fnmatch.fnmatch(entry, "*.dll")  # Windows动态库
+                        or fnmatch.fnmatch(entry, "*.so")   # Linux动态库
+                        or fnmatch.fnmatch(entry, "*.dylib")# macOS动态库
+                        # 排除指定目录（需验证是目录）
+                        or (os.path.isdir(src_path) and entry in exclude_dirs)
+                    ):
+                        logger.debug(f"跳过排除项: {src_path}")
+                        continue
+
+                    # 执行移动操作（原逐个移动逻辑替换为通用逻辑）
+                    if os.path.exists(dst_path):
+                        logger.warning(f"目标路径已存在，跳过移动: {dst_path}")
+                        continue
+                    os.rename(src_path, dst_path)
+                    logger.debug(f"移动文件/目录: {src_path} -> {dst_path}")
 
                 cfg.set(
                     cfg.maa_config_path,
