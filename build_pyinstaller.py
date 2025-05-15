@@ -116,6 +116,8 @@ shutil.copytree(
 # 删除临时目录
 shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"))
 
+shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa","bin"))
+
 for i in bin_files:
     # 复制二进制文件到 dist/MFW 目录
     shutil.copy(
