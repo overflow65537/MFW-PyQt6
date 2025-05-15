@@ -3,10 +3,6 @@ import os
 import importlib.util
 from typing import List, Dict
 import subprocess
-import string
-import random
-import sys
-
 
 from asyncify import asyncify
 from maa.controller import AdbController, Win32Controller
@@ -208,23 +204,22 @@ class MaaFW:
         self.need_register_report = False
 
         # agent加载
-        agent_data = maa_config_data.interface_config.get("agent", {})
+        agent_data: dict = maa_config_data.interface_config.get("agent", {})
         if agent_data and agent_data.get("child_exec") and not self.agent:
             self.agent = AgentClient()
             self.agent.bind(self.resource)
-            characters = string.ascii_letters + string.digits
-            socket_id = self.agent.create_socket(
-                "".join(random.choice(characters) for i in range(8))
-            )
+            socket_id = self.agent.identifier
             signalBus.custom_info.emit({"type": "agent_start"})
             print("agent启动")
             try:
-                
+
                 maa_bin = os.getenv("MAAFW_BINARY_PATH")
                 if not maa_bin:
                     maa_bin = os.getcwd()
-                
-                child_exec = agent_data.get("child_exec").replace("{PROJECT_DIR}", maa_config_data.resource_path)
+
+                child_exec = agent_data.get("child_exec").replace(
+                    "{PROJECT_DIR}", maa_config_data.resource_path
+                )
                 child_args = agent_data.get("child_args", [])
 
                 for i in range(len(child_args)):
@@ -236,17 +231,19 @@ class MaaFW:
                     f"agent启动: {child_exec}\n参数{child_args}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
                 )
 
-                if cfg.get(cfg.show_agent_cmd) :
+                if cfg.get(cfg.show_agent_cmd):
                     subprocess.Popen(
-                    [
-                        child_exec,
-                        *child_args,
-                        maa_bin,
-                        socket_id,
-                    ],
-                )
+                        [
+                            child_exec,
+                            *child_args,
+                            maa_bin,
+                            socket_id,
+                        ],
+                    )
                 else:
-                    self.agent_thread = ProcessThread(child_exec, [*child_args, maa_bin, socket_id])
+                    self.agent_thread = ProcessThread(
+                        child_exec, [*child_args, maa_bin, socket_id]
+                    )
                     self.agent_thread.start()
                 logger.debug(
                     f"agent启动: {agent_data.get("child_exec").replace("{PROJECT_DIR}", maa_config_data.resource_path)}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
@@ -266,7 +263,7 @@ class MaaFW:
         self.tasker.set_recording(cfg.get(cfg.recording))
         self.tasker.set_show_hit_draw(cfg.get(cfg.show_hit_draw))
         return self.tasker.post_task(entry, pipeline_override).wait().succeeded
-    
+
     @asyncify
     def stop_task(self):
         if self.tasker:
@@ -280,7 +277,6 @@ class MaaFW:
         if self.agent_thread:
             self.agent_thread.stop()
             self.agent_thread = None
-
 
 
 maafw = MaaFW()
