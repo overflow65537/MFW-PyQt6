@@ -78,7 +78,7 @@ def start_symbol():
 
 
 if __name__ == "__main__":
-    if sys.platform.startswith("macos"):
+    if sys.platform.startswith("darwin"):
         import atexit
         import os
 
