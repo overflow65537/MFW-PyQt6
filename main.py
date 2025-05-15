@@ -78,19 +78,41 @@ def start_symbol():
 
 
 if __name__ == "__main__":
-    # 重复运行检测
-    """
-    十分抽象的一个方法，使用pid文件来检测是否有其他实例在运行。
-    如果有其他实例在运行，就退出当前实例。
-    """
-    if os.path.exists("MFW.pid") and not os.path.exists("main.py"):
-        with open("MFW.pid", "r") as f:
-            pid = f.read()
-        if str(os.getpid()) != pid:
-            sys.exit(0)
-            time.sleep(1)
-    with open("MFW.pid", "w") as f:
-        f.write(str(os.getpid()))
+    if sys.platform.startswith("macos"):
+        import socket
+        import atexit
+
+        SOCKET_PATH = os.path.join(os.getcwd(), ".mfw_socket")  # 套接字文件路径
+
+        # 尝试创建套接字
+        try:
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.bind(SOCKET_PATH)
+            # 注册退出清理
+            atexit.register(lambda: os.remove(SOCKET_PATH) if os.path.exists(SOCKET_PATH) else None)
+            logger.debug("创建实例检测套接字成功")
+        except OSError as e:
+            if e.errno == socket.errno.EADDRINUSE:
+                # 尝试连接已存在的套接字（验证是否真的有实例运行）
+                try:
+                    test_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                    test_sock.connect(SOCKET_PATH)
+                    test_sock.close()
+                    logger.error("检测到已有实例运行，退出当前实例")
+                    time.sleep(1)
+                    sys.exit(0)
+                except ConnectionRefusedError:
+                    # 旧套接字残留（原进程已退出），清理后重新绑定
+                    os.remove(SOCKET_PATH)
+                    sock.bind(SOCKET_PATH)
+                    atexit.register(lambda: os.remove(SOCKET_PATH))
+                    logger.debug("清理残留套接字，创建新实例检测套接字")
+                    time.sleep(1)
+            else:
+                logger.error(f"实例检测套接字异常: {str(e)}")
+                time.sleep(1)
+                sys.exit(1)
+
     try:
         with open(
             os.path.join(".", "config", "version.txt"), "r", encoding="utf-8"
