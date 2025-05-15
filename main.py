@@ -79,39 +79,36 @@ def start_symbol():
 
 if __name__ == "__main__":
     if sys.platform.startswith("macos"):
-        import socket
         import atexit
+        import os
 
-        SOCKET_PATH = os.path.join(os.getcwd(), ".mfw_socket")  # 套接字文件路径
+        PID_FILE = os.path.join(os.getcwd(), "MFW.pid")  # PID文件路径
 
-        # 尝试创建套接字
-        try:
-            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            sock.bind(SOCKET_PATH)
-            # 注册退出清理
-            atexit.register(lambda: os.remove(SOCKET_PATH) if os.path.exists(SOCKET_PATH) else None)
-            logger.debug("创建实例检测套接字成功")
-        except OSError as e:
-            if e.errno == socket.errno.EADDRINUSE:
-                # 尝试连接已存在的套接字（验证是否真的有实例运行）
-                try:
-                    test_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                    test_sock.connect(SOCKET_PATH)
-                    test_sock.close()
-                    logger.error("检测到已有实例运行，退出当前实例")
-                    time.sleep(1)
-                    sys.exit(0)
-                except ConnectionRefusedError:
-                    # 旧套接字残留（原进程已退出），清理后重新绑定
-                    os.remove(SOCKET_PATH)
-                    sock.bind(SOCKET_PATH)
-                    atexit.register(lambda: os.remove(SOCKET_PATH))
-                    logger.debug("清理残留套接字，创建新实例检测套接字")
-                    time.sleep(1)
-            else:
-                logger.error(f"实例检测套接字异常: {str(e)}")
-                time.sleep(1)
-                sys.exit(1)
+        # 清理PID文件的函数
+        def cleanup_pid():
+            if os.path.exists(PID_FILE):
+                os.remove(PID_FILE)
+                logger.debug("已清理PID文件")
+
+        # 检查是否已有实例运行
+        if os.path.exists(PID_FILE):
+            try:
+                with open(PID_FILE, "r") as f:
+                    existing_pid = int(f.read().strip())
+                # 检查PID是否存活（macOS可用os.kill检测）
+                os.kill(existing_pid, 0)  # 发送0信号检测进程是否存在
+                logger.error(f"检测到已有实例运行（PID: {existing_pid}），当前实例退出")
+                sys.exit(0)
+            except (ValueError, ProcessLookupError):
+                # PID文件内容无效 或 进程已退出，清理旧文件
+                cleanup_pid()
+                logger.debug("检测到残留PID文件，已清理")
+
+        # 写入当前PID并注册清理
+        with open(PID_FILE, "w") as f:
+            f.write(str(os.getpid()))
+        atexit.register(cleanup_pid)  # 程序正常退出时自动清理
+        logger.debug(f"创建PID文件（当前PID: {os.getpid()}）")
 
     try:
         with open(
