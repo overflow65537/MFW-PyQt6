@@ -58,13 +58,46 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
                 )
                 if not os.path.exists(bundle_path):
                     os.makedirs(bundle_path)
-                
-                # 定义需要排除的文件和目录（根据需求调整）
-                exclude_files = {"MFW", "MFW.exe", "MFWupdater", "MFWupdater.exe", "k.ey"}
-                exclude_dirs = {"hotfix", "bundles", "config", "debug", "_internal", "MFW_resource"}
-                root_dir = os.getcwd()  # 当前根目录
 
-                if not os.path.exists(os.path.join("main.py")):
+                if (
+                    os.path.exists("main.py")
+                    and os.path.exists("README-en.md")
+                    and os.path.exists("generate_i18n.py")
+                ):
+                    logger.info("检测到开发环境")
+                    raise Exception(
+                        "检查到开发环境,请手动更改需要转移的文件和文件夹,并且注释掉这行代码"
+                    )
+                    need_move = {}  # 是set格式而不是字典
+                    for i in need_move:
+                        os.rename(
+                            os.path.join(".", i), os.path.join(bundle_path, i)
+                        )  # 移动文件/文件夹
+
+                    logger.info("移动完成")
+                else:
+                    # 定义需要排除的文件和目录（根据需求调整）
+                    exclude_files = {
+                        "MFW",
+                        "MFW.exe",
+                        "MFWupdater",
+                        "MFWUpdater.exe",
+                        "k.ey",
+                        "MFW_README-en.md",
+                        "MFW_README.md",
+                        "MFW_LICENSE",
+                        "maapicli.exe",
+                        "maapicli",
+                    }
+                    exclude_dirs = {
+                        "hotfix",
+                        "bundles",
+                        "config",
+                        "debug",
+                        "_internal",
+                        "MFW_resource",
+                    }
+                    root_dir = os.getcwd()  # 当前根目录
 
                     # 遍历根目录下所有文件/文件夹
                     for entry in os.listdir(root_dir):
