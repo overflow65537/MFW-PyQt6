@@ -71,39 +71,39 @@ class ResourceSettingInterface(ScrollArea):
             self.project_name = maa_config_data.interface_config.get("name", "")
             self.project_version = maa_config_data.interface_config.get("version", "")
             self.project_url = maa_config_data.interface_config.get("url", "")
-
         else:
             self.project_name = ""
             self.project_version = ""
             self.project_url = ""
 
+        adb_config = maa_config_data.config if isinstance(maa_config_data.config, dict) else {}
         self.ADB_port.lineEdit.setText(
-            maa_config_data.config.get("adb", {}).get("address", "")
+            adb_config.get("adb", {}).get("address", "")
         )
         self.ADB_path.lineEdit.setText(
-            maa_config_data.config.get("adb", {}).get("adb_path", "")
+            adb_config.get("adb", {}).get("adb_path", "")
         )
-        self.emu_path.lineEdit.setText(maa_config_data.config.get("emu_path", ""))
-        self.emu_args.lineEdit.setText(maa_config_data.config.get("emu_args", ""))
+        self.emu_path.lineEdit.setText(adb_config.get("emu_path", ""))
+        self.emu_args.lineEdit.setText(adb_config.get("emu_args", ""))
         self.emu_wait_time.lineEdit.setText(
-            str(maa_config_data.config.get("emu_wait_time", ""))
+            str(adb_config.get("emu_wait_time", ""))
         )
-        self.exe_path.lineEdit.setText(maa_config_data.config.get("exe_path", ""))
-        self.exe_args.lineEdit.setText(maa_config_data.config.get("exe_args", ""))
+        self.exe_path.lineEdit.setText(adb_config.get("exe_path", ""))
+        self.exe_args.lineEdit.setText(adb_config.get("exe_args", ""))
         self.exe_wait_time.lineEdit.setText(
-            str(maa_config_data.config.get("exe_wait_time", ""))
+            str(adb_config.get("exe_wait_time", ""))
         )
         self.run_before_start.lineEdit.setText(
-            maa_config_data.config.get("run_before_start", "")
+            adb_config.get("run_before_start", "")
         )
         self.run_before_start_args.lineEdit.setText(
-            maa_config_data.config.get("run_before_start_args", "")
+            adb_config.get("run_before_start_args", "")
         )
         self.run_after_finish.lineEdit.setText(
-            maa_config_data.config.get("run_after_finish", "")
+            adb_config.get("run_after_finish", "")
         )
         self.run_after_finish_args.lineEdit.setText(
-            maa_config_data.config.get("run_after_finish_args", "")
+            adb_config.get("run_after_finish_args", "")
         )
         self.use_GPU.path = maa_config_data.config_path
         self.win32_input_mode.path = maa_config_data.config_path

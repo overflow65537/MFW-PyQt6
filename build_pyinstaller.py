@@ -131,6 +131,13 @@ shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa","bin")
 # 写入版本信息
 write_version_file(platform, architecture, version)
 
+# 移动README和许可证并在开头加上MFW_前缀
+for file in ["README.md","README-en.md", "LICENSE"]:
+    shutil.move(
+        os.path.join(os.getcwd(), file),
+        os.path.join(os.getcwd(), "dist", "MFW", f"MFW_{file}"),
+    )
+
 # === 构建updater ===
 PyInstaller.__main__.run(
     [

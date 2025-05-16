@@ -1,6 +1,5 @@
 from maa.notification_handler import NotificationHandler, NotificationType
 from ..common.signal_bus import signalBus
-from ..utils.logger import logger
 
 
 class MyNotificationHandler(NotificationHandler):

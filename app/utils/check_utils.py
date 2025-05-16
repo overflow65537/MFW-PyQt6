@@ -11,7 +11,6 @@ from app.utils.tool import show_error_message
 import fnmatch
 
 
-
 def check(resource: str, config: str, directly: bool, DEV: bool):
     # 检查密钥文件是否存在
     try:
@@ -25,7 +24,7 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
         maa_resource_name: str = cfg.get(cfg.maa_resource_name)
         maa_resource_path: str = cfg.get(cfg.maa_resource_path)
         maa_config_list: Dict[str, Dict[str, str]] = cfg.get(cfg.maa_config_list)
-        maa_resource_list: Dict[str, Dict[str, str]] = cfg.get(cfg.maa_resource_list)
+        maa_resource_list: Dict[str, str] = cfg.get(cfg.maa_resource_list)
 
         if (
             maa_config_name == ""
@@ -109,8 +108,8 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
                             # 排除指定文件
                             entry in exclude_files
                             or fnmatch.fnmatch(entry, "*.dll")  # Windows动态库
-                            or fnmatch.fnmatch(entry, "*.so")   # Linux动态库
-                            or fnmatch.fnmatch(entry, "*.dylib")# macOS动态库
+                            or fnmatch.fnmatch(entry, "*.so")  # Linux动态库
+                            or fnmatch.fnmatch(entry, "*.dylib")  # macOS动态库
                             # 排除指定目录（需验证是目录）
                             or (os.path.isdir(src_path) and entry in exclude_dirs)
                         ):
@@ -135,7 +134,7 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
                         "maa_pi_config.json",
                     ),
                 )
-                cfg.set(cfg.maa_resource_path,bundle_path )
+                cfg.set(cfg.maa_resource_path, bundle_path)
                 cfg.set(
                     cfg.maa_config_list,
                     {
@@ -211,7 +210,9 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
                 maa_config_path = maa_config_list[maa_resource_name][config]
             else:
                 cfg.set(cfg.maa_config_name, "default")
-                cfg.set(cfg.maa_config_path, maa_config_list[maa_resource_name]["default"])
+                cfg.set(
+                    cfg.maa_config_path, maa_config_list[maa_resource_name]["default"]
+                )
                 maa_config_name = "default"
                 maa_config_path = maa_config_list[maa_resource_name]["default"]
             cfg.set(cfg.run_after_startup_arg, False)

@@ -52,9 +52,9 @@ class MaaFW:
                 os.path.join(custom_dir, "custom.json")
             )
             for custom_name, custom in custom_config.items():
-                custom_type: str = custom.get("type")
-                custom_class_name: str = custom.get("class")
-                custom_file_path: str = custom.get("file_path")
+                custom_type: str = custom.get("type", "")
+                custom_class_name: str = custom.get("class", "")
+                custom_file_path: str = custom.get("file_path", "")
                 if "{custom_path}" in custom_file_path:
                     custom_file_path = custom_file_path.replace(
                         "{custom_path}", custom_dir
@@ -73,7 +73,14 @@ class MaaFW:
                 spec = importlib.util.spec_from_file_location(
                     module_name, custom_file_path
                 )
+                if spec is None:
+                    logger.error(f"无法获取模块 {module_name} 的 spec，跳过加载")
+                    continue
                 module = importlib.util.module_from_spec(spec)
+
+                if spec.loader is None:
+                    logger.error(f"模块 {module_name} 的 loader 为 None，跳过加载")
+                    continue
                 spec.loader.exec_module(module)
                 print(f"模块 {module} 导入成功")
 
@@ -84,6 +91,7 @@ class MaaFW:
                 instance = class_obj()
 
                 if custom_type == "action":
+                    assert self.resource is not None, "self.resource 不应为 None"
                     if self.resource.register_custom_action(custom_name, instance):
                         logger.info(f"加载自定义动作{custom_name}")
                         if self.need_register_report:
@@ -91,6 +99,7 @@ class MaaFW:
                                 {"type": "action", "name": custom_name}
                             )
                 elif custom_type == "recognition":
+                    assert self.resource is not None, "self.resource 不应为 None"
                     if self.resource.register_custom_recognition(custom_name, instance):
                         logger.info(f"加载自定义识别器{custom_name}")
                         if self.need_register_report:
@@ -165,6 +174,9 @@ class MaaFW:
         if not self.resource:
             self.resource = Resource()
         gpu_index = maa_config_data.config["gpu"]
+        if not isinstance(gpu_index, int):
+            logger.warning("gpu_index 不是 int 类型，使用默认值 -1")
+            gpu_index = -1
         if gpu_index == -2:
             logger.debug("设置CPU推理")
             self.resource.use_cpu()
@@ -204,20 +216,36 @@ class MaaFW:
         self.need_register_report = False
 
         # agent加载
-        agent_data: dict = maa_config_data.interface_config.get("agent", {})
+        agent_data_raw = maa_config_data.interface_config.get("agent", {})
+        if isinstance(agent_data_raw, list):
+            if agent_data_raw:
+                agent_data: dict = agent_data_raw[0]
+            else:
+                agent_data = {}
+                logger.warning("agent 配置为一个空列表，使用空字典作为默认值")
+        elif isinstance(agent_data_raw, dict):
+            agent_data = agent_data_raw
+        else:
+            agent_data = {}
+            logger.warning("agent 配置既不是字典也不是列表，使用空字典作为默认值")
+
         if agent_data and agent_data.get("child_exec") and not self.agent:
             self.agent = AgentClient()
             self.agent.bind(self.resource)
             socket_id = self.agent.identifier
+            if callable(socket_id):
+                socket_id = socket_id() or "maafw_socket_id"
+            elif socket_id is None:
+                socket_id = "maafw_socket_id"
+            socket_id = str(socket_id)
             signalBus.custom_info.emit({"type": "agent_start"})
             print("agent启动")
             try:
-
                 maa_bin = os.getenv("MAAFW_BINARY_PATH")
                 if not maa_bin:
                     maa_bin = os.getcwd()
 
-                child_exec = agent_data.get("child_exec").replace(
+                child_exec = agent_data.get("child_exec", "").replace(
                     "{PROJECT_DIR}", maa_config_data.resource_path
                 )
                 child_args = agent_data.get("child_args", [])
@@ -246,9 +274,8 @@ class MaaFW:
                     )
                     self.agent_thread.start()
                 logger.debug(
-                    f"agent启动: {agent_data.get("child_exec").replace("{PROJECT_DIR}", maa_config_data.resource_path)}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
+                    f"agent启动: {agent_data.get('child_exec', '').replace('{PROJECT_DIR}', maa_config_data.resource_path)}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
                 )
-
             except Exception as e:
                 logger.error(f"agent启动失败: {e}")
                 signalBus.custom_info.emit({"type": "error_a"})

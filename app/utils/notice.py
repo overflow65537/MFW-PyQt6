@@ -45,7 +45,7 @@ class DingTalk:
         if url == "":
             logger.error("DingTalk 通知地址为空")
             cfg.set(cfg.Notice_DingTalk_status, False)
-            return None
+            return [url]  
         if secret == "":
             logger.error("DingTalk 密钥为空")
             cfg.set(cfg.Notice_DingTalk_status, False)
@@ -141,16 +141,26 @@ class SMTP:
 
     def send(self, msg_dict: dict) -> bool:
         msg = self.msg(msg_dict)
-        if self.Open_SSL and self.sever_port == 443:
-            smtp = smtplib.SMTP_SSL(self.sever_address, self.sever_port)
+        try:
+            port = int(self.sever_port)
+        except ValueError:
+            logger.error("SMTP 端口号不是有效的整数，使用默认端口 465")
+            port = 465
+
+        if self.Open_SSL and port == 443:
+            smtp = smtplib.SMTP_SSL(self.sever_address, port)
         else:
-            smtp = smtplib.SMTP(self.sever_address, self.sever_port)
+            smtp = smtplib.SMTP(self.sever_address, port)
 
         if self.Open_Login:
             smtp.login(self.uesr_name, self.password)
 
         try:
             smtp.sendmail(self.send_mail, self.receive_mail, msg.as_string())
+            return True  # 发送成功返回 True
+        except Exception as e:
+            logger.error(f"SMTP 发送邮件失败: {e}")
+            return False  # 发送失败返回 False
         finally:
             smtp.quit()
 
@@ -236,12 +246,15 @@ def dingtalk_send(
         logger.error(f"dingtalk Url不正确")
         cfg.set(cfg.Notice_DingTalk_status, False)
         return False
-
+    response = None
     try:
         response = requests.post(url=url, headers=headers, json=msg)
         status_code = response.json()[APP.codename]
-    except Exception:
-        logger.error(f"DingTalk 发送失败 {response.json()}")
+    except Exception as e:
+        if response is not None:
+            logger.error(f"DingTalk 发送失败 {response.json()}")
+        else:   
+            logger.error(f"DingTalk 发送失败 {e}")
         cfg.set(cfg.Notice_DingTalk_status, False)
         signalBus.Notice_msg.emit(f"DingTalk Failed")
         return False
@@ -278,12 +291,15 @@ def lark_send(
         cfg.set(cfg.Notice_Lark_status, False)
         signalBus.Notice_msg.emit("Lark Failed")
         return False
-
+    response = None
     try:
         response = requests.post(url=url, headers=headers, json=msg)
         status_code = response.json()[APP.codename]
-    except Exception:
-        logger.error(f"Lark 发送失败 {response.json()}")
+    except Exception as e:
+        if response is not None:
+            logger.error(f"Lark 发送失败 {response.json()}")
+        else:
+            logger.error(f"Lark 发送失败 {e}")
         signalBus.Notice_msg.emit(f"Lark failed")
         return False
 
@@ -318,7 +334,7 @@ def SMTP_send(
 
 
 def WxPusher_send(
-    msg_dict: str = {"title": "Test", "text": "Test"}, status: bool = False
+    msg_dict: dict[str, str] = {"title": "Test", "text": "Test"}, status: bool = False
 ) -> bool:
     if status:
         status = WxPusher().send(msg_dict)
@@ -336,7 +352,7 @@ def WxPusher_send(
         return False
 
 def QYWX_send(
-    msg_dict: str = {"title": "Test", "text": "Test"}, status: bool = False
+    msg_dict: dict[str, str] = {"title": "Test", "text": "Test"}, status: bool = False
 ) -> bool:
     if status:
         status = QYWX().send(msg_dict)
