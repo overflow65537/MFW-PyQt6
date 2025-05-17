@@ -322,11 +322,9 @@ class ResourceSettingInterface(ScrollArea):
         maa_config_data.config_name = "default"
         maa_config_data.config_path = main_config_path
 
-        resource_info = maa_config_data.resource_data.get(
-            maa_config_data.resource_name, {}
-        )
-        resource_path = resource_info.get("path", "")
-        maa_config_data.resource_path = resource_path
+        maa_config_data.resource_path = maa_config_data.resource_data[
+            maa_config_data.resource_name
+        ]
 
         cfg.set(cfg.maa_resource_path, maa_config_data.resource_path)
         maa_config_data.config_name_list = list(
