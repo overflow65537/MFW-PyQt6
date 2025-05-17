@@ -99,6 +99,28 @@ def init_maa_config_data(status: bool):
             logger.debug("配置文件初始化失败")
     except:
         logger.exception("配置文件初始化失败")
+        signalBus.resource_exist.emit(False)
+        maa_config_data.interface_config_path = ""
+        maa_config_data.interface_config = {}
+
+        maa_config_data.config_path = ""
+        maa_config_data.config = {}
+        maa_config_data.config_name = ""
+        maa_config_data.config_path = ""
+        maa_config_data.config_data = {}
+        maa_config_data.config_name_list = []
+
+        maa_config_data.resource_path = ""
+        maa_config_data.resource_name = ""
+        maa_config_data.resource_data = {}
+        maa_config_data.resource_name_list = []
+        cfg.set(cfg.maa_resource_path, "")
+        cfg.set(cfg.maa_resource_name, "")
+        cfg.set(cfg.maa_resource_list, {})
+        cfg.set(cfg.maa_config_path, "")
+        cfg.set(cfg.maa_config_name, "")
+        cfg.set(cfg.maa_config_list, {})
+        logger.debug("配置文件初始化失败, 已重置配置")
         show_error_message()
 
 
