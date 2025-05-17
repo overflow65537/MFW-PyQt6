@@ -1147,7 +1147,7 @@ class UpdateSelf(BaseUpdate):
                 return
             try:
                 tag_name = github_dict.get("tag_name") or ""
-                version_data[3] = tag_name
+                version_data[2] = tag_name
                 with open(
                     os.path.join(os.getcwd(), "config", "version.txt"),
                     "w",
@@ -1208,7 +1208,7 @@ class UpdateSelf(BaseUpdate):
 
 
             version_name = mirror_data["data"].get("version_name", "")
-            version_data[3] = str(version_name)
+            version_data[2] = str(version_name)
             try:
                 version_file_path = os.path.join(os.getcwd(), "config", "version.txt")
                 with open(version_file_path, "w", encoding="utf-8") as f:
@@ -1253,7 +1253,7 @@ class UpdateSelf(BaseUpdate):
                 return
 
             version_name = mirror_data["data"].get("version_name", "")
-            version_data[3] = str(version_name)
+            version_data[2] = str(version_name)
             try:
                 with open(
                     os.path.join(os.getcwd(), "config", "version.txt"),
@@ -1323,7 +1323,7 @@ class UpdateSelf(BaseUpdate):
             Dict: 资源信息
         """
         channel_map = {0: "stable", 1: "beta", 2: "alpha"}
-        channel = channel_map.get(cfg.get("MFW_update_channel"))
+        channel = channel_map.get(cfg.get(cfg.MFW_update_channel))
         url = f"https://mirrorchyan.com/api/resources/MFW-PyQt6/latest?current_version={version_data[2]}&cdk={cdk}&os={version_data[0]}&arch={version_data[1]}&channel={channel}"
 
         response = self._response(url)

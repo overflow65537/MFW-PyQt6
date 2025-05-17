@@ -19,7 +19,7 @@ from qfluentwidgets import FluentIcon as FIF
 from .task_interface import TaskInterface
 from .resource_setting_interface import ResourceSettingInterface
 from .scheduled_interface import ScheduledInterface
-from .continuous_task_interface import continuousTaskInterface
+#from .continuous_task_interface import continuousTaskInterface
 from .setting_interface import SettingInterface
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
@@ -41,7 +41,7 @@ class MainWindow(FluentWindow):
         self.taskInterface = TaskInterface(self)
         self.resourceSettingInterface = ResourceSettingInterface(self)
         self.scheduledInterface = ScheduledInterface(self)
-        self.continuousTaskInterface = continuousTaskInterface(self)
+        #self.continuousTaskInterface = continuousTaskInterface(self)
         self.settingInterface = SettingInterface(self)
 
         # 启用Fluent主题效果
@@ -188,11 +188,11 @@ class MainWindow(FluentWindow):
             FIF.CALENDAR,
             self.tr("Scheduled"),
         )
-        self.addSubInterface(
+        """self.addSubInterface(
             self.continuousTaskInterface,
             FIF.ALBUM,
             self.tr("Continuous Task"),
-        )
+        )"""
         self.addSubInterface(
             self.settingInterface,
             FIF.SETTING,
