@@ -121,7 +121,7 @@ class CustomMessageBox(MessageBoxBase):
             self.path_LineEdit.setText(self.folder)
             logger.info(f"资源路径 {self.folder}")
             logger.info(f"interface.json路径 {interface_path}")
-            self.interface_data = Read_Config(interface_path)
+            self.interface_data:dict = Read_Config(interface_path)
             project_name = self.interface_data.get("name", "")
             self.name_LineEdit.clear()
             self.name_LineEdit.setText(project_name)

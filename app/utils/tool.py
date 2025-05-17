@@ -49,7 +49,7 @@ def show_error_message():
     msg_box.exec()
 
 
-def Read_Config(paths: str):
+def Read_Config(paths: str)-> Dict:
     """读取指定路径的JSON配置文件。
 
     Args:
@@ -65,7 +65,7 @@ def Read_Config(paths: str):
             MAA_data = json.load(MAA_Config)
             return MAA_data
     else:
-        return None
+        return {}
 
 
 def Save_Config(paths: str, data):
