@@ -76,24 +76,22 @@ class ResourceSettingInterface(ScrollArea):
             self.project_version = ""
             self.project_url = ""
 
-        adb_config = (
-            maa_config_data.config if isinstance(maa_config_data.config, dict) else {}
-        )
-        self.ADB_port.lineEdit.setText(adb_config.get("adb", {}).get("address", ""))
-        self.ADB_path.lineEdit.setText(adb_config.get("adb", {}).get("adb_path", ""))
-        self.emu_path.lineEdit.setText(adb_config.get("emu_path", ""))
-        self.emu_args.lineEdit.setText(adb_config.get("emu_args", ""))
-        self.emu_wait_time.lineEdit.setText(str(adb_config.get("emu_wait_time", "")))
-        self.exe_path.lineEdit.setText(adb_config.get("exe_path", ""))
-        self.exe_args.lineEdit.setText(adb_config.get("exe_args", ""))
-        self.exe_wait_time.lineEdit.setText(str(adb_config.get("exe_wait_time", "")))
-        self.run_before_start.lineEdit.setText(adb_config.get("run_before_start", ""))
+
+        self.ADB_port.lineEdit.setText(maa_config_data.config.get("adb", {}).get("address", ""))
+        self.ADB_path.lineEdit.setText(maa_config_data.config.get("adb", {}).get("adb_path", ""))
+        self.emu_path.lineEdit.setText(maa_config_data.config.get("emu_path", ""))
+        self.emu_args.lineEdit.setText(maa_config_data.config.get("emu_args", ""))
+        self.emu_wait_time.lineEdit.setText(str(maa_config_data.config.get("emu_wait_time", "")))
+        self.exe_path.lineEdit.setText(maa_config_data.config.get("exe_path", ""))
+        self.exe_args.lineEdit.setText(maa_config_data.config.get("exe_args", ""))
+        self.exe_wait_time.lineEdit.setText(str(maa_config_data.config.get("exe_wait_time", "")))
+        self.run_before_start.lineEdit.setText(maa_config_data.config.get("run_before_start", ""))
         self.run_before_start_args.lineEdit.setText(
-            adb_config.get("run_before_start_args", "")
+            maa_config_data.config.get("run_before_start_args", "")
         )
-        self.run_after_finish.lineEdit.setText(adb_config.get("run_after_finish", ""))
+        self.run_after_finish.lineEdit.setText(maa_config_data.config.get("run_after_finish", ""))
         self.run_after_finish_args.lineEdit.setText(
-            adb_config.get("run_after_finish_args", "")
+            maa_config_data.config.get("run_after_finish_args", "")
         )
         self.use_GPU.path = maa_config_data.config_path
         self.win32_input_mode.path = maa_config_data.config_path
@@ -103,6 +101,20 @@ class ResourceSettingInterface(ScrollArea):
 
     def clear_content(self):
         # 清空输入框和设置内容
+
+        self.ADB_port.lineEdit.textChanged.disconnect()
+        self.ADB_path.lineEdit.textChanged.disconnect()
+        self.emu_path.lineEdit.textChanged.disconnect()
+        self.emu_args.lineEdit.textChanged.disconnect()
+        self.emu_wait_time.lineEdit.textChanged.disconnect()
+        self.exe_path.lineEdit.textChanged.disconnect()
+        self.exe_args.lineEdit.textChanged.disconnect()
+        self.exe_wait_time.lineEdit.textChanged.disconnect()
+        self.run_before_start.lineEdit.textChanged.disconnect()
+        self.run_before_start_args.lineEdit.textChanged.disconnect()
+        self.run_after_finish.lineEdit.textChanged.disconnect()
+        self.run_after_finish_args.lineEdit.textChanged.disconnect()
+
         self.ADB_port.lineEdit.clear()
         self.ADB_path.lineEdit.clear()
         self.emu_path.lineEdit.clear()
@@ -115,6 +127,27 @@ class ResourceSettingInterface(ScrollArea):
         self.run_before_start_args.lineEdit.clear()
         self.run_after_finish.lineEdit.clear()
         self.run_after_finish_args.lineEdit.clear()
+
+        self.ADB_port.lineEdit.textChanged.connect(self._onADB_portCardChange)
+        self.ADB_path.lineEdit.textChanged.connect(self._onADB_pathCardChange)
+        self.emu_path.lineEdit.textChanged.connect(self._onEmuPathCardChange)
+        self.emu_args.lineEdit.textChanged.connect(self._onEmuArgsCardChange)
+        self.emu_wait_time.lineEdit.textChanged.connect(self._onEmuWaitTimeCardChange)
+        self.exe_path.lineEdit.textChanged.connect(self._onExePathCardChange)
+        self.exe_args.lineEdit.textChanged.connect(self._onExeParameterCardChange)
+        self.exe_wait_time.lineEdit.textChanged.connect(self._onExeWaitTimeCardChange)
+        self.run_before_start.lineEdit.textChanged.connect(
+            self._onRunBeforeStartCardChange
+        )
+        self.run_before_start_args.lineEdit.textChanged.connect(
+            self._onRunBeforeStartArgsCardChange
+        )
+        self.run_after_finish.lineEdit.textChanged.connect(
+            self._onRunAfterFinishCardChange
+        )
+        self.run_after_finish_args.lineEdit.textChanged.connect(
+            self._onRunAfterFinishArgsCardChange
+        )
 
     def enable_widgets(self, enable: bool):
         """启用或禁用所有可交互控件。"""
@@ -322,11 +355,9 @@ class ResourceSettingInterface(ScrollArea):
         maa_config_data.config_name = "default"
         maa_config_data.config_path = main_config_path
 
-        resource_info = maa_config_data.resource_data.get(
-            maa_config_data.resource_name, {}
+        maa_config_data.resource_path = maa_config_data.resource_data.get(
+            maa_config_data.resource_name, ""
         )
-        resource_path = resource_info.get("path", "")
-        maa_config_data.resource_path = resource_path
 
         cfg.set(cfg.maa_resource_path, maa_config_data.resource_path)
         maa_config_data.config_name_list = list(
@@ -461,10 +492,10 @@ class ResourceSettingInterface(ScrollArea):
         self.ADB_Setting = SettingCardGroup(self.tr("ADB"), self.resource_scrollWidget)
 
         # 读取 ADB 配置（默认为空）
-        address_data = ""
-        path_data = "./"
-        emu_path = ""
-        emu_wait_time = "10"
+        address_data = maa_config_data.config.get("adb", {}).get("address", "")
+        path_data = maa_config_data.config.get("adb", {}).get("adb_path", "")
+        emu_path = maa_config_data.config.get("emu_path", "")
+        emu_wait_time = maa_config_data.config.get("emu_wait_time", "")
 
         self.ADB_port = LineEditCard(
             icon=FIF.COMMAND_PROMPT,
@@ -515,9 +546,9 @@ class ResourceSettingInterface(ScrollArea):
     def initialize_win32_settings(self):
         """初始化 Win32 设置。"""
 
-        exe_path = ""
-        exe_args = ""
-        exe_wait_time = "10"
+        exe_path = maa_config_data.config.get("exe_path", "")
+        exe_args = maa_config_data.config.get("exe_args", "")
+        exe_wait_time = maa_config_data.config.get("exe_wait_time", "")
         self.Win32_Setting = SettingCardGroup(
             self.tr("Win32"), self.resource_scrollWidget
         )
@@ -551,8 +582,8 @@ class ResourceSettingInterface(ScrollArea):
     def initialize_start_settings(self):
         """初始化启动设置。"""
 
-        run_before_start = ""
-        run_after_finish = ""
+        run_before_start = maa_config_data.config.get("run_before_start", "")
+        run_after_finish = maa_config_data.config.get("run_after_finish", "")
 
         self.start_Setting = SettingCardGroup(
             self.tr("Custom Startup"), self.resource_scrollWidget
@@ -808,7 +839,7 @@ class ResourceSettingInterface(ScrollArea):
 
         # 更新配置并设置卡片内容
         if config_key == "adb":
-            maa_config_data.config["adb"]["adb_path"] = file_name
+            maa_config_data.config["adb"]["adb_path"] = file_name # type: ignore
             logger.debug(f"选择的 ADB 路径: {file_name}")
         elif config_key == "emu":
             maa_config_data.config["emu_path"] = file_name
@@ -889,7 +920,7 @@ class ResourceSettingInterface(ScrollArea):
         if maa_config_data.config_path == "":
             return
         port = self.ADB_port.lineEdit.text()
-        maa_config_data.config["adb"]["address"] = port
+        maa_config_data.config["adb"]["address"] = port # type: ignore
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def _onADB_pathCardChange(self):
@@ -897,7 +928,7 @@ class ResourceSettingInterface(ScrollArea):
         if maa_config_data.config_path == "":
             return
         adb_path = self.ADB_path.lineEdit.text()
-        maa_config_data.config["adb"]["adb_path"] = adb_path
+        maa_config_data.config["adb"]["adb_path"] = adb_path # type: ignore
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def _onEmuPathCardChange(self):

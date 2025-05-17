@@ -29,7 +29,7 @@ class AdbInnerConfig(TypedDict, total=False):
 
 
 # 定义 ADB 配置的类型
-class AdbConfig(TypedDict, total=False):
+class AdbConfig(TypedDict, total=True):
     adb_path: str
     address: str
     input_method: int
@@ -98,10 +98,10 @@ class MainConfig(TypedDict, total=False):
     run_after_finish_args: str
     emu_path: str
     emu_args: str
-    emu_wait_time: int
+    emu_wait_time: str
     exe_path: str
     exe_args: str
-    exe_wait_time: int
+    exe_wait_time: str
 
 
 InnerConfig = Dict[str, str]
