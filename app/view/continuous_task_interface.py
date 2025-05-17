@@ -1,8 +1,8 @@
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QLabel, QSizePolicy
+from PySide6.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QHBoxLayout,QFrame, QSizePolicy
 from PySide6.QtGui import QWheelEvent
 
-from qfluentwidgets import Pivot, ScrollArea
+from qfluentwidgets import Pivot, ScrollArea,BodyLabel,ComboBox
 
 from typing import List, Optional
 
@@ -23,24 +23,40 @@ class ContinuousTaskInterface(QWidget):
         super().__init__(parent)
         self.setObjectName("Continuous_Task_Interface")
         
+        # 导航栏部分（水平最大，垂直最小）
         self.pivot = Pivot(self)  
-
         self.scroll_area = HorizontalScrollArea(self)
         self.scroll_area.setWidget(self.pivot)
         self.scroll_area.enableTransparentBackground()
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)  
+        # 关键调整：水平扩展，垂直最小
+        self.scroll_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)  
 
+        # 下方水平布局（左边堆叠组件 + 右边滚动区域）
+        self.bottom_h_layout = QHBoxLayout()  # 新增水平布局
+        
+        # 左边：原堆叠组件（占3份）
         self.stacked_widget = QStackedWidget(self)
-        self.script_list: List[QWidget] = []
+        self.bottom_h_layout.addWidget(self.stacked_widget, 3)  # 分配3份宽度
+
+        # 右边：新增滚动区域（占2份）
+        self.right_scroll_area = ScrollArea(self)  # 可替换为自定义滚动区域
+        self.right_scroll_area.setWidgetResizable(True)
+        self.right_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.right_scroll_area.setStyleSheet("background: transparent; border: none;")
+        self.bottom_h_layout.addWidget(self.right_scroll_area, 2)  # 分配2份宽度
+
+
+        # 主垂直布局
         self.Vlayout = QVBoxLayout(self)  
-        self.Vlayout.addWidget(self.scroll_area, 0)  
-        self.Vlayout.addWidget(self.stacked_widget)
+        self.Vlayout.addWidget(self.scroll_area, 0)  # 导航栏（垂直方向不拉伸）
+        self.Vlayout.addLayout(self.bottom_h_layout, 1)  # 下方内容（垂直方向拉伸填充）
 
+        # 信号连接与初始化（保持原逻辑）
         self.pivot.currentItemChanged.connect(self._on_segmented_index_changed)
-
+        self.script_list: List[QWidget] = []
         self._load_all_task_pages()
 
 
@@ -67,7 +83,7 @@ class ContinuousTaskInterface(QWidget):
             self.switch_to_task_page(0)
 
     def _create_task_page(self, task: TaskItem_interface, task_index: int) -> None:
-        """创建单个任务页面并关联导航项（Pivot的addItem参数兼容routeKey和text）"""
+        """创建单个任务页面并关联导航项"""
         task_page = self.TaskDetailPage(task, self)
         task_page.setObjectName(f"task_{task_index}")
         self.script_list.append(task_page)
@@ -81,7 +97,7 @@ class ContinuousTaskInterface(QWidget):
         )
 
     def switch_to_task_page(self, task_index: int) -> None:
-        """切换到指定索引的任务页面（索引从0开始）"""
+        """切换到指定索引的任务页面"""
         if not self.script_list or task_index < 0 or task_index >= len(self.script_list):
             logger.warning(f"无效的任务索引: {task_index}")
             return
@@ -97,21 +113,60 @@ class ContinuousTaskInterface(QWidget):
         """任务详情页面（显示具体任务信息）"""
         def __init__(self, task: TaskItem_interface, parent: Optional[QWidget] = None):
             super().__init__(parent)
-            self.Vlayout = QVBoxLayout(self)
-            self.Vlayout.setContentsMargins(15, 15, 15, 15)
-            self.Vlayout.setSpacing(10)
-            
-            name_label = QLabel(f"任务名称: {task.get('name', '未命名任务')}", self)
-            name_label.setStyleSheet("font-size: 16px; font-weight: bold;")
-            self.Vlayout.addWidget(name_label)
 
-            entry_label = QLabel(f"入口: {task.get('entry', '无')}", self)
-            self.Vlayout.addWidget(entry_label)
+            # 添加任务区布局
+            self.AddMission_layout = QVBoxLayout(self)
 
-            periodic = task.get("periodic", 0)
-            periodic_label = QLabel(f"周期: {periodic}天" if periodic else "无固定周期", self)
-            self.Vlayout.addWidget(periodic_label)
+            self.line = QFrame()
+            self.line.setFrameShape(QFrame.Shape.HLine)
+            self.line.setFrameShadow(QFrame.Shadow.Plain)
 
-            daily_start = task.get("daily_start", 0)
-            daily_start_label = QLabel(f"每日开始时间: {daily_start}:00", self)
-            self.Vlayout.addWidget(daily_start_label)
+            self.line1 = QFrame()
+            self.line1.setFrameShape(QFrame.Shape.HLine)
+            self.line1.setFrameShadow(QFrame.Shadow.Plain)
+
+            self.scroll_area = ScrollArea()
+            self.scroll_area.setWidgetResizable(True)
+            self.scroll_area.setHorizontalScrollBarPolicy(
+                Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+            )
+
+            self.scroll_area.setStyleSheet("background-color: transparent; border: none;")
+
+            self.scroll_area_content = QWidget()
+            self.scroll_area_content.setContentsMargins(0, 0, 10, 0)
+
+            # 选项区域
+            self.option_widget = QWidget()
+            self.option_layout = QVBoxLayout(self.option_widget)
+            self.option_widget.setSizePolicy(
+                QSizePolicy.Policy.Preferred,  # 水平策略保持不变
+                QSizePolicy.Policy.Minimum,  # 垂直策略根据内容自动调整
+            )
+
+            # doc区域
+            self.doc_widget = QWidget()
+            self.doc_layout = QVBoxLayout(self.doc_widget)
+            self.doc_widget.setSizePolicy(
+                QSizePolicy.Policy.Preferred,  # 水平策略保持不变
+                QSizePolicy.Policy.Minimum,  # 垂直策略根据内容自动调整
+            )
+
+            # 主滚动区域布局
+            self.main_scroll_layout = QVBoxLayout(self.scroll_area_content)
+            self.main_scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+            self.main_scroll_layout.addWidget(self.option_widget)
+            self.main_scroll_layout.addWidget(self.doc_widget)
+
+            self.scroll_area.setWidget(self.scroll_area_content)
+
+            self.Option_area_Label = QVBoxLayout()
+            self.Option_area_Label.addWidget(self.scroll_area, 1)
+
+
+            self.AddMission_layout.addLayout(self.Option_area_Label)
+            self.setLayout(self.AddMission_layout)
+
+
+            #填充任务区数据和文本
+
