@@ -125,7 +125,6 @@ class SettingInterface(ScrollArea):
             self.project_version = ""
             self.project_url = ""
 
-
         self.updateCard.setContent(
             self.tr("Current")
             + " "
@@ -139,7 +138,6 @@ class SettingInterface(ScrollArea):
     def clear_content(self):
         # 清空输入框和设置内容
         cfg.set(cfg.save_draw, False)
-
 
         self.updateCard.setContent(
             self.tr("Current")
@@ -164,7 +162,6 @@ class SettingInterface(ScrollArea):
 
     def initialize_start_settings(self):
         """初始化启动设置。"""
-
 
         self.start_Setting = SettingCardGroup(
             self.tr("Custom Startup"), self.Setting_scroll_widget
@@ -240,7 +237,9 @@ class SettingInterface(ScrollArea):
 
     def initialize_notice_settings(self):
         """初始化外部通知设置。"""
-        self.noticeGroup = SettingCardGroup(self.tr("Notice"), self.Setting_scroll_widget)
+        self.noticeGroup = SettingCardGroup(
+            self.tr("Notice"), self.Setting_scroll_widget
+        )
 
         self.dingtalk_noticeTypeCard = NoticeButtonSettingCard(
             text=self.tr("Modify"),
@@ -290,7 +289,9 @@ class SettingInterface(ScrollArea):
 
     def initialize_advanced_settings(self):
         """初始化高级设置。"""
-        self.advancedGroup = SettingCardGroup(self.tr("Advanced"), self.Setting_scroll_widget)
+        self.advancedGroup = SettingCardGroup(
+            self.tr("Advanced"), self.Setting_scroll_widget
+        )
         # 设置开发者配置
         cfg.set(cfg.recording, False)
         cfg.set(cfg.save_draw, False)
@@ -353,7 +354,9 @@ class SettingInterface(ScrollArea):
         with open("k.ey", "rb") as key_file:
             key = key_file.read()
             holddertext = decrypt(cfg.get(cfg.Mcdk), key)
-        self.updateGroup = SettingCardGroup(self.tr("Update"), self.Setting_scroll_widget)
+        self.updateGroup = SettingCardGroup(
+            self.tr("Update"), self.Setting_scroll_widget
+        )
         self.MirrorCard = LineEditCard(
             icon=FIF.APPLICATION,
             title=self.tr("mirrorchyan CDK"),
@@ -398,7 +401,6 @@ class SettingInterface(ScrollArea):
                 MFW_Version = "Unknown"
         MFW_update_channel = cfg.get(cfg.MFW_update_channel)
         resource_update_channel = cfg.get(cfg.resource_update_channel)
-        
 
         self.updateCard = DoubleButtonSettingCard(
             text2=self.tr("Check for updates"),
@@ -425,7 +427,6 @@ class SettingInterface(ScrollArea):
 
         self.aboutGroup.addSettingCard(self.updateCard)
         self.aboutGroup.addSettingCard(self.aboutCard)
-
 
     def update_check(self):
         self.Updatethread.start()
@@ -505,7 +506,6 @@ class SettingInterface(ScrollArea):
 
         # 连接启动信号
         self.run_after_startup.checkedChanged.connect(self._onRunAfterStartupCardChange)
-
 
         # 连接个性化信号
         cfg.themeChanged.connect(setTheme)

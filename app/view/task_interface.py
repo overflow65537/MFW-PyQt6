@@ -467,7 +467,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         now = datetime.now().strftime("%H:%M")
 
         html_text = f'<span style="color:gray">{now}</span> {html_text}'
-        
 
         message.setWordWrap(True)
         message.setText(html_text)
@@ -475,14 +474,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
         )  # 水平扩展，垂直自适应
 
-
-
-
         # 插入到布局
         count = self.right_layout.count()
-        if count >=2:
+        if count >= 2:
             # 插入到倒数第二个位置
-            self.right_layout.insertWidget(count-1, message)
+            self.right_layout.insertWidget(count - 1, message)
         else:
             # 插入到第一个位置
             self.right_layout.insertWidget(0, message)
@@ -879,12 +875,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 return False
             # 再次尝试连接 ADB
             if not await self.connect_adb():
-                self.insert_colored_text(self.tr("Connection Failed,try to kill ADB process"))
+                self.insert_colored_text(
+                    self.tr("Connection Failed,try to kill ADB process")
+                )
                 if not self.kill_adb_process():
                     self.insert_colored_text(self.tr("kill ADB Failed"))
                 if not await self.connect_adb():
                     logger.error(
-                    f"连接adb失败\n{maa_config_data.config['adb']['adb_path']}\n{maa_config_data.config['adb']['address']}\n{maa_config_data.config['adb']['input_method']}\n{maa_config_data.config['adb']['screen_method']}\n{maa_config_data.config['adb']['config']}"
+                        f"连接adb失败\n{maa_config_data.config['adb']['adb_path']}\n{maa_config_data.config['adb']['address']}\n{maa_config_data.config['adb']['input_method']}\n{maa_config_data.config['adb']['screen_method']}\n{maa_config_data.config['adb']['config']}"
                     )
                     self.send_notice("failed", self.tr("Connection"))
                     self.insert_colored_text(self.tr("Connection Failed"))
@@ -1074,32 +1072,40 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 logger.info(f"{self.entry}速通启用")
 
                 # 通用配置提取
-                schedule_mode:str = speedrun_cfg.get("schedule_mode")
+                schedule_mode: str = speedrun_cfg.get("schedule_mode")
                 interval_cfg: dict = speedrun_cfg.get("interval", {})
                 refresh_time_cfg: dict = speedrun_cfg.get("refresh_time", {})
-                last_run_str:str = speedrun_cfg.get("last_run", "1970-01-01 00:00:00")
-                
+                last_run_str: str = speedrun_cfg.get("last_run", "1970-01-01 00:00:00")
+
                 # 计算下次运行时间（提取公共函数）
                 next_run = self.calculate_next_run_time(last_run_str, interval_cfg)
                 # 计算刷新时间（提取公共函数）
-                refresh_time = self.calculate_refresh_time(schedule_mode, refresh_time_cfg,last_run_str)
-                
+                refresh_time = self.calculate_refresh_time(
+                    schedule_mode, refresh_time_cfg, last_run_str
+                )
+
                 # 关键时间日志
                 logger.info(f"任务[{self.entry}]上次运行时间: {last_run_str}")
-                logger.info(f"任务[{self.entry}]下次运行时间: {next_run.toString('yyyy-MM-dd HH:mm:ss')}")
-                logger.info(f"任务[{self.entry}]刷新时间: {refresh_time.toString('yyyy-MM-dd HH:mm:ss')}")
+                logger.info(
+                    f"任务[{self.entry}]下次运行时间: {next_run.toString('yyyy-MM-dd HH:mm:ss')}"
+                )
+                logger.info(
+                    f"任务[{self.entry}]刷新时间: {refresh_time.toString('yyyy-MM-dd HH:mm:ss')}"
+                )
 
                 # 重置循环次数逻辑
                 if next_run > refresh_time:
                     interval_cfg["current_loop"] = interval_cfg.get("loop_item", 1)
-                    logger.info(f"任务[{self.entry}]重置循环次数: {interval_cfg['current_loop']}")
+                    logger.info(
+                        f"任务[{self.entry}]重置循环次数: {interval_cfg['current_loop']}"
+                    )
 
                 # 处理循环次数（封装状态更新）
                 remaining_loops = interval_cfg.get("current_loop", -1)
                 if remaining_loops > 0:
                     self.update_speedrun_state(speedrun_cfg, remaining_loops)
                     await maafw.run_task(self.entry, override_options)
-                    
+
                 else:
                     self.handle_exhausted_loops(refresh_time)
                     continue
@@ -1110,12 +1116,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         logger.info("任务完成")
         self.send_notice("completed")
 
-    def calculate_next_run_time(self, last_run_str: str, interval_cfg: dict) -> QDateTime:
+    def calculate_next_run_time(
+        self, last_run_str: str, interval_cfg: dict
+    ) -> QDateTime:
         """计算下次运行时间（提取公共函数）"""
         last_run = QDateTime.fromString(last_run_str, "yyyy-MM-dd HH:mm:ss")
         unit = interval_cfg.get("unit", 2)  # 默认每天
         item = interval_cfg.get("item", 1)  # 默认间隔1个单位
-        
+
         if unit == 0:  # 每分
             return last_run.addSecs(item * 60)
         elif unit == 1:  # 每小时
@@ -1123,12 +1131,18 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         else:  # 每天（默认）
             return last_run.addSecs(item * 60 * 60 * 24)
 
-    def calculate_refresh_time(self, schedule_mode: str, refresh_time_cfg: dict,last_run_str:str) -> QDateTime:
+    def calculate_refresh_time(
+        self, schedule_mode: str, refresh_time_cfg: dict, last_run_str: str
+    ) -> QDateTime:
         """计算刷新时间（提取公共函数）"""
-        last_run_str:QDateTime = QDateTime.fromString(last_run_str, "yyyy-MM-dd HH:mm:ss")
+        last_run_str: QDateTime = QDateTime.fromString(
+            last_run_str, "yyyy-MM-dd HH:mm:ss"
+        )
         if schedule_mode == "daily":
             refresh_hour = refresh_time_cfg.get("H", 0)
-            if last_run_str.time().hour() >= refresh_time_cfg.get("H", 0):# 如果当前时间已经过了刷新时间
+            if last_run_str.time().hour() >= refresh_time_cfg.get(
+                "H", 0
+            ):  # 如果当前时间已经过了刷新时间
                 refresh_time = last_run_str.addDays(1)
             else:
                 refresh_time = last_run_str
@@ -1136,25 +1150,33 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             return refresh_time
         elif schedule_mode == "weekly":
             return self.get_date_time_for_week_day_and_hour(
-                refresh_time_cfg.get("w", 0), 
-                refresh_time_cfg.get("H", 0)
+                refresh_time_cfg.get("w", 0), refresh_time_cfg.get("H", 0)
             )
         elif schedule_mode == "monthly":
             refresh_day = refresh_time_cfg.get("d", 1)
             refresh_hour = refresh_time_cfg.get("H", 0)
-            if last_run_str.date().day() >= refresh_day and last_run_str.time().hour() >= refresh_hour:
+            if (
+                last_run_str.date().day() >= refresh_day
+                and last_run_str.time().hour() >= refresh_hour
+            ):
                 refresh_time = last_run_str.addMonths(1)
             else:
                 refresh_time = last_run_str
             refresh_time.setTime(QTime(refresh_hour, 0))
-            refresh_time.setDate(QDate(refresh_time.date().year(), refresh_time.date().month(), refresh_day))
+            refresh_time.setDate(
+                QDate(
+                    refresh_time.date().year(), refresh_time.date().month(), refresh_day
+                )
+            )
             return refresh_time
-        return last_run_str 
+        return last_run_str
 
     def update_speedrun_state(self, speedrun_cfg: dict, remaining_loops: int):
         """更新速通状态（封装逻辑）"""
         speedrun_cfg["interval"]["current_loop"] = remaining_loops - 1
-        speedrun_cfg["last_run"] = QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
+        speedrun_cfg["last_run"] = QDateTime.currentDateTime().toString(
+            "yyyy-MM-dd HH:mm:ss"
+        )
         logger.info(f"任务[{self.entry}]剩余循环次数: {remaining_loops}")
         Save_Config(maa_config_data.config_path, maa_config_data.config)  # 更新配置文件
 
@@ -1163,8 +1185,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         logger.info(f"任务[{self.entry}]当前循环次数已耗尽")
         self.insert_colored_text(self.tr("Loop count exhausted"))
         self.insert_colored_text(
-            self.tr("Waiting for next run: ") + 
-            refresh_time.toString("yyyy-MM-dd HH:mm:ss")
+            self.tr("Waiting for next run: ")
+            + refresh_time.toString("yyyy-MM-dd HH:mm:ss")
         )
 
     def get_date_time_for_week_day_and_hour(self, target_week_day, target_hour):
@@ -1283,11 +1305,21 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 return True
             else:
                 logger.warning(f"不支持的操作系统: {system}")
-            
+
         except subprocess.CalledProcessError as e:
             try:
                 if system == "Windows":
-                    subprocess.run(["wmic", "process", "where", "name='adb.exe'", "call", "terminate"], check=True)
+                    subprocess.run(
+                        [
+                            "wmic",
+                            "process",
+                            "where",
+                            "name='adb.exe'",
+                            "call",
+                            "terminate",
+                        ],
+                        check=True,
+                    )
                     logger.info("使用 wmic 杀死 ADB 进程成功")
                 elif system in ("Darwin", "Linux"):
                     subprocess.run(["killall", "adb"], check=True)
@@ -1328,7 +1360,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             Select_Target = self.SelectTask_Combox_1.currentText()
             Option = self.get_selected_options()
             speedrun = self.get_speedrun_value(Select_Target)
-            task_data = {"name": Select_Target, "option": Option,"speedrun":speedrun}
+            task_data = {"name": Select_Target, "option": Option, "speedrun": speedrun}
             if self.get_switch_value() is not None:
                 task_data["switch_enabled"] = self.get_switch_value()
             maa_config_data.config["task"].append(task_data)
@@ -1339,10 +1371,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.dragging_finished()
 
     def get_speedrun_value(self, Select_Target=""):
-        for i in maa_config_data.interface_config['task']:
-            if i['name']==Select_Target:
-                return i.get('speedrun',{})
-        
+        for i in maa_config_data.interface_config["task"]:
+            if i["name"] == Select_Target:
+                return i.get("speedrun", {})
+
     def Add_All_Tasks(self):
         if maa_config_data.config == {}:
             return
@@ -1351,7 +1383,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             selected_value = []
             task_name = task.get("name")
             options = task.get("option")
-            speedrun = task.get("speedrun",{})
+            speedrun = task.get("speedrun", {})
             if options:
                 for pipeline_option in options:
                     target = maa_config_data.interface_config["option"][
@@ -1367,9 +1399,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         {"name": option_name, "value": selected_value[i]}
                     )
             maa_config_data.config["task"].append(
-                {"name": task_name, "option": options_dicts,"speedrun":speedrun}
+                {"name": task_name, "option": options_dicts, "speedrun": speedrun}
             )
-
 
         # 保存配置
         Save_Config(maa_config_data.config_path, maa_config_data.config)

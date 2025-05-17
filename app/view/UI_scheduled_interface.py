@@ -1,10 +1,5 @@
 from PySide6.QtCore import Qt, QSize, QMetaObject, QCoreApplication
-from PySide6.QtWidgets import (
-    QSizePolicy,
-    QVBoxLayout,
-    QHBoxLayout,
-    QWidget,QFrame
-)
+from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QHBoxLayout, QWidget, QFrame
 
 from qfluentwidgets import (
     PushButton,
@@ -12,7 +7,8 @@ from qfluentwidgets import (
     ComboBox,
     RadioButton,
     CheckBox,
-    SpinBox,ListWidget,
+    SpinBox,
+    ListWidget,
 )
 
 
@@ -35,7 +31,7 @@ class Ui_Scheduled_Interface(object):
         self.title_label = BodyLabel()
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.main_layout.addWidget(self.title_label)
-        #添加一个横线
+        # 添加一个横线
         self.Hline2 = QFrame(Scheduled_Interface)
         self.Hline2.setFrameShape(QFrame.Shape.HLine)
         self.Hline2.setFrameShadow(QFrame.Shadow.Sunken)
@@ -117,7 +113,7 @@ class Ui_Scheduled_Interface(object):
         self.right_layout.addWidget(self.current_layout)
 
         # 将左右两部分添加到水平布局
-        #添加一条竖线
+        # 添加一条竖线
         self.Vline1 = QFrame()
         self.Vline1.setFrameShape(QFrame.Shape.VLine)
         self.Vline1.setFrameShadow(QFrame.Shadow.Sunken)
@@ -125,17 +121,14 @@ class Ui_Scheduled_Interface(object):
         self.row3_layout.addWidget(self.Vline1)
         self.row3_layout.addWidget(self.right_panel)
         self.main_layout.addLayout(self.row3_layout)
-        
+
         # 时间选择水平布局
         self.time_selection_layout = QHBoxLayout()
-        
-
 
         # 目前循环次数
         self.loop_label = BodyLabel()
         self.loop_input = SpinBox(self)
         self.loop_input.setMinimum(-1)
-
 
         self.time_selection_layout.addWidget(self.loop_label)
         self.time_selection_layout.addWidget(self.loop_input)
@@ -153,7 +146,6 @@ class Ui_Scheduled_Interface(object):
         self.row4_layout.addWidget(self.date_label)
         self.main_layout.addLayout(self.row4_layout)
 
-
         # 将时间选择布局添加到主布局
 
         # 第三行：三个按钮的水平布局
@@ -169,7 +161,7 @@ class Ui_Scheduled_Interface(object):
 
         # 第四行：五个标签的垂直布局,可能会当教程使用
 
-        #添加一条横线
+        # 添加一条横线
         self.Hline1 = QFrame()
         self.Hline1.setFrameShape(QFrame.Shape.HLine)
         self.Hline1.setFrameShadow(QFrame.Shadow.Sunken)
@@ -178,7 +170,7 @@ class Ui_Scheduled_Interface(object):
         self.main_layout.addWidget(self.notic_label)
         self.main_layout.addStretch()
 
-        #添加一条竖线
+        # 添加一条竖线
         self.Vline1 = QFrame()
         self.Vline1.setFrameShape(QFrame.Shape.VLine)
         self.Vline1.setFrameShadow(QFrame.Shadow.Sunken)
@@ -186,7 +178,7 @@ class Ui_Scheduled_Interface(object):
         self.VBoxLayout.addWidget(self.List_widget)
         self.VBoxLayout.addWidget(self.Vline1)
         self.VBoxLayout.addLayout(self.main_layout)
-        #设置布局比例50:0:50
+        # 设置布局比例50:0:50
         self.VBoxLayout.setStretch(0, 50)
         self.VBoxLayout.setStretch(2, 50)
 

@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QWidget
-from PySide6.QtCore import Qt, QTime, QDate
+from PySide6.QtCore import Qt
 from .UI_scheduled_interface import Ui_Scheduled_Interface
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
@@ -14,7 +14,7 @@ import os
 import shutil
 
 from ..utils.logger import logger
-from ..common.maa_config_data import maa_config_data
+from ..common.maa_config_data import TaskItem, maa_config_data,RefreshTime,Interval,SpeedrunConfig,TaskItem
 import re
 from datetime import datetime
 import time
@@ -50,45 +50,44 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.target_task_index = self.List_widget.currentIndex().row()
         if self.target_task_index == -1:
             self.target_task_index = 0
+            
+        tasks = maa_config_data.config.get("task", [])
+        task = TaskItem()
+        if self.target_task_index < len(tasks):
+            task:TaskItem = tasks[self.target_task_index]
+            
+        title = task.get("name", "")
 
-        try:
-            title = maa_config_data.config["task"][self.target_task_index]["name"]
-        except Exception:
-            self.title_label.setText("")
-            return
+
         self.title_label.setText(title)
-        maa_config_data.config["task"][self.target_task_index]
         self.schedule_enabled: bool = (
-            maa_config_data.config["task"][self.target_task_index]
+            task
             .get("speedrun", {})
             .get("enabled", False)
         )
         self.last_run: str = (
-            maa_config_data.config["task"][self.target_task_index]
+            task
             .get("speedrun", {})
             .get("last_run", "1970-01-01 00:00:00")
         )
 
         self.is_start.setChecked(self.schedule_enabled)
         self.schedule_mode: str = (
-            maa_config_data.config["task"][self.target_task_index]
+            task
             .get("speedrun", {})
             .get("schedule_mode", "daily")
         )
-        self.refresh_time: dict = (
-            maa_config_data.config["task"][self.target_task_index]
+        self.refresh_time: RefreshTime = (
+            task
             .get("speedrun", {})
             .get("refresh_time", {"H": 0, "d": 0, "w": 0})
         )
-        self.interval: dict = (
-            maa_config_data.config["task"][self.target_task_index]
+        self.interval: Interval = (
+            task
             .get("speedrun", {})
             .get("interval", {"unit": 0, "item": 0, "loop_item": 1, "current_loop": 1})
         )
 
-        print(
-            f"任务{maa_config_data.config["task"][self.target_task_index]["name"]},index:{self.target_task_index}\n启用状态:{self.schedule_enabled}\n计划模式:{self.schedule_mode}\n刷新时间:{self.refresh_time}\n间隔:{self.interval}"
-        )
         self.is_start.setChecked(self.schedule_enabled)
         if self.schedule_mode == "daily":
             self.daily_mode_radio.setChecked(True)
@@ -102,9 +101,9 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             self.monthly_mode_radio.setChecked(True)
             self.refresh_time_spinbox.setValue(self.refresh_time.get("d", 0))
 
-        self.interval_input.setValue(self.interval["item"])
-        self.interval_unit.setCurrentIndex(self.interval["unit"])
-        self.loop_input.setValue(self.interval["current_loop"])
+        self.interval_input.setValue(self.interval.get("item", 0))
+        self.interval_unit.setCurrentIndex(self.interval.get("unit", 0))
+        self.loop_input.setValue(self.interval.get("loop_item", 1))
         self.date_label.setText(self.last_run)
 
     def save_speedrun_info(self):
@@ -114,7 +113,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
 
         # 获取当前UI设置的值
 
-        speedrun_config = {
+        speedrun_config:SpeedrunConfig = {
             "enabled": self.is_start.isChecked(),
             "schedule_mode": (
                 "daily"
@@ -144,12 +143,16 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         }
 
         # 更新配置数据
-        if "speedrun" not in maa_config_data.config["task"][self.target_task_index]:
-            maa_config_data.config["task"][self.target_task_index]["speedrun"] = {}
-        maa_config_data.config["task"][self.target_task_index]["speedrun"].update(
-            speedrun_config
-        )
+        tasks = maa_config_data.config.get("task", [])
+        if self.target_task_index < len(tasks):
+            task = tasks[self.target_task_index]
+            if "speedrun" not in task:
+                task["speedrun"] = {}
+            task["speedrun"].update(speedrun_config)
+            maa_config_data.config["task"] = tasks
+            
         Save_Config(maa_config_data.config_path, maa_config_data.config)
+
 
         # 显示保存成功提示
         InfoBar.success(

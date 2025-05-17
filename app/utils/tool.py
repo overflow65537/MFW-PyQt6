@@ -49,7 +49,7 @@ def show_error_message():
     msg_box.exec()
 
 
-def Read_Config(paths: str) -> Optional[Dict]:
+def Read_Config(paths: str):
     """读取指定路径的JSON配置文件。
 
     Args:
@@ -68,7 +68,7 @@ def Read_Config(paths: str) -> Optional[Dict]:
         return None
 
 
-def Save_Config(paths: str, data: Dict):
+def Save_Config(paths: str, data):
     """将数据保存到指定路径的JSON配置文件。
 
     Args:
@@ -646,6 +646,7 @@ def get_cpu_serial():
     system = platform.system()
     if system == "Windows":
         import wmi
+
         try:
             c = wmi.WMI()
             return c.Win32_Processor()[0].ProcessorId
@@ -706,7 +707,7 @@ def is_task_run_today(last_run_time, refresh_hour):
     检查任务是否在今天已经运行过，考虑每天的刷新时间（基于周检查逻辑重构）
     """
     current_time = datetime.now()
-    
+
     if last_run_time is None:
         return False
 
@@ -725,11 +726,11 @@ def is_task_run_today(last_run_time, refresh_hour):
     threshold_time = current_time.replace(
         hour=refresh_hour, minute=0, second=0, microsecond=0
     )
-    
+
     # 调整阈值逻辑（如果当前时间在刷新时间之前，则阈值时间向前推一天）
     if current_time < threshold_time:
         threshold_time -= timedelta(days=1)
-    
+
     # 最终判断：最后运行时间 >= 阈值时间 且 当前时间 >= 阈值时间
     return last_run_time >= threshold_time and current_time >= threshold_time
 

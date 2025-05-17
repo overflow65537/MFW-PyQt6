@@ -76,32 +76,22 @@ class ResourceSettingInterface(ScrollArea):
             self.project_version = ""
             self.project_url = ""
 
-        adb_config = maa_config_data.config if isinstance(maa_config_data.config, dict) else {}
-        self.ADB_port.lineEdit.setText(
-            adb_config.get("adb", {}).get("address", "")
+        adb_config = (
+            maa_config_data.config if isinstance(maa_config_data.config, dict) else {}
         )
-        self.ADB_path.lineEdit.setText(
-            adb_config.get("adb", {}).get("adb_path", "")
-        )
+        self.ADB_port.lineEdit.setText(adb_config.get("adb", {}).get("address", ""))
+        self.ADB_path.lineEdit.setText(adb_config.get("adb", {}).get("adb_path", ""))
         self.emu_path.lineEdit.setText(adb_config.get("emu_path", ""))
         self.emu_args.lineEdit.setText(adb_config.get("emu_args", ""))
-        self.emu_wait_time.lineEdit.setText(
-            str(adb_config.get("emu_wait_time", ""))
-        )
+        self.emu_wait_time.lineEdit.setText(str(adb_config.get("emu_wait_time", "")))
         self.exe_path.lineEdit.setText(adb_config.get("exe_path", ""))
         self.exe_args.lineEdit.setText(adb_config.get("exe_args", ""))
-        self.exe_wait_time.lineEdit.setText(
-            str(adb_config.get("exe_wait_time", ""))
-        )
-        self.run_before_start.lineEdit.setText(
-            adb_config.get("run_before_start", "")
-        )
+        self.exe_wait_time.lineEdit.setText(str(adb_config.get("exe_wait_time", "")))
+        self.run_before_start.lineEdit.setText(adb_config.get("run_before_start", ""))
         self.run_before_start_args.lineEdit.setText(
             adb_config.get("run_before_start_args", "")
         )
-        self.run_after_finish.lineEdit.setText(
-            adb_config.get("run_after_finish", "")
-        )
+        self.run_after_finish.lineEdit.setText(adb_config.get("run_after_finish", ""))
         self.run_after_finish_args.lineEdit.setText(
             adb_config.get("run_after_finish_args", "")
         )
@@ -332,7 +322,9 @@ class ResourceSettingInterface(ScrollArea):
         maa_config_data.config_name = "default"
         maa_config_data.config_path = main_config_path
 
-        resource_info = maa_config_data.resource_data.get(maa_config_data.resource_name, {})
+        resource_info = maa_config_data.resource_data.get(
+            maa_config_data.resource_name, {}
+        )
         resource_path = resource_info.get("path", "")
         maa_config_data.resource_path = resource_path
 
@@ -443,10 +435,21 @@ class ResourceSettingInterface(ScrollArea):
             self.tr("resource and config"), self.resource_scrollWidget
         )
         self.res_setting = ComboWithActionSettingCard(
-            icon=FIF.FOLDER, title=self.tr("Resource Path"),content=self.tr("You can quickly switch to the next resource with ALT+R, and return to the previous resource with ALT+SHIFT+R"), parent=self.res_cfg_group,res=True
+            icon=FIF.FOLDER,
+            title=self.tr("Resource Path"),
+            content=self.tr(
+                "You can quickly switch to the next resource with ALT+R, and return to the previous resource with ALT+SHIFT+R"
+            ),
+            parent=self.res_cfg_group,
+            res=True,
         )
         self.cfg_setting = ComboWithActionSettingCard(
-            icon=FIF.FOLDER, title=self.tr("Config Path"),content=self.tr("You can quickly switch to the next config with ALT+C, and return to the previous config with ALT+SHIFT+C"), parent=self.res_cfg_group
+            icon=FIF.FOLDER,
+            title=self.tr("Config Path"),
+            content=self.tr(
+                "You can quickly switch to the next config with ALT+C, and return to the previous config with ALT+SHIFT+C"
+            ),
+            parent=self.res_cfg_group,
         )
         self.initialize_config_combobox()
         self.res_cfg_group.addSettingCard(self.res_setting)
@@ -726,7 +729,7 @@ class ResourceSettingInterface(ScrollArea):
                 raise TypeError("gpu 配置值不是整数类型")
         except:
             self.use_GPU.comboBox.setCurrentText(self.tr("Auto"))
-            maa_config_data.config["gpu"] = -1  
+            maa_config_data.config["gpu"] = -1
             Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def get_unique_gpu_mapping(self, gpu_mapping: dict) -> list:

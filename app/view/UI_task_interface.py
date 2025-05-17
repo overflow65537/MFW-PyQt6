@@ -22,7 +22,6 @@ from ..components.listwidge_menu_draggable import ListWidge_Menu_Draggable
 from ..components.right_check_button import RightCheckButton
 
 
-
 class Ui_Task_Interface(object):
     def setupUi(self, Task_Interface):
         Task_Interface.setObjectName("Task_Interface")
@@ -143,23 +142,23 @@ class Ui_Task_Interface(object):
         self.option_layout = QVBoxLayout(self.option_widget)
         self.option_widget.setSizePolicy(
             QSizePolicy.Policy.Preferred,  # 水平策略保持不变
-            QSizePolicy.Policy.Minimum   # 垂直策略根据内容自动调整
+            QSizePolicy.Policy.Minimum,  # 垂直策略根据内容自动调整
         )
-        
+
         # doc区域
         self.doc_widget = QWidget()
         self.doc_layout = QVBoxLayout(self.doc_widget)
         self.doc_widget.setSizePolicy(
             QSizePolicy.Policy.Preferred,  # 水平策略保持不变
-            QSizePolicy.Policy.Minimum     # 垂直策略根据内容自动调整
+            QSizePolicy.Policy.Minimum,  # 垂直策略根据内容自动调整
         )
-        
+
         # 主滚动区域布局
         self.main_scroll_layout = QVBoxLayout(self.scroll_area_content)
         self.main_scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.main_scroll_layout.addWidget(self.option_widget)
         self.main_scroll_layout.addWidget(self.doc_widget)
-        
+
         self.scroll_area.setWidget(self.scroll_area_content)
 
         self.Option_area_Label = QVBoxLayout()
@@ -207,11 +206,10 @@ class Ui_Task_Interface(object):
         self.content_widget = QWidget()
         self.scroll_area.setWidget(self.content_widget)
         self.scroll_area.setWidgetResizable(True)
-        
+
         self.right_layout = QVBoxLayout(self.content_widget)
         self.right_layout.addStretch()
-        
-        
+
         # 将子布局添加到主布局中
         self.main_layout.addLayout(self.left_layout, 3)
         self.main_layout.addLayout(self.middle_layout, 3)
