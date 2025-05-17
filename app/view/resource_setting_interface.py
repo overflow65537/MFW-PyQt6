@@ -332,9 +332,10 @@ class ResourceSettingInterface(ScrollArea):
         maa_config_data.config_name = "default"
         maa_config_data.config_path = main_config_path
 
-        maa_config_data.resource_path = maa_config_data.resource_data[
-            maa_config_data.resource_name
-        ]
+        resource_info = maa_config_data.resource_data.get(maa_config_data.resource_name, {})
+        resource_path = resource_info.get("path", "")
+        maa_config_data.resource_path = resource_path
+
         cfg.set(cfg.maa_resource_path, maa_config_data.resource_path)
         maa_config_data.config_name_list = list(
             maa_config_data.config_data[maa_config_data.resource_name]
@@ -718,10 +719,14 @@ class ResourceSettingInterface(ScrollArea):
         self.VisionAndInputGroup.addSettingCard(self.ADB_input_mode)
         self.VisionAndInputGroup.addSettingCard(self.ADB_screencap_mode)
         try:
-            gpu_mapping[maa_config_data.config.get("gpu", -1)]
+            gpu_index = maa_config_data.config.get("gpu", -1)
+            if isinstance(gpu_index, int):
+                gpu_mapping[gpu_index]
+            else:
+                raise TypeError("gpu 配置值不是整数类型")
         except:
             self.use_GPU.comboBox.setCurrentText(self.tr("Auto"))
-            maa_config_data.config["gpu"] = -1
+            maa_config_data.config["gpu"] = -1  
             Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def get_unique_gpu_mapping(self, gpu_mapping: dict) -> list:
