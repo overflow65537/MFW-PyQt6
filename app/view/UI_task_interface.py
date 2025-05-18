@@ -28,7 +28,7 @@ class Ui_Task_Interface(object):
         Task_Interface.resize(900, 600)
         Task_Interface.setMinimumSize(QSize(0, 0))
         # 设置主窗口
-        self.main_layout = QHBoxLayout(self)
+        self.main_layout = QHBoxLayout(Task_Interface)
 
         # 自动检测按钮;资源,控制器和完成后运行标签布局
         self.AutoDetBut_ResTit_CtlTit = QVBoxLayout()
