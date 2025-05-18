@@ -8,16 +8,15 @@ from qfluentwidgets import (
     InfoBar,
     InfoBarPosition,
 )
-from ..components.choose_resource_button import CustomMessageBox
-from ..utils.update import Readme
-import os
-import shutil
 
-from ..utils.logger import logger
-from ..common.maa_config_data import TaskItem, maa_config_data,RefreshTime,Interval,SpeedrunConfig,TaskItem
-import re
-from datetime import datetime
-import time
+from ..common.maa_config_data import (
+    TaskItem,
+    maa_config_data,
+    RefreshTime,
+    Interval,
+    SpeedrunConfig,
+    TaskItem,
+)
 
 
 class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
@@ -50,42 +49,27 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.target_task_index = self.List_widget.currentIndex().row()
         if self.target_task_index == -1:
             self.target_task_index = 0
-            
+
         tasks = maa_config_data.config.get("task", [])
         task = TaskItem()
         if self.target_task_index < len(tasks):
-            task:TaskItem = tasks[self.target_task_index]
-            
+            task: TaskItem = tasks[self.target_task_index]
+
         title = task.get("name", "")
 
-
         self.title_label.setText(title)
-        self.schedule_enabled: bool = (
-            task
-            .get("speedrun", {})
-            .get("enabled", False)
-        )
-        self.last_run: str = (
-            task
-            .get("speedrun", {})
-            .get("last_run", "1970-01-01 00:00:00")
+        self.schedule_enabled: bool = task.get("speedrun", {}).get("enabled", False)
+        self.last_run: str = task.get("speedrun", {}).get(
+            "last_run", "1970-01-01 00:00:00"
         )
 
         self.is_start.setChecked(self.schedule_enabled)
-        self.schedule_mode: str = (
-            task
-            .get("speedrun", {})
-            .get("schedule_mode", "daily")
+        self.schedule_mode: str = task.get("speedrun", {}).get("schedule_mode", "daily")
+        self.refresh_time: RefreshTime = task.get("speedrun", {}).get(
+            "refresh_time", {"H": 0, "d": 0, "w": 0}
         )
-        self.refresh_time: RefreshTime = (
-            task
-            .get("speedrun", {})
-            .get("refresh_time", {"H": 0, "d": 0, "w": 0})
-        )
-        self.interval: Interval = (
-            task
-            .get("speedrun", {})
-            .get("interval", {"unit": 0, "item": 0, "loop_item": 1, "current_loop": 1})
+        self.interval: Interval = task.get("speedrun", {}).get(
+            "interval", {"unit": 0, "item": 0, "loop_item": 1, "current_loop": 1}
         )
 
         self.is_start.setChecked(self.schedule_enabled)
@@ -113,7 +97,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
 
         # 获取当前UI设置的值
 
-        speedrun_config:SpeedrunConfig = {
+        speedrun_config: SpeedrunConfig = {
             "enabled": self.is_start.isChecked(),
             "schedule_mode": (
                 "daily"
@@ -150,9 +134,8 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
                 task["speedrun"] = {}
             task["speedrun"].update(speedrun_config)
             maa_config_data.config["task"] = tasks
-            
-        Save_Config(maa_config_data.config_path, maa_config_data.config)
 
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
 
         # 显示保存成功提示
         InfoBar.success(

@@ -1,15 +1,11 @@
-from calendar import c
-from os import name
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt,QTimer
 from PySide6.QtWidgets import (
     QWidget,
     QStackedWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QFrame,
     QSizePolicy,
     QSpacerItem,
-    QLayout,
 )
 from PySide6.QtGui import QWheelEvent, QFont, QColor
 
@@ -19,31 +15,22 @@ from qfluentwidgets import (
     BodyLabel,
     ComboBox,
     PushButton,
-    InfoBar,
-    InfoBarPosition,
 )
 
 from typing import List, Optional, Dict
 import re
-from qasync import asyncSlot, asyncio
-from datetime import datetime, timedelta
-import asyncio
-import os
-import json
-import subprocess
-import platform
+
+from datetime import datetime
+
 
 from ..common.maa_config_data import (
-    PipelineOverride,
     maa_config_data,
     TaskItem_interface,
     InterfaceData,
-    ControllerConfig,
 )
 from ..utils.logger import logger
-from ..utils.tool import Get_Task_List, get_controller_type,show_error_message,Save_Config
-from ..utils.maafw import maafw
-from ..common.config import cfg
+from ..utils.tool import Get_Task_List
+
 from ..common.signal_bus import signalBus
 
 
@@ -108,18 +95,44 @@ class ContinuousTaskInterface(QWidget):
         self.Vlayout.addLayout(self.bottom_h_layout, 1)
 
         self.pivot.currentItemChanged.connect(self._on_segmented_index_changed)
-        self.S2_Button.clicked.connect( self._on_add_task_button_clicked)
+        self.S2_Button.clicked.connect(self._on_add_task_button_clicked)
         signalBus.task_output_sync.connect(self.sync_taskoutput)
         self.script_list: List[TaskDetailPage] = []
         self._load_all_task_pages()
-    def sync_taskoutput(self,data_dict:dict ):
-        if data_dict.get("type","") == "task_output_add":
-            self.insert_colored_text(data_dict.get("msg",{}).get("text"),data_dict.get("msg",{}).get("color"))
+
+    def reinitialize(self):
+        """重新初始化界面"""
+        # 清空现有页面
+        while self.stacked_widget.count():
+            widget = self.stacked_widget.widget(0)
+            self.stacked_widget.removeWidget(widget)
+            widget.deleteLater()
+        self.pivot.clear()
+        self.script_list = []
+        self.current_page_info = None
+
+        # 清空右侧滚动区域
+        while self.right_layout.count():
+            item = self.right_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+        self.right_layout.addStretch()
+
+        # 重新加载所有任务页面
+        self._load_all_task_pages()
+
+    def sync_taskoutput(self, data_dict: dict):
+        if data_dict.get("type", "") == "task_output_add":
+            self.insert_colored_text(
+                data_dict.get("msg", {}).get("text"),
+                data_dict.get("msg", {}).get("color"),
+            )
             self.S2_Button.setEnabled(True)
-        elif data_dict.get("type","") == "task_output_clear":
+        elif data_dict.get("type", "") == "task_output_clear":
             self.clear_layout()
-
-
+        elif data_dict.get("type", "") == "reinit":
+            self.reinitialize()
 
     def insert_colored_text(self, text, color_name="black"):
         """
@@ -216,9 +229,7 @@ class ContinuousTaskInterface(QWidget):
         current_page = self.current_page_info["page"]
 
         # 使用当前页面实例调用方法（如获取选中选项）
-        send_dict = {
-            
-        }
+        send_dict = {}
         send_dict["entry"] = current_page.get_entry()
         send_dict["pipeline_override"] = current_page.get_pipeline_override()
 
@@ -255,6 +266,11 @@ class ContinuousTaskInterface(QWidget):
             if task.get("spt"):
                 self._create_task_page(task, filtered_idx)
                 filtered_idx += 1
+        if filtered_idx == 0:
+            logger.warning("没有可用的SPT任务")
+            QTimer.singleShot(500, lambda: signalBus.show_continuous_task.emit(False))
+        else:   
+            signalBus.show_continuous_task.emit(True)
 
         # 初始显示第一个任务页面
         if self.script_list:
@@ -488,13 +504,14 @@ class TaskDetailPage(QWidget):
         return selected_options
 
     def get_task(self):
-       name = self.task.get("name")
-       option = self.get_selected_options()
-       return {"name": name, "option": option}
+        name = self.task.get("name")
+        option = self.get_selected_options()
+        return {"name": name, "option": option}
+
     def get_entry(self):
         return self.task.get("entry")
 
-    def get_pipeline_override(self)-> dict:
+    def get_pipeline_override(self) -> dict:
         override_options = {}
         task_list = self.get_task()
 
@@ -523,4 +540,3 @@ class TaskDetailPage(QWidget):
 
                         override_options.update(override.get("pipeline_override", {}))
         return override_options
-        

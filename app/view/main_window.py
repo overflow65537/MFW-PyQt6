@@ -49,6 +49,9 @@ class MainWindow(FluentWindow):
 
         self.connectSignalToSlot()
 
+        # 记录 ContinuousTaskInterface 导航项索引
+        self.continuous_task_nav_index = None
+
         # 添加导航项
         self.initNavigation()
         self.splashScreen.finish()
@@ -171,6 +174,7 @@ class MainWindow(FluentWindow):
         signalBus.mirror_bundle_download_finished.connect(self.show_info_bar)
         signalBus.download_self_finished.connect(self.show_info_bar)
         signalBus.infobar_message.connect(self.show_info_bar)
+        signalBus.show_continuous_task.connect(self.toggle_continuous_task)
 
     def initNavigation(self):
         """初始化导航界面。"""
@@ -192,6 +196,7 @@ class MainWindow(FluentWindow):
             self.continuousTaskInterface,
             FIF.ALBUM,
             self.tr("Continuous Task"),
+            NavigationItemPosition.SCROLL
         )
         self.addSubInterface(
             self.settingInterface,
@@ -199,6 +204,7 @@ class MainWindow(FluentWindow):
             self.tr("Setting"),
             NavigationItemPosition.BOTTOM,
         )
+        
 
     def is_admin(self):
         """判断是否为管理员权限"""
@@ -282,3 +288,15 @@ class MainWindow(FluentWindow):
                 100,
                 lambda: self.windowEffect.setMicaEffect(self.winId(), isDarkTheme()),
             )
+
+    def toggle_continuous_task(self, show: bool):
+        """根据布尔值显示或隐藏 ContinuousTaskInterface 界面"""
+        if show:
+            self.addSubInterface(
+            self.continuousTaskInterface,
+            FIF.ALBUM,
+            self.tr("Continuous Task"),
+            NavigationItemPosition.SCROLL,
+        )
+        else:
+            self.removeInterface(self.continuousTaskInterface)
