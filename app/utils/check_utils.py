@@ -39,27 +39,6 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
                     interface_config: dict = json.load(f)
                 cfg.set(cfg.maa_config_name, "default")
                 cfg.set(cfg.maa_resource_name, interface_config.get("name", "resource"))
-                bundle_path = os.path.join(
-                    ".", "bundles", cfg.get(cfg.maa_resource_name)
-                )
-                if not os.path.exists(bundle_path):
-                    os.makedirs(bundle_path)
-                # 移动resource文件夹到bundle_path目录下
-                os.rename("resource", os.path.join(bundle_path, "resource"))
-                # 移动interface.json到bundle_path目录下
-                os.rename("interface.json", os.path.join(bundle_path, "interface.json"))
-                # 移动custom文件夹到bundle_path目录下
-                if os.path.exists("custom"):
-                    os.rename("custom", os.path.join(bundle_path, "custom"))
-                # 移动LICENSE文件到bundle_path目录下
-                if os.path.exists("LICENSE"):
-                    os.rename("LICENSE", os.path.join(bundle_path, "LICENSE"))
-                # 移动README.md文件到bundle_path目录下
-                if os.path.exists("README.md"):
-                    os.rename("README.md", os.path.join(bundle_path, "README.md"))
-                # 移动agent文件夹到bundle_path目录下
-                if os.path.exists("agent"):
-                    os.rename("agent", os.path.join(bundle_path, "agent"))
 
                 cfg.set(
                     cfg.maa_config_path,
@@ -72,7 +51,8 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
                         "maa_pi_config.json",
                     ),
                 )
-                cfg.set(cfg.maa_resource_path, bundle_path)
+                
+                cfg.set(cfg.maa_resource_path, os.getcwd())
                 cfg.set(
                     cfg.maa_config_list,
                     {
