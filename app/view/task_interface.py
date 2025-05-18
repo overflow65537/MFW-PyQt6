@@ -1414,6 +1414,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             return
 
         for task in maa_config_data.interface_config["task"]:
+            if task.get("spt"):
+                continue
             selected_value = []
             task_name = task.get("name")
             options = task.get("option")
