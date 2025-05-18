@@ -541,7 +541,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Task_List.addItems(Get_Values_list_Option(maa_pi_config_Path, "task"))
         self.Resource_Combox.addItems(Get_Values_list(interface_Path, key1="resource"))
         self.Control_Combox.addItems(Get_Values_list(interface_Path, key1="controller"))
-        self.SelectTask_Combox_1.addItems(Get_Values_list(interface_Path, key1="task"))
+        self.SelectTask_Combox_1.addItems(Get_Values_list(interface_Path, key1="task",sp=True))
 
         if return_init is not None:
             self.Resource_Combox.setCurrentIndex(
@@ -557,7 +557,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Resource_Combox.addItems(Get_Values_list(interface_Path, key1="resource"))
         self.Resource_Combox.setCurrentIndex(0)
         self.Control_Combox.addItems(Get_Values_list(interface_Path, key1="controller"))
-        self.SelectTask_Combox_1.addItems(Get_Values_list(interface_Path, key1="task"))
+        self.SelectTask_Combox_1.addItems(Get_Values_list(interface_Path, key1="task",sp=True))
 
     def rewrite_Completion_Options(self):
         finish_option = self.Finish_combox.currentIndex()

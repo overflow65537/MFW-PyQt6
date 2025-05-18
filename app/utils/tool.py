@@ -166,7 +166,7 @@ def Get_Values_list2(path: str, key1: str) -> List:
     return List
 
 
-def Get_Values_list(path: str, key1: str) -> List:
+def Get_Values_list(path: str, key1: str,sp:bool = False) -> List:
     """获取组件的初始参数。
 
     Args:
@@ -195,7 +195,11 @@ def Get_Values_list(path: str, key1: str) -> List:
         if not data:
             return
         for i in data:
-            List.append(i["name"])
+            if sp:
+                if not i.get("spt"):
+                    List.append(i["name"])
+            else:
+                List.append(i["name"])
         return List
 
 
