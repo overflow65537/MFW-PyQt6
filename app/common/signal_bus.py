@@ -41,6 +41,8 @@ class SignalBus(QObject):
     lock_res_changed = Signal(bool)  # 锁定资源改变信号
     agent_info = Signal(str)  # agent信息信号
     infobar_message = Signal(dict)  # 信息栏消息信号
+    run_sp_task = Signal(dict)  # 运行sp任务信号
+    task_output_sync = Signal(dict)  # 任务输出同步信号
 
 
 signalBus = SignalBus()

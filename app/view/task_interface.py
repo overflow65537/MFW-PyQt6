@@ -1,6 +1,7 @@
 import os
 import subprocess
 import platform
+from numpy import sign
 from qasync import asyncSlot, asyncio
 from pathlib import Path
 import json
@@ -46,7 +47,7 @@ from ..utils.maafw import maafw
 from ..common.config import cfg
 from maa.toolkit import AdbDevice
 from ..utils.logger import logger
-from ..common.maa_config_data import maa_config_data
+from ..common.maa_config_data import maa_config_data, InterfaceData
 from ..utils.notice import dingtalk_send, lark_send, SMTP_send, WxPusher_send, QYWX_send
 from datetime import datetime, timedelta
 
@@ -67,7 +68,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         return QDateTime.fromSecsSinceEpoch(int(monday_5am.timestamp()))
 
     devices = []
-    start_again = False
     need_runing = False
     task_failed = False
     in_progress_error = None
@@ -204,6 +204,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     # region 信号槽
     def bind_signals(self):
+        signalBus.task_output_sync.connect(self.sync_button)
+
+        signalBus.run_sp_task.connect(self.Start_Up)
         signalBus.agent_info.connect(self.show_agnet_info)
         signalBus.speedrun.connect(self.Add_Select_Task_More_Select)
         signalBus.custom_info.connect(self.show_custom_info)
@@ -232,7 +235,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Task_List.itemSelectionChanged.connect(self.Select_Task)
         self.Delete_label.dragEnterEvent = self.dragEnter
         self.Delete_label.dropEvent = self.drop
-
+        
+    @asyncSlot(dict)
+    async def sync_button(self, status: dict):
+        """
+        同步按钮状态
+        """
+        if status.get("type") == "stoptask":
+            await self.Stop_task()
     # endregion
     def show_agnet_info(self, msg: str):
         """
@@ -487,6 +497,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.scroll_area.verticalScrollBar().setValue(
             self.scroll_area.verticalScrollBar().maximum()
         )
+        sent_dict = {
+            "type": "task_output_add",
+            "msg": {"text": text, "color": color_name},
+        }
+        signalBus.task_output_sync.emit(sent_dict)
 
     def clear_layout(self):
         while self.right_layout.count():
@@ -495,6 +510,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             if widget is not None:
                 widget.deleteLater()
         self.right_layout.addStretch()
+        sent_dict = {"type": "task_output_clear"}
+        signalBus.task_output_sync.emit(sent_dict)
 
     def Start_Status(
         self, interface_Path: str, maa_pi_config_Path: str, resource_Path: str
@@ -705,24 +722,24 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
             elif cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg):
                 logger.info("启动GUI后运行任务")
-                self.start_again = True
                 signalBus.start_task_inmediately.emit()
 
     def Auto_update_Start_up(self, status_dict):
         if cfg.get(cfg.click_update):
             return
         if status_dict.get("status") != "info":
-            self.start_again = True
             signalBus.start_task_inmediately.emit()
 
     # region 任务逻辑
     @asyncSlot()
-    async def Start_Up(self):
+    async def Start_Up(self, task: dict | None = None):
         """
         开始任务
         """
         if not cfg.get(cfg.resource_exist):
             return
+        elif task:
+            pass
         elif self.Task_List.count() == 0:
             self.show_error(self.tr("No task selected"))
             return
@@ -736,7 +753,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         )
 
         # 启动前脚本
-        if not await self.run_before_start_script():
+        if task:
+            pass
+        elif not await self.run_before_start_script():
             return
 
         # 加载资源
@@ -748,13 +767,21 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             return
 
         # 运行任务
-        await self.run_tasks()
+        if task:
+            await self.run_task_sp(task)
+        else:
+            await self.run_tasks()
 
         # 结束后脚本
-        await self.run_after_finish_script()
+        if task:
+            pass
+        else:
+            await self.run_after_finish_script()
 
         # 完成后运行
-        if self.S2_Button.text() == self.tr("Stop"):
+        if task:
+            pass
+        elif self.S2_Button.text() == self.tr("Stop"):
             await self.execute_finish_action()
 
         maafw.tasker = None
@@ -764,7 +791,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         # 更改按钮状态
         self.update_S2_Button("Start", self.Start_Up)
-        self.start_again = True
 
     # endregion
     def update_S2_Button(self, text, slot, enable=True):
@@ -896,7 +922,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         连接 ADB
         """
-        config = {} if self.start_again else maa_config_data.config["adb"]["config"]
         if (
             not await maafw.connect_adb(
                 maa_config_data.config["adb"]["adb_path"],
@@ -1023,6 +1048,24 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             return False
         return True
 
+    @asyncSlot(dict)
+    async def run_task_sp(self, task: dict | None = None):
+        """
+        运行任务
+        """
+        self.task_failed = False
+        self.S2_Button.setEnabled(True)
+        if not self.need_runing:
+            await maafw.stop_task()
+            return
+        elif task.get("entry", "") == "":
+            await maafw.stop_task()
+            return
+
+        await maafw.run_task(task.get("entry", ""), task.get("override_options", {}))
+
+        # 找到task的entry
+
     async def run_tasks(self):
         """
         运行任务
@@ -1135,17 +1178,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self, schedule_mode: str, refresh_time_cfg: dict, last_run_str: str
     ) -> QDateTime:
         """计算刷新时间（提取公共函数）"""
-        last_run_str: QDateTime = QDateTime.fromString(
-            last_run_str, "yyyy-MM-dd HH:mm:ss"
-        )
+        last_run: QDateTime = QDateTime.fromString(last_run_str, "yyyy-MM-dd HH:mm:ss")
         if schedule_mode == "daily":
             refresh_hour = refresh_time_cfg.get("H", 0)
-            if last_run_str.time().hour() >= refresh_time_cfg.get(
+            if last_run.time().hour() >= refresh_time_cfg.get(
                 "H", 0
             ):  # 如果当前时间已经过了刷新时间
-                refresh_time = last_run_str.addDays(1)
+                refresh_time = last_run.addDays(1)
             else:
-                refresh_time = last_run_str
+                refresh_time = last_run
             refresh_time.setTime(QTime(refresh_hour, 0))
             return refresh_time
         elif schedule_mode == "weekly":
@@ -1156,12 +1197,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             refresh_day = refresh_time_cfg.get("d", 1)
             refresh_hour = refresh_time_cfg.get("H", 0)
             if (
-                last_run_str.date().day() >= refresh_day
-                and last_run_str.time().hour() >= refresh_hour
+                last_run.date().day() >= refresh_day
+                and last_run.time().hour() >= refresh_hour
             ):
-                refresh_time = last_run_str.addMonths(1)
+                refresh_time = last_run.addMonths(1)
             else:
-                refresh_time = last_run_str
+                refresh_time = last_run
             refresh_time.setTime(QTime(refresh_hour, 0))
             refresh_time.setDate(
                 QDate(
@@ -1169,7 +1210,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 )
             )
             return refresh_time
-        return last_run_str
+        return last_run
 
     def update_speedrun_state(self, speedrun_cfg: dict, remaining_loops: int):
         """更新速通状态（封装逻辑）"""
@@ -1223,7 +1264,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if run_after_finish_path and self.need_runing:
             run_after_finish.append(run_after_finish_path)
             run_after_finish_args: str = maa_config_data.config.get(
-                "run_after_finish_args"
+                "run_after_finish_args", ""
             )
             if run_after_finish_args:
                 run_after_finish.extend(run_after_finish_args.split())
@@ -1278,7 +1319,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         logger.info("停止任务")
         # 停止MAA
         self.need_runing = False
-        self.start_again = True
         await maafw.stop_task()
 
     def kill_adb_process(self):
@@ -1351,18 +1391,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             Option = self.get_selected_options()
             maa_config_data.config["task"][Select_index]["name"] = Select_Target
             maa_config_data.config["task"][Select_index]["option"] = Option
-            if self.get_switch_value() is not None:
-                maa_config_data.config["task"][Select_index][
-                    "switch_enabled"
-                ] = self.get_switch_value()
 
         else:
             Select_Target = self.SelectTask_Combox_1.currentText()
             Option = self.get_selected_options()
             speedrun = self.get_speedrun_value(Select_Target)
             task_data = {"name": Select_Target, "option": Option, "speedrun": speedrun}
-            if self.get_switch_value() is not None:
-                task_data["switch_enabled"] = self.get_switch_value()
             maa_config_data.config["task"].append(task_data)
 
         Save_Config(maa_config_data.config_path, maa_config_data.config)
@@ -1608,17 +1642,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         self.show_task_options(select_target, maa_config_data.interface_config)
 
-    def show_task_options(
-        self, select_target, MAA_Pi_Config: Dict[str, List[Dict[str, str]]]
-    ):
+    def show_task_options(self, select_target: str, MAA_Pi_Config: InterfaceData):
 
         self.clear_extra_widgets()
 
         option_layout = self.option_layout
         doc_layout = self.doc_layout
 
-        for task in MAA_Pi_Config["task"]:
-            if task["name"] == select_target:
+        for task in MAA_Pi_Config.get("task", []):
+            if task.get("name") == select_target:
                 # 处理 option 字段
                 options = task.get("option")
                 if options:
@@ -1647,57 +1679,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         v_layout.addWidget(select_box)
 
                         option_layout.addLayout(v_layout)
-                """# 时间限制运行
-                if task.get("periodic") in [1, 2] and cfg.get(cfg.speedrun):
-                    switch_v_layout = QVBoxLayout()
 
-                    # 添加主标签
-                    self.main_label = BodyLabel(self)
-                    text = ""
-                    checked = True
-
-                    if self.Task_List.currentRow() != -1:
-                        checked = maa_config_data.config["task"][
-                            self.Task_List.currentRow()
-                        ].get("switch_enabled", True)
-                    if task.get("periodic") == 1:
-                        # 将小时转换为中文时间格式
-                        hour = task.get("daily_start", 0)
-                        text += (
-                            self.tr("Refresh time: Daily ")
-                            + f"{self._format_hour(hour)}"
-                        )
-                    elif task.get("periodic") == 2:
-                        # 转换星期和小时
-                        weekday = task.get("weekly_start", 0)
-                        hour = task.get("daily_start", 0)
-                        text += (
-                            self.tr("Refresh time: Every ")
-                            + f"{self._format_weekday(weekday)} {self._format_hour(hour)}"
-                        )
-                    self.main_label.setText(text)
-                    switch_v_layout.addWidget(self.main_label)
-
-                    # 添加水平布局
-                    h_layout = QHBoxLayout()
-                    h_layout.setContentsMargins(0, 0, 0, 10)  # 增加底部间距
-
-                    # 添加开关标签
-                    switch_label = BodyLabel(self)
-                    switch_label.setText("是否启用")
-                    h_layout.addWidget(switch_label)
-
-                    # 添加开关控件
-                    self.test_switch = SwitchButton(self)
-                    self.test_switch.setChecked(checked)
-
-                    h_layout.addWidget(self.test_switch)
-
-                    switch_v_layout.addLayout(h_layout)
-
-                    # 添加间隔防止重叠
-                    switch_v_layout.addSpacerItem(QSpacerItem(0, 10))
-                    doc_layout.addLayout(switch_v_layout)"""
                 # 处理 doc 字段
                 doc = task.get("doc")
                 if doc:
@@ -1761,25 +1743,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 self.main_scroll_layout.addItem(spacer)
 
                 break
-
-    def get_switch_value(self) -> Optional[bool]:
-        """获取开关的布尔值，未找到开关则返回None"""
-        layout = self.option_layout
-
-        # 遍历布局查找SwitchButton
-        for i in range(layout.count()):
-            item = layout.itemAt(i)
-            if isinstance(item.layout(), QVBoxLayout):
-                v_layout = item.layout()
-                for j in range(v_layout.count()):
-                    child_item = v_layout.itemAt(j)
-                    if isinstance(child_item.layout(), QHBoxLayout):
-                        h_layout = child_item.layout()
-                        for k in range(h_layout.count()):
-                            widget = h_layout.itemAt(k).widget()
-                            if isinstance(widget, SwitchButton):
-                                return widget.isChecked()
-        return None
 
     def get_selected_options(self):
         selected_options = []

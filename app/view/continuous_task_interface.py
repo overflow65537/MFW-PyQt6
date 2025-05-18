@@ -1,66 +1,241 @@
+from calendar import c
+from os import name
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QHBoxLayout,QFrame, QSizePolicy
-from PySide6.QtGui import QWheelEvent
+from PySide6.QtWidgets import (
+    QWidget,
+    QStackedWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFrame,
+    QSizePolicy,
+    QSpacerItem,
+    QLayout,
+)
+from PySide6.QtGui import QWheelEvent, QFont, QColor
 
-from qfluentwidgets import Pivot, ScrollArea,BodyLabel,ComboBox
+from qfluentwidgets import (
+    Pivot,
+    ScrollArea,
+    BodyLabel,
+    ComboBox,
+    PushButton,
+    InfoBar,
+    InfoBarPosition,
+)
 
-from typing import List, Optional
+from typing import List, Optional, Dict
+import re
+from qasync import asyncSlot, asyncio
+from datetime import datetime, timedelta
+import asyncio
+import os
+import json
+import subprocess
+import platform
 
-from ..common.maa_config_data import maa_config_data, TaskItem_interface
+from ..common.maa_config_data import (
+    PipelineOverride,
+    maa_config_data,
+    TaskItem_interface,
+    InterfaceData,
+    ControllerConfig,
+)
 from ..utils.logger import logger
+from ..utils.tool import Get_Task_List, get_controller_type,show_error_message,Save_Config
+from ..utils.maafw import maafw
+from ..common.config import cfg
+from ..common.signal_bus import signalBus
 
 
 class HorizontalScrollArea(ScrollArea):
-    def wheelEvent(self, event:QWheelEvent):  
-        
-        delta = event.angleDelta().y()  
+    def wheelEvent(self, event: QWheelEvent):
+
+        delta = event.angleDelta().y()
         h_bar = self.horizontalScrollBar()
         h_bar.setValue(h_bar.value() - delta)
         event.accept()
+
 
 class ContinuousTaskInterface(QWidget):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setObjectName("Continuous_Task_Interface")
-        
-        # 导航栏部分（水平最大，垂直最小）
-        self.pivot = Pivot(self)  
+        # 新增：魔法变量存储当前页面信息（索引+实例）
+        self.current_page_info: Optional[Dict[str, TaskDetailPage]] = None
+
+        self.pivot = Pivot(self)
         self.scroll_area = HorizontalScrollArea(self)
         self.scroll_area.setWidget(self.pivot)
         self.scroll_area.enableTransparentBackground()
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
         self.scroll_area.setWidgetResizable(True)
-        # 关键调整：水平扩展，垂直最小
-        self.scroll_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)  
+        self.scroll_area.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
 
-        # 下方水平布局（左边堆叠组件 + 右边滚动区域）
-        self.bottom_h_layout = QHBoxLayout()  # 新增水平布局
-        
-        # 左边：原堆叠组件（占3份）
+        # 下方水平布局（左边垂直布局包裹堆叠组件+按钮 + 右边滚动区域）
+        self.bottom_h_layout = QHBoxLayout()
+
+        # 左边垂直布局（堆叠组件 + 按钮）
+        self.stacked_v_layout = QVBoxLayout()
+        # 堆叠组件
         self.stacked_widget = QStackedWidget(self)
-        self.bottom_h_layout.addWidget(self.stacked_widget, 3)  # 分配3份宽度
+        self.stacked_v_layout.addWidget(self.stacked_widget, 1)
 
-        # 右边：新增滚动区域（占2份）
-        self.right_scroll_area = ScrollArea(self)  # 可替换为自定义滚动区域
+        self.S2_Button = PushButton(self.tr("start"), self)
+        self.S2_Button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.stacked_v_layout.addWidget(self.S2_Button, 0)
+
+        self.bottom_h_layout.addLayout(self.stacked_v_layout, 3)
+
+        self.right_scroll_area = ScrollArea(self)
         self.right_scroll_area.setWidgetResizable(True)
-        self.right_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.right_scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
         self.right_scroll_area.setStyleSheet("background: transparent; border: none;")
-        self.bottom_h_layout.addWidget(self.right_scroll_area, 2)  # 分配2份宽度
+        # 设置一个垂直布局为主布局
+        self.right_layout = QVBoxLayout(self.right_scroll_area)
+        self.bottom_h_layout.addWidget(self.right_scroll_area, 2)
 
+        self.Vlayout = QVBoxLayout(self)
+        self.Vlayout.addWidget(self.scroll_area, 0)
+        self.Vlayout.addLayout(self.bottom_h_layout, 1)
 
-        # 主垂直布局
-        self.Vlayout = QVBoxLayout(self)  
-        self.Vlayout.addWidget(self.scroll_area, 0)  # 导航栏（垂直方向不拉伸）
-        self.Vlayout.addLayout(self.bottom_h_layout, 1)  # 下方内容（垂直方向拉伸填充）
-
-        # 信号连接与初始化（保持原逻辑）
         self.pivot.currentItemChanged.connect(self._on_segmented_index_changed)
-        self.script_list: List[QWidget] = []
+        self.S2_Button.clicked.connect( self._on_add_task_button_clicked)
+        signalBus.task_output_sync.connect(self.sync_taskoutput)
+        self.script_list: List[TaskDetailPage] = []
         self._load_all_task_pages()
+    def sync_taskoutput(self,data_dict:dict ):
+        if data_dict.get("type","") == "task_output_add":
+            self.insert_colored_text(data_dict.get("msg",{}).get("text"),data_dict.get("msg",{}).get("color"))
+            self.S2_Button.setEnabled(True)
+        elif data_dict.get("type","") == "task_output_clear":
+            self.clear_layout()
 
 
-    def _on_segmented_index_changed(self, index: str):  
+
+    def insert_colored_text(self, text, color_name="black"):
+        """
+        插入带颜色的文本
+        """
+
+        message = BodyLabel(self)
+        # 初始化 HTML 文本
+        html_text = text
+
+        # 解析颜色
+        if "[color:" in html_text:
+            html_text = re.sub(
+                r"\[color:(.*?)\]", r'<span style="color:\1">', html_text
+            )
+            html_text = re.sub(r"\[/color\]", "</span>", html_text)
+        else:
+            color = QColor(color_name)
+            if not color.isValid():
+                color_name = "black"
+            message.setTextColor(QColor(color_name))
+
+        # 解析字号
+        html_text = re.sub(
+            r"\[size:(.*?)\]", r'<span style="font-size:\1px">', html_text
+        )
+        html_text = re.sub(r"\[/size\]", "</span>", html_text)
+
+        # 解析粗体
+        html_text = html_text.replace("[b]", "<b>").replace("[/b]", "</b>")
+
+        # 解析斜体
+        html_text = html_text.replace("[i]", "<i>").replace("[/i]", "</i>")
+
+        # 解析下划线
+        html_text = html_text.replace("[u]", "<u>").replace("[/u]", "</u>")
+
+        # 解析删除线
+        html_text = html_text.replace("[s]", "<s>").replace("[/s]", "</s>")
+
+        html_text = re.sub(
+            r"\[align:left\]", '<div style="text-align: left;">', html_text
+        )
+        html_text = re.sub(
+            r"\[align:center\]", '<div style="text-align: center;">', html_text
+        )
+        html_text = re.sub(
+            r"\[align:right\]", '<div style="text-align: right;">', html_text
+        )
+        html_text = re.sub(r"\[/align\]", "</div>", html_text)
+
+        # 将换行符替换为 <br>
+        html_text = html_text.replace("\n", "<br>")
+
+        now = datetime.now().strftime("%H:%M")
+
+        html_text = f'<span style="color:gray">{now}</span> {html_text}'
+
+        message.setWordWrap(True)
+        message.setText(html_text)
+        message.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )  # 水平扩展，垂直自适应
+
+        # 插入到布局
+        count = self.right_layout.count()
+        if count >= 2:
+            # 插入到倒数第二个位置
+            self.right_layout.insertWidget(count - 1, message)
+        else:
+            # 插入到第一个位置
+            self.right_layout.insertWidget(0, message)
+
+        # 将滑动区域滚动到新插入的文本
+        self.scroll_area.verticalScrollBar().setValue(
+            self.scroll_area.verticalScrollBar().maximum()
+        )
+
+    def clear_layout(self):
+        while self.right_layout.count():
+            item = self.right_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        self.right_layout.addStretch()
+
+    def _on_add_task_button_clicked(self):
+        """添加任务按钮点击事件"""
+        if not self.current_page_info:
+            logger.warning("当前无选中页面")
+            return
+
+        # 通过魔法变量获取当前页面实例和索引
+        current_page = self.current_page_info["page"]
+
+        # 使用当前页面实例调用方法（如获取选中选项）
+        send_dict = {
+            
+        }
+        send_dict["entry"] = current_page.get_entry()
+        send_dict["pipeline_override"] = current_page.get_pipeline_override()
+
+        signalBus.run_sp_task.emit(send_dict)
+        self.S2_Button.setEnabled(False)
+        self.S2_Button.setText(self.tr("stop"))
+        self.S2_Button.clicked.disconnect()
+        self.S2_Button.clicked.connect(self.stop_task)
+
+    def stop_task(self):
+        signalBus.task_output_sync.emit({"type": "stoptask"})
+        self.S2_Button.setEnabled(True)
+        self.S2_Button.setText(self.tr("start"))
+        self.S2_Button.clicked.disconnect()
+        self.S2_Button.clicked.connect(self._on_add_task_button_clicked)
+
+    def _on_segmented_index_changed(self, index: str):
         """导航栏索引变化时"""
         try:
             task_index = int(index.split("_")[-1])
@@ -75,98 +250,277 @@ class ContinuousTaskInterface(QWidget):
             logger.warning("未找到任何任务数据")
             return
 
-        for idx, task in enumerate(tasks):
-            self._create_task_page(task, idx)
-        
+        filtered_idx = 0
+        for task in tasks:
+            if task.get("spt"):
+                self._create_task_page(task, filtered_idx)
+                filtered_idx += 1
+
         # 初始显示第一个任务页面
         if self.script_list:
             self.switch_to_task_page(0)
 
     def _create_task_page(self, task: TaskItem_interface, task_index: int) -> None:
         """创建单个任务页面并关联导航项"""
-        task_page = self.TaskDetailPage(task, self)
-        task_page.setObjectName(f"task_{task_index}")
-        self.script_list.append(task_page)
-        self.stacked_widget.addWidget(task_page)
-        
+        self.task_page = TaskDetailPage(task, self)
+        self.task_page.setObjectName(f"task_{task_index}")
+        self.script_list.append(self.task_page)
+        self.stacked_widget.addWidget(self.task_page)
+
         task_name = task.get("name", f"任务{task_index+1}")
-        
+
         self.pivot.addItem(
-            routeKey=f"task_{task_index}",  
-            text=task_name,                                     
+            routeKey=f"task_{task_index}",
+            text=task_name,
         )
 
     def switch_to_task_page(self, task_index: int) -> None:
         """切换到指定索引的任务页面"""
-        if not self.script_list or task_index < 0 or task_index >= len(self.script_list):
+        if (
+            not self.script_list
+            or task_index < 0
+            or task_index >= len(self.script_list)
+        ):
             logger.warning(f"无效的任务索引: {task_index}")
             return
 
         # 切换导航栏选中状态
         target_route_key = self.script_list[task_index].objectName()
         self.pivot.setCurrentItem(target_route_key)
-        
+
         # 切换页面显示
         self.stacked_widget.setCurrentWidget(self.script_list[task_index])
 
-    class TaskDetailPage(QWidget):
-        """任务详情页面（显示具体任务信息）"""
-        def __init__(self, task: TaskItem_interface, parent: Optional[QWidget] = None):
-            super().__init__(parent)
+        # 新增：更新当前页面信息（存储索引和页面实例）
+        self.current_page_info = {
+            "page": self.script_list[task_index]  # TaskDetailPage 实例
+        }
 
-            # 添加任务区布局
-            self.AddMission_layout = QVBoxLayout(self)
 
-            self.line = QFrame()
-            self.line.setFrameShape(QFrame.Shape.HLine)
-            self.line.setFrameShadow(QFrame.Shadow.Plain)
+class TaskDetailPage(QWidget):
+    """任务详情页面（显示具体任务信息）"""
 
-            self.line1 = QFrame()
-            self.line1.setFrameShape(QFrame.Shape.HLine)
-            self.line1.setFrameShadow(QFrame.Shadow.Plain)
+    def __init__(self, task: TaskItem_interface, parent: Optional[QWidget] = None):
+        super().__init__(parent)
 
-            self.scroll_area = ScrollArea()
-            self.scroll_area.setWidgetResizable(True)
-            self.scroll_area.setHorizontalScrollBarPolicy(
-                Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        self.task = task
+
+        self.scroll_area = ScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+
+        self.scroll_area.setStyleSheet("background-color: transparent; border: none;")
+
+        self.scroll_area_content = QWidget()
+        self.scroll_area_content.setContentsMargins(0, 0, 10, 0)
+
+        # 选项区域
+        self.option_widget = QWidget()
+        self.option_layout = QVBoxLayout(self.option_widget)
+        self.option_widget.setSizePolicy(
+            QSizePolicy.Policy.Preferred,  # 水平策略保持不变
+            QSizePolicy.Policy.Minimum,  # 垂直策略根据内容自动调整
+        )
+
+        # doc区域
+        self.doc_widget = QWidget()
+        self.doc_layout = QVBoxLayout(self.doc_widget)
+        self.doc_widget.setSizePolicy(
+            QSizePolicy.Policy.Preferred,  # 水平策略保持不变
+            QSizePolicy.Policy.Minimum,  # 垂直策略根据内容自动调整
+        )
+
+        # 主滚动区域布局
+        self.main_scroll_layout = QVBoxLayout(self.scroll_area_content)
+        self.main_scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.main_scroll_layout.addWidget(self.option_widget)
+        self.main_scroll_layout.addWidget(self.doc_widget)
+
+        self.scroll_area.setWidget(self.scroll_area_content)
+
+        self.Option_area_Label = QVBoxLayout()
+        self.Option_area_Label.addWidget(self.scroll_area, 1)
+
+        self.setLayout(self.Option_area_Label)
+        # 填充任务区数据和文本
+
+        self.show_task_options(task.get("name", ""), maa_config_data.interface_config)
+
+    def resizeEvent(self, event):
+        """
+        当窗口大小改变时，重新设置所有 任务选项下拉框和doc 的宽度。
+        """
+        super().resizeEvent(event)
+        scroll_area_width = self.scroll_area.width()
+        for i in range(self.option_layout.count()):
+            layout = self.option_layout.itemAt(i).layout()
+            if layout is not None:
+                for j in range(layout.count()):
+                    widget = layout.itemAt(j).widget()
+                    if isinstance(widget, ComboBox):
+                        widget.setFixedWidth(scroll_area_width - 20)
+                    if isinstance(widget, BodyLabel):
+                        widget.setFixedWidth(scroll_area_width - 20)
+
+    def show_task_options(self, select_target: str, MAA_Pi_Config: InterfaceData):
+
+        option_layout = self.option_layout
+        doc_layout = self.doc_layout
+
+        for task in MAA_Pi_Config.get("task", []):
+            if task.get("name") == select_target:
+                # 处理 option 字段
+                options = task.get("option")
+                if options:
+                    for option in options:
+                        v_layout = QVBoxLayout()
+
+                        label = BodyLabel(self)
+                        label.setText(option)
+                        label.setFont(QFont("Arial", 10))
+                        v_layout.addWidget(label)
+
+                        select_box = ComboBox(self)
+                        select_box.addItems(
+                            list(
+                                Get_Task_List(
+                                    maa_config_data.interface_config_path, option
+                                )
+                            )
+                        )
+                        select_box.setSizePolicy(
+                            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+                        )
+                        scroll_area_width = self.scroll_area.width()
+                        select_box.setFixedWidth(scroll_area_width - 20)
+
+                        v_layout.addWidget(select_box)
+
+                        option_layout.addLayout(v_layout)
+                # 处理 doc 字段
+                doc = task.get("doc")
+                if doc:
+                    if isinstance(doc, list):
+                        doc = "\n".join(doc)
+                    doc_label = BodyLabel(self)
+                    doc_label.setWordWrap(True)
+
+                    # 初始化 HTML 文本
+                    html_text = doc
+
+                    # 解析颜色
+                    html_text = re.sub(
+                        r"\[color:(.*?)\]", r'<span style="color:\1">', html_text
+                    )
+                    html_text = re.sub(r"\[/color\]", "</span>", html_text)
+
+                    # 解析字号
+                    html_text = re.sub(
+                        r"\[size:(.*?)\]", r'<span style="font-size:\1px">', html_text
+                    )
+                    html_text = re.sub(r"\[/size]", "</span>", html_text)
+
+                    # 解析粗体
+                    html_text = html_text.replace("[b]", "<b>").replace("[/b]", "</b>")
+
+                    # 解析斜体
+                    html_text = html_text.replace("[i]", "<i>").replace("[/i]", "</i>")
+
+                    # 解析下划线
+                    html_text = html_text.replace("[u]", "<u>").replace("[/u]", "</u>")
+
+                    # 解析删除线
+                    html_text = html_text.replace("[s]", "<s>").replace("[/s]", "</s>")
+
+                    # 解析对齐方式
+                    html_text = re.sub(
+                        r"\[align:left\]", '<div style="text-align: left;">', html_text
+                    )
+                    html_text = re.sub(
+                        r"\[align:center\]",
+                        '<div style="text-align: center;">',
+                        html_text,
+                    )
+                    html_text = re.sub(
+                        r"\[align:right\]",
+                        '<div style="text-align: right;">',
+                        html_text,
+                    )
+                    html_text = re.sub(r"\[/align\]", "</div>", html_text)
+
+                    # 将换行符替换为 <br>
+                    html_text = html_text.replace("\n", "<br>")
+
+                    doc_label.setText(html_text)
+                    doc_layout.addWidget(doc_label)
+
+                spacer = QSpacerItem(
+                    0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+                )
+                self.main_scroll_layout.addItem(spacer)
+
+                break
+
+    def get_selected_options(self):
+        selected_options = []
+        layout = self.option_layout
+        name = None
+        selected_value = None
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            if not isinstance(item, QVBoxLayout):
+                continue  # 如果item不是QVBoxLayout，跳过本次循环
+            for j in range(item.count()):
+                widget = item.itemAt(j).widget()
+                if isinstance(widget, BodyLabel):
+                    name = widget.text()
+                elif isinstance(widget, ComboBox):
+                    selected_value = widget.currentText()
+            if name and selected_value:
+                selected_options.append({"name": name, "value": selected_value})
+
+            # 重置变量
+            name = None
+            selected_value = None
+
+        return selected_options
+
+    def get_task(self):
+       name = self.task.get("name")
+       option = self.get_selected_options()
+       return {"name": name, "option": option}
+    def get_entry(self):
+        return self.task.get("entry")
+
+    def get_pipeline_override(self)-> dict:
+        override_options = {}
+        task_list = self.get_task()
+
+        # 找到task的entry
+        for index, task_enter in enumerate(maa_config_data.interface_config["task"]):
+            if task_enter["name"] == task_list["name"]:
+                self.entry = task_enter["entry"]
+                enter_index = index
+                break
+        # 解析task中的pipeline_override
+        if maa_config_data.interface_config["task"][enter_index].get(
+            "pipeline_override", False
+        ):
+            override_options.update(
+                maa_config_data.interface_config["task"][enter_index][
+                    "pipeline_override"
+                ]
             )
+        # 解析task中的option
+        if task_list["option"] != []:
+            for task_option in task_list["option"]:
+                for override in maa_config_data.interface_config["option"][
+                    task_option["name"]
+                ]["cases"]:
+                    if override["name"] == task_option["value"]:
 
-            self.scroll_area.setStyleSheet("background-color: transparent; border: none;")
-
-            self.scroll_area_content = QWidget()
-            self.scroll_area_content.setContentsMargins(0, 0, 10, 0)
-
-            # 选项区域
-            self.option_widget = QWidget()
-            self.option_layout = QVBoxLayout(self.option_widget)
-            self.option_widget.setSizePolicy(
-                QSizePolicy.Policy.Preferred,  # 水平策略保持不变
-                QSizePolicy.Policy.Minimum,  # 垂直策略根据内容自动调整
-            )
-
-            # doc区域
-            self.doc_widget = QWidget()
-            self.doc_layout = QVBoxLayout(self.doc_widget)
-            self.doc_widget.setSizePolicy(
-                QSizePolicy.Policy.Preferred,  # 水平策略保持不变
-                QSizePolicy.Policy.Minimum,  # 垂直策略根据内容自动调整
-            )
-
-            # 主滚动区域布局
-            self.main_scroll_layout = QVBoxLayout(self.scroll_area_content)
-            self.main_scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-            self.main_scroll_layout.addWidget(self.option_widget)
-            self.main_scroll_layout.addWidget(self.doc_widget)
-
-            self.scroll_area.setWidget(self.scroll_area_content)
-
-            self.Option_area_Label = QVBoxLayout()
-            self.Option_area_Label.addWidget(self.scroll_area, 1)
-
-
-            self.AddMission_layout.addLayout(self.Option_area_Label)
-            self.setLayout(self.AddMission_layout)
-
-
-            #填充任务区数据和文本
-
+                        override_options.update(override.get("pipeline_override", {}))
+        return override_options
+        
