@@ -8,9 +8,6 @@ import os
 from typing import Dict, List, Any, TypedDict,Optional
 
 
-from typing import TypedDict, List, Dict
-
-
 # 定义模拟器extra的类型
 class EmuExtrasConfig(TypedDict, total=False):
     enable: bool
@@ -155,6 +152,7 @@ class InterfaceData(TypedDict,total=False):
     task: List[TaskItem_interface]
     option: Dict[str, OptionItem]
     version: str
+    show_notice: bool
 
 class MaaConfigData:
     interface_config: InterfaceData = {}

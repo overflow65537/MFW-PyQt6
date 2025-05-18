@@ -26,6 +26,7 @@ from ..common.signal_bus import signalBus
 from ..common import resource
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
+from ..utils.notice_message import NoticeMessageBox
 
 
 class MainWindow(FluentWindow):
@@ -196,15 +197,24 @@ class MainWindow(FluentWindow):
             self.continuousTaskInterface,
             FIF.ALBUM,
             self.tr("Continuous Task"),
-            NavigationItemPosition.SCROLL
+            NavigationItemPosition.SCROLL,
         )
+        self.navigationInterface.addItem(
+            routeKey='Announcement',
+            icon=FIF.MEGAPHONE,
+            text=self.tr("Announcement"),
+            onClick=self.show_announcement,
+            selectable=False,
+            tooltip=self.tr("Announcement"),
+            position=NavigationItemPosition.BOTTOM
+        )
+        
         self.addSubInterface(
             self.settingInterface,
             FIF.SETTING,
             self.tr("Setting"),
             NavigationItemPosition.BOTTOM,
         )
-        
 
     def is_admin(self):
         """判断是否为管理员权限"""
@@ -266,6 +276,47 @@ class MainWindow(FluentWindow):
         self.show()
         QApplication.processEvents()
 
+        # 显示公告 MessageBox
+        if (
+            cfg.get(cfg.show_notice)
+            or maa_config_data.interface_config.get("show_notice")
+        ) and not cfg.get(cfg.hide_notice):
+
+            QTimer.singleShot(500, self.show_announcement)
+
+    def show_announcement(self):
+        """显示公告 MessageBox"""
+        title = self.tr("Announcement")
+
+        with open("./MFW_resource/Announcement.md", "r", encoding="utf-8") as f:
+            gui_announced = f.read()
+
+        try:
+            with open(
+                os.path.join(maa_config_data.resource_path, "Announcement.md"),
+                "r",
+                encoding="utf-8",
+            ) as f:
+                resource = f.read()
+        except Exception as e:
+            resource = None
+        content = {}
+        content[self.tr("MFW Announcement")] = gui_announced
+        if resource:
+            content[self.tr("Resource Announcement")] = resource
+
+        w = NoticeMessageBox(self, title, content)
+        w.setClosableOnMaskClicked(True)
+
+        # enable dragging
+        w.setDraggable(True)
+
+        if w.exec():
+            print("OK clicked")
+            cfg.set(cfg.hide_notice, True)
+        
+        cfg.set(cfg.hide_notice, False)
+
     def resizeEvent(self, e):
         """重写尺寸事件。"""
         super().resizeEvent(e)
@@ -293,10 +344,10 @@ class MainWindow(FluentWindow):
         """根据布尔值显示或隐藏 ContinuousTaskInterface 界面"""
         if show:
             self.addSubInterface(
-            self.continuousTaskInterface,
-            FIF.ALBUM,
-            self.tr("Continuous Task"),
-            NavigationItemPosition.SCROLL,
-        )
+                self.continuousTaskInterface,
+                FIF.ALBUM,
+                self.tr("Continuous Task"),
+                NavigationItemPosition.SCROLL,
+            )
         else:
             self.removeInterface(self.continuousTaskInterface)

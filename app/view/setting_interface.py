@@ -174,8 +174,16 @@ class SettingInterface(ScrollArea):
             configItem=cfg.run_after_startup,
             parent=self.start_Setting,
         )
+        self.never_show_notice = SwitchSettingCard(
+            FIF.MEGAPHONE,
+            self.tr("never show notice"),
+            self.tr("Announcements will never pop up regardless of the situation"),
+            configItem=cfg.hide_notice,
+            parent=self.start_Setting,
+        )
 
         self.start_Setting.addSettingCard(self.run_after_startup)
+        self.start_Setting.addSettingCard(self.never_show_notice)
 
     def initialize_personalization_settings(self):
         """初始化个性化设置。"""

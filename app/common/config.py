@@ -42,6 +42,12 @@ def isWin11():
 class Config(QConfig):
     """Config of application"""
 
+    #永不展示公告
+    hide_notice = ConfigItem("program", "hide_notice", False, BoolValidator())
+
+    #展示公告
+    show_notice = ConfigItem("program", "show_notice", True, BoolValidator())
+
     # 展示agent命令行
     show_agent_cmd = ConfigItem("program", "show_agent_cmd", False, BoolValidator())
     # Mirror酱cdk
