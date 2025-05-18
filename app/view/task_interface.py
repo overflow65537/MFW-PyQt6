@@ -891,6 +891,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         连接 ADB 控制器
         """
         # 尝试连接 ADB
+        if maa_config_data.config["adb"]["adb_path"] == "":
+            await self.Start_Detection()
         if not await self.connect_adb():
             # 如果连接失败，尝试启动模拟器
             if not await self.start_emulator():
