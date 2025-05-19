@@ -188,11 +188,12 @@ class MainWindow(FluentWindow):
             FIF.FOLDER,
             self.tr("Resource Setting"),
         )
-        self.addSubInterface(
+        Scheduled = self.addSubInterface(
             self.scheduledInterface,
             FIF.CALENDAR,
             self.tr("Scheduled"),
         )
+        Scheduled.clicked.connect(signalBus.ScheduledPageClicked)
         self.addSubInterface(
             self.continuousTaskInterface,
             FIF.ALBUM,

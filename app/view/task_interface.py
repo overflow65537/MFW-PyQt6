@@ -1247,7 +1247,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 if remaining_loops > 0 and self.entry:
                     self.update_speedrun_state(speedrun_cfg, remaining_loops)
                     await maafw.run_task(self.entry, override_options)
-
+                    if self.task_failed:
+                        speedrun_cfg.get("interval", {})["current_loop"] = remaining_loops + 1
+                        Save_Config(maa_config_data.config_path, maa_config_data.config)
+                        self.insert_colored_text(self.tr("Task failed, loop count restored"))
                 else:
                     self.handle_exhausted_loops(refresh_time)
                     continue

@@ -82,7 +82,6 @@ class Ui_Scheduled_Interface(object):
 
         # 按钮表格布局容器
         widget = QWidget(Scheduled_Interface)
-        # 避免重复给 Scheduled_Interface 设置布局，改为给 widget 设置布局
         self.layout = QVBoxLayout(widget)
 
         self.refresh_time_layout = QHBoxLayout()
@@ -145,12 +144,12 @@ class Ui_Scheduled_Interface(object):
         self.time_selection_layout = QHBoxLayout()
 
         # 目前循环次数
-        self.loop_label = BodyLabel()
-        self.loop_input = SpinBox()
-        self.loop_input.setMinimum(-1)
+        self.current_loop_label = BodyLabel()
+        self.current_loop_input = SpinBox()
+        self.current_loop_input.setMinimum(-1)
 
-        self.time_selection_layout.addWidget(self.loop_label)
-        self.time_selection_layout.addWidget(self.loop_input)
+        self.time_selection_layout.addWidget(self.current_loop_label)
+        self.time_selection_layout.addWidget(self.current_loop_input)
         self.main_layout.addLayout(self.time_selection_layout)
 
         self.row4_layout = QHBoxLayout()

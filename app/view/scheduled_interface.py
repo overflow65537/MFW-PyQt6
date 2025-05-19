@@ -61,6 +61,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
 
     def bind_signals(self):
         """绑定信号槽函数"""
+        signalBus.ScheduledPageClicked.connect(self.change_target_task)
         self.daily_mode_radio.clicked.connect(lambda: self.change_layout("daily"))
         self.weekly_mode_radio.clicked.connect(lambda: self.change_layout("weekly"))
         self.monthly_mode_radio.clicked.connect(lambda: self.change_layout("monthly"))
@@ -112,6 +113,8 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.interval_input.setValue(self.interval.get("item", 0))
         self.interval_unit.setCurrentIndex(self.interval.get("unit", 0))
         self.loop_input.setValue(self.interval.get("loop_item", 1))
+        self.current_loop_input.setValue(self.interval.get("current_loop", 1))
+
         self.date_label.setText(self.last_run)
 
     def save_speedrun_info(self):
@@ -145,7 +148,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
                 "unit": self.interval_unit.currentIndex(),
                 "item": self.interval_input.value(),
                 "loop_item": self.loop_input.value(),
-                "current_loop": self.loop_input.value(),
+                "current_loop": self.current_loop_input.value(),
             },
             "last_run": self.last_run,
         }
@@ -201,7 +204,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.confirm_button.setText(self.tr("Confirm"))
         self.is_start.setText(self.tr("Start Automatically"))
         self.refresh_time_mo_unit_label.setText(self.tr("Day"))
-        self.loop_label.setText(self.tr("Loop item"))
+        self.current_loop_label.setText(self.tr("Loop item"))
         self.data_label1.setText(self.tr("Last Run"))
 
     def get_list_items(self) -> list[str]:
