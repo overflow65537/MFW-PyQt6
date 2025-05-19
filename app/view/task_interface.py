@@ -1777,8 +1777,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.update_config_value("resource", self.Resource_Combox.currentText())
         logger.info(f"保存资源配置: {self.Resource_Combox.currentText()}")
         
-    @asyncSlot()
-    async def Save_Controller(self):
+    def Save_Controller(self):
         """
         保存控制器配置
         """
@@ -1791,7 +1790,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             signalBus.setting_Visible.emit("adb")
 
         elif controller_type == "Win32":
-            await self.Start_Detection()
+            asyncio.create_task(self.Start_Detection())
             signalBus.setting_Visible.emit("win32")
         logger.info(f"保存控制器配置: {Controller_Type_Select}")
         # 更新配置并保存

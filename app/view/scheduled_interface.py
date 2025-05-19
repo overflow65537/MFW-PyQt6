@@ -66,6 +66,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.monthly_mode_radio.clicked.connect(lambda: self.change_layout("monthly"))
         self.List_widget.itemClicked.connect(self.change_target_task)
         self.confirm_button.clicked.connect(self.save_speedrun_info)
+        signalBus.update_task_list.connect(self.update_task_list_passive)
 
     def change_target_task(self):
         """修改目标任务"""
@@ -202,7 +203,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.refresh_time_mo_unit_label.setText(self.tr("Day"))
         self.loop_label.setText(self.tr("Loop item"))
         self.data_label1.setText(self.tr("Last Run"))
-        
+
     def get_list_items(self) -> list[str]:
         """获取列表中所有项的文本"""
         return [
@@ -222,10 +223,6 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             duration=-1,
             parent=self,
         )
-
-    def update_task_list(self):
-        """更新任务列表"""
-        signalBus.update_task_list.emit()
 
     def update_task_list_passive(self):
         """更新任务列表(被动刷新)"""
