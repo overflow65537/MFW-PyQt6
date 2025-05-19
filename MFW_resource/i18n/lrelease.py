@@ -1,5 +1,17 @@
 import os
 import subprocess
+import sys  # 新增：导入 sys 模块
+
+# 新增：通过 sys.argv 获取 lrelease 路径（默认使用系统中的 lrelease）
+lrelease_path = "lrelease"  # 默认值
+if len(sys.argv) > 1:
+    if len(sys.argv) > 2:
+        print("错误：参数过多。使用方法：python lrelease.py [lrelease路径]")
+        sys.exit(1)
+    lrelease_path = sys.argv[1]  # 用户指定的路径
+    #如果是文件夹
+    if os.path.isdir(lrelease_path):
+        lrelease_path = os.path.join(lrelease_path, "lrelease.exe")
 
 # 获取当前脚本所在的目录
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -14,12 +26,9 @@ for ts_file in ts_files:
     qm_file = os.path.splitext(ts_file)[0] + ".qm"
 
     try:
-        # 调用 lrelease 命令进行转换
-        subprocess.run(["lrelease", ts_file_path], check=True)
+        # 调用用户指定或默认的 lrelease 路径进行转换
+        print(f"路径:{lrelease_path}")
+        subprocess.run([lrelease_path, ts_file_path], check=True)
         print(f"成功将 {ts_file} 转换为 {qm_file}")
-    except:
-        try:
-            subprocess.run(["D:\Anaconda\Library\\bin\lrelease.exe", ts_file_path], check=True)
-            print(f"成功将 {ts_file} 转换为 {qm_file}")
-        except subprocess.CalledProcessError as e:
-            print(f"转换 {ts_file} 时出错: {e}")
+    except subprocess.CalledProcessError as e:
+        print(f"转换 {ts_file} 时出错: {e}")

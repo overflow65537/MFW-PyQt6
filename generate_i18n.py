@@ -1,5 +1,17 @@
 import os
 import subprocess
+import sys  # 改为导入 sys 模块
+
+# 改为使用 sys.argv 手动获取参数
+pylupdate6_path = 'pylupdate6'  # 默认值（环境变量中的路径）
+if len(sys.argv) > 1:
+    if len(sys.argv) > 2:
+        print("错误：参数过多。使用方法：python generate_i18n.py [pylupdate6路径]")
+        sys.exit(1)
+    pylupdate6_path = sys.argv[1]  # 用户传递的路径
+    #如果是文件夹
+    if os.path.isdir(pylupdate6_path):
+        pylupdate6_path = os.path.join(pylupdate6_path, "pylupdate6.exe")
 
 # 项目根目录
 project_root = os.getcwd()
@@ -27,9 +39,8 @@ for output_ts_file in output_ts_files:
             if file.endswith('.py'):
                 python_files.append(os.path.join(root, file))
 
-    # 构建 pylupdate6 命令
-    command = ['pylupdate6', '-ts', output_ts_file] + python_files
-
+    # 构建 pylupdate6 命令（使用用户指定的路径或默认值）
+    command = [pylupdate6_path, '-ts', output_ts_file] + python_files  # 修改：使用手动获取的路径
 
     try:
         # 执行 pylupdate6 命令

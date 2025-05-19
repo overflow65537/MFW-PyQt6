@@ -56,7 +56,7 @@ class Config(QConfig):
     # 强制更新
     force_update = ConfigItem("program", "force_update", False, BoolValidator())
     # 标题
-    title = ConfigItem("MainWindow", "Title", "MFW-PySide6")
+    title = ConfigItem("MainWindow", "Title", "")
 
     # MFW更新通道
     MFW_update_channel = ConfigItem(
@@ -159,7 +159,7 @@ class Config(QConfig):
     )
 
 
-REPO_URL = "https://github.com/overflow65537/MFW-PySide6/"
+REPO_URL = "https://github.com/overflow65537/MFW-PyQt6/"
 
 cfg = Config()
 cfg.themeMode.value = Theme.AUTO

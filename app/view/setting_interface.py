@@ -423,10 +423,10 @@ class SettingInterface(ScrollArea):
             text=self.tr("About"),
             text2=self.tr("Check for updates"),
             icon=FIF.INFO,
-            title="MFW-PyQt6 " + MFW_Version,
+            title=self.tr("ChainFlow Assistant") + " " + MFW_Version,
             configItem=cfg.MFW_update_channel,
             content=self.tr(
-                "MFW-PyQt6 is open source under the GPLv3 license. Visit the project URL for more information."
+                "ChainFlow Assistant is open source under the GPLv3 license. Visit the project URL for more information."
             ),
             parent=self.aboutGroup,
         )

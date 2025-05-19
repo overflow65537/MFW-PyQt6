@@ -231,6 +231,8 @@ class MainWindow(FluentWindow):
     def set_title(self):
         """设置窗口标题"""
         title = cfg.get(cfg.title)
+        if not title:
+            title = self.tr("ChainFlow Assistant")
         resource_name = cfg.get(cfg.maa_resource_name)
         config_name = cfg.get(cfg.maa_config_name)
         version = maa_config_data.interface_config.get("version", "")
@@ -315,7 +317,7 @@ class MainWindow(FluentWindow):
             print("OK clicked")
             cfg.set(cfg.hide_notice, True)
         
-        cfg.set(cfg.hide_notice, False)
+        cfg.set(cfg.show_notice, False)
 
     def resizeEvent(self, e):
         """重写尺寸事件。"""

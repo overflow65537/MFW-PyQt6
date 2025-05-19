@@ -2,7 +2,7 @@
 
 <div align="center">
 
-# MFW-PyQt6
+# MFW-ChainFlow Assistant
 
 **[简体中文](./README.md) | [English](./README-en.md)**
 
