@@ -3,7 +3,7 @@ import os
 
 from logging.handlers import TimedRotatingFileHandler
 
-os.makedirs("./debug", exist_ok=True)
+os.makedirs("debug", exist_ok=True)
 # 获取requests模块的日志记录器
 requests_logger = logging.getLogger("urllib3")
 # 关闭requests模块的日志输出
@@ -14,10 +14,10 @@ logging.basicConfig(
     level=logging.DEBUG,
     handlers=[
         TimedRotatingFileHandler(
-            "./debug/gui.log",
-            when="midnight",  
-            backupCount=3,    
-            encoding="utf-8"
+            os.path.join(os.getcwd(), "debug", "gui.log"),
+            when="midnight",
+            backupCount=3,
+            encoding="utf-8",
         ),
         logging.StreamHandler(),
     ],

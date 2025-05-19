@@ -16,7 +16,7 @@ from ..common.signal_bus import signalBus
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 from ..common.config import cfg
-from ..utils.tool import Read_Config
+from ..utils.tool import Read_Config,path_to_list
 from ..utils.process_thread import ProcessThread
 
 
@@ -40,6 +40,8 @@ class MaaFW:
         self.agent_thread = None
 
     def load_custom_objects(self, custom_dir):
+
+
         if not os.path.exists(custom_dir):
             logger.warning(f"自定义文件夹 {custom_dir} 不存在")
             return
@@ -59,6 +61,7 @@ class MaaFW:
                     custom_file_path = custom_file_path.replace(
                         "{custom_path}", custom_dir
                     )
+                    custom_file_path = os.path.join(*path_to_list(custom_file_path))
 
                 if not all(
                     [custom_type, custom_name, custom_class_name, custom_file_path]
@@ -132,7 +135,7 @@ class MaaFW:
         address: str,
         screencap_method: int,
         input_method: int,
-        config: Dict ,
+        config: Dict,
     ) -> bool:
         if screencap_method == 0:
             screencap_method = MaaAdbScreencapMethodEnum.Default
@@ -173,7 +176,7 @@ class MaaFW:
     def load_resource(self, dir: str) -> bool:
         if not self.resource:
             self.resource = Resource()
-        gpu_index = maa_config_data.config.get("gpu",-1)
+        gpu_index = maa_config_data.config.get("gpu", -1)
         if not isinstance(gpu_index, int):
             logger.warning("gpu_index 不是 int 类型，使用默认值 -1")
             gpu_index = -1

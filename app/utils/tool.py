@@ -803,3 +803,16 @@ def is_task_run_this_week(last_run_time, week_start_day=1, day_start_hour=0):
     result = current_time <= threshold_time  # 比较当前时间和阈值时间
 
     return result
+
+def path_to_list(path):
+    """将路径转换为列表形式"""
+    parts = []
+    while True:
+        path, part = os.path.split(path)
+        if part:
+            parts.insert(0, part)
+        else:
+            if path:
+                parts.insert(0, path)
+            break
+    return parts
