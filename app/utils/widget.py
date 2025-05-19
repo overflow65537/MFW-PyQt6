@@ -245,25 +245,19 @@ class ShowDownload(MessageBoxBase):
 class RightCheckButton(PushButton):
     rightClicked = Signal()
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def mousePressEvent(self, event: QMouseEvent):
-        if event.button() == Qt.MouseButton.RightButton:
+    def mousePressEvent(self, e: QMouseEvent):
+        if e.button() == Qt.MouseButton.RightButton:
             self.rightClicked.emit()
-        super().mousePressEvent(event)
+        super().mousePressEvent(e)
 
 
 class RightCheckPrimaryPushButton(PrimaryPushButton):
     rightClicked = Signal()
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def mousePressEvent(self, event: QMouseEvent):
-        if event.button() == Qt.MouseButton.RightButton:
+    def mousePressEvent(self, e: QMouseEvent):
+        if e.button() == Qt.MouseButton.RightButton:
             self.rightClicked.emit()
-        super().mousePressEvent(event)
+        super().mousePressEvent(e)
 
 
 class NoticeType(QDialog):

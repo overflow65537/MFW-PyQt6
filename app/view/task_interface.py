@@ -659,6 +659,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if not adb_path:
             return
         emu_dict = get_console_path(adb_path)
+        if emu_dict is None:
+            return
         match emu_dict["type"]:
             case "mumu":
                 adb_port = (
@@ -1171,6 +1173,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 await maafw.stop_task()
                 return
             # 找到task的entry
+            enter_index = 0
             for index, task_enter in enumerate(
                 maa_config_data.interface_config.get("task", [])
             ):
@@ -1509,12 +1512,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             Select_Target = self.SelectTask_Combox_1.currentText()
             Option = self.get_selected_options()
             speedrun = self.get_speedrun_value(Select_Target)
-            if not speedrun:
-                return
+            
             task_data: TaskItem = {
                 "name": Select_Target,
                 "option": Option,
-                "speedrun": speedrun,
+                "speedrun": speedrun, # type: ignore
             }
             if maa_config_data.config.get("task") is None:
                 raise ValueError("config['task'] is None")
@@ -1529,6 +1531,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         for i in maa_config_data.interface_config.get("task", []):
             if i.get("name", "") == Select_Target:
                 return i.get("speedrun", {})
+            else:
+                return {}
 
     def Add_All_Tasks(self):
         if maa_config_data.config == {}:

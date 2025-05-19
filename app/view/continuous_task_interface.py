@@ -549,6 +549,7 @@ class TaskDetailPage(QWidget):
         task_list = self.get_task()
 
         # 找到task的entry
+        enter_index = 0
         for index, task_enter in enumerate(
             maa_config_data.interface_config.get("task", [])
         ):

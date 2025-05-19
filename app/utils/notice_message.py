@@ -117,7 +117,7 @@ class NoticeMessageBox(MessageBoxBase):
 
         index_changed = Signal(str)
 
-        def __init__(self, title: str, content: Dict[str, str], parent=None):
+        def __init__(self, title: str, content: Dict[str, str], parent=None): # type: ignore
             super().__init__(parent)
             self.setTitle(title)
 

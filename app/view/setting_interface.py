@@ -580,11 +580,24 @@ class SettingInterface(ScrollArea):
         # 连接关于信号
         self.updateCard.clicked2.connect(self.update_check)
         self.updateCard.clicked2.connect(lambda: cfg.set(cfg.click_update, True))
-        self.updateCard.clicked.connect(
-            lambda: QDesktopServices.openUrl(
-                QUrl(for_config_get_url(self.project_url, "issue"))
+        resource_issue_link = for_config_get_url(self.project_url, "issue")
+        if resource_issue_link is None:
+            resource_issue_link = self.project_url
+            # 绑定一个弹出信息
+            self.updateCard.clicked.connect(
+                lambda: InfoBar.warning(
+                    self.tr("Warning"),
+                    self.tr(
+                        "The current version of the program does not support automatic updates."
+                    ),
+                    duration=1500,
+                    parent=self,
+                )
             )
-        )
+        else:
+            self.updateCard.clicked.connect(
+                lambda: QDesktopServices.openUrl(QUrl(resource_issue_link))
+            )
         self.aboutCard.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(REPO_URL)))
         self.aboutCard.clicked2.connect(self.update_self_func)
 

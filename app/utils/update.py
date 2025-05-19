@@ -997,7 +997,10 @@ class DownloadBundle(BaseUpdate):
             return
 
         url = for_config_get_url(self.project_url, "download")
+        
         try:
+            if url is None:
+                raise ValueError("URL is empty or invalid.")
             response = requests.get(url)
             response.raise_for_status()
             content = response.json()

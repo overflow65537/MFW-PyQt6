@@ -101,7 +101,7 @@ def Save_Config(paths: str, data):
         json.dump(data, MAA_Config, indent=4, ensure_ascii=False)
 
 
-def gui_init(resource_Path: str, maa_pi_config_Path: str, interface_Path: str) -> Dict:
+def gui_init(resource_Path: str, maa_pi_config_Path: str, interface_Path: str) -> Dict[str,int]:
     """初始化GUI组件的配置信息。
 
     Args:
@@ -110,59 +110,56 @@ def gui_init(resource_Path: str, maa_pi_config_Path: str, interface_Path: str) -
         interface_Path (str): 接口配置文件路径。
 
     Returns:
-        dict : 如果所有路径都存在，返回初始化信息的字典；否则空字典。
+        dict : 如果所有路径都存在，返回初始化信息的字典；否则返回空字典。
     """
-    try:
-        if not os.path.exists(resource_Path):
-            raise FileNotFoundError("Resource file not found.")
+    if not os.path.exists(resource_Path):
+        # 若资源文件不存在，抛出异常不符合文档描述，改为返回空字典
+        return {}
 
-        elif (
-            os.path.exists(resource_Path)
-            and os.path.exists(maa_pi_config_Path)
-            and os.path.exists(interface_Path)
-        ):
-            # 获取初始resource序号
-            Resource_count = 0
-            Add_Resource_Type_Select_Values = []
-            for a in Read_Config(interface_Path)["resource"]:
-                Add_Resource_Type_Select_Values.append(a["name"])
-            Resource_Type = Read_Config(maa_pi_config_Path)["resource"]
-            if Resource_Type != "":
-                for b in Add_Resource_Type_Select_Values:
-                    if b == Resource_Type:
-                        break
-                    else:
-                        Resource_count += 1
+    if not os.path.exists(maa_pi_config_Path) or not os.path.exists(interface_Path):
+        # 若其他文件不存在，返回空字典
+        return {}
 
-            # 获取初始Controller序号
-            Controller_count = 0
-            Add_Controller_Type_Select_Values = []
-            for c in Read_Config(interface_Path)["controller"]:
-                Add_Controller_Type_Select_Values.append(c["name"])
-            Controller_Type = Read_Config(maa_pi_config_Path)["controller"]["name"]
+    # 获取初始resource序号
+    Resource_count = 0
+    Add_Resource_Type_Select_Values = []
+    for a in Read_Config(interface_Path)["resource"]:
+        Add_Resource_Type_Select_Values.append(a["name"])
+    Resource_Type = Read_Config(maa_pi_config_Path)["resource"]
+    if Resource_Type != "":
+        for b in Add_Resource_Type_Select_Values:
+            if b == Resource_Type:
+                break
+            else:
+                Resource_count += 1
 
-            if Controller_Type != "":
-                for d in Add_Controller_Type_Select_Values:
-                    if d == Controller_Type:
-                        break
-                    else:
-                        Controller_count += 1
+    # 获取初始Controller序号
+    Controller_count = 0
+    Add_Controller_Type_Select_Values = []
+    for c in Read_Config(interface_Path)["controller"]:
+        Add_Controller_Type_Select_Values.append(c["name"])
+    Controller_Type = Read_Config(maa_pi_config_Path)["controller"]["name"]
 
-            # 初始显示
-            init_ADB_Path = Read_Config(maa_pi_config_Path)["adb"]["adb_path"]
-            init_ADB_Address = Read_Config(maa_pi_config_Path)["adb"]["address"]
-            init_Resource_Type = Resource_count
-            init_Controller_Type = Controller_count
-            return_init = {
-                "init_ADB_Path": init_ADB_Path,
-                "init_ADB_Address": init_ADB_Address,
-                "init_Resource_Type": init_Resource_Type,
-                "init_Controller_Type": init_Controller_Type,
-            }
-            return return_init
-    except:
-        logger.exception("gui_init error")
-        show_error_message()
+    if Controller_Type != "":
+        for d in Add_Controller_Type_Select_Values:
+            if d == Controller_Type:
+                break
+            else:
+                Controller_count += 1
+
+    # 初始显示
+    init_ADB_Path = Read_Config(maa_pi_config_Path)["adb"]["adb_path"]
+    init_ADB_Address = Read_Config(maa_pi_config_Path)["adb"]["address"]
+    init_Resource_Type = Resource_count
+    init_Controller_Type = Controller_count
+    return_init = {
+        "init_ADB_Path": init_ADB_Path,
+        "init_ADB_Address": init_ADB_Address,
+        "init_Resource_Type": init_Resource_Type,
+        "init_Controller_Type": init_Controller_Type,
+    }
+    return return_init
+
 
 
 def Get_Values_list2(path: str, key1: str) -> List:
@@ -178,7 +175,7 @@ def Get_Values_list2(path: str, key1: str) -> List:
     List = []
     data = Read_Config(path)[key1]
     if not data:
-        return None
+        return []
     for i in data:
         List.append(i)
     return List
@@ -198,7 +195,7 @@ def Get_Values_list(path: str, key1: str, sp: bool = False) -> List:
         List = []
         data = Read_Config(path)[key1]
         if not data:
-            return
+            return []
         for i in data:
             if re.search(r"adb", i["name"], re.IGNORECASE) or re.search(
                 r"win", i["name"], re.IGNORECASE
@@ -211,7 +208,7 @@ def Get_Values_list(path: str, key1: str, sp: bool = False) -> List:
         List = []
         data = Read_Config(path)[key1]
         if not data:
-            return
+            return []
         for i in data:
             if sp:
                 if not i.get("spt"):
@@ -259,7 +256,7 @@ def Get_Task_List(path: str, target: str) -> List:
     lists = []
     Task_Config = Read_Config(path)["option"][target]["cases"]
     if not Task_Config:
-        return False
+        return []
     Lens = len(Task_Config) - 1
     for i in range(Lens, -1, -1):
         lists.append(Task_Config[i]["name"])
@@ -292,7 +289,7 @@ def find_existing_file(info_dict: Dict[str, str]) -> str | Literal[False]:
     Returns:
         str or False: 若找到则返回ADB文件的绝对路径，否则返回False。
     """
-    exe_path = info_dict.get("exe_path").rsplit(os.sep, 1)[0]
+    exe_path = info_dict.get("exe_path","").rsplit(os.sep, 1)[0]
     may_paths = info_dict.get("may_path", [])
     if not exe_path or not may_paths:
         return False
@@ -321,16 +318,16 @@ async def check_port(port: List[str]) -> List[str]:
     port_result = []
 
     async def check_single_port(p: str):
-        p = int(p.rsplit(":", 1)[1])
+        port:int = int(p.rsplit(":", 1)[1])
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             # 尝试连接到127.0.0.1的指定端口
             result = await asyncio.get_event_loop().run_in_executor(
-                None, s.connect_ex, ("127.0.0.1", p)
+                None, s.connect_ex, ("127.0.0.1", port)
             )
             # 如果connect_ex返回0，表示连接成功，即端口开启
             if result == 0:
-                port_result.append("127.0.0.1:" + str(p))
+                port_result.append("127.0.0.1:" + str(port))
         except socket.error:
             pass
         finally:
@@ -456,8 +453,8 @@ def find_key_by_value(data_dict: Dict[str, Any], target_value: Any) -> Optional[
 
 
 def access_nested_dict(
-    data_dict: Dict[str, Dict[str, Any]], keys: List[str], value: str = None
-) -> str | dict | None:
+    data_dict: Dict[str, Dict[str, Any]], keys: List[str], value: Any = None
+) -> Any:
     """访问嵌套字典中的值。
 
     Args:
@@ -489,10 +486,10 @@ def access_nested_dict(
 
 
 def rewrite_contorller(
-    data_dict: Dict[str, Dict[str, Any]],
+    data_dict: Dict[str, List[Dict[str, Any]]],  
     controller: str,
     mode: str,
-    new_value: str = None,
+    new_value: str|None = None,
 ) -> str | dict:
     """重写控制器配置。
 
@@ -505,18 +502,22 @@ def rewrite_contorller(
     Returns:
         dict or current_level: 如果提供了新值，则返回更新后的字典，否则返回当前模式的值。
     """
-    current_level = {}
+    current_level: Dict = {}
+    controller_list = data_dict.get("controller", [])
+    if not isinstance(controller_list, list):
+        logger.error("data_dict['controller'] 不是列表类型")
+        return data_dict if new_value is not None else current_level
 
-    for i in range(len(data_dict["controller"])):
-        if data_dict["controller"][i]["type"] == controller:
-            if data_dict["controller"][i].get(controller.lower()) is not None:
-                current_level = data_dict["controller"][i][controller.lower()].get(mode)
+    for i in range(len(controller_list)):
+        if controller_list[i]["type"] == controller:
+            if controller_list[i].get(controller.lower()) is not None:
+                current_level = controller_list[i][controller.lower()].get(mode)
 
             if new_value is not None:
-                if not data_dict["controller"][i].get(controller.lower(), False):
-                    data_dict["controller"][i][controller.lower()] = {}
+                if not controller_list[i].get(controller.lower(), False):
+                    controller_list[i][controller.lower()] = {}
 
-                data_dict["controller"][i][controller.lower()][mode] = new_value
+                controller_list[i][controller.lower()][mode] = new_value
     if new_value is not None:
         return data_dict
     else:
@@ -524,7 +525,7 @@ def rewrite_contorller(
 
 
 def delete_contorller(
-    data_dict: Dict[str, Dict[str, Any]], controller: str, mode: str
+    data_dict: Dict[str, List[Dict[str, Any]]], controller: str, mode: str
 ) -> dict:
     """删除控制器配置。
 
@@ -536,21 +537,26 @@ def delete_contorller(
     Returns:
         dict: 更新后的字典。
     """
-    for i in range(len(data_dict["controller"])):
-        if data_dict["controller"][i]["type"] == controller:
+    controller_list = data_dict.get("controller", [])
+    if not isinstance(controller_list, list):
+        logger.error("data_dict['controller'] 不是列表类型")
+        return data_dict
+
+    for i in range(len(controller_list)):
+        if controller_list[i]["type"] == controller:
             if (
-                not data_dict["controller"][i].get(controller.lower()) == {}
-                or not data_dict["controller"][i].get(controller.lower()) is None
+                controller_list[i].get(controller.lower()) is not None
+                and controller_list[i].get(controller.lower()) != {}
             ):
-                logger.info(data_dict["controller"][i][controller.lower()][mode])
-                del data_dict["controller"][i][controller.lower()][mode]
-                if data_dict["controller"][i].get(controller.lower()) == {}:
-                    del data_dict["controller"][i][controller.lower()]
+                logger.info(controller_list[i][controller.lower()][mode])
+                del controller_list[i][controller.lower()][mode]
+                if controller_list[i].get(controller.lower()) == {}:
+                    del controller_list[i][controller.lower()]
 
     return data_dict
 
 
-def for_config_get_url(url: str, mode: str) -> str:
+def for_config_get_url(url: str, mode: str) -> str|None:
     """根据给定的URL和模式返回相应的链接。
 
     Args:
@@ -566,7 +572,7 @@ def for_config_get_url(url: str, mode: str) -> str:
         repository = parts[4]
     except IndexError:
         return None
-
+    return_url = None
     if mode == "issue":
         return_url = f"https://github.com/{username}/{repository}/issues"
     elif mode == "download":
@@ -599,7 +605,7 @@ def get_controller_type(select_value: str, interface_path: str) -> str | None:
     return None
 
 
-def get_console_path(path: str) -> dict[str, str]:
+def get_console_path(path: str) -> dict[str, str]|None:
     """获取控制台路径。
 
     Args:
