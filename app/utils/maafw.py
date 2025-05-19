@@ -279,6 +279,8 @@ class MaaFW:
                 logger.debug(
                     f"agent启动: {agent_data.get('child_exec', '').replace('{PROJECT_DIR}', maa_config_data.resource_path)}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
                 )
+                cfg.set(cfg.agent_path, agent_data.get("child_exec"))
+
             except Exception as e:
                 logger.error(f"agent启动失败: {e}")
                 signalBus.custom_info.emit({"type": "error_a"})

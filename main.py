@@ -24,6 +24,8 @@ MFW-ChainFlow Assistant GUI 启动脚本
 import os
 import sys
 
+from app.common import maa_config_data
+
 # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
 os.chdir(
     os.path.dirname(sys.executable)
@@ -52,6 +54,7 @@ from app.common.config import Language
 from app.common.signal_bus import signalBus
 from app.utils.tool import show_error_message
 from app.utils.check_utils import check
+from app.utils.maafw import maafw
 
 
 def main(resource: str, config: str, directly: bool, DEV: bool):
@@ -135,6 +138,53 @@ if __name__ == "__main__":
         atexit.register(cleanup_pid)  # 程序正常退出时自动清理
         logger.debug(f"创建PID文件（当前PID: {os.getpid()}）")
 
+    def clear_agent():
+        if maafw.agent:
+            maafw.agent.disconnect()
+        exec_path = cfg.get(cfg.agent_path)
+        if not exec_path:
+            logger.debug("没有找到agent")
+            return
+        # 获取文件名
+        exec_path = os.path.basename(exec_path)
+        import subprocess
+        try:
+            if sys.platform.startswith('win'):
+                result = subprocess.run(
+                    f'taskkill /F /IM {exec_path}',
+                    shell=True,
+                    capture_output=True,
+                    text=True
+                )
+            elif sys.platform.startswith('linux'):
+                result = subprocess.run(
+                    f'pkill -9 {exec_path}',
+                    shell=True,
+                    capture_output=True,
+                    text=True
+                )
+            elif sys.platform.startswith('darwin'):
+                result = subprocess.run(
+                    f'killall {exec_path}',
+                    shell=True,
+                    capture_output=True,
+                    text=True
+                )
+            else:
+                logger.warning(f"不支持的平台: {sys.platform}")
+                return
+
+            if result.returncode == 0:
+                logger.debug(f"关闭agent成功，返回信息: {result.stdout.strip()}")
+            else:
+                logger.error(f"关闭agent失败，错误信息: {result.stderr.strip()}")
+        except Exception as e:
+            logger.exception(f"关闭agent时发生异常: {e}")
+        finally:
+            cfg.set(cfg.agent_path, "")
+        if maafw.agent_thread:
+            maafw.agent_thread.stop()  # 确保线程停止
+    atexit.register(clear_agent)
     try:
         with open(
             os.path.join(".", "config", "version.txt"), "r", encoding="utf-8"

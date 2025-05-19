@@ -41,7 +41,8 @@ def isWin11():
 
 class Config(QConfig):
     """Config of application"""
-
+    # agent路径
+    agent_path = ConfigItem("program", "agent_path", "")
     # 永不展示公告
     hide_notice = ConfigItem("program", "hide_notice", False, BoolValidator())
 
