@@ -23,7 +23,6 @@ MFW-ChainFlow Assistant 任务面板的逻辑部分
 """
 
 
-import ctypes
 import os
 import subprocess
 import platform
@@ -35,7 +34,7 @@ from typing import List, Dict
 import re
 
 
-from PySide6.QtCore import Qt, QMimeData, QDateTime, QTime, QDate
+from PySide6.QtCore import Qt, QMimeData, QDateTime, QTime, QDate,Slot
 from PySide6.QtGui import QDrag, QDropEvent, QColor, QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -1777,12 +1776,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         self.update_config_value("resource", self.Resource_Combox.currentText())
         logger.info(f"保存资源配置: {self.Resource_Combox.currentText()}")
-
+        
+    @asyncSlot()
     async def Save_Controller(self):
         """
         保存控制器配置
         """
-        self.Resource_Combox.currentData
         Controller_Type_Select = self.Control_Combox.currentText()
         controller_type = get_controller_type(
             Controller_Type_Select, maa_config_data.interface_config_path

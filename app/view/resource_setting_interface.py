@@ -60,11 +60,56 @@ class ResourceSettingInterface(ScrollArea):
         self.resource_expandLayout = ExpandLayout(self.resource_scrollWidget)
         # 初始化界面
         signalBus.resource_exist.connect(self.resource_exist)
+        self.create_mapping()
 
         self.init_ui()
         self.__connectSignalToSlot()
         if not cfg.get(cfg.resource_exist):
             self.enable_widgets(False)
+
+    def create_mapping(self):
+        self.win32_input_mapping = {
+            0: self.tr("default"),
+            1: "seize",
+            2: "SendMessage",
+        }
+        self.win32_input_combox_list = [
+            self.tr("default"),
+            "seize",
+            "SendMessage",
+        ]
+
+        self.win32_screencap_mapping = {
+            0: self.tr("default"),
+            1: "GDI",
+            2: "FramePool",
+            4: "DXGI_DesktopDup",
+        }
+
+        self.ADB_input_mapping = {
+            0: self.tr("default"),
+            1: "AdbShell",
+            2: "MinitouchAndAdbKey",
+            4: "Maatouch",
+            8: "EmulatorExtras",
+        }
+
+        self.ADB_screencap_mapping = {
+            0: self.tr("default"),
+            1: "EncodeToFileAndPull",
+            2: "Encode",
+            4: "RawWithGzip",
+            8: "RawByNetcat",
+            16: "MinicapDirect",
+            32: "MinicapStream",
+            64: "EmulatorExtras",
+        }
+        self.gpu_mapping = get_gpu_info()
+        self.gpu_combox_list = self.get_unique_gpu_mapping(self.gpu_mapping)
+        self.gpu_mapping[-1] = self.tr("Auto")
+        self.gpu_mapping[-2] = self.tr("Disabled")
+
+        print("gpu_mapping: ", self.gpu_mapping)
 
     def resource_exist(self, status: bool):
         """
@@ -138,6 +183,25 @@ class ResourceSettingInterface(ScrollArea):
         self.win32_screencap_mode.path = maa_config_data.config_path
         self.ADB_input_mode.path = maa_config_data.config_path
         self.ADB_screencap_mode.path = maa_config_data.config_path
+
+        choose_gpu_text = self.gpu_mapping[maa_config_data.config.get("gpu", -1)]
+        self.use_GPU.comboBox.setCurrentText(choose_gpu_text)
+        win32_input = self.win32_input_mapping[
+            maa_config_data.config.get("win32", {}).get("input_method", 0)
+        ]
+        self.win32_input_mode.comboBox.setCurrentText(win32_input)
+        win32_screen = self.win32_screencap_mapping[
+            maa_config_data.config.get("win32", {}).get("screen_method", 0)
+        ]
+        self.win32_screencap_mode.comboBox.setCurrentText(win32_screen)
+        adb_input = self.ADB_input_mapping[
+            maa_config_data.config.get("adb", {}).get("input_method", 0)
+        ]
+        self.ADB_input_mode.comboBox.setCurrentText(adb_input)
+        adb_screencap = self.ADB_screencap_mapping[
+            maa_config_data.config.get("adb", {}).get("screen_method", 0)
+        ]
+        self.ADB_screencap_mode.comboBox.setCurrentText(adb_screencap)
 
     def clear_content(self):
         """清空输入框和设置内容"""
@@ -675,70 +739,27 @@ class ResourceSettingInterface(ScrollArea):
             self.tr("Vision & Input"), self.resource_scrollWidget
         )
 
-        gpu_mapping = get_gpu_info()
-        logger.debug(f"GPU列表: {gpu_mapping}")
-        gpu_combox_list = self.get_unique_gpu_mapping(gpu_mapping)
-        gpu_mapping[-1] = self.tr("Auto")
-        gpu_mapping[-2] = self.tr("Disabled")
-
-        win32_input_mapping = {
-            0: self.tr("default"),
-            1: "seize",
-            2: "SendMessage",
-        }
-        win32_input_combox_list = [
-            self.tr("default"),
-            "seize",
-            "SendMessage",
-        ]
-
-        win32_screencap_mapping = {
-            0: self.tr("default"),
-            1: "GDI",
-            2: "FramePool",
-            4: "DXGI_DesktopDup",
-        }
-
-        ADB_input_mapping = {
-            0: self.tr("default"),
-            1: "AdbShell",
-            2: "MinitouchAndAdbKey",
-            4: "Maatouch",
-            8: "EmulatorExtras",
-        }
-
-        ADB_screencap_mapping = {
-            0: self.tr("default"),
-            1: "EncodeToFileAndPull",
-            2: "Encode",
-            4: "RawWithGzip",
-            8: "RawByNetcat",
-            16: "MinicapDirect",
-            32: "MinicapStream",
-            64: "EmulatorExtras",
-        }
-
         self.use_GPU = ComboBoxSettingCardCustom(
             icon=FIF.IOT,
             title=self.tr("Select GPU"),
             content=self.tr("Use GPU to accelerate inference"),
-            texts=gpu_combox_list,
+            texts=self.gpu_combox_list,
             target=["gpu"],
             path=maa_config_data.config_path,
             parent=self.VisionAndInputGroup,
             mode="setting",
-            mapping=gpu_mapping,
+            mapping=self.gpu_mapping,
         )
 
         self.win32_input_mode = ComboBoxSettingCardCustom(
             icon=FIF.SAVE_AS,
             title=self.tr("Select Win32 Input Mode"),
-            texts=win32_input_combox_list,
+            texts=[self.tr("default"), "seize", "SendMessage"],
             target=["win32", "input_method"],
             path=maa_config_data.config_path,
             parent=self.VisionAndInputGroup,
             mode="setting",
-            mapping=win32_input_mapping,
+            mapping=self.win32_input_mapping,
         )
 
         self.win32_screencap_mode = ComboBoxSettingCardCustom(
@@ -749,7 +770,7 @@ class ResourceSettingInterface(ScrollArea):
             path=maa_config_data.config_path,
             parent=self.VisionAndInputGroup,
             mode="setting",
-            mapping=win32_screencap_mapping,
+            mapping=self.win32_screencap_mapping,
         )
 
         self.ADB_input_mode = ComboBoxSettingCardCustom(
@@ -766,7 +787,7 @@ class ResourceSettingInterface(ScrollArea):
             path=maa_config_data.config_path,
             parent=self.VisionAndInputGroup,
             mode="setting",
-            mapping=ADB_input_mapping,
+            mapping=self.ADB_input_mapping,
         )
 
         self.ADB_screencap_mode = ComboBoxSettingCardCustom(
@@ -786,7 +807,7 @@ class ResourceSettingInterface(ScrollArea):
             path=maa_config_data.config_path,
             parent=self.VisionAndInputGroup,
             mode="setting",
-            mapping=ADB_screencap_mapping,
+            mapping=self.ADB_screencap_mapping,
         )
 
         self.VisionAndInputGroup.addSettingCard(self.use_GPU)
@@ -797,7 +818,7 @@ class ResourceSettingInterface(ScrollArea):
         try:
             gpu_index = maa_config_data.config.get("gpu", -1)
             if isinstance(gpu_index, int):
-                gpu_mapping[gpu_index]
+                self.gpu_mapping[gpu_index]
             else:
                 raise TypeError("gpu 配置值不是整数类型")
         except:

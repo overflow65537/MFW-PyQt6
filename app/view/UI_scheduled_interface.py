@@ -42,7 +42,6 @@ class Ui_Scheduled_Interface(object):
         # 主窗口
         self.List_layout = QVBoxLayout()
         self.List_widget = ListWidget(Scheduled_Interface)
-
         self.List_layout.addWidget(self.List_widget)
 
         # 速通模式标题布局
@@ -83,23 +82,23 @@ class Ui_Scheduled_Interface(object):
 
         # 按钮表格布局容器
         widget = QWidget(Scheduled_Interface)
+        # 避免重复给 Scheduled_Interface 设置布局，改为给 widget 设置布局
+        self.layout = QVBoxLayout(widget)
 
-        self.layout = QVBoxLayout(Scheduled_Interface)
+        self.refresh_time_layout = QHBoxLayout()
+        self.refresh_time_label = BodyLabel()
+        self.weekly_mode_combox = ComboBox()
 
-        self.refresh_time_layout = QHBoxLayout(Scheduled_Interface)
-        self.refresh_time_label = BodyLabel(self)
-        self.weekly_mode_combox = ComboBox(self)
-
-        self.refresh_time_mo_spinbox = SpinBox(self)
+        self.refresh_time_mo_spinbox = SpinBox()
         self.refresh_time_mo_spinbox.setMinimum(1)
 
-        self.refresh_time_mo_unit_label = BodyLabel(self)
+        self.refresh_time_mo_unit_label = BodyLabel()
         self.refresh_time_mo_spinbox.hide()
         self.refresh_time_mo_unit_label.hide()
 
-        self.refresh_time_spinbox = SpinBox(self)
+        self.refresh_time_spinbox = SpinBox()
         self.refresh_time_spinbox.setMinimum(-1)
-        self.refresh_time_unit_label = BodyLabel(self)
+        self.refresh_time_unit_label = BodyLabel()
 
         self.refresh_time_layout.addWidget(self.refresh_time_label)
         self.refresh_time_layout.addWidget(self.weekly_mode_combox)
@@ -111,11 +110,11 @@ class Ui_Scheduled_Interface(object):
 
         self.interval_layout = QHBoxLayout()
         self.interval_label = BodyLabel()
-        self.interval_input = SpinBox(self)
+        self.interval_input = SpinBox()
         self.interval_input.setMinimum(-1)
         self.interval_unit = ComboBox()
         self.loop_label = BodyLabel()
-        self.loop_input = SpinBox(self)
+        self.loop_input = SpinBox()
         self.loop_input.setMinimum(-1)
         self.loop_unit_label = BodyLabel()
 
@@ -134,12 +133,10 @@ class Ui_Scheduled_Interface(object):
         self.current_layout = widget
         self.right_layout.addWidget(self.current_layout)
 
-        # 将左右两部分添加到水平布局
-        # 添加一条竖线
+        self.row3_layout.addWidget(self.schedule_mode_widget)
         self.Vline1 = QFrame()
         self.Vline1.setFrameShape(QFrame.Shape.VLine)
         self.Vline1.setFrameShadow(QFrame.Shadow.Sunken)
-        self.row3_layout.addWidget(self.schedule_mode_widget)
         self.row3_layout.addWidget(self.Vline1)
         self.row3_layout.addWidget(self.right_panel)
         self.main_layout.addLayout(self.row3_layout)
@@ -149,7 +146,7 @@ class Ui_Scheduled_Interface(object):
 
         # 目前循环次数
         self.loop_label = BodyLabel()
-        self.loop_input = SpinBox(self)
+        self.loop_input = SpinBox()
         self.loop_input.setMinimum(-1)
 
         self.time_selection_layout.addWidget(self.loop_label)
@@ -167,8 +164,6 @@ class Ui_Scheduled_Interface(object):
         self.row4_layout.addWidget(self.data_label1)
         self.row4_layout.addWidget(self.date_label)
         self.main_layout.addLayout(self.row4_layout)
-
-        # 将时间选择布局添加到主布局
 
         # 第三行：三个按钮的水平布局
         self.button_layout = QHBoxLayout()
