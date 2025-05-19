@@ -24,6 +24,7 @@ import json
 import os
 import shutil
 import zipfile
+import time
 from typing import Dict, Optional
 
 
@@ -261,6 +262,7 @@ class BaseUpdate(QThread):
 class Update(BaseUpdate):
 
     def run(self):
+        time.sleep(0.5)
         url = maa_config_data.interface_config.get("url")
         cdk = self.Mirror_ckd()
         res_id = maa_config_data.interface_config.get("mirrorchyan_rid")
