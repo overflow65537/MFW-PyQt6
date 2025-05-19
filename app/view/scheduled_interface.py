@@ -17,8 +17,9 @@
 #   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
 
 """
-MFW-ChainFlow Assistant 计划任务面板
-
+MFW-ChainFlow Assistant
+MFW-ChainFlow Assistant 计划任务逻辑
+作者:overflow65537
 """
 
 from PySide6.QtWidgets import QWidget

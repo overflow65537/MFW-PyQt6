@@ -17,9 +17,9 @@
 #   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
 
 """
-
-MFW-ChainFlow Assistant 任务面板的逻辑部分
-
+MFW-ChainFlow Assistant
+MFW-ChainFlow Assistant 任务逻辑
+作者:overflow65537
 """
 
 
@@ -48,7 +48,7 @@ from PySide6.QtWidgets import (
 from qfluentwidgets import InfoBar, InfoBarPosition, BodyLabel, ComboBox
 
 from ..view.UI_task_interface import Ui_Task_Interface
-from ..utils.notification import MyNotificationHandler
+
 from ..utils.widget import ClickableLabel
 from ..common.signal_bus import signalBus
 from ..utils.tool import (
@@ -66,6 +66,7 @@ from ..utils.tool import (
     find_process_by_name,
     show_error_message,
     get_console_path,
+    MyNotificationHandler
 )
 from ..utils.maafw import maafw
 from ..common.config import cfg

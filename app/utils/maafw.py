@@ -1,3 +1,51 @@
+#   This file is part of MFW-ChainFlow Assistant.
+
+#   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published
+#   by the Free Software Foundation, either version 3 of the License,
+#   or (at your option) any later version.
+
+#   MFW-ChainFlow Assistant is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty
+#   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+#   the GNU General Public License for more details.
+
+#   You should have received a copy of the GNU General Public License
+#   along with MFW-ChainFlow Assistant. If not, see <https://www.gnu.org/licenses/>.
+
+#   Contact: err.overflow@gmail.com
+#   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
+
+# MIT License
+#
+# Copyright (c) 2024 MaaXYZ
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+"""
+MFW-ChainFlow Assistant
+MFW-ChainFlow Assistant MaaFW核心
+原作者: MaaXYZ
+地址: https://github.com/MaaXYZ/MaaDebugger
+修改:overflow65537
+"""
+
 import re
 import os
 import importlib.util
@@ -17,9 +65,10 @@ from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 from ..common.config import cfg
 from ..utils.tool import Read_Config,path_to_list
-from ..utils.process_thread import ProcessThread
+from ..utils.tool import ProcessThread
 
 
+# 以下代码引用自 MaaDebugger 项目的 ./src/MaaDebugger/maafw/__init__.py 文件，用于生成maafw实例
 class MaaFW:
 
     resource: Resource | None

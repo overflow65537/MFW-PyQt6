@@ -18,7 +18,9 @@
 #   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
 
 """
-MFW-ChainFlow Assistant 任务面板的UI界面
+MFW-ChainFlow Assistant
+MFW-ChainFlow Assistant 计划任务界面
+作者:overflow65537
 """
 
 from PySide6.QtCore import QSize, QMetaObject, Qt

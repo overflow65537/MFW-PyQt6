@@ -16,6 +16,12 @@
 #   Contact: err.overflow@gmail.com
 #   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
 
+"""
+MFW-ChainFlow Assistant
+MFW-ChainFlow Assistant 更新单元
+作者:overflow65537
+"""
+
 from PySide6.QtCore import QThread, SignalInstance
 
 import requests

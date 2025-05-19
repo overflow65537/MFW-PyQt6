@@ -17,8 +17,9 @@
 #   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
 
 """
+MFW-ChainFlow Assistant
 MFW-ChainFlow Assistant 特殊任务界面
-
+作者:overflow65537
 """
 
 from PySide6.QtCore import Qt, QTimer

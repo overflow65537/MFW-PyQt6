@@ -16,7 +16,12 @@
 #   Contact: err.overflow@gmail.com
 #   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
 
-import re
+"""
+MFW-ChainFlow Assistant
+MFW-ChainFlow Assistant 组件
+作者:overflow65537
+"""
+
 from PySide6.QtWidgets import (
     QMessageBox,
     QVBoxLayout,

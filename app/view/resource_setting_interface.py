@@ -17,9 +17,9 @@
 #   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
 
 """
+MFW-ChainFlow Assistant
 MFW-ChainFlow Assistant 资源包设置界面
-
-
+作者:overflow65537
 """
 
 

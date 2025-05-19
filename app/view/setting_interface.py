@@ -17,7 +17,9 @@
 #   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
 
 """
-MFW-ChainFlow Assistant 设置面板
+MFW-ChainFlow Assistant
+MFW-ChainFlow Assistant 设置界面
+作者:overflow65537
 """
 
 from qfluentwidgets import (

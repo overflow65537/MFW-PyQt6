@@ -16,6 +16,12 @@
 #   Contact: err.overflow@gmail.com
 #   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
 
+"""
+MFW-ChainFlow Assistant
+MFW-ChainFlow Assistant maa config配置对象
+作者:overflow65537
+"""
+
 from ..common.signal_bus import signalBus
 from ..utils.tool import Read_Config, show_error_message
 from ..common.config import cfg

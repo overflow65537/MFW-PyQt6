@@ -16,6 +16,12 @@
 #   Contact: err.overflow@gmail.com
 #   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
 
+"""
+MFW-ChainFlow Assistant
+MFW-ChainFlow Assistant 外部通知单元
+作者:overflow65537
+"""
+
 import re
 import time
 import hmac

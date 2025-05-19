@@ -1,28 +1,34 @@
-#   AUTO_MAA:A MAA Multi Account Management and Automation Tool
-#   Copyright © 2024-2025 DLmaster361
+#   This file is part of MFW-ChainFlow Assistant.
 
-#   This file is part of AUTO_MAA.
-
-#   AUTO_MAA is free software: you can redistribute it and/or modify
+#   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published
 #   by the Free Software Foundation, either version 3 of the License,
 #   or (at your option) any later version.
 
-#   AUTO_MAA is distributed in the hope that it will be useful,
+#   MFW-ChainFlow Assistant is distributed in the hope that it will be useful,
 #   but WITHOUT ANY WARRANTY; without even the implied warranty
 #   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
 #   the GNU General Public License for more details.
 
 #   You should have received a copy of the GNU General Public License
-#   along with AUTO_MAA. If not, see <https://www.gnu.org/licenses/>.
+#   along with MFW-ChainFlow Assistant. If not, see <https://www.gnu.org/licenses/>.
 
-#   Contact: DLmaster_361@163.com
+#   Contact: err.overflow@gmail.com
+#   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
+
+# This file incorporates work covered by the following copyright and
+# permission notice:
+#
+#     AUTO_MAA Copyright (C) 2022-2024 DLmaster361
+#     https://github.com/DLmaster361/AUTO_MAA
+
 
 """
-作者：DLmaster_361
-修改: overflow65537
-邮箱: err.overflow@gmail.com
-时间: 2025/5/18
+MFW-ChainFlow Assistant
+MFW-ChainFlow Assistant 公告面板
+原作者:DLmaster361
+地址:https://github.com/DLmaster361/AUTO_MAA
+修改:overflow65537
 """
 
 from PySide6.QtWidgets import (
@@ -44,7 +50,7 @@ import markdown
 from functools import partial
 from typing import List, Dict
 
-
+# 以下代码引用自 AUTO_MAA 项目的 ./app/ui/Widget.py 文件，用于创建公告对话框
 class NoticeMessageBox(MessageBoxBase):
     """公告对话框"""
 

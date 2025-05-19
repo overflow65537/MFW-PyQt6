@@ -1,4 +1,3 @@
-# coding:utf-8
 #   This file is part of MFW-ChainFlow Assistant.
 
 #   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
@@ -18,8 +17,11 @@
 #   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
 
 """
-MFW-ChainFlow Assistant GUI 启动脚本
+MFW-ChainFlow Assistant
+MFW-ChainFlow Assistant 启动文件
+作者:overflow65537
 """
+
 
 import os
 import sys
