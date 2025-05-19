@@ -1,4 +1,27 @@
-from PySide6.QtCore import Qt,QTimer
+#   This file is part of MFW-ChainFlow Assistant.
+
+#   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published
+#   by the Free Software Foundation, either version 3 of the License,
+#   or (at your option) any later version.
+
+#   MFW-ChainFlow Assistant is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty
+#   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+#   the GNU General Public License for more details.
+
+#   You should have received a copy of the GNU General Public License
+#   along with MFW-ChainFlow Assistant. If not, see <https://www.gnu.org/licenses/>.
+
+#   Contact: err.overflow@gmail.com
+#   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
+
+"""
+MFW-ChainFlow Assistant 特殊任务界面
+
+"""
+
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QWidget,
     QStackedWidget,
@@ -25,6 +48,8 @@ from datetime import datetime
 
 from ..common.maa_config_data import (
     maa_config_data,
+)
+from ..common.typeddict import (
     TaskItem_interface,
     InterfaceData,
 )
@@ -269,7 +294,7 @@ class ContinuousTaskInterface(QWidget):
         if filtered_idx == 0:
             logger.warning("没有可用的SPT任务")
             QTimer.singleShot(500, lambda: signalBus.show_continuous_task.emit(False))
-        else:   
+        else:
             signalBus.show_continuous_task.emit(True)
 
         # 初始显示第一个任务页面
@@ -374,13 +399,17 @@ class TaskDetailPage(QWidget):
             layout = self.option_layout.itemAt(i).layout()
             if layout is not None:
                 for j in range(layout.count()):
-                    widget = layout.itemAt(j).widget()
-                    if isinstance(widget, ComboBox):
-                        widget.setFixedWidth(scroll_area_width - 20)
-                    if isinstance(widget, BodyLabel):
-                        widget.setFixedWidth(scroll_area_width - 20)
+                    # 检查 item 是否为 None
+                    item = layout.itemAt(j)
+                    if item is not None:
+                        widget = item.widget()
+                        if isinstance(widget, ComboBox):
+                            widget.setFixedWidth(scroll_area_width - 20)
+                        if isinstance(widget, BodyLabel):
+                            widget.setFixedWidth(scroll_area_width - 20)
 
     def show_task_options(self, select_target: str, MAA_Pi_Config: InterfaceData):
+        """展示任务选项和文档"""
 
         option_layout = self.option_layout
         doc_layout = self.doc_layout
@@ -480,6 +509,7 @@ class TaskDetailPage(QWidget):
                 break
 
     def get_selected_options(self):
+        """获取所有选中的选项"""
         selected_options = []
         layout = self.option_layout
         name = None
@@ -504,36 +534,40 @@ class TaskDetailPage(QWidget):
         return selected_options
 
     def get_task(self):
+        """获取当前选中任务的信息"""
         name = self.task.get("name")
         option = self.get_selected_options()
         return {"name": name, "option": option}
 
     def get_entry(self):
+        """获取当前选中任务的入口名称"""
         return self.task.get("entry")
 
     def get_pipeline_override(self) -> dict:
+        """获取任务的pipeline_override配置项"""
         override_options = {}
         task_list = self.get_task()
 
         # 找到task的entry
-        for index, task_enter in enumerate(maa_config_data.interface_config["task"]):
-            if task_enter["name"] == task_list["name"]:
-                self.entry = task_enter["entry"]
+        for index, task_enter in enumerate(
+            maa_config_data.interface_config.get("task", [])
+        ):
+            if task_enter.get("name", "M1") == task_list.get("name", "M2"):
+                self.entry = task_enter.get("entry")
                 enter_index = index
                 break
         # 解析task中的pipeline_override
-        if maa_config_data.interface_config["task"][enter_index].get(
+        if maa_config_data.interface_config.get("task", [])[enter_index].get(
             "pipeline_override", False
         ):
-            override_options.update(
-                maa_config_data.interface_config["task"][enter_index][
-                    "pipeline_override"
-                ]
-            )
+            update_dict = maa_config_data.interface_config.get("task", [])[
+                enter_index
+            ].get("pipeline_override", {})
+            override_options.update(update_dict)
         # 解析task中的option
         if task_list["option"] != []:
             for task_option in task_list["option"]:
-                for override in maa_config_data.interface_config["option"][
+                for override in maa_config_data.interface_config.get("option",[])[
                     task_option["name"]
                 ]["cases"]:
                     if override["name"] == task_option["value"]:

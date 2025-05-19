@@ -1,20 +1,45 @@
+#   This file is part of MFW-ChainFlow Assistant.
+
+#   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published
+#   by the Free Software Foundation, either version 3 of the License,
+#   or (at your option) any later version.
+
+#   MFW-ChainFlow Assistant is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty
+#   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+#   the GNU General Public License for more details.
+
+#   You should have received a copy of the GNU General Public License
+#   along with MFW-ChainFlow Assistant. If not, see <https://www.gnu.org/licenses/>.
+
+#   Contact: err.overflow@gmail.com
+#   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
+
+"""
+MFW-ChainFlow Assistant 计划任务面板
+
+"""
+
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt
 from .UI_scheduled_interface import Ui_Scheduled_Interface
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
-from ..utils.tool import Get_Values_list_Option, Save_Config, for_config_get_url
+from ..utils.tool import Get_Values_list_Option, Save_Config
 from qfluentwidgets import (
     InfoBar,
     InfoBarPosition,
 )
 
 from ..common.maa_config_data import (
-    TaskItem,
     maa_config_data,
+)
+from ..common.typeddict import (
     RefreshTime,
     Interval,
     SpeedrunConfig,
+    TaskItem,
     TaskItem,
 )
 
@@ -35,9 +60,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
             self.change_target_task()
 
     def bind_signals(self):
-        signalBus.resource_exist.connect(self.change_target_task)
-        signalBus.resource_exist.connect(self.update_task_list_passive)
-        signalBus.update_task_list.connect(self.update_task_list_passive)
+        """绑定信号槽函数"""
         self.daily_mode_radio.clicked.connect(lambda: self.change_layout("daily"))
         self.weekly_mode_radio.clicked.connect(lambda: self.change_layout("weekly"))
         self.monthly_mode_radio.clicked.connect(lambda: self.change_layout("monthly"))
@@ -176,11 +199,10 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.loop_unit_label.setText(self.tr("Times"))
         self.confirm_button.setText(self.tr("Confirm"))
         self.is_start.setText(self.tr("Start Automatically"))
-        self.refresh_time_mo_unit_label.setText(self.tr("Day")),
+        self.refresh_time_mo_unit_label.setText(self.tr("Day"))
         self.loop_label.setText(self.tr("Loop item"))
         self.data_label1.setText(self.tr("Last Run"))
-        # self.notic_label.setText(self.tr("The task will be executed at the specified time, and the interval will be executed for the specified number of times."))
-
+        
     def get_list_items(self) -> list[str]:
         """获取列表中所有项的文本"""
         return [

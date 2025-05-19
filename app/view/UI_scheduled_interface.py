@@ -1,3 +1,25 @@
+#   This file is part of MFW-ChainFlow Assistant.
+
+#   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published
+#   by the Free Software Foundation, either version 3 of the License,
+#   or (at your option) any later version.
+
+#   MFW-ChainFlow Assistant is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty
+#   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+#   the GNU General Public License for more details.
+
+#   You should have received a copy of the GNU General Public License
+#   along with MFW-ChainFlow Assistant. If not, see <https://www.gnu.org/licenses/>.
+
+#   Contact: err.overflow@gmail.com
+#   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
+
+"""
+MFW-ChainFlow Assistant 计划任务面板的UI界面
+"""
+
 from PySide6.QtCore import Qt, QSize, QMetaObject, QCoreApplication
 from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QHBoxLayout, QWidget, QFrame
 
@@ -56,15 +78,15 @@ class Ui_Scheduled_Interface(object):
         self.schedule_mode_layout.addWidget(self.monthly_mode_radio)
 
         # 右侧：时间选择和操作按钮区域
-        self.right_panel = QWidget(self)
+        self.right_panel = QWidget(Scheduled_Interface)
         self.right_layout = QVBoxLayout(self.right_panel)
 
         # 按钮表格布局容器
-        widget = QWidget(self)
+        widget = QWidget(Scheduled_Interface)
 
-        self.layout = QVBoxLayout(self)
+        self.layout = QVBoxLayout(Scheduled_Interface)
 
-        self.refresh_time_layout = QHBoxLayout(self)
+        self.refresh_time_layout = QHBoxLayout(Scheduled_Interface)
         self.refresh_time_label = BodyLabel(self)
         self.weekly_mode_combox = ComboBox(self)
 

@@ -1,10 +1,37 @@
 # coding:utf-8
+#   This file is part of MFW-ChainFlow Assistant.
+
+#   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published
+#   by the Free Software Foundation, either version 3 of the License,
+#   or (at your option) any later version.
+
+#   MFW-ChainFlow Assistant is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty
+#   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+#   the GNU General Public License for more details.
+
+#   You should have received a copy of the GNU General Public License
+#   along with MFW-ChainFlow Assistant. If not, see <https://www.gnu.org/licenses/>.
+
+#   Contact: err.overflow@gmail.com
+#   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
+
+"""
+MFW-ChainFlow Assistant GUI 启动脚本
+"""
+
 import os
 import sys
 
 # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
-os.chdir(os.path.dirname(sys.executable) if getattr(sys, 'frozen', False)else os.path.dirname(os.path.abspath(__file__)))
+os.chdir(
+    os.path.dirname(sys.executable)
+    if getattr(sys, "frozen", False)
+    else os.path.dirname(os.path.abspath(__file__))
+)
 import argparse
+
 if not os.path.exists("main.py"):
     os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
 import maa
@@ -80,7 +107,6 @@ def start_symbol():
 if __name__ == "__main__":
     if sys.platform.startswith("darwin"):
 
-
         PID_FILE = os.path.join(os.getcwd(), "MFW.pid")  # PID文件路径
 
         # 清理PID文件的函数
@@ -136,7 +162,7 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--resource", default=False)
     parser.add_argument("-c", "--config", default=False)
     parser.add_argument("-d", "--directly", action="store_true")
-    parser.add_argument("-DEV","--DEV", action="store_true")
+    parser.add_argument("-DEV", "--DEV", action="store_true")
 
     args = parser.parse_args()
     try:

@@ -132,7 +132,7 @@ class MaaFW:
         address: str,
         screencap_method: int,
         input_method: int,
-        config: dict,
+        config: Dict ,
     ) -> bool:
         if screencap_method == 0:
             screencap_method = MaaAdbScreencapMethodEnum.Default
@@ -173,7 +173,7 @@ class MaaFW:
     def load_resource(self, dir: str) -> bool:
         if not self.resource:
             self.resource = Resource()
-        gpu_index = maa_config_data.config["gpu"]
+        gpu_index = maa_config_data.config.get("gpu",-1)
         if not isinstance(gpu_index, int):
             logger.warning("gpu_index 不是 int 类型，使用默认值 -1")
             gpu_index = -1

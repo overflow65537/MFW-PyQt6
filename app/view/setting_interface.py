@@ -1,3 +1,25 @@
+#   This file is part of MFW-ChainFlow Assistant.
+
+#   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published
+#   by the Free Software Foundation, either version 3 of the License,
+#   or (at your option) any later version.
+
+#   MFW-ChainFlow Assistant is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty
+#   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+#   the GNU General Public License for more details.
+
+#   You should have received a copy of the GNU General Public License
+#   along with MFW-ChainFlow Assistant. If not, see <https://www.gnu.org/licenses/>.
+
+#   Contact: err.overflow@gmail.com
+#   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
+
+"""
+MFW-ChainFlow Assistant 设置面板
+"""
+
 from qfluentwidgets import (
     SettingCardGroup,
     SwitchSettingCard,
@@ -19,14 +41,17 @@ from PySide6.QtWidgets import QWidget, QLabel, QApplication
 from ..common.config import cfg, REPO_URL, isWin11
 from ..common.signal_bus import signalBus
 from ..common.style_sheet import StyleSheet
-from ..components.line_edit_card import LineEditCard
-from ..components.notic_setting_card import NoticeButtonSettingCard
+from ..utils.widget import (
+    LineEditCard,
+    NoticeButtonSettingCard,
+    DoubleButtonSettingCard,
+    ShowDownload,
+)
 from ..utils.update import Update, UpdateSelf
 from ..utils.tool import Save_Config, for_config_get_url, decrypt, encrypt
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
-from ..components.doble_button_setting_card import DoubleButtonSettingCard
-from ..components.show_download import ShowDownload
+
 
 import subprocess
 import os
@@ -34,7 +59,9 @@ import sys
 
 
 class SettingInterface(ScrollArea):
-    """设置界面，用于配置应用程序设置。"""
+    """
+    设置界面，用于配置应用程序设置。
+    """
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -50,7 +77,9 @@ class SettingInterface(ScrollArea):
         self.update_exist()
 
     def update_exist(self):
-        """更新文件是否存在"""
+        """
+        更新文件是否存在
+        """
         if os.path.exists(os.path.join(os.getcwd(), "update.zip")):
             logger.info("存在更新文件")
             self.aboutCard.button2.setText(self.tr("Update Now"))
@@ -58,6 +87,9 @@ class SettingInterface(ScrollArea):
             self.aboutCard.button2.clicked.connect(self.update_self_start)
 
     def resource_exist(self, status: bool):
+        """
+        资源是否存在的槽函数。
+        """
         if status:
             logger.info("收到信号,初始化界面并连接信号")
             self.init_info()
@@ -70,7 +102,9 @@ class SettingInterface(ScrollArea):
             self.init_update_thread()
 
     def init_ui(self):
-        """初始化界面内容。"""
+        """
+        初始化界面内容。
+        """
         # 设置标签
         self.setting_Label = QLabel(self.tr("Settings"), self)
 
@@ -86,6 +120,9 @@ class SettingInterface(ScrollArea):
         self.init_update_thread()
 
     def init_update_thread(self):
+        """
+        初始化更新线程
+        """
         if cfg.get(cfg.Mcdk) and maa_config_data.interface_config.get(
             "mirrorchyan_rid"
         ):
@@ -113,7 +150,9 @@ class SettingInterface(ScrollArea):
         signalBus.download_self_stopped.connect(self.update_self.stop)
 
     def init_info(self):
-        """初始化控件信息。"""
+        """
+        初始化控件信息
+        """
         # 从配置中读取数据并填充到控件
         if maa_config_data.interface_config:
             self.project_name = maa_config_data.interface_config.get("name", "")
@@ -136,7 +175,9 @@ class SettingInterface(ScrollArea):
         )
 
     def clear_content(self):
-        # 清空输入框和设置内容
+        """
+        清空输入框和设置内容
+        """
         cfg.set(cfg.save_draw, False)
 
         self.updateCard.setContent(
@@ -150,7 +191,9 @@ class SettingInterface(ScrollArea):
         )
 
     def enable_widgets(self, enable: bool):
-        """启用或禁用所有可交互控件。"""
+        """
+        启用或禁用所有可交互控件。
+        """
         # 遍历所有子控件
         if enable:
             logger.info("启用所有可交互控件")
@@ -161,7 +204,9 @@ class SettingInterface(ScrollArea):
             widget.setEnabled(enable)
 
     def initialize_start_settings(self):
-        """初始化启动设置。"""
+        """
+        初始化启动设置。
+        """
 
         self.start_Setting = SettingCardGroup(
             self.tr("Custom Startup"), self.Setting_scroll_widget
@@ -186,7 +231,9 @@ class SettingInterface(ScrollArea):
         self.start_Setting.addSettingCard(self.never_show_notice)
 
     def initialize_personalization_settings(self):
-        """初始化个性化设置。"""
+        """
+        初始化个性化设置。
+        """
         self.personalGroup = SettingCardGroup(
             self.tr("Personalization"), self.Setting_scroll_widget
         )
@@ -244,7 +291,9 @@ class SettingInterface(ScrollArea):
         self.personalGroup.addSettingCard(self.languageCard)
 
     def initialize_notice_settings(self):
-        """初始化外部通知设置。"""
+        """
+        初始化外部通知设置。
+        """
         self.noticeGroup = SettingCardGroup(
             self.tr("Notice"), self.Setting_scroll_widget
         )
@@ -437,6 +486,8 @@ class SettingInterface(ScrollArea):
         self.aboutGroup.addSettingCard(self.aboutCard)
 
     def update_check(self):
+        """执行更新检查操作。"""
+
         self.Updatethread.start()
         self.updateCard.button2.setEnabled(False)
         self.updateCard.button2.setText(self.tr("Checking for updates..."))
@@ -465,6 +516,7 @@ class SettingInterface(ScrollArea):
         signalBus.lock_res_changed.emit(False)
 
     def __initWidget(self):
+        """初始化界面"""
         self.resize(1000, 800)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setViewportMargins(0, 80, 0, 20)
@@ -605,6 +657,7 @@ class SettingInterface(ScrollArea):
         logger.info("正在启动更新程序")
 
     def _update_config(self, card: LineEditCard, config_key: str):
+        """根据输入更新配置文件中的值。"""
         if maa_config_data.config_path == "":
             return
         value = card.lineEdit.text()

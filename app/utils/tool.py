@@ -1,3 +1,21 @@
+#   This file is part of MFW-ChainFlow Assistant.
+
+#   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published
+#   by the Free Software Foundation, either version 3 of the License,
+#   or (at your option) any later version.
+
+#   MFW-ChainFlow Assistant is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty
+#   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+#   the GNU General Public License for more details.
+
+#   You should have received a copy of the GNU General Public License
+#   along with MFW-ChainFlow Assistant. If not, see <https://www.gnu.org/licenses/>.
+
+#   Contact: err.overflow@gmail.com
+#   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
+
 import os
 import json
 import re
@@ -49,7 +67,7 @@ def show_error_message():
     msg_box.exec()
 
 
-def Read_Config(paths: str)-> Dict:
+def Read_Config(paths: str) -> Dict:
     """读取指定路径的JSON配置文件。
 
     Args:
@@ -160,13 +178,13 @@ def Get_Values_list2(path: str, key1: str) -> List:
     List = []
     data = Read_Config(path)[key1]
     if not data:
-        return False
+        return None
     for i in data:
         List.append(i)
     return List
 
 
-def Get_Values_list(path: str, key1: str,sp:bool = False) -> List:
+def Get_Values_list(path: str, key1: str, sp: bool = False) -> List:
     """获取组件的初始参数。
 
     Args:

@@ -1,11 +1,37 @@
+#   This file is part of MFW-ChainFlow Assistant.
+
+#   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published
+#   by the Free Software Foundation, either version 3 of the License,
+#   or (at your option) any later version.
+
+#   MFW-ChainFlow Assistant is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty
+#   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+#   the GNU General Public License for more details.
+
+#   You should have received a copy of the GNU General Public License
+#   along with MFW-ChainFlow Assistant. If not, see <https://www.gnu.org/licenses/>.
+
+#   Contact: err.overflow@gmail.com
+#   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
+
+"""
+
+MFW-ChainFlow Assistant 任务面板的逻辑部分
+
+"""
+
+
+import ctypes
 import os
 import subprocess
 import platform
-from numpy import sign
+
 from qasync import asyncSlot, asyncio
 from pathlib import Path
 import json
-from typing import List, Dict, Optional
+from typing import List, Dict
 import re
 
 
@@ -18,14 +44,13 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
     QSpacerItem,
-    QHBoxLayout,
 )
 
-from qfluentwidgets import InfoBar, InfoBarPosition, BodyLabel, ComboBox, SwitchButton
+from qfluentwidgets import InfoBar, InfoBarPosition, BodyLabel, ComboBox
 
 from ..view.UI_task_interface import Ui_Task_Interface
 from ..utils.notification import MyNotificationHandler
-from ..components.click_label import ClickableLabel
+from ..utils.widget import ClickableLabel
 from ..common.signal_bus import signalBus
 from ..utils.tool import (
     Get_Values_list_Option,
@@ -47,30 +72,24 @@ from ..utils.maafw import maafw
 from ..common.config import cfg
 from maa.toolkit import AdbDevice
 from ..utils.logger import logger
-from ..common.maa_config_data import maa_config_data, InterfaceData
+from ..common.maa_config_data import maa_config_data
+from ..common.typeddict import (
+    InterfaceData,
+    TaskItem,
+    Interval,
+    RefreshTime,
+    SpeedrunConfig,
+)
 from ..utils.notice import dingtalk_send, lark_send, SMTP_send, WxPusher_send, QYWX_send
 from datetime import datetime, timedelta
 
 
 class TaskInterface(Ui_Task_Interface, QWidget):
 
-    def get_this_monday_5am(self):
-        """获取本周一上午5点的时间
-
-        Returns:
-            QDateTime: 本周一上午5点的QDateTime对象
-        """
-        today = datetime.now()
-        # 计算到本周一的天数差 (周一的weekday()是0)
-        days_until_monday = (0 - today.weekday()) % 7
-        monday = today + timedelta(days=days_until_monday)
-        monday_5am = datetime(monday.year, monday.month, monday.day, 5, 0)
-        return QDateTime.fromSecsSinceEpoch(int(monday_5am.timestamp()))
-
-    devices = []
-    need_runing = False
-    task_failed = False
-    in_progress_error = None
+    devices = []  # 用于存储设备信息的列表
+    need_runing = False  # 是否需要运行任务
+    task_failed = False  # 是否有任务失败
+    in_progress_error = None  # 正在运行的错误信息
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -108,11 +127,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             layout = self.option_layout.itemAt(i).layout()
             if layout is not None:
                 for j in range(layout.count()):
-                    widget = layout.itemAt(j).widget()
-                    if isinstance(widget, ComboBox):
-                        widget.setFixedWidth(scroll_area_width - 20)
-                    if isinstance(widget, BodyLabel):
-                        widget.setFixedWidth(scroll_area_width - 20)
+                    # 检查 item 是否为 None
+                    item = layout.itemAt(j)
+                    if item is not None:
+                        widget = item.widget()
+                        if isinstance(widget, ComboBox):
+                            widget.setFixedWidth(scroll_area_width - 20)
+                        if isinstance(widget, BodyLabel):
+                            widget.setFixedWidth(scroll_area_width - 20)
 
     def resource_exist(self, status: bool):
         """
@@ -132,7 +154,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.Finish_combox_res.hide()
 
     def init_ui(self):
-        # 初始化组件
+        """
+        初始化界面
+        """
         self.Start_Status(
             interface_Path=maa_config_data.interface_config_path,
             maa_pi_config_Path=maa_config_data.config_path,
@@ -151,6 +175,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.AutoDetect_Button.click()
 
     def clear_content(self):
+        """
+        清空界面
+        """
         self.clear_layout()
         self.Task_List.clear()
         self.SelectTask_Combox_1.clear()
@@ -161,7 +188,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Autodetect_combox.clear()
 
     def enable_widgets(self, enable: bool):
-        """启用或禁用所有可交互控件。"""
+        """
+        启用或禁用所有可交互控件。
+        """
         # 遍历所有子控件
         if enable:
             logger.info("setting_interface.py:启用所有可交互控件")
@@ -204,6 +233,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     # region 信号槽
     def bind_signals(self):
+        """
+        绑定信号槽
+        """
         signalBus.task_output_sync.connect(self.sync_button)
 
         signalBus.run_sp_task.connect(self.Start_Up)
@@ -235,7 +267,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Task_List.itemSelectionChanged.connect(self.Select_Task)
         self.Delete_label.dragEnterEvent = self.dragEnter
         self.Delete_label.dropEvent = self.drop
-        
+
     @asyncSlot(dict)
     async def sync_button(self, status: dict):
         """
@@ -243,6 +275,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         if status.get("type") == "stoptask":
             await self.Stop_task()
+
     # endregion
     def show_agnet_info(self, msg: str):
         """
@@ -309,7 +342,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             dropped_text = dropped_text.split(" ")[0]
 
         # 找到并删除对应的 task
-        Task_List: List[Dict[str, str]] = Get_Values_list2(
+        Task_List: TaskItem | list[TaskItem] = Get_Values_list2(
             maa_config_data.config_path, "task"
         )
         for index, task in enumerate(Task_List):
@@ -504,6 +537,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         signalBus.task_output_sync.emit(sent_dict)
 
     def clear_layout(self):
+        """
+        清除布局
+        """
         while self.right_layout.count():
             item = self.right_layout.takeAt(0)
             widget = item.widget()
@@ -516,6 +552,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def Start_Status(
         self, interface_Path: str, maa_pi_config_Path: str, resource_Path: str
     ):
+        """
+        根据当前资源状态初始化界面
+        """
         if self.check_file_paths_exist(
             resource_Path, interface_Path, maa_pi_config_Path
         ):
@@ -527,6 +566,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.show_error(self.tr("Resource file not detected"))
 
     def check_file_paths_exist(self, resource_Path, interface_Path, maa_pi_config_Path):
+        """
+        检查文件路径是否存在
+        """
         return (
             os.path.exists(resource_Path)
             and os.path.exists(interface_Path)
@@ -536,12 +578,17 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def load_config_and_resources(
         self, interface_Path, maa_pi_config_Path, resource_Path
     ):
+        """
+        加载配置和资源
+        """
         logger.info("配置文件存在")
         return_init = gui_init(resource_Path, maa_pi_config_Path, interface_Path)
         self.Task_List.addItems(Get_Values_list_Option(maa_pi_config_Path, "task"))
         self.Resource_Combox.addItems(Get_Values_list(interface_Path, key1="resource"))
         self.Control_Combox.addItems(Get_Values_list(interface_Path, key1="controller"))
-        self.SelectTask_Combox_1.addItems(Get_Values_list(interface_Path, key1="task",sp=True))
+        self.SelectTask_Combox_1.addItems(
+            Get_Values_list(interface_Path, key1="task", sp=True)
+        )
 
         if return_init is not None:
             self.Resource_Combox.setCurrentIndex(
@@ -554,12 +601,20 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.add_Controller_combox()
 
     def load_interface_options(self, interface_Path):
+        """
+        加载interface接口选项
+        """
         self.Resource_Combox.addItems(Get_Values_list(interface_Path, key1="resource"))
         self.Resource_Combox.setCurrentIndex(0)
         self.Control_Combox.addItems(Get_Values_list(interface_Path, key1="controller"))
-        self.SelectTask_Combox_1.addItems(Get_Values_list(interface_Path, key1="task",sp=True))
+        self.SelectTask_Combox_1.addItems(
+            Get_Values_list(interface_Path, key1="task", sp=True)
+        )
 
     def rewrite_Completion_Options(self):
+        """
+        重写 完成后的动作 下拉框 用来展示 运行其他配置 的选项
+        """
         finish_option = self.Finish_combox.currentIndex()
         maa_config_data.config["finish_option"] = finish_option
         if finish_option == 5:
@@ -571,11 +626,17 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def Save_Finish_Option_Res(self):
+        """
+        保存 完成后的动作 下拉框 选项
+        """
         finish_option_res = self.Finish_combox_res.currentIndex()
         maa_config_data.config["finish_option_res"] = finish_option_res
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def Save_Finish_Option_Cfg(self):
+        """
+        保存 完成后的动作 下拉框 选项
+        """
         finish_option_cfg = self.Finish_combox_cfg.currentIndex()
         maa_config_data.config["finish_option_cfg"] = finish_option_cfg
         Save_Config(maa_config_data.config_path, maa_config_data.config)
@@ -594,13 +655,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 self.app_process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 self.app_process.kill()
-        adb_path = maa_config_data.config.get("adb").get("adb_path")
-
+        adb_path = maa_config_data.config.get("adb", {}).get("adb_path")
+        if not adb_path:
+            return
         emu_dict = get_console_path(adb_path)
         match emu_dict["type"]:
             case "mumu":
                 adb_port = (
-                    maa_config_data.config.get("adb").get("address").split(":")[1]
+                    maa_config_data.config.get("adb", {})
+                    .get("address", "")
+                    .split(":")[1]
                 )
                 emu = subprocess.run(
                     [emu_dict["path"], "info", "-v", "all"],
@@ -655,10 +719,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 return
             case "LD":
                 ld_pid = (
-                    maa_config_data.config.get("adb")
-                    .get("config")
-                    .get("extras")
-                    .get("ld")
+                    maa_config_data.config.get("adb", {})
+                    .get("config", {})
+                    .get("extras", {})
+                    .get("ld", {})
                     .get("pid")
                 )
                 if ld_pid:
@@ -683,6 +747,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 pass
 
     def shutdown(self):
+        """
+        关机
+        """
         shutdown_commands = {
             "Windows": "shutdown /s /t 1",
             "Linux": "shutdown now",
@@ -691,6 +758,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         os.system(shutdown_commands.get(platform.system(), ""))
 
     def run_other_config(self):
+        """
+        运行其他配置
+        """
         data_dict = {
             "resource_name": self.Finish_combox_res.currentText(),
             "config_name": self.Finish_combox_cfg.currentText(),
@@ -699,6 +769,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     # endregion
     def start_process(self, command):
+        """
+        启动程序
+        """
         try:
             logger.debug(f"启动程序: {command}")
             return subprocess.Popen(command)
@@ -707,6 +780,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             show_error_message()
 
     def ready_Start_Up(self):
+        """
+        启动前检查是否需要更新或者启动任务
+        """
         if cfg.get(cfg.resource_exist):
 
             if cfg.get(cfg.auto_update_resource) and (
@@ -725,6 +801,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 signalBus.start_task_inmediately.emit()
 
     def Auto_update_Start_up(self, status_dict):
+        """
+        启动任务启动后进行自动更新
+        """
         if cfg.get(cfg.click_update):
             return
         if status_dict.get("status") != "info":
@@ -811,13 +890,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if run_before_start_path and self.need_runing:
             run_before_start.append(run_before_start_path)
             run_before_start_args: str = maa_config_data.config.get(
-                "run_before_start_args"
+                "run_before_start_args", ""
             )
             if run_before_start_args:
                 run_before_start.extend(run_before_start_args.split())
             logger.info(f"运行前脚本{run_before_start}")
             try:
                 self.run_before_start_process = self.start_process(run_before_start)
+                if not self.run_before_start_process:
+                    return False
                 logger.info(f"程序启动成功，PID: {self.run_before_start_process.pid}")
             except FileNotFoundError as e:
                 self.show_error(self.tr("File not found"))
@@ -842,7 +923,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         resource_path = ""
         resource_target = self.Resource_Combox.currentText()
 
-        for i in maa_config_data.interface_config["resource"]:
+        for i in maa_config_data.interface_config.get("resource", {}):
             if i["name"] == resource_target:
                 logger.debug(f"加载资源: {i['path']}")
                 resource_path = i["path"]
@@ -891,7 +972,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         连接 ADB 控制器
         """
         # 尝试连接 ADB
-        if maa_config_data.config["adb"]["adb_path"] == "":
+        if maa_config_data.config.get("adb", {}).get("adb_path", "") == "":
             await self.Start_Detection()
         if not await self.connect_adb():
             # 如果连接失败，尝试启动模拟器
@@ -910,7 +991,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     self.insert_colored_text(self.tr("kill ADB Failed"))
                 if not await self.connect_adb():
                     logger.error(
-                        f"连接adb失败\n{maa_config_data.config['adb']['adb_path']}\n{maa_config_data.config['adb']['address']}\n{maa_config_data.config['adb']['input_method']}\n{maa_config_data.config['adb']['screen_method']}\n{maa_config_data.config['adb']['config']}"
+                        f'连接adb失败\n{maa_config_data.config.get("adb", {}).get("adb_path", "")}\n{maa_config_data.config.get("adb", {}).get("address", "")}\n{maa_config_data.config.get("adb", {})["input_method"]}\n{maa_config_data.config.get("adb", {})["screen_method"]}\n{maa_config_data.config.get("adb", {})["config"]}'
                     )
                     self.send_notice("failed", self.tr("Connection"))
                     self.insert_colored_text(self.tr("Connection Failed"))
@@ -926,11 +1007,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         if (
             not await maafw.connect_adb(
-                maa_config_data.config["adb"]["adb_path"],
-                maa_config_data.config["adb"]["address"],
-                maa_config_data.config["adb"]["input_method"],
-                maa_config_data.config["adb"]["screen_method"],
-                maa_config_data.config["adb"]["config"],
+                maa_config_data.config.get("adb", {})["adb_path"],
+                maa_config_data.config.get("adb", {})["address"],
+                maa_config_data.config.get("adb", {})["input_method"],
+                maa_config_data.config.get("adb", {})["screen_method"],
+                maa_config_data.config.get("adb", {}).get("config", {}),
             )
             and self.need_runing
         ):
@@ -948,12 +1029,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if emu_path and self.need_runing:
             emu.append(emu_path)
             emu_args = maa_config_data.config.get("emu_args")
-            emu_wait_time = int(maa_config_data.config.get("emu_wait_time"))
+            emu_wait_time = int(maa_config_data.config.get("emu_wait_time", "0"))
             if emu_args:
                 emu.extend(emu_args.split())
             logger.info(f"启动模拟器{emu}")
             try:
                 self.app_process = self.start_process(emu)
+                if not self.app_process:
+                    return False
                 logger.info(f"模拟器启动成功，PID: {self.app_process.pid}")
             except FileNotFoundError as e:
                 self.show_error(self.tr("File not found"))
@@ -974,25 +1057,29 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     await asyncio.sleep(1)
             self.clear_layout()
             # 雷电模拟器特殊方法,重新获取pid
-            emu_type = maa_config_data.config.get("adb").get("adb_path")
+            emu_type = maa_config_data.config.get("adb", {}).get("adb_path", "")
             if "LDPlayer" in emu_type:
                 logger.debug("获取雷电模拟器pid")
                 device = await maafw.detect_adb()
                 for i in device:
                     if i.name == "LDPlayer":
                         if (
-                            maa_config_data.config["adb"]["config"].get("extras")
+                            maa_config_data.config.get("adb", {})["config"].get(
+                                "extras"
+                            )
                             is None
                         ):
                             logger.debug("extras不存在，创建")
-                            maa_config_data.config["adb"]["config"] = i.config
+                            maa_config_data.config.get("adb", {})["config"] = i.config
                         else:
                             logger.debug("extras存在，更新pid")
-                            maa_config_data.config["adb"]["config"]["extras"]["ld"][
-                                "pid"
-                            ] = (i.config.get("extras").get("ld").get("pid"))
+                            maa_config_data.config.get("adb", {})["config"]["extras"][
+                                "ld"
+                            ]["pid"] = (
+                                i.config.get("extras", {}).get("ld", {}).get("pid", 0)
+                            )
                         logger.debug(
-                            f"获取到pid: {maa_config_data.config['adb']['config']['extras']['ld']['pid']}"
+                            f"获取到pid: {maa_config_data.config.get("adb",{})['config']['extras']['ld']['pid']}"
                         )
                         Save_Config(maa_config_data.config_path, maa_config_data.config)
                         break
@@ -1006,13 +1093,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         exe_path = maa_config_data.config.get("exe_path")
         if exe_path and self.need_runing:
             exe.append(exe_path)
-            exe_wait_time = int(maa_config_data.config.get("exe_wait_time"))
-            exe_args: str = maa_config_data.config.get("exe_args")
+            exe_wait_time = int(maa_config_data.config.get("exe_wait_time", "0"))
+            exe_args: str = maa_config_data.config.get("exe_args", "")
             if exe_args:
                 exe.extend(exe_args.split())
             logger.info(f"启动游戏{exe}")
             try:
                 self.app_process = self.start_process(exe)
+                if not self.app_process:
+                    return False
                 logger.info(f"游戏启动成功，PID: {self.app_process.pid}")
             except FileNotFoundError as e:
                 self.show_error(self.tr("File not found"))
@@ -1034,14 +1123,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.clear_layout()
         if (
             not await maafw.connect_win32hwnd(
-                maa_config_data.config["win32"]["hwnd"],
-                maa_config_data.config["win32"]["input_method"],
-                maa_config_data.config["win32"]["screen_method"],
+                maa_config_data.config.get("win32", {}).get("hwnd", 0),
+                maa_config_data.config.get("win32", {}).get("input_method", 0),
+                maa_config_data.config.get("win32", {}).get("screen_method", 0),
             )
             and self.need_runing
         ):
             logger.error(
-                f"连接Win32失败 \n{maa_config_data.config['win32']['hwnd']}\n{maa_config_data.config['win32']['input_method']}\n{maa_config_data.config['win32']['screen_method']}"
+                f"连接Win32失败 \n{maa_config_data.config.get('win32',{}).get('hwnd',0)}\n{maa_config_data.config.get('win32',{}).get('input_method',0)}\n{maa_config_data.config.get('win32',{}).get('screen_method',0)}"
             )
             self.send_notice("failed", self.tr("Connection"))
             self.insert_colored_text(self.tr("Connection Failed"))
@@ -1053,8 +1142,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     @asyncSlot(dict)
     async def run_task_sp(self, task: dict | None = None):
         """
-        运行任务
+        运行任务_特殊任务:类似肉鸽类的,在interface中标记spt:true的任务
         """
+        if task is None:
+            return
         self.task_failed = False
         self.S2_Button.setEnabled(True)
         if not self.need_runing:
@@ -1074,32 +1165,36 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         self.task_failed = False
         self.S2_Button.setEnabled(True)
-        for task_list in maa_config_data.config["task"]:
+        for task_list in maa_config_data.config.get("task", []):
             override_options = {}
             if not self.need_runing:
                 await maafw.stop_task()
                 return
             # 找到task的entry
             for index, task_enter in enumerate(
-                maa_config_data.interface_config["task"]
+                maa_config_data.interface_config.get("task", [])
             ):
-                if task_enter["name"] == task_list["name"]:
-                    self.entry = task_enter["entry"]
+                if task_enter.get("name", "M1") == task_list.get("name", "M2"):
+                    self.entry = task_enter.get("entry")
+                    if not self.entry:
+                        logger.error(f"未找到任务入口: {task_list.get('name')}")
+                        self.send_notice("failed", self.tr("Task Entry"))
+                        self.insert_colored_text(self.tr("Task Entry Failed"))
+                        return
                     enter_index = index
                     break
             # 解析task中的pipeline_override
-            if maa_config_data.interface_config["task"][enter_index].get(
+            if maa_config_data.interface_config.get("task", [])[enter_index].get(
                 "pipeline_override", False
             ):
-                override_options.update(
-                    maa_config_data.interface_config["task"][enter_index][
-                        "pipeline_override"
-                    ]
-                )
+                update_data = maa_config_data.interface_config.get("task", [])[
+                    enter_index
+                ].get("pipeline_override", {})
+                override_options.update(update_data)
             # 解析task中的option
-            if task_list["option"] != []:
-                for task_option in task_list["option"]:
-                    for override in maa_config_data.interface_config["option"][
+            if task_list.get("option", []) != []:
+                for task_option in task_list.get("option", []):
+                    for override in maa_config_data.interface_config.get("option", [])[
                         task_option["name"]
                     ]["cases"]:
                         if override["name"] == task_option["value"]:
@@ -1112,15 +1207,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 f"运行任务:{self.entry}\n任务选项:\n{json.dumps(override_options, indent=4,ensure_ascii=False)}"
             )
             # 提取公共配置（简化嵌套访问）
-            speedrun_cfg: dict = task_list.get("speedrun", {})
+            speedrun_cfg = task_list.get("speedrun", {})
             if speedrun_cfg.get("enabled", False):
                 logger.info(f"{self.entry}速通启用")
 
                 # 通用配置提取
-                schedule_mode: str = speedrun_cfg.get("schedule_mode")
-                interval_cfg: dict = speedrun_cfg.get("interval", {})
-                refresh_time_cfg: dict = speedrun_cfg.get("refresh_time", {})
-                last_run_str: str = speedrun_cfg.get("last_run", "1970-01-01 00:00:00")
+                schedule_mode = speedrun_cfg.get("schedule_mode")
+                interval_cfg = speedrun_cfg.get("interval", {})
+                refresh_time_cfg = speedrun_cfg.get("refresh_time", {})
+                last_run_str = speedrun_cfg.get("last_run", "1970-01-01 00:00:00")
 
                 # 计算下次运行时间（提取公共函数）
                 next_run = self.calculate_next_run_time(last_run_str, interval_cfg)
@@ -1147,14 +1242,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
                 # 处理循环次数（封装状态更新）
                 remaining_loops = interval_cfg.get("current_loop", -1)
-                if remaining_loops > 0:
+                if remaining_loops > 0 and self.entry:
                     self.update_speedrun_state(speedrun_cfg, remaining_loops)
                     await maafw.run_task(self.entry, override_options)
 
                 else:
                     self.handle_exhausted_loops(refresh_time)
                     continue
-            else:
+            elif self.entry:
                 logger.info(f"{self.entry}速通未启用")
                 await maafw.run_task(self.entry, override_options)
 
@@ -1162,9 +1257,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.send_notice("completed")
 
     def calculate_next_run_time(
-        self, last_run_str: str, interval_cfg: dict
+        self, last_run_str: str, interval_cfg: Interval
     ) -> QDateTime:
-        """计算下次运行时间（提取公共函数）"""
+        """
+        计算下次运行时间
+        """
         last_run = QDateTime.fromString(last_run_str, "yyyy-MM-dd HH:mm:ss")
         unit = interval_cfg.get("unit", 2)  # 默认每天
         item = interval_cfg.get("item", 1)  # 默认间隔1个单位
@@ -1177,9 +1274,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             return last_run.addSecs(item * 60 * 60 * 24)
 
     def calculate_refresh_time(
-        self, schedule_mode: str, refresh_time_cfg: dict, last_run_str: str
+        self,
+        schedule_mode: str | None,
+        refresh_time_cfg: RefreshTime,
+        last_run_str: str,
     ) -> QDateTime:
-        """计算刷新时间（提取公共函数）"""
+        """
+        计算刷新时间
+        """
         last_run: QDateTime = QDateTime.fromString(last_run_str, "yyyy-MM-dd HH:mm:ss")
         if schedule_mode == "daily":
             refresh_hour = refresh_time_cfg.get("H", 0)
@@ -1214,9 +1316,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             return refresh_time
         return last_run
 
-    def update_speedrun_state(self, speedrun_cfg: dict, remaining_loops: int):
-        """更新速通状态（封装逻辑）"""
-        speedrun_cfg["interval"]["current_loop"] = remaining_loops - 1
+    def update_speedrun_state(self, speedrun_cfg: SpeedrunConfig, remaining_loops: int):
+        """
+        更新速通状态
+        """
+        speedrun_cfg.get("interval", {})["current_loop"] = remaining_loops - 1
         speedrun_cfg["last_run"] = QDateTime.currentDateTime().toString(
             "yyyy-MM-dd HH:mm:ss"
         )
@@ -1224,7 +1328,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         Save_Config(maa_config_data.config_path, maa_config_data.config)  # 更新配置文件
 
     def handle_exhausted_loops(self, refresh_time: QDateTime):
-        """处理循环次数耗尽（封装逻辑）"""
+        """
+        处理循环次数耗尽
+        """
         logger.info(f"任务[{self.entry}]当前循环次数已耗尽")
         self.insert_colored_text(self.tr("Loop count exhausted"))
         self.insert_colored_text(
@@ -1234,11 +1340,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def get_date_time_for_week_day_and_hour(self, target_week_day, target_hour):
         """
+
         获取指定周几和时间的QDateTime对象。
 
         :param target_week_day: 目标周几，0代表星期一，6代表星期日
         :param target_hour: 目标小时数，0-23
         :return: QDateTime对象，表示指定周几和时间的日期时间
+
         """
         # 获取当前日期和时间
         current_date_time = QDateTime.currentDateTime()
@@ -1324,7 +1432,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         await maafw.stop_task()
 
     def kill_adb_process(self):
-        adb_path = maa_config_data.config["adb"]["adb_path"]
+        """
+        杀死 ADB 进程
+        """
+        adb_path = maa_config_data.config.get("adb", {})["adb_path"]
         if adb_path == "":
             return False
         try:
@@ -1391,14 +1502,22 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             Select_index = self.Task_List.currentRow()
             Select_Target = self.SelectTask_Combox_1.currentText()
             Option = self.get_selected_options()
-            maa_config_data.config["task"][Select_index]["name"] = Select_Target
-            maa_config_data.config["task"][Select_index]["option"] = Option
+            maa_config_data.config.get("task", [])[Select_index]["name"] = Select_Target
+            maa_config_data.config.get("task", [])[Select_index]["option"] = Option
 
         else:
             Select_Target = self.SelectTask_Combox_1.currentText()
             Option = self.get_selected_options()
             speedrun = self.get_speedrun_value(Select_Target)
-            task_data = {"name": Select_Target, "option": Option, "speedrun": speedrun}
+            if not speedrun:
+                return
+            task_data: TaskItem = {
+                "name": Select_Target,
+                "option": Option,
+                "speedrun": speedrun,
+            }
+            if maa_config_data.config.get("task") is None:
+                raise ValueError("config['task'] is None")
             maa_config_data.config["task"].append(task_data)
 
         Save_Config(maa_config_data.config_path, maa_config_data.config)
@@ -1406,38 +1525,52 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.update_task_list()
         self.dragging_finished()
 
-    def get_speedrun_value(self, Select_Target=""):
-        for i in maa_config_data.interface_config["task"]:
-            if i["name"] == Select_Target:
+    def get_speedrun_value(self, Select_Target: str = ""):
+        for i in maa_config_data.interface_config.get("task", []):
+            if i.get("name", "") == Select_Target:
                 return i.get("speedrun", {})
 
     def Add_All_Tasks(self):
         if maa_config_data.config == {}:
             return
 
-        for task in maa_config_data.interface_config["task"]:
+        for task in maa_config_data.interface_config.get("task", []):
             if task.get("spt"):
                 continue
             selected_value = []
-            task_name = task.get("name")
-            options = task.get("option")
+            task_name = task.get("name", "")
+            options = task.get("option", [])
             speedrun = task.get("speedrun", {})
+
             if options:
                 for pipeline_option in options:
-                    target = maa_config_data.interface_config["option"][
-                        pipeline_option
-                    ]["cases"][0]["name"]
+                    # 获取 option 配置，使用空字典作为默认值
+                    option_config = maa_config_data.interface_config.get("option", {})
+                    # 检查 option_config 是否为字典，并且 pipeline_option 是否为有效的键
+                    if (
+                        isinstance(option_config, dict)
+                        and pipeline_option in option_config
+                    ):
+                        cases = option_config[pipeline_option].get("cases")
+                        # 检查 cases 是否为列表，并且列表不为空
+                        if isinstance(cases, list) and cases:
+                            target = cases[0].get("name", "")
+                        else:
+                            target = ""
+                    else:
+                        target = ""
                     selected_value.append(target)
-
-            options_dicts = []
-            if options:
+                options_dicts = []
                 for i, option_name in enumerate(options):
                     # 如果有option，则选择对应的项作为值
                     options_dicts.append(
                         {"name": option_name, "value": selected_value[i]}
                     )
+            else:
+                options_dicts = []
+
             maa_config_data.config["task"].append(
-                {"name": task_name, "option": options_dicts, "speedrun": speedrun}
+                {"name": task_name, "option": options_dicts, "speedrun": speedrun}  # type: ignore
             )
 
         # 保存配置
@@ -1447,11 +1580,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.update_task_list()
 
     def update_task_list(self):
-        """更新任务列表"""
+        """
+        更新任务列表
+        """
         signalBus.update_task_list.emit()
 
     def update_task_list_passive(self):
-        """更新任务列表(被动刷新)"""
+        """
+        更新任务列表(被动刷新)
+        """
         self.Task_List.clear()
         self.Task_List.addItems(
             Get_Values_list_Option(cfg.get(cfg.maa_config_path), "task")
@@ -1478,6 +1615,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.dragging_finished()
 
     def Delete_all_task(self):
+        """
+        删除所有任务
+        """
         self.Task_List.clear()
         maa_config_data.config["task"] = []
         Save_Config(maa_config_data.config_path, maa_config_data.config)
@@ -1485,9 +1625,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.update_task_list()
 
     def Move_Up(self):
+        """
+        移动任务至上一个位置
+        """
         self.move_task(direction=-1)
 
     def Move_Top(self):
+        """
+        移动到最上层
+        """
         if maa_config_data.config == {}:
             return
         Select_Target = self.Task_List.currentRow()
@@ -1514,9 +1660,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Task_List.setCurrentRow(0)
 
     def Move_Down(self):
+        """
+        移动任务至下一个位置
+        """
         self.move_task(direction=1)
 
     def Move_Bottom(self):
+        """
+        移动到最下层
+        """
         if maa_config_data.config == {}:
             return
         Select_Target = self.Task_List.currentRow()
@@ -1543,6 +1695,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Task_List.setCurrentRow(len(maa_config_data.config["task"]) - 1)
 
     def move_task(self, direction: int):
+        """
+        移动任务至指定方向
+
+        Args:
+            direction: 移动方向，取值范围为[-1, 1]。
+                      -1表示向上移动，1表示向下移动。
+        """
         if maa_config_data.config == {}:
             return
         Select_Target = self.Task_List.currentRow()
@@ -1564,6 +1723,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Task_List.setCurrentRow(Select_Target + direction)
 
     def Select_Task(self):
+        """
+        选择任务后展示删除区域及重写按钮
+        """
         self.Delete_label.setText(self.tr("Drag to Delete"))
         self.Delete_label.setStyleSheet("background-color: rgba(255, 0, 0, 0.5);")
 
@@ -1573,12 +1735,17 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             return
         # 将task_combox的内容设置为选中项目
         self.SelectTask_Combox_1.setCurrentText(
-            maa_config_data.config["task"][Select_Target]["name"]
+            maa_config_data.config["task"][Select_Target].get("name")
         )
 
-        self.restore_options(maa_config_data.config["task"][Select_Target]["option"])
+        self.restore_options(
+            maa_config_data.config["task"][Select_Target].get("option", [])
+        )
 
     def restore_options(self, selected_options: List[Dict[str, str]]):
+        """
+        展示任务的doc和选项
+        """
         layout = self.option_layout
 
         for option in selected_options:
@@ -1601,10 +1768,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         break
 
     def Save_Resource(self):
+        """
+        保存资源配置
+        """
         self.update_config_value("resource", self.Resource_Combox.currentText())
         logger.info(f"保存资源配置: {self.Resource_Combox.currentText()}")
 
-    def Save_Controller(self):
+    async def Save_Controller(self):
+        """
+        保存控制器配置
+        """
         self.Resource_Combox.currentData
         Controller_Type_Select = self.Control_Combox.currentText()
         controller_type = get_controller_type(
@@ -1615,7 +1788,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             signalBus.setting_Visible.emit("adb")
 
         elif controller_type == "Win32":
-            self.Start_Detection()
+            await self.Start_Detection()
             signalBus.setting_Visible.emit("win32")
         logger.info(f"保存控制器配置: {Controller_Type_Select}")
         # 更新配置并保存
@@ -1623,6 +1796,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         Save_Config(maa_config_data.config_path, maa_config_data.config)  # 刷新保存
 
     def add_Controller_combox(self):
+        """
+        启动后自动识别模拟器名字至控制器下拉框
+        """
         controller_type = get_controller_type(
             self.Control_Combox.currentText(), maa_config_data.interface_config_path
         )
@@ -1630,23 +1806,27 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if controller_type == "Adb":
 
             emulators_name = check_path_for_keyword(
-                maa_config_data.config["adb"]["adb_path"]
+                maa_config_data.config.get("adb", {})["adb_path"]
             )
             self.Autodetect_combox.clear()
             self.Autodetect_combox.addItem(
-                f"{emulators_name} ({maa_config_data.config['adb']['address'].split(':')[-1]})"
+                f"{emulators_name} ({maa_config_data.config.get("adb",{})['address'].split(':')[-1]})"
             )
 
     def update_config_value(self, key, value):
+        """
+        保存配置值
+
+        """
         maa_config_data.config[key] = value  # 更新实例变量
         Save_Config(maa_config_data.config_path, maa_config_data.config)  # 刷新保存
 
     def Add_Select_Task_More_Select(self):
+        """
+        动态添加更多选项到任务下拉框,用来展示option
+        """
         select_target = self.SelectTask_Combox_1.currentText()
-
-        self.show_task_options(select_target, maa_config_data.interface_config)
-
-    def show_task_options(self, select_target: str, MAA_Pi_Config: InterfaceData):
+        MAA_Pi_Config = maa_config_data.interface_config
 
         self.clear_extra_widgets()
 
@@ -1749,6 +1929,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 break
 
     def get_selected_options(self):
+        """
+        获取选中任务的所有选项
+        """
         selected_options = []
         layout = self.option_layout
         name = None
@@ -1774,6 +1957,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         return selected_options
 
     def clear_extra_widgets(self):
+        """
+        清除额外的控件
+        """
         print("清除额外的控件")
         for layout in [self.option_layout, self.doc_layout]:
             if not layout:
@@ -1786,7 +1972,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     if widget:  # 处理普通控件
                         widget.deleteLater()
                     elif item.layout():  # 处理嵌套布局
-                        recursive_clear(item.layout())
+                        nested_layout = item.layout()
+                        if isinstance(nested_layout, QVBoxLayout):
+                            recursive_clear(nested_layout)
                     elif item.spacerItem():  # 处理间隔项
                         layout.removeItem(item)
 
@@ -1799,6 +1987,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     @asyncSlot()
     async def Start_Detection(self):
+        """
+        启动检测adb或者win32窗口
+        """
         if not cfg.get(cfg.resource_exist):
             return
         logger.info("开始检测")
@@ -1833,10 +2024,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         # 调用相应的检测函数
         processed_list = []  # 初始化处理列表
         if controller_type == "Win32":
-            for i in maa_config_data.interface_config["controller"]:
+            for i in maa_config_data.interface_config.get("controller", {}):
                 if i["type"] == "Win32":
                     self.win32_hwnd = await maafw.detect_win32hwnd(
-                        i["win32"]["window_regex"]
+                        i.get("win32", {})["window_regex"]
                     )
             processed_list = (
                 [hwnd.window_name for hwnd in self.win32_hwnd]
@@ -1868,6 +2059,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.S2_Button.setEnabled(True)
 
     async def Adb_detect_backup(self):
+        """备用adb识别"""
         emulator_list = Read_Config(
             os.path.join(os.getcwd(), "config", "emulator.json")
         )
@@ -1906,10 +2098,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         return emulator_results  # 返回包含所有 AdbDevice 对象的列表
 
     def send_notice(self, msg_type: str = "", filed_task: str = "") -> None:
-        """发送通知
-        参数:
-        msg_type (str): 消息的类型，用于区分通知的内容或来源。
-        filed_task (str): 发送失败的任务名。
+        """
+        发送通知
+                参数:
+                msg_type (str): 消息的类型，用于区分通知的内容或来源。
+                filed_task (str): 发送失败的任务名。
+
         """
         if msg_type == "completed":
             msg = {
@@ -1963,6 +2157,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         )
 
     def Save_device_Config(self):
+        """
+        保存设备连接信息
+        """
         controller_type = get_controller_type(
             self.Control_Combox.currentText(), maa_config_data.interface_config_path
         )
@@ -1974,9 +2171,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     result = i
                     break
             if result:
-                maa_config_data.config["adb"]["adb_path"] = str(result.adb_path)
-                maa_config_data.config["adb"]["address"] = result.address
-                maa_config_data.config["adb"]["config"] = result.config
+                maa_config_data.config.get("adb", {})["adb_path"] = str(result.adb_path)
+                maa_config_data.config.get("adb", {})["address"] = result.address
+                maa_config_data.config.get("adb", {})["config"] = result.config
                 Save_Config(maa_config_data.config_path, maa_config_data.config)
                 signalBus.update_adb.emit()
         elif controller_type == "Win32":
@@ -1985,21 +2182,20 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     result = i
                     break
             if result:
-                maa_config_data.config["win32"]["hwnd"] = result.hwnd
+                hwid = int(result.hwnd)
+                maa_config_data.config["win32"]["hwnd"] = hwid
                 Save_Config(maa_config_data.config_path, maa_config_data.config)
 
-    def list_get(self, lst, index, default=None):
-        try:
-            return lst[index]
-        except IndexError:
-            return default
-
     def _format_hour(self, hour: int) -> str:
-        """将小时数格式化为中文时间"""
+        """
+        将小时数格式化为中文时间
+        """
         return f"{hour:02d}:00"
 
     def _format_weekday(self, weekday: int) -> str:
-        """将数字转换为中文星期"""
+        """
+        将数字转换为中文星期
+        """
         weekdays = [
             self.tr("Sunday"),
             self.tr("Monday"),
@@ -2010,3 +2206,18 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.tr("Saturday"),
         ]
         return weekdays[weekday % 7]
+
+    def get_this_monday_5am(self):
+        """
+        获取本周一上午5点的时间
+
+                Returns:
+                    QDateTime: 本周一上午5点的QDateTime对象
+
+        """
+        today = datetime.now()
+        # 计算到本周一的天数差 (周一的weekday()是0)
+        days_until_monday = (0 - today.weekday()) % 7
+        monday = today + timedelta(days=days_until_monday)
+        monday_5am = datetime(monday.year, monday.month, monday.day, 5, 0)
+        return QDateTime.fromSecsSinceEpoch(int(monday_5am.timestamp()))

@@ -1,15 +1,31 @@
-import json
-import os
-import re
-import shutil
-from turtle import down
-import zipfile
-from typing import Dict, Optional
+#   This file is part of MFW-ChainFlow Assistant.
+
+#   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published
+#   by the Free Software Foundation, either version 3 of the License,
+#   or (at your option) any later version.
+
+#   MFW-ChainFlow Assistant is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty
+#   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+#   the GNU General Public License for more details.
+
+#   You should have received a copy of the GNU General Public License
+#   along with MFW-ChainFlow Assistant. If not, see <https://www.gnu.org/licenses/>.
+
+#   Contact: err.overflow@gmail.com
+#   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
+
+from PySide6.QtCore import QThread, SignalInstance
 
 import requests
 from requests import Response
-from PySide6.QtCore import QThread, SignalInstance
-from xtyping import F
+import json
+import os
+import shutil
+import zipfile
+from typing import Dict, Optional
+
 
 from ..common.signal_bus import signalBus
 from ..utils.logger import logger
@@ -95,14 +111,14 @@ class BaseUpdate(QThread):
             elif os.path.isfile(path):
                 os.remove(path)
 
-    def Mirror_ckd(self)->Optional[str]:
+    def Mirror_ckd(self) -> str:
         try:
             with open("k.ey", "rb") as key_file:
                 key = key_file.read()
                 return decrypt(cfg.get(cfg.Mcdk), key)
         except Exception as e:
             logger.exception("获取ckd失败")
-            return None
+            return ""
 
     def compare_versions(self, version1: str, version2: str) -> int:
         """
@@ -253,45 +269,30 @@ class Update(BaseUpdate):
         # 检查 url 类型并转换
         if url is None:
             logger.error("URL 为 None，无法进行 GitHub 检查")
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "failed",
+                    "msg": self.tr("No URL found"),
+                }
+            )
             return
-        elif isinstance(url, list):
-            if url and isinstance(url[0], dict) and "url" in url[0]:
-                url = str(url[0]["url"])
-            else:
-                logger.error("无法从 URL 列表中获取有效 URL")
-                return
         elif not isinstance(url, str):
             logger.error("URL 既不是字符串也不是有效的列表类型")
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "failed",
+                    "msg": self.tr("No valid URL found"),
+                }
+            )
             return
-
-        # 检查 res_id 类型并转换
-        if isinstance(res_id, list):
-            if res_id and isinstance(res_id[0], dict) and "id" in res_id[0]:
-                res_id = str(res_id[0]["id"])
-            else:
-                logger.error("无法从 res_id 列表中获取有效资源 ID")
-                return
-        elif not isinstance(res_id, str):
-            logger.error("res_id 既不是字符串也不是有效的列表类型")
-            return
-
-        # 检查 version 类型并转换
-        if version is None:
-            logger.error("版本号为 None，无法进行检查")
-            return
-        elif isinstance(version, list):
-            if version and isinstance(version[0], dict) and "version" in version[0]:
-                version = str(version[0]["version"])
-            else:
-                logger.error("无法从 version 列表中获取有效版本号")
-                return
-        elif not isinstance(version, str):
-            logger.error("version 既不是字符串也不是有效的列表类型")
-            return
-
-        # 检查 cdk 是否为 None
-        if cdk is None:
-            logger.error("cdk 为 None，无法进行检查")
+        if not version:
+            logger.error("版本号为空，无法进行 MirrorChyan 和 GitHub 检查")
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "failed",
+                    "msg": self.tr("No version found"),
+                }
+            )
             return
 
         if res_id and (not cfg.get(cfg.force_github)):
@@ -958,7 +959,10 @@ class Update(BaseUpdate):
         except requests.exceptions.RequestException as e:
             logger.exception(f"GitHub请求失败: {str(e)}")
             signalBus.update_download_finished.emit(
-                {"status": "failed", "msg": f"{self.tr("GitHub request failed")}\n{self.tr("HTTP error") + str(e)}"}
+                {
+                    "status": "failed",
+                    "msg": f"{self.tr("GitHub request failed")}\n{self.tr("HTTP error") + str(e)}",
+                }
             )
         except KeyError as e:
             logger.exception(f"关键数据缺失: {str(e)}")
@@ -1174,13 +1178,13 @@ class UpdateSelf(BaseUpdate):
             )
             return
 
-        elif mirror_data.get("data",{}).get("version_name") == version_data[2]:
+        elif mirror_data.get("data", {}).get("version_name") == version_data[2]:
             logger.warning(f"当前版本已是最新版本")
             signalBus.download_self_finished.emit(
                 {"status": "no_need", "msg": self.tr("current version is latest")}
             )
             return
-        elif mirror_data.get("data",{}).get("url"):
+        elif mirror_data.get("data", {}).get("url"):
             logger.info(f"开始镜像下载: {mirror_data['data']['url']}")
             signalBus.download_self_finished.emit(
                 {
@@ -1204,8 +1208,6 @@ class UpdateSelf(BaseUpdate):
                     }
                 )
                 return
-            
-
 
             version_name = mirror_data["data"].get("version_name", "")
             version_data[2] = str(version_name)
@@ -1233,10 +1235,10 @@ class UpdateSelf(BaseUpdate):
             )
 
             try:
-                target_version = mirror_data["data"].get("version_name", "default_version")
-                github_url = self.assemble_gitHub_url(
-                    version_data, target_version
+                target_version = mirror_data["data"].get(
+                    "version_name", "default_version"
                 )
+                github_url = self.assemble_gitHub_url(version_data, target_version)
                 logger.debug(f"GitHub下载地址: {github_url}")
 
                 if not self._download(github_url):
@@ -1333,7 +1335,7 @@ class UpdateSelf(BaseUpdate):
         mirror_data: Dict[str, Dict] = response.json()
         code = mirror_data.get("code")
         match code:
-            case 1001: # 参数不正确
+            case 1001:  # 参数不正确
                 logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
                 return {
                     "status": "failed_info",
@@ -1341,7 +1343,7 @@ class UpdateSelf(BaseUpdate):
                     + "\n"
                     + self.tr("switching to Github download"),
                 }
-            case 7001:#CDK过期
+            case 7001:  # CDK过期
                 logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
                 return {
                     "status": "failed_info",
@@ -1349,7 +1351,7 @@ class UpdateSelf(BaseUpdate):
                     + "\n"
                     + self.tr("switching to Github download"),
                 }
-            case 7002:#CDK错误
+            case 7002:  # CDK错误
                 logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
                 return {
                     "status": "failed_info",
@@ -1357,7 +1359,7 @@ class UpdateSelf(BaseUpdate):
                     + "\n"
                     + self.tr("switching to Github download"),
                 }
-            case 7003:#CDK下载次数限制
+            case 7003:  # CDK下载次数限制
                 logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
                 return {
                     "status": "failed_info",
@@ -1365,7 +1367,7 @@ class UpdateSelf(BaseUpdate):
                     + "\n"
                     + self.tr("switching to Github download"),
                 }
-            case 7004:#CDK无权限下载该资源
+            case 7004:  # CDK无权限下载该资源
                 logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
                 return {
                     "status": "failed_info",
@@ -1373,7 +1375,7 @@ class UpdateSelf(BaseUpdate):
                     + "\n"
                     + self.tr("switching to Github download"),
                 }
-            case 7005:#CDK过期
+            case 7005:  # CDK过期
                 logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
                 return {
                     "status": "failed_info",
@@ -1381,7 +1383,7 @@ class UpdateSelf(BaseUpdate):
                     + "\n"
                     + self.tr("switching to Github download"),
                 }
-            case 8001:#对应架构和系统下的资源不存在
+            case 8001:  # 对应架构和系统下的资源不存在
                 logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
                 return {
                     "status": "failed_info",
@@ -1389,7 +1391,7 @@ class UpdateSelf(BaseUpdate):
                     + "\n"
                     + self.tr("switching to Github download"),
                 }
-            case 8002:#错误系统
+            case 8002:  # 错误系统
                 logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
                 return {
                     "status": "failed_info",
@@ -1397,7 +1399,7 @@ class UpdateSelf(BaseUpdate):
                     + "\n"
                     + self.tr("switching to Github download"),
                 }
-            case 8003:#错误架构
+            case 8003:  # 错误架构
                 logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
                 return {
                     "status": "failed_info",
@@ -1405,7 +1407,7 @@ class UpdateSelf(BaseUpdate):
                     + "\n"
                     + self.tr("switching to Github download"),
                 }
-            case 8004:#错误更新通道
+            case 8004:  # 错误更新通道
                 logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
                 return {
                     "status": "failed_info",
@@ -1413,7 +1415,7 @@ class UpdateSelf(BaseUpdate):
                     + "\n"
                     + self.tr("switching to Github download"),
                 }
-            case _ if code == 1:#错误
+            case _ if code == 1:  # 错误
                 logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
                 return {
                     "status": "failed_info",

@@ -1,175 +1,31 @@
-from dataclasses import dataclass, field
+#   This file is part of MFW-ChainFlow Assistant.
+
+#   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published
+#   by the Free Software Foundation, either version 3 of the License,
+#   or (at your option) any later version.
+
+#   MFW-ChainFlow Assistant is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty
+#   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+#   the GNU General Public License for more details.
+
+#   You should have received a copy of the GNU General Public License
+#   along with MFW-ChainFlow Assistant. If not, see <https://www.gnu.org/licenses/>.
+
+#   Contact: err.overflow@gmail.com
+#   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
+
 from ..common.signal_bus import signalBus
 from ..utils.tool import Read_Config, show_error_message
 from ..common.config import cfg
 from ..utils.logger import logger
+from ..common.typeddict import (
+    MaaConfigData,get_initial_main_config
+)
 import json
 import os
-from typing import Dict, List, Any, TypedDict,Optional
 
-
-# 定义模拟器extra的类型
-class EmuExtrasConfig(TypedDict, total=False):
-    enable: bool
-    index: int
-    path: str
-    pid: int
-
-
-# 定义 extras 配置的类型
-ExtrasConfig = Dict[str, EmuExtrasConfig]
-
-
-# 定义 ADB 配置中 config 字段的类型
-class AdbInnerConfig(TypedDict, total=False):
-    extras: ExtrasConfig
-
-
-# 定义 ADB 配置的类型
-class AdbConfig(TypedDict, total=True):
-    adb_path: str
-    address: str
-    input_method: int
-    screen_method: int
-    config: AdbInnerConfig
-
-
-# 定义 Win32 配置的类型
-class Win32Config(TypedDict, total=False):
-    hwnd: int
-    input_method: int
-    screen_method: int
-
-
-# 定义 Controller 配置的类型
-class ControllerConfig(TypedDict, total=False):
-    name: str
-
-
-# 定义 refresh_time 的类型
-class RefreshTime(TypedDict, total=False):
-    H: int
-    w: int
-    d: int
-
-
-# 定义 interval 的类型
-class Interval(TypedDict, total=False):
-    unit: int
-    item: int
-    loop_item: int
-    current_loop: int
-
-
-# 定义 speedrun 的类型
-class SpeedrunConfig(TypedDict, total=False):
-    schedule_mode: str
-    refresh_time: RefreshTime
-    interval: Interval
-    last_run: str
-    enabled: bool
-
-
-# 定义任务项的类型
-class TaskItem(TypedDict, total=False):
-    name: str
-    option: List[Dict]
-    speedrun: SpeedrunConfig
-
-
-
-# 定义完整的配置类型
-class MainConfig(TypedDict, total=False):
-    adb: AdbConfig
-    win32: Win32Config
-    controller: ControllerConfig
-    gpu: int
-    resource: str
-    task: List[TaskItem]
-    finish_option: int
-    finish_option_res: int
-    finish_option_cfg: int
-    run_before_start: str
-    run_before_start_args: str
-    run_after_finish: str
-    run_after_finish_args: str
-    emu_path: str
-    emu_args: str
-    emu_wait_time: str
-    exe_path: str
-    exe_args: str
-    exe_wait_time: str
-
-
-InnerConfig = Dict[str, str]
-
-MaaConfigList = Dict[str, InnerConfig]
-
-class ControllerItem(TypedDict):
-    name: str
-    type: str
-
-class ResourcePath(TypedDict):
-    name: str
-    path: List[str]
-
-class PipelineOverride(TypedDict, total=False):
-    enabled: bool
-    expected: Optional[str | List[str]]
-    next: Optional[List[str]]
-    interrupt: Optional[List[str]]
-    recognition: Optional[str]
-    roi: Optional[List[int]]
-    template: Optional[str]
-    green_mask: Optional[bool]
-    roi_offset: Optional[List[int]]
-    replace: Optional[List[List[str]]]
-    inverse: Optional[bool]
-    index: Optional[int]
-
-class OptionCase(TypedDict):
-    name: str
-    pipeline_override: Dict[str, PipelineOverride]
-
-class OptionItem(TypedDict):
-    cases: List[OptionCase]
-
-class TaskItem_interface(TypedDict, total=False):
-    name: str
-    entry: str
-    option: Optional[List[str]]
-    speedrun: Optional[SpeedrunConfig]
-    pipeline_override: Optional[Dict[str, PipelineOverride]]
-    doc: Optional[str]
-
-class InterfaceData(TypedDict,total=False):
-    url: str
-    name: str
-    MFW_min_req_version: str
-    mirrorchyan_rid: str
-    controller: List[ControllerItem]
-    resource: List[ResourcePath]
-    task: List[TaskItem_interface]
-    option: Dict[str, OptionItem]
-    version: str
-    show_notice: bool
-
-class MaaConfigData:
-    interface_config: InterfaceData = {}
-    interface_config_path: str = ""
-
-    config: MainConfig = {}
-    config_name: str = ""
-    config_path: str = ""
-
-    config_data: MaaConfigList = {}
-    config_name_list: List[str] = []
-
-    resource_name: str = ""
-    resource_path: str = ""
-
-    resource_data: Dict[str, str] = {}
-    resource_name_list: List[str] = []
 
 
 maa_config_data = MaaConfigData()
@@ -232,7 +88,7 @@ def init_maa_config_data(status: bool):
             maa_config_data.interface_config = {}
 
             maa_config_data.config_path = ""
-            maa_config_data.config = {}
+            maa_config_data.config = get_initial_main_config()
             maa_config_data.config_name = ""
             maa_config_data.config_path = ""
             maa_config_data.config_data = {}
@@ -250,7 +106,7 @@ def init_maa_config_data(status: bool):
         maa_config_data.interface_config = {}
 
         maa_config_data.config_path = ""
-        maa_config_data.config = {}
+        maa_config_data.config = get_initial_main_config()
         maa_config_data.config_name = ""
         maa_config_data.config_path = ""
         maa_config_data.config_data = {}

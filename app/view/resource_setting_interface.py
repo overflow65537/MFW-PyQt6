@@ -1,3 +1,28 @@
+#   This file is part of MFW-ChainFlow Assistant.
+
+#   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published
+#   by the Free Software Foundation, either version 3 of the License,
+#   or (at your option) any later version.
+
+#   MFW-ChainFlow Assistant is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty
+#   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+#   the GNU General Public License for more details.
+
+#   You should have received a copy of the GNU General Public License
+#   along with MFW-ChainFlow Assistant. If not, see <https://www.gnu.org/licenses/>.
+
+#   Contact: err.overflow@gmail.com
+#   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
+
+"""
+MFW-ChainFlow Assistant 资源包设置界面
+
+
+"""
+
+
 from qfluentwidgets import (
     SettingCardGroup,
     ScrollArea,
@@ -15,11 +40,12 @@ from PySide6.QtWidgets import QWidget, QLabel, QFileDialog
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
 from ..common.style_sheet import StyleSheet
-from ..components.line_edit_card import LineEditCard
-from ..components.combobox_setting_card_custom import ComboBoxSettingCardCustom
-from ..components.combo_with_action_setting_card import ComboWithActionSettingCard
-from ..components.choose_resource_button import CustomMessageBox
-
+from ..utils.widget import (
+    LineEditCard,
+    ComboWithActionSettingCard,
+    CustomMessageBox,
+    ComboBoxSettingCardCustom,
+)
 from ..utils.tool import Save_Config, get_gpu_info
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
@@ -41,6 +67,9 @@ class ResourceSettingInterface(ScrollArea):
             self.enable_widgets(False)
 
     def resource_exist(self, status: bool):
+        """
+        当资源存在时触发该函数，更新界面状态和内容。
+        """
         if status:
             logger.info("收到信号,初始化界面并连接信号")
             self.init_info()
@@ -76,20 +105,31 @@ class ResourceSettingInterface(ScrollArea):
             self.project_version = ""
             self.project_url = ""
 
-
-        self.ADB_port.lineEdit.setText(maa_config_data.config.get("adb", {}).get("address", ""))
-        self.ADB_path.lineEdit.setText(maa_config_data.config.get("adb", {}).get("adb_path", ""))
+        self.ADB_port.lineEdit.setText(
+            maa_config_data.config.get("adb", {}).get("address", "")
+        )
+        self.ADB_path.lineEdit.setText(
+            maa_config_data.config.get("adb", {}).get("adb_path", "")
+        )
         self.emu_path.lineEdit.setText(maa_config_data.config.get("emu_path", ""))
         self.emu_args.lineEdit.setText(maa_config_data.config.get("emu_args", ""))
-        self.emu_wait_time.lineEdit.setText(str(maa_config_data.config.get("emu_wait_time", "")))
+        self.emu_wait_time.lineEdit.setText(
+            str(maa_config_data.config.get("emu_wait_time", ""))
+        )
         self.exe_path.lineEdit.setText(maa_config_data.config.get("exe_path", ""))
         self.exe_args.lineEdit.setText(maa_config_data.config.get("exe_args", ""))
-        self.exe_wait_time.lineEdit.setText(str(maa_config_data.config.get("exe_wait_time", "")))
-        self.run_before_start.lineEdit.setText(maa_config_data.config.get("run_before_start", ""))
+        self.exe_wait_time.lineEdit.setText(
+            str(maa_config_data.config.get("exe_wait_time", ""))
+        )
+        self.run_before_start.lineEdit.setText(
+            maa_config_data.config.get("run_before_start", "")
+        )
         self.run_before_start_args.lineEdit.setText(
             maa_config_data.config.get("run_before_start_args", "")
         )
-        self.run_after_finish.lineEdit.setText(maa_config_data.config.get("run_after_finish", ""))
+        self.run_after_finish.lineEdit.setText(
+            maa_config_data.config.get("run_after_finish", "")
+        )
         self.run_after_finish_args.lineEdit.setText(
             maa_config_data.config.get("run_after_finish_args", "")
         )
@@ -100,7 +140,7 @@ class ResourceSettingInterface(ScrollArea):
         self.ADB_screencap_mode.path = maa_config_data.config_path
 
     def clear_content(self):
-        # 清空输入框和设置内容
+        """清空输入框和设置内容"""
 
         self.ADB_port.lineEdit.textChanged.disconnect()
         self.ADB_path.lineEdit.textChanged.disconnect()
@@ -167,6 +207,7 @@ class ResourceSettingInterface(ScrollArea):
         self.res_setting.setEnabled(True)
 
     def lock_res_changed(self, status):
+        """在更新的时候锁定资源包选择框"""
         if status:
             self.res_setting.combox.setEnabled(False)
             self.res_setting.add_button.setEnabled(False)
@@ -371,9 +412,7 @@ class ResourceSettingInterface(ScrollArea):
         if cfg.get(cfg.auto_update_resource):
             logger.debug("res_changed发送信号")
             signalBus.auto_update.emit()
-        signalBus.task_output_sync.emit({"type":"reinit"})
-
-
+        signalBus.task_output_sync.emit({"type": "reinit"})
 
     def res_delete(self):
         """删除当前选定的资源"""
@@ -775,6 +814,7 @@ class ResourceSettingInterface(ScrollArea):
         return gpu_combox_list
 
     def __initWidget(self):
+        """初始化界面元素。"""
         self.resize(1000, 800)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setViewportMargins(0, 80, 0, 20)
@@ -842,7 +882,7 @@ class ResourceSettingInterface(ScrollArea):
 
         # 更新配置并设置卡片内容
         if config_key == "adb":
-            maa_config_data.config["adb"]["adb_path"] = file_name # type: ignore
+            maa_config_data.config["adb"]["adb_path"] = file_name  # type: ignore
             logger.debug(f"选择的 ADB 路径: {file_name}")
         elif config_key == "emu":
             maa_config_data.config["emu_path"] = file_name
@@ -923,7 +963,7 @@ class ResourceSettingInterface(ScrollArea):
         if maa_config_data.config_path == "":
             return
         port = self.ADB_port.lineEdit.text()
-        maa_config_data.config["adb"]["address"] = port # type: ignore
+        maa_config_data.config["adb"]["address"] = port  # type: ignore
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def _onADB_pathCardChange(self):
@@ -931,7 +971,7 @@ class ResourceSettingInterface(ScrollArea):
         if maa_config_data.config_path == "":
             return
         adb_path = self.ADB_path.lineEdit.text()
-        maa_config_data.config["adb"]["adb_path"] = adb_path # type: ignore
+        maa_config_data.config["adb"]["adb_path"] = adb_path  # type: ignore
         Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def _onEmuPathCardChange(self):
