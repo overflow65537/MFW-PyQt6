@@ -6,3 +6,4 @@ psutil
 PySide6-Fluent-Widgets
 wmi
 cryptography
+markdown
