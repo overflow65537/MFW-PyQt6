@@ -34,7 +34,7 @@ from typing import List, Dict
 import re
 
 
-from PySide6.QtCore import Qt, QMimeData, QDateTime, QTime, QDate,Slot
+from PySide6.QtCore import Qt, QMimeData, QDateTime, QTime, QDate, Slot
 from PySide6.QtGui import QDrag, QDropEvent, QColor, QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -1243,14 +1243,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     )
 
                 # 处理循环次数（封装状态更新）
-                remaining_loops = interval_cfg.get("current_loop", -1)
+                remaining_loops = interval_cfg.get("current_loop", 0)
                 if remaining_loops > 0 and self.entry:
-                    self.update_speedrun_state(speedrun_cfg, remaining_loops)
                     await maafw.run_task(self.entry, override_options)
                     if self.task_failed:
-                        speedrun_cfg.get("interval", {})["current_loop"] = remaining_loops + 1
-                        Save_Config(maa_config_data.config_path, maa_config_data.config)
-                        self.insert_colored_text(self.tr("Task failed, loop count restored"))
+                        continue
+                    else:
+                        self.update_speedrun_state(speedrun_cfg, remaining_loops)
                 else:
                     self.handle_exhausted_loops(refresh_time)
                     continue
@@ -1514,11 +1513,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             Select_Target = self.SelectTask_Combox_1.currentText()
             Option = self.get_selected_options()
             speedrun = self.get_speedrun_value(Select_Target)
-            
+
             task_data: TaskItem = {
                 "name": Select_Target,
                 "option": Option,
-                "speedrun": speedrun, # type: ignore
+                "speedrun": speedrun,  # type: ignore
             }
             if maa_config_data.config.get("task") is None:
                 raise ValueError("config['task'] is None")
@@ -1779,7 +1778,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         self.update_config_value("resource", self.Resource_Combox.currentText())
         logger.info(f"保存资源配置: {self.Resource_Combox.currentText()}")
-        
+
     def Save_Controller(self):
         """
         保存控制器配置
