@@ -42,10 +42,10 @@ def isWin11():
 class Config(QConfig):
     """Config of application"""
 
-    #永不展示公告
+    # 永不展示公告
     hide_notice = ConfigItem("program", "hide_notice", False, BoolValidator())
 
-    #展示公告
+    # 展示公告
     show_notice = ConfigItem("program", "show_notice", True, BoolValidator())
 
     # 展示agent命令行
@@ -66,7 +66,6 @@ class Config(QConfig):
     resource_update_channel = ConfigItem(
         "MFW", "resource_update_channel", 0, OptionsValidator([0, 1, 2])
     )
-
 
     # 资源存在
     resource_exist = ConfigItem("program", "resource_exist", False, BoolValidator())
@@ -97,6 +96,7 @@ class Config(QConfig):
     auto_update_resource = ConfigItem(
         "Maa", "auto_update_resource", True, BoolValidator()
     )
+    auto_update_MFW = ConfigItem("Maa", "auto_update_MFW", False, BoolValidator())
     force_github = ConfigItem("Maa", "force_github", False, BoolValidator())
     click_update = ConfigItem("Maa", "click_update", False, BoolValidator())
     # 外部通知

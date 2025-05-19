@@ -100,6 +100,10 @@ class SettingInterface(ScrollArea):
             self.enable_widgets(False)
             self.clear_content()
             self.init_update_thread()
+    def auto_update_MFW(self):
+        if cfg.get(cfg.auto_update_MFW):
+            self.update_self_func()
+
 
     def init_ui(self):
         """
@@ -433,6 +437,13 @@ class SettingInterface(ScrollArea):
             configItem=cfg.auto_update_resource,
             parent=self.updateGroup,
         )
+        self.MFW_auto_update = SwitchSettingCard(
+            FIF.UPDATE,
+            self.tr("Auto Update MFW"),
+            self.tr("Automatically update MFW after opening the program. Not recommended, as it may cause the loss of the current running progress."),
+            configItem=cfg.auto_update_MFW,
+            parent=self.updateGroup,
+        )
 
         self.force_github = SwitchSettingCard(
             FIF.UPDATE,
@@ -444,6 +455,7 @@ class SettingInterface(ScrollArea):
 
         self.updateGroup.addSettingCard(self.MirrorCard)
         self.updateGroup.addSettingCard(self.auto_update)
+        self.updateGroup.addSettingCard(self.MFW_auto_update)
         self.updateGroup.addSettingCard(self.force_github)
 
     def initialize_about_settings(self):
@@ -560,6 +572,7 @@ class SettingInterface(ScrollArea):
     def __connectSignalToSlot(self):
         """连接信号到对应的槽函数。"""
         signalBus.update_download_finished.connect(self.on_update_finished)
+        signalBus.start_finish.connect(self.auto_update_MFW)
         cfg.appRestartSig.connect(self.__showRestartTooltip)
         signalBus.auto_update.connect(self.update_check)
         signalBus.download_self_finished.connect(self.update_self_finished)
@@ -624,6 +637,8 @@ class SettingInterface(ScrollArea):
             button.clicked.disconnect()
             button.clicked.connect(self.update_self_start)
             button.setEnabled(True)
+            if cfg.get(cfg.auto_update_MFW):
+                self.update_self_start()
 
     def update_self_start(self):
         """开始更新程序。"""
