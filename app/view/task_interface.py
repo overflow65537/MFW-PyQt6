@@ -1157,7 +1157,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             await maafw.stop_task()
             return
 
-        await maafw.run_task(task.get("entry", ""), task.get("override_options", {}))
+        await maafw.run_task(task.get("entry", ""), task.get("pipeline_override", {}))
 
         # 找到task的entry
 
