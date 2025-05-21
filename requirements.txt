@@ -1,7 +1,7 @@
 qasync
 asyncify
 requests
-MaaFw == 4.2.1
+MaaFw >= 4.2.0
 psutil
 PySide6-Fluent-Widgets
 wmi
