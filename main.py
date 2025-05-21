@@ -51,6 +51,8 @@ from qfluentwidgets import FluentTranslator
 
 from app.common.config import cfg
 from app.utils.logger import logger
+
+logger.debug("MAAFW_BINARY_PATH: " + os.environ["MAAFW_BINARY_PATH"])
 from app.view.main_window import MainWindow
 from app.common.config import Language
 from app.common.signal_bus import signalBus
@@ -150,27 +152,22 @@ if __name__ == "__main__":
         # 获取文件名
         exec_path = os.path.basename(exec_path)
         import subprocess
+
         try:
-            if sys.platform.startswith('win'):
+            if sys.platform.startswith("win"):
                 result = subprocess.run(
-                    f'taskkill /F /IM {exec_path}',
+                    f"taskkill /F /IM {exec_path}",
                     shell=True,
                     capture_output=True,
-                    text=True
+                    text=True,
                 )
-            elif sys.platform.startswith('linux'):
+            elif sys.platform.startswith("linux"):
                 result = subprocess.run(
-                    f'pkill -9 {exec_path}',
-                    shell=True,
-                    capture_output=True,
-                    text=True
+                    f"pkill -9 {exec_path}", shell=True, capture_output=True, text=True
                 )
-            elif sys.platform.startswith('darwin'):
+            elif sys.platform.startswith("darwin"):
                 result = subprocess.run(
-                    f'killall {exec_path}',
-                    shell=True,
-                    capture_output=True,
-                    text=True
+                    f"killall {exec_path}", shell=True, capture_output=True, text=True
                 )
             else:
                 logger.warning(f"不支持的平台: {sys.platform}")
@@ -186,6 +183,7 @@ if __name__ == "__main__":
             cfg.set(cfg.agent_path, "")
         if maafw.agent_thread:
             maafw.agent_thread.stop()  # 确保线程停止
+
     atexit.register(clear_agent)
     try:
         with open(
