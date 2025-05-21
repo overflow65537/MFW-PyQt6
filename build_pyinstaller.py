@@ -128,7 +128,9 @@ PyInstaller.__main__.run(base_command)
 if sys.platform == "win32":
     # 复制 DLL 到 dist/MFW 目录
     shutil.copytree(
-        os.path.join(os.getcwd(), "dll"), os.path.join(os.getcwd(), "dist", "MFW"), dirs_exist_ok=True
+        os.path.join(os.getcwd(), "dll"),
+        os.path.join(os.getcwd(), "dist", "MFW"),
+        dirs_exist_ok=True,
     )
 
 # 复制TEM_files的内容到 dist/MFW 目录
@@ -150,17 +152,18 @@ for i in bin_files:
     # 删除临时文件
     os.remove(os.path.join(os.getcwd(), "dist", "MFW", "_internal", i))
 
-shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa","bin"))
+shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin"))
 
 # 写入版本信息
 write_version_file(platform, architecture, version)
 
-# 移动README和许可证并在开头加上MFW_前缀
-for file in ["README.md","README-en.md", "LICENSE"]:
-    shutil.move(
+# 复制README和许可证并在开头加上MFW_前缀
+for file in ["README.md", "README-en.md", "LICENSE"]:
+    shutil.copy(
         os.path.join(os.getcwd(), file),
         os.path.join(os.getcwd(), "dist", "MFW", f"MFW_{file}"),
     )
+
 
 # === 构建updater ===
 PyInstaller.__main__.run(

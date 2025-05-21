@@ -26,8 +26,6 @@ MFW-ChainFlow Assistant 启动文件
 import os
 import sys
 
-from app.common import maa_config_data
-
 # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
 os.chdir(
     os.path.dirname(sys.executable)
@@ -51,8 +49,6 @@ from qfluentwidgets import FluentTranslator
 
 from app.common.config import cfg
 from app.utils.logger import logger
-
-logger.debug("MAAFW_BINARY_PATH: " + os.environ["MAAFW_BINARY_PATH"])
 from app.view.main_window import MainWindow
 from app.common.config import Language
 from app.common.signal_bus import signalBus
