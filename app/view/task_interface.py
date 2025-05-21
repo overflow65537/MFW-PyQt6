@@ -164,16 +164,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         )
         self.init_finish_combox()
 
-    def no_ADB_config(self):
-        """
-        没有ADB配置
-        """
-        if (
-            maa_config_data.config.get("adb", {}).get("adb_path") == ""
-            and "adb" not in self.Control_Combox.currentText()
-        ):
-            self.AutoDetect_Button.click()
-
     def clear_content(self):
         """
         清空界面
@@ -248,7 +238,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         signalBus.update_task_list.connect(self.update_task_list_passive)
         signalBus.update_finished_action.connect(self.init_finish_combox)
         signalBus.start_finish.connect(self.ready_Start_Up)
-        signalBus.start_finish.connect(self.no_ADB_config)
         signalBus.start_task_inmediately.connect(self.Start_Up)
         signalBus.dragging_finished.connect(self.dragging_finished)
         self.AddTask_Button.clicked.connect(self.Add_Task)
@@ -785,6 +774,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         启动前检查是否需要更新或者启动任务
         """
+        if (
+            maa_config_data.config.get("adb", {}).get("adb_path") == ""
+            and "adb" not in self.Control_Combox.currentText()
+        ):
+            self.AutoDetect_Button.click()
         if cfg.get(cfg.resource_exist):
 
             if cfg.get(cfg.auto_update_resource) and (

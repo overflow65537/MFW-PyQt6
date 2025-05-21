@@ -102,10 +102,10 @@ class SettingInterface(ScrollArea):
             self.enable_widgets(False)
             self.clear_content()
             self.init_update_thread()
+
     def auto_update_MFW(self):
         if cfg.get(cfg.auto_update_MFW):
             self.update_self_func()
-
 
     def init_ui(self):
         """
@@ -442,7 +442,9 @@ class SettingInterface(ScrollArea):
         self.MFW_auto_update = SwitchSettingCard(
             FIF.UPDATE,
             self.tr("Auto Update MFW"),
-            self.tr("Automatically update MFW after opening the program. Not recommended, as it may cause the loss of the current running progress."),
+            self.tr(
+                "Automatically update MFW after opening the program. Not recommended, as it may cause the loss of the current running progress."
+            ),
             configItem=cfg.auto_update_MFW,
             parent=self.updateGroup,
         )

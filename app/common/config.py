@@ -66,6 +66,7 @@ def isWin11():
 
 class Config(QConfig):
     """Config of application"""
+
     # agent路径
     agent_path = ConfigItem("program", "agent_path", "")
     # 永不展示公告
@@ -100,6 +101,7 @@ class Config(QConfig):
     run_after_startup = ConfigItem(
         "program", "run_after_startup", False, BoolValidator()
     )
+    # 启动后直接运行 -d参数
     run_after_startup_arg = ConfigItem(
         "program", "run_after_startup_arg", False, BoolValidator()
     )
