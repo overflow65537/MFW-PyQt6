@@ -66,7 +66,7 @@ from ..utils.tool import (
     find_process_by_name,
     show_error_message,
     get_console_path,
-    MyNotificationHandler
+    MyNotificationHandler,
 )
 from ..utils.maafw import maafw
 from ..common.config import cfg

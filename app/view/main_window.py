@@ -232,15 +232,15 @@ class MainWindow(FluentWindow):
             NavigationItemPosition.SCROLL,
         )
         self.navigationInterface.addItem(
-            routeKey='Announcement',
+            routeKey="Announcement",
             icon=FIF.MEGAPHONE,
             text=self.tr("Announcement"),
             onClick=self.show_announcement,
             selectable=False,
             tooltip=self.tr("Announcement"),
-            position=NavigationItemPosition.BOTTOM
+            position=NavigationItemPosition.BOTTOM,
         )
-        
+
         self.addSubInterface(
             self.settingInterface,
             FIF.SETTING,
@@ -348,7 +348,7 @@ class MainWindow(FluentWindow):
         if w.exec():
             print("OK clicked")
             cfg.set(cfg.hide_notice, True)
-        
+
         cfg.set(cfg.show_notice, False)
 
     def resizeEvent(self, e):

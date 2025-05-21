@@ -68,7 +68,8 @@ class SignalBus(QObject):
     infobar_message = Signal(dict)  # 信息栏消息信号
     run_sp_task = Signal(dict)  # 运行sp任务信号
     task_output_sync = Signal(dict)  # 任务输出同步信号
-    show_continuous_task = Signal(bool) # 显示隐藏子面板信号
-    ScheduledPageClicked = Signal() # 子面板点击信号
+    show_continuous_task = Signal(bool)  # 显示隐藏子面板信号
+    ScheduledPageClicked = Signal()  # 子面板点击信号
+
 
 signalBus = SignalBus()

@@ -93,7 +93,6 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
     # create main window
     w = MainWindow()
     w.show()
-    QTimer.singleShot(0, lambda: signalBus.start_finish.emit())
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
     loop.run_forever()
