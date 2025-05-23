@@ -26,12 +26,10 @@ from ..common.signal_bus import signalBus
 from ..utils.tool import Read_Config, show_error_message
 from ..common.config import cfg
 from ..utils.logger import logger
-from ..common.typeddict import (
-    MaaConfigData,get_initial_main_config
-)
+from ..common.typeddict import MaaConfigData, get_initial_main_config
 import json
 import os
-
+import sys
 
 
 maa_config_data = MaaConfigData()
@@ -46,7 +44,7 @@ def init_maa_config_data(status: bool):
             )
             maa_config_data.interface_config = Read_Config(
                 maa_config_data.interface_config_path
-            ) # type: ignore
+            )  # type: ignore
             if not maa_config_data.interface_config:
                 logger.error("interface.json load failed")
                 raise FileNotFoundError(
@@ -54,7 +52,7 @@ def init_maa_config_data(status: bool):
                 )
 
             maa_config_data.config_path = cfg.get(cfg.maa_config_path)
-            maa_config_data.config = Read_Config(maa_config_data.config_path) # type: ignore
+            maa_config_data.config = Read_Config(maa_config_data.config_path)  # type: ignore
             if not maa_config_data.config:
                 logger.error("config.json load failed")
                 raise FileNotFoundError(
@@ -87,6 +85,10 @@ def init_maa_config_data(status: bool):
             logger.debug(f"resource_path: {maa_config_data.resource_path}")
             logger.debug(f"resource_name: {maa_config_data.resource_name}")
             logger.debug(f"resource_data: {maa_config_data.resource_data}")
+            # 添加maa_config_data.resource_path到sys.path
+            sys.path.append((os.path.join(maa_config_data.resource_path, "custom")))
+            logger.debug(f"sys.path: {sys.path}")
+
             logger.debug("配置文件初始化完成")
 
         else:

@@ -1173,7 +1173,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 maa_config_data.interface_config.get("task", [])
             ):
                 if task_enter.get("name", "M1") == task_list.get("name", "M2"):
-                    self.entry = task_enter.get("entry")
+                    self.entry = task_enter.get("entry", "")
                     if not self.entry:
                         logger.error(f"未找到任务入口: {task_list.get('name')}")
                         self.send_notice("failed", self.tr("Task Entry"))
@@ -1332,7 +1332,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         处理循环次数耗尽
         """
         logger.info(f"任务[{self.entry}]当前循环次数已耗尽")
-        self.insert_colored_text([{self.entry}] + " " + self.tr("Loop count exhausted"))
+        self.insert_colored_text({self.entry} + " " + self.tr("Loop count exhausted")) # type: ignore
         self.insert_colored_text(
             self.tr("Waiting for next run: ")
             + refresh_time.toString("yyyy-MM-dd HH:mm:ss")
