@@ -1332,7 +1332,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         处理循环次数耗尽
         """
         logger.info(f"任务[{self.entry}]当前循环次数已耗尽")
-        self.insert_colored_text(self.tr("Loop count exhausted"))
+        self.insert_colored_text([{self.entry}] + " " + self.tr("Loop count exhausted"))
         self.insert_colored_text(
             self.tr("Waiting for next run: ")
             + refresh_time.toString("yyyy-MM-dd HH:mm:ss")
