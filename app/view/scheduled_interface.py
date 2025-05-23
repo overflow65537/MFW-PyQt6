@@ -55,13 +55,11 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.bind_signals()
         self.init_widget_text()
         if cfg.get(cfg.resource_exist):
-            self.List_widget.addItems(
-                Get_Values_list_Option(maa_config_data.config_path, "task")
-            )
-            self.change_target_task()
+            self.resource_exist(True)
 
     def bind_signals(self):
         """绑定信号槽函数"""
+        signalBus.resource_exist.connect(self.resource_exist)
         signalBus.ScheduledPageClicked.connect(self.change_target_task)
         self.daily_mode_radio.clicked.connect(lambda: self.change_layout("daily"))
         self.weekly_mode_radio.clicked.connect(lambda: self.change_layout("weekly"))
@@ -69,6 +67,19 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
         self.List_widget.itemClicked.connect(self.change_target_task)
         self.confirm_button.clicked.connect(self.save_speedrun_info)
         signalBus.update_task_list.connect(self.update_task_list_passive)
+
+    def resource_exist(self, status: bool):
+        if status:
+            self.List_widget.clear()
+            self.List_widget.addItems(
+                Get_Values_list_Option(maa_config_data.config_path, "task")
+            )
+            self.change_target_task()
+        else:
+            self.List_widget.clear()
+            self.List_widget.addItem("No task found")
+            self.List_widget.setEnabled(False)
+            self.List_widget.setStyleSheet("color: red;")
 
     def change_target_task(self):
         """修改目标任务"""
