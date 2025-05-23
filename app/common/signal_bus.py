@@ -33,13 +33,15 @@ class SignalBus(QObject):
     micaEnableChanged = Signal(bool)
     supportSignal = Signal()
     auto_update = Signal()  # 自动更新设置信号
-    update_adb = Signal()  # 更新设置界面adb设备信息信号
-    callback = Signal(dict)  # 回调协议信号
+    update_adb = (
+        Signal()
+    )  # 更新设置界面adb设备信息信号 从task_interface中获取adb信息,传到setting_interface中同步显示
+    callback = Signal(dict)  # maafw回调协议信号
     update_task_list = Signal()  # 更新tasklist信息信号
-    Notice_msg = Signal(str)  # 通知消息
+    Notice_msg = Signal(str)  # 将外部通知的执行结果显示在任务输出中
     cfg_changed = Signal()  # 配置文件修改信号
-    adb_detect_backup = Signal(list)  # 备份adb检测
-    resource_exist = Signal(bool)  # 选择资源信号
+    adb_detect_backup = Signal(list)  # 备份adb检测信号
+    resource_exist = Signal(bool)  # 资源是否存在信号,可以在运行中更改
     title_changed = Signal()  # 标题栏改变信号
     update_finished_action = Signal()  # 更新完成后操作信号
     switch_config = Signal(dict)  # 主动切换配置信号

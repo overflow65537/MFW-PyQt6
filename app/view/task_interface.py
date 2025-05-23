@@ -755,6 +755,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         data_dict = {
             "resource_name": self.Finish_combox_res.currentText(),
             "config_name": self.Finish_combox_cfg.currentText(),
+            "start_task_inmediately": True,
         }
         signalBus.switch_config.emit(data_dict)
 
