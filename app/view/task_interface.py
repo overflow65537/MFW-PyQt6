@@ -34,7 +34,7 @@ from typing import List, Dict
 import re
 
 
-from PySide6.QtCore import Qt, QMimeData, QDateTime, QTime, QDate, Slot
+from PySide6.QtCore import Qt, QMimeData, QDateTime, QTime, QDate, QTimer
 from PySide6.QtGui import QDrag, QDropEvent, QColor, QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -227,7 +227,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         绑定信号槽
         """
         signalBus.task_output_sync.connect(self.sync_button)
-
         signalBus.run_sp_task.connect(self.Start_Up)
         signalBus.agent_info.connect(self.show_agnet_info)
         signalBus.speedrun.connect(self.Add_Select_Task_More_Select)
@@ -787,15 +786,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             ):
                 logger.info("启动GUI后自动更新,启动GUI后运行任务")
                 signalBus.update_download_finished.connect(self.Auto_update_Start_up)
-                signalBus.auto_update.emit()
+                QTimer.singleShot(1000, lambda: signalBus.auto_update.emit())
 
             elif cfg.get(cfg.auto_update_resource):
                 logger.info("启动GUI后自动更新")
-                signalBus.auto_update.emit()
+                QTimer.singleShot(1000, lambda: signalBus.auto_update.emit())
 
             elif cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg):
                 logger.info("启动GUI后运行任务")
-                signalBus.start_task_inmediately.emit()
+                # Qtimer 延迟1秒启动signalBus.start_task_inmediately.emit()
+                QTimer.singleShot(1000, lambda: signalBus.start_task_inmediately.emit())
 
     def Auto_update_Start_up(self, status_dict):
         """
@@ -804,7 +804,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if cfg.get(cfg.click_update):
             return
         if status_dict.get("status") != "info":
-            signalBus.start_task_inmediately.emit()
+            QTimer.singleShot(1000, lambda: signalBus.start_task_inmediately.emit())
 
     # region 任务逻辑
     @asyncSlot()
@@ -1332,7 +1332,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         处理循环次数耗尽
         """
         logger.info(f"任务[{self.entry}]当前循环次数已耗尽")
-        self.insert_colored_text({self.entry} + " " + self.tr("Loop count exhausted")) # type: ignore
+        self.insert_colored_text({self.entry} + " " + self.tr("Loop count exhausted"))  # type: ignore
         self.insert_colored_text(
             self.tr("Waiting for next run: ")
             + refresh_time.toString("yyyy-MM-dd HH:mm:ss")
