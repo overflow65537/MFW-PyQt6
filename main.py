@@ -43,7 +43,7 @@ from maa.custom_recognition import CustomRecognition
 import atexit
 from qasync import QEventLoop, asyncio
 from qfluentwidgets import ConfigItem
-from PySide6.QtCore import Qt, QTranslator, QTimer
+from PySide6.QtCore import Qt, QTranslator
 from PySide6.QtWidgets import QApplication
 from qfluentwidgets import FluentTranslator
 
@@ -51,7 +51,6 @@ from app.common.config import cfg
 from app.utils.logger import logger
 from app.view.main_window import MainWindow
 from app.common.config import Language
-from app.common.signal_bus import signalBus
 from app.utils.tool import show_error_message
 from app.utils.check_utils import check
 from app.utils.maafw import maafw

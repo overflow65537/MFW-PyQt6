@@ -224,10 +224,14 @@ class BaseUpdate(QThread):
         print(old_interface_path)
         if os.path.exists(old_interface_path):
             old_interface = Read_Config(old_interface_path)
-            old_interface["version"] = ""
             new_interface = Read_Config(maa_config_data.interface_config_path)
-            new_interface["version"] = ""
-            if old_interface != new_interface:
+
+            old_task_info = sorted([(task["name"], task["option"]) for task in old_interface["task"]])
+            new_task_info = sorted([(task["name"], task["option"]) for task in new_interface["task"]])
+
+            if old_task_info != new_task_info:
+                logger.info("配置文件发生变化")
+
                 logger.info("配置文件发生变化")
                 Save_Config(old_interface_path, new_interface)
                 signalBus.infobar_message.emit(
@@ -1005,7 +1009,7 @@ class DownloadBundle(BaseUpdate):
             return
 
         url = for_config_get_url(self.project_url, "download")
-        
+
         try:
             if url is None:
                 raise ValueError("URL is empty or invalid.")
