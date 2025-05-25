@@ -159,6 +159,17 @@ class ContinuousTaskInterface(QWidget):
             self.clear_layout()
         elif data_dict.get("type", "") == "reinit":
             self.reinitialize()
+        elif data_dict.get("type", "") == "change_button":
+            print(data_dict)
+            self.S2_Button.setEnabled(data_dict.get("status", False))
+            if data_dict.get("text", "") == "Start":
+                self.S2_Button.setText(self.tr("start"))
+                self.S2_Button.clicked.disconnect()
+                self.S2_Button.clicked.connect(self._on_add_task_button_clicked)
+            elif data_dict.get("text", "") in ["Stop", "停止"]:
+                self.S2_Button.setText(self.tr("stop"))
+                self.S2_Button.clicked.disconnect()
+                self.S2_Button.clicked.connect(self.stop_task)
 
     def insert_colored_text(self, text, color_name="black"):
         """
@@ -569,7 +580,7 @@ class TaskDetailPage(QWidget):
         # 解析task中的option
         if task_list["option"] != []:
             for task_option in task_list["option"]:
-                for override in maa_config_data.interface_config.get("option",[])[
+                for override in maa_config_data.interface_config.get("option", [])[
                     task_option["name"]
                 ]["cases"]:
                     if override["name"] == task_option["value"]:

@@ -486,6 +486,7 @@ class ResourceSettingInterface(ScrollArea):
         if cfg.get(cfg.auto_update_resource):
             logger.debug("res_changed发送信号")
             signalBus.auto_update.emit()
+        signalBus.task_output_sync.emit({"type": "reinit"})
 
     def res_delete(self):
         """删除当前选定的资源"""

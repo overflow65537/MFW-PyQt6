@@ -877,6 +877,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.S2_Button.clicked.disconnect()
         self.S2_Button.clicked.connect(slot)
         self.S2_Button.setEnabled(enable)
+        signalBus.task_output_sync.emit(
+            {
+                "type": "change_button",
+                "text": text,
+                "status": enable,
+            }
+        )
 
     async def run_before_start_script(self):
         """
