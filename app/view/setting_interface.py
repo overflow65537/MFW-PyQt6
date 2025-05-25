@@ -103,10 +103,6 @@ class SettingInterface(ScrollArea):
             self.clear_content()
             self.init_update_thread()
 
-    def auto_update_MFW(self):
-        if cfg.get(cfg.auto_update_MFW):
-            self.update_self_func()
-
     def init_ui(self):
         """
         初始化界面内容。
@@ -576,7 +572,6 @@ class SettingInterface(ScrollArea):
     def __connectSignalToSlot(self):
         """连接信号到对应的槽函数。"""
         signalBus.update_download_finished.connect(self.on_update_finished)
-        signalBus.start_finish.connect(self.auto_update_MFW)
         cfg.appRestartSig.connect(self.__showRestartTooltip)
         signalBus.auto_update.connect(self.update_check)
         signalBus.download_self_finished.connect(self.update_self_finished)

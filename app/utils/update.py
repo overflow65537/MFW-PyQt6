@@ -1083,25 +1083,6 @@ class DownloadBundle(BaseUpdate):
 # endregion
 
 
-# region 读取README文件
-class Readme(QThread):
-    readme_url = ""
-
-    def run(self):
-        self.stop_flag = False
-        logger.debug(f"读取README文件: {self.readme_url}")
-        try:
-            response = requests.get(self.readme_url)
-            response.raise_for_status()
-            content = response.text
-            signalBus.readme_available.emit(content)
-        except Exception as e:
-            logger.exception(f"读取README文件时出错: {e}")
-            signalBus.readme_available.emit(f"读取README文件时出错: {e}")
-
-
-# endregion
-
 
 # region 更新自身
 class UpdateSelf(BaseUpdate):

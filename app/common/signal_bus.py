@@ -29,9 +29,7 @@ from PySide6.QtCore import Signal, QObject
 class SignalBus(QObject):
     """Signal bus"""
 
-    switchToSampleCard = Signal(str, int)
-    micaEnableChanged = Signal(bool)
-    supportSignal = Signal()
+    micaEnableChanged = Signal(bool)  # Mica效果开关信号
     auto_update = Signal()  # 自动更新设置信号
     update_adb = (
         Signal()
@@ -45,9 +43,7 @@ class SignalBus(QObject):
     title_changed = Signal()  # 标题栏改变信号
     update_finished_action = Signal()  # 更新完成后操作信号
     switch_config = Signal(dict)  # 主动切换配置信号
-    start_finish = Signal()  # 启动完成信号
     start_task_inmediately = Signal()  # 立即启动任务信号
-    readme_available = Signal(str)  # readme文件信号
     download_finished = Signal(dict)  # 搜索资源完成信号
     dragging_finished = Signal()  # 拖拽完成信号
     bundle_download_progress = Signal(int, int)  # bundle下载进度信号
@@ -64,7 +60,6 @@ class SignalBus(QObject):
     mirror_bundle_download_stopped = Signal()  # mirror bundle下载停止信号
     custom_info = Signal(dict)  # 自定义动作/识别器成功信号
     setting_Visible = Signal(str)  # 设置界面可见信号
-    speedrun = Signal()  # 速通模式信号
     lock_res_changed = Signal(bool)  # 锁定资源改变信号
     agent_info = Signal(str)  # agent信息信号
     infobar_message = Signal(dict)  # 信息栏消息信号

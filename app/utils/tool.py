@@ -47,6 +47,7 @@ from PySide6.QtGui import QIcon
 from app.utils.logger import logger
 from ..common.signal_bus import signalBus
 
+
 def replace_ocr(path):
     """替换OCR模型"""
     bundle_dir1 = os.path.join(path, "resource", "base", "model", "ocr")
@@ -109,7 +110,9 @@ def Save_Config(paths: str, data):
         json.dump(data, MAA_Config, indent=4, ensure_ascii=False)
 
 
-def gui_init(resource_Path: str, maa_pi_config_Path: str, interface_Path: str) -> Dict[str,int]:
+def gui_init(
+    resource_Path: str, maa_pi_config_Path: str, interface_Path: str
+) -> Dict[str, int]:
     """初始化GUI组件的配置信息。
 
     Args:
@@ -167,7 +170,6 @@ def gui_init(resource_Path: str, maa_pi_config_Path: str, interface_Path: str) -
         "init_Controller_Type": init_Controller_Type,
     }
     return return_init
-
 
 
 def Get_Values_list2(path: str, key1: str) -> List:
@@ -297,7 +299,7 @@ def find_existing_file(info_dict: Dict[str, str]) -> str | Literal[False]:
     Returns:
         str or False: 若找到则返回ADB文件的绝对路径，否则返回False。
     """
-    exe_path = info_dict.get("exe_path","").rsplit(os.sep, 1)[0]
+    exe_path = info_dict.get("exe_path", "").rsplit(os.sep, 1)[0]
     may_paths = info_dict.get("may_path", [])
     if not exe_path or not may_paths:
         return False
@@ -326,7 +328,7 @@ async def check_port(port: List[str]) -> List[str]:
     port_result = []
 
     async def check_single_port(p: str):
-        port:int = int(p.rsplit(":", 1)[1])
+        port: int = int(p.rsplit(":", 1)[1])
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             # 尝试连接到127.0.0.1的指定端口
@@ -494,10 +496,10 @@ def access_nested_dict(
 
 
 def rewrite_contorller(
-    data_dict: Dict[str, List[Dict[str, Any]]],  
+    data_dict: Dict[str, List[Dict[str, Any]]],
     controller: str,
     mode: str,
-    new_value: str|None = None,
+    new_value: str | None = None,
 ) -> str | dict:
     """重写控制器配置。
 
@@ -564,7 +566,7 @@ def delete_contorller(
     return data_dict
 
 
-def for_config_get_url(url: str, mode: str) -> str|None:
+def for_config_get_url(url: str, mode: str) -> str | None:
     """根据给定的URL和模式返回相应的链接。
 
     Args:
@@ -587,10 +589,6 @@ def for_config_get_url(url: str, mode: str) -> str|None:
         return_url = (
             f"https://api.github.com/repos/{username}/{repository}/releases/latest"
         )
-
-    elif mode == "readme":
-
-        return_url = f"https://raw.githubusercontent.com/{username}/{repository}/master/README.md"
     return return_url
 
 
@@ -613,7 +611,7 @@ def get_controller_type(select_value: str, interface_path: str) -> str | None:
     return None
 
 
-def get_console_path(path: str) -> dict[str, str]|None:
+def get_console_path(path: str) -> dict[str, str] | None:
     """获取控制台路径。
 
     Args:
@@ -812,6 +810,7 @@ def is_task_run_this_week(last_run_time, week_start_day=1, day_start_hour=0):
 
     return result
 
+
 def path_to_list(path):
     """将路径转换为列表形式"""
     parts = []
@@ -824,6 +823,7 @@ def path_to_list(path):
                 parts.insert(0, path)
             break
     return parts
+
 
 class MyNotificationHandler(NotificationHandler):
 
@@ -853,18 +853,19 @@ class MyNotificationHandler(NotificationHandler):
         detail: NotificationHandler.NodeRecognitionDetail,
     ):
         focus_mapping = {
-            1:"start",
-            2:"succeeded",
-            3:"failed",
+            1: "start",
+            2: "succeeded",
+            3: "failed",
         }
         self.callbackSignal.callback.emit(
             {
                 "name": "on_task_recognition",
                 "task": detail.name,
                 "status": noti_type.value,
-                "focus": detail.focus.get(focus_mapping[noti_type.value],""),
+                "focus": detail.focus.get(focus_mapping[noti_type.value], ""),
             }
         )
+
 
 class ProcessThread(QThread):
     output_signal = signalBus.agent_info
@@ -878,7 +879,7 @@ class ProcessThread(QThread):
 
     def run(self):
         startupinfo = None
-        if sys.platform.startswith('win'):
+        if sys.platform.startswith("win"):
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             startupinfo.wShowWindow = subprocess.SW_HIDE
@@ -889,19 +890,21 @@ class ProcessThread(QThread):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                encoding='gbk',
-                errors='replace',
-                startupinfo=startupinfo
+                encoding="gbk",
+                errors="replace",
+                startupinfo=startupinfo,
             )
 
             while self.process.poll() is None and not self._stop_flag:
-                assert self.process.stdout is not None, "stdout 应为 PIPE，不可能为 None"
+                assert (
+                    self.process.stdout is not None
+                ), "stdout 应为 PIPE，不可能为 None"
                 output = self.process.stdout.readline()
                 # 过滤ANSI码和时间戳
                 clean_output = re.sub(
-                    r'(\x1B\[[0-?]*[ -/]*[@-~])|(^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}[ \t]*)', 
-                    '', 
-                    output.strip()
+                    r"(\x1B\[[0-?]*[ -/]*[@-~])|(^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}[ \t]*)",
+                    "",
+                    output.strip(),
                 )
                 self.output_signal.emit(clean_output.strip())
         except Exception as e:

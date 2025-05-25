@@ -96,9 +96,38 @@ class MainWindow(FluentWindow):
             signalBus.setting_Visible.emit("win32")
         self.initShortcuts()
 
-        signalBus.start_finish.emit()
+        self.stara_finish()
 
         logger.info(" 主界面初始化完成。")
+
+    def stara_finish(self):
+        """启动完成后的操作"""
+        if cfg.get(cfg.auto_update_MFW):
+            self.settingInterface.update_self_func()
+        if (
+            maa_config_data.config.get("adb", {}).get("adb_path") == ""
+            and "adb" not in self.taskInterface.Control_Combox.currentText()
+        ):
+            self.taskInterface.AutoDetect_Button.click()
+        if cfg.get(cfg.resource_exist):
+
+            if cfg.get(cfg.auto_update_resource) and (
+                cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg)
+            ):
+                logger.info("启动GUI后自动更新,启动GUI后运行任务")
+                signalBus.update_download_finished.connect(
+                    self.taskInterface.Auto_update_Start_up
+                )
+                QTimer.singleShot(1000, lambda: signalBus.auto_update.emit())
+
+            elif cfg.get(cfg.auto_update_resource):
+                logger.info("启动GUI后自动更新")
+                QTimer.singleShot(1000, lambda: signalBus.auto_update.emit())
+
+            elif cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg):
+                logger.info("启动GUI后运行任务")
+                # Qtimer 延迟1秒启动signalBus.start_task_inmediately.emit()
+                QTimer.singleShot(1000, lambda: signalBus.start_task_inmediately.emit())
 
     def initShortcuts(self):
         """初始化快捷键"""

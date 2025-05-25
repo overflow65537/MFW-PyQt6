@@ -229,14 +229,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         signalBus.task_output_sync.connect(self.sync_button)
         signalBus.run_sp_task.connect(self.Start_Up)
         signalBus.agent_info.connect(self.show_agnet_info)
-        signalBus.speedrun.connect(self.Add_Select_Task_More_Select)
         signalBus.custom_info.connect(self.show_custom_info)
         signalBus.resource_exist.connect(self.resource_exist)
         signalBus.Notice_msg.connect(self.print_notice)
         signalBus.callback.connect(self.callback)
         signalBus.update_task_list.connect(self.update_task_list_passive)
         signalBus.update_finished_action.connect(self.init_finish_combox)
-        signalBus.start_finish.connect(self.ready_Start_Up)
         signalBus.start_task_inmediately.connect(self.Start_Up)
         signalBus.dragging_finished.connect(self.dragging_finished)
         self.AddTask_Button.clicked.connect(self.Add_Task)
@@ -769,33 +767,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         except:
             logger.exception(f"启动程序失败:\n ")
             show_error_message()
-
-    def ready_Start_Up(self):
-        """
-        启动前检查是否需要更新或者启动任务
-        """
-        if (
-            maa_config_data.config.get("adb", {}).get("adb_path") == ""
-            and "adb" not in self.Control_Combox.currentText()
-        ):
-            self.AutoDetect_Button.click()
-        if cfg.get(cfg.resource_exist):
-
-            if cfg.get(cfg.auto_update_resource) and (
-                cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg)
-            ):
-                logger.info("启动GUI后自动更新,启动GUI后运行任务")
-                signalBus.update_download_finished.connect(self.Auto_update_Start_up)
-                QTimer.singleShot(1000, lambda: signalBus.auto_update.emit())
-
-            elif cfg.get(cfg.auto_update_resource):
-                logger.info("启动GUI后自动更新")
-                QTimer.singleShot(1000, lambda: signalBus.auto_update.emit())
-
-            elif cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg):
-                logger.info("启动GUI后运行任务")
-                # Qtimer 延迟1秒启动signalBus.start_task_inmediately.emit()
-                QTimer.singleShot(1000, lambda: signalBus.start_task_inmediately.emit())
 
     def Auto_update_Start_up(self, status_dict):
         """
