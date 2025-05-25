@@ -74,7 +74,6 @@ from maa.toolkit import AdbDevice
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 from ..common.typeddict import (
-    InterfaceData,
     TaskItem,
     Interval,
     RefreshTime,
@@ -100,10 +99,88 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.init_widget_text()
         if cfg.get(cfg.resource_exist):
             self.init_ui()
+            self.check_task_consistency()
 
         else:
             logger.warning("资源缺失")
             self.show_error(self.tr("Resource file not detected"))
+
+    def get_option_case_names(self, interface_data: dict, option_key: str) -> list:
+        """
+        提取interface.json中指定option键名的选项name列表
+
+        :param interface_data: 加载后的interface.json字典数据
+        :param option_key: 需要查询的option键名（如"选择区域"、"跳过剧情"等）
+        :return: 该键名对应cases中的name列表
+        """
+        # 安全获取option下的目标键值（处理键不存在的情况）
+        target_option = interface_data.get("option", {}).get(option_key, {})
+        # 提取cases列表（处理cases不存在或非列表的情况）
+        cases = target_option.get("cases", [])
+
+        # 遍历cases提取name（过滤非字典或无name的情况）
+        return [
+            case["name"] for case in cases if isinstance(case, dict) and "name" in case
+        ]
+
+    def check_task_consistency(self):
+        """
+        检查配置任务与接口模板的一致性（任务存在性+选项匹配）
+        """
+        # 获取 interface 模板任务列表和完整数据
+        interface_data = maa_config_data.interface_config
+        config_tasks = maa_config_data.config.get("task", [])
+        option_keys = list(interface_data.get("option", {}).keys())
+        task_keys = list(
+            task["name"] for task in interface_data.get("task", []) if "name" in task
+        )
+
+        inconsistent_tasks = []  # 存储不一致的任务名称
+
+        for cfg_task in config_tasks:
+            task_name = cfg_task.get("name", "")
+            task_option = cfg_task.get("option", [])
+            if not task_name:
+                continue  # 如果任务名称为空，跳过
+
+            # 检查任务是否存在于 interface 模板
+            if task_name not in task_keys:
+                inconsistent_tasks.append(task_name)
+                continue
+            for cfg_option in task_option:
+                # 检查选项是否存在于 interface 模板
+                if cfg_option.get("name", "") not in option_keys:
+                    inconsistent_tasks.append(
+                        task_name + "-" + cfg_option.get("name", "")
+                    )
+                    continue
+                case_list = self.get_option_case_names(
+                    interface_data, cfg_option.get("name", "")
+                )
+                # 检查选项的 value 是否存在于 interface 模板
+                if cfg_option.get("value", "") not in case_list:
+                    inconsistent_tasks.append(
+                        task_name
+                        + "-"
+                        + cfg_option.get("name", "")
+                        + "-"
+                        + cfg_option.get("value", "")
+                    )
+                    continue
+
+        # 输出结果
+        if inconsistent_tasks:
+            error_msg = (
+                self.tr(
+                    "Inconsistent items between configuration tasks and interface templates"
+                )
+                + "：\n"
+                + "\n".join(inconsistent_tasks)
+            )
+            logger.warning(error_msg)
+            self.show_error(error_msg)
+        else:
+            logger.info("所有配置任务与接口模板一致")
 
     def init_widget_text(self):
         """
@@ -145,6 +222,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.enable_widgets(True)
             self.clear_content()
             self.init_ui()
+            self.check_task_consistency()
 
         else:
             logger.info("资源缺失,清空界面")
