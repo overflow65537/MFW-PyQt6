@@ -163,13 +163,14 @@ class BaseUpdate(QThread):
         """
         发送 GET 请求并返回响应。
         """
-        #如果存在NO_SSL文件
+        # 如果存在NO_SSL文件
         if os.path.exists("NO_SSL"):
             verify = False
+            logger.debug("检测到NO_SSL文件，跳过SSL验证")
         else:
             verify = True
         try:
-            response = requests.get(url,verify=verify)
+            response = requests.get(url, verify=verify)
 
         except requests.exceptions.SSLError as e:
             logger.error(f"更新检查失败: {e}")
@@ -214,60 +215,6 @@ class BaseUpdate(QThread):
                     "msg": self.tr("Github Update check failed"),
                 }
         return response
-
-    def check_interface_change(self):
-        """检查配置文件是否发生变化"""
-        if not cfg.get(cfg.resource_exist):
-            return False
-        logger.info("检查配置文件是否发生变化")
-        old_interface_path = os.path.join(
-            os.path.dirname(
-                os.path.dirname(os.path.dirname(maa_config_data.config_path))
-            ),
-            "interface.json",
-        )
-        print(old_interface_path)
-        if os.path.exists(old_interface_path):
-            old_interface = Read_Config(old_interface_path)
-            new_interface = Read_Config(maa_config_data.interface_config_path)
-
-            old_task_info = sorted([(task["name"], task["option"]) for task in old_interface["task"]])
-            new_task_info = sorted([(task["name"], task["option"]) for task in new_interface["task"]])
-
-            if old_task_info != new_task_info:
-                logger.info("配置文件发生变化")
-
-                logger.info("配置文件发生变化")
-                Save_Config(old_interface_path, new_interface)
-                signalBus.infobar_message.emit(
-                    {
-                        "status": "warning",
-                        "msg": self.tr(
-                            "The interface file has been changed. Clear the task configuration."
-                        ),
-                    }
-                )
-                config_path = os.path.join(
-                    os.path.dirname(os.path.dirname((maa_config_data.config_path)))
-                )
-
-                for root, dirs, files in os.walk(config_path):
-                    for file in files:
-
-                        if file == "maa_pi_config.json":
-                            full_path = os.path.join(root, file)
-                            self._clear_config_task(os.path.join(root, full_path))
-
-        else:
-            Save_Config(old_interface_path, maa_config_data.interface_config)
-
-    def _clear_config_task(self, path):
-        """清空配置文件"""
-        logger.info(f"清空配置文件: {path}")
-        config = Read_Config(path)
-        config["task"] = []
-        Save_Config(path, config)
-        return True
 
 
 # endregion
@@ -645,7 +592,6 @@ class Update(BaseUpdate):
             # 清理临时文件
             self.remove_temp_files(os.path.join(os.getcwd(), "hotfix"))
             logger.debug("临时文件清理完成")
-            self.check_interface_change()
 
             signalBus.resource_exist.emit(True)
             signalBus.update_download_finished.emit(
@@ -698,13 +644,18 @@ class Update(BaseUpdate):
 
             # 发送请求
             response = None
+            if os.path.exists("NO_SSL"):
+                verify = False
+                logger.debug("检测到NO_SSL文件，跳过SSL验证")
+            else:
+                verify = True
             try:
                 url = f"https://api.github.com/repos/{username}/{repository}/releases/latest"
                 logger.info(f"开始GitHub更新检查 [URL: {url}]")
-                response = requests.get(url, timeout=10)
+                response = requests.get(url, verify = verify,timeout=10)
                 response.raise_for_status()
             except requests.exceptions.SSLError as e:
-                print(f"SSL 错误发生: {e}")
+                logger.error(f"SSL 错误发生: {e}")
                 return {
                     "status": "failed",
                     "msg": self.tr(
@@ -960,8 +911,6 @@ class Update(BaseUpdate):
             logger.debug("清理临时文件")
             self.remove_temp_files(os.path.join(os.getcwd(), "hotfix"))
 
-            self.check_interface_change()
-
             logger.info("更新流程完成")
             signalBus.resource_exist.emit(True)
             signalBus.update_download_finished.emit(
@@ -1088,7 +1037,6 @@ class DownloadBundle(BaseUpdate):
 # endregion
 
 
-
 # region 更新自身
 class UpdateSelf(BaseUpdate):
     def run(self):
@@ -1159,7 +1107,6 @@ class UpdateSelf(BaseUpdate):
                     encoding="utf-8",
                 ) as f:
                     f.write(" ".join(version_data))
-                    print(" ".join(version_data))
                 return
             except Exception as e:
                 logger.exception("版本文件更新失败")
