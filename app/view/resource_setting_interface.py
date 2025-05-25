@@ -34,7 +34,7 @@ import os
 import shutil
 from qfluentwidgets import FluentIcon as FIF
 from qfluentwidgets import InfoBar
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QWidget, QLabel, QFileDialog
 
 from ..common.config import cfg
@@ -316,6 +316,15 @@ class ResourceSettingInterface(ScrollArea):
         if data_dict.get("start_task_inmediately", False):
             signalBus.start_task_inmediately.emit()
 
+    def lock_cfg(self):
+        self.res_setting.combox.setDisabled(True)
+        self.cfg_setting.combox.setDisabled(True)
+        QTimer.singleShot(500, self.unlock_cfg)
+
+    def unlock_cfg(self):
+        self.res_setting.combox.setDisabled(False)
+        self.cfg_setting.combox.setDisabled(False)
+
     def add_config(self, config_name=None):
         """添加新的配置"""
         if cfg.get(cfg.resource_exist):
@@ -434,6 +443,7 @@ class ResourceSettingInterface(ScrollArea):
             self.update_config_path(config_name)
 
         signalBus.resource_exist.emit(True)
+        self.lock_cfg()
         signalBus.title_changed.emit()
         signalBus.update_finished_action.emit()
         self.clear_content()
@@ -476,7 +486,6 @@ class ResourceSettingInterface(ScrollArea):
         if cfg.get(cfg.auto_update_resource):
             logger.debug("res_changed发送信号")
             signalBus.auto_update.emit()
-        signalBus.task_output_sync.emit({"type": "reinit"})
 
     def res_delete(self):
         """删除当前选定的资源"""
