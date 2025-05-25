@@ -163,8 +163,13 @@ class BaseUpdate(QThread):
         """
         发送 GET 请求并返回响应。
         """
+        #如果存在NO_SSL文件
+        if os.path.exists("NO_SSL"):
+            verify = False
+        else:
+            verify = True
         try:
-            response = requests.get(url)
+            response = requests.get(url,verify=verify)
 
         except requests.exceptions.SSLError as e:
             logger.error(f"更新检查失败: {e}")
