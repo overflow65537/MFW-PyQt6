@@ -41,6 +41,14 @@ def clear_zip_file():
             log_file.write(error_message + "\n")
 
 
+# win macos linux 关闭MFW-ChainFlow Assistant
+if sys.platform.startswith("win32"):
+    subprocess.Popen("taskkill /F /IM MFW.exe")
+elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
+    subprocess.Popen("pkill MFW")
+    if os.path.exists("MFW.pid"):
+        os.remove("MFW.pid")
+
 # 倒计时从4秒开始，逐秒减少到1秒
 for i in range(4, 0, -1):
     print(f"update will start in {i} seconds...")
@@ -62,7 +70,9 @@ if os.path.exists(zip_file_name):
                     zip_ref.extract(file_info, os.getcwd())
                     print(f"Extracted: {file_info.filename}")
                 except PermissionError as e:
-                    error_message = f"Permission denied while extracting {file_info.filename}: {e}"
+                    error_message = (
+                        f"Permission denied while extracting {file_info.filename}: {e}"
+                    )
                     with open("ERROR.log", "a") as log_file:
                         log_file.write(error_message + "\n")
     except zipfile.BadZipFile:
@@ -71,7 +81,7 @@ if os.path.exists(zip_file_name):
             log_file.write(error_message + "\n")
         clear_zip_file()
 
-#删除ZIP文件
+# 删除ZIP文件
 clear_zip_file()
 # 重启程序
 if sys.platform.startswith("win32"):
