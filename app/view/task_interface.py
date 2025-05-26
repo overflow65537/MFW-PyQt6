@@ -137,15 +137,18 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         inconsistent_tasks = []  # 存储不一致的任务名称
 
-        for cfg_task in config_tasks:
+        # for同时获取配置任务的序号
+        for i, cfg_task in enumerate(config_tasks):
             task_name = cfg_task.get("name", "")
             task_option = cfg_task.get("option", [])
             if not task_name:
-                continue  # 如果任务名称为空，跳过
+                self.Task_List.takeItem(i)  # 删除空任务
+                continue
 
             # 检查任务是否存在于 interface 模板
             if task_name not in task_keys:
                 inconsistent_tasks.append(task_name)
+                self.Task_List.takeItem(i)
                 continue
             for cfg_option in task_option:
                 # 检查选项是否存在于 interface 模板
@@ -153,6 +156,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     inconsistent_tasks.append(
                         task_name + "-" + cfg_option.get("name", "")
                     )
+                    self.Task_List.takeItem(i)
                     continue
                 case_list = self.get_option_case_names(
                     interface_data, cfg_option.get("name", "")
@@ -166,6 +170,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         + "-"
                         + cfg_option.get("value", "")
                     )
+                    self.Task_List.takeItem(i)
                     continue
 
         # 输出结果
