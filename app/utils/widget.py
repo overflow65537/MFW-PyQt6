@@ -386,7 +386,6 @@ class NoticeType(QDialog):
 
     def save_dingtalk_fields(self):
         """保存钉钉相关的输入框"""
-
         cfg.set(cfg.Notice_DingTalk_url, self.dingtalk_url_input.text())
         cfg.set(cfg.Notice_DingTalk_secret, self.dingtalk_secret_input.text())
         cfg.set(cfg.Notice_DingTalk_status, self.dingtalk_status_switch.isChecked())
@@ -445,6 +444,9 @@ class NoticeType(QDialog):
         self.main_layout.addRow(dingtalk_secret_title, self.dingtalk_secret_input)
         self.main_layout.addRow(dingtalk_status_title, self.dingtalk_status_switch)
 
+        self.dingtalk_url_input.textChanged.connect(self.save_dingtalk_fields)
+        self.dingtalk_secret_input.textChanged.connect(self.save_dingtalk_fields)
+
     def add_lark_fields(self):
         """添加飞书相关的输入框"""
         lark_url_title = BodyLabel(self)
@@ -465,6 +467,9 @@ class NoticeType(QDialog):
         self.main_layout.addRow(lark_url_title, self.lark_url_input)
         self.main_layout.addRow(lark_secret_title, self.lark_secret_input)
         self.main_layout.addRow(lark_status_title, self.lark_status_switch)
+
+        self.lark_url_input.textChanged.connect(self.save_lark_fields)
+        self.lark_secret_input.textChanged.connect(self.save_lark_fields)
 
     def add_qmsg_fields(self):
         """添加 Qmsg 相关的输入框"""
@@ -497,6 +502,11 @@ class NoticeType(QDialog):
         self.main_layout.addRow(user_qq_title, self.user_qq_input)
         self.main_layout.addRow(robot_qq_title, self.robot_qq_input)
         self.main_layout.addRow(qmsg_status_title, self.qmsg_status_switch)
+
+        self.sever_input.textChanged.connect(self.save_qmsg_fields)
+        self.key_input.textChanged.connect(self.save_qmsg_fields)
+        self.user_qq_input.textChanged.connect(self.save_qmsg_fields)
+        self.robot_qq_input.textChanged.connect(self.save_qmsg_fields)
 
     def add_smtp_fields(self):
         """添加 SMTP 相关的输入框"""
@@ -535,6 +545,12 @@ class NoticeType(QDialog):
         self.main_layout.addRow(receive_mail_title, self.receive_mail_input)
         self.main_layout.addRow(smtp_status_title, self.smtp_status_switch)
 
+        self.server_address_input.textChanged.connect(self.save_smtp_fields)
+        self.server_port_input.textChanged.connect(self.save_smtp_fields)
+        self.user_name_input.textChanged.connect(self.save_smtp_fields)
+        self.password_input.textChanged.connect(self.save_smtp_fields)
+        self.receive_mail_input.textChanged.connect(self.save_smtp_fields)
+
     def add_wxpusher_fields(self):
         """添加 WxPusher 相关的输入框"""
         wxpusher_spt_title = BodyLabel(self)
@@ -552,6 +568,8 @@ class NoticeType(QDialog):
         self.main_layout.addRow(wxpusher_spt_title, self.wxpusher_spt_input)
         self.main_layout.addRow(wxpusher_status_title, self.wxpusher_status_switch)
 
+        self.wxpusher_spt_input.textChanged.connect(self.save_wxpusher_fields)
+
     def add_qywx_fields(self):
         """添加 企业微信机器人 相关的输入框"""
         qywx_key_title = BodyLabel(self)
@@ -568,6 +586,8 @@ class NoticeType(QDialog):
 
         self.main_layout.addRow(qywx_key_title, self.qywx_key_input)
         self.main_layout.addRow(qywx_status_title, self.qywx_status_switch)
+
+        self.qywx_key_input.textChanged.connect(self.save_qywx_fields)
 
     def on_ok(self):
         self.save_noticetype()
@@ -1288,13 +1308,13 @@ class ComboBoxSettingCardCustom(SettingCard):
         self.mode = mode
         self.mapping = mapping
         if controller:
-            self.controller:str = controller
+            self.controller: str = controller
         else:
-            self.controller :str= ""
+            self.controller: str = ""
         if controller_type:
-            self.controller_type :str= controller_type
+            self.controller_type: str = controller_type
         else:
-            self.controller_type :str= ""
+            self.controller_type: str = ""
 
         # 创建ComboBox并添加到布局
         self.comboBox = ComboBox(self)
