@@ -53,7 +53,7 @@ class DingTalk:
         msg = {
             "msgtype": "markdown",
             "markdown": {
-                "title": msg_dict["Title"],
+                "title": msg_dict["title"],
                 "text": msg_text,
             },
         }
@@ -68,7 +68,7 @@ class DingTalk:
         if url == "":
             logger.error("DingTalk 通知地址为空")
             cfg.set(cfg.Notice_DingTalk_status, False)
-            return [url]  
+            return [url]
         if secret == "":
             logger.error("DingTalk 密钥为空")
             cfg.set(cfg.Notice_DingTalk_status, False)
@@ -219,16 +219,12 @@ class WxPusher:
         else:
             return True
 
+
 class QYWX:
     def msg(self, msg_dict: dict) -> dict:
         sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
         msg_text = f"{sendtime}: {msg_dict["text"]}"
-        msg = {
-            "msgtype": "text",
-            "text": {
-                "content": msg_dict["title"] + msg_text
-            }
-        }
+        msg = {"msgtype": "text", "text": {"content": msg_dict["title"] + msg_text}}
         return msg
 
     def send(self, msg_type: dict) -> bool:
@@ -276,7 +272,7 @@ def dingtalk_send(
     except Exception as e:
         if response is not None:
             logger.error(f"DingTalk 发送失败 {response.json()}")
-        else:   
+        else:
             logger.error(f"DingTalk 发送失败 {e}")
         cfg.set(cfg.Notice_DingTalk_status, False)
         signalBus.Notice_msg.emit(f"DingTalk Failed")
@@ -373,6 +369,7 @@ def WxPusher_send(
     else:
         logger.info(f"WxPusher 未启用")
         return False
+
 
 def QYWX_send(
     msg_dict: dict[str, str] = {"title": "Test", "text": "Test"}, status: bool = False
