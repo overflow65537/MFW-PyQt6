@@ -152,7 +152,7 @@ class Ui_TaskCooldown_Interface(object):
 
         self.time_selection_layout.addWidget(self.current_loop_label)
         self.time_selection_layout.addWidget(self.current_loop_input)
-        self.main_layout.addLayout(self.time_selection_layout)
+        self.layout.addLayout(self.time_selection_layout)
 
         self.row4_layout = QHBoxLayout()
 
