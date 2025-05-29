@@ -19,7 +19,7 @@
 # This file incorporates work covered by the following copyright and
 # permission notice:
 #
-#     AUTO_MAA Copyright (C) 2022-2024 DLmaster361
+#     AUTO_MAA Copyright (C) 2024-2025 DLmaster361
 #     https://github.com/DLmaster361/AUTO_MAA
 
 
