@@ -76,7 +76,7 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
                         "maa_pi_config.json",
                     ),
                 )
-                
+
                 cfg.set(cfg.maa_resource_path, os.getcwd())
                 cfg.set(
                     cfg.maa_config_list,
@@ -151,13 +151,6 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
                 cfg.set(cfg.maa_config_path, maa_config_list[maa_resource_name][config])
                 maa_config_name = config
                 maa_config_path = maa_config_list[maa_resource_name][config]
-            else:
-                cfg.set(cfg.maa_config_name, "default")
-                cfg.set(
-                    cfg.maa_config_path, maa_config_list[maa_resource_name]["default"]
-                )
-                maa_config_name = "default"
-                maa_config_path = maa_config_list[maa_resource_name]["default"]
             cfg.set(cfg.run_after_startup_arg, False)
             if directly:
                 logger.info("检查到 -d 参数,直接启动")
