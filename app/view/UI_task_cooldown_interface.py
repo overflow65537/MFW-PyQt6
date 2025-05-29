@@ -36,9 +36,9 @@ from qfluentwidgets import (
 )
 
 
-class Ui_Scheduled_Interface(object):
+class Ui_TaskCooldown_Interface(object):
     def setupUi(self, Scheduled_Interface):
-        Scheduled_Interface.setObjectName("Scheduled_Interface")
+        Scheduled_Interface.setObjectName("TaskCooldown_Interface")
         Scheduled_Interface.resize(900, 600)
         Scheduled_Interface.setMinimumSize(QSize(0, 0))
         # 主窗口
@@ -177,8 +177,6 @@ class Ui_Scheduled_Interface(object):
         self.button_layout.addWidget(self.confirm_button)
         self.main_layout.addLayout(self.button_layout)
 
-        # 第四行：五个标签的垂直布局,可能会当教程使用
-
         # 添加一条横线
         self.Hline1 = QFrame()
         self.Hline1.setFrameShape(QFrame.Shape.HLine)
@@ -186,6 +184,15 @@ class Ui_Scheduled_Interface(object):
         self.main_layout.addWidget(self.Hline1)
         self.notic_label = BodyLabel()
         self.main_layout.addWidget(self.notic_label)
+        self.main_layout.addStretch()
+
+        # 第四行：一个label
+        self.label = BodyLabel()
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.main_layout.addWidget(self.label)
+        self.label.setText("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        # 自动换行
+        self.label.setWordWrap(True)
         self.main_layout.addStretch()
 
         # 添加一条竖线

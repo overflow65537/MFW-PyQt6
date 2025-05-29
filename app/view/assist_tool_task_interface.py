@@ -69,10 +69,10 @@ class HorizontalScrollArea(ScrollArea):
         event.accept()
 
 
-class ContinuousTaskInterface(QWidget):
+class AssistToolTaskInterface(QWidget):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setObjectName("Continuous_Task_Interface")
+        self.setObjectName("Assist_Tool_Task_Interface")
         # 新增：魔法变量存储当前页面信息（索引+实例）
         self.current_page_info: Optional[Dict[str, TaskDetailPage]] = None
 
@@ -310,9 +310,9 @@ class ContinuousTaskInterface(QWidget):
                 filtered_idx += 1
         if filtered_idx == 0:
             logger.warning("没有可用的SPT任务")
-            QTimer.singleShot(500, lambda: signalBus.show_continuous_task.emit(False))
+            QTimer.singleShot(500, lambda: signalBus.show_AssistTool_task.emit(False))
         else:
-            signalBus.show_continuous_task.emit(True)
+            signalBus.show_AssistTool_task.emit(True)
 
         # 初始显示第一个任务页面
         if self.script_list:

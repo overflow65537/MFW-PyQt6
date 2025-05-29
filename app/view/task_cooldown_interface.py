@@ -24,7 +24,7 @@ MFW-ChainFlow Assistant 计划任务逻辑
 
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt
-from .UI_scheduled_interface import Ui_Scheduled_Interface
+from .UI_task_cooldown_interface import Ui_TaskCooldown_Interface
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
 from ..utils.tool import Get_Values_list_Option, Save_Config
@@ -45,7 +45,7 @@ from ..common.typeddict import (
 )
 
 
-class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
+class TaskCooldownInterface(Ui_TaskCooldown_Interface, QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -60,7 +60,7 @@ class ScheduledInterface(Ui_Scheduled_Interface, QWidget):
     def bind_signals(self):
         """绑定信号槽函数"""
         signalBus.resource_exist.connect(self.resource_exist)
-        signalBus.ScheduledPageClicked.connect(self.change_target_task)
+        signalBus.TaskCooldownPageClicked.connect(self.change_target_task)
         self.daily_mode_radio.clicked.connect(lambda: self.change_layout("daily"))
         self.weekly_mode_radio.clicked.connect(lambda: self.change_layout("weekly"))
         self.monthly_mode_radio.clicked.connect(lambda: self.change_layout("monthly"))

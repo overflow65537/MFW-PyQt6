@@ -49,8 +49,8 @@ from qfluentwidgets import FluentIcon as FIF
 
 from .task_interface import TaskInterface
 from .resource_setting_interface import ResourceSettingInterface
-from .scheduled_interface import ScheduledInterface
-from .continuous_task_interface import ContinuousTaskInterface
+from .task_cooldown_interface import TaskCooldownInterface
+from .assist_tool_task_interface import AssistToolTaskInterface
 from .setting_interface import SettingInterface
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
@@ -72,8 +72,8 @@ class MainWindow(FluentWindow):
         # 创建子界面
         self.taskInterface = TaskInterface(self)
         self.resourceSettingInterface = ResourceSettingInterface(self)
-        self.scheduledInterface = ScheduledInterface(self)
-        self.continuousTaskInterface = ContinuousTaskInterface(self)
+        self.TaskCooldownInterface = TaskCooldownInterface(self)
+        self.AssistToolTaskInterface = AssistToolTaskInterface(self)
         self.settingInterface = SettingInterface(self)
 
         # 启用Fluent主题效果
@@ -81,8 +81,8 @@ class MainWindow(FluentWindow):
 
         self.connectSignalToSlot()
 
-        # 记录 ContinuousTaskInterface 导航项索引
-        self.continuous_task_nav_index = None
+        # 记录 AssistToolTaskInterface 导航项索引
+        self.AssistTool_task_nav_index = None
 
         # 添加导航项
         self.initNavigation()
@@ -235,7 +235,7 @@ class MainWindow(FluentWindow):
         signalBus.mirror_bundle_download_finished.connect(self.show_info_bar)
         signalBus.download_self_finished.connect(self.show_info_bar)
         signalBus.infobar_message.connect(self.show_info_bar)
-        signalBus.show_continuous_task.connect(self.toggle_continuous_task)
+        signalBus.show_AssistTool_task.connect(self.toggle_AssistTool_task)
 
     def initNavigation(self):
         """初始化导航界面。"""
@@ -248,16 +248,16 @@ class MainWindow(FluentWindow):
             FIF.FOLDER,
             self.tr("Resource Setting"),
         )
-        Scheduled = self.addSubInterface(
-            self.scheduledInterface,
+        TaskCooldown = self.addSubInterface(
+            self.TaskCooldownInterface,
             FIF.CALENDAR,
-            self.tr("Scheduled"),
+            self.tr("TaskCooldown"),
         )
-        Scheduled.clicked.connect(signalBus.ScheduledPageClicked)
+        TaskCooldown.clicked.connect(signalBus.TaskCooldownPageClicked)
         self.addSubInterface(
-            self.continuousTaskInterface,
+            self.AssistToolTaskInterface,
             FIF.ALBUM,
-            self.tr("Continuous Task"),
+            self.tr("Assis Tool Task"),
             NavigationItemPosition.SCROLL,
         )
         self.navigationInterface.addItem(
@@ -403,14 +403,14 @@ class MainWindow(FluentWindow):
                 lambda: self.windowEffect.setMicaEffect(self.winId(), isDarkTheme()),
             )
 
-    def toggle_continuous_task(self, show: bool):
-        """根据布尔值显示或隐藏 ContinuousTaskInterface 界面"""
+    def toggle_AssistTool_task(self, show: bool):
+        """根据布尔值显示或隐藏 AssistToolTaskInterface 界面"""
         if show:
             self.addSubInterface(
-                self.continuousTaskInterface,
+                self.AssistToolTaskInterface,
                 FIF.ALBUM,
-                self.tr("Continuous Task"),
+                self.tr("AssistTool Task"),
                 NavigationItemPosition.SCROLL,
             )
         else:
-            self.removeInterface(self.continuousTaskInterface)
+            self.removeInterface(self.AssistToolTaskInterface)
