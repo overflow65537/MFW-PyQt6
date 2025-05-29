@@ -18,7 +18,7 @@
 
 """
 MFW-ChainFlow Assistant
-MFW-ChainFlow Assistant 特殊任务界面
+MFW-ChainFlow Assistant 工具任务界面
 作者:overflow65537
 """
 
@@ -112,8 +112,11 @@ class ContinuousTaskInterface(QWidget):
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
         self.right_scroll_area.setStyleSheet("background: transparent; border: none;")
-        # 设置一个垂直布局为主布局
-        self.right_layout = QVBoxLayout(self.right_scroll_area)
+
+        self.content_widget = QWidget()
+        self.right_scroll_area.setWidget(self.content_widget)
+
+        self.right_layout = QVBoxLayout(self.content_widget)
         self.bottom_h_layout.addWidget(self.right_scroll_area, 2)
 
         self.Vlayout = QVBoxLayout(self)
@@ -237,15 +240,17 @@ class ContinuousTaskInterface(QWidget):
         # 插入到布局
         count = self.right_layout.count()
         if count >= 2:
-            # 插入到倒数第二个位置
+            # 插入到倒数第二个位置（避开最后的stretch）
             self.right_layout.insertWidget(count - 1, message)
         else:
             # 插入到第一个位置
             self.right_layout.insertWidget(0, message)
 
-        # 将滑动区域滚动到新插入的文本
-        self.scroll_area.verticalScrollBar().setValue(
-            self.scroll_area.verticalScrollBar().maximum()
+        QTimer.singleShot(
+            10,
+            lambda: self.right_scroll_area.verticalScrollBar().setValue(
+                self.right_scroll_area.verticalScrollBar().maximum()
+            ),
         )
 
     def clear_layout(self):

@@ -136,13 +136,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         )
 
         inconsistent_tasks = []  # 存储不一致的任务名称
-        
+
         # 遍历配置任务，检查每个任务和选项是否与 interface 模板一致
         for i, cfg_task in enumerate(config_tasks):
             task_name = cfg_task.get("name", "")
             task_option = cfg_task.get("option", [])
             if not task_name:
-                self.Task_List.setCurrentRow(i)  
+                self.Task_List.setCurrentRow(i)
                 self.Delete_Task()
                 self.Task_List.setCurrentRow(-1)
                 continue
@@ -603,9 +603,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             # 插入到第一个位置
             self.right_layout.insertWidget(0, message)
 
-        # 将滑动区域滚动到新插入的文本
-        self.scroll_area.verticalScrollBar().setValue(
-            self.scroll_area.verticalScrollBar().maximum()
+        # 将滑动区域滚动到最后
+        QTimer.singleShot(
+            10,
+            lambda: self.scroll_area.verticalScrollBar().setValue(
+                self.scroll_area.verticalScrollBar().maximum()
+            ),
         )
         sent_dict = {
             "type": "task_output_add",
