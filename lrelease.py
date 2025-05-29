@@ -22,27 +22,33 @@ MFW-ChainFlow Assistant i18n 翻译脚本
 作者:overflow65537
 """
 
-
 import os
 import subprocess
-import sys  # 新增：导入 sys 模块
-
-# 新增：通过 sys.argv 获取 lrelease 路径（默认使用系统中的 lrelease）
-lrelease_path = "lrelease.exe"  # 默认值
-if len(sys.argv) > 1:
-    if len(sys.argv) > 2:
-        print("错误：参数过多。使用方法：python lrelease.py [lrelease路径]")
-        sys.exit(1)
-    lrelease_path = sys.argv[1]  # 用户指定的路径
-    # 如果是文件夹
-    if os.path.isdir(lrelease_path):
-        lrelease_path = os.path.join(lrelease_path, "lrelease.exe")
+import json
 
 # 获取当前脚本所在的目录
 current_dir = os.path.dirname(os.path.abspath(__file__))
+# 定义 i18n.json 文件路径
+i18n_json_path = os.path.join(current_dir, "i18n.json")
+
+# 初始化 lrelease 路径，默认值
+lrelease_path = "lrelease.exe"
+
+# 尝试读取 i18n.json 文件
+if os.path.exists(i18n_json_path):
+    try:
+        with open(i18n_json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if "lrelease" in data:
+                lrelease_path = data["lrelease"]
+                # 如果是文件夹
+                if os.path.isdir(lrelease_path):
+                    lrelease_path = os.path.join(lrelease_path, "lrelease.exe")
+    except Exception as e:
+        print(f"读取 i18n.json 文件出错: {e}")
 
 # 定义要转换的 .ts 文件列表
-ts_files = ["i18n.zh_CN.ts", "i18n.zh_HK.ts"]
+ts_files = ["MFW_resource\i18n\i18n.zh_CN.ts", "MFW_resource\i18n\i18n.zh_HK.ts"]
 
 # 遍历每个 .ts 文件
 for ts_file in ts_files:
