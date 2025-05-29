@@ -352,6 +352,7 @@ class ResourceSettingInterface(ScrollArea):
                 self.create_new_config(config_name)
 
             self.cfg_changed()
+            self.lock_cfg()
         else:
             self.show_error(self.tr("Please add resources first."))
 
@@ -443,7 +444,6 @@ class ResourceSettingInterface(ScrollArea):
             self.update_config_path(config_name)
 
         signalBus.resource_exist.emit(True)
-        self.lock_cfg()
         signalBus.title_changed.emit()
         signalBus.update_finished_action.emit()
         self.clear_content()
@@ -487,6 +487,7 @@ class ResourceSettingInterface(ScrollArea):
             logger.debug("res_changed发送信号")
             signalBus.auto_update.emit()
         signalBus.task_output_sync.emit({"type": "reinit"})
+        self.lock_cfg()
 
     def res_delete(self):
         """删除当前选定的资源"""
@@ -562,7 +563,9 @@ class ResourceSettingInterface(ScrollArea):
             maa_config_data.config_name_list = list(
                 maa_config_data.config_data[maa_config_data.resource_name]
             )  # 配置名称列表
+            self.lock_cfg()
             self.refresh_combobox()
+
         else:
             logger.info(f" {config_name} 不存在")
             self.cfg_setting.combox.clear()
