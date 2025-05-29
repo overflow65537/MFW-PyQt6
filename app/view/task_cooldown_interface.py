@@ -25,7 +25,7 @@ MFW-ChainFlow Assistant 计划任务逻辑
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt
 from .UI_task_cooldown_interface import Ui_TaskCooldown_Interface
-from ..common.config import cfg
+from ..common.config import cfg, Language
 from ..common.signal_bus import signalBus
 from ..utils.tool import Get_Values_list_Option, Save_Config
 from qfluentwidgets import (
@@ -54,8 +54,36 @@ class TaskCooldownInterface(Ui_TaskCooldown_Interface, QWidget):
 
         self.bind_signals()
         self.init_widget_text()
+        self.init_notice()
         if cfg.get(cfg.resource_exist):
             self.resource_exist(True)
+
+    def init_notice(self):
+        """初始化通知标签"""
+        notice = ""
+        if cfg.get(cfg.language) is Language.CHINESE_SIMPLIFIED:
+            with open(
+                "./MFW_resource/doc/task_cooldown_instructions_zh_cn.html",
+                "r",
+                encoding="utf-8",
+            ) as f:
+                notice = f.read()
+        elif cfg.get(cfg.language) is Language.CHINESE_TRADITIONAL:
+            with open(
+                "./MFW_resource/doc/task_cooldown_instructions_zh_hk.html",
+                "r",
+                encoding="utf-8",
+            ) as f:
+                notice = f.read()
+
+        else:
+            with open(
+                "./MFW_resource/doc/task_cooldown_instructions_en_us.html",
+                "r",
+                encoding="utf-8",
+            ) as f:
+                notice = f.read()
+        self.notice_label.setText(notice)
 
     def bind_signals(self):
         """绑定信号槽函数"""

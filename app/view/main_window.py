@@ -351,7 +351,7 @@ class MainWindow(FluentWindow):
         """显示公告 MessageBox"""
         title = self.tr("Announcement")
 
-        with open("./MFW_resource/Announcement.md", "r", encoding="utf-8") as f:
+        with open("./MFW_resource/doc/Announcement.md", "r", encoding="utf-8") as f:
             gui_announced = f.read()
 
         try:

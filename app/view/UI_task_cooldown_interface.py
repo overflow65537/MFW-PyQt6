@@ -33,6 +33,7 @@ from qfluentwidgets import (
     CheckBox,
     SpinBox,
     ListWidget,
+    ScrollArea,
 )
 
 
@@ -182,18 +183,28 @@ class Ui_TaskCooldown_Interface(object):
         self.Hline1.setFrameShape(QFrame.Shape.HLine)
         self.Hline1.setFrameShadow(QFrame.Shadow.Sunken)
         self.main_layout.addWidget(self.Hline1)
-        self.notic_label = BodyLabel()
-        self.main_layout.addWidget(self.notic_label)
-        self.main_layout.addStretch()
 
-        # 第四行：一个label
-        self.label = BodyLabel()
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.main_layout.addWidget(self.label)
-        self.label.setText("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        # 自动换行
-        self.label.setWordWrap(True)
-        self.main_layout.addStretch()
+        # 第四行：一个滚动区域,里面是垂直布局的Qwidget,里面有一个bodylabel叫notice_label
+        self.scroll_area = ScrollArea(Scheduled_Interface)
+        self.scroll_area.setStyleSheet("background-color: transparent;")
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self.scroll_area_content = QWidget()
+        self.scroll_area_content.setObjectName("scroll_area_content")
+        self.scroll_area_content.setStyleSheet(
+            "QWidget#scroll_area_content { background-color: transparent; }"
+        )
+        self.scroll_area_layout = QVBoxLayout(self.scroll_area_content)
+        self.scroll_area_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.scroll_area_layout.setContentsMargins(0, 0, 0, 0)
+        self.scroll_area_layout.setSpacing(0)
+        self.scroll_area.setWidget(self.scroll_area_content)
+        self.notice_label = BodyLabel()
+        self.notice_label.setWordWrap(True)
+        self.scroll_area_layout.addWidget(self.notice_label)
+        self.main_layout.addWidget(self.scroll_area)
 
         # 添加一条竖线
         self.Vline1 = QFrame()
