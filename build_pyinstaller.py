@@ -166,14 +166,16 @@ for file in ["README.md", "README-en.md", "LICENSE"]:
 
 
 # === 构建updater ===
-PyInstaller.__main__.run(
-    [
-        "updater.py",
-        "--name=MFWUpdater",
-        "--onefile",
-        "--clean",
-        "--noconfirm",  # 禁用确认提示
-        "--distpath",
-        os.path.join("dist", "MFW"),
-    ]
-)
+
+updater_command = [
+    "updater.py",
+    "--name=MFWUpdater",
+    "--onefile",
+    "--clean",
+    "--noconfirm",  # 禁用确认提示
+    "--distpath",
+    os.path.join("dist", "MFW"),
+]
+if sys.platform == "win32":
+    updater_command += ["--uac-admin"]
+PyInstaller.__main__.run(updater_command)

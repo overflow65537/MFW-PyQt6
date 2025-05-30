@@ -41,18 +41,35 @@ def clear_zip_file():
             log_file.write(error_message + "\n")
 
 
-# win macos linux 关闭MFW-ChainFlow Assistant
-if sys.platform.startswith("win32"):
-    subprocess.Popen("taskkill /F /IM MFW.exe")
-elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
-    subprocess.Popen("pkill MFW")
-    if os.path.exists("MFW.pid"):
-        os.remove("MFW.pid")
-
-# 倒计时从4秒开始，逐秒减少到1秒
 for i in range(4, 0, -1):
-    print(f"update will start in {i} seconds...")
+    print(f"update in {i} seconds")
     time.sleep(1)
+
+# 检查MFW-ChainFlow Assistant是否在运行,在运行的话尝试关闭
+if sys.platform.startswith("win32"):
+    try:
+        subprocess.run(["taskkill", "/F", "/IM", "MFW.exe"], check=True)
+    except subprocess.CalledProcessError as e:
+        error_message = f"Failed to close MFW.exe: {e}"
+        with open("ERROR.log", "a") as log_file:
+            log_file.write(error_message + "\n")
+elif sys.platform.startswith("linux"):
+    try:
+        subprocess.run(["pkill", "MFW.bin"], check=True)
+    except subprocess.CalledProcessError as e:
+        error_message = f"Failed to close MFW.bin: {e}"
+        with open("ERROR.log", "a") as log_file:
+            log_file.write(error_message + "\n")
+elif sys.platform.startswith("darwin"):
+    try:
+        subprocess.run(["pkill", "MFW"], check=True)
+    except subprocess.CalledProcessError as e:
+        error_message = f"Failed to close MFW: {e}"
+        with open("ERROR.log", "a") as log_file:
+            log_file.write(error_message + "\n")
+else:
+    sys.exit("Unsupported platform")
+
 
 # 读取版本文件
 with open(os.path.join(os.getcwd(), "config", "version.txt"), "r") as version_file:
