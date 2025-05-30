@@ -113,6 +113,21 @@ if os.path.exists(zip_file_name):
 
 # 删除ZIP文件
 clear_zip_file()
+if os.path.exists("changes.json"):
+    import json
+
+    with open("changes.json", "r") as f:
+        changes: dict = json.load(f)
+    delete_list = changes.get("deleted", [])
+    for i in delete_list:
+        try:
+            os.remove(i)
+            print(f"Deleted: {i}")
+        except:
+            error_message = f"failed to delete {i}"
+            with open("ERROR.log", "a") as log_file:
+                log_file.write(error_message + "\n")
+
 # 重启程序
 if sys.platform.startswith("win32"):
     subprocess.Popen(".\\MFW.exe")
