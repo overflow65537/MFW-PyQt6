@@ -62,7 +62,23 @@ elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
             log_file.write(error_message + "\n")
 else:
     sys.exit("Unsupported platform")
-
+# 关闭adb服务
+if sys.platform.startswith("win32"):
+    try:
+        subprocess.run(["taskkill", "/F", "/IM", "adb.exe"], check=True)
+    except subprocess.CalledProcessError as e:
+        error_message = f"Failed to close adb.exe: {e}"
+        with open("ERROR.log", "a") as log_file:
+            log_file.write(error_message + "\n")
+elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
+    try:
+        subprocess.run(["pkill", "adb"], check=True)
+    except subprocess.CalledProcessError as e:
+        error_message = f"Failed to close adb.exe: {e}"
+        with open("ERROR.log", "a") as log_file:
+            log_file.write(error_message + "\n")
+else:
+    sys.exit("Unsupported platform")
 
 # 读取版本文件
 with open(os.path.join(os.getcwd(), "config", "version.txt"), "r") as version_file:
@@ -87,18 +103,20 @@ if os.path.exists(zip_file_name):
                         log_file.write(error_message + "\n")
     except zipfile.BadZipFile:
         error_message = f"file {zip_file_name} is not a zip file"
-        with open("ERROR.log", "a") as log_file:
-            log_file.write(error_message + "\n")
-        clear_zip_file()
+        if sys.platform.startswith("win32"):
+            print(error_message)
+            os.system("pause")
+        elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
+            print(error_message)
+            input("Press Enter to continue...")
+        sys.exit(error_message)
 
 # 删除ZIP文件
 clear_zip_file()
 # 重启程序
 if sys.platform.startswith("win32"):
     subprocess.Popen(".\\MFW.exe")
-elif sys.platform.startswith("linux"):
-    subprocess.Popen("./MFW.bin")
-elif sys.platform.startswith("darwin"):
+elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
     subprocess.Popen("./MFW")
 else:
     sys.exit("Unsupported platform")

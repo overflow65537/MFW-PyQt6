@@ -42,7 +42,7 @@ def write_version_file(platform, architecture, version):
 # === 构建参数处理 ===
 print("[INFO] Received command line arguments:", sys.argv)
 if len(sys.argv) != 4:  # 参数校验：平台/架构/版本号
-    sys.argv = [sys.argv[0], "unknown", "unknown", "unknown"]
+    sys.argv = [sys.argv[0], "win", "x86_64", "v1.7.0"]
 platform = sys.argv[1]
 architecture = sys.argv[2]
 version = sys.argv[3]
@@ -176,6 +176,4 @@ updater_command = [
     "--distpath",
     os.path.join("dist", "MFW"),
 ]
-if sys.platform == "win32":
-    updater_command += ["--uac-admin"]
 PyInstaller.__main__.run(updater_command)

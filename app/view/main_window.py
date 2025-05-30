@@ -182,7 +182,7 @@ class MainWindow(FluentWindow):
     def show_info_bar(self, data_dict: dict):
         """显示信息栏"""
         duration = max(len(data_dict.get("msg", "")) * 100, 2000)
-        if data_dict["status"] == "failed":
+        if data_dict["status"] in ["failed", "failed_info"]:
             InfoBar.error(
                 title=self.tr("Error"),
                 content=data_dict.get("msg", ""),
@@ -196,7 +196,7 @@ class MainWindow(FluentWindow):
                 duration=duration,
                 parent=self,
             )
-        elif data_dict["status"] == "success":
+        elif data_dict["status"] in ["success", "no_need"]:
             InfoBar.success(
                 title=self.tr("Success"),
                 content=data_dict.get("msg", ""),
@@ -206,20 +206,6 @@ class MainWindow(FluentWindow):
         elif data_dict["status"] == "info":
             InfoBar.info(
                 title=self.tr("Info"),
-                content=data_dict.get("msg", ""),
-                duration=duration,
-                parent=self,
-            )
-        elif data_dict["status"] == "failed_info":
-            InfoBar.error(
-                title=self.tr("Error"),
-                content=data_dict.get("msg", ""),
-                duration=duration,
-                parent=self,
-            )
-        elif data_dict["status"] == "no_need":
-            InfoBar.success(
-                title=self.tr("Success"),
                 content=data_dict.get("msg", ""),
                 duration=duration,
                 parent=self,

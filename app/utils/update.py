@@ -54,8 +54,13 @@ class BaseUpdate(QThread):
     def download_file(self, url, file_path, progress_signal: SignalInstance):
         need_clear_update = False
         response = None
+        if os.path.exists("NO_SSL"):
+            verify = False
+            logger.debug("检测到NO_SSL文件，跳过SSL验证")
+        else:
+            verify = True
         try:
-            response = requests.get(url, stream=True)
+            response = requests.get(url, stream=True, verify=verify, timeout=10)
             response.raise_for_status()
             total_size = int(response.headers.get("content-length", 0))
             downloaded_size = 0
@@ -652,7 +657,7 @@ class Update(BaseUpdate):
             try:
                 url = f"https://api.github.com/repos/{username}/{repository}/releases/latest"
                 logger.info(f"开始GitHub更新检查 [URL: {url}]")
-                response = requests.get(url, verify = verify,timeout=10)
+                response = requests.get(url, verify=verify, timeout=10)
                 response.raise_for_status()
             except requests.exceptions.SSLError as e:
                 logger.error(f"SSL 错误发生: {e}")
@@ -963,11 +968,16 @@ class DownloadBundle(BaseUpdate):
             return
 
         url = for_config_get_url(self.project_url, "download")
+        if os.path.exists("NO_SSL"):
+            verify = False
+            logger.debug("检测到NO_SSL文件，跳过SSL验证")
+        else:
+            verify = True
 
         try:
             if url is None:
                 raise ValueError("URL is empty or invalid.")
-            response = requests.get(url)
+            response = requests.get(url, verify=verify, timeout=10)
             response.raise_for_status()
             content = response.json()
             logger.debug(f"更新检查结果: {content}")

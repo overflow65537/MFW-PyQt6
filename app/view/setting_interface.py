@@ -642,12 +642,17 @@ class SettingInterface(ScrollArea):
     def update_self_start(self):
         """开始更新程序。"""
         # 重命名更新程序防止占用
-        if sys.platform.startswith("win32"):
-            self._rename_updater("MFWUpdater.exe", "MFWUpdater1.exe")
-        elif sys.platform.startswith("darwin"):
-            self._rename_updater("MFWUpdater", "MFWUpdater1")
-        elif sys.platform.startswith("linux"):
-            self._rename_updater("MFWupdater.bin", "MFWupdater1.bin")
+        try:
+            if sys.platform.startswith("win32"):
+                self._rename_updater("MFWUpdater.exe", "MFWUpdater1.exe")
+            elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
+                self._rename_updater("MFWUpdater", "MFWUpdater1")
+        except Exception as e:
+            logger.error(f"重命名更新程序失败: {e}")
+            signalBus.infobar_message.emit(
+                {"status": "failed", "msg": e}
+            )
+            return
 
         # 启动更新程序
         self._start_updater()
@@ -664,23 +669,19 @@ class SettingInterface(ScrollArea):
 
     def _start_updater(self):
         """启动更新程序。"""
-        if sys.platform.startswith("win32"):
-            subprocess.Popen(["./MFWUpdater1.exe"])
-        elif sys.platform.startswith("linux"):
-            subprocess.Popen(["./MFWupdater1.bin"])
-        elif sys.platform.startswith("darwin"):
-            subprocess.Popen(["./MFWUpdater1"])
-        else:
-            raise NotImplementedError("Unsupported platform")
-        with open(
-            os.path.join(os.getcwd(), "config", "version.txt"), "r", encoding="utf-8"
-        ) as f:
-            version_data = f.read().split()
-        version_data[2] = version_data[3]
-        with open(
-            os.path.join(os.getcwd(), "config", "version.txt"), "w", encoding="utf-8"
-        ) as f:
-            f.write(" ".join(version_data))
+        try:
+            if sys.platform.startswith("win32"):
+                subprocess.Popen(["./MFWUpdater1.exe"])
+            elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
+                subprocess.Popen(["./MFWUpdater1"])
+            else:
+                raise NotImplementedError("Unsupported platform")
+        except Exception as e:
+            logger.error(f"启动更新程序失败: {e}")
+            signalBus.infobar_message.emit(
+                {"status": "failed", "msg": e}
+            )
+            return
 
         logger.info("正在启动更新程序")
 
