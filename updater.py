@@ -53,14 +53,7 @@ if sys.platform.startswith("win32"):
         error_message = f"Failed to close MFW.exe: {e}"
         with open("ERROR.log", "a") as log_file:
             log_file.write(error_message + "\n")
-elif sys.platform.startswith("linux"):
-    try:
-        subprocess.run(["pkill", "MFW.bin"], check=True)
-    except subprocess.CalledProcessError as e:
-        error_message = f"Failed to close MFW.bin: {e}"
-        with open("ERROR.log", "a") as log_file:
-            log_file.write(error_message + "\n")
-elif sys.platform.startswith("darwin"):
+elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
     try:
         subprocess.run(["pkill", "MFW"], check=True)
     except subprocess.CalledProcessError as e:
