@@ -31,6 +31,7 @@ import urllib.parse
 import requests
 import smtplib
 from email.mime.text import MIMEText
+from PySide6.QtCore import QThread,Signal
 
 from ..common.signal_bus import signalBus
 from ..common.config import cfg
@@ -149,9 +150,7 @@ class SMTP:
         self.send_mail = cfg.get(cfg.Notice_SMTP_user_name)
         self.receive_mail = cfg.get(cfg.Notice_SMTP_receive_mail)
         self.sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
-
-        self.Open_SSL = True  # TODO
-        self.Open_Login = True  # TODO
+        self.used_ssl = cfg.get(cfg.Notice_SMTP_used_ssl)
 
     def msg(self, msg_dict: dict) -> MIMEText:
         msg_text = f"{self.sendtime}: " + msg_dict["text"]
@@ -167,16 +166,17 @@ class SMTP:
         try:
             port = int(self.sever_port)
         except ValueError:
-            logger.error("SMTP 端口号不是有效的整数，使用默认端口 465")
-            port = 465
-
-        if self.Open_SSL and port == 443:
-            smtp = smtplib.SMTP_SSL(self.sever_address, port)
-        else:
-            smtp = smtplib.SMTP(self.sever_address, port)
-
-        if self.Open_Login:
-            smtp.login(self.uesr_name, self.password)
+            logger.error(f"SMTP 端口号 {self.sever_port} 不是有效的整数")
+            return False
+        try:
+            if self.used_ssl:
+                smtp = smtplib.SMTP_SSL(self.sever_address, port)
+                smtp.login(self.uesr_name, self.password)
+            else:
+                smtp = smtplib.SMTP(self.sever_address, port,timeout=1)
+        except Exception as e:
+            logger.error(f"SMTP 连接失败: {e}")
+            return False
 
         try:
             smtp.sendmail(self.send_mail, self.receive_mail, msg.as_string())
@@ -338,19 +338,20 @@ def SMTP_send(
     if status:
         app = SMTP()
         status = app.send(msg_dict=msg_dict)
-        if status:  # 发送正常情况下，返回值应为 {}
+        if status: 
+            logger.info(f"SMTP 发送成功")
+            signalBus.Notice_msg.emit(f"SMTP success")
+            return True
+        else:
             logger.error(f"SMTP 发送失败 {status}")
             cfg.set(cfg.Notice_SMTP_status, False)
             signalBus.Notice_msg.emit(f"SMTP failed")
             return False
-        else:
-            logger.info(f"SMTP 发送成功")
-            signalBus.Notice_msg.emit(f"SMTP success")
-            return True
+           
     else:
         logger.info(f"SMTP 未启用")
         return False
-
+    
 
 def WxPusher_send(
     msg_dict: dict[str, str] = {"title": "Test", "text": "Test"}, status: bool = False

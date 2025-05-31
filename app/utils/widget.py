@@ -22,6 +22,7 @@ MFW-ChainFlow Assistant 组件
 作者:overflow65537
 """
 
+from tabnanny import check
 from PySide6.QtWidgets import (
     QMessageBox,
     QVBoxLayout,
@@ -73,6 +74,7 @@ from qfluentwidgets import (
     qconfig,
     FluentIconBase,
     EditableComboBox,
+    CheckBox,
 )
 from qfluentwidgets import FluentIcon as FIF
 
@@ -408,6 +410,7 @@ class NoticeType(QDialog):
         """保存 SMTP 相关的输入框"""
         cfg.set(cfg.Notice_SMTP_sever_address, self.server_address_input.text())
         cfg.set(cfg.Notice_SMTP_sever_port, self.server_port_input.text())
+        cfg.set(cfg.Notice_SMTP_used_ssl, self.used_ssl.isChecked())
         cfg.set(cfg.Notice_SMTP_user_name, self.user_name_input.text())
         cfg.set(cfg.Notice_SMTP_password, self.password_input.text())
         cfg.set(cfg.Notice_SMTP_receive_mail, self.receive_mail_input.text())
@@ -519,6 +522,7 @@ class NoticeType(QDialog):
 
         self.server_address_input = LineEdit(self)
         self.server_port_input = LineEdit(self)
+        self.used_ssl = CheckBox(self.tr("Use SSL"), self)
         self.user_name_input = LineEdit(self)
         self.password_input = PasswordLineEdit(self)
         self.receive_mail_input = LineEdit(self)
@@ -533,13 +537,18 @@ class NoticeType(QDialog):
 
         self.server_address_input.setText(cfg.get(cfg.Notice_SMTP_sever_address))
         self.server_port_input.setText(cfg.get(cfg.Notice_SMTP_sever_port))
+        self.used_ssl.setChecked(cfg.get(cfg.Notice_SMTP_used_ssl))
         self.user_name_input.setText(cfg.get(cfg.Notice_SMTP_user_name))
         self.password_input.setText(cfg.get(cfg.Notice_SMTP_password))
         self.receive_mail_input.setText(cfg.get(cfg.Notice_SMTP_receive_mail))
         self.smtp_status_switch.setChecked(cfg.get(cfg.Notice_SMTP_status))
 
+        self.port_field = QHBoxLayout()
+        self.port_field.addWidget(self.server_port_input)
+        self.port_field.addWidget(self.used_ssl)
+
         self.main_layout.addRow(server_address_title, self.server_address_input)
-        self.main_layout.addRow(server_port_title, self.server_port_input)
+        self.main_layout.addRow(server_port_title, self.port_field)
         self.main_layout.addRow(user_name_title, self.user_name_input)
         self.main_layout.addRow(password_title, self.password_input)
         self.main_layout.addRow(receive_mail_title, self.receive_mail_input)
@@ -547,6 +556,7 @@ class NoticeType(QDialog):
 
         self.server_address_input.textChanged.connect(self.save_smtp_fields)
         self.server_port_input.textChanged.connect(self.save_smtp_fields)
+        self.used_ssl.stateChanged.connect(self.save_smtp_fields)
         self.user_name_input.textChanged.connect(self.save_smtp_fields)
         self.password_input.textChanged.connect(self.save_smtp_fields)
         self.receive_mail_input.textChanged.connect(self.save_smtp_fields)

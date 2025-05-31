@@ -145,6 +145,7 @@ class Config(QConfig):
     Notice_SMTP_status = ConfigItem("Notice", "SMTP_status", False)
     Notice_SMTP_sever_address = ConfigItem("Notice", "SMTP_sever_address", "")
     Notice_SMTP_sever_port = ConfigItem("Notice", "SMTP_sever_port", "25")
+    Notice_SMTP_used_ssl = ConfigItem("Notice", "SMTP_used_ssl", False)
     Notice_SMTP_user_name = ConfigItem("Notice", "SMTP_uesr_name", "")
     Notice_SMTP_password = ConfigItem("Notice", "SMTP_password", "")
     Notice_SMTP_send_mail = ConfigItem("Notice", "SMTP_send_mail", "")
