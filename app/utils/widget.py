@@ -22,7 +22,6 @@ MFW-ChainFlow Assistant 组件
 作者:overflow65537
 """
 
-from tabnanny import check
 from PySide6.QtWidgets import (
     QMessageBox,
     QVBoxLayout,
@@ -94,7 +93,15 @@ from ..utils.tool import (
     rewrite_contorller,
     delete_contorller,
 )
-from ..utils.notice import lark_send, dingtalk_send, WxPusher_send, SMTP_send, QYWX_send
+from ..utils.notice import (
+    lark_send,
+    dingtalk_send,
+    WxPusher_send,
+    SMTP_send,
+    QYWX_send,
+    NoticeSendThread,
+)
+from ..utils.notice_enum import NoticeErrorCode
 from ..common.config import cfg
 from ..common.maa_config_data import maa_config_data
 from ..utils.update import DownloadBundle
@@ -303,6 +310,7 @@ class NoticeType(QDialog):
         # 连接按钮事件
         self.okButton.clicked.connect(self.on_ok)
         self.testButton.clicked.connect(self.bind_test_button)
+        signalBus.notice_finished.connect(self.notice_send_finished)
         self.clearButton.clicked.connect(self.on_clear)
 
     def bind_test_button(self):
@@ -321,18 +329,19 @@ class NoticeType(QDialog):
             send_method = notification_methods.get(self.notice_type)
 
             if send_method:
-                if send_method(test_msg, True):
-                    self.shwo_success(
-                        f"{self.notice_type}" + self.tr("send test message success")
-                    )
-                else:
-                    self.show_error(
-                        f"{self.notice_type}" + self.tr("send test message failed")
-                    )
+                self.testButton.setDisabled(True)
+                self.send_thread = NoticeSendThread(send_method, test_msg, True)
+                self.send_thread.start()
+            else:
+                logger.error(f"不支持的通知类型: {self.notice_type}")
+                self.show_error(f"不支持的通知类型: {self.notice_type}")
 
         except Exception as e:
             logger.error(f"测试 {self.notice_type} Error: {e}")
             self.show_error(str(e))
+
+    def notice_send_finished(self): 
+        self.testButton.setEnabled(True) 
 
     def show_error(self, error_message):
         InfoBar.error(
@@ -345,7 +354,7 @@ class NoticeType(QDialog):
             parent=self,
         )
 
-    def shwo_success(self, success_message):
+    def show_success(self, success_message):
         InfoBar.success(
             title=self.tr("Success"),
             content=success_message,

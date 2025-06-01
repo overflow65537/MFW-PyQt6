@@ -31,11 +31,12 @@ import urllib.parse
 import requests
 import smtplib
 from email.mime.text import MIMEText
-from PySide6.QtCore import QThread,Signal
+from PySide6.QtCore import QThread
 
 from ..common.signal_bus import signalBus
 from ..common.config import cfg
 from ..utils.logger import logger
+from ..utils.notice_enum import NoticeErrorCode
 
 
 class DingTalk:
@@ -161,29 +162,30 @@ class SMTP:
 
         return msg
 
-    def send(self, msg_dict: dict) -> bool:
+    def send(self, msg_dict: dict) -> NoticeErrorCode:  
         msg = self.msg(msg_dict)
         try:
             port = int(self.sever_port)
         except ValueError:
             logger.error(f"SMTP 端口号 {self.sever_port} 不是有效的整数")
-            return False
+            return NoticeErrorCode.SMTP_PORT_INVALID  
+
         try:
             if self.used_ssl:
                 smtp = smtplib.SMTP_SSL(self.sever_address, port)
                 smtp.login(self.uesr_name, self.password)
             else:
-                smtp = smtplib.SMTP(self.sever_address, port,timeout=1)
+                smtp = smtplib.SMTP(self.sever_address, port, timeout=1)
         except Exception as e:
             logger.error(f"SMTP 连接失败: {e}")
-            return False
+            return NoticeErrorCode.SMTP_CONNECT_FAILED  
 
         try:
             smtp.sendmail(self.send_mail, self.receive_mail, msg.as_string())
-            return True  # 发送成功返回 True
+            return NoticeErrorCode.SUCCESS 
         except Exception as e:
             logger.error(f"SMTP 发送邮件失败: {e}")
-            return False  # 发送失败返回 False
+            return NoticeErrorCode.NETWORK_ERROR  
         finally:
             smtp.quit()
 
@@ -191,7 +193,7 @@ class SMTP:
 class WxPusher:
     def msg(self, msg_dict: dict) -> dict:
         sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
-        msg_text = f"{sendtime}: {msg_dict["text"]}"
+        msg_text = f"{sendtime}: {msg_dict['text']}"  
         msg = {
             "content": msg_text,
             "summary": msg_dict["title"],
@@ -223,7 +225,7 @@ class WxPusher:
 class QYWX:
     def msg(self, msg_dict: dict) -> dict:
         sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
-        msg_text = f"{sendtime}: {msg_dict["text"]}"
+        msg_text = f"{sendtime}: {msg_dict['text']}"  
         msg = {"msgtype": "text", "text": {"content": msg_dict["title"] + msg_text}}
         return msg
 
@@ -245,147 +247,174 @@ class QYWX:
         else:
             return True
 
+class NoticeSendThread(QThread):
+    """通用通知发送线程类"""
+    def __init__(self, send_func, msg_dict: dict, status: bool) -> None:
+        super().__init__()
+        self.send_func = send_func
+        self.msg_dict = msg_dict
+        self.status = status
+
+    def run(self):
+        result = self.send_func(self.msg_dict, self.status)
+        #返回方法的string值
+        signalBus.notice_finished.emit(result,self.send_func.__name__)
 
 def dingtalk_send(
-    msg_text: dict = {"title": "Test", "text": "Test"}, status: bool = False
-) -> bool:
+    msg_dict: dict = {"title": "Test", "text": "Test"}, status: bool = False
+) -> NoticeErrorCode:  
     if not status:
         logger.info(f"DingTalk 未启用")
-        return False
-    APP = DingTalk()
+        return NoticeErrorCode.DISABLED
 
+    APP = DingTalk()
     url = APP.sign()[0]
-    msg = APP.msg(msg_text)
+    msg = APP.msg(msg_dict)
     headers = APP.headers
-    if url is None:
-        logger.error("dingtalk Url空")
+
+    if not url:
+        logger.error("DingTalk Url空")
         cfg.set(cfg.Notice_DingTalk_status, False)
-        return False
+        return NoticeErrorCode.PARAM_EMPTY
+
     if not re.match(APP.correct_url, url):
         logger.error(f"dingtalk Url不正确")
         cfg.set(cfg.Notice_DingTalk_status, False)
-        return False
+        return NoticeErrorCode.PARAM_INVALID
+
     response = None
     try:
         response = requests.post(url=url, headers=headers, json=msg)
         status_code = response.json()[APP.codename]
     except Exception as e:
-        if response is not None:
-            logger.error(f"DingTalk 发送失败 {response.json()}")
-        else:
-            logger.error(f"DingTalk 发送失败 {e}")
+        logger.error(f"DingTalk 发送失败: {e}{response.json() if response else ''}")
         cfg.set(cfg.Notice_DingTalk_status, False)
-        signalBus.Notice_msg.emit(f"DingTalk Failed")
-        return False
+        return NoticeErrorCode.NETWORK_ERROR
 
     if status_code != APP.code:
-        logger.error(f"DingTalk 发送失败 {response.json()}")
+        logger.error(f"DingTalk 发送失败: {response.json()}")
         cfg.set(cfg.Notice_DingTalk_status, False)
-        signalBus.Notice_msg.emit(f"DingTalk Failed")
-        return False
-    else:
-        logger.info(f"DingTalk 发送成功")
-        signalBus.Notice_msg.emit(f"DingTalk success")
-        return True
+        return NoticeErrorCode.RESPONSE_ERROR
+
+    logger.info(f"DingTalk 发送成功")
+    return NoticeErrorCode.SUCCESS
 
 
 def lark_send(
     msg_dict: dict = {"title": "Test", "text": "Test"}, status: bool = False
-) -> bool:
+) -> NoticeErrorCode:  
     if not status:
         logger.info(f"Lark 未启用")
-        return False
-    APP = Lark()
+        return NoticeErrorCode.DISABLED  
 
+    APP = Lark()
     url = APP.sign()[0]
     msg = APP.msg(msg_dict)
     headers = APP.headers
-    if url is None:
+
+    if not url:
         logger.error("Lark Url空")
         cfg.set(cfg.Notice_Lark_status, False)
-        signalBus.Notice_msg.emit("Lark Failed")
-        return False
+        return NoticeErrorCode.PARAM_EMPTY  
+
     if not re.match(APP.correct_url, url):
         logger.error(f"Lark Url不正确")
         cfg.set(cfg.Notice_Lark_status, False)
-        signalBus.Notice_msg.emit("Lark Failed")
-        return False
+        return NoticeErrorCode.PARAM_INVALID  
+
     response = None
     try:
         response = requests.post(url=url, headers=headers, json=msg)
         status_code = response.json()[APP.codename]
     except Exception as e:
-        if response is not None:
-            logger.error(f"Lark 发送失败 {response.json()}")
-        else:
-            logger.error(f"Lark 发送失败 {e}")
-        signalBus.Notice_msg.emit(f"Lark failed")
-        return False
+        logger.error(f"Lark 发送失败: {e}{response.json() if response else ''}")
+        cfg.set(cfg.Notice_Lark_status, False)
+        return NoticeErrorCode.NETWORK_ERROR  
 
     if status_code != APP.code:
-        logger.error(f"Lark 发送失败 {response.json()}")
-        signalBus.Notice_msg.emit(f"Lark failed")
-        return False
-    else:
-        logger.info(f"Lark 发送成功")
-        signalBus.Notice_msg.emit(f"Lark success")
-        return True
+        logger.error(f"Lark 发送失败: {response.json()}")
+        cfg.set(cfg.Notice_Lark_status, False)
+        return NoticeErrorCode.RESPONSE_ERROR 
+
+    logger.info(f"Lark 发送成功")
+    return NoticeErrorCode.SUCCESS  
 
 
 def SMTP_send(
     msg_dict: dict = {"title": "Test", "text": "Test"}, status: bool = False
-) -> bool:
-    if status:
-        app = SMTP()
-        status = app.send(msg_dict=msg_dict)
-        if status: 
-            logger.info(f"SMTP 发送成功")
-            signalBus.Notice_msg.emit(f"SMTP success")
-            return True
-        else:
-            logger.error(f"SMTP 发送失败 {status}")
-            cfg.set(cfg.Notice_SMTP_status, False)
-            signalBus.Notice_msg.emit(f"SMTP failed")
-            return False
-           
-    else:
+) -> NoticeErrorCode:  
+    if not status:
         logger.info(f"SMTP 未启用")
-        return False
-    
+        return NoticeErrorCode.DISABLED  
+
+    app = SMTP()
+    result = app.send(msg_dict)  # 获取枚举结果
+
+    if result == NoticeErrorCode.SUCCESS:
+        logger.info(f"SMTP 发送成功")
+    else:
+        logger.error(f"SMTP 发送失败 (Error: {result.name})")
+        cfg.set(cfg.Notice_SMTP_status, False)
+
+    return result
 
 def WxPusher_send(
     msg_dict: dict[str, str] = {"title": "Test", "text": "Test"}, status: bool = False
-) -> bool:
-    if status:
-        status = WxPusher().send(msg_dict)
-        if status:
-            logger.info(f"WxPusher 发送成功")
-            signalBus.Notice_msg.emit(f"WxPusher success")
-            return True
-        else:
-            cfg.set(cfg.Notice_WxPusher_status, False)
-            signalBus.Notice_msg.emit(f"WxPusher failed")
-            return False
-
-    else:
+) -> NoticeErrorCode:  
+    if not status:
         logger.info(f"WxPusher 未启用")
-        return False
+        return NoticeErrorCode.DISABLED  
+
+    app = WxPusher()
+    try:
+        response = requests.post(
+            url="https://wxpusher.zjiecode.com/api/send/message/simple-push",
+            json=app.msg(msg_dict)
+        )
+        status_code = response.json()["code"]
+    except Exception as e:
+        logger.error(f"WxPusher 发送失败: {e}")
+        cfg.set(cfg.Notice_WxPusher_status, False)
+        return NoticeErrorCode.NETWORK_ERROR  
+
+    if status_code != 1000:
+        logger.error(f"WxPusher 发送失败: {response.json()}")
+        cfg.set(cfg.Notice_WxPusher_status, False)
+        return NoticeErrorCode.RESPONSE_ERROR 
+
+    logger.info(f"WxPusher 发送成功")
+    return NoticeErrorCode.SUCCESS  
 
 
 def QYWX_send(
     msg_dict: dict[str, str] = {"title": "Test", "text": "Test"}, status: bool = False
-) -> bool:
-    if status:
-        status = QYWX().send(msg_dict)
-        if status:
-            logger.info(f"企业微信机器人消息 发送成功")
-            signalBus.Notice_msg.emit(f"QYWX success")
-            return True
-        else:
-            cfg.set(cfg.Notice_QYWX_status, False)
-            signalBus.Notice_msg.emit(f"QYWX failed")
-            return False
-
-    else:
+) -> NoticeErrorCode:  
+    if not status:
         logger.info(f"企业微信机器人消息 未启用")
-        return False
+        return NoticeErrorCode.DISABLED  
+
+    app = QYWX()
+    QYWX_KEY = cfg.get(cfg.Notice_QYWX_key)
+    if not QYWX_KEY:
+        logger.error("企业微信机器人Key为空")
+        cfg.set(cfg.Notice_QYWX_status, False)
+        return NoticeErrorCode.PARAM_EMPTY  
+
+    url = f"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={QYWX_KEY}"
+    msg = app.msg(msg_dict)
+
+    try:
+        response = requests.post(url=url, json=msg)
+        status_code = response.json()["errcode"]
+    except Exception as e:
+        logger.error(f"企业微信机器人消息 发送失败: {e}")
+        cfg.set(cfg.Notice_QYWX_status, False)
+        return NoticeErrorCode.NETWORK_ERROR  
+
+    if status_code != 0:
+        logger.error(f"企业微信机器人消息 发送失败: {response.json()}")
+        cfg.set(cfg.Notice_QYWX_status, False)
+        return NoticeErrorCode.RESPONSE_ERROR 
+
+    logger.info(f"企业微信机器人消息 发送成功")
+    return NoticeErrorCode.SUCCESS  

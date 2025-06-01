@@ -30,7 +30,7 @@ import platform
 from qasync import asyncSlot, asyncio
 from pathlib import Path
 import json
-from typing import List, Dict
+from typing import List, Dict,Union
 import re
 
 
@@ -78,8 +78,16 @@ from ..common.typeddict import (
     Interval,
     RefreshTime,
     SpeedrunConfig,
+    InterfaceData,
 )
-from ..utils.notice import dingtalk_send, lark_send, SMTP_send, WxPusher_send, QYWX_send
+from ..utils.notice import (
+    dingtalk_send,
+    lark_send,
+    SMTP_send,
+    WxPusher_send,
+    QYWX_send,
+    NoticeSendThread,
+)
 from datetime import datetime, timedelta
 
 
@@ -105,11 +113,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.warning("资源缺失")
             self.show_error(self.tr("Resource file not detected"))
 
-    def get_option_case_names(self, interface_data: dict, option_key: str) -> list:
+
+
+    def get_option_case_names(
+        self, interface_data: Union[dict, InterfaceData], option_key: str
+    ) -> list:
         """
         提取interface.json中指定option键名的选项name列表
 
-        :param interface_data: 加载后的interface.json字典数据
+        :param interface_data: 加载后的interface.json字典数据 或 InterfaceData对象
         :param option_key: 需要查询的option键名（如"选择区域"、"跳过剧情"等）
         :return: 该键名对应cases中的name列表
         """
@@ -322,7 +334,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         signalBus.agent_info.connect(self.show_agnet_info)
         signalBus.custom_info.connect(self.show_custom_info)
         signalBus.resource_exist.connect(self.resource_exist)
-        signalBus.Notice_msg.connect(self.print_notice)
         signalBus.callback.connect(self.callback)
         signalBus.update_task_list.connect(self.update_task_list_passive)
         signalBus.update_finished_action.connect(self.init_finish_combox)
@@ -449,32 +460,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         drag.exec(Qt.DropAction.MoveAction)
 
     # endregion
-    def print_notice(self, message: str):
-        """
-        打印外部通知信息
-        """
-        if "DingTalk Failed".lower() in message.lower():
-            self.insert_colored_text(self.tr("DingTalk Failed"))
-        elif "Lark Failed".lower() in message.lower():
-            self.insert_colored_text(self.tr("Lark Failed"))
-        elif "SMTP Failed".lower() in message.lower():
-            self.insert_colored_text(self.tr("SMTP Failed"))
-        elif "WxPusher Failed".lower() in message.lower():
-            self.insert_colored_text(self.tr("WxPusher Failed"))
-        elif "QYWX Failed".lower() in message.lower():
-            self.insert_colored_text(self.tr("QYWX Failed"))
-        elif "DingTalk Success".lower() in message.lower():
-            self.insert_colored_text(self.tr("DingTalk Success"))
-        elif "Lark Success".lower() in message.lower():
-            self.insert_colored_text(self.tr("Lark Success"))
-        elif "SMTP Success".lower() in message.lower():
-            self.insert_colored_text(self.tr("SMTP Success"))
-        elif "WxPusher Success".lower() in message.lower():
-            self.insert_colored_text(self.tr("WxPusher Success"))
-        elif "QYWX Success".lower() in message.lower():
-            self.insert_colored_text(self.tr("QYWX Success"))
-        else:
-            self.insert_colored_text(message)
 
     def callback(self, message: Dict):
         """
@@ -2200,11 +2185,21 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         else:
             return
 
-        dingtalk_send(msg, cfg.get(cfg.Notice_DingTalk_status))
-        lark_send(msg, cfg.get(cfg.Notice_Lark_status))
-        SMTP_send(msg, cfg.get(cfg.Notice_SMTP_status))
-        WxPusher_send(msg, cfg.get(cfg.Notice_WxPusher_status))
-        QYWX_send(msg, cfg.get(cfg.Notice_QYWX_status))
+        self.dingtalk_send = NoticeSendThread(
+            dingtalk_send, msg, cfg.get(cfg.Notice_DingTalk_status)
+        ).start()
+        self.lark_send = NoticeSendThread(
+            lark_send, msg, cfg.get(cfg.Notice_Lark_status)
+        ).start()
+        self.SMTP_send = NoticeSendThread(
+            SMTP_send, msg, cfg.get(cfg.Notice_SMTP_status)
+        ).start()
+        self.WxPusher_send = NoticeSendThread(
+            WxPusher_send, msg, cfg.get(cfg.Notice_WxPusher_status)
+        ).start()
+        self.QYWX_send = NoticeSendThread(
+            QYWX_send, msg, cfg.get(cfg.Notice_QYWX_status)
+        ).start()
 
     def show_success(self, message):
         InfoBar.success(

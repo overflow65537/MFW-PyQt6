@@ -24,6 +24,7 @@ MFW-ChainFlow Assistant 信号总线
 """
 
 from PySide6.QtCore import Signal, QObject
+from ..utils.notice_enum import NoticeErrorCode
 
 
 class SignalBus(QObject):
@@ -36,7 +37,6 @@ class SignalBus(QObject):
     )  # 更新设置界面adb设备信息信号 从task_interface中获取adb信息,传到setting_interface中同步显示
     callback = Signal(dict)  # maafw回调协议信号
     update_task_list = Signal()  # 更新tasklist信息信号
-    Notice_msg = Signal(str)  # 将外部通知的执行结果显示在任务输出中
     cfg_changed = Signal()  # 配置文件修改信号
     adb_detect_backup = Signal(list)  # 备份adb检测信号
     resource_exist = Signal(bool)  # 资源是否存在信号,可以在运行中更改
@@ -67,6 +67,7 @@ class SignalBus(QObject):
     task_output_sync = Signal(dict)  # 任务输出同步信号
     show_AssistTool_task = Signal(bool)  # 显示隐藏子面板信号
     TaskCooldownPageClicked = Signal()  # 子面板点击信号
+    notice_finished = Signal(NoticeErrorCode,str)  # 外部通知完成信号
 
 
 signalBus = SignalBus()

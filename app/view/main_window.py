@@ -58,6 +58,7 @@ from ..common import resource
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 from ..utils.notice_message import NoticeMessageBox
+from..utils.notice_enum import NoticeErrorCode
 
 
 class MainWindow(FluentWindow):
@@ -222,7 +223,34 @@ class MainWindow(FluentWindow):
         signalBus.download_self_finished.connect(self.show_info_bar)
         signalBus.infobar_message.connect(self.show_info_bar)
         signalBus.show_AssistTool_task.connect(self.toggle_AssistTool_task)
+        signalBus.notice_finished.connect(self.show_notice_finished)
+    def show_notice_finished(self, error_code: NoticeErrorCode,name:str):
+        """显示外部通知完成信息"""
+        if error_code == NoticeErrorCode.SUCCESS:
+            msg = self.tr("Send message success")
+        elif error_code == NoticeErrorCode.DISABLED:
+            msg = self.tr("Notification is disabled, cannot send message")
+        elif error_code == NoticeErrorCode.PARAM_EMPTY:
+            msg = self.tr("Required parameters are empty, send failed")
+        elif error_code == NoticeErrorCode.PARAM_INVALID:
+            msg = self.tr("Parameter format is invalid, send failed")
+        elif error_code == NoticeErrorCode.NETWORK_ERROR:
+            msg = self.tr("Network request failed, send failed")
+        elif error_code == NoticeErrorCode.RESPONSE_ERROR:
+            msg = self.tr("Server response error, send failed")
+        elif error_code == NoticeErrorCode.SMTP_PORT_INVALID:
+            msg = self.tr("SMTP port is invalid, send failed")
+        elif error_code == NoticeErrorCode.SMTP_CONNECT_FAILED:
+            msg = self.tr("SMTP connection failed, send failed")
+        else:
+            msg = self.tr("Unknown error, send failed")
 
+        if error_code == NoticeErrorCode.SUCCESS:
+            self.show_info_bar({"status": "success", "msg": name+":"+msg})
+        else:
+            self.show_info_bar({"status": "failed", "msg": name+":"+msg})
+
+            
     def initNavigation(self):
         """初始化导航界面。"""
 
