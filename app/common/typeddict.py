@@ -84,6 +84,7 @@ class TaskItem(TypedDict, total=False):
     name: str
     option: List[Dict]
     speedrun: SpeedrunConfig
+    disabled : bool
 
 
 

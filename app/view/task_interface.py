@@ -45,7 +45,7 @@ from PySide6.QtWidgets import (
     QSpacerItem,
 )
 
-from qfluentwidgets import InfoBar, InfoBarPosition, BodyLabel, ComboBox
+from qfluentwidgets import InfoBar, InfoBarPosition, BodyLabel, ComboBox,InfoBarManager
 
 from ..view.UI_task_interface import Ui_Task_Interface
 
@@ -153,17 +153,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             task_name = cfg_task.get("name", "")
             task_option = cfg_task.get("option", [])
             if not task_name:
-                self.Task_List.setCurrentRow(i)
-                self.Delete_Task()
-                self.Task_List.setCurrentRow(-1)
                 continue
 
             # 检查任务是否存在于 interface 模板
             if task_name not in task_keys:
                 inconsistent_tasks.append(task_name)
-                self.Task_List.setCurrentRow(i)
-                self.Delete_Task()
-                self.Task_List.setCurrentRow(-1)
+                maa_config_data.config["task"][i]["disabled"] = True
+                Save_Config(maa_config_data.config_path, maa_config_data.config)
+                item = self.Task_List.item(i)
+                item.setBackground(QColor(255, 0, 0))
                 continue
             for cfg_option in task_option:
                 # 检查选项是否存在于 interface 模板
@@ -171,9 +169,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     inconsistent_tasks.append(
                         task_name + "-" + cfg_option.get("name", "")
                     )
-                    self.Task_List.setCurrentRow(i)
-                    self.Delete_Task()
-                    self.Task_List.setCurrentRow(-1)
+                    maa_config_data.config["task"][i]["disabled"] = True
+                    Save_Config(maa_config_data.config_path, maa_config_data.config)
+                    item = self.Task_List.item(i)
+                    item.setBackground(QColor(255, 0, 0))
                     continue
                 case_list = self.get_option_case_names(
                     interface_data, cfg_option.get("name", "")
@@ -187,9 +186,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         + "-"
                         + cfg_option.get("value", "")
                     )
-                    self.Task_List.setCurrentRow(i)
-                    self.Delete_Task()
-                    self.Task_List.setCurrentRow(-1)
+                    maa_config_data.config["task"][i]["disabled"] = True
+                    Save_Config(maa_config_data.config_path, maa_config_data.config)
+                    item = self.Task_List.item(i)
+                    item.setBackground(QColor(255, 0, 0))
                     continue
 
         # 输出结果
@@ -351,7 +351,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Finish_combox.currentIndexChanged.connect(self.rewrite_Completion_Options)
         self.Finish_combox_res.currentIndexChanged.connect(self.Save_Finish_Option_Res)
         self.Finish_combox_cfg.currentIndexChanged.connect(self.Save_Finish_Option_Cfg)
-        self.Task_List.itemSelectionChanged.connect(self.Select_Task)
+        self.Task_List.itemSelectionChanged.connect(self.Select_Task)                      
         self.Delete_label.dragEnterEvent = self.dragEnter
         self.Delete_label.dropEvent = self.drop
 
@@ -1207,10 +1207,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.task_failed = None
         self.S2_Button.setEnabled(True)
         for task_list in maa_config_data.config.get("task", []):
+
             override_options = {}
             if not self.need_runing:
                 await maafw.stop_task()
                 return
+            elif task_list.get("disabled"):
+                logger.debug(f"任务{task_list.get('name')}已禁用")
+                continue
             # 找到task的entry
             enter_index = 0
             for index, task_enter in enumerate(
@@ -1537,6 +1541,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.Task_List.setCurrentRow(-1)
         self.Delete_label.setText("")
         self.Delete_label.setStyleSheet("background-color: rgba(255, 0);")
+        self.check_task_consistency()
 
     def Add_Task(self):
         if maa_config_data.config == {}:
@@ -1567,6 +1572,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         self.update_task_list()
         self.dragging_finished()
+        self.check_task_consistency()
 
     def get_speedrun_value(self, Select_Target: str = ""):
         for i in maa_config_data.interface_config.get("task", []):
@@ -2200,6 +2206,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         )
 
     def show_error(self, error_message):
+        for info_bar in self.findChildren(InfoBar):
+            info_bar.close()
         InfoBar.error(
             title=self.tr("Error"),
             content=error_message,
