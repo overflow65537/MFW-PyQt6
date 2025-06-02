@@ -1540,7 +1540,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.AddTask_Button.setText(self.tr("Add Task"))
         self.Task_List.setCurrentRow(-1)
         self.Delete_label.setText("")
-        self.Delete_label.setStyleSheet("background-color: rgba(255, 0);")
+        self.Delete_label.setStyleSheet("background-color: rgba(255, 0); border-radius: 8px;")
         self.check_task_consistency()
 
     def Add_Task(self):
@@ -1778,7 +1778,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         选择任务后展示删除区域及重写按钮
         """
         self.Delete_label.setText(self.tr("Drag to Delete"))
-        self.Delete_label.setStyleSheet("background-color: rgba(255, 0, 0, 0.5);")
+        self.Delete_label.setStyleSheet("background-color: rgba(255, 0, 0, 0.5); border-radius: 8px;")
 
         self.AddTask_Button.setText(self.tr("Rewrite"))
         Select_Target = self.Task_List.currentRow()
