@@ -195,15 +195,6 @@
 - custom路径中的{custom_path}为MFW-PyQt6根目录中的custom文件夹
 ```
 
-## 界面预览
-
-<div align="center">
-  <img alt="task_interface" src="picture\task_interface.png" width="1200" height="975" />
-  <img alt="bundle_interface" src="picture\bundle_interface.png" width="1200" height="975" />
-  <img alt="task_cooldown" src="picture\task_cooldown.png" width="1200" height="975" />
-  <img alt="sp_task" src="picture\sp_task.png" width="1200" height="975" />
-</div>
-
 ## 许可证
 
 **MFW-PyQt6** 使用 **[GPL-3.0 许可证](./LICENSE)** 开源。
@@ -228,3 +219,13 @@
 <a href="https://github.com/overflow65537/PYQT-MAA/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=overflow65537/PYQT-MAA&max=1000" alt="Contributors to MFW-PyQt6"/>
 </a>
+
+## 界面预览
+
+<div align="center" style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
+  <img alt="task_interface" src="picture\task_interface.png" style="max-width: 25%; height: auto;" />
+  <img alt="bundle_interface" src="picture\bundle_interface.png" style="max-width: 25%; height: auto;" />
+  <img alt="task_cooldown" src="picture\task_cooldown.png" style="max-width: 25%; height: auto;" />
+  <img alt="sp_task" src="picture\sp_task.png" style="max-width: 25%; height: auto;" />
+</div>
+
