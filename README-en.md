@@ -6,7 +6,7 @@
 
 **[简体中文](./README.md) | [English](./README-en.md)**
 
-Universal GUI project for **[MAAFramework](https://github.com/MaaXYZ/MaaFramework)** based on **[PyQT6](https://doc.qt.io/qtforpython-6)**
+Universal GUI project for **[MAAFramework](https://github.com/MaaXYZ/MaaFramework)** based on **[PySide6](https://doc.qt.io/qtforpython-6)**
 </div>
 
 <p align="center">
@@ -157,6 +157,7 @@ Universal GUI project for **[MAAFramework](https://github.com/MaaXYZ/MaaFramewor
 - **[PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)**
 - **[MaaFramework](https://github.com/MaaAssistantArknights/MaaFramework)**
 - **[MirrorChyan](https://github.com/MirrorChyan/docs)**
+- **[AutoMAA](https://github.com/DLmaster361/AUTO_MAA)**
 
 ### Contributors
 

@@ -8,7 +8,7 @@
 
 **[简体中文](./README.md) | [English](./README-en.md)**
 
-基于 **[PyQT6](https://doc.qt.io/qtforpython-6)** 的 **[MAAFramework](https://github.com/MaaXYZ/MaaFramework)** 通用 GUI 项目
+基于 **[PySide6](https://doc.qt.io/qtforpython-6)** 的 **[MAAFramework](https://github.com/MaaXYZ/MaaFramework)** 通用 GUI 项目
 </div>
 
 <p align="center">
@@ -31,7 +31,6 @@
 
 ### 使用GitHub action 自动构建
 
-- 将`depoly\deploy.py` 中的项目名和项目地址修改为你的项目名和项目地址并上传至`GitHub仓库根目录`
 - 将`deploy\install.yml` 中MaaXXX修改为你的项目名并上传至GitHub仓库的`.github/workflows`目录
 - 推送新版本
 
@@ -59,6 +58,10 @@
 ```
 
 - 添加后,如果MFW在更新时发现新资源中`MFW_min_req_version`的值大于当前MFW的版本号,则会停止更新并提示原因
+
+### 公告
+
+- 在interface.json同级目录放置`Announcement.md`文件,内容为公告内容
 
 ### 计划任务
 
@@ -192,6 +195,15 @@
 - custom路径中的{custom_path}为MFW-PyQt6根目录中的custom文件夹
 ```
 
+## 界面预览
+
+<div align="center">
+  <img alt="task_interface" src="picture\task_interface.png" width="1200" height="975" />
+  <img alt="bundle_interface" src="picture\bundle_interface.png" width="1200" height="975" />
+  <img alt="task_cooldown" src="picture\task_cooldown.png" width="1200" height="975" />
+  <img alt="sp_task" src="picture\sp_task.png" width="1200" height="975" />
+</div>
+
 ## 许可证
 
 **MFW-PyQt6** 使用 **[GPL-3.0 许可证](./LICENSE)** 开源。
@@ -206,6 +218,8 @@
     基于图像识别的自动化黑盒测试框架。
 - **[MirrorChyan](https://github.com/MirrorChyan/docs)**\
     Mirror酱更新服务
+- **[AutoMAA](https://github.com/DLmaster361/AUTO_MAA)**\
+    明日方舟MAA的插件|MAA的多账号管理与自动化工具，定时自动完成代理，轻松完成多账号日常，究极长草方案！
 
 ### 开发者
 
