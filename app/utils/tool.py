@@ -857,13 +857,16 @@ class MyNotificationHandler(NotificationHandler):
             2: "succeeded",
             3: "failed",
         }
-        self.callbackSignal.callback.emit(
-            {
+        send_msg =  {
                 "name": "on_task_recognition",
                 "task": detail.name,
                 "status": noti_type.value,
                 "focus": detail.focus.get(focus_mapping[noti_type.value], ""),
             }
+        if detail.focus.get("aborted"):
+            send_msg["aborted"] = True
+        self.callbackSignal.callback.emit(
+           
         )
 
 

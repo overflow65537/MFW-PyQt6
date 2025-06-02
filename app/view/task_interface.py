@@ -95,8 +95,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     devices = []  # 用于存储设备信息的列表
     need_runing = False  # 是否需要运行任务
-    task_failed = False  # 是否有任务失败
-    in_progress_error = None  # 正在运行的错误信息
+    task_failed = None  # 是否有任务失败
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -486,24 +485,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 self.insert_colored_text(message["task"] + " " + self.tr("Succeeded"))
                 logger.debug(f"{message['task']} 任务成功")
             elif message["status"] == 3:
+                self.task_failed = message["task"]
                 self.insert_colored_text(
                     message["task"] + " " + self.tr("Failed"), "red"
                 )
                 logger.debug(f"{message["task"]} 任务失败")
                 self.send_notice("failed", message["task"])
         if message["name"] == "on_task_recognition":
-
-            on_error = self.on_error_list
             self.in_progress_error = None
-
-            if message["task"] in on_error:
-                logger.debug(f"{message['task']} 任务超时")
-                self.insert_colored_text(
-                    self.tr("The task has timed out"),
-                    "tomato",
-                )
-                self.in_progress_error = self.entry
-                self.task_failed = True
             # 新的focus通知
             if message.get("focus"):
                 if isinstance(message["focus"], str):  # 单条 直接输出
@@ -515,6 +504,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         self.insert_colored_text(
                             i,
                         )
+            if message.get("aborted"):
+                self.task_failed = message["task"]
+                self.in_progress_error = message["task"]
+                self.insert_colored_text(
+                    message["task"] + " " + self.tr("aborted"), "red"
+                )
+                logger.debug(f"{message['task']} 任务中止")
+                self.send_notice("failed", message["task"])
 
     def insert_colored_text(self, text, color_name="black"):
         """
@@ -988,8 +985,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.update_S2_Button("Start", self.Start_Up)
             return False
 
-        self.on_error_list = []
-
         for i in resource_path:
             resource = (
                 i.replace("{PROJECT_DIR}", PROJECT_DIR)
@@ -997,16 +992,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 .replace("\\", os.sep)
             )
             logger.debug(f"加载资源: {resource}")
-            default_pipelines_path = os.path.join(resource, "default_pipeline.json")
-            if os.path.exists(default_pipelines_path):
-                with open(default_pipelines_path, "r", encoding="utf-8") as f:
-                    self.on_error_list = (
-                        (json.load(f)).get("Default", {}).get("on_error", [])
-                    )
-                    logger.info(f"加载默认pipeline: {default_pipelines_path}")
             await maafw.load_resource(resource)
             logger.debug(f"资源加载完成: {resource}")
-            logger.debug(f"on_error任务{self.on_error_list}")
         return True
 
     async def connect_controller(self, controller_type):
@@ -1200,7 +1187,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         if task is None:
             return
-        self.task_failed = False
+        self.task_failed = None
         self.S2_Button.setEnabled(True)
         if not self.need_runing:
             await maafw.stop_task()
@@ -1217,7 +1204,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         运行任务
         """
-        self.task_failed = False
+        self.task_failed = None
         self.S2_Button.setEnabled(True)
         for task_list in maa_config_data.config.get("task", []):
             override_options = {}
@@ -1299,7 +1286,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 remaining_loops = interval_cfg.get("current_loop", 0)
                 if remaining_loops > 0 and self.entry:
                     await maafw.run_task(self.entry, override_options)
-                    if self.task_failed:
+                    if self.task_failed :
                         continue
                     else:
                         self.update_speedrun_state(speedrun_cfg, remaining_loops)
