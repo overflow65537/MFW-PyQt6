@@ -479,9 +479,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             elif message["status"] == 1:
                 self.insert_colored_text(message["task"] + " " + self.tr("Started"))
             elif message["status"] == 2:
-                if self.in_progress_error == message["task"]:
-                    self.in_progress_error = None
-                    return
                 self.insert_colored_text(message["task"] + " " + self.tr("Succeeded"))
                 logger.debug(f"{message['task']} 任务成功")
             elif message["status"] == 3:
@@ -1380,7 +1377,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         处理循环次数耗尽
         """
         logger.info(f"任务[{self.entry}]当前循环次数已耗尽")
-        self.insert_colored_text({self.entry} + " " + self.tr("Loop count exhausted"))  # type: ignore
+        self.insert_colored_text(f"{self.entry} {self.tr('Loop count exhausted')}")  # type: ignore
         self.insert_colored_text(
             self.tr("Waiting for next run: ")
             + refresh_time.toString("yyyy-MM-dd HH:mm:ss")
