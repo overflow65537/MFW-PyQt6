@@ -248,17 +248,32 @@ class QYWX:
             return True
 
 class NoticeSendThread(QThread):
-    """通用通知发送线程类"""
+    """通用通知发送线程类（优化版）"""
     def __init__(self, send_func, msg_dict: dict, status: bool) -> None:
         super().__init__()
         self.send_func = send_func
         self.msg_dict = msg_dict
         self.status = status
+        self._stop_flag = False  
 
     def run(self):
-        result = self.send_func(self.msg_dict, self.status)
-        #返回方法的string值
-        signalBus.notice_finished.emit(result,self.send_func.__name__)
+        """线程执行逻辑"""
+        if self._stop_flag: 
+            return
+
+        try:
+            result = self.send_func(self.msg_dict, self.status)
+            signalBus.notice_finished.emit(result, self.send_func.__name__)
+        except Exception as e:
+            logger.error(f"通知线程 {self.send_func.__name__} 执行异常: {str(e)}")
+            signalBus.notice_finished.emit(NoticeErrorCode.UNKNOWN_ERROR, self.send_func.__name__)
+        finally:
+            self._stop_flag = True  
+
+    def stop(self):
+        """主动停止线程（需在应用退出时调用）"""
+        self._stop_flag = True
+        self.wait()  
 
 def dingtalk_send(
     msg_dict: dict = {"title": "Test", "text": "Test"}, status: bool = False

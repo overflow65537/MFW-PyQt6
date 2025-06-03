@@ -8,6 +8,7 @@ class NoticeErrorCode(IntEnum):
     PARAM_INVALID = auto()     # 参数格式错误（如URL格式不符）
     NETWORK_ERROR = auto()     # 网络请求异常
     RESPONSE_ERROR = auto()    # 接口返回状态码错误
+    UNKNOWN_ERROR = auto()     # 未知错误
     # SMTP专属错误
     SMTP_PORT_INVALID = auto() # SMTP端口非整数
     SMTP_CONNECT_FAILED = auto()# SMTP连接失败

@@ -2175,21 +2175,21 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         else:
             return
 
-        self.dingtalk_send = NoticeSendThread(
-            dingtalk_send, msg, cfg.get(cfg.Notice_DingTalk_status)
-        ).start()
-        self.lark_send = NoticeSendThread(
-            lark_send, msg, cfg.get(cfg.Notice_Lark_status)
-        ).start()
-        self.SMTP_send = NoticeSendThread(
-            SMTP_send, msg, cfg.get(cfg.Notice_SMTP_status)
-        ).start()
-        self.WxPusher_send = NoticeSendThread(
-            WxPusher_send, msg, cfg.get(cfg.Notice_WxPusher_status)
-        ).start()
-        self.QYWX_send = NoticeSendThread(
-            QYWX_send, msg, cfg.get(cfg.Notice_QYWX_status)
-        ).start()
+        # 保存线程实例到列表，便于后续管理
+        self.notice_threads = []  
+
+        # 动态创建并启动线程（假设 NoticeSendThread 支持停止标志）
+        for sender, status_key in [
+            (dingtalk_send, cfg.Notice_DingTalk_status),
+            (lark_send, cfg.Notice_Lark_status),
+            (SMTP_send, cfg.Notice_SMTP_status),
+            (WxPusher_send, cfg.Notice_WxPusher_status),
+            (QYWX_send, cfg.Notice_QYWX_status),
+        ]:
+            if cfg.get(status_key):  # 仅启用状态为 True 时发送
+                thread = NoticeSendThread(sender, msg,True)
+                thread.start()
+                self.notice_threads.append(thread)  # 保存线程实例
 
     def show_success(self, message):
         InfoBar.success(
