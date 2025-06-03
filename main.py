@@ -84,6 +84,7 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
     # 捕获Qt未处理异常
     def qt_except_hook(etype, value, tb):
         logger.exception("Qt未处理异常:", exc_info=(etype, value, tb))
+        show_error_message()
     sys.excepthook = qt_except_hook
 
     # internationalization
