@@ -489,7 +489,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 logger.debug(f"{message["task"]} 任务失败")
                 self.send_notice("failed", message["task"])
         if message["name"] == "on_task_recognition":
-            self.in_progress_error = None
             # 新的focus通知
             if message.get("focus"):
                 if isinstance(message["focus"], str):  # 单条 直接输出
@@ -503,7 +502,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         )
             if message.get("aborted"):
                 self.task_failed = message["task"]
-                self.in_progress_error = message["task"]
                 self.insert_colored_text(
                     message["task"] + " " + self.tr("aborted"), "red"
                 )
@@ -2178,7 +2176,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         # 保存线程实例到列表，便于后续管理
         self.notice_threads = []  
 
-        # 动态创建并启动线程（假设 NoticeSendThread 支持停止标志）
+        # 动态创建并启动线程
         for sender, status_key in [
             (dingtalk_send, cfg.Notice_DingTalk_status),
             (lark_send, cfg.Notice_Lark_status),

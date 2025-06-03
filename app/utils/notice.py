@@ -248,7 +248,7 @@ class QYWX:
             return True
 
 class NoticeSendThread(QThread):
-    """通用通知发送线程类（优化版）"""
+    """通用通知发送线程类"""
     def __init__(self, send_func, msg_dict: dict, status: bool) -> None:
         super().__init__()
         self.send_func = send_func
