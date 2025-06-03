@@ -33,6 +33,7 @@ os.chdir(
     else os.path.dirname(os.path.abspath(__file__))
 )
 import argparse
+import threading
 
 if not os.path.exists("main.py"):
     os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
@@ -59,6 +60,18 @@ from app.utils.maafw import maafw
 def main(resource: str, config: str, directly: bool, DEV: bool):
     check(resource, config, directly, DEV)
 
+    # 设置全局异常钩子
+    def global_except_hook(exc_type, exc_value, exc_traceback):
+        logger.exception("未捕获的全局异常:",
+                        exc_info=(exc_type, exc_value, exc_traceback))
+
+    sys.excepthook = global_except_hook
+
+    # 处理线程未捕获异常
+    def thread_except_hook(args):
+        logger.exception("未捕获的线程异常:", exc_info=(args.exc_type, args.exc_value, args.exc_traceback))
+    threading.excepthook = thread_except_hook
+
     # enable dpi scale
     if cfg.get(cfg.dpiScale) != "Auto":
         os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
@@ -67,6 +80,11 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
     # create application
     app = QApplication(sys.argv)
     app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
+    
+    # 捕获Qt未处理异常
+    def qt_except_hook(etype, value, tb):
+        logger.exception("Qt未处理异常:", exc_info=(etype, value, tb))
+    sys.excepthook = qt_except_hook
 
     # internationalization
     locale: ConfigItem = cfg.get(cfg.language)
@@ -94,6 +112,12 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
     w.show()
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
+    
+    # 异步异常处理
+    def handle_async_exception(loop, context):
+        logger.exception("异步任务异常:", exc_info=context.get('exception'))
+    loop.set_exception_handler(handle_async_exception)
+    
     loop.run_forever()
 
 
