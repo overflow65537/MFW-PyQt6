@@ -158,10 +158,10 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
             if DEV:
                 logger.info("检查到 -DEV 参数,使用DEV模式")
                 cfg.set(cfg.run_after_startup_arg, False)
-                cfg.set(cfg.click_update, False)
+                cfg.set(cfg.start_complete, False)
 
             logger.info("资源文件存在")
-            cfg.set(cfg.click_update, False)
+            cfg.set(cfg.start_complete, False)
             cfg.set(cfg.resource_exist, True)
 
             signalBus.resource_exist.emit(True)

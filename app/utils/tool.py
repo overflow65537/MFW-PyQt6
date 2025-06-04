@@ -272,6 +272,27 @@ def Get_Task_List(path: str, target: str) -> List:
     lists.reverse()
     return lists
 
+def Get_Task_advanced_List(path: str, target: str) -> List:
+    """根据选项名称获取所有advanced的default列表。
+
+    Args:
+        path (str): 配置文件路径。
+        target (str): 选项名称。
+
+    Returns:
+        advanced_Config: 包含所有advanced的default列表。
+    """
+    advanced_Config = Read_Config(path)["advanced"][target]["default"]
+    if not advanced_Config:
+        return []
+    #转化字符串,将"1"转化为["1"]
+    advanced_Config = [advanced_Config]
+    if isinstance(advanced_Config[0], list):
+        #转化列表,列表的内部应该是[["1","2"],["3","4"]],转化为["1,2","3,4"]
+        for i in range(len(advanced_Config)):
+            advanced_Config[i] = ",".join(advanced_Config[i])
+    return advanced_Config
+
 
 def find_process_by_name(process_name: str) -> Optional[str]:
     """查找指定名称的进程，并返回其可执行文件的路径。
