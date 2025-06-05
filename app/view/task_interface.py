@@ -1236,20 +1236,20 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         return
                     enter_index = index
                     break
-            # 解析task中的pipeline_override（修改为深度合并）
+
+            # 解析task中的pipeline_override
             if maa_config_data.interface_config.get("task", [])[enter_index].get(
                 "pipeline_override", False
             ):
                 update_data = maa_config_data.interface_config.get("task", [])[
                     enter_index
                 ].get("pipeline_override", {})
-                override_options = self.deep_merge(
-                    override_options, update_data
-                )  # 深度合并
+                override_options.update(update_data)
 
-            # 解析task中的option（修改为深度合并）
+            # 解析task中的option
             if task_list.get("option", []) != []:
                 for task_option in task_list.get("option", []):
+                    #解析advanced
                     if task_option.get("advanced", False):
                         for (
                             advanced_key,
@@ -1266,17 +1266,20 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                 types = advanced_value.get("type", [])  # 获取类型信息
 
                                 # 处理多字段/多类型场景（field和type可能是列表）
-                                field_list = (
-                                    field if isinstance(field, list) else [field]
-                                )
-                                type_list = (
-                                    types if isinstance(types, list) else [types]
-                                )
-                                value_list = (
-                                    value.split(",")
-                                    if isinstance(value, str)
-                                    else [value]
-                                )
+                                if isinstance(field, list):
+                                    field_list = field
+                                else:
+                                    field_list = [field]
+                                
+                                if isinstance(types, list):
+                                    type_list = types
+                                else:
+                                    type_list = [types]
+                                
+                                if isinstance(value, str):
+                                    value_list = value.split(",")
+                                else:
+                                    value_list = [value]
 
                                 # 确保字段、类型、值数量匹配
                                 if len(field_list) != len(type_list) or len(
@@ -1295,6 +1298,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                             converted = int(v.strip())  # 转为整数
                                         elif t == "string":
                                             converted = v.strip()  # 转为字符串
+                                        elif t == "double":
+                                            converted = float(v.strip())  # 转为浮点数
+                                        elif t == "bool":
+                                            converted = v.strip().lower() == "true"  # 转为布尔值
                                         else:
                                             converted = v.strip()  # 未知类型
                                         converted_values.append(converted)
@@ -1309,41 +1316,31 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                 for task_name, task_config in template_pipeline.items():
                                     resolved_task_config = {}
                                     for key, val in task_config.items():
+                                        # 初始化解析值为原始值
                                         resolved_val = val
-                                        if isinstance(val, (str, list, tuple)):
-                                            for f, cv in zip(
-                                                field_list, converted_values
-                                            ):
-                                                placeholder = f"{{{f}}}"
-                                                if isinstance(resolved_val, str):
-                                                    resolved_val = resolved_val.replace(
-                                                        placeholder, str(cv)
-                                                    )
-                                                elif isinstance(
-                                                    resolved_val, (list, tuple)
-                                                ):
-                                                    new_resolved_val = []
-                                                    for item in resolved_val:
-                                                        if isinstance(
-                                                            item, str
-                                                        ) and isinstance(cv, str):
-                                                            processed_item = (
-                                                                item.replace(
-                                                                    placeholder, str(cv)
-                                                                )
-                                                            )
-                                                        elif isinstance(
-                                                            item, str
-                                                        ) and isinstance(
-                                                            cv, (int, float)
-                                                        ):
-                                                            processed_item = cv
-                                                        else:
-                                                            processed_item = cv
-                                                        new_resolved_val.append(
-                                                            processed_item
-                                                        )
-                                                    resolved_val = new_resolved_val
+
+                                        # 遍历所有字段-值对进行替换 f:roi cv:[1,2,3,4]
+                                        for f, cv in zip(field_list, converted_values):
+                                            placeholder = f"{{{f}}}"
+                                            
+                                            # 处理字符串类型
+                                            if isinstance(resolved_val, str) and placeholder == resolved_val:
+                                                    resolved_val = cv
+                                            
+                                            # 处理列表/元组类型（完整遍历所有元素）
+                                            elif isinstance(resolved_val, (list, tuple)):
+                                                # 遍历列表中每个元素进行替换
+                                                result = []
+                                                    
+                                                # 显式遍历原列表每个元素
+                                                for item in resolved_val:
+                                                    # 条件判断并添加元素到结果列表
+                                                    if item == placeholder:
+                                                        result.append(cv)
+                                                    else:
+                                                        result.append(item)
+                                                resolved_val = result  # 更新解析值为新列表
+                                        
                                         resolved_task_config[key] = resolved_val
                                     resolved_pipeline[task_name] = resolved_task_config
 
@@ -1352,7 +1349,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                     f"高级设置 [{advanced_key}] 解析后的 pipeline_override: {resolved_pipeline}"
                                 )
 
-                    if not task_option.get("advanced", False):
+                    else:
                         for override in maa_config_data.interface_config.get(
                             "option", []
                         )[task_option["name"]]["cases"]:
@@ -1416,24 +1413,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         logger.info("任务完成")
         self.send_notice("completed")
-
-    def deep_merge(self, base: dict, update: dict) -> dict:  # type: ignore
-        """
-        深度合并两个字典（递归合并嵌套字典，保留原有值，仅覆盖或新增字段）
-        :param base: 基础字典（原有配置）
-        :param update: 需要合并的新字典（新增/修改的配置）
-        :return: 合并后的字典
-        """
-        merged = base.copy()
-        for key, value in update.items():
-            if (
-                isinstance(value, dict)
-                and key in merged
-                and isinstance(merged[key], dict)
-            ):
-                merged[key] = self.deep_merge(merged[key], value)
-            else:
-                merged[key] = value
 
     def calculate_next_run_time(
         self, last_run_str: str, interval_cfg: Interval
@@ -2069,13 +2048,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         advanced_label.setFont(QFont("Arial", 10))
                         advanced_layout.addWidget(advanced_label)
                         advanced_select_box = EditableComboBox(self)
-                        advanced_select_box.addItems(
-                            list(
-                                Get_Task_advanced_List(
+                        combox_list = Get_Task_advanced_List(
                                     maa_config_data.interface_config_path, advanced
-                                )
                             )
-                        )
+                        if not combox_list:
+                            raise ValueError(f"{advanced} 的配置错误")
+                        for item in combox_list:
+                            display_text = ",".join(map(str, item))
+                            advanced_select_box.addItem(display_text)
+
                         advanced_select_box.setSizePolicy(
                             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
                         )
