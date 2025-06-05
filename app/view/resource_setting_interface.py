@@ -315,6 +315,7 @@ class ResourceSettingInterface(ScrollArea):
             self.cfg_setting.combox.setCurrentText(data_dict.get("config_name"))
         if data_dict.get("start_task_inmediately", False):
             signalBus.start_task_inmediately.emit()
+            logger.debug("主动切换配置发送信号")
 
     def lock_cfg(self):
         self.res_setting.combox.setDisabled(True)
@@ -578,6 +579,7 @@ class ResourceSettingInterface(ScrollArea):
         self.cfg_setting.combox.clear()
         self.cfg_setting.combox.currentIndexChanged.connect(self.cfg_changed)
         self.cfg_setting.combox.addItems(maa_config_data.config_name_list)
+        
 
     def initialize_res_cfg_setting(self):
         """资源配置设置"""

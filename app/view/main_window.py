@@ -99,6 +99,8 @@ class MainWindow(FluentWindow):
 
         self.stara_finish()
 
+        QTimer.singleShot(5000, lambda: cfg.set(cfg.start_complete, True))
+
         logger.info(" 主界面初始化完成。")
 
     def stara_finish(self):
@@ -119,16 +121,15 @@ class MainWindow(FluentWindow):
                 signalBus.update_download_finished.connect(
                     self.taskInterface.Auto_update_Start_up
                 )
-                QTimer.singleShot(1000, lambda: signalBus.auto_update.emit())
+                signalBus.auto_update.emit()
 
             elif cfg.get(cfg.auto_update_resource):
                 logger.info("启动GUI后自动更新")
-                QTimer.singleShot(1000, lambda: signalBus.auto_update.emit())
+                signalBus.auto_update.emit()
 
             elif cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg):
                 logger.info("启动GUI后运行任务")
-                # Qtimer 延迟1秒启动signalBus.start_task_inmediately.emit()
-                QTimer.singleShot(1000, lambda: signalBus.start_task_inmediately.emit())
+                signalBus.start_task_inmediately.emit()
 
     def initShortcuts(self):
         """初始化快捷键"""

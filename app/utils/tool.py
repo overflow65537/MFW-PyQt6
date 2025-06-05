@@ -272,6 +272,54 @@ def Get_Task_List(path: str, target: str) -> List:
     lists.reverse()
     return lists
 
+def Get_Task_advanced_List(path: str, target: str) -> List[List[Any]]|None:
+    """根据选项名称获取所有advanced的default列表，并处理不同数据类型格式。
+
+    Args:
+        path (str): 配置文件路径。
+        target (str): 选项名称。
+
+    Returns:
+        List[List[Any]]: 格式化后的选项列表，结构为二维列表：
+                        - 字符串 → [[value]]（单选项单字段）
+                        - 列表 → [[value1], [value2], ...]（多选项单字段）
+                        - 列表的列表 → [[v1, v2], [v3, v4], ...]（多选项多字段）
+    """
+    advanced_option = Read_Config(path)["advanced"].get(target, {})
+    if not advanced_option:
+        return None
+    
+    advanced_Config = advanced_option.get("default")
+
+    if not advanced_Config:
+        return None
+    elif isinstance(advanced_Config, str):
+        # "str"
+        return [[advanced_Config]]
+    elif isinstance(advanced_Config, list):
+        advanced_field = advanced_option.get("field")
+        if not advanced_field:
+            return None
+        elif isinstance(advanced_field, str) or isinstance(advanced_field, list) and len(advanced_field)==1:
+            # ["str", "str", "str"]
+            return_list = []
+            for item in advanced_Config:
+                return_list.append([item])
+            return return_list
+                
+        elif isinstance(advanced_field, list):
+            if isinstance(advanced_Config[0], list):
+                # [["str1", "str2"], ["str3", "str4"]]
+                return advanced_Config  # 直接返回多字段的列表
+            else:
+                # ["str1", "str2", "str3"]
+                return [advanced_Config]  # 处理单字段的列表
+            
+            
+
+
+    return None
+
 
 def find_process_by_name(process_name: str) -> Optional[str]:
     """查找指定名称的进程，并返回其可执行文件的路径。

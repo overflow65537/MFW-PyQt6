@@ -126,7 +126,7 @@ class Config(QConfig):
     )
     auto_update_MFW = ConfigItem("Maa", "auto_update_MFW", False, BoolValidator())
     force_github = ConfigItem("Maa", "force_github", False, BoolValidator())
-    click_update = ConfigItem("Maa", "click_update", False, BoolValidator())
+    start_complete = ConfigItem("Maa", "start_complete", False, BoolValidator())
     # 外部通知
     Notice_DingTalk_status = ConfigItem("Notice", "DingTalk_status", False)
     Notice_DingTalk_url = ConfigItem("Notice", "DingTalk_url", "")

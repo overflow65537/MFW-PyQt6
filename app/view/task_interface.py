@@ -23,6 +23,7 @@ MFW-ChainFlow Assistant 任务逻辑
 """
 
 
+from math import fabs
 import os
 import subprocess
 import platform
@@ -45,7 +46,14 @@ from PySide6.QtWidgets import (
     QSpacerItem,
 )
 
-from qfluentwidgets import InfoBar, InfoBarPosition, BodyLabel, ComboBox, InfoBarManager
+
+from qfluentwidgets import (
+    InfoBar,
+    InfoBarPosition,
+    BodyLabel,
+    ComboBox,
+    EditableComboBox,
+)
 
 from ..view.UI_task_interface import Ui_Task_Interface
 
@@ -67,6 +75,7 @@ from ..utils.tool import (
     show_error_message,
     get_console_path,
     MyNotificationHandler,
+    Get_Task_advanced_List,
 )
 from ..utils.maafw import maafw
 from ..common.config import cfg
@@ -151,6 +160,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             task_name = cfg_task.get("name", "")
             task_option = cfg_task.get("option", [])
             if not task_name:
+                continue
+
+            if cfg_task.get("advanced", False):
+                item = self.Task_List.item(i)
+                item.setBackground(QColor(200, 220, 255, 75))  # 淡蓝色背景
+                font = item.font()
+                font.setBold(True)  # 字体加粗增强区分
+                item.setFont(font)
                 continue
 
             # 检查任务是否存在于 interface 模板
@@ -657,7 +674,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.Control_Combox.setCurrentIndex(
                 return_init.get("init_Controller_Type", 0)
             )
-            print(return_init.get("init_Controller_Type", 0))
         self.add_Controller_combox()
 
     def load_interface_options(self, interface_Path):
@@ -738,7 +754,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 )
                 multi_dict: Dict[str, Dict[str, str]] = json.loads(emu.stdout.strip())
 
-                print(multi_dict.get("created_timestamp", False))
                 if multi_dict.get("created_timestamp", False):
                     logger.debug(f"单模拟器")
                     logger.debug(f"MuMuManager.exe info -v all: {multi_dict}")
@@ -757,7 +772,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             check=True,
                             encoding="utf-8",
                         )
-                        print(str(multi_dict.get("index")))
                     return
                 logger.debug(f"多模拟器")
                 logger.debug(f"MuMuManager.exe info -v all: {multi_dict}")
@@ -846,10 +860,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         启动任务启动后进行自动更新
         """
-        if cfg.get(cfg.click_update):
+        if cfg.get(cfg.start_complete):
             return
         if status_dict.get("status") != "info":
-            QTimer.singleShot(1000, lambda: signalBus.start_task_inmediately.emit())
+            signalBus.start_task_inmediately.emit()
+            logger.info("启动任务启动后进行自动更新")
 
     # region 任务逻辑
     @asyncSlot()
@@ -1227,6 +1242,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         return
                     enter_index = index
                     break
+
             # 解析task中的pipeline_override
             if maa_config_data.interface_config.get("task", [])[enter_index].get(
                 "pipeline_override", False
@@ -1235,17 +1251,119 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     enter_index
                 ].get("pipeline_override", {})
                 override_options.update(update_data)
+
             # 解析task中的option
             if task_list.get("option", []) != []:
                 for task_option in task_list.get("option", []):
-                    for override in maa_config_data.interface_config.get("option", [])[
-                        task_option["name"]
-                    ]["cases"]:
-                        if override["name"] == task_option["value"]:
+                    #解析advanced
+                    if task_option.get("advanced", False):
+                        for (
+                            advanced_key,
+                            advanced_value,
+                        ) in maa_config_data.interface_config.get(
+                            "advanced", {}
+                        ).items():
+                            if advanced_key == task_option.get("name", ""):
+                                template_pipeline = advanced_value.get(
+                                    "pipeline_override", {}
+                                )
+                                field = advanced_value.get("field", "")
+                                value = task_option.get("value", "")
+                                types = advanced_value.get("type", [])  # 获取类型信息
 
-                            override_options.update(
-                                override.get("pipeline_override", {})
-                            )
+                                # 处理多字段/多类型场景（field和type可能是列表）
+                                if isinstance(field, list):
+                                    field_list = field
+                                else:
+                                    field_list = [field]
+                                
+                                if isinstance(types, list):
+                                    type_list = types
+                                else:
+                                    type_list = [types]
+                                
+                                if isinstance(value, str):
+                                    value_list = value.split(",")
+                                else:
+                                    value_list = [value]
+
+                                # 确保字段、类型、值数量匹配
+                                if len(field_list) != len(type_list) or len(
+                                    field_list
+                                ) != len(value_list):
+                                    logger.warning(
+                                        f"高级设置 [{advanced_key}] 字段/类型/值数量不匹配，field: {field_list}, type: {type_list}, value: {value_list}"
+                                    )
+                                    continue
+
+                                # 类型转换
+                                converted_values = []
+                                for v, t in zip(value_list, type_list):
+                                    try:
+                                        if t == "int":
+                                            converted = int(v.strip())  # 转为整数
+                                        elif t == "string":
+                                            converted = v.strip()  # 转为字符串
+                                        elif t == "double":
+                                            converted = float(v.strip())  # 转为浮点数
+                                        elif t == "bool":
+                                            converted = v.strip().lower() == "true"  # 转为布尔值
+                                        else:
+                                            converted = v.strip()  # 未知类型
+                                        converted_values.append(converted)
+                                    except ValueError:
+                                        logger.warning(
+                                            f"高级设置 [{advanced_key}] 值 [{v}] 转换为类型 [{t}] 失败"
+                                        )
+                                        converted_values.append(v.strip())
+
+                                # 替换占位符
+                                resolved_pipeline = {}
+                                for task_name, task_config in template_pipeline.items():
+                                    resolved_task_config = {}
+                                    for key, val in task_config.items():
+                                        # 初始化解析值为原始值
+                                        resolved_val = val
+
+                                        # 遍历所有字段-值对进行替换 f:roi cv:[1,2,3,4]
+                                        for f, cv in zip(field_list, converted_values):
+                                            placeholder = f"{{{f}}}"
+                                            
+                                            # 处理字符串类型
+                                            if isinstance(resolved_val, str) and placeholder == resolved_val:
+                                                    resolved_val = cv
+                                            
+                                            # 处理列表/元组类型（完整遍历所有元素）
+                                            elif isinstance(resolved_val, (list, tuple)):
+                                                # 遍历列表中每个元素进行替换
+                                                result = []
+                                                    
+                                                # 显式遍历原列表每个元素
+                                                for item in resolved_val:
+                                                    # 条件判断并添加元素到结果列表
+                                                    if item == placeholder:
+                                                        result.append(cv)
+                                                    else:
+                                                        result.append(item)
+                                                resolved_val = result  # 更新解析值为新列表
+                                        
+                                        resolved_task_config[key] = resolved_val
+                                    resolved_pipeline[task_name] = resolved_task_config
+
+                                override_options.update(resolved_pipeline)
+                                logger.debug(
+                                    f"高级设置 [{advanced_key}] 解析后的 pipeline_override: {resolved_pipeline}"
+                                )
+
+                    else:
+                        for override in maa_config_data.interface_config.get(
+                            "option", []
+                        )[task_option["name"]]["cases"]:
+                            if override["name"] == task_option["value"]:
+
+                                override_options.update(
+                                    override.get("pipeline_override", {})
+                                )
 
             logger.info(
                 f"运行任务:{self.entry}\n任务选项:\n{json.dumps(override_options, indent=4,ensure_ascii=False)}"
@@ -1552,7 +1670,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             Select_Target = self.SelectTask_Combox_1.currentText()
             Option = self.get_selected_options()
             maa_config_data.config.get("task", [])[Select_index]["name"] = Select_Target
-            maa_config_data.config.get("task", [])[Select_index]["option"] = Option
+            maa_config_data.config.get("task", [])[Select_index]["option"] = Option[1]
+            maa_config_data.config.get("task", [])[Select_index]["advanced"] = Option[0]
 
         else:
             Select_Target = self.SelectTask_Combox_1.currentText()
@@ -1561,8 +1680,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
             task_data: TaskItem = {
                 "name": Select_Target,
-                "option": Option,
+                "option": Option[1],
                 "speedrun": speedrun,  # type: ignore
+                "advanced": Option[0],
             }
             if maa_config_data.config.get("task") is None:
                 raise ValueError("config['task'] is None")
@@ -1806,7 +1926,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def restore_options(self, selected_options: List[Dict[str, str]]):
         """
-        展示任务的doc和选项
+        展示任务的选项
         """
         layout = self.option_layout
 
@@ -1824,7 +1944,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     if isinstance(widget, BodyLabel) and widget.text() == name:
                         for k in range(item.count()):
                             combo_box = item.itemAt(k).widget()
-                            if isinstance(combo_box, ComboBox):
+                            if isinstance(combo_box, ComboBox) or isinstance(
+                                combo_box, EditableComboBox
+                            ):
                                 combo_box.setCurrentText(value)
                                 break
                         break
@@ -1884,7 +2006,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
     def Add_Select_Task_More_Select(self):
         """
-        动态添加更多选项到任务下拉框,用来展示option
+        动态添加更多选项到任务下拉框,用来展示option和doc
         """
         select_target = self.SelectTask_Combox_1.currentText()
         MAA_Pi_Config = maa_config_data.interface_config
@@ -1900,6 +2022,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 options = task.get("option")
                 if options:
                     for option in options:
+
+                        advanced_list = task.get("advanced", [])
+
+                        if option in advanced_list:
+                            continue
                         v_layout = QVBoxLayout()
 
                         label = BodyLabel(self)
@@ -1908,6 +2035,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         v_layout.addWidget(label)
 
                         select_box = ComboBox(self)
+
                         select_box.addItems(
                             list(
                                 Get_Task_List(
@@ -1924,6 +2052,33 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         v_layout.addWidget(select_box)
 
                         option_layout.addLayout(v_layout)
+
+                # 处理advanced字段
+                advanced = task.get("advanced", [])
+                if advanced:
+                    for advanced in advanced:
+                        advanced_layout = QVBoxLayout()
+                        advanced_label = BodyLabel(self)
+                        advanced_label.setText(advanced)
+                        advanced_label.setFont(QFont("Arial", 10))
+                        advanced_layout.addWidget(advanced_label)
+                        advanced_select_box = EditableComboBox(self)
+                        combox_list = Get_Task_advanced_List(
+                                    maa_config_data.interface_config_path, advanced
+                            )
+                        if not combox_list:
+                            raise ValueError(f"{advanced} 的配置错误")
+                        for item in combox_list:
+                            display_text = ",".join(map(str, item))
+                            advanced_select_box.addItem(display_text)
+
+                        advanced_select_box.setSizePolicy(
+                            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+                        )
+                        scroll_area_width = self.scroll_area.width()
+                        advanced_select_box.setFixedWidth(scroll_area_width - 20)
+                        advanced_layout.addWidget(advanced_select_box)
+                        option_layout.addLayout(advanced_layout)
 
                 # 处理 doc 字段
                 doc = task.get("doc")
@@ -1997,8 +2152,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         layout = self.option_layout
         name = None
         selected_value = None
+        advanced_glabal = False
 
         for i in range(layout.count()):
+            advanced = False
             item = layout.itemAt(i)
             if not isinstance(item, QVBoxLayout):
                 continue  # 如果item不是QVBoxLayout，跳过本次循环
@@ -2008,20 +2165,29 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     name = widget.text()
                 elif isinstance(widget, ComboBox):
                     selected_value = widget.currentText()
+                elif isinstance(widget, EditableComboBox):
+                    selected_value = widget.currentText()
+                    advanced = True
+                    advanced_glabal = True
+
             if name and selected_value:
-                selected_options.append({"name": name, "value": selected_value})
+                if advanced:
+                    selected_options.append(
+                        {"name": name, "value": selected_value, "advanced": advanced}
+                    )
+                else:
+                    selected_options.append({"name": name, "value": selected_value})
 
             # 重置变量
             name = None
             selected_value = None
 
-        return selected_options
+        return advanced_glabal, selected_options
 
     def clear_extra_widgets(self):
         """
         清除额外的控件
         """
-        print("清除额外的控件")
         for layout in [self.option_layout, self.doc_layout]:
             if not layout:
                 continue
@@ -2201,6 +2367,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             (QYWX_send, cfg.Notice_QYWX_status),
         ]:
             if cfg.get(status_key):  # 仅启用状态为 True 时发送
+                logger.info(f"发送通知: {sender.__name__}, 状态: {status_key}")
+
                 thread = NoticeSendThread(sender, msg, True)
                 thread.start()
                 self.notice_threads.append(thread)  # 保存线程实例
