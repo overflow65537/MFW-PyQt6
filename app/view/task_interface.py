@@ -46,6 +46,7 @@ from PySide6.QtWidgets import (
     QSpacerItem,
 )
 
+
 from qfluentwidgets import (
     InfoBar,
     InfoBarPosition,
@@ -442,25 +443,30 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if " " in dropped_text:
             dropped_text = dropped_text.split(" ")[0]
 
-        # 找到并删除对应的 task
-        Task_List: TaskItem | list[TaskItem] = Get_Values_list2(
-            maa_config_data.config_path, "task"
-        )
-        for index, task in enumerate(Task_List):
-            if task.get("name") == dropped_text:
-                del Task_List[index]
-                self.Task_List.takeItem(
-                    self.Task_List.currentRow()
-                )  # 从列表中移除对应项
-                break  # 找到并删除后退出循环
-        maa_config_data.config["task"] = Task_List
-        Save_Config(maa_config_data.config_path, maa_config_data.config)
-        event.acceptProposedAction()
-        self.update_task_list()
-        self.Task_List.setCurrentRow(-1)
-        self.AddTask_Button.setText(self.tr("Add Task"))
-        self.Delete_label.setText("")
-        self.Delete_label.setStyleSheet("background-color: rgba(255, 255, 255, 0);")
+        dragged_item = self.Task_List.currentItem()
+        if not dragged_item:
+            event.ignore()
+            return
+
+        task_index = dragged_item.data(Qt.ItemDataRole.UserRole)
+        if task_index is None or not isinstance(task_index, int):
+            event.ignore()
+            return
+
+        Task_List = maa_config_data.config.get("task", [])
+        if 0 <= task_index < len(Task_List):
+            del Task_List[task_index]
+            self.Task_List.takeItem(task_index)
+            maa_config_data.config["task"] = Task_List
+            Save_Config(maa_config_data.config_path, maa_config_data.config)
+            self.update_task_list()
+            self.Task_List.setCurrentRow(-1)
+            self.AddTask_Button.setText(self.tr("Add Task"))
+            self.Delete_label.setText("")
+            self.Delete_label.setStyleSheet("background-color: rgba(255, 255, 255, 0);")
+            event.acceptProposedAction()
+        else:
+            event.ignore()
 
     def startDrag(self, item: QListWidgetItem):
         """
@@ -1755,9 +1761,18 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         更新任务列表(被动刷新)
         """
         self.Task_List.clear()
-        self.Task_List.addItems(
-            Get_Values_list_Option(cfg.get(cfg.maa_config_path), "task")
-        )
+        tasks = maa_config_data.config.get("task", [])
+
+        for index, task in enumerate(tasks):
+            name_list = []
+            name_list.append(task.get("name", ""))
+            for i in task.get("option", []):
+                name_list.append(i.get("value", ""))
+            name = " ".join(name_list)
+
+            item = QListWidgetItem(name)
+            item.setData(Qt.ItemDataRole.UserRole, index)
+            self.Task_List.addItem(item)
 
     def Delete_Task(self):
         Select_Target = self.Task_List.currentRow()
@@ -2353,6 +2368,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         ]:
             if cfg.get(status_key):  # 仅启用状态为 True 时发送
                 logger.info(f"发送通知: {sender.__name__}, 状态: {status_key}")
+
                 thread = NoticeSendThread(sender, msg, True)
                 thread.start()
                 self.notice_threads.append(thread)  # 保存线程实例

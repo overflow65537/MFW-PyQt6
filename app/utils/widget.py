@@ -340,8 +340,8 @@ class NoticeType(QDialog):
             logger.error(f"测试 {self.notice_type} Error: {e}")
             self.show_error(str(e))
 
-    def notice_send_finished(self): 
-        self.testButton.setEnabled(True) 
+    def notice_send_finished(self):
+        self.testButton.setEnabled(True)
 
     def show_error(self, error_message):
         InfoBar.error(
@@ -815,7 +815,6 @@ class ListWidge_Menu_Draggable(ListWidget):
 
     def dropEvent(self, event: QDropEvent) -> None:
         if event.proposedAction() == Qt.DropAction.MoveAction:
-            # 获取拖拽开始的索引
             source_item = self.currentItem()
             if source_item is None:
                 super(ListWidge_Menu_Draggable, self).dropEvent(event)
@@ -823,23 +822,28 @@ class ListWidge_Menu_Draggable(ListWidget):
 
             begin = self.row(source_item)
 
-            # 获取拖拽结束的索引
             position = event.position().toPoint()
-            dragged_item = self.itemAt(position)
-            end = self.row(dragged_item) if dragged_item else self.count()
+            target_item = self.itemAt(position)
+            end = self.row(target_item) if target_item else self.count()
 
-            if begin != end:  # 只有在移动操作时更新任务配置
-                task_list = maa_config_data.config["task"]
-                if 0 <= begin < len(task_list) and 0 <= end < len(task_list):
-                    # 移动任务配置
-                    task_to_move = task_list.pop(begin)
-                    task_list.insert(end, task_to_move)
-                    maa_config_data.config["task"] = task_list
-                    Save_Config(maa_config_data.config_path, maa_config_data.config)
+            if (
+                begin == end
+                or begin < 0
+                or end < 0
+                or begin >= self.count()
+                or end > self.count()
+            ):
+                super(ListWidge_Menu_Draggable, self).dropEvent(event)
+                return
 
-                    signalBus.update_task_list.emit()
-                    self.setCurrentRow(end)
-                    signalBus.dragging_finished.emit()
+            task_list = maa_config_data.config.get("task", [])
+            if 0 <= begin < len(task_list):
+                moved_task = task_list.pop(begin)
+                task_list.insert(min(end, len(task_list)), moved_task)
+                maa_config_data.config["task"] = task_list
+                Save_Config(maa_config_data.config_path, maa_config_data.config)
+                signalBus.update_task_list.emit()
+
         super(ListWidge_Menu_Draggable, self).dropEvent(event)
         signalBus.dragging_finished.emit()
 
