@@ -22,6 +22,7 @@ MFW-ChainFlow Assistant 更新单元
 作者:overflow65537
 """
 
+from ast import Str
 from PySide6.QtCore import QThread, SignalInstance
 
 import requests
@@ -50,6 +51,7 @@ from ..utils.tool import (
 # region 更新
 class BaseUpdate(QThread):
     stop_flag = False
+    channel_map = {0: "stable", 1: "beta", 2: "alpha"}
 
     def download_file(self, url, file_path, progress_signal: SignalInstance):
         need_clear_update = False
@@ -164,218 +166,138 @@ class BaseUpdate(QThread):
             logger.exception(f"比较版本号时出错: {e}")
             return 0
 
-    def _response(self, url, used_by="mirror"):
+    def _mirror_response(self, url):
         """
-        发送 GET 请求并返回响应。
+        处理镜像源（MirrorChyan）的GET请求并返回响应。
         """
-        # 如果存在NO_SSL文件
+        # SSL验证配置
         if os.path.exists("NO_SSL"):
             verify = False
             logger.debug("检测到NO_SSL文件，跳过SSL验证")
         else:
             verify = True
+
         try:
             response = requests.get(url, verify=verify)
-
         except requests.exceptions.SSLError as e:
-            logger.error(f"更新检查失败: {e}")
-            if used_by == "mirror":
-                return {
-                    "status": "failed",
-                    "msg": self.tr("MirrorChyan Update check failed SSL error"),
-                }
-            else:
-                return {
-                    "status": "failed",
-                    "msg": self.tr("Github Update check failed SSL error"),
-                }
+            logger.error(f"镜像源更新检查失败（SSL错误）: {e}")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("MirrorChyan Update check failed SSL error"),
+            }
         except (
             requests.ConnectionError,
             requests.Timeout,
             requests.RequestException,
         ) as e:
-            logger.error(f"更新检查失败: {e}")
-            if used_by == "mirror":
-                return {
-                    "status": "failed_info",
-                    "msg": "Mirror ERROR"
-                    + "\n"
-                    + str(e)
-                    + "\n"
-                    + self.tr("switching to Github download"),
-                }
-            else:
-                return {"status": "failed", "msg": "Github ERROR" + "\n" + str(e)}
+            logger.error(f"镜像源更新检查失败（连接错误）: {e}")
+            return {
+                "status": "failed_info",
+                "msg": "Mirror ERROR"
+                + "\n"
+                + str(e)
+                + "\n"
+                + self.tr("switching to Github download"),
+            }
 
+        # 处理500+状态码
         if response.status_code >= 500:
-            logger.error(f"更新检查失败: {response.status_code}")
-            if used_by == "mirror":
-                return {
-                    "status": "failed_info",
-                    "msg": self.tr("MirrorChyan Update check failed"),
-                }
-            else:
-                return {
-                    "status": "failed",
-                    "msg": self.tr("Github Update check failed"),
-                }
+            logger.error(f"镜像源更新检查失败（状态码{response.status_code}）")
+            return {
+                "status": "failed_info",
+                "msg": self.tr("MirrorChyan Update check failed,status code: ")
+                + str(response.status_code),
+            }
         return response
 
-
-# endregion
-
-
-# region 资源更新
-class Update(BaseUpdate):
-
-    def run(self):
-        time.sleep(0.5)
-        url = maa_config_data.interface_config.get("url")
-        cdk = self.Mirror_ckd()
-        res_id = maa_config_data.interface_config.get("mirrorchyan_rid")
-        version = maa_config_data.interface_config.get("version")
-
-        # 检查 url 类型并转换
-        if url is None:
-            logger.error("URL 为 None，无法进行 GitHub 检查")
-            signalBus.update_download_finished.emit(
-                {
-                    "status": "failed",
-                    "msg": self.tr("No URL found"),
-                }
-            )
-            return
-        elif not isinstance(url, str):
-            logger.error("URL 既不是字符串也不是有效的列表类型")
-            signalBus.update_download_finished.emit(
-                {
-                    "status": "failed",
-                    "msg": self.tr("No valid URL found"),
-                }
-            )
-            return
-        if not version:
-            logger.error("版本号为空，无法进行 MirrorChyan 和 GitHub 检查")
-            signalBus.update_download_finished.emit(
-                {
-                    "status": "failed",
-                    "msg": self.tr("No version found"),
-                }
-            )
-            return
-
-        if res_id and (not cfg.get(cfg.force_github)):
-            mirror_data: Dict[str, Dict] = self.mirror_check(
-                res_id=res_id, version=version, cdk=cdk
-            )
-            if mirror_data.get("status") == "failed_info":  # mirror检查失败
-                signalBus.update_download_finished.emit(mirror_data)
-                github_dict = self.github_check(url)
-                if (
-                    github_dict.get("status") == "failed"
-                    or github_dict.get("status") == "success"
-                ):  # github检查失败:
-                    signalBus.update_download_finished.emit(github_dict)
-                    return
-                else:
-                    self.github_download(github_dict)
-                    return
-            elif mirror_data.get("status") == "success":  # 无需更新
-                signalBus.update_download_finished.emit(mirror_data)
-                return
-
-            if mirror_data.get("data", {}).get("url"):
-                signalBus.update_download_finished.emit(
-                    {
-                        "status": "info",
-                        "msg": self.tr(
-                            "MirrorChyan update check successful, starting downloa"
-                        ),
-                    }
-                )
-                self.mirror_download(res_id, mirror_data)
-                return
-            else:
-                signalBus.update_download_finished.emit(
-                    {
-                        "status": "info",
-                        "msg": self.tr(
-                            "MirrorChyan update check successful, but no CDK found, switching to Github download"
-                        ),
-                    }
-                )
-
-                github_dict = self.github_check(url)
-                if (
-                    github_dict.get("status") == "failed"
-                    or github_dict.get("status") == "success"
-                ):  # github检查失败:
-                    signalBus.update_download_finished.emit(github_dict)
-                    return
-                self.github_download(github_dict)
-                return
+    def _github_response(self, url):
+        """
+        处理GitHub的GET请求并返回响应。
+        """
+        # SSL验证配置
+        if os.path.exists("NO_SSL"):
+            verify = False
+            logger.debug("检测到NO_SSL文件，跳过SSL验证")
         else:
-            github_dict = self.github_check(url)
-            if (
-                github_dict.get("status") == "failed"
-                or github_dict.get("status") == "success"
-            ):  # github检查失败:
-                signalBus.update_download_finished.emit(github_dict)
-                return
+            verify = True
 
-            self.github_download(github_dict)
-
-    def assemble_gitHub_url(self, version: str, url: str) -> Optional[str]:
-        """
-        输入版本号和项目地址，返回GitHub项目源代码压缩包下载地址
-        """
-        if not url or not version:
-            # 返回 None
-            return None
-
-        parts = url.split("/")
         try:
-            username = parts[3]
-            repository = parts[4]
-        except IndexError:
-            # 返回 None
-            return None
-        retuen_url = (
-            f"https://api.github.com/repos/{username}/{repository}/zipball/{version}"
-        )
-        return retuen_url
+            response = requests.get(url, verify=verify)
+            response.raise_for_status()
+        except requests.exceptions.SSLError as e:
+            logger.error(f"GitHub更新检查失败（SSL错误）: {e}")
+            return {
+                "status": "failed",
+                "msg": self.tr("Github Update check failed SSL error"),
+            }
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 403:
+                logger.warning("GitHub API请求被限制")
+                return {
+                    "status": "failed",
+                    "msg": self.tr(
+                        "GitHub API request limit exceeded,please try again later"
+                    ),
+                }
+            else:
+                logger.error(f"GitHub更新检查失败（HTTP错误）: {e}")
+                return {
+                    "status": "failed",
+                    "msg": self.tr("Github Update check failed HTTP error,code: ")
+                    + str(e),
+                }
+
+        except (
+            requests.ConnectionError,
+            requests.Timeout,
+            requests.RequestException,
+        ) as e:
+            logger.error(f"GitHub更新检查失败（连接错误）: {e}")
+            return {"status": "failed", "msg": "Github ERROR" + "\n" + str(e)}
+
+        return response
+
+    def read_version(self):
+        if os.path.exists(os.path.join(os.getcwd(), "config", "version.json")):
+            logger.debug("从json文件读取版本号")
+            return Read_Config(os.path.join(os.getcwd(), "config", "version.json"))
+        else:
+            logger.debug("从txt文件读取版本号")
+            try:
+                with open("config/version.txt", "r", encoding="utf-8") as f:
+                    version_list = f.read().strip().split()
+                    version_data = {
+                        "os": version_list[0],
+                        "arch": version_list[1],
+                        "version": version_list[2],
+                    }
+                    return version_data
+
+            except Exception as e:
+                logger.exception(f"读取版本号时出错: {e}")
+                return None
 
     def mirror_check(
         self,
         res_id: str,
-        version: str,
         cdk: str,
+        version: str,
+        update_type: int = 0,  # 0代表资源更新,1代表MFW更新
+        os_type: Optional[str] = None,
+        arch: Optional[str] = None,
+        channel: Optional[str] = "stable",
     ) -> Dict:
-        """
-        mirror检查更新
-        Args:
-            res_id (str): 资源id
-            version (str): 版本号
-            cdk (str): cdk
+        if update_type == 0:  # 资源更新
+            if maa_config_data.interface_config.get("mirrorchyan_multiplatform", False):
+                logger.debug("检查到agent字段,使用多平台更新")
+                url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&os={os_type}&arch={arch}&channel={channel}&user_agent=MFW_PyQt6"
+            else:
+                url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&channel={channel}&user_agent=MFW_PyQt6"
 
-        Returns:
-            Dict: 资源信息
-        """
-        channel_map = {0: "stable", 1: "beta", 2: "alpha"}
-        channel = channel_map.get(cfg.get(cfg.resource_update_channel))
-        if maa_config_data.interface_config.get("mirrorchyan_multiplatform", False):
-            version_file_path = os.path.join(os.getcwd(), "config", "version.txt")
-            logger.info(f"正在读取版本文件: {version_file_path}")
-            with open(version_file_path, "r", encoding="utf-8") as f:
-                version_data = f.read().split()
-                logger.debug(f"版本数据: {version_data}")
-            url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&os={version_data[0]}&arch={version_data[1]}&channel={channel}&user_agent=MFW_PyQt6"
-        else:
-            url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&channel={channel}&user_agent=MFW_PyQt6"
+        else:  # MFW更新
+            url = f"https://mirrorchyan.com/api/resources/MFW-PyQt6/latest?current_version={version}&cdk={cdk}&os={os_type}&arch={arch}&channel={channel}"
 
-        cfg.set(cfg.is_change_cdk, False)
-
-        response = self._response(url)
+        response = self._mirror_response(url)
         if isinstance(response, dict):
             return response  # 返回错误信息给run方法
         mirror_data: Dict[str, Dict] = response.json()
@@ -463,6 +385,235 @@ class Update(BaseUpdate):
         if data is not None and data.get("version_name") == version:
             return {"status": "success", "msg": self.tr("current version is latest")}
         return mirror_data
+
+    def github_check(self, project_url: str, version: str):
+        """
+        检查 GitHub 上的更新。
+        """
+        logger.info(f"开始GitHub更新检查: {project_url}")
+        response = None
+        try:
+            response = self._github_response(project_url)
+            if isinstance(response, dict):
+                logger.warning(f"GitHub请求失败: {response.get('msg')}")
+                return response
+
+            update_dict: dict[str, dict] | dict[str, str] = response.json()
+            logger.debug(f"GitHub响应数据: {json.dumps(update_dict, indent=2)}")
+
+            if "message" in update_dict and isinstance(update_dict["message"], str):
+                error_msg = self.tr("GitHub API ERROR: ") + update_dict["message"]
+                logger.error(error_msg)
+                return {"status": "failed", "msg": error_msg}
+
+            if update_dict.get("tag_name", None) == version:
+                logger.info("当前已是最新版本")
+                return {
+                    "status": "no_need",
+                    "msg": self.tr("current version is latest"),
+                }
+
+            return update_dict
+        except json.JSONDecodeError as e:
+            if isinstance(response, Response):
+                logger.exception(f"GitHub响应解析失败: {response.text[:200]}\n{e}")
+            else:
+                logger.exception(f"GitHub响应解析失败: 未收到响应\n{e}")
+            return {"status": "failed", "msg": "Invalid GitHub response"}
+        except Exception as e:
+            logger.exception(f"GitHub检查过程中发生未预期错误{e}")
+            return {"status": "failed", "msg": str(e)}
+
+    def clear_change(self, target_path):
+        # 清理旧文件
+        change_data_path = os.path.join(target_path, "changes.json")
+        try:
+            if os.path.exists(change_data_path):
+
+                change_data = Read_Config(change_data_path).get("deleted", [])
+                logger.info(f"需要清理 {len(change_data)} 个文件")
+
+                for file in change_data:
+                    if "install" in file[:10]:
+                        file_path = file.replace(
+                            "install", maa_config_data.resource_path, 1
+                        )
+                    elif "resource" in file[:10]:
+                        file_path = file.replace(
+                            "resource",
+                            f"{maa_config_data.resource_path}/resource",
+                            1,
+                        )
+                    else:
+                        logger.error(f"未知文件格式: {file}")
+                        continue
+
+                    logger.debug(f"尝试删除: {file_path}")
+                    if os.path.exists(file_path):
+                        try:
+                            if os.path.isdir(file_path):
+                                shutil.rmtree(file_path)
+                            else:
+                                os.remove(file_path)
+                        except Exception as e:
+                            logger.error(f"删除失败 [{file_path}]: {str(e)}")
+            else:
+                logger.warning("未找到 changes.json 文件,执行全部清理")
+                shutil.rmtree(maa_config_data.resource_path)
+
+        except Exception as e:
+            logger.exception("清理旧文件时发生错误")
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "failed_info",
+                    "msg": self.tr("Failed to clean up temporary files"),
+                }
+            )
+            return False
+
+
+# endregion
+
+
+# region 资源更新
+class Update(BaseUpdate):
+
+    def run(self):
+        time.sleep(0.5)
+        parts = maa_config_data.interface_config.get("url","").split("/")
+        username = parts[3]
+        repository = parts[4]
+                    
+        url =  f"https://api.github.com/repos/{username}/{repository}/releases/latest"
+        cdk = self.Mirror_ckd()
+        res_id = maa_config_data.interface_config.get("mirrorchyan_rid")
+        version = maa_config_data.interface_config.get("version")
+        channel = self.channel_map.get(cfg.get(cfg.resource_update_channel))
+
+        version_data = self.read_version()
+        if version_data:
+            os_type = version_data.get("os")
+            arch = version_data.get("arch")
+        else:
+            raise Exception("Update failed: version_data is None")
+        # 检查 url 类型并转换
+        if url is None:
+            logger.error("URL 为 None，无法进行 GitHub 检查")
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "failed",
+                    "msg": self.tr("No URL found"),
+                }
+            )
+            return
+        elif not isinstance(url, str):
+            logger.error("URL 既不是字符串也不是有效的列表类型")
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "failed",
+                    "msg": self.tr("No valid URL found"),
+                }
+            )
+            return
+        if not version:
+            logger.error("版本号为空，无法进行 MirrorChyan 和 GitHub 检查")
+            signalBus.update_download_finished.emit(
+                {
+                    "status": "failed",
+                    "msg": self.tr("No version found"),
+                }
+            )
+            return
+
+        if res_id and (not cfg.get(cfg.force_github)):
+            mirror_data: Dict[str, Dict] = self.mirror_check(
+                res_id=res_id,
+                version=version,
+                cdk=cdk,
+                channel=channel,
+                os_type=os_type,
+                arch=arch,
+                update_type=0,
+            )
+            if mirror_data.get("status") == "failed_info":  # mirror检查失败
+                signalBus.update_download_finished.emit(mirror_data)
+                
+                 # URL构造
+
+                github_dict = self.github_check(url, version=version)
+                if (
+                    github_dict.get("status") == "failed"
+                    or github_dict.get("status") == "success"
+                ):  # github检查失败:
+                    signalBus.update_download_finished.emit(github_dict)
+                    return
+                else:
+                    self.github_download(github_dict)
+                    return
+            elif mirror_data.get("status") == "success":  # 无需更新
+                signalBus.update_download_finished.emit(mirror_data)
+                return
+
+            if mirror_data.get("data", {}).get("url"):
+                signalBus.update_download_finished.emit(
+                    {
+                        "status": "info",
+                        "msg": self.tr(
+                            "MirrorChyan update check successful, starting downloa"
+                        ),
+                    }
+                )
+                self.mirror_download(res_id, mirror_data)
+                return
+            else:
+                signalBus.update_download_finished.emit(
+                    {
+                        "status": "info",
+                        "msg": self.tr(
+                            "MirrorChyan update check successful, but no CDK found, switching to Github download"
+                        ),
+                    }
+                )
+
+                github_dict = self.github_check(url, version=version)
+                if (
+                    github_dict.get("status") == "failed"
+                    or github_dict.get("status") == "success"
+                ):  # github检查失败:
+                    signalBus.update_download_finished.emit(github_dict)
+                    return
+                self.github_download(github_dict)
+                return
+        else:
+            github_dict = self.github_check(url, version=version)
+            if (
+                github_dict.get("status") == "failed"
+                or github_dict.get("status") == "success"
+            ):  # github检查失败:
+                signalBus.update_download_finished.emit(github_dict)
+                return
+
+            self.github_download(github_dict)
+
+    def assemble_gitHub_url(self, version: str, url: str) -> Optional[str]:
+        """
+        输入版本号和项目地址，返回GitHub项目源代码压缩包下载地址
+        """
+        if not url or not version:
+            # 返回 None
+            return None
+
+        parts = url.split("/")
+        try:
+            username = parts[3]
+            repository = parts[4]
+        except IndexError:
+            # 返回 None
+            return None
+        retuen_url = (
+            f"https://api.github.com/repos/{username}/{repository}/zipball/{version}"
+        )
+        return retuen_url
 
     def mirror_download(self, res_id, mirror_data: Dict[str, dict]):
         """mirror下载更新"""
@@ -624,131 +775,16 @@ class Update(BaseUpdate):
             )
             return False
 
-    def github_check(self, project_url: str) -> Dict:
-        """github检查更新"""
-        try:
-            # 参数校验
-            if not project_url:
-                logger.error("项目地址未配置")
-                return {
-                    "status": "failed",
-                    "msg": self.tr("Project address configuration not found"),
-                }
-
-            # URL构造
-            parts = project_url.split("/")
-            try:
-                username = parts[3]
-                repository = parts[4]
-            except IndexError:
-                logger.exception("项目地址格式错误")
-                return {
-                    "status": "failed",
-                    "msg": self.tr("Invalid project URL format"),
-                }
-
-            # 发送请求
-            response = None
-            if os.path.exists("NO_SSL"):
-                verify = False
-                logger.debug("检测到NO_SSL文件，跳过SSL验证")
-            else:
-                verify = True
-            try:
-                url = f"https://api.github.com/repos/{username}/{repository}/releases/latest"
-                logger.info(f"开始GitHub更新检查 [URL: {url}]")
-                response = requests.get(url, verify=verify, timeout=10)
-                response.raise_for_status()
-            except requests.exceptions.SSLError as e:
-                logger.error(f"SSL 错误发生: {e}")
-                return {
-                    "status": "failed",
-                    "msg": self.tr(
-                        "SSL error occurred, please check your network connection"
-                    ),
-                }
-            except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 403:
-                    logger.warning("GitHub API请求被限制")
-                    return {
-                        "status": "failed",
-                        "msg": self.tr(
-                            "GitHub API request limit exceeded,please try again later"
-                        ),
-                    }
-            except requests.exceptions.RequestException as e:
-                logger.exception(f"GitHub请求失败: {str(e)}")
-                return {"status": "failed", "msg": str(e)}
-
-            # 解析响应
-
-            try:
-                if response is None:
-                    logger.error("GitHub响应为空")
-                    return {
-                        "status": "failed",
-                        "msg": self.tr("GitHub response is empty"),
-                    }
-                update_dict = response.json()
-                logger.debug(f"API响应: {json.dumps(update_dict, indent=2)}")
-
-                if "message" in update_dict:
-                    error_msg = f"GitHub API错误: {update_dict['message']}"
-                    logger.error(error_msg)
-                    return {"status": "failed", "msg": error_msg}
-            except json.JSONDecodeError:
-                logger.exception("响应解析失败")
-                return {
-                    "status": "failed",
-                    "msg": self.tr("Invalid response from GitHub"),
-                }
-
-            # 版本比较
-            current_version = maa_config_data.interface_config.get("version")
-            if update_dict.get("tag_name") == current_version:
-                logger.info("当前已是最新版本")
-                return {
-                    "status": "success",
-                    "msg": self.tr("current version is latest"),
-                }
-
-            return update_dict
-
-        except Exception as e:
-            logger.exception("未预期的检查错误")
-            return {
-                "status": "failed",
-                "msg": self.tr("Update check failed due to unexpected error"),
-            }
-
     def github_download(self, update_dict: Dict):
         """github下载更新"""
-        try:
-            # 版本文件读取
-            version_file_path = os.path.join(".", "config", "version.txt")
-            logger.info(f"正在读取版本文件: {version_file_path}")
-            with open(version_file_path, "r") as version_file:
-                v_data = version_file.read().split()
-                logger.debug(f"版本数据: {v_data}")
-                version = v_data[2][1:]
-                arch = v_data[1]
-                os_type = v_data[0]
-                logger.debug(f"当前版本: {version}")
-                logger.debug(f"当前架构: {arch}")
-                logger.debug(f"当前系统: {os_type}")
+        version_data = self.read_version()
+        if version_data:
+            os_type = version_data.get("os")
+            arch = version_data.get("arch")
+            version = version_data.get("version", "v0.0.1")
+        else:
+            raise ValueError(self.tr("update failed: version_data is None"))
 
-        except FileNotFoundError:
-            logger.exception("版本文件未找到")
-            signalBus.update_download_finished.emit(
-                {"status": "failed", "msg": self.tr("Version file not found")}
-            )
-            return
-        except IndexError:
-            logger.exception("版本文件格式错误")
-            signalBus.update_download_finished.emit(
-                {"status": "failed", "msg": self.tr("Version file format error")}
-            )
-            return
 
         self.stop_flag = False
         download_url = None
@@ -955,7 +991,7 @@ class Update(BaseUpdate):
 # region github下载资源包
 
 
-class DownloadBundle(BaseUpdate):
+class DownloadBundle(Update):
     project_url = ""
 
     def run(self):
@@ -1050,18 +1086,14 @@ class DownloadBundle(BaseUpdate):
 # region 更新自身
 class UpdateSelf(BaseUpdate):
     def run(self):
-        try:
-            version_file_path = os.path.join(os.getcwd(), "config", "version.txt")
-            logger.info(f"正在读取版本文件: {version_file_path}")
-            with open(version_file_path, "r", encoding="utf-8") as f:
-                version_data = f.read().split()
-                logger.debug(f"版本数据: {version_data}")
-        except Exception as e:
-            logger.exception("读取版本文件失败")
-            signalBus.download_self_finished.emit(
-                {"status": "failed", "msg": self.tr("Cannot read version file")}
-            )
-            return
+        version_data = self.read_version()
+        if version_data:
+            os_type = version_data.get("os")
+            arch = version_data.get("arch")
+            version = version_data.get("version", "v0.0.1")
+        else:
+            raise ValueError(self.tr("update failed: version_data is None"))
+        channel = self.channel_map.get(cfg.get(cfg.MFW_update_channel))
 
         cdk = self.Mirror_ckd()
         if cdk:
@@ -1069,14 +1101,22 @@ class UpdateSelf(BaseUpdate):
         else:
             logger.warning("未获取到CDK")
             cdk = ""
-        mirror_data: Dict[str, Dict] = self.mirror_check(cdk, version_data)
+        mirror_data: Dict[str, Dict] = self.mirror_check(
+            res_id="MFW_PyQt6",
+            cdk=cdk,
+            version=version,
+            os_type=os_type,
+            channel=channel,
+            arch=arch,
+            update_type=1,
+        )
         logger.debug(f"镜像检查结果: {mirror_data}")
         if mirror_data.get("status") == "failed_info":  # mirror检查失败
             signalBus.download_self_finished.emit(mirror_data)
             update_url = (
                 f"https://api.github.com/repos/overflow65537/MFW-PyQt6/releases/latest"
             )
-            github_dict = self.github_check(update_url, version_data[2])
+            github_dict = self.github_check(update_url, version)
             if (
                 github_dict.get("status") == "failed"
                 or github_dict.get("status") == "success"
@@ -1086,18 +1126,22 @@ class UpdateSelf(BaseUpdate):
                 return
             try:
                 download_url = None
-                for i in github_dict.get("assets") or []:
+                for i in github_dict.get("assets", {}) or []:
+                    if not isinstance(i, dict):
+                        logger.error(f"assets 内部不是字典: {github_dict}")
+                        raise Exception("assets inside is not a dict")
                     if (
                         i.get("name")
-                        == f"MFW-PyQt6-{version_data[0]}-{version_data[1]}-{github_dict.get("tag_name")}.zip"
+                        == f"MFW-PyQt6-{os_type}-{arch}-{github_dict.get("tag_name")}.zip"
                     ):
                         download_url = i.get("browser_download_url")
                         break
                 if not download_url:
-                    raise Exception("未找到下载地址")
+                    logger.error(f"未找到下载地址: {github_dict}")
+                    raise Exception("download url not found")
                 logger.debug(f"github开始下载: {download_url}")
             except Exception as e:
-                logger.exception("获取下载地址失败")
+                logger.exception(f"获取下载地址失败{e}")
                 signalBus.download_self_finished.emit(
                     {
                         "status": "failed",
@@ -1109,15 +1153,11 @@ class UpdateSelf(BaseUpdate):
             if not self._download(download_url):
                 return
             try:
-                tag_name = github_dict.get("tag_name") or ""
-                version_data[2] = tag_name
-                with open(
-                    os.path.join(os.getcwd(), "config", "version.txt"),
-                    "w",
-                    encoding="utf-8",
-                ) as f:
-                    f.write(" ".join(version_data))
-                return
+                tag_name = github_dict.get("tag_name")
+                version_data["version"] = str(tag_name)
+                Save_Config(
+                    os.path.join(os.getcwd(), "config", "version.json"), version_data
+                )
             except Exception as e:
                 logger.exception("版本文件更新失败")
                 signalBus.download_self_finished.emit(
@@ -1136,7 +1176,7 @@ class UpdateSelf(BaseUpdate):
             )
             return
 
-        elif mirror_data.get("data", {}).get("version_name") == version_data[2]:
+        elif mirror_data.get("data", {}).get("version_name") == version:
             logger.warning(f"当前版本已是最新版本")
             signalBus.download_self_finished.emit(
                 {"status": "no_need", "msg": self.tr("current version is latest")}
@@ -1168,7 +1208,10 @@ class UpdateSelf(BaseUpdate):
                 return
 
             version_name = mirror_data["data"].get("version_name", "")
-            version_data[2] = str(version_name)
+            version_data["version"] = version_name
+            Save_Config(
+                os.path.join(os.getcwd(), "config", "version.json"), version_data
+            )
             try:
                 version_file_path = os.path.join(os.getcwd(), "config", "version.txt")
                 with open(version_file_path, "w", encoding="utf-8") as f:
@@ -1213,15 +1256,11 @@ class UpdateSelf(BaseUpdate):
                 return
 
             version_name = mirror_data["data"].get("version_name", "")
-            version_data[2] = str(version_name)
+            version_data["version"] = str(version_name)
             try:
-                with open(
-                    os.path.join(os.getcwd(), "config", "version.txt"),
-                    "w",
-                    encoding="utf-8",
-                ) as f:
-                    f.write(" ".join(version_data))
-                    logger.info(f"版本信息已更新: {version_data}")
+                Save_Config(
+                    os.path.join(os.getcwd(), "config", "version.json"), version_data
+                )
             except Exception as e:
                 logger.exception("版本文件更新失败")
                 signalBus.download_self_finished.emit(
@@ -1229,160 +1268,12 @@ class UpdateSelf(BaseUpdate):
                 )
             return
 
-    def github_check(self, project_url: str, version) -> Dict:
-        """github检查更新"""
-        logger.info(f"开始GitHub更新检查: {project_url}")
-        response = None
-        try:
-            response = self._response(project_url, used_by="github")
-            if isinstance(response, dict):
-                logger.warning(f"GitHub请求失败: {response.get('msg')}")
-                return response
-
-            update_dict: dict = response.json()
-            logger.debug(f"GitHub响应数据: {json.dumps(update_dict, indent=2)}")
-
-            if update_dict.get("message"):
-                logger.error(f"GitHub API错误: {update_dict.get('message')}")
-                return {"status": "failed", "msg": update_dict.get("message")}
-
-            if update_dict.get("tag_name", None) == version:
-                logger.info("当前已是最新版本")
-                return {
-                    "status": "no_need",
-                    "msg": self.tr("current version is latest"),
-                }
-
-            return update_dict
-        except json.JSONDecodeError as e:
-            if isinstance(response, Response):
-                logger.exception(f"GitHub响应解析失败: {response.text[:200]}")
-            else:
-                logger.exception("GitHub响应解析失败: 未收到响应")
-            return {"status": "failed", "msg": "Invalid GitHub response"}
-        except Exception as e:
-            logger.exception("GitHub检查过程中发生未预期错误")
-            return {"status": "failed", "msg": str(e)}
-
-    def assemble_gitHub_url(self, version_data: list, target_version: str) -> str:
+    def assemble_gitHub_url(self, version_data: dict, target_version: str) -> str:
         """
         输入版本号和项目地址，返回GitHub项目源代码压缩包下载地址
         """
-        url = f"https://github.com/overflow65537/MFW-PyQt6/releases/download/{target_version}/MFW-PyQt6-{version_data[0]}-{version_data[1]}-{target_version}.zip"
+        url = f"https://github.com/overflow65537/MFW-PyQt6/releases/download/{target_version}/MFW-PyQt6-{version_data["os"]}-{version_data["arch"]}-{target_version}.zip"
         return url
-
-    def mirror_check(self, cdk, version_data: list) -> Dict:
-        """
-        mirror检查更新
-        Args:
-            res_id (str): 资源id
-
-            cdk (str): cdk
-            version_data (list): 系统,架构,版本号
-        Returns:
-            Dict: 资源信息
-        """
-        channel_map = {0: "stable", 1: "beta", 2: "alpha"}
-        channel = channel_map.get(cfg.get(cfg.MFW_update_channel))
-        url = f"https://mirrorchyan.com/api/resources/MFW-PyQt6/latest?current_version={version_data[2]}&cdk={cdk}&os={version_data[0]}&arch={version_data[1]}&channel={channel}"
-
-        response = self._response(url)
-        if isinstance(response, dict):
-            return response
-
-        mirror_data: Dict[str, Dict] = response.json()
-        code = mirror_data.get("code")
-        match code:
-            case 1001:  # 参数不正确
-                logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
-                return {
-                    "status": "failed_info",
-                    "msg": self.tr("INVALID_PARAMS")
-                    + "\n"
-                    + self.tr("switching to Github download"),
-                }
-            case 7001:  # CDK过期
-                logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
-                return {
-                    "status": "failed_info",
-                    "msg": self.tr("KEY_EXPIRED")
-                    + "\n"
-                    + self.tr("switching to Github download"),
-                }
-            case 7002:  # CDK错误
-                logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
-                return {
-                    "status": "failed_info",
-                    "msg": self.tr("KEY_INVALID")
-                    + "\n"
-                    + self.tr("switching to Github download"),
-                }
-            case 7003:  # CDK下载次数限制
-                logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
-                return {
-                    "status": "failed_info",
-                    "msg": self.tr("RESOURCE_QUOTA_EXHAUSTED")
-                    + "\n"
-                    + self.tr("switching to Github download"),
-                }
-            case 7004:  # CDK无权限下载该资源
-                logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
-                return {
-                    "status": "failed_info",
-                    "msg": self.tr("KEY_MISMATCHED")
-                    + "\n"
-                    + self.tr("switching to Github download"),
-                }
-            case 7005:  # CDK过期
-                logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
-                return {
-                    "status": "failed_info",
-                    "msg": self.tr("KEY_BLOCKED")
-                    + "\n"
-                    + self.tr("switching to Github download"),
-                }
-            case 8001:  # 对应架构和系统下的资源不存在
-                logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
-                return {
-                    "status": "failed_info",
-                    "msg": self.tr("RESOURCE_NOT_FOUND")
-                    + "\n"
-                    + self.tr("switching to Github download"),
-                }
-            case 8002:  # 错误系统
-                logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
-                return {
-                    "status": "failed_info",
-                    "msg": self.tr("INVALID_OS")
-                    + "\n"
-                    + self.tr("switching to Github download"),
-                }
-            case 8003:  # 错误架构
-                logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
-                return {
-                    "status": "failed_info",
-                    "msg": self.tr("INVALID_ARCH")
-                    + "\n"
-                    + self.tr("switching to Github download"),
-                }
-            case 8004:  # 错误更新通道
-                logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
-                return {
-                    "status": "failed_info",
-                    "msg": self.tr("INVALID_CHANNEL")
-                    + "\n"
-                    + self.tr("switching to Github download"),
-                }
-            case _ if code == 1:  # 错误
-                logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
-                return {
-                    "status": "failed_info",
-                    "msg": str(mirror_data.get("msg", ""))
-                    + "\n"
-                    + self.tr("switching to Github download"),
-                }
-
-        return mirror_data
 
     def _download(self, download_url):
 
