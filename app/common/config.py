@@ -23,6 +23,7 @@ MFW-ChainFlow Assistant 配置
 """
 
 
+from logging import config
 import sys
 from enum import Enum
 
@@ -39,7 +40,9 @@ from qfluentwidgets import (
     Theme,
     ConfigSerializer,
     __version__,
+    ConfigValidator
 )
+import re
 
 
 class Language(Enum):
@@ -62,10 +65,14 @@ class LanguageSerializer(ConfigSerializer):
 
 def isWin11():
     return sys.platform == "win32" and sys.getwindowsversion().build >= 22000
-
-
+    
 class Config(QConfig):
     """Config of application"""
+
+    # 代理设置
+    proxy = ConfigItem("proxy", "proxy", 0)
+    http_proxy = ConfigItem("proxy", "http_proxy", "")
+    socks5_proxy = ConfigItem("proxy", "socks5_proxy", "")
 
     # agent路径
     agent_path = ConfigItem("program", "agent_path", "")

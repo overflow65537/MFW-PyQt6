@@ -53,16 +53,41 @@ class BaseUpdate(QThread):
     stop_flag = False
     channel_map = {0: "stable", 1: "beta", 2: "alpha"}
 
-    def download_file(self, url, file_path, progress_signal: SignalInstance):
+    def get_proxy_data(self) -> dict:
+        proxy_config = {}
+        if cfg.get(cfg.proxy) == 0:
+            proxy_config["http"] = f"http://{cfg.get(cfg.http_proxy)}"
+            proxy_config["https"] = f"http://{cfg.get(cfg.http_proxy)}"
+        elif cfg.get(cfg.proxy) == 1:
+            proxy_config["http"] = f"socks5://{cfg.get(cfg.http_proxy)}"
+            proxy_config["https"] = f"socks5://{cfg.get(cfg.http_proxy)}"
+
+        proxies: dict = {}
+        for key, value in proxy_config.items():
+            if value:
+                proxies[key] = value
+        if proxies:
+            logger.debug(f"使用代理配置: {proxies}")
+            return proxies
+        else:
+            logger.debug("代理配置为空")
+            return {}
+
+    def download_file(self, url, file_path, progress_signal: SignalInstance, use_proxies):
         need_clear_update = False
         response = None
+
+        proxies = self.get_proxy_data()
+
         if os.path.exists("NO_SSL"):
             verify = False
             logger.debug("检测到NO_SSL文件，跳过SSL验证")
         else:
             verify = True
         try:
-            response = requests.get(url, stream=True, verify=verify, timeout=10)
+            response = requests.get(
+                url, stream=True, verify=verify, timeout=10, proxies=proxies
+            )
             response.raise_for_status()
             total_size = int(response.headers.get("content-length", 0))
             downloaded_size = 0
@@ -178,7 +203,7 @@ class BaseUpdate(QThread):
             verify = True
 
         try:
-            response = requests.get(url, verify=verify)
+            response = requests.get(url, timeout=10, verify=verify)
         except requests.exceptions.SSLError as e:
             logger.error(f"镜像源更新检查失败（SSL错误）: {e}")
             return {
@@ -220,9 +245,10 @@ class BaseUpdate(QThread):
             logger.debug("检测到NO_SSL文件，跳过SSL验证")
         else:
             verify = True
+        proxies = self.get_proxy_data()
 
         try:
-            response = requests.get(url, verify=verify)
+            response = requests.get(url, timeout=10, verify=verify, proxies=proxies)
             response.raise_for_status()
         except requests.exceptions.SSLError as e:
             logger.error(f"GitHub更新检查失败（SSL错误）: {e}")
@@ -480,11 +506,11 @@ class Update(BaseUpdate):
 
     def run(self):
         time.sleep(0.5)
-        parts = maa_config_data.interface_config.get("url","").split("/")
+        parts = maa_config_data.interface_config.get("url", "").split("/")
         username = parts[3]
         repository = parts[4]
-                    
-        url =  f"https://api.github.com/repos/{username}/{repository}/releases/latest"
+
+        url = f"https://api.github.com/repos/{username}/{repository}/releases/latest"
         cdk = self.Mirror_ckd()
         res_id = maa_config_data.interface_config.get("mirrorchyan_rid")
         version = maa_config_data.interface_config.get("version")
@@ -537,8 +563,8 @@ class Update(BaseUpdate):
             )
             if mirror_data.get("status") == "failed_info":  # mirror检查失败
                 signalBus.update_download_finished.emit(mirror_data)
-                
-                 # URL构造
+
+                # URL构造
 
                 github_dict = self.github_check(url, version=version)
                 if (
@@ -649,7 +675,10 @@ class Update(BaseUpdate):
             zip_file_path = os.path.join(hotfix_directory, f"{res_id}.zip")
 
             if not self.download_file(
-                download_url, zip_file_path, signalBus.update_download_progress
+                download_url,
+                zip_file_path,
+                signalBus.update_download_progress,
+                use_proxies=False,
             ):
                 logger.error(f"镜像下载失败 [URL: {download_url}]")
                 signalBus.update_download_finished.emit(
@@ -785,7 +814,6 @@ class Update(BaseUpdate):
         else:
             raise ValueError(self.tr("update failed: version_data is None"))
 
-
         self.stop_flag = False
         download_url = None
         try:
@@ -831,7 +859,10 @@ class Update(BaseUpdate):
             logger.debug(f"压缩文件保存路径: {zip_file_path}")
 
             if not self.download_file(
-                download_url, zip_file_path, signalBus.update_download_progress
+                download_url,
+                zip_file_path,
+                signalBus.update_download_progress,
+                use_proxies=True,
             ):
                 logger.error("下载更新包失败")
                 signalBus.update_download_finished.emit(
@@ -1009,11 +1040,12 @@ class DownloadBundle(Update):
             logger.debug("检测到NO_SSL文件，跳过SSL验证")
         else:
             verify = True
+        proxies = self.get_proxy_data()
 
         try:
             if url is None:
                 raise ValueError("URL is empty or invalid.")
-            response = requests.get(url, verify=verify, timeout=10)
+            response = requests.get(url, verify=verify, timeout=10, proxies=proxies)
             response.raise_for_status()
             content = response.json()
             logger.debug(f"更新检查结果: {content}")
@@ -1031,7 +1063,7 @@ class DownloadBundle(Update):
         )
 
         if not self.download_file(
-            download_url, zip_file_path, signalBus.bundle_download_progress
+            download_url, zip_file_path, signalBus.bundle_download_progress,use_proxies = False
         ):
             signalBus.download_finished.emit(
                 {"status": "failed", "msg": self.tr("Download failed")}
@@ -1150,7 +1182,7 @@ class UpdateSelf(BaseUpdate):
                 )
                 return
 
-            if not self._download(download_url):
+            if not self._download(download_url, use_proxies=True):
                 return
             try:
                 tag_name = github_dict.get("tag_name")
@@ -1194,7 +1226,7 @@ class UpdateSelf(BaseUpdate):
             )
 
             try:
-                if not self._download(mirror_data["data"]["url"]):
+                if not self._download(mirror_data["data"]["url"], use_proxies=False):
                     logger.error("镜像下载失败")
                     return
             except Exception as e:
@@ -1242,7 +1274,7 @@ class UpdateSelf(BaseUpdate):
                 github_url = self.assemble_gitHub_url(version_data, target_version)
                 logger.debug(f"GitHub下载地址: {github_url}")
 
-                if not self._download(github_url):
+                if not self._download(github_url,use_proxies = False):
                     logger.error("GitHub下载失败")
                     return
             except KeyError as e:
@@ -1275,13 +1307,16 @@ class UpdateSelf(BaseUpdate):
         url = f"https://github.com/overflow65537/MFW-PyQt6/releases/download/{target_version}/MFW-PyQt6-{version_data["os"]}-{version_data["arch"]}-{target_version}.zip"
         return url
 
-    def _download(self, download_url):
+    def _download(self, download_url, use_proxies):
 
         self.stop_flag = False
 
         zip_file_path = os.path.join(os.getcwd(), "update.zip")
         if not self.download_file(
-            download_url, zip_file_path, signalBus.download_self_progress
+            download_url,
+            zip_file_path,
+            signalBus.download_self_progress,
+            use_proxies=use_proxies,
         ):
             signalBus.download_self_finished.emit(
                 {

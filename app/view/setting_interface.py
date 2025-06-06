@@ -48,6 +48,7 @@ from ..utils.widget import (
     NoticeButtonSettingCard,
     DoubleButtonSettingCard,
     ShowDownload,
+    ProxySettingCard
 )
 from ..utils.update import Update, UpdateSelf
 from ..utils.tool import Save_Config, for_config_get_url, decrypt, encrypt
@@ -452,11 +453,41 @@ class SettingInterface(ScrollArea):
             configItem=cfg.force_github,
             parent=self.updateGroup,
         )
+        self.proxy = ProxySettingCard(
+            FIF.GLOBE,
+            self.tr("Use Proxy"),
+            self.tr("After filling in the proxy settings, all traffic except that to the Mirror will be proxied."),
+            parent=self.updateGroup,
+        )
+
+        combox_index = cfg.get(cfg.proxy)
+        self.proxy.combobox.setCurrentIndex(combox_index)
+        
+        if combox_index ==0:
+            self.proxy.input.setText(cfg.get(cfg.http_proxy))
+        elif combox_index ==1:
+            self.proxy.input.setText(cfg.get(cfg.socks5_proxy))
+
+        self.proxy.combobox.currentIndexChanged.connect(self.proxy_com_change)
+        self.proxy.input.textChanged.connect(self.proxy_inp_change)
 
         self.updateGroup.addSettingCard(self.MirrorCard)
         self.updateGroup.addSettingCard(self.auto_update)
         self.updateGroup.addSettingCard(self.MFW_auto_update)
         self.updateGroup.addSettingCard(self.force_github)
+        self.updateGroup.addSettingCard(self.proxy)
+
+    def proxy_com_change(self):
+        cfg.set(cfg.proxy,self.proxy.combobox.currentIndex())
+        if self.proxy.combobox.currentIndex() ==0:
+            self.proxy.input.setText(cfg.get(cfg.http_proxy))
+        elif self.proxy.combobox.currentIndex() ==1:
+            self.proxy.input.setText(cfg.get(cfg.socks5_proxy))
+    def proxy_inp_change(self):
+        if self.proxy.combobox.currentIndex() ==0:
+            cfg.set(cfg.http_proxy,self.proxy.input.text())
+        elif self.proxy.combobox.currentIndex() ==1:
+            cfg.set(cfg.socks5_proxy,self.proxy.input.text())
 
     def initialize_about_settings(self):
         """初始化关于设置。"""
