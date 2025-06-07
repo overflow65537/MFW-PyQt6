@@ -32,6 +32,7 @@ from qfluentwidgets import (
     CustomColorSettingCard,
     setTheme,
     setThemeColor,
+    PrimaryPushSettingCard,
 )
 from qfluentwidgets import FluentIcon as FIF
 from qfluentwidgets import InfoBar
@@ -340,12 +341,19 @@ class SettingInterface(ScrollArea):
             notice_type="QYWX",
             parent=self.noticeGroup,
         )
+        self.send_settingCard = PrimaryPushSettingCard(
+            text=self.tr("Send Test"),
+            icon=FIF.SEND,
+            title=self.tr("Send Test"),
+            parent=self.noticeGroup,
+        )
 
         self.noticeGroup.addSettingCard(self.dingtalk_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.lark_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.SMTP_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.WxPusher_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.QYWX_noticeTypeCard)
+        self.noticeGroup.addSettingCard(self.send_settingCard)
 
     def initialize_advanced_settings(self):
         """初始化高级设置。"""
@@ -456,16 +464,18 @@ class SettingInterface(ScrollArea):
         self.proxy = ProxySettingCard(
             FIF.GLOBE,
             self.tr("Use Proxy"),
-            self.tr("After filling in the proxy settings, all traffic except that to the Mirror will be proxied."),
+            self.tr(
+                "After filling in the proxy settings, all traffic except that to the Mirror will be proxied."
+            ),
             parent=self.updateGroup,
         )
 
         combox_index = cfg.get(cfg.proxy)
         self.proxy.combobox.setCurrentIndex(combox_index)
-        
-        if combox_index ==0:
+
+        if combox_index == 0:
             self.proxy.input.setText(cfg.get(cfg.http_proxy))
-        elif combox_index ==1:
+        elif combox_index == 1:
             self.proxy.input.setText(cfg.get(cfg.socks5_proxy))
 
         self.proxy.combobox.currentIndexChanged.connect(self.proxy_com_change)
@@ -478,16 +488,17 @@ class SettingInterface(ScrollArea):
         self.updateGroup.addSettingCard(self.proxy)
 
     def proxy_com_change(self):
-        cfg.set(cfg.proxy,self.proxy.combobox.currentIndex())
-        if self.proxy.combobox.currentIndex() ==0:
+        cfg.set(cfg.proxy, self.proxy.combobox.currentIndex())
+        if self.proxy.combobox.currentIndex() == 0:
             self.proxy.input.setText(cfg.get(cfg.http_proxy))
-        elif self.proxy.combobox.currentIndex() ==1:
+        elif self.proxy.combobox.currentIndex() == 1:
             self.proxy.input.setText(cfg.get(cfg.socks5_proxy))
+
     def proxy_inp_change(self):
-        if self.proxy.combobox.currentIndex() ==0:
-            cfg.set(cfg.http_proxy,self.proxy.input.text())
-        elif self.proxy.combobox.currentIndex() ==1:
-            cfg.set(cfg.socks5_proxy,self.proxy.input.text())
+        if self.proxy.combobox.currentIndex() == 0:
+            cfg.set(cfg.http_proxy, self.proxy.input.text())
+        elif self.proxy.combobox.currentIndex() == 1:
+            cfg.set(cfg.socks5_proxy, self.proxy.input.text())
 
     def initialize_about_settings(self):
         """初始化关于设置。"""
@@ -680,9 +691,7 @@ class SettingInterface(ScrollArea):
                 self._rename_updater("MFWUpdater", "MFWUpdater1")
         except Exception as e:
             logger.error(f"重命名更新程序失败: {e}")
-            signalBus.infobar_message.emit(
-                {"status": "failed", "msg": e}
-            )
+            signalBus.infobar_message.emit({"status": "failed", "msg": e})
             return
 
         # 启动更新程序
@@ -709,9 +718,7 @@ class SettingInterface(ScrollArea):
                 raise NotImplementedError("Unsupported platform")
         except Exception as e:
             logger.error(f"启动更新程序失败: {e}")
-            signalBus.infobar_message.emit(
-                {"status": "failed", "msg": e}
-            )
+            signalBus.infobar_message.emit({"status": "failed", "msg": e})
             return
 
         logger.info("正在启动更新程序")

@@ -990,7 +990,6 @@ class DoubleButtonSettingCard(SettingCard):
             [
                 self.tr("stable"),
                 self.tr("beta"),
-                self.tr("alpha"),
             ]
         )
 
@@ -1404,22 +1403,18 @@ class ComboBoxSettingCardCustom(SettingCard):
                 rewrite_contorller(data, self.controller, self.controller_type, result)
 
         Save_Config(self.path, data)
+
+
 class ProxySettingCard(SettingCard):
     def __init__(
-        self,
-        icon: Union[str, QIcon, FluentIconBase],
-        title,
-        content=None,
-        parent = None
+        self, icon: Union[str, QIcon, FluentIconBase], title, content=None, parent=None
     ):
-        #有一个下拉框和一个输入框
+        # 有一个下拉框和一个输入框
         super().__init__(icon, title, content, parent)
-        self.input =LineEdit( self)
+        self.input = LineEdit(self)
         self.input.setPlaceholderText("<IP>:<PORT>")
         self.combobox = ComboBox(self)
-        self.combobox.addItems([
-            "HTTP","SOCKS5"
-        ])
+        self.combobox.addItems(["HTTP", "SOCKS5"])
 
         self.hBoxLayout.addWidget(self.combobox, 0, Qt.AlignmentFlag.AlignRight)
         self.hBoxLayout.addSpacing(16)
