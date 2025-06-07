@@ -30,6 +30,7 @@ MFW-ChainFlow Assistant 主界面
 """
 
 import os
+from re import S
 import sys
 
 from PySide6.QtCore import QSize, QTimer
@@ -58,7 +59,8 @@ from ..common import resource
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 from ..utils.notice_message import NoticeMessageBox
-from..utils.notice_enum import NoticeErrorCode
+from ..utils.notice_enum import NoticeErrorCode
+from ..utils.widget import NoticeType
 
 
 class MainWindow(FluentWindow):
@@ -89,6 +91,13 @@ class MainWindow(FluentWindow):
         self.initNavigation()
         self.splashScreen.finish()
 
+        # 初始化通知对象
+        self.dingtalk = NoticeType(self, "DingTalk")
+        self.lark = NoticeType(self, "Lark")
+        self.smtp = NoticeType(self, "SMTP")
+        self.wxpusher = NoticeType(self, "WxPusher")
+        self.QYWX = NoticeType(self, "QYWX")
+
         # 启动主题监听器
         self.themeListener.start()
         if "adb" in self.taskInterface.Control_Combox.currentText().lower():
@@ -96,12 +105,82 @@ class MainWindow(FluentWindow):
         elif "win32" in self.taskInterface.Control_Combox.currentText().lower():
             signalBus.setting_Visible.emit("win32")
         self.initShortcuts()
+        self.settingInterface.dingtalk_noticeTypeCard.button.clicked.connect(
+            self.dingtalk_setting
+        )
+        self.settingInterface.lark_noticeTypeCard.button.clicked.connect(
+            self.lark_setting
+        )
+        self.settingInterface.SMTP_noticeTypeCard.button.clicked.connect(
+            self.smtp_setting
+        )
+        self.settingInterface.WxPusher_noticeTypeCard.button.clicked.connect(
+            self.wxpusher_setting
+        )
+        self.settingInterface.QYWX_noticeTypeCard.button.clicked.connect(
+            self.QYWX_setting
+        )
 
         self.stara_finish()
 
         QTimer.singleShot(5000, lambda: cfg.set(cfg.start_complete, True))
 
         logger.info(" 主界面初始化完成。")
+
+    def dingtalk_setting(self):
+        if self.dingtalk.exec():
+            if cfg.get(cfg.Notice_DingTalk_status):
+                self.settingInterface.dingtalk_noticeTypeCard.setContent(
+                    self.tr("DingTalk Notification Enabled")
+                )
+            else:
+                self.settingInterface.dingtalk_noticeTypeCard.setContent(
+                    self.tr("DingTalk Notification Disabled")
+                )
+
+    def lark_setting(self):
+        if self.lark.exec():
+            if cfg.get(cfg.Notice_Lark_status):
+                self.settingInterface.lark_noticeTypeCard.setContent(
+                    self.tr("Lark Notification Enabled")
+                )
+            else:
+                self.settingInterface.lark_noticeTypeCard.setContent(
+                    self.tr("Lark Notification Disabled")
+                )
+
+    def smtp_setting(self):
+        if self.smtp.exec():
+            if cfg.get(cfg.Notice_SMTP_status):
+                self.settingInterface.SMTP_noticeTypeCard.setContent(
+                    self.tr("SMTP Notification Enabled")
+                )
+            else:
+                self.settingInterface.SMTP_noticeTypeCard.setContent(
+                    self.tr("SMTP Notification Disabled")
+                )
+
+    def wxpusher_setting(self):
+        if self.wxpusher.exec():
+            if cfg.get(cfg.Notice_WxPusher_status):
+                self.settingInterface.WxPusher_noticeTypeCard.setContent(
+                    self.tr("WXPusher Notification Enabled")
+                )
+            else:
+                self.settingInterface.WxPusher_noticeTypeCard.setContent(
+                    self.tr("WXPusher Notification Disabled")
+                )
+
+    def QYWX_setting(self):
+        if self.QYWX.exec():
+            if cfg.get(cfg.Notice_QYWX_status):
+                self.settingInterface.QYWX_noticeTypeCard.setContent(
+                    self.tr("QYWX Notification Enabled")
+                )
+            else:
+                self.settingInterface.QYWX_noticeTypeCard.setContent(
+                    self.tr("QYWX Notification Disabled")
+                )
 
     def stara_finish(self):
         """启动完成后的操作"""
@@ -225,8 +304,18 @@ class MainWindow(FluentWindow):
         signalBus.infobar_message.connect(self.show_info_bar)
         signalBus.show_AssistTool_task.connect(self.toggle_AssistTool_task)
         signalBus.notice_finished.connect(self.show_notice_finished)
-    def show_notice_finished(self, error_code: NoticeErrorCode,name:str):
+
+    def show_notice_finished(self, error_code: NoticeErrorCode, name: str):
         """显示外部通知完成信息"""
+        name_mapping = {
+            "dingtalk_send": self.dingtalk,
+            "lark_send": self.lark,
+            "SMTP_send": self.smtp,
+            "WxPusher_send": self.wxpusher,
+            "QYWX_send": self.QYWX,
+        }
+        if name in name_mapping:
+            name_mapping[name].notice_send_finished()
         if error_code == NoticeErrorCode.SUCCESS:
             msg = self.tr("Send message success")
         elif error_code == NoticeErrorCode.DISABLED:
@@ -247,11 +336,10 @@ class MainWindow(FluentWindow):
             msg = self.tr("Unknown error, send failed")
 
         if error_code == NoticeErrorCode.SUCCESS:
-            self.show_info_bar({"status": "success", "msg": name+":"+msg})
+            self.show_info_bar({"status": "success", "msg": name + ":" + msg})
         else:
-            self.show_info_bar({"status": "failed", "msg": name+":"+msg})
+            self.show_info_bar({"status": "failed", "msg": name + ":" + msg})
 
-            
     def initNavigation(self):
         """初始化导航界面。"""
 

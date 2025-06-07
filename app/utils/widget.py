@@ -22,6 +22,7 @@ MFW-ChainFlow Assistant 组件
 作者:overflow65537
 """
 
+from calendar import c
 from PySide6.QtWidgets import (
     QMessageBox,
     QVBoxLayout,
@@ -273,48 +274,27 @@ class RightCheckPrimaryPushButton(PrimaryPushButton):
         if e.button() == Qt.MouseButton.RightButton:
             self.rightClicked.emit()
         super().mousePressEvent(e)
-
-
-class NoticeType(QDialog):
-    def __init__(self, parent=None, notice_type: str = ""):
+        
+class NoticeType(MessageBoxBase):
+    def __init__(self, parent=None, notice_type:str = ""):
         super().__init__(parent)
         self.notice_type = notice_type
-        self.setWindowTitle(self.notice_type)
-        self.setObjectName("NoticeType")
-        self.resize(400, 300)
-        self.setMinimumSize(QSize(0, 0))
+        self.testButton = PushButton(self.tr("Test"), self)
+        self.testButton.setAttribute(Qt.WidgetAttribute.WA_MacShowFocusRect, False)
+        self.buttonLayout.insertWidget(1, self.testButton)
+        self.buttonLayout.setStretch(0, 1)
+        self.buttonLayout.setStretch(1, 1)
+        self.buttonLayout.setStretch(2, 1)
+        self.widget.setMinimumWidth(350)
+        self.widget.setMinimumHeight(100)
 
-        # 创建主布局
-        self.main_layout = QFormLayout(self)
+        self.init_noticetype(notice_type)
 
-        # 根据通知类型初始化界面元素
-        self.init_noticetype()
+        self.yesButton.clicked.connect(self.on_yes)
+        self.testButton.clicked.connect(self.on_test)
+        self.cancelButton.clicked.connect(self.on_cancel)
 
-        # 按钮布局
-        button_layout = QHBoxLayout()
-        self.okButton = PushButton(self.tr("OK"), self)
-        self.testButton = PushButton(self.tr("test"), self)
-        self.clearButton = PushButton(self.tr("Clear"), self)
-
-        # 垂直伸缩器
-        vertical_spacer = QSpacerItem(
-            20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding
-        )
-
-        # 添加布局
-        button_layout.addWidget(self.okButton)
-        button_layout.addWidget(self.testButton)
-        button_layout.addWidget(self.clearButton)
-        self.main_layout.addItem(vertical_spacer)
-        self.main_layout.addRow(button_layout)
-
-        # 连接按钮事件
-        self.okButton.clicked.connect(self.on_ok)
-        self.testButton.clicked.connect(self.bind_test_button)
-        signalBus.notice_finished.connect(self.notice_send_finished)
-        self.clearButton.clicked.connect(self.on_clear)
-
-    def bind_test_button(self):
+    def on_test(self):
         test_msg = {"title": "Test Title", "text": "Test Text"}
         try:
             # 创建一个字典来映射通知类型和发送函数
@@ -355,46 +335,38 @@ class NoticeType(QDialog):
             parent=self,
         )
 
-    def show_success(self, success_message):
-        InfoBar.success(
-            title=self.tr("Success"),
-            content=success_message,
-            orient=Qt.Orientation.Horizontal,
-            isClosable=True,
-            position=InfoBarPosition.BOTTOM_RIGHT,
-            duration=-1,
-            parent=self,
-        )
 
-    def init_noticetype(self):
+    def init_noticetype(self,notice_type):
         """根据通知类型初始化界面元素"""
-        if self.notice_type == "DingTalk":
-            self.add_dingtalk_fields()
-        elif self.notice_type == "Lark":
-            self.add_lark_fields()
-        elif self.notice_type == "Qmsg":
-            self.add_qmsg_fields()
-        elif self.notice_type == "SMTP":
-            self.add_smtp_fields()
-        elif self.notice_type == "WxPusher":
-            self.add_wxpusher_fields()
-        elif self.notice_type == "QYWX":
-            self.add_qywx_fields()
+        match notice_type:
+            case "DingTalk":
+                self.add_dingtalk_fields()
+            case "Lark":
+               self.add_lark_fields()
+            case "Qmsg":
+                self.add_qmsg_fields()
+            case "SMTP":
+               self.add_smtp_fields()
+            case "WxPusher":
+                 self.add_wxpusher_fields()
+            case "QYWX":
+                self.add_qywx_fields()
 
-    def save_noticetype(self):
+    def save_noticetype(self, notice_type):
         """保存通知类型"""
-        if self.notice_type == "DingTalk":
-            self.save_dingtalk_fields()
-        elif self.notice_type == "Lark":
-            self.save_lark_fields()
-        elif self.notice_type == "Qmsg":
-            self.save_qmsg_fields()
-        elif self.notice_type == "SMTP":
-            self.save_smtp_fields()
-        elif self.notice_type == "WxPusher":
-            self.save_wxpusher_fields()
-        elif self.notice_type == "QYWX":
-            self.save_qywx_fields()
+        match notice_type:
+            case "DingTalk":
+                self.save_dingtalk_fields()
+            case "Lark":
+                self.save_lark_fields()
+            case "Qmsg":
+                self.save_qmsg_fields()
+            case "SMTP":
+                self.save_smtp_fields()
+            case "WxPusher":
+                self.save_wxpusher_fields()
+            case "QYWX":
+                self.save_qywx_fields()
 
     def save_dingtalk_fields(self):
         """保存钉钉相关的输入框"""
@@ -453,13 +425,24 @@ class NoticeType(QDialog):
         self.dingtalk_secret_input.setText(cfg.get(cfg.Notice_DingTalk_secret))
         self.dingtalk_status_switch.setChecked(cfg.get(cfg.Notice_DingTalk_status))
 
-        self.main_layout.addRow(dingtalk_url_title, self.dingtalk_url_input)
-        self.main_layout.addRow(dingtalk_secret_title, self.dingtalk_secret_input)
-        self.main_layout.addRow(dingtalk_status_title, self.dingtalk_status_switch)
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
 
+        col1.addWidget(dingtalk_url_title)
+        col1.addWidget(dingtalk_secret_title)
+        col1.addWidget(dingtalk_status_title)
+
+        col2.addWidget(self.dingtalk_url_input)
+        col2.addWidget(self.dingtalk_secret_input)
+        col2.addWidget(self.dingtalk_status_switch)
+
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(col1)
+        mainLayout.addLayout(col2)
+        self.viewLayout.addLayout(mainLayout)
         self.dingtalk_url_input.textChanged.connect(self.save_dingtalk_fields)
         self.dingtalk_secret_input.textChanged.connect(self.save_dingtalk_fields)
-
+        
     def add_lark_fields(self):
         """添加飞书相关的输入框"""
         lark_url_title = BodyLabel(self)
@@ -477,9 +460,21 @@ class NoticeType(QDialog):
         self.lark_secret_input.setText(cfg.get(cfg.Notice_Lark_secret))
         self.lark_status_switch.setChecked(cfg.get(cfg.Notice_Lark_status))
 
-        self.main_layout.addRow(lark_url_title, self.lark_url_input)
-        self.main_layout.addRow(lark_secret_title, self.lark_secret_input)
-        self.main_layout.addRow(lark_status_title, self.lark_status_switch)
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
+
+        col1.addWidget(lark_url_title)
+        col1.addWidget(lark_secret_title)
+        col1.addWidget(lark_status_title)
+
+        col2.addWidget(self.lark_url_input)
+        col2.addWidget(self.lark_secret_input)
+        col2.addWidget(self.lark_status_switch)
+
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(col1)
+        mainLayout.addLayout(col2)
+        self.viewLayout.addLayout(mainLayout)
 
         self.lark_url_input.textChanged.connect(self.save_lark_fields)
         self.lark_secret_input.textChanged.connect(self.save_lark_fields)
@@ -510,11 +505,26 @@ class NoticeType(QDialog):
         self.robot_qq_input.setText(cfg.get(cfg.Notice_Qmsg_robot_qq))
         self.qmsg_status_switch.setChecked(cfg.get(cfg.Notice_Qmsg_status))
 
-        self.main_layout.addRow(sever_title, self.sever_input)
-        self.main_layout.addRow(key_title, self.key_input)
-        self.main_layout.addRow(user_qq_title, self.user_qq_input)
-        self.main_layout.addRow(robot_qq_title, self.robot_qq_input)
-        self.main_layout.addRow(qmsg_status_title, self.qmsg_status_switch)
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
+
+        col1.addWidget(sever_title)
+        col1.addWidget(key_title)
+        col1.addWidget(user_qq_title)
+        col1.addWidget(robot_qq_title)
+        col1.addWidget(qmsg_status_title)
+
+        col2.addWidget(self.sever_input)
+        col2.addWidget(self.key_input)
+        col2.addWidget(self.user_qq_input)
+        col2.addWidget(self.robot_qq_input)
+        col2.addWidget(self.qmsg_status_switch)
+
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(col1)
+        mainLayout.addLayout(col2)
+        self.viewLayout.addLayout(mainLayout)
+
 
         self.sever_input.textChanged.connect(self.save_qmsg_fields)
         self.key_input.textChanged.connect(self.save_qmsg_fields)
@@ -557,12 +567,28 @@ class NoticeType(QDialog):
         self.port_field.addWidget(self.server_port_input)
         self.port_field.addWidget(self.used_ssl)
 
-        self.main_layout.addRow(server_address_title, self.server_address_input)
-        self.main_layout.addRow(server_port_title, self.port_field)
-        self.main_layout.addRow(user_name_title, self.user_name_input)
-        self.main_layout.addRow(password_title, self.password_input)
-        self.main_layout.addRow(receive_mail_title, self.receive_mail_input)
-        self.main_layout.addRow(smtp_status_title, self.smtp_status_switch)
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
+
+        col1.addWidget(server_address_title)
+        col1.addWidget(server_port_title)
+        col1.addWidget(user_name_title)
+        col1.addWidget(password_title)
+        col1.addWidget(receive_mail_title)
+        col1.addWidget(smtp_status_title)
+
+        col2.addWidget(self.server_address_input)
+        col2.addLayout(self.port_field)
+        col2.addWidget(self.user_name_input)
+        col2.addWidget(self.password_input)
+        col2.addWidget(self.receive_mail_input)
+        col2.addWidget(self.smtp_status_switch)
+
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(col1)
+        mainLayout.addLayout(col2)
+
+        self.viewLayout.addLayout(mainLayout)
 
         self.server_address_input.textChanged.connect(self.save_smtp_fields)
         self.server_port_input.textChanged.connect(self.save_smtp_fields)
@@ -585,9 +611,20 @@ class NoticeType(QDialog):
         self.wxpusher_spt_input.setText(cfg.get(cfg.Notice_WxPusher_SPT_token))
         self.wxpusher_status_switch.setChecked(cfg.get(cfg.Notice_WxPusher_status))
 
-        self.main_layout.addRow(wxpusher_spt_title, self.wxpusher_spt_input)
-        self.main_layout.addRow(wxpusher_status_title, self.wxpusher_status_switch)
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
 
+        col1.addWidget(wxpusher_spt_title)
+        col1.addWidget(wxpusher_status_title)
+
+        col2.addWidget(self.wxpusher_spt_input)
+        col2.addWidget(self.wxpusher_status_switch)
+
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(col1)
+        mainLayout.addLayout(col2)
+
+        self.viewLayout.addLayout(mainLayout)
         self.wxpusher_spt_input.textChanged.connect(self.save_wxpusher_fields)
 
     def add_qywx_fields(self):
@@ -604,68 +641,30 @@ class NoticeType(QDialog):
         self.qywx_key_input.setText(cfg.get(cfg.Notice_QYWX_key))
         self.qywx_status_switch.setChecked(cfg.get(cfg.Notice_QYWX_status))
 
-        self.main_layout.addRow(qywx_key_title, self.qywx_key_input)
-        self.main_layout.addRow(qywx_status_title, self.qywx_status_switch)
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
 
+        col1.addWidget(qywx_key_title)
+        col1.addWidget(qywx_status_title)
+
+        col2.addWidget(self.qywx_key_input)
+        col2.addWidget(self.qywx_status_switch)
+
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(col1)
+        mainLayout.addLayout(col2)
+
+        self.viewLayout.addLayout(mainLayout)
         self.qywx_key_input.textChanged.connect(self.save_qywx_fields)
 
-    def on_ok(self):
-        self.save_noticetype()
+    def on_yes(self):
+        self.save_noticetype(self.notice_type)
         logger.info(f"保存{self.notice_type}设置")
         self.accept()
 
-    def on_clear(self):
+    def on_cancel(self):
         logger.info("关闭通知设置对话框")
         self.close()
-
-
-class NoticeButtonSettingCard(SettingCard):
-    clicked = Signal()
-
-    def __init__(
-        self,
-        text,
-        icon: Union[str, QIcon, FluentIconBase],
-        title,
-        notice_type: str = "",
-        content=None,
-        parent=None,
-    ):
-        self.notice_type = notice_type
-
-        super().__init__(icon, title, content, parent)
-        self.rewirte_text()
-        # 创建标签
-
-        self.button = PrimaryPushButton(text, self)
-        self.hBoxLayout.addWidget(self.button, 0, Qt.AlignmentFlag.AlignRight)
-        self.hBoxLayout.addSpacing(16)
-
-        self.button.clicked.connect(self.showDialog)
-
-    def rewirte_text(self):
-        notification_types = {
-            "DingTalk": cfg.Notice_DingTalk_status,
-            "Lark": cfg.Notice_Lark_status,
-            "Qmsg": cfg.Notice_Qmsg_status,
-            "SMTP": cfg.Notice_SMTP_status,
-            "WxPusher": cfg.Notice_WxPusher_status,
-            "QYWX": cfg.Notice_QYWX_status,
-        }
-
-        if self.notice_type in notification_types:
-            status = cfg.get(notification_types[self.notice_type])
-            self.setContent(
-                self.notice_type + self.tr("Notification Enabled")
-                if status
-                else self.notice_type + self.tr("Notification disabled")
-            )
-
-    def showDialog(self):
-        w = NoticeType(self, self.notice_type)
-        if w.exec():
-            self.rewirte_text()
-
 
 class ListWidge_Menu_Draggable(ListWidget):
     def __init__(self, parent=None):

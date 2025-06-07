@@ -69,11 +69,9 @@ class DingTalk:
 
         if url == "":
             logger.error("DingTalk 通知地址为空")
-            cfg.set(cfg.Notice_DingTalk_status, False)
             return [url]
         if secret == "":
             logger.error("DingTalk 密钥为空")
-            cfg.set(cfg.Notice_DingTalk_status, False)
             return [url]
 
         timestamp = str(round(time.time() * 1000))
@@ -289,12 +287,10 @@ def dingtalk_send(
 
     if not url:
         logger.error("DingTalk Url空")
-        cfg.set(cfg.Notice_DingTalk_status, False)
         return NoticeErrorCode.PARAM_EMPTY
 
     if not re.match(APP.correct_url, url):
         logger.error(f"dingtalk Url不正确")
-        cfg.set(cfg.Notice_DingTalk_status, False)
         return NoticeErrorCode.PARAM_INVALID
 
     response = None
@@ -303,12 +299,10 @@ def dingtalk_send(
         status_code = response.json()[APP.codename]
     except Exception as e:
         logger.error(f"DingTalk 发送失败: {e}{response.json() if response else ''}")
-        cfg.set(cfg.Notice_DingTalk_status, False)
         return NoticeErrorCode.NETWORK_ERROR
 
     if status_code != APP.code:
         logger.error(f"DingTalk 发送失败: {response.json()}")
-        cfg.set(cfg.Notice_DingTalk_status, False)
         return NoticeErrorCode.RESPONSE_ERROR
 
     logger.info(f"DingTalk 发送成功")
@@ -329,12 +323,10 @@ def lark_send(
 
     if not url:
         logger.error("Lark Url空")
-        cfg.set(cfg.Notice_Lark_status, False)
         return NoticeErrorCode.PARAM_EMPTY  
 
     if not re.match(APP.correct_url, url):
         logger.error(f"Lark Url不正确")
-        cfg.set(cfg.Notice_Lark_status, False)
         return NoticeErrorCode.PARAM_INVALID  
 
     response = None
@@ -343,12 +335,10 @@ def lark_send(
         status_code = response.json()[APP.codename]
     except Exception as e:
         logger.error(f"Lark 发送失败: {e}{response.json() if response else ''}")
-        cfg.set(cfg.Notice_Lark_status, False)
         return NoticeErrorCode.NETWORK_ERROR  
 
     if status_code != APP.code:
         logger.error(f"Lark 发送失败: {response.json()}")
-        cfg.set(cfg.Notice_Lark_status, False)
         return NoticeErrorCode.RESPONSE_ERROR 
 
     logger.info(f"Lark 发送成功")
@@ -369,7 +359,6 @@ def SMTP_send(
         logger.info(f"SMTP 发送成功")
     else:
         logger.error(f"SMTP 发送失败 (Error: {result.name})")
-        cfg.set(cfg.Notice_SMTP_status, False)
 
     return result
 
@@ -389,12 +378,10 @@ def WxPusher_send(
         status_code = response.json()["code"]
     except Exception as e:
         logger.error(f"WxPusher 发送失败: {e}")
-        cfg.set(cfg.Notice_WxPusher_status, False)
         return NoticeErrorCode.NETWORK_ERROR  
 
     if status_code != 1000:
         logger.error(f"WxPusher 发送失败: {response.json()}")
-        cfg.set(cfg.Notice_WxPusher_status, False)
         return NoticeErrorCode.RESPONSE_ERROR 
 
     logger.info(f"WxPusher 发送成功")
@@ -412,7 +399,6 @@ def QYWX_send(
     QYWX_KEY = cfg.get(cfg.Notice_QYWX_key)
     if not QYWX_KEY:
         logger.error("企业微信机器人Key为空")
-        cfg.set(cfg.Notice_QYWX_status, False)
         return NoticeErrorCode.PARAM_EMPTY  
 
     url = f"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={QYWX_KEY}"
@@ -423,12 +409,10 @@ def QYWX_send(
         status_code = response.json()["errcode"]
     except Exception as e:
         logger.error(f"企业微信机器人消息 发送失败: {e}")
-        cfg.set(cfg.Notice_QYWX_status, False)
         return NoticeErrorCode.NETWORK_ERROR  
 
     if status_code != 0:
         logger.error(f"企业微信机器人消息 发送失败: {response.json()}")
-        cfg.set(cfg.Notice_QYWX_status, False)
         return NoticeErrorCode.RESPONSE_ERROR 
 
     logger.info(f"企业微信机器人消息 发送成功")

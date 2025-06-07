@@ -46,10 +46,10 @@ from ..common.signal_bus import signalBus
 from ..common.style_sheet import StyleSheet
 from ..utils.widget import (
     LineEditCard,
-    NoticeButtonSettingCard,
     DoubleButtonSettingCard,
     ShowDownload,
     ProxySettingCard
+ 
 )
 from ..utils.update import Update, UpdateSelf
 from ..utils.tool import Save_Config, for_config_get_url, decrypt, encrypt
@@ -301,46 +301,65 @@ class SettingInterface(ScrollArea):
         self.noticeGroup = SettingCardGroup(
             self.tr("Notice"), self.Setting_scroll_widget
         )
+        if cfg.get(cfg.Notice_DingTalk_status):
+            dingtalk_contene = self.tr("DingTalk Notification Enabled")
+        else:
+            dingtalk_contene = self.tr("DingTalk Notification Disabled")
 
-        self.dingtalk_noticeTypeCard = NoticeButtonSettingCard(
+        self.dingtalk_noticeTypeCard = PrimaryPushSettingCard(
             text=self.tr("Modify"),
             icon=FIF.SEND,
             title=self.tr("DingTalk"),
-            notice_type="DingTalk",
+            content=dingtalk_contene,
             parent=self.noticeGroup,
         )
-
-        self.lark_noticeTypeCard = NoticeButtonSettingCard(
+        if cfg.get(cfg.Notice_Lark_status):
+            lark_contene = self.tr("Lark Notification Enabled")
+        else:
+            lark_contene = self.tr("Lark Notification Disabled")
+        self.lark_noticeTypeCard = PrimaryPushSettingCard(
             text=self.tr("Modify"),
             icon=FIF.SEND,
             title=self.tr("Lark"),
-            notice_type="Lark",
+            content=lark_contene,
             parent=self.noticeGroup,
         )
-
-        self.SMTP_noticeTypeCard = NoticeButtonSettingCard(
+        if cfg.get(cfg.Notice_SMTP_status):
+            SMTP_contene = self.tr("SMTP Notification Enabled")
+        else:
+            SMTP_contene = self.tr("SMTP Notification Disabled")
+        self.SMTP_noticeTypeCard = PrimaryPushSettingCard(
             text=self.tr("Modify"),
             icon=FIF.SEND,
             title=self.tr("SMTP"),
-            notice_type="SMTP",
+            content=SMTP_contene,
             parent=self.noticeGroup,
         )
+        if cfg.get(cfg.Notice_WxPusher_status):
+            WxPusher_contene = self.tr("WxPusher Notification Enabled")
+        else:
+            WxPusher_contene = self.tr("WxPusher Notification Disabled")
 
-        self.WxPusher_noticeTypeCard = NoticeButtonSettingCard(
+        self.WxPusher_noticeTypeCard = PrimaryPushSettingCard(
             text=self.tr("Modify"),
             icon=FIF.SEND,
             title=self.tr("WxPusher"),
-            notice_type="WxPusher",
+            content=WxPusher_contene,
             parent=self.noticeGroup,
         )
+        if cfg.get(cfg.Notice_QYWX_status):
+            QYWX_contene = self.tr("QYWX Notification Enabled")
+        else:
+            QYWX_contene = self.tr("QYWX Notification Disabled")
 
-        self.QYWX_noticeTypeCard = NoticeButtonSettingCard(
+        self.QYWX_noticeTypeCard = PrimaryPushSettingCard(
             text=self.tr("Modify"),
             icon=FIF.SEND,
             title=self.tr("QYWX"),
-            notice_type="QYWX",
+            content=QYWX_contene,
             parent=self.noticeGroup,
         )
+
         self.send_settingCard = PrimaryPushSettingCard(
             text=self.tr("Send Test"),
             icon=FIF.SEND,
@@ -354,6 +373,7 @@ class SettingInterface(ScrollArea):
         self.noticeGroup.addSettingCard(self.WxPusher_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.QYWX_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.send_settingCard)
+
 
     def initialize_advanced_settings(self):
         """初始化高级设置。"""
