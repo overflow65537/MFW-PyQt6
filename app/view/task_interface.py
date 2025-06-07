@@ -1598,21 +1598,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         杀死 ADB 进程
         """
-        adb_path = maa_config_data.config.get("adb", {})["adb_path"]
-        if adb_path == "":
-            return False
-        try:
-            subprocess.run([adb_path, "kill-server"], check=True)
-            logger.info("执行 adb kill-server 成功")
-            return True
-        except subprocess.CalledProcessError as e:
-            logger.error(f"adb kill-server 失败: {e}")
-
-        # 根据系统类型选择进程终止方式
         system = platform.system()
         try:
+            startupinfo = None
             if system == "Windows":
-                subprocess.run(["taskkill", "/F", "/IM", "adb.exe"], check=True)
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW  
+                
+                subprocess.run(["taskkill", "/F", "/IM", "adb.exe"], check=True, startupinfo=startupinfo)
                 logger.info("使用 taskkill 杀死 ADB 进程成功")
                 return True
             elif system in ("Darwin", "Linux"):
@@ -1625,6 +1618,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         except subprocess.CalledProcessError as e:
             try:
                 if system == "Windows":
+                    startupinfo = subprocess.STARTUPINFO()
+                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW  
                     subprocess.run(
                         [
                             "wmic",
@@ -1635,6 +1630,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             "terminate",
                         ],
                         check=True,
+                        startupinfo=startupinfo 
                     )
                     logger.info("使用 wmic 杀死 ADB 进程成功")
                 elif system in ("Darwin", "Linux"):
