@@ -41,6 +41,7 @@ from qfluentwidgets import (
     __version__,
 )
 
+
 class Language(Enum):
     """Language enumeration"""
 
@@ -61,7 +62,8 @@ class LanguageSerializer(ConfigSerializer):
 
 def isWin11():
     return sys.platform == "win32" and sys.getwindowsversion().build >= 22000
-    
+
+
 class Config(QConfig):
     """Config of application"""
 
@@ -159,6 +161,13 @@ class Config(QConfig):
 
     Notice_QYWX_status = ConfigItem("Notice", "QYWX_status", False)
     Notice_QYWX_key = ConfigItem("Notice", "QYWX_key", "")
+
+    when_start_up = ConfigItem("Notice_setting", "when_start_up", False)
+    when_connect_failed = ConfigItem("Notice_setting", "when_connect_failed", False)
+    when_connect_success = ConfigItem("Notice_setting", "when_connect_success", False)
+    when_post_task = ConfigItem("Notice_setting", "when_post_task", False)
+    when_task_failed = ConfigItem("Notice_setting", "when_task_failed", True)
+    when_task_finished = ConfigItem("Notice_setting", "when_task_finished", True)
 
     # main window
     micaEnabled = ConfigItem("MainWindow", "MicaEnabled", isWin11(), BoolValidator())

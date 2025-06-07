@@ -28,9 +28,6 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QVBoxLayout,
     QHBoxLayout,
-    QFormLayout,
-    QDialog,
-    QSpacerItem,
     QSizePolicy,
     QAbstractItemView,
     QFileDialog,
@@ -77,6 +74,7 @@ from qfluentwidgets import (
     FluentIconBase,
     EditableComboBox,
     CheckBox,
+    config,
 )
 from qfluentwidgets import FluentIcon as FIF
 
@@ -104,7 +102,6 @@ from ..utils.notice import (
     QYWX_send,
     NoticeSendThread,
 )
-from ..utils.notice_enum import NoticeErrorCode
 from ..common.config import cfg
 from ..common.maa_config_data import maa_config_data
 from ..utils.update import DownloadBundle
@@ -275,9 +272,10 @@ class RightCheckPrimaryPushButton(PrimaryPushButton):
         if e.button() == Qt.MouseButton.RightButton:
             self.rightClicked.emit()
         super().mousePressEvent(e)
-        
+
+
 class NoticeType(MessageBoxBase):
-    def __init__(self, parent=None, notice_type:str = ""):
+    def __init__(self, parent=None, notice_type: str = ""):
         super().__init__(parent)
         self.notice_type = notice_type
         self.testButton = PushButton(self.tr("Test"), self)
@@ -320,20 +318,19 @@ class NoticeType(MessageBoxBase):
     def notice_send_finished(self):
         self.testButton.setEnabled(True)
 
-
-    def init_noticetype(self,notice_type):
+    def init_noticetype(self, notice_type):
         """根据通知类型初始化界面元素"""
         match notice_type:
             case "DingTalk":
                 self.add_dingtalk_fields()
             case "Lark":
-               self.add_lark_fields()
+                self.add_lark_fields()
             case "Qmsg":
                 self.add_qmsg_fields()
             case "SMTP":
-               self.add_smtp_fields()
+                self.add_smtp_fields()
             case "WxPusher":
-                 self.add_wxpusher_fields()
+                self.add_wxpusher_fields()
             case "QYWX":
                 self.add_qywx_fields()
 
@@ -427,7 +424,7 @@ class NoticeType(MessageBoxBase):
         self.viewLayout.addLayout(mainLayout)
         self.dingtalk_url_input.textChanged.connect(self.save_dingtalk_fields)
         self.dingtalk_secret_input.textChanged.connect(self.save_dingtalk_fields)
-        
+
     def add_lark_fields(self):
         """添加飞书相关的输入框"""
         lark_url_title = BodyLabel(self)
@@ -509,7 +506,6 @@ class NoticeType(MessageBoxBase):
         mainLayout.addLayout(col1)
         mainLayout.addLayout(col2)
         self.viewLayout.addLayout(mainLayout)
-
 
         self.sever_input.textChanged.connect(self.save_qmsg_fields)
         self.key_input.textChanged.connect(self.save_qmsg_fields)
@@ -650,6 +646,7 @@ class NoticeType(MessageBoxBase):
     def on_cancel(self):
         logger.info("关闭通知设置对话框")
         self.close()
+
 
 class ListWidge_Menu_Draggable(ListWidget):
     def __init__(self, parent=None):
@@ -831,6 +828,46 @@ class ListWidge_Menu_Draggable(ListWidget):
 
         super(ListWidge_Menu_Draggable, self).dropEvent(event)
         signalBus.dragging_finished.emit()
+
+
+class SendSettingCard(MessageBoxBase):
+    """选择发送通知的时机"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.widget.setMinimumWidth(350)
+        self.widget.setMinimumHeight(100)
+        self.init_widget()
+
+    def init_widget(self):
+        self.when_start_up = CheckBox(self.tr("When Start Up"), self)
+        self.when_connect_failed = CheckBox(self.tr("When Connect Succeed"), self)
+        self.when_connect_success = CheckBox(self.tr("When Connect Failed"), self)
+        self.when_post_task = CheckBox(self.tr("When Post Task"), self)
+        self.when_task_failed = CheckBox(self.tr("When Task Failed"), self)
+        self.when_task_finished = CheckBox(self.tr("When Task Finished"), self)
+
+        self.viewLayout.addWidget(self.when_start_up)
+        self.viewLayout.addWidget(self.when_connect_failed)
+        self.viewLayout.addWidget(self.when_connect_success)
+        self.viewLayout.addWidget(self.when_post_task)
+        self.viewLayout.addWidget(self.when_task_failed)
+        self.viewLayout.addWidget(self.when_task_finished)
+
+        self.when_start_up.setChecked(cfg.get(cfg.when_start_up))
+        self.when_connect_failed.setChecked(cfg.get(cfg.when_connect_failed))
+        self.when_connect_success.setChecked(cfg.get(cfg.when_connect_success))
+        self.when_post_task.setChecked(cfg.get(cfg.when_post_task))
+        self.when_task_failed.setChecked(cfg.get(cfg.when_task_failed))
+        self.when_task_finished.setChecked(cfg.get(cfg.when_task_finished))
+
+    def save_setting(self):
+        cfg.set(cfg.when_start_up, self.when_start_up.isChecked())
+        cfg.set(cfg.when_connect_failed, self.when_connect_failed.isChecked())
+        cfg.set(cfg.when_connect_success, self.when_connect_success.isChecked())
+        cfg.set(cfg.when_post_task, self.when_post_task.isChecked())
+        cfg.set(cfg.when_task_failed, self.when_task_failed.isChecked())
+        cfg.set(cfg.when_task_finished, self.when_task_finished.isChecked())
 
 
 class LineEditCard(SettingCard):

@@ -48,8 +48,7 @@ from ..utils.widget import (
     LineEditCard,
     DoubleButtonSettingCard,
     ShowDownload,
-    ProxySettingCard
- 
+    ProxySettingCard,
 )
 from ..utils.update import Update, UpdateSelf
 from ..utils.tool import Save_Config, for_config_get_url, decrypt, encrypt
@@ -361,9 +360,10 @@ class SettingInterface(ScrollArea):
         )
 
         self.send_settingCard = PrimaryPushSettingCard(
-            text=self.tr("Send Test"),
+            text=self.tr("Modify"),
             icon=FIF.SEND,
-            title=self.tr("Send Test"),
+            title=self.tr("Send Setting"),
+            content=self.tr("Choose the timing to send notifications"),
             parent=self.noticeGroup,
         )
 
@@ -373,7 +373,6 @@ class SettingInterface(ScrollArea):
         self.noticeGroup.addSettingCard(self.WxPusher_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.QYWX_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.send_settingCard)
-
 
     def initialize_advanced_settings(self):
         """初始化高级设置。"""

@@ -60,7 +60,7 @@ from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 from ..utils.notice_message import NoticeMessageBox
 from ..utils.notice_enum import NoticeErrorCode
-from ..utils.widget import NoticeType
+from ..utils.widget import NoticeType, SendSettingCard
 
 
 class MainWindow(FluentWindow):
@@ -97,6 +97,7 @@ class MainWindow(FluentWindow):
         self.smtp = NoticeType(self, "SMTP")
         self.wxpusher = NoticeType(self, "WxPusher")
         self.QYWX = NoticeType(self, "QYWX")
+        self.send_setting = SendSettingCard(self)
 
         # 启动主题监听器
         self.themeListener.start()
@@ -105,21 +106,6 @@ class MainWindow(FluentWindow):
         elif "win32" in self.taskInterface.Control_Combox.currentText().lower():
             signalBus.setting_Visible.emit("win32")
         self.initShortcuts()
-        self.settingInterface.dingtalk_noticeTypeCard.button.clicked.connect(
-            self.dingtalk_setting
-        )
-        self.settingInterface.lark_noticeTypeCard.button.clicked.connect(
-            self.lark_setting
-        )
-        self.settingInterface.SMTP_noticeTypeCard.button.clicked.connect(
-            self.smtp_setting
-        )
-        self.settingInterface.WxPusher_noticeTypeCard.button.clicked.connect(
-            self.wxpusher_setting
-        )
-        self.settingInterface.QYWX_noticeTypeCard.button.clicked.connect(
-            self.QYWX_setting
-        )
 
         self.stara_finish()
 
@@ -304,6 +290,29 @@ class MainWindow(FluentWindow):
         signalBus.infobar_message.connect(self.show_info_bar)
         signalBus.show_AssistTool_task.connect(self.toggle_AssistTool_task)
         signalBus.notice_finished.connect(self.show_notice_finished)
+        self.settingInterface.dingtalk_noticeTypeCard.button.clicked.connect(
+            self.dingtalk_setting
+        )
+        self.settingInterface.lark_noticeTypeCard.button.clicked.connect(
+            self.lark_setting
+        )
+        self.settingInterface.SMTP_noticeTypeCard.button.clicked.connect(
+            self.smtp_setting
+        )
+        self.settingInterface.WxPusher_noticeTypeCard.button.clicked.connect(
+            self.wxpusher_setting
+        )
+        self.settingInterface.QYWX_noticeTypeCard.button.clicked.connect(
+            self.QYWX_setting
+        )
+        self.settingInterface.send_settingCard.button.clicked.connect(
+            self.send_setting_setting
+        )
+
+    def send_setting_setting(self):
+        if self.send_setting.exec():
+            self.send_setting.save_setting()
+            print("发送设置已更改")
 
     def show_notice_finished(self, error_code: NoticeErrorCode, name: str):
         """显示外部通知完成信息"""

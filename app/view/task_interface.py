@@ -506,7 +506,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     message["task"] + " " + self.tr("Failed"), "red"
                 )
                 logger.debug(f"{message["task"]} 任务失败")
-                self.send_notice("failed", message["task"])
+                if cfg.get(cfg.when_task_failed):
+                    self.send_notice("failed", message["task"])
         if message["name"] == "on_task_recognition":
             # 新的focus通知
             if message.get("focus"):
@@ -525,7 +526,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     message["task"] + " " + self.tr("aborted"), "red"
                 )
                 logger.debug(f"{message['task']} 任务中止")
-                self.send_notice("failed", message["task"])
+                if cfg.get(cfg.when_task_failed):
+                    self.send_notice("failed", message["task"])
 
     def insert_colored_text(self, text, color_name="black"):
         """
@@ -886,6 +888,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         controller_type = get_controller_type(
             self.Control_Combox.currentText(), maa_config_data.interface_config_path
         )
+        if cfg.get(cfg.when_start_up):
+            self.send_notice("info", self.tr("Start Up"))
 
         # 启动前脚本
         if task:
@@ -1030,7 +1034,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if not await self.connect_adb():
             # 如果连接失败，尝试启动模拟器
             if not await self.start_emulator():
-                self.send_notice("failed", self.tr("Connection"))
+                if cfg.get(cfg.when_connect_failed):
+                    self.send_notice(
+                        "info",
+                        self.tr("first Connection failed,try to kill ADB process"),
+                    )
                 self.insert_colored_text(self.tr("Connection Failed"))
                 await maafw.stop_task()
                 self.update_S2_Button("Start", self.Start_Up)
@@ -1046,7 +1054,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     logger.error(
                         f'连接adb失败\n{maa_config_data.config.get("adb", {}).get("adb_path", "")}\n{maa_config_data.config.get("adb", {}).get("address", "")}\n{maa_config_data.config.get("adb", {})["input_method"]}\n{maa_config_data.config.get("adb", {})["screen_method"]}\n{maa_config_data.config.get("adb", {})["config"]}'
                     )
-                    self.send_notice("failed", self.tr("Connection"))
+                    if cfg.get(cfg.when_connect_failed):
+                        self.send_notice(
+                            "failed",
+                            self.tr("Connection failed,please check the program"),
+                        )
                     self.insert_colored_text(self.tr("Connection Failed"))
                     await maafw.stop_task()
                     self.update_S2_Button("Start", self.Start_Up)
@@ -1185,7 +1197,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.error(
                 f"连接Win32失败 \n{maa_config_data.config.get('win32',{}).get('hwnd',0)}\n{maa_config_data.config.get('win32',{}).get('input_method',0)}\n{maa_config_data.config.get('win32',{}).get('screen_method',0)}"
             )
-            self.send_notice("failed", self.tr("Connection"))
+            if cfg.get(cfg.when_connect_failed):
+                self.send_notice("failed", self.tr("Connection"))
             self.insert_colored_text(self.tr("Connection Failed"))
             await maafw.stop_task()
             self.update_S2_Button("Start", self.Start_Up)
@@ -1236,7 +1249,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     self.entry = task_enter.get("entry", "")
                     if not self.entry:
                         logger.error(f"未找到任务入口: {task_list.get('name')}")
-                        self.send_notice("failed", self.tr("Task Entry"))
+                        if cfg.get(cfg.when_task_failed):
+                            self.send_notice("failed", self.tr("Task Entry"))
                         self.insert_colored_text(self.tr("Task Entry Failed"))
                         return
                     enter_index = index
@@ -1254,7 +1268,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             # 解析task中的option
             if task_list.get("option", []) != []:
                 for task_option in task_list.get("option", []):
-                    #解析advanced
+                    # 解析advanced
                     if task_option.get("advanced", False):
                         for (
                             advanced_key,
@@ -1275,12 +1289,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                     field_list = field
                                 else:
                                     field_list = [field]
-                                
+
                                 if isinstance(types, list):
                                     type_list = types
                                 else:
                                     type_list = [types]
-                                
+
                                 if isinstance(value, str):
                                     value_list = value.split(",")
                                 else:
@@ -1306,7 +1320,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                         elif t == "double":
                                             converted = float(v.strip())  # 转为浮点数
                                         elif t == "bool":
-                                            converted = v.strip().lower() == "true"  # 转为布尔值
+                                            converted = (
+                                                v.strip().lower() == "true"
+                                            )  # 转为布尔值
                                         else:
                                             converted = v.strip()  # 未知类型
                                         converted_values.append(converted)
@@ -1327,16 +1343,21 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                         # 遍历所有字段-值对进行替换 f:roi cv:[1,2,3,4]
                                         for f, cv in zip(field_list, converted_values):
                                             placeholder = f"{{{f}}}"
-                                            
+
                                             # 处理字符串类型
-                                            if isinstance(resolved_val, str) and placeholder == resolved_val:
-                                                    resolved_val = cv
-                                            
+                                            if (
+                                                isinstance(resolved_val, str)
+                                                and placeholder == resolved_val
+                                            ):
+                                                resolved_val = cv
+
                                             # 处理列表/元组类型（完整遍历所有元素）
-                                            elif isinstance(resolved_val, (list, tuple)):
+                                            elif isinstance(
+                                                resolved_val, (list, tuple)
+                                            ):
                                                 # 遍历列表中每个元素进行替换
                                                 result = []
-                                                    
+
                                                 # 显式遍历原列表每个元素
                                                 for item in resolved_val:
                                                     # 条件判断并添加元素到结果列表
@@ -1344,8 +1365,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                                         result.append(cv)
                                                     else:
                                                         result.append(item)
-                                                resolved_val = result  # 更新解析值为新列表
-                                        
+                                                resolved_val = (
+                                                    result  # 更新解析值为新列表
+                                                )
+
                                         resolved_task_config[key] = resolved_val
                                     resolved_pipeline[task_name] = resolved_task_config
 
@@ -1404,9 +1427,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 # 处理循环次数（封装状态更新）
                 remaining_loops = interval_cfg.get("current_loop", 0)
                 if remaining_loops > 0 and self.entry:
+                    if cfg.get(cfg.when_post_task):
+                        self.send_notice("info", self.tr("Post Task :") + self.entry)
                     await maafw.run_task(self.entry, override_options)
                     if self.task_failed:
-                        continue
+                        if cfg.get(cfg.when_task_failed):
+                            self.send_notice(
+                                "failed", str(self.task_failed) + self.tr("Failed")
+                            )
                     else:
                         self.update_speedrun_state(speedrun_cfg, remaining_loops)
                 else:
@@ -1414,10 +1442,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     continue
             elif self.entry:
                 logger.info(f"{self.entry}速通未启用")
+                if cfg.get(cfg.when_post_task):
+                    self.send_notice("info", self.tr("Post Task :") + self.entry)
                 await maafw.run_task(self.entry, override_options)
 
         logger.info("任务完成")
-        self.send_notice("completed")
+        if cfg.get(cfg.when_task_finished):
+            self.send_notice("completed")
 
     def calculate_next_run_time(
         self, last_run_str: str, interval_cfg: Interval
@@ -1603,9 +1634,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             startupinfo = None
             if system == "Windows":
                 startupinfo = subprocess.STARTUPINFO()
-                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW  
-                
-                subprocess.run(["taskkill", "/F", "/IM", "adb.exe"], check=True, startupinfo=startupinfo)
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
+                subprocess.run(
+                    ["taskkill", "/F", "/IM", "adb.exe"],
+                    check=True,
+                    startupinfo=startupinfo,
+                )
                 logger.info("使用 taskkill 杀死 ADB 进程成功")
                 return True
             elif system in ("Darwin", "Linux"):
@@ -1619,7 +1654,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             try:
                 if system == "Windows":
                     startupinfo = subprocess.STARTUPINFO()
-                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW  
+                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
                     subprocess.run(
                         [
                             "wmic",
@@ -1630,7 +1665,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             "terminate",
                         ],
                         check=True,
-                        startupinfo=startupinfo 
+                        startupinfo=startupinfo,
                     )
                     logger.info("使用 wmic 杀死 ADB 进程成功")
                 elif system in ("Darwin", "Linux"):
@@ -1916,7 +1951,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 maa_config_data.config["task"][Select_Target].get("name")
             )
 
-
             self.restore_options(
                 maa_config_data.config["task"][Select_Target].get("option", [])
             )
@@ -2063,8 +2097,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         advanced_layout.addWidget(advanced_label)
                         advanced_select_box = EditableComboBox(self)
                         combox_list = Get_Task_advanced_List(
-                                    maa_config_data.interface_config_path, advanced
-                            )
+                            maa_config_data.interface_config_path, advanced
+                        )
                         if not combox_list:
                             raise ValueError(f"{advanced} 的配置错误")
                         for item in combox_list:
@@ -2339,6 +2373,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 + maa_config_data.config_name
                 + " "
                 + self.tr("task completed"),
+            }
+        elif msg_type == "info":
+            msg = {
+                "title": self.tr("task info"),
+                "text": maa_config_data.resource_name
+                + " "
+                + maa_config_data.config_name
+                + " "
+                + filed_task,
             }
         elif msg_type == "failed":
             msg = {
