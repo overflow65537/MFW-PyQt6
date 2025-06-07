@@ -23,6 +23,7 @@ MFW-ChainFlow Assistant 组件
 """
 
 from calendar import c
+from signal import raise_signal
 from PySide6.QtWidgets import (
     QMessageBox,
     QVBoxLayout,
@@ -296,44 +297,28 @@ class NoticeType(MessageBoxBase):
 
     def on_test(self):
         test_msg = {"title": "Test Title", "text": "Test Text"}
-        try:
-            # 创建一个字典来映射通知类型和发送函数
-            notification_methods = {
-                "DingTalk": dingtalk_send,
-                "Lark": lark_send,
-                "SMTP": SMTP_send,
-                "WxPusher": WxPusher_send,
-                "QYWX": QYWX_send,
-            }
+        # 创建一个字典来映射通知类型和发送函数
+        notification_methods = {
+            "DingTalk": dingtalk_send,
+            "Lark": lark_send,
+            "SMTP": SMTP_send,
+            "WxPusher": WxPusher_send,
+            "QYWX": QYWX_send,
+        }
 
-            # 获取对应的发送函数
-            send_method = notification_methods.get(self.notice_type)
+        # 获取对应的发送函数
+        send_method = notification_methods.get(self.notice_type)
 
-            if send_method:
-                self.testButton.setDisabled(True)
-                self.send_thread = NoticeSendThread(send_method, test_msg, True)
-                self.send_thread.start()
-            else:
-                logger.error(f"不支持的通知类型: {self.notice_type}")
-                self.show_error(f"不支持的通知类型: {self.notice_type}")
-
-        except Exception as e:
-            logger.error(f"测试 {self.notice_type} Error: {e}")
-            self.show_error(str(e))
+        if send_method:
+            self.testButton.setDisabled(True)
+            self.send_thread = NoticeSendThread(send_method, test_msg, True)
+            self.send_thread.start()
+        else:
+            logger.error(f"不支持的通知类型: {self.notice_type}")
+            raise Exception(f"不支持的通知类型: {self.notice_type}")
 
     def notice_send_finished(self):
         self.testButton.setEnabled(True)
-
-    def show_error(self, error_message):
-        InfoBar.error(
-            title=self.tr("Error"),
-            content=error_message,
-            orient=Qt.Orientation.Horizontal,
-            isClosable=True,
-            position=InfoBarPosition.BOTTOM_RIGHT,
-            duration=-1,
-            parent=self,
-        )
 
 
     def init_noticetype(self,notice_type):
