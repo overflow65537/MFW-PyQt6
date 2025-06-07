@@ -23,7 +23,6 @@ MFW-ChainFlow Assistant 任务逻辑
 """
 
 
-from math import fabs
 import os
 import subprocess
 import platform
@@ -722,15 +721,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         关闭模拟器
         """
-        if (
-            maa_config_data.config.get("emu_path") != ""
-            and self.app_process is not None
-        ):
-            self.app_process.terminate()
-            try:
-                self.app_process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                self.app_process.kill()
         adb_path = maa_config_data.config.get("adb", {}).get("adb_path")
         if not adb_path:
             return
@@ -821,6 +811,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 pass
             case "Memu":
                 pass
+        if (
+            maa_config_data.config.get("emu_path") != ""
+            and self.app_process is not None
+        ):
+            self.app_process.terminate()
+            try:
+                self.app_process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.app_process.kill()
 
     def shutdown(self):
         """
