@@ -23,7 +23,6 @@ MFW-ChainFlow Assistant 配置
 """
 
 
-from logging import config
 import sys
 from enum import Enum
 
@@ -40,10 +39,7 @@ from qfluentwidgets import (
     Theme,
     ConfigSerializer,
     __version__,
-    ConfigValidator
 )
-import re
-
 
 class Language(Enum):
     """Language enumeration"""
