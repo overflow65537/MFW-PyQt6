@@ -456,7 +456,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         Task_List = maa_config_data.config.get("task", [])
         if 0 <= task_index < len(Task_List):
             del Task_List[task_index]
-            self.Task_List.takeItem(task_index)
+            self.update_task_list_passive()
             maa_config_data.config["task"] = Task_List
             Save_Config(maa_config_data.config_path, maa_config_data.config)
             self.update_task_list()
@@ -1916,13 +1916,17 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if Select_Target == -1:
             return
         # 将task_combox的内容设置为选中项目
-        self.SelectTask_Combox_1.setCurrentText(
-            maa_config_data.config["task"][Select_Target].get("name")
-        )
+        try:
+            self.SelectTask_Combox_1.setCurrentText(
+                maa_config_data.config["task"][Select_Target].get("name")
+            )
 
-        self.restore_options(
-            maa_config_data.config["task"][Select_Target].get("option", [])
-        )
+
+            self.restore_options(
+                maa_config_data.config["task"][Select_Target].get("option", [])
+            )
+        except IndexError:
+            pass
 
     def restore_options(self, selected_options: List[Dict[str, str]]):
         """
