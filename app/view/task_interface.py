@@ -960,7 +960,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 "run_before_start_args", ""
             )
             if run_before_start_args:
-                run_before_start.extend(run_before_start_args.split())
+                import shlex
+                run_before_start.extend(shlex.split(run_before_start_args))
             logger.info(f"运行前脚本{run_before_start}")
             try:
                 self.run_before_start_process = self.start_process(run_before_start)
@@ -1096,7 +1097,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             emu_args = maa_config_data.config.get("emu_args")
             emu_wait_time = int(maa_config_data.config.get("emu_wait_time", "0"))
             if emu_args:
-                emu.extend(emu_args.split())
+                import shlex
+                
+                emu.extend(shlex.split(emu_args))
             logger.info(f"启动模拟器{emu}")
             try:
                 self.app_process = self.start_process(emu)
@@ -1161,7 +1164,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             exe_wait_time = int(maa_config_data.config.get("exe_wait_time", "0"))
             exe_args: str = maa_config_data.config.get("exe_args", "")
             if exe_args:
-                exe.extend(exe_args.split())
+                import shlex
+                exe.extend(shlex.split(exe_args))
             logger.info(f"启动游戏{exe}")
             try:
                 self.app_process = self.start_process(exe)
@@ -1571,7 +1575,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 "run_after_finish_args", ""
             )
             if run_after_finish_args:
-                run_after_finish.extend(run_after_finish_args.split())
+                import shlex
+                run_after_finish.extend(shlex.split(run_after_finish_args))
             logger.info(f"运行后脚本{run_after_finish}")
             try:
                 self.run_after_finish_process = self.start_process(run_after_finish)
