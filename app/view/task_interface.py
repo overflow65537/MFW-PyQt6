@@ -32,6 +32,7 @@ from pathlib import Path
 import json
 from typing import List, Dict, Union
 import re
+import shlex
 
 
 from PySide6.QtCore import Qt, QMimeData, QDateTime, QTime, QDate, QTimer
@@ -752,18 +753,33 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
                     logger.debug(f"关闭序号{str(multi_dict.get('index'))}")
                     if str(multi_dict.get("adb_port")) == adb_port:
-                        subprocess.run(
-                            [
-                                emu_dict["path"],
-                                "control",
-                                "-v",
-                                str(multi_dict.get("index")),
-                                "shutdown",
-                            ],
-                            shell=True,
-                            check=True,
-                            encoding="utf-8",
-                        )
+                        startupinfo = subprocess.STARTUPINFO()
+                        if platform.system() == "Windows":
+                            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                            startupinfo.wShowWindow = subprocess.SW_HIDE
+
+                        try:
+                            result = subprocess.run(
+                                [
+                                    emu_dict["path"],
+                                    "control",
+                                    "-v",
+                                    str(multi_dict.get("index")),
+                                    "shutdown",
+                                ],
+                                shell=True,
+                                check=True,
+                                encoding="utf-8",
+                                capture_output=True,
+                                startupinfo=startupinfo,
+                            )
+                            logger.info(
+                                f"关闭模拟器命令执行成功，输出: {result.stdout.strip()}"
+                            )
+                        except subprocess.CalledProcessError as e:
+                            logger.error(
+                                f"关闭模拟器命令执行失败，错误信息: {e.stderr.strip()}"
+                            )
                     return
                 logger.debug(f"多模拟器")
                 logger.debug(f"MuMuManager.exe info -v all: {multi_dict}")
@@ -771,19 +787,33 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 for emu_key, emu_data in multi_dict.items():
                     logger.debug(f"设备信息: {emu_data}")
                     if str(emu_data.get("adb_port")) == adb_port:
-                        subprocess.run(
-                            [
-                                emu_dict["path"],
-                                "control",
-                                "-v",
-                                str(emu_data.get("index")),
-                                "shutdown",
-                            ],
-                            shell=True,
-                            check=True,
-                            encoding="utf-8",
-                        )
-                        logger.debug(f"关闭序号{str(emu_data.get('index'))}")
+                        try:
+                            startupinfo = subprocess.STARTUPINFO()
+                            if platform.system() == "Windows":
+                                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                                startupinfo.wShowWindow = subprocess.SW_HIDE
+
+                            result = subprocess.run(
+                                [
+                                    emu_dict["path"],
+                                    "control",
+                                    "-v",
+                                    str(emu_data.get("index")),
+                                    "shutdown",
+                                ],
+                                shell=True,
+                                check=True,
+                                encoding="utf-8",
+                                capture_output=True,
+                                startupinfo=startupinfo,
+                            )
+                            logger.debug(
+                                f"关闭序号{str(emu_data.get('index'))}，输出: {result.stdout.strip()}"
+                            )
+                        except subprocess.CalledProcessError as e:
+                            logger.error(
+                                f"关闭序号{str(emu_data.get('index'))}失败，错误信息: {e.stderr.strip()}"
+                            )
                 return
             case "LD":
                 ld_pid = (
@@ -795,17 +825,31 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 )
                 if ld_pid:
                     logger.debug(f"关闭LD进程: {ld_pid}")
-                    subprocess.run(
-                        [
+                    try:
+                        startupinfo = subprocess.STARTUPINFO()
+                        if platform.system() == "Windows":
+                            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                            startupinfo.wShowWindow = subprocess.SW_HIDE
+                        taskkill_command = [
                             "taskkill",
                             "/F",
                             "/PID",
                             str(ld_pid),
-                        ],
-                        shell=True,
-                        check=True,
-                        encoding="utf-8",
-                    )
+                        ]
+                        result = subprocess.run(
+                            taskkill_command,
+                            check=True,
+                            encoding="utf-8",
+                            capture_output=True,
+                            startupinfo=startupinfo,
+                        )
+                        logger.info(
+                            f"成功关闭 LD 进程 {ld_pid}，输出: {result.stdout.strip()}"
+                        )
+                    except subprocess.CalledProcessError as e:
+                        logger.error(
+                            f"关闭 LD 进程 {ld_pid} 失败，错误信息: {e.stderr.strip()}"
+                        )
                 return
             case "BlueStacks":
                 pass
@@ -960,7 +1004,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 "run_before_start_args", ""
             )
             if run_before_start_args:
-                import shlex
                 run_before_start.extend(shlex.split(run_before_start_args))
             logger.info(f"运行前脚本{run_before_start}")
             try:
@@ -1097,8 +1140,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             emu_args = maa_config_data.config.get("emu_args")
             emu_wait_time = int(maa_config_data.config.get("emu_wait_time", "0"))
             if emu_args:
-                import shlex
-                
                 emu.extend(shlex.split(emu_args))
             logger.info(f"启动模拟器{emu}")
             try:
@@ -1164,7 +1205,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             exe_wait_time = int(maa_config_data.config.get("exe_wait_time", "0"))
             exe_args: str = maa_config_data.config.get("exe_args", "")
             if exe_args:
-                import shlex
                 exe.extend(shlex.split(exe_args))
             logger.info(f"启动游戏{exe}")
             try:
@@ -1575,7 +1615,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 "run_after_finish_args", ""
             )
             if run_after_finish_args:
-                import shlex
                 run_after_finish.extend(shlex.split(run_after_finish_args))
             logger.info(f"运行后脚本{run_after_finish}")
             try:
