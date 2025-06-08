@@ -947,7 +947,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         # 连接控制器
         if not await self.connect_controller(controller_type):
+            if cfg.get(cfg.when_connect_failed):
+                self.send_notice(
+                            "failed",
+                            self.tr("Connection failed,please check the program"),
+                        )
             return
+        if cfg.get(cfg.when_connect_success):
+            self.send_notice("info", self.tr("Connection success"))
 
         # 运行任务
         if task:
@@ -1078,11 +1085,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if not await self.connect_adb():
             # 如果连接失败，尝试启动模拟器
             if not await self.start_emulator():
-                if cfg.get(cfg.when_connect_failed):
-                    self.send_notice(
-                        "info",
-                        self.tr("first Connection failed,try to kill ADB process"),
-                    )
                 self.insert_colored_text(self.tr("Connection Failed"))
                 await maafw.stop_task()
                 self.update_S2_Button("Start", self.Start_Up)
@@ -1098,11 +1100,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     logger.error(
                         f'连接adb失败\n{maa_config_data.config.get("adb", {}).get("adb_path", "")}\n{maa_config_data.config.get("adb", {}).get("address", "")}\n{maa_config_data.config.get("adb", {})["input_method"]}\n{maa_config_data.config.get("adb", {})["screen_method"]}\n{maa_config_data.config.get("adb", {})["config"]}'
                     )
-                    if cfg.get(cfg.when_connect_failed):
-                        self.send_notice(
-                            "failed",
-                            self.tr("Connection failed,please check the program"),
-                        )
                     self.insert_colored_text(self.tr("Connection Failed"))
                     await maafw.stop_task()
                     self.update_S2_Button("Start", self.Start_Up)
@@ -1241,9 +1238,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.error(
                 f"连接Win32失败 \n{maa_config_data.config.get('win32',{}).get('hwnd',0)}\n{maa_config_data.config.get('win32',{}).get('input_method',0)}\n{maa_config_data.config.get('win32',{}).get('screen_method',0)}"
             )
-            if cfg.get(cfg.when_connect_failed):
-                self.send_notice("failed", self.tr("Connection"))
-            self.insert_colored_text(self.tr("Connection Failed"))
             await maafw.stop_task()
             self.update_S2_Button("Start", self.Start_Up)
             return False
@@ -1294,7 +1288,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     if not self.entry:
                         logger.error(f"未找到任务入口: {task_list.get('name')}")
                         if cfg.get(cfg.when_task_failed):
-                            self.send_notice("failed", self.tr("Task Entry"))
+                            self.send_notice("failed", self.tr("Task Entry")+":")
                         self.insert_colored_text(self.tr("Task Entry Failed"))
                         return
                     enter_index = index
