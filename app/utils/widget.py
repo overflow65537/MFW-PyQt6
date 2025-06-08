@@ -22,8 +22,6 @@ MFW-ChainFlow Assistant 组件
 作者:overflow65537
 """
 
-from calendar import c
-from signal import raise_signal
 from PySide6.QtWidgets import (
     QMessageBox,
     QVBoxLayout,
@@ -44,9 +42,8 @@ from PySide6.QtGui import (
     QCursor,
     QIntValidator,
 )
-from PySide6.QtCore import Qt, Signal, QSize, QMimeData
+from PySide6.QtCore import Qt, Signal,  QMimeData
 
-from click import edit
 from qfluentwidgets import (
     FluentIconBase,
     SwitchButton,
@@ -74,7 +71,6 @@ from qfluentwidgets import (
     FluentIconBase,
     EditableComboBox,
     CheckBox,
-    config,
 )
 from qfluentwidgets import FluentIcon as FIF
 
@@ -93,6 +89,8 @@ from ..utils.tool import (
     find_key_by_value,
     rewrite_contorller,
     delete_contorller,
+    encrypt,
+    decrypt,
 )
 from ..utils.notice import (
     lark_send,
@@ -350,22 +348,47 @@ class NoticeType(MessageBoxBase):
             case "QYWX":
                 self.save_qywx_fields()
 
+    def encrypt_key(self,obj):
+        """加密密钥"""
+        with open("k.ey", "rb") as file:
+            key = file.read()
+            encrypt_key = encrypt(obj(), key)
+        return encrypt_key
+
+
+    def decode_key(self,key_name) -> str:
+        """解密密钥"""
+        mapping = {
+            "dingtalk": cfg.Notice_DingTalk_secret,
+            "lark": cfg.Notice_Lark_secret,
+            "smtp": cfg.Notice_SMTP_password,
+            "wxpusher": cfg.Notice_WxPusher_SPT_token,
+            "QYWX": cfg.Notice_QYWX_key,
+        }
+        try:
+            with open("k.ey", "rb") as key_file:
+                key = key_file.read()
+                return decrypt(cfg.get(mapping[key_name]), key)
+        except Exception as e:
+            logger.exception("获取ckd失败")
+            return ""
+
     def save_dingtalk_fields(self):
         """保存钉钉相关的输入框"""
         cfg.set(cfg.Notice_DingTalk_url, self.dingtalk_url_input.text())
-        cfg.set(cfg.Notice_DingTalk_secret, self.dingtalk_secret_input.text())
+        cfg.set(cfg.Notice_DingTalk_secret, self.encrypt_key(self.dingtalk_secret_input.text))
         cfg.set(cfg.Notice_DingTalk_status, self.dingtalk_status_switch.isChecked())
 
     def save_lark_fields(self):
         """保存飞书相关的输入框"""
         cfg.set(cfg.Notice_Lark_url, self.lark_url_input.text())
-        cfg.set(cfg.Notice_Lark_secret, self.lark_secret_input.text())
+        cfg.set(cfg.Notice_Lark_secret, self.encrypt_key(self.lark_secret_input.text))
         cfg.set(cfg.Notice_Lark_status, self.lark_status_switch.isChecked())
 
     def save_qmsg_fields(self):
         """保存 Qmsg 相关的输入框"""
         cfg.set(cfg.Notice_Qmsg_sever, self.sever_input.text())
-        cfg.set(cfg.Notice_Qmsg_key, self.key_input.text())
+        cfg.set(cfg.Notice_Qmsg_key, self.encrypt_key(self.key_input.text))
         cfg.set(cfg.Notice_Qmsg_user_qq, self.user_qq_input.text())
         cfg.set(cfg.Notice_Qmsg_robot_qq, self.robot_qq_input.text())
         cfg.set(cfg.Notice_Qmsg_status, self.qmsg_status_switch.isChecked())
@@ -376,18 +399,18 @@ class NoticeType(MessageBoxBase):
         cfg.set(cfg.Notice_SMTP_sever_port, self.server_port_input.text())
         cfg.set(cfg.Notice_SMTP_used_ssl, self.used_ssl.isChecked())
         cfg.set(cfg.Notice_SMTP_user_name, self.user_name_input.text())
-        cfg.set(cfg.Notice_SMTP_password, self.password_input.text())
+        cfg.set(cfg.Notice_SMTP_password, self.encrypt_key(self.password_input.text))
         cfg.set(cfg.Notice_SMTP_receive_mail, self.receive_mail_input.text())
         cfg.set(cfg.Notice_SMTP_status, self.smtp_status_switch.isChecked())
 
     def save_wxpusher_fields(self):
         """保存 WxPusher 相关的输入框"""
-        cfg.set(cfg.Notice_WxPusher_SPT_token, self.wxpusher_spt_input.text())
+        cfg.set(cfg.Notice_WxPusher_SPT_token, self.encrypt_key(self.wxpusher_spt_input.text))
         cfg.set(cfg.Notice_WxPusher_status, self.wxpusher_status_switch.isChecked())
 
     def save_qywx_fields(self):
         """保存 QYWX 相关的输入框"""
-        cfg.set(cfg.Notice_QYWX_key, self.qywx_key_input.text())
+        cfg.set(cfg.Notice_QYWX_key, self.encrypt_key(self.qywx_key_input.text))
         cfg.set(cfg.Notice_QYWX_status, self.qywx_status_switch.isChecked())
 
     def add_dingtalk_fields(self):
@@ -404,7 +427,7 @@ class NoticeType(MessageBoxBase):
         dingtalk_status_title.setText(self.tr("DingTalk Status:"))
 
         self.dingtalk_url_input.setText(cfg.get(cfg.Notice_DingTalk_url))
-        self.dingtalk_secret_input.setText(cfg.get(cfg.Notice_DingTalk_secret))
+        self.dingtalk_secret_input.setText(self.decode_key("dingtalk"))
         self.dingtalk_status_switch.setChecked(cfg.get(cfg.Notice_DingTalk_status))
 
         col1 = QVBoxLayout()
@@ -439,7 +462,7 @@ class NoticeType(MessageBoxBase):
         lark_status_title.setText(self.tr("Lark Status:"))
 
         self.lark_url_input.setText(cfg.get(cfg.Notice_Lark_url))
-        self.lark_secret_input.setText(cfg.get(cfg.Notice_Lark_secret))
+        self.lark_secret_input.setText(self.decode_key("lark"))
         self.lark_status_switch.setChecked(cfg.get(cfg.Notice_Lark_status))
 
         col1 = QVBoxLayout()
@@ -482,7 +505,7 @@ class NoticeType(MessageBoxBase):
         qmsg_status_title.setText(self.tr("Qmsg Status:"))
 
         self.sever_input.setText(cfg.get(cfg.Notice_Qmsg_sever))
-        self.key_input.setText(cfg.get(cfg.Notice_Qmsg_key))
+        self.key_input.setText(self.decode_key("qmsg"))
         self.user_qq_input.setText(cfg.get(cfg.Notice_Qmsg_user_qq))
         self.robot_qq_input.setText(cfg.get(cfg.Notice_Qmsg_robot_qq))
         self.qmsg_status_switch.setChecked(cfg.get(cfg.Notice_Qmsg_status))
@@ -540,7 +563,7 @@ class NoticeType(MessageBoxBase):
         self.server_port_input.setText(cfg.get(cfg.Notice_SMTP_sever_port))
         self.used_ssl.setChecked(cfg.get(cfg.Notice_SMTP_used_ssl))
         self.user_name_input.setText(cfg.get(cfg.Notice_SMTP_user_name))
-        self.password_input.setText(cfg.get(cfg.Notice_SMTP_password))
+        self.password_input.setText(self.decode_key("smtp"))
         self.receive_mail_input.setText(cfg.get(cfg.Notice_SMTP_receive_mail))
         self.smtp_status_switch.setChecked(cfg.get(cfg.Notice_SMTP_status))
 
@@ -589,7 +612,7 @@ class NoticeType(MessageBoxBase):
         wxpusher_spt_title.setText(self.tr("WxPusher Spt:"))
         wxpusher_status_title.setText(self.tr("WxPusher Status:"))
 
-        self.wxpusher_spt_input.setText(cfg.get(cfg.Notice_WxPusher_SPT_token))
+        self.wxpusher_spt_input.setText(self.decode_key("wxpusher"))
         self.wxpusher_status_switch.setChecked(cfg.get(cfg.Notice_WxPusher_status))
 
         col1 = QVBoxLayout()
@@ -619,7 +642,7 @@ class NoticeType(MessageBoxBase):
         qywx_key_title.setText(self.tr("QYWXbot Key:"))
         qywx_status_title.setText(self.tr("QYWXbot Status:"))
 
-        self.qywx_key_input.setText(cfg.get(cfg.Notice_QYWX_key))
+        self.qywx_key_input.setText(self.decode_key("QYWX"))
         self.qywx_status_switch.setChecked(cfg.get(cfg.Notice_QYWX_status))
 
         col1 = QVBoxLayout()
@@ -847,12 +870,21 @@ class SendSettingCard(MessageBoxBase):
         self.when_task_failed = CheckBox(self.tr("When Task Failed"), self)
         self.when_task_finished = CheckBox(self.tr("When Task Finished"), self)
 
-        self.viewLayout.addWidget(self.when_start_up)
-        self.viewLayout.addWidget(self.when_connect_failed)
-        self.viewLayout.addWidget(self.when_connect_success)
-        self.viewLayout.addWidget(self.when_post_task)
-        self.viewLayout.addWidget(self.when_task_failed)
-        self.viewLayout.addWidget(self.when_task_finished)
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
+
+        col1.addWidget(self.when_start_up
+                       )
+        col1.addWidget(self.when_connect_failed)
+        col1.addWidget(self.when_connect_success)
+        col2.addWidget(self.when_post_task)
+        col2.addWidget(self.when_task_failed)
+        col2.addWidget(self.when_task_finished)
+
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(col1)
+        mainLayout.addLayout(col2)
+        self.viewLayout.addLayout(mainLayout)
 
         self.when_start_up.setChecked(cfg.get(cfg.when_start_up))
         self.when_connect_failed.setChecked(cfg.get(cfg.when_connect_failed))

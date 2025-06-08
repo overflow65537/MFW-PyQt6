@@ -37,14 +37,31 @@ from ..common.signal_bus import signalBus
 from ..common.config import cfg
 from ..utils.logger import logger
 from ..utils.notice_enum import NoticeErrorCode
+from ..utils.tool import decrypt
 
 
+#解码密钥
+def decode_key(key_name) -> str:
+    mapping = {
+            "dingtalk": cfg.Notice_DingTalk_secret,
+            "lark": cfg.Notice_Lark_secret,
+            "smtp": cfg.Notice_SMTP_password,
+            "wxpusher": cfg.Notice_WxPusher_SPT_token,
+            "QYWX": cfg.Notice_QYWX_key,
+        }
+    try:
+        with open("k.ey", "rb") as key_file:
+            key = key_file.read()
+            return decrypt(cfg.get(mapping[key_name]), key)
+    except Exception as e:
+        logger.exception("获取ckd失败")
+        return ""
 class DingTalk:
     def __init__(self) -> None:
         self.sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
         self.correct_url = r"^https://oapi.dingtalk.com/robot/.*$"
         self.url = cfg.get(cfg.Notice_DingTalk_url)
-        self.secret = cfg.get(cfg.Notice_DingTalk_secret)
+        self.secret = decode_key("dingtalk")
         self.headers = {"Content-Type": "application/json"}
         self.codename = "errcode"
         self.code = 0
@@ -92,7 +109,7 @@ class Lark:
         self.sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
         self.correct_url = r"^https://open.feishu.cn/open-apis/bot/.*$"
         self.url = cfg.get(cfg.Notice_Lark_url)
-        self.secret = cfg.get(cfg.Notice_Lark_secret)
+        self.secret = decode_key("lark")
         self.headers = {"Content-Type": "application/json"}
         self.codename = "code"
         self.code = 0
@@ -145,7 +162,7 @@ class SMTP:
         self.sever_address = cfg.get(cfg.Notice_SMTP_sever_address)
         self.sever_port = cfg.get(cfg.Notice_SMTP_sever_port)
         self.uesr_name = cfg.get(cfg.Notice_SMTP_user_name)
-        self.password = cfg.get(cfg.Notice_SMTP_password)
+        self.password = decode_key("smtp")
         self.send_mail = cfg.get(cfg.Notice_SMTP_user_name)
         self.receive_mail = cfg.get(cfg.Notice_SMTP_receive_mail)
         self.sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
@@ -196,7 +213,7 @@ class WxPusher:
             "content": msg_text,
             "summary": msg_dict["title"],
             "contentType": 1,
-            "spt": cfg.get(cfg.Notice_WxPusher_SPT_token),
+            "spt": decode_key("wxpusher"),
             "sptList": [cfg.get(cfg.Notice_WxPusher_SPT_token)],
         }
         return msg
@@ -228,7 +245,7 @@ class QYWX:
         return msg
 
     def send(self, msg_type: dict) -> bool:
-        QYWX_KEY = cfg.get(cfg.Notice_QYWX_key)
+        QYWX_KEY = decode_key("QYWX")
         url = f"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={QYWX_KEY}"
         msg = self.msg(msg_type)
         try:
