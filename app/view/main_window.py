@@ -62,6 +62,13 @@ from ..utils.notice_message import NoticeMessageBox
 from ..utils.notice_enum import NoticeErrorCode
 from ..utils.widget import NoticeType, SendSettingCard
 
+class CustomSystemThemeListener(SystemThemeListener):
+    def run(self):
+        try:
+            # 调用原始的 run 方法
+            super().run()
+        except NotImplementedError:
+            print("当前环境不支持主题监听，已忽略", file=sys.stderr)
 
 class MainWindow(FluentWindow):
 
@@ -69,8 +76,8 @@ class MainWindow(FluentWindow):
         super().__init__()
         self.initWindow()
 
-        # 创建系统主题监听器
-        self.themeListener = SystemThemeListener(self)
+        # 使用自定义的主题监听器
+        self.themeListener = CustomSystemThemeListener(self)
 
         # 创建子界面
         self.taskInterface = TaskInterface(self)
