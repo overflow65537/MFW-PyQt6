@@ -913,7 +913,7 @@ class MyNotificationHandler(NotificationHandler):
         if detail.focus.get("aborted"):
             send_msg["aborted"] = True
         self.callbackSignal.callback.emit(
-           
+           send_msg
         )
 
 
