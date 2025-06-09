@@ -953,6 +953,17 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             self.tr("Connection failed,please check the program"),
                         )
             return
+        fast_name ,cost = self.get_speed_test()
+        if fast_name and cost:
+            logger.info(f"截图速度最快的方法是{fast_name},耗时{cost}ms")
+            if 0<cost<50:
+                self.insert_colored_text("[color:ForestGreen]"+self.tr("fastest screenshot method cost:")+str(cost)+"ms("+fast_name+")[/color]")
+            elif 51<cost<100:
+                self.insert_colored_text("[color:DeepSkyBlue]"+self.tr("fastest screenshot method cost:")+str(cost)+"ms("+fast_name+")[/color]")
+            elif 101<cost<300:
+                self.insert_colored_text("[color:LightSalmon]"+self.tr("fastest screenshot method cost:")+str(cost)+"ms("+fast_name+")[/color]")
+            elif 301<cost:
+                self.insert_colored_text("[color:Tomato]"+self.tr("fastest screenshot method cost:")+str(cost)+"ms("+fast_name+")[/color]")
         if cfg.get(cfg.when_connect_success):
             self.send_notice("info", self.tr("Connection success"))
 
@@ -981,8 +992,31 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         # 更改按钮状态
         self.update_S2_Button("Start", self.Start_Up)
-
     # endregion
+
+    def get_speed_test(self):
+        """
+        获取截图速度
+        """
+        log_path = os.path.join(os.getcwd(), "debug", "maa.log")
+        with open(log_path, "r", encoding="utf-8") as file:
+            lines = file.readlines()
+            # 倒序
+            lines.reverse()
+            for line in lines:
+                if "The fastest method is" in line:
+                    # 提取最快方法
+                    method_part = line.split("The fastest method is")[1].strip()
+                    method = method_part.split(" ")[0]
+                    # 提取耗时
+                    cost_part = method_part.split("[cost=")[1].split("ms")[0].strip()
+                    try:
+                        cost = int(cost_part)
+                    except ValueError:
+                        cost = 0
+                    return method, cost
+            return None, None
+
     def update_S2_Button(self, text, slot, enable=True):
         """
         更新按钮状态

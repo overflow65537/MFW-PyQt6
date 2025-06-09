@@ -646,7 +646,7 @@ class SettingInterface(ScrollArea):
         self.micaCard.checkedChanged.connect(signalBus.micaEnableChanged)
         # 连接更新信号
         self.MirrorCard.button.clicked.connect(
-            lambda: QDesktopServices.openUrl(QUrl("https://mirrorchyan.com/"))
+            lambda: QDesktopServices.openUrl(QUrl("https://mirrorchyan.com/source=MFW-CL_Setting"))
         )
         self.MirrorCard.lineEdit.textChanged.connect(self._onMirrorCardChange)
 
