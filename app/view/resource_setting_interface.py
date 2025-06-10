@@ -334,7 +334,7 @@ class ResourceSettingInterface(ScrollArea):
 
             if config_name in ["default", "default".lower()]:
                 logger.warning(" 不能添加主配置文件")
-                signalBus.custom_info.emit(
+                signalBus.infobar_message.emit(
                     {"status":"warning","msg":self.tr("default config can't be added.")}
                 )
                 cfg.set(cfg.maa_config_name, "default")
@@ -350,13 +350,13 @@ class ResourceSettingInterface(ScrollArea):
 
             elif config_name in maa_config_data.config_name_list:
                 logger.warning(f" {config_name} 已存在")
-                signalBus.custom_info.emit(
+                signalBus.infobar_message.emit(
                     {"status":"warning","msg":config_name+self.tr(" already exists.")}
                 )
                 self.update_config_path(config_name)
             else:
                 logger.debug(f" 创建 {config_name} 配置")
-                signalBus.custom_info.emit(
+                signalBus.infobar_message.emit(
                     {"status":"info","msg":self.tr("Creating config ")+config_name}
                 )
                 self.create_new_config(config_name)
@@ -364,7 +364,7 @@ class ResourceSettingInterface(ScrollArea):
             self.cfg_changed()
             self.lock_cfg()
         else:
-            signalBus.custom_info.emit(
+            signalBus.infobar_message.emit(
                 {"status":"failed","msg":self.tr("Please add resources first.")}
             )
 
@@ -493,7 +493,7 @@ class ResourceSettingInterface(ScrollArea):
     def res_delete(self):
         """删除当前选定的资源"""
         if not cfg.get(cfg.resource_exist):
-            signalBus.custom_info.emit(
+            signalBus.infobar_message.emit(
                 {"status":"failed","msg":self.tr("Please add resources first.")}
             )
             return
@@ -531,7 +531,7 @@ class ResourceSettingInterface(ScrollArea):
     def cfg_delete(self, config_name=None):
         """删除当前选定的配置"""
         if not cfg.get(cfg.resource_exist):
-            signalBus.custom_info.emit(
+            signalBus.infobar_message.emit(
                 {"status":"failed","msg":self.tr("Please add resources first.")}
             )
             return

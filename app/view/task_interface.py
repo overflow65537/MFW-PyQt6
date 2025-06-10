@@ -424,6 +424,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 self.insert_colored_text(self.tr("Agent service start"))
             case "agent_info":
                 self.insert_colored_text(msg["data"])
+            case _:
+                logger.warning(f"Unknown message type: {msg}")
 
     # region 拖动事件
     def dragEnter(self, event: QDropEvent):
@@ -2396,7 +2398,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.error("未检测到设备")
             self.show_error(error_message)
         else:
-            signalBus.custom_info.emit({"status": "success", "msg": success_message})
+            signalBus.infobar_message.emit({"status": "success", "msg": success_message})
             self.Autodetect_combox.clear()
             processed_list = list(set(processed_list))
             self.Autodetect_combox.addItems(processed_list)
@@ -2505,7 +2507,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     def show_error(self, error_message):
         for info_bar in self.findChildren(InfoBar):
             info_bar.close()
-        signalBus.custom_info.emit({"status": "failed", "msg": error_message})
+        signalBus.infobar_message.emit({"status": "failed", "msg": error_message})
 
     def Save_device_Config(self):
         """
