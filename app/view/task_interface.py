@@ -998,24 +998,29 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         获取截图速度
         """
-        log_path = os.path.join(os.getcwd(), "debug", "maa.log")
-        with open(log_path, "r", encoding="utf-8") as file:
-            lines = file.readlines()
-            # 倒序
-            lines.reverse()
-            for line in lines:
-                if "The fastest method is" in line:
-                    # 提取最快方法
-                    method_part = line.split("The fastest method is")[1].strip()
-                    method = method_part.split(" ")[0]
-                    # 提取耗时
-                    cost_part = method_part.split("[cost=")[1].split("ms")[0].strip()
-                    try:
-                        cost = int(cost_part)
-                    except ValueError:
-                        cost = 0
-                    return method, cost
-            return None, None
+        try:
+            log_path = os.path.join(os.getcwd(), "debug", "maa.log")
+            with open(log_path, "r", encoding="utf-8") as file:
+                lines = file.readlines()
+                # 倒序
+                lines.reverse()
+                for line in lines:
+                    if "The fastest method is" in line:
+                        # 提取最快方法
+                        method_part = line.split("The fastest method is")[1].strip()
+                        method = method_part.split(" ")[0]
+                        # 提取耗时
+                        cost_part = method_part.split("[cost=")[1].split("ms")[0].strip()
+                        try:
+                            cost = int(cost_part)
+                        except ValueError:
+                            cost = 0
+                        return method, cost
+            
+        except Exception as e:
+            logger.error(f"获取截图速度失败:{e}")
+        finally:
+            return None,None
 
     def update_S2_Button(self, text, slot, enable=True):
         """
