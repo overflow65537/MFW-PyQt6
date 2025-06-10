@@ -66,12 +66,12 @@ class BaseUpdate(QThread):
         for key, value in proxy_config.items():
             if value:
                 proxies[key] = value
-        if proxies:
-            logger.debug(f"使用代理配置: {proxies}")
-            return proxies
-        else:
+        if proxies == {'http': 'http://', 'https': 'http://'}:
             logger.debug("代理配置为空")
             return {}
+        else:
+            logger.debug(f"使用代理配置: {proxies}")
+            return proxies
 
     def download_file(self, url, file_path, progress_signal: SignalInstance, use_proxies):
         need_clear_update = False
