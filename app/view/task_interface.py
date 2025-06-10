@@ -33,6 +33,7 @@ import json
 from typing import List, Dict, Union
 import re
 import shlex
+import chardet
 
 
 from PySide6.QtCore import Qt, QMimeData, QDateTime, QTime, QDate, QTimer
@@ -1000,7 +1001,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         try:
             log_path = os.path.join(os.getcwd(), "debug", "maa.log")
-            with open(log_path, "r", encoding="utf-8") as file:
+            # 读取文件的前部分内容以检测编码
+            with open(log_path, 'rb') as raw_file:
+                raw_data = raw_file.read(1024)
+                result = chardet.detect(raw_data)
+                encoding = result['encoding']
+            logger.debug(f"检测到的编码: {encoding}")
+
+            # 使用检测到的编码读取文件
+            with open(log_path, "r", encoding=encoding, errors='replace') as file:
                 lines = file.readlines()
                 # 倒序
                 lines.reverse()
@@ -1016,11 +1025,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         except ValueError:
                             cost = 0
                         return method, cost
-            
+            return None, None
+
         except Exception as e:
             logger.error(f"获取截图速度失败:{e}")
-        finally:
-            return None,None
+            return None, None
+            
 
     def update_S2_Button(self, text, slot, enable=True):
         """
