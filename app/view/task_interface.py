@@ -218,7 +218,17 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 + "\n".join(inconsistent_tasks)
             )
             logger.warning(error_msg)
-            self.show_error(error_msg)
+            for info_bar in self.findChildren(InfoBar):
+                info_bar.close()
+
+            InfoBar.error(
+                title=self.tr("ERROR"),
+                content=error_msg,
+                isClosable=True,
+                position=InfoBarPosition.BOTTOM_RIGHT,
+                duration=10000,
+                parent=self,
+            )
         else:
             logger.info("所有配置任务与接口模板一致")
 
@@ -2505,8 +2515,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 self.notice_threads.append(thread)  # 保存线程实例
 
     def show_error(self, error_message):
-        for info_bar in self.findChildren(InfoBar):
-            info_bar.close()
         signalBus.infobar_message.emit({"status": "failed", "msg": error_message})
 
     def Save_device_Config(self):
