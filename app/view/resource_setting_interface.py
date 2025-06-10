@@ -334,6 +334,9 @@ class ResourceSettingInterface(ScrollArea):
 
             if config_name in ["default", "default".lower()]:
                 logger.warning(" 不能添加主配置文件")
+                signalBus.custom_info.emit(
+                    {"status":"warning","msg":self.tr("default config can't be added.")}
+                )
                 cfg.set(cfg.maa_config_name, "default")
                 maa_config_data.config_path = os.path.join(
                     os.getcwd(),
@@ -347,27 +350,24 @@ class ResourceSettingInterface(ScrollArea):
 
             elif config_name in maa_config_data.config_name_list:
                 logger.warning(f" {config_name} 已存在")
+                signalBus.custom_info.emit(
+                    {"status":"warning","msg":config_name+self.tr(" already exists.")}
+                )
                 self.update_config_path(config_name)
             else:
                 logger.debug(f" 创建 {config_name} 配置")
+                signalBus.custom_info.emit(
+                    {"status":"info","msg":self.tr("Creating config ")+config_name}
+                )
                 self.create_new_config(config_name)
 
             self.cfg_changed()
             self.lock_cfg()
         else:
-            self.show_error(self.tr("Please add resources first."))
+            signalBus.custom_info.emit(
+                {"status":"failed","msg":self.tr("Please add resources first.")}
+            )
 
-    def show_error(self, message):
-        """显示错误信息"""
-        InfoBar.error(
-            title=self.tr("Error"),
-            content=message,
-            orient=Qt.Orientation.Horizontal,
-            isClosable=True,
-            position=InfoBarPosition.BOTTOM_RIGHT,
-            duration=-1,
-            parent=self,
-        )
 
     def create_new_config(self, config_name):
         """创建新的配置文件"""
@@ -493,7 +493,9 @@ class ResourceSettingInterface(ScrollArea):
     def res_delete(self):
         """删除当前选定的资源"""
         if not cfg.get(cfg.resource_exist):
-            self.show_error(self.tr("Please add resources first."))
+            signalBus.custom_info.emit(
+                {"status":"failed","msg":self.tr("Please add resources first.")}
+            )
             return
         resource_name = self.res_setting.combox.currentText()
         logger.info(f" 删除资源 {resource_name}")
@@ -529,7 +531,9 @@ class ResourceSettingInterface(ScrollArea):
     def cfg_delete(self, config_name=None):
         """删除当前选定的配置"""
         if not cfg.get(cfg.resource_exist):
-            self.show_error(self.tr("Please add resources first."))
+            signalBus.custom_info.emit(
+                {"status":"failed","msg":self.tr("Please add resources first.")}
+            )
             return
 
         if config_name is None or type(config_name) in [int, bool]:

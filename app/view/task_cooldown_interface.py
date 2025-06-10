@@ -255,18 +255,6 @@ class TaskCooldownInterface(Ui_TaskCooldown_Interface, QWidget):
             if (item := self.List_widget.item(i)) is not None
         ]
 
-    def show_error(self, message):
-        """显示错误信息"""
-        InfoBar.error(
-            title=self.tr("Error"),
-            content=message,
-            orient=Qt.Orientation.Horizontal,
-            isClosable=True,
-            position=InfoBarPosition.BOTTOM_RIGHT,
-            duration=-1,
-            parent=self,
-        )
-
     def update_task_list_passive(self):
         """更新任务列表(被动刷新)"""
         self.List_widget.clear()

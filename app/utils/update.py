@@ -76,8 +76,10 @@ class BaseUpdate(QThread):
     def download_file(self, url, file_path, progress_signal: SignalInstance, use_proxies):
         need_clear_update = False
         response = None
-
-        proxies = self.get_proxy_data()
+        if use_proxies:
+            proxies = self.get_proxy_data()
+        else:
+            proxies = None
 
         if os.path.exists("NO_SSL"):
             verify = False

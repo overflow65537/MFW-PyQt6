@@ -2396,7 +2396,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.error("未检测到设备")
             self.show_error(error_message)
         else:
-            self.show_success(success_message)
+            signalBus.custom_info.emit({"status": "success", "msg": success_message})
             self.Autodetect_combox.clear()
             processed_list = list(set(processed_list))
             self.Autodetect_combox.addItems(processed_list)
@@ -2502,29 +2502,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 thread.start()
                 self.notice_threads.append(thread)  # 保存线程实例
 
-    def show_success(self, message):
-        InfoBar.success(
-            title=self.tr("Success"),
-            content=message,
-            orient=Qt.Orientation.Horizontal,
-            isClosable=True,
-            position=InfoBarPosition.BOTTOM_RIGHT,
-            duration=2000,
-            parent=self,
-        )
-
     def show_error(self, error_message):
         for info_bar in self.findChildren(InfoBar):
             info_bar.close()
-        InfoBar.error(
-            title=self.tr("Error"),
-            content=error_message,
-            orient=Qt.Orientation.Horizontal,
-            isClosable=True,
-            position=InfoBarPosition.BOTTOM_RIGHT,
-            duration=-1,
-            parent=self,
-        )
+        signalBus.custom_info.emit({"status": "failed", "msg": error_message})
 
     def Save_device_Config(self):
         """
