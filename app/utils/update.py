@@ -53,7 +53,7 @@ class BaseUpdate(QThread):
     stop_flag = False
     channel_map = {0: "stable", 1: "beta", 2: "alpha"}
 
-    def get_proxy_data(self) -> dict:
+    def get_proxy_data(self) -> dict|None:
         proxy_config = {}
         if cfg.get(cfg.proxy) == 0:
             proxy_config["http"] = f"http://{cfg.get(cfg.http_proxy)}"
@@ -68,7 +68,7 @@ class BaseUpdate(QThread):
                 proxies[key] = value
         if proxies == {'http': 'http://', 'https': 'http://'}:
             logger.debug("代理配置为空")
-            return {}
+            return None
         else:
             logger.debug(f"使用代理配置: {proxies}")
             return proxies
