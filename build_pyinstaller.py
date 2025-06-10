@@ -27,14 +27,22 @@ import os
 import site
 import shutil
 import sys
+import json  # 导入 json 模块
 
 
 def write_version_file(platform, architecture, version):
     version_file_path = os.path.join(
-        os.getcwd(), "dist", "MFW", "config", "version.txt"
+        os.getcwd(), "dist", "MFW", "config", "version.json"  
     )
-    with open(version_file_path, "w") as version_file:
-        version_file.write(f"{platform} {architecture} {version}\n")
+    # 准备要写入 JSON 文件的数据
+    version_data = {
+        "os": platform,
+        "arch": architecture,  
+        "version": version
+    }
+    with open(version_file_path, "w", encoding="utf-8") as version_file:
+        # 使用 json.dump 将数据以 JSON 格式写入文件
+        json.dump(version_data, version_file, ensure_ascii=False, indent=4)
         print(f"write version file to {version_file_path}")
 
 
@@ -42,7 +50,8 @@ def write_version_file(platform, architecture, version):
 # === 构建参数处理 ===
 print("[INFO] Received command line arguments:", sys.argv)
 if len(sys.argv) != 4:  # 参数校验：平台/架构/版本号
-    sys.argv = [sys.argv[0], "win", "x86_64", "v1.7.0"]
+    sys.argv = [sys.argv[0], "win", "x86_64", "你不该下到这个版本"]
+
 platform = sys.argv[1]
 architecture = sys.argv[2]
 version = sys.argv[3]
