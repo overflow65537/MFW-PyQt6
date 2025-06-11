@@ -266,4 +266,3 @@
   <img alt="task_cooldown" src="picture\task_cooldown.png" style="max-width: 25%; height: auto;" />
   <img alt="sp_task" src="picture\sp_task.png" style="max-width: 25%; height: auto;" />
 </div>
-

@@ -482,10 +482,32 @@ class MainWindow(FluentWindow):
                 resource = f.read()
         except Exception as e:
             resource = None
+        try:
+            with open(
+                os.path.join(os.getcwd(), "MFW_changelog.md"),
+                "r",
+                encoding="utf-8",
+            ) as f:
+                MFW_Changelog = f.read()
+        except Exception as e:
+            MFW_Changelog = None
+        try:
+            with open(
+                os.path.join(maa_config_data.resource_path, "resource_changelog.md"),
+                "r",
+                encoding="utf-8",
+            ) as f:
+                resource_Changelog = f.read()
+        except Exception as e:
+            resource_Changelog = None
         content = {}
         content[self.tr("MFW Announcement")] = gui_announced
         if resource:
             content[self.tr("Resource Announcement")] = resource
+        if MFW_Changelog:
+            content[self.tr("MFW Changelog")] = MFW_Changelog
+        if resource_Changelog:
+            content[self.tr("Resource Changelog")] = resource_Changelog
 
         w = NoticeMessageBox(self, title, content)
         w.setClosableOnMaskClicked(True)

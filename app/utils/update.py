@@ -22,7 +22,6 @@ MFW-ChainFlow Assistant 更新单元
 作者:overflow65537
 """
 
-from ast import Str
 from PySide6.QtCore import QThread, SignalInstance
 
 import requests
@@ -227,14 +226,6 @@ class BaseUpdate(QThread):
                 + self.tr("switching to Github download"),
             }
 
-        # 处理500+状态码
-        if response.status_code >= 500:
-            logger.error(f"镜像源更新检查失败（状态码{response.status_code}）")
-            return {
-                "status": "failed_info",
-                "msg": self.tr("MirrorChyan Update check failed,status code: ")
-                + str(response.status_code),
-            }
         return response
 
     def _github_response(self, url):
@@ -758,6 +749,12 @@ class Update(BaseUpdate):
                         }
                     )
                     return False
+            # 保存更新日志
+            changelog = mirror_data.get("data", {}).get("release_note", "")
+            if changelog:
+                changelog_path = os.path.join(maa_config_data.resource_path, "resource_changelog.md")
+                with open(changelog_path, "w", encoding="utf-8") as f:
+                    f.write(changelog)
 
             # 移动文件
             logger.info(f"移动文件到资源目录: {maa_config_data.resource_path}")
@@ -964,6 +961,12 @@ class Update(BaseUpdate):
                         {"status": "failed", "msg": self.tr("Clean up failed")}
                     )
                     return
+                
+            changelog = update_dict.get("body", "")
+            if changelog:
+                changelog_path = os.path.join(maa_config_data.resource_path,"resource_changelog.md")
+                with open(changelog_path, "w", encoding="utf-8") as f:
+                    f.write(changelog)
 
             # 移动新文件
             logger.info(f"开始移动文件到目标路径: {target_path}")
@@ -1159,6 +1162,11 @@ class UpdateSelf(BaseUpdate):
                 signalBus.download_self_finished.emit(github_dict)
                 return
             try:
+                changelog = github_dict.get("body", "")
+                if changelog:
+                    changelog_path = os.path.join(os.getcwd(), "MFW_changelog.md")
+                    with open(changelog_path, "w", encoding="utf-8") as f:
+                        f.write(changelog) # type: ignore
                 download_url = None
                 for i in github_dict.get("assets", {}) or []:
                     if not isinstance(i, dict):
@@ -1240,7 +1248,11 @@ class UpdateSelf(BaseUpdate):
                     }
                 )
                 return
-
+            changelog = mirror_data.get("data", {}).get("release_note", "")
+            if changelog:
+                changelog_path = os.path.join(os.getcwd(), "MFW_changelog.md")
+                with open(changelog_path, "w", encoding="utf-8") as f:
+                    f.write(changelog)
             version_name = mirror_data["data"].get("version_name", "")
             version_data["version"] = version_name
             Save_Config(

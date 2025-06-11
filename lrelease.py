@@ -48,7 +48,7 @@ if os.path.exists(i18n_json_path):
         print(f"读取 i18n.json 文件出错: {e}")
 
 # 定义要转换的 .ts 文件列表
-ts_files = ["MFW_resource\i18n\i18n.zh_CN.ts", "MFW_resource\i18n\i18n.zh_HK.ts"]
+ts_files = ["MFW_resource\\i18n\\i18n.zh_CN.ts", "MFW_resource\\i18n\\i18n.zh_HK.ts"]
 
 # 遍历每个 .ts 文件
 for ts_file in ts_files:

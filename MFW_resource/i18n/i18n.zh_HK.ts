@@ -20,103 +20,103 @@
 <context>
     <name>BaseUpdate</name>
     <message>
-        <location filename="../../app/utils/update.py" line="211"/>
+        <location filename="../../app/utils/update.py" line="214"/>
         <source>MirrorChyan Update check failed SSL error</source>
         <translation>Mirror醬檢查更新失敗 SSL錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="407"/>
-        <location filename="../../app/utils/update.py" line="400"/>
-        <location filename="../../app/utils/update.py" line="392"/>
-        <location filename="../../app/utils/update.py" line="384"/>
-        <location filename="../../app/utils/update.py" line="376"/>
-        <location filename="../../app/utils/update.py" line="368"/>
-        <location filename="../../app/utils/update.py" line="360"/>
-        <location filename="../../app/utils/update.py" line="352"/>
-        <location filename="../../app/utils/update.py" line="344"/>
-        <location filename="../../app/utils/update.py" line="336"/>
-        <location filename="../../app/utils/update.py" line="225"/>
+        <location filename="../../app/utils/update.py" line="410"/>
+        <location filename="../../app/utils/update.py" line="403"/>
+        <location filename="../../app/utils/update.py" line="395"/>
+        <location filename="../../app/utils/update.py" line="387"/>
+        <location filename="../../app/utils/update.py" line="379"/>
+        <location filename="../../app/utils/update.py" line="371"/>
+        <location filename="../../app/utils/update.py" line="363"/>
+        <location filename="../../app/utils/update.py" line="355"/>
+        <location filename="../../app/utils/update.py" line="347"/>
+        <location filename="../../app/utils/update.py" line="339"/>
+        <location filename="../../app/utils/update.py" line="228"/>
         <source>switching to Github download</source>
         <translation>轉為 GitHub 下載</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="233"/>
+        <location filename="../../app/utils/update.py" line="236"/>
         <source>MirrorChyan Update check failed,status code: </source>
         <translation>Mirror醬檢查更新失敗 錯誤碼: </translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="257"/>
+        <location filename="../../app/utils/update.py" line="260"/>
         <source>Github Update check failed SSL error</source>
         <translation>Github檢查更新失敗 SSL錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="264"/>
+        <location filename="../../app/utils/update.py" line="267"/>
         <source>GitHub API request limit exceeded,please try again later</source>
         <translation>GitHub API 請求次數已達上限，請稍後再試</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="272"/>
+        <location filename="../../app/utils/update.py" line="275"/>
         <source>Github Update check failed HTTP error,code: </source>
         <translation>Github檢查更新失敗 錯誤碼: </translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="334"/>
+        <location filename="../../app/utils/update.py" line="337"/>
         <source>INVALID_PARAMS</source>
         <translation>參數不正確</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="342"/>
+        <location filename="../../app/utils/update.py" line="345"/>
         <source>KEY_EXPIRED</source>
         <translation>金鑰已過期</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="350"/>
+        <location filename="../../app/utils/update.py" line="353"/>
         <source>KEY_INVALID</source>
         <translation>金鑰錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="358"/>
+        <location filename="../../app/utils/update.py" line="361"/>
         <source>RESOURCE_QUOTA_EXHAUSTED</source>
         <translation>金鑰今日下載次數已達上限</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="366"/>
+        <location filename="../../app/utils/update.py" line="369"/>
         <source>KEY_MISMATCHED</source>
         <translation>金鑰類型和待下載的資源不匹配</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="374"/>
+        <location filename="../../app/utils/update.py" line="377"/>
         <source>RESOURCE_NOT_FOUND</source>
         <translation>對應架構和系統下的資源不存在</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="382"/>
+        <location filename="../../app/utils/update.py" line="385"/>
         <source>INVALID_OS</source>
         <translation>錯誤的系統參數</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="390"/>
+        <location filename="../../app/utils/update.py" line="393"/>
         <source>INVALID_ARCH</source>
         <translation>錯誤的架構參數</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="398"/>
+        <location filename="../../app/utils/update.py" line="401"/>
         <source>INVALID_CHANNEL</source>
         <translation>錯誤的更新通道參數</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="439"/>
-        <location filename="../../app/utils/update.py" line="412"/>
+        <location filename="../../app/utils/update.py" line="442"/>
+        <location filename="../../app/utils/update.py" line="415"/>
         <source>current version is latest</source>
         <translation>當前已經是最新版</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="431"/>
+        <location filename="../../app/utils/update.py" line="434"/>
         <source>GitHub API ERROR: </source>
         <translation>Github API 錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="495"/>
+        <location filename="../../app/utils/update.py" line="498"/>
         <source>Failed to clean up temporary files</source>
         <translation>清理文件時發生錯誤</translation>
     </message>
@@ -278,27 +278,27 @@
 <context>
     <name>DownloadBundle</name>
     <message>
-        <location filename="../../app/utils/update.py" line="1033"/>
+        <location filename="../../app/utils/update.py" line="1048"/>
         <source>Project URL not configured</source>
         <translation>項目地址未配置</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1069"/>
+        <location filename="../../app/utils/update.py" line="1084"/>
         <source>Download failed</source>
         <translation>下載失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1077"/>
+        <location filename="../../app/utils/update.py" line="1092"/>
         <source>Extraction failed</source>
         <translation>解壓失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1089"/>
+        <location filename="../../app/utils/update.py" line="1104"/>
         <source>Move file failed</source>
         <translation>移動文件失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1105"/>
+        <location filename="../../app/utils/update.py" line="1120"/>
         <source>Download successful</source>
         <translation>更新成功</translation>
     </message>
@@ -349,179 +349,189 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../../app/view/main_window.py" line="120"/>
+        <location filename="../../app/view/main_window.py" line="127"/>
         <source>DingTalk Notification Enabled</source>
         <translation>通知已啟用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="124"/>
+        <location filename="../../app/view/main_window.py" line="131"/>
         <source>DingTalk Notification Disabled</source>
         <translation>通知已禁用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="131"/>
+        <location filename="../../app/view/main_window.py" line="138"/>
         <source>Lark Notification Enabled</source>
         <translation>通知已啟用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="135"/>
+        <location filename="../../app/view/main_window.py" line="142"/>
         <source>Lark Notification Disabled</source>
         <translation>通知已禁用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="142"/>
+        <location filename="../../app/view/main_window.py" line="149"/>
         <source>SMTP Notification Enabled</source>
         <translation>通知已啟用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="146"/>
+        <location filename="../../app/view/main_window.py" line="153"/>
         <source>SMTP Notification Disabled</source>
         <translation>通知已禁用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="153"/>
+        <location filename="../../app/view/main_window.py" line="160"/>
         <source>WXPusher Notification Enabled</source>
         <translation>通知已啟用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="157"/>
+        <location filename="../../app/view/main_window.py" line="164"/>
         <source>WXPusher Notification Disabled</source>
         <translation>通知已禁用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="164"/>
+        <location filename="../../app/view/main_window.py" line="171"/>
         <source>QYWX Notification Enabled</source>
         <translation>通知已啟用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="168"/>
+        <location filename="../../app/view/main_window.py" line="175"/>
         <source>QYWX Notification Disabled</source>
         <translation>通知已禁用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="254"/>
+        <location filename="../../app/view/main_window.py" line="261"/>
         <source>Error</source>
         <translation>錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="261"/>
+        <location filename="../../app/view/main_window.py" line="268"/>
         <source>Warning</source>
         <translation>警告</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="268"/>
+        <location filename="../../app/view/main_window.py" line="275"/>
         <source>Success</source>
         <translation>成功</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="275"/>
+        <location filename="../../app/view/main_window.py" line="282"/>
         <source>Info</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="329"/>
+        <location filename="../../app/view/main_window.py" line="336"/>
         <source>Send message success</source>
         <translation>發送測試成功</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="331"/>
+        <location filename="../../app/view/main_window.py" line="338"/>
         <source>Notification is disabled, cannot send message</source>
         <translation>通知選項關閉,無法發送通知</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="333"/>
+        <location filename="../../app/view/main_window.py" line="340"/>
         <source>Required parameters are empty, send failed</source>
         <translation>參數為空,發送失敗</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="335"/>
+        <location filename="../../app/view/main_window.py" line="342"/>
         <source>Parameter format is invalid, send failed</source>
         <translation>參數格式錯誤,發送失敗</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="337"/>
+        <location filename="../../app/view/main_window.py" line="344"/>
         <source>Network request failed, send failed</source>
         <translation>網絡請求失敗</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="339"/>
+        <location filename="../../app/view/main_window.py" line="346"/>
         <source>Server response error, send failed</source>
         <translation>服務器返回錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="341"/>
+        <location filename="../../app/view/main_window.py" line="348"/>
         <source>SMTP port is invalid, send failed</source>
         <translation>SMTP端口錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="343"/>
+        <location filename="../../app/view/main_window.py" line="350"/>
         <source>SMTP connection failed, send failed</source>
         <translation>SMTP鏈接失敗</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="345"/>
+        <location filename="../../app/view/main_window.py" line="352"/>
         <source>Unknown error, send failed</source>
         <translation>未知錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="357"/>
+        <location filename="../../app/view/main_window.py" line="364"/>
         <source>Task</source>
         <translation>任務</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="361"/>
+        <location filename="../../app/view/main_window.py" line="368"/>
         <source>Resource Setting</source>
         <translation>選擇資源</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="366"/>
+        <location filename="../../app/view/main_window.py" line="373"/>
         <source>TaskCooldown</source>
         <translation>任務冷卻時間</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="372"/>
+        <location filename="../../app/view/main_window.py" line="379"/>
         <source>Assis Tool Task</source>
         <translation>輔助工具</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="464"/>
-        <location filename="../../app/view/main_window.py" line="381"/>
-        <location filename="../../app/view/main_window.py" line="378"/>
+        <location filename="../../app/view/main_window.py" line="471"/>
+        <location filename="../../app/view/main_window.py" line="388"/>
+        <location filename="../../app/view/main_window.py" line="385"/>
         <source>Announcement</source>
         <translation>公告</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="388"/>
+        <location filename="../../app/view/main_window.py" line="395"/>
         <source>Setting</source>
         <translation>設置</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="408"/>
+        <location filename="../../app/view/main_window.py" line="415"/>
         <source>ChainFlow Assistant</source>
         <translation>鏈程助手</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="424"/>
+        <location filename="../../app/view/main_window.py" line="431"/>
         <source>admin</source>
         <translation>管理員</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="430"/>
+        <location filename="../../app/view/main_window.py" line="437"/>
         <source>Debug</source>
         <translation>調試模式</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="479"/>
+        <location filename="../../app/view/main_window.py" line="504"/>
         <source>MFW Announcement</source>
         <translation>鏈程助手公告</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="481"/>
+        <location filename="../../app/view/main_window.py" line="506"/>
         <source>Resource Announcement</source>
-        <translation>資源包公告</translation>
+        <translation>資源公告</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="524"/>
+        <location filename="../../app/view/main_window.py" line="508"/>
+        <source>MFW Changelog</source>
+        <translation>MFW更新日志</translation>
+    </message>
+    <message>
+        <location filename="../../app/view/main_window.py" line="510"/>
+        <source>Resource Changelog</source>
+        <translation>資源更新日志</translation>
+    </message>
+    <message>
+        <location filename="../../app/view/main_window.py" line="553"/>
         <source>AssistTool Task</source>
         <translation>輔助工具</translation>
     </message>
@@ -750,10 +760,10 @@
 <context>
     <name>ResourceSettingInterface</name>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="812"/>
-        <location filename="../../app/view/resource_setting_interface.py" line="795"/>
-        <location filename="../../app/view/resource_setting_interface.py" line="783"/>
-        <location filename="../../app/view/resource_setting_interface.py" line="772"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="816"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="799"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="787"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="776"/>
         <location filename="../../app/view/resource_setting_interface.py" line="98"/>
         <location filename="../../app/view/resource_setting_interface.py" line="90"/>
         <location filename="../../app/view/resource_setting_interface.py" line="83"/>
@@ -763,14 +773,14 @@
         <translation>默認</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="847"/>
-        <location filename="../../app/view/resource_setting_interface.py" line="840"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="851"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="844"/>
         <location filename="../../app/view/resource_setting_interface.py" line="109"/>
         <source>Auto</source>
         <translation>自動</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="848"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="852"/>
         <location filename="../../app/view/resource_setting_interface.py" line="110"/>
         <source>Disabled</source>
         <translation>關閉</translation>
@@ -781,171 +791,185 @@
         <translation>資源包設置</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="532"/>
-        <location filename="../../app/view/resource_setting_interface.py" line="496"/>
-        <location filename="../../app/view/resource_setting_interface.py" line="358"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="338"/>
+        <source>default config can&apos;t be added.</source>
+        <translation>無法添加默認配置</translation>
+    </message>
+    <message>
+        <location filename="../../app/view/resource_setting_interface.py" line="354"/>
+        <source> already exists.</source>
+        <translation> 已經存在</translation>
+    </message>
+    <message>
+        <location filename="../../app/view/resource_setting_interface.py" line="360"/>
+        <source>Creating config </source>
+        <translation>創建配置 </translation>
+    </message>
+    <message>
+        <location filename="../../app/view/resource_setting_interface.py" line="535"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="497"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="368"/>
         <source>Please add resources first.</source>
         <translation>請先添加資源包。</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="363"/>
-        <source>Error</source>
-        <translation>錯誤</translation>
-    </message>
-    <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="587"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="591"/>
         <source>resource and config</source>
         <translation>資源包設置</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="591"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="595"/>
         <source>Resource Path</source>
         <translation>資源包</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="592"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="596"/>
         <source>You can quickly switch to the next resource with ALT+R, and return to the previous resource with ALT+SHIFT+R</source>
         <translation>您可以使用 ALT+R 快速切換到下一個資源包，使用 ALT+SHIFT+R 返回上一個資源包</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="600"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="604"/>
         <source>Config Path</source>
         <translation>配置</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="601"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="605"/>
         <source>You can quickly switch to the next config with ALT+C, and return to the previous config with ALT+SHIFT+C</source>
         <translation>您可以使用 ALT+C 快速切換到下一個設定，使用 ALT+SHIFT+C 返回上一個設定</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="613"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="617"/>
         <source>ADB</source>
         <translation>安卓調試橋</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="624"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="628"/>
         <source>ADB Port</source>
         <translation>ADB 連接埠</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="630"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="634"/>
         <source>ADB Path</source>
         <translation>ADB 路徑</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="633"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="637"/>
         <source>Select ADB Path</source>
         <translation>選擇 ADB 路徑</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="642"/>
-        <location filename="../../app/view/resource_setting_interface.py" line="639"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="646"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="643"/>
         <source>Select Emulator Path</source>
         <translation>選擇模擬器路徑</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="742"/>
-        <location filename="../../app/view/resource_setting_interface.py" line="725"/>
-        <location filename="../../app/view/resource_setting_interface.py" line="688"/>
-        <location filename="../../app/view/resource_setting_interface.py" line="649"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="746"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="729"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="692"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="653"/>
         <source>Run Parameters</source>
         <translation>運行參數</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="656"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="660"/>
         <source>Wait Time for Emulator Startup</source>
         <translation>模擬器啟動等待時間</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="674"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="678"/>
         <source>Win32</source>
         <translation>Win32</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="678"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="682"/>
         <source>Executable Path</source>
         <translation>可執行文件路徑</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="679"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="683"/>
         <source>Select Executable Path</source>
         <translation>選擇可執行文件路徑</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="695"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="699"/>
         <source>Wait Time for Program Startup</source>
         <translation>程式啟動等待時間</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="710"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="714"/>
         <source>Custom Startup</source>
         <translation>自定義啟動</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="715"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="719"/>
         <source>Run Program Before Start</source>
         <translation>啟動前運行程式</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="733"/>
-        <location filename="../../app/view/resource_setting_interface.py" line="716"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="737"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="720"/>
         <source>Select Program</source>
         <translation>選擇程式</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="732"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="736"/>
         <source>Run Program After Finish</source>
         <translation>結束後運行程式</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="754"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="758"/>
         <source>Vision &amp; Input</source>
         <translation>視覺與輸入</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="759"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="763"/>
         <source>Select GPU</source>
         <translation>選擇GPU</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="760"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="764"/>
         <source>Use GPU to accelerate inference</source>
         <translation>使用GPU加速推理</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="771"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="775"/>
         <source>Select Win32 Input Mode</source>
         <translation>選擇Win32輸入模式</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="782"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="786"/>
         <source>Select Win32 Screencap Mode</source>
         <translation>選擇Win32截圖模式</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="793"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="797"/>
         <source>Select ADB Input Mode</source>
         <translation>選擇ADB輸入模式</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="810"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="814"/>
         <source>Select ADB Screencap Mode</source>
         <translation>選擇ADB截圖模式</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="885"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="889"/>
         <source>Updated successfully</source>
         <translation>更新成功</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="886"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="890"/>
         <source>Configuration takes effect after restart</source>
         <translation>配置保存,重啟後生效</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="914"/>
+        <location filename="../../app/view/resource_setting_interface.py" line="918"/>
         <source>Choose file</source>
         <translation>选择文件</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation type="vanished">錯誤</translation>
     </message>
 </context>
 <context>
@@ -1850,7 +1874,7 @@
         <translation>每月</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_cooldown_interface.py" line="290"/>
+        <location filename="../../app/view/task_cooldown_interface.py" line="278"/>
         <location filename="../../app/view/task_cooldown_interface.py" line="225"/>
         <source>Refresh Time, Daily</source>
         <translation>刷新時間：每日 </translation>
@@ -1951,415 +1975,417 @@
         <translation>上次運行時間:</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_cooldown_interface.py" line="261"/>
-        <source>Error</source>
-        <translation>錯誤</translation>
-    </message>
-    <message>
-        <location filename="../../app/view/task_cooldown_interface.py" line="296"/>
+        <location filename="../../app/view/task_cooldown_interface.py" line="284"/>
         <source>Refresh Time, Weekly</source>
         <translation>刷新時間：每週 </translation>
     </message>
     <message>
-        <location filename="../../app/view/task_cooldown_interface.py" line="302"/>
+        <location filename="../../app/view/task_cooldown_interface.py" line="290"/>
         <source>Refresh Time, Monthly</source>
         <translation>刷新時間：每月 </translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation type="vanished">錯誤</translation>
     </message>
 </context>
 <context>
     <name>TaskInterface</name>
     <message>
-        <location filename="../../app/view/task_interface.py" line="645"/>
-        <location filename="../../app/view/task_interface.py" line="122"/>
+        <location filename="../../app/view/task_interface.py" line="658"/>
+        <location filename="../../app/view/task_interface.py" line="123"/>
         <source>Resource file not detected</source>
         <translation>未找到資源文件</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="213"/>
+        <location filename="../../app/view/task_interface.py" line="214"/>
         <source>Inconsistent items between configuration tasks and interface templates</source>
         <translation>配置任務與介面模板之間存在不一致項目</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="228"/>
+        <location filename="../../app/view/task_interface.py" line="225"/>
+        <source>ERROR</source>
+        <translation>錯誤</translation>
+    </message>
+    <message>
+        <location filename="../../app/view/task_interface.py" line="239"/>
         <source>Task</source>
         <translation>任務</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1758"/>
-        <location filename="../../app/view/task_interface.py" line="464"/>
-        <location filename="../../app/view/task_interface.py" line="229"/>
+        <location filename="../../app/view/task_interface.py" line="1785"/>
+        <location filename="../../app/view/task_interface.py" line="477"/>
+        <location filename="../../app/view/task_interface.py" line="240"/>
         <source>Add Task</source>
         <translation>添加</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="230"/>
+        <location filename="../../app/view/task_interface.py" line="241"/>
         <source>Resource</source>
         <translation>資源</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="231"/>
+        <location filename="../../app/view/task_interface.py" line="242"/>
         <source>Controller</source>
         <translation>控制端</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="232"/>
+        <location filename="../../app/view/task_interface.py" line="243"/>
         <source>Auto Detect</source>
         <translation>自动检测</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="233"/>
+        <location filename="../../app/view/task_interface.py" line="244"/>
         <source>Finish</source>
         <translation>完成後</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="234"/>
+        <location filename="../../app/view/task_interface.py" line="245"/>
         <source>Start</source>
         <translation>開始</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="318"/>
+        <location filename="../../app/view/task_interface.py" line="329"/>
         <source>Do nothing</source>
         <translation>無動作</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="319"/>
+        <location filename="../../app/view/task_interface.py" line="330"/>
         <source>Close emulator</source>
         <translation>退出模擬器</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="320"/>
+        <location filename="../../app/view/task_interface.py" line="331"/>
         <source>Quit app</source>
         <translation>退出應用</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="321"/>
+        <location filename="../../app/view/task_interface.py" line="332"/>
         <source>Close emulator and Quit app</source>
         <translation>退出模擬器和應用</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="322"/>
+        <location filename="../../app/view/task_interface.py" line="333"/>
         <source>Shutdown</source>
         <translation>關機</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="323"/>
+        <location filename="../../app/view/task_interface.py" line="334"/>
         <source>Run Other Config</source>
         <translation>運行其他配置</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="400"/>
+        <location filename="../../app/view/task_interface.py" line="411"/>
         <source>Load Custom Action:</source>
         <translation>載入自定義動作:</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="404"/>
+        <location filename="../../app/view/task_interface.py" line="415"/>
         <source>Load Custom Recognition:</source>
         <translation>載入自定義識別器:</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="408"/>
+        <location filename="../../app/view/task_interface.py" line="419"/>
         <source>Agent server connect failed</source>
         <translation>MAA Agent伺服器連接失敗</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="412"/>
+        <location filename="../../app/view/task_interface.py" line="423"/>
         <source>Agent server registration failed</source>
         <translation>MAA Agent伺服器註冊失敗</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="416"/>
+        <location filename="../../app/view/task_interface.py" line="427"/>
         <source>Failed to init MaaFramework instance</source>
         <translation>初始化MaaFramework實例失敗</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="420"/>
+        <location filename="../../app/view/task_interface.py" line="431"/>
         <source>Resource or Controller not initialized</source>
         <translation>資源或控制器未初始化</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="423"/>
+        <location filename="../../app/view/task_interface.py" line="434"/>
         <source>Agent service start</source>
         <translation>MAA Agent伺服器開始</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="442"/>
+        <location filename="../../app/view/task_interface.py" line="455"/>
         <source>Delete: </source>
         <translation>刪除: </translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="489"/>
+        <location filename="../../app/view/task_interface.py" line="502"/>
         <source>Starting Connection</source>
         <translation>開始連接</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="491"/>
+        <location filename="../../app/view/task_interface.py" line="504"/>
         <source>Connection Success</source>
         <translation>連接成功</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1137"/>
-        <location filename="../../app/view/task_interface.py" line="1122"/>
-        <location filename="../../app/view/task_interface.py" line="493"/>
+        <location filename="../../app/view/task_interface.py" line="1164"/>
+        <location filename="../../app/view/task_interface.py" line="1149"/>
+        <location filename="../../app/view/task_interface.py" line="506"/>
         <source>Connection Failed</source>
         <translation>連接失敗</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="495"/>
+        <location filename="../../app/view/task_interface.py" line="508"/>
         <source>Unknown Error</source>
         <translation>未知錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="500"/>
+        <location filename="../../app/view/task_interface.py" line="513"/>
         <source>Started</source>
         <translation>啓動</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="502"/>
+        <location filename="../../app/view/task_interface.py" line="515"/>
         <source>Succeeded</source>
         <translation>成功</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1508"/>
-        <location filename="../../app/view/task_interface.py" line="507"/>
+        <location filename="../../app/view/task_interface.py" line="1535"/>
+        <location filename="../../app/view/task_interface.py" line="520"/>
         <source>Failed</source>
         <translation>失敗</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="527"/>
+        <location filename="../../app/view/task_interface.py" line="540"/>
         <source>aborted</source>
         <translation>終止</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="925"/>
+        <location filename="../../app/view/task_interface.py" line="938"/>
         <source>No task selected</source>
         <translation>任務列表為空</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1252"/>
-        <location filename="../../app/view/task_interface.py" line="1187"/>
-        <location filename="../../app/view/task_interface.py" line="985"/>
-        <location filename="../../app/view/task_interface.py" line="928"/>
+        <location filename="../../app/view/task_interface.py" line="1279"/>
+        <location filename="../../app/view/task_interface.py" line="1214"/>
+        <location filename="../../app/view/task_interface.py" line="998"/>
+        <location filename="../../app/view/task_interface.py" line="941"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="936"/>
+        <location filename="../../app/view/task_interface.py" line="949"/>
         <source>Start Up</source>
         <translation>啓動</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="953"/>
+        <location filename="../../app/view/task_interface.py" line="966"/>
         <source>Connection failed,please check the program</source>
         <translation>連接失敗，請檢查程序</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="966"/>
-        <location filename="../../app/view/task_interface.py" line="964"/>
-        <location filename="../../app/view/task_interface.py" line="962"/>
-        <location filename="../../app/view/task_interface.py" line="960"/>
+        <location filename="../../app/view/task_interface.py" line="979"/>
+        <location filename="../../app/view/task_interface.py" line="977"/>
+        <location filename="../../app/view/task_interface.py" line="975"/>
+        <location filename="../../app/view/task_interface.py" line="973"/>
         <source>fastest screenshot method cost:</source>
         <translation>最快截圖耗時: </translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="968"/>
+        <location filename="../../app/view/task_interface.py" line="981"/>
         <source>Connection success</source>
         <translation>連接成功</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1651"/>
-        <location filename="../../app/view/task_interface.py" line="1247"/>
-        <location filename="../../app/view/task_interface.py" line="1182"/>
-        <location filename="../../app/view/task_interface.py" line="1056"/>
+        <location filename="../../app/view/task_interface.py" line="1678"/>
+        <location filename="../../app/view/task_interface.py" line="1274"/>
+        <location filename="../../app/view/task_interface.py" line="1209"/>
+        <location filename="../../app/view/task_interface.py" line="1083"/>
         <source>File not found</source>
         <translation>未找到文件</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1061"/>
+        <location filename="../../app/view/task_interface.py" line="1088"/>
         <source>Can not start the file</source>
         <translation>無法打開文件</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1129"/>
+        <location filename="../../app/view/task_interface.py" line="1156"/>
         <source>Connection Failed,try to kill ADB process</source>
         <translation>連接失敗，嘗試終止 ADB 進程</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1132"/>
+        <location filename="../../app/view/task_interface.py" line="1159"/>
         <source>kill ADB Failed</source>
         <translation>終止 ADB 失敗</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1186"/>
+        <location filename="../../app/view/task_interface.py" line="1213"/>
         <source>waiting for emulator start...</source>
         <translation>等待模擬器啟動中...</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1195"/>
+        <location filename="../../app/view/task_interface.py" line="1222"/>
         <source>Starting task in </source>
         <translation>任務啟動於 </translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1251"/>
+        <location filename="../../app/view/task_interface.py" line="1278"/>
         <source>Starting game...</source>
         <translation>啟動遊戲中...</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1260"/>
+        <location filename="../../app/view/task_interface.py" line="1287"/>
         <source>Starting game in </source>
         <translation>遊戲啟動於 </translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1325"/>
+        <location filename="../../app/view/task_interface.py" line="1352"/>
         <source>Task Entry</source>
         <translation>未找到任務入口</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1326"/>
+        <location filename="../../app/view/task_interface.py" line="1353"/>
         <source>Task Entry Failed</source>
         <translation>未找到任務入口</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1518"/>
-        <location filename="../../app/view/task_interface.py" line="1503"/>
+        <location filename="../../app/view/task_interface.py" line="1545"/>
+        <location filename="../../app/view/task_interface.py" line="1530"/>
         <source>Post Task :</source>
         <translation>開始任務</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1601"/>
+        <location filename="../../app/view/task_interface.py" line="1628"/>
         <source>Loop count exhausted</source>
         <translation>循環次數已耗盡</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1603"/>
+        <location filename="../../app/view/task_interface.py" line="1630"/>
         <source>Waiting for next run: </source>
         <translation>上次運行時間: </translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1694"/>
+        <location filename="../../app/view/task_interface.py" line="1721"/>
         <source>Stopping task...</source>
         <translation>停止任務中...</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1882"/>
+        <location filename="../../app/view/task_interface.py" line="1909"/>
         <source>No task can be deleted</source>
         <translation>沒有任務可以被刪除</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1992"/>
+        <location filename="../../app/view/task_interface.py" line="2019"/>
         <source>Already the first task</source>
         <translation>已經是首位任務</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="1997"/>
+        <location filename="../../app/view/task_interface.py" line="2024"/>
         <source>Already the last task</source>
         <translation>已經是末位任務</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2011"/>
+        <location filename="../../app/view/task_interface.py" line="2038"/>
         <source>Drag to Delete</source>
         <translation>拖動至此刪除</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2016"/>
+        <location filename="../../app/view/task_interface.py" line="2043"/>
         <source>Rewrite</source>
         <translation>重寫</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2336"/>
+        <location filename="../../app/view/task_interface.py" line="2363"/>
         <source>Detecting game...</source>
         <translation>檢測Win32應用中...</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2337"/>
+        <location filename="../../app/view/task_interface.py" line="2364"/>
         <source>No game detected</source>
         <translation>指定程式不存在</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2338"/>
+        <location filename="../../app/view/task_interface.py" line="2365"/>
         <source>Game detected</source>
         <translation>檢測到指定程式</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2340"/>
+        <location filename="../../app/view/task_interface.py" line="2367"/>
         <source>Detecting emulator...</source>
         <translation>檢測模擬器中...</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2341"/>
+        <location filename="../../app/view/task_interface.py" line="2368"/>
         <source>No emulator detected</source>
         <translation>未檢測到模擬器</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2342"/>
+        <location filename="../../app/view/task_interface.py" line="2369"/>
         <source>Emulator detected</source>
         <translation>檢測到模擬器</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2347"/>
+        <location filename="../../app/view/task_interface.py" line="2374"/>
         <source>Tip</source>
         <translation>提示</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2447"/>
-        <location filename="../../app/view/task_interface.py" line="2442"/>
+        <location filename="../../app/view/task_interface.py" line="2474"/>
+        <location filename="../../app/view/task_interface.py" line="2469"/>
         <source>task completed</source>
         <translation>任務完成</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2451"/>
+        <location filename="../../app/view/task_interface.py" line="2478"/>
         <source>task info</source>
         <translation>任務信息</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2467"/>
-        <location filename="../../app/view/task_interface.py" line="2460"/>
+        <location filename="../../app/view/task_interface.py" line="2494"/>
+        <location filename="../../app/view/task_interface.py" line="2487"/>
         <source>task failed</source>
         <translation>任務失敗</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2492"/>
-        <source>Success</source>
-        <translation>成功</translation>
-    </message>
-    <message>
-        <location filename="../../app/view/task_interface.py" line="2505"/>
-        <source>Error</source>
-        <translation>錯誤</translation>
-    </message>
-    <message>
-        <location filename="../../app/view/task_interface.py" line="2555"/>
+        <location filename="../../app/view/task_interface.py" line="2561"/>
         <source>Sunday</source>
         <translation>週日</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2556"/>
+        <location filename="../../app/view/task_interface.py" line="2562"/>
         <source>Monday</source>
         <translation>週一</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2557"/>
+        <location filename="../../app/view/task_interface.py" line="2563"/>
         <source>Tuesday</source>
         <translation>週二</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2558"/>
+        <location filename="../../app/view/task_interface.py" line="2564"/>
         <source>Wednesday</source>
         <translation>週三</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2559"/>
+        <location filename="../../app/view/task_interface.py" line="2565"/>
         <source>Thursday</source>
         <translation>週四</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2560"/>
+        <location filename="../../app/view/task_interface.py" line="2566"/>
         <source>Friday</source>
         <translation>週五</translation>
     </message>
     <message>
-        <location filename="../../app/view/task_interface.py" line="2561"/>
+        <location filename="../../app/view/task_interface.py" line="2567"/>
         <source>Saturday</source>
         <translation>週六</translation>
+    </message>
+    <message>
+        <source>Success</source>
+        <translation type="vanished">成功</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation type="vanished">錯誤</translation>
     </message>
     <message>
         <source>first Connection failed,try to kill ADB process</source>
@@ -2752,122 +2778,122 @@
 <context>
     <name>Update</name>
     <message>
-        <location filename="../../app/utils/update.py" line="531"/>
+        <location filename="../../app/utils/update.py" line="534"/>
         <source>No URL found</source>
         <translation>未發現更新連結</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="540"/>
+        <location filename="../../app/utils/update.py" line="543"/>
         <source>No valid URL found</source>
         <translation>更新連結不合法</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="549"/>
+        <location filename="../../app/utils/update.py" line="552"/>
         <source>No version found</source>
         <translation>未找到版本</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="587"/>
+        <location filename="../../app/utils/update.py" line="590"/>
         <source>MirrorChyan update check successful, starting downloa</source>
         <translation>Mirror醬檢查成功，開始更新</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="598"/>
+        <location filename="../../app/utils/update.py" line="601"/>
         <source>MirrorChyan update check successful, but no CDK found, switching to Github download</source>
         <translation>Mirror醬檢查成功，但未找到CDK，轉為Github下載</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="657"/>
+        <location filename="../../app/utils/update.py" line="660"/>
         <source>version file not found</source>
         <translation>版本文件未找到</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="663"/>
+        <location filename="../../app/utils/update.py" line="666"/>
         <source>version file format error</source>
         <translation>版本文件格式錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="869"/>
-        <location filename="../../app/utils/update.py" line="685"/>
+        <location filename="../../app/utils/update.py" line="878"/>
+        <location filename="../../app/utils/update.py" line="688"/>
         <source>Download failed</source>
         <translation>下載失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="881"/>
-        <location filename="../../app/utils/update.py" line="695"/>
+        <location filename="../../app/utils/update.py" line="890"/>
+        <location filename="../../app/utils/update.py" line="698"/>
         <source>Extraction failed</source>
         <translation>解壓失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="929"/>
-        <location filename="../../app/utils/update.py" line="712"/>
+        <location filename="../../app/utils/update.py" line="938"/>
+        <location filename="../../app/utils/update.py" line="715"/>
         <source>Current MFW version is too low, update aborted</source>
         <translation>當前MFW版本過低，中止更新</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="755"/>
+        <location filename="../../app/utils/update.py" line="758"/>
         <source>Failed to clean up temporary files</source>
         <translation>清理文件時發生錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="971"/>
-        <location filename="../../app/utils/update.py" line="767"/>
+        <location filename="../../app/utils/update.py" line="986"/>
+        <location filename="../../app/utils/update.py" line="776"/>
         <source>Move file failed</source>
         <translation>移動文件失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="991"/>
-        <location filename="../../app/utils/update.py" line="785"/>
+        <location filename="../../app/utils/update.py" line="1006"/>
+        <location filename="../../app/utils/update.py" line="794"/>
         <source>update success</source>
         <translation>更新成功</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="795"/>
+        <location filename="../../app/utils/update.py" line="804"/>
         <source>incomplete update data</source>
         <translation>更新數據字段缺失</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="802"/>
+        <location filename="../../app/utils/update.py" line="811"/>
         <source>unexpected error during update</source>
         <translation>未預期的錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="815"/>
+        <location filename="../../app/utils/update.py" line="824"/>
         <source>update failed: version_data is None</source>
         <translation>更新失敗:版本數據丟失</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="826"/>
+        <location filename="../../app/utils/update.py" line="835"/>
         <source>Updating the Agent may take a long time.</source>
         <translation>更新Agent程式中，可能會需要更長時間。</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="845"/>
+        <location filename="../../app/utils/update.py" line="854"/>
         <source>No matching resource found</source>
         <translation>未找到匹配資源</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="962"/>
+        <location filename="../../app/utils/update.py" line="971"/>
         <source>Clean up failed</source>
         <translation>清理文件時發生錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1002"/>
+        <location filename="../../app/utils/update.py" line="1017"/>
         <source>GitHub request failed</source>
         <translation>GitHub請求失敗</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1002"/>
+        <location filename="../../app/utils/update.py" line="1017"/>
         <source>HTTP error</source>
         <translation>HTTP錯誤</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1008"/>
+        <location filename="../../app/utils/update.py" line="1023"/>
         <source>Incomplete update data</source>
         <translation>更新數據字段缺失</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1013"/>
+        <location filename="../../app/utils/update.py" line="1028"/>
         <source>Unexpected error during update</source>
         <translation>未預期的錯誤</translation>
     </message>
@@ -2983,58 +3009,58 @@
 <context>
     <name>UpdateSelf</name>
     <message>
-        <location filename="../../app/utils/update.py" line="1127"/>
+        <location filename="../../app/utils/update.py" line="1142"/>
         <source>update failed: version_data is None</source>
         <translation>更新失敗:版本數據丟失</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1180"/>
+        <location filename="../../app/utils/update.py" line="1200"/>
         <source>Failed to get download address</source>
         <translation>获取下载地址失败</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1299"/>
-        <location filename="../../app/utils/update.py" line="1196"/>
+        <location filename="../../app/utils/update.py" line="1323"/>
+        <location filename="../../app/utils/update.py" line="1216"/>
         <source>Version file update failed</source>
         <translation>版本文件更新失败</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1206"/>
+        <location filename="../../app/utils/update.py" line="1226"/>
         <source>switching to Github download</source>
         <translation>轉為 GitHub 下載</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1214"/>
+        <location filename="../../app/utils/update.py" line="1234"/>
         <source>current version is latest</source>
         <translation>當前已經是最新版</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1222"/>
+        <location filename="../../app/utils/update.py" line="1242"/>
         <source>MirrorChyan update check successful, starting download</source>
         <translation>Mirror醬檢查更新成功，開始下載</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1237"/>
+        <location filename="../../app/utils/update.py" line="1257"/>
         <source>Unexpected error during download</source>
         <translation>下载过程中出现意外错误</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1255"/>
+        <location filename="../../app/utils/update.py" line="1279"/>
         <source>Version file write failed</source>
         <translation>版本文件写入失败</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1264"/>
+        <location filename="../../app/utils/update.py" line="1288"/>
         <source>MirrorChyan update check successful, but no CDK found, switching to Github download</source>
         <translation>Mirror醬檢查更新成功，但未檢測到CDK，轉為GitHub下載</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1285"/>
+        <location filename="../../app/utils/update.py" line="1309"/>
         <source>GitHub URL construction failed</source>
         <translation>GitHub URL 构建失败</translation>
     </message>
     <message>
-        <location filename="../../app/utils/update.py" line="1324"/>
+        <location filename="../../app/utils/update.py" line="1348"/>
         <source>Download failed</source>
         <translation>下載失敗</translation>
     </message>
