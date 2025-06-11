@@ -1406,118 +1406,151 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             "advanced", {}
                         ).items():
                             if advanced_key == task_option.get("name", ""):
-                                template_pipeline = advanced_value.get(
-                                    "pipeline_override", {}
-                                )
-                                field = advanced_value.get("field", "")
-                                value = task_option.get("value", "")
-                                types = advanced_value.get("type", [])  # 获取类型信息
-
-                                # 处理多字段/多类型场景（field和type可能是列表）
-                                if isinstance(field, list):
-                                    field_list = field
-                                else:
-                                    field_list = [field]
-
-                                if isinstance(types, list):
-                                    type_list = types
-                                else:
-                                    type_list = [types]
-
-                                if isinstance(value, str):
-                                    value_list = value.split(",")
-                                else:
-                                    value_list = [value]
-
-                                # 确保字段、类型、值数量匹配
-                                if len(field_list) != len(type_list) or len(
-                                    field_list
-                                ) != len(value_list):
-                                    logger.warning(
-                                        f"高级设置 [{advanced_key}] 字段/类型/值数量不匹配，field: {field_list}, type: {type_list}, value: {value_list}"
+                                if (
+                                    maa_config_data.interface_config.get("advanced", {})
+                                    .get(advanced_key, {})
+                                    .get("mode", "combox")
+                                    == "combox"
+                                ):  
+                                    """
+                                    可输入的下拉框模式
+                                    """
+                                    template_pipeline = advanced_value.get(
+                                        "pipeline_override", {}
                                     )
-                                    continue
+                                    field = advanced_value.get("field", "")
+                                    value = task_option.get("value", "")
+                                    types = advanced_value.get(
+                                        "type", []
+                                    )  # 获取类型信息
 
-                                # 类型转换
-                                converted_values = []
-                                for v, t in zip(value_list, type_list):
-                                    try:
-                                        if t == "int":
-                                            converted = int(v.strip())  # 转为整数
-                                        elif t == "string":
-                                            converted = v.strip()  # 转为字符串
-                                        elif t == "double":
-                                            converted = float(v.strip())  # 转为浮点数
-                                        elif t == "bool":
-                                            converted = (
-                                                v.strip().lower() == "true"
-                                            )  # 转为布尔值
-                                        else:
-                                            converted = v.strip()  # 未知类型
-                                        converted_values.append(converted)
-                                    except ValueError:
+                                    # 处理多字段/多类型场景（field和type可能是列表）
+                                    if isinstance(field, list):
+                                        field_list = field
+                                    else:
+                                        field_list = [field]
+
+                                    if isinstance(types, list):
+                                        type_list = types
+                                    else:
+                                        type_list = [types]
+
+                                    if isinstance(value, str):
+                                        value_list = value.split(",")
+                                    else:
+                                        value_list = [value]
+
+                                    # 确保字段、类型、值数量匹配
+                                    if len(field_list) != len(type_list) or len(
+                                        field_list
+                                    ) != len(value_list):
                                         logger.warning(
-                                            f"高级设置 [{advanced_key}] 值 [{v}] 转换为类型 [{t}] 失败"
+                                            f"高级设置 [{advanced_key}] 字段/类型/值数量不匹配，field: {field_list}, type: {type_list}, value: {value_list}"
                                         )
-                                        converted_values.append(v.strip())
+                                        continue
 
-                                # 替换占位符
-                                resolved_pipeline = {}
-                                for task_name, task_config in template_pipeline.items():
-                                    resolved_task_config = {}
-                                    for key, val in task_config.items():
-                                        # 初始化解析值为原始值
-                                        resolved_val = val
-
-                                        # 遍历所有字段-值对进行替换 f:roi cv:[1,2,3,4]
-                                        for f, cv in zip(field_list, converted_values):
-                                            placeholder = f"{{{f}}}"
-
-                                            def replace_placeholder(obj):
-                                                """
-                                                递归替换占位符
-                                                :param obj: 要处理的对象
-                                                :return: 替换后的对象
-                                                """
-                                                if (
-                                                    isinstance(obj, str)
-                                                    and obj == placeholder
-                                                ):  # 如果是字符串且等于占位符
-                                                    return cv
-
-                                                elif isinstance(
-                                                    obj, (list, tuple)
-                                                ):  # 如果是列表或者元组
-                                                    return [
-                                                        replace_placeholder(item)
-                                                        for item in obj
-                                                    ]
-
-                                                elif isinstance(
-                                                    obj, dict
-                                                ):  # 如果是字典
-                                                    return {
-                                                        key: replace_placeholder(value)
-                                                        for key, value in obj.items()
-                                                    }
-
-                                                else:  # 这啥玩意
-                                                    logger.debug(
-                                                        f"高级设置 [{advanced_key}] 未处理的类型: {type(obj)}"
-                                                    )
-                                                    return obj
-                                                
-                                            resolved_val = replace_placeholder(
-                                                resolved_val
+                                    # 类型转换
+                                    converted_values = []
+                                    for v, t in zip(value_list, type_list):
+                                        try:
+                                            if t == "int":
+                                                converted = int(v.strip())  # 转为整数
+                                            elif t == "string":
+                                                converted = v.strip()  # 转为字符串
+                                            elif t == "double":
+                                                converted = float(
+                                                    v.strip()
+                                                )  # 转为浮点数
+                                            elif t == "bool":
+                                                converted = (
+                                                    v.strip().lower() == "true"
+                                                )  # 转为布尔值
+                                            else:
+                                                converted = v.strip()  # 未知类型
+                                            converted_values.append(converted)
+                                        except ValueError:
+                                            logger.warning(
+                                                f"高级设置 [{advanced_key}] 值 [{v}] 转换为类型 [{t}] 失败"
                                             )
+                                            converted_values.append(v.strip())
 
-                                        resolved_task_config[key] = resolved_val
-                                    resolved_pipeline[task_name] = resolved_task_config
+                                    # 替换占位符
+                                    resolved_pipeline = {}
+                                    for (
+                                        task_name,
+                                        task_config,
+                                    ) in template_pipeline.items():
+                                        resolved_task_config = {}
+                                        for key, val in task_config.items():
+                                            # 初始化解析值为原始值
+                                            resolved_val = val
 
-                                override_options.update(resolved_pipeline)
-                                logger.debug(
-                                    f"高级设置 [{advanced_key}] 解析后的 pipeline_override: {resolved_pipeline}"
-                                )
+                                            # 遍历所有字段-值对进行替换 f:roi cv:[1,2,3,4]
+                                            for f, cv in zip(
+                                                field_list, converted_values
+                                            ):
+                                                placeholder = f"{{{f}}}"
+
+                                                def replace_placeholder(obj):
+                                                    """
+                                                    递归替换占位符
+                                                    :param obj: 要处理的对象
+                                                    :return: 替换后的对象
+                                                    """
+                                                    if (
+                                                        isinstance(obj, str)
+                                                        and obj == placeholder
+                                                    ):  # 如果是字符串且等于占位符
+                                                        return cv
+
+                                                    elif isinstance(
+                                                        obj, (list, tuple)
+                                                    ):  # 如果是列表或者元组
+                                                        return [
+                                                            replace_placeholder(item)
+                                                            for item in obj
+                                                        ]
+
+                                                    elif isinstance(
+                                                        obj, dict
+                                                    ):  # 如果是字典
+                                                        return {
+                                                            key: replace_placeholder(
+                                                                value
+                                                            )
+                                                            for key, value in obj.items()
+                                                        }
+
+                                                    else:  # 这啥玩意
+                                                        logger.debug(
+                                                            f"高级设置 [{advanced_key}] 未处理的类型: {type(obj)}"
+                                                        )
+                                                        return obj
+
+                                                resolved_val = replace_placeholder(
+                                                    resolved_val
+                                                )
+
+                                            resolved_task_config[key] = resolved_val
+                                        resolved_pipeline[task_name] = (
+                                            resolved_task_config
+                                        )
+
+                                    override_options.update(resolved_pipeline)
+                                    logger.debug(
+                                        f"高级设置 [{advanced_key}] 解析后的 pipeline_override: {resolved_pipeline}"
+                                    )
+
+                                elif (
+                                    maa_config_data.interface_config.get("advanced", {})
+                                    .get(advanced_key, {})
+                                    .get("mode", "combox")
+                                    == "checkbox"
+                                ):  
+                                    """
+                                    多选框模式
+                                    """
+                                    pass
 
                     else:
                         for override in maa_config_data.interface_config.get(
