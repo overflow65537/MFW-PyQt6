@@ -89,9 +89,9 @@
   ],
   "advanced": {
     "高级设置A": {
-      "field": "ce",#一次更改一个参数,其他参数会用下拉框表示
+      "field": "ce",//一次更改一个参数,其他参数会用下拉框表示
       "type": "string",
-      "default": ["cs.png", "cs2.png"],#可输入的下拉框中会显示cs.png和cs2.png,默认选中cs.png
+      "default": ["cs.png", "cs2.png"],//可输入的下拉框中会显示cs.png和cs2.png,默认选中cs.png
       "pipeline_override": {
           "任务A": {
             "template": "{ce}"
@@ -99,9 +99,9 @@
       }
     },
     "高级设置B": {
-      "field": ["x","y"],#一次更改多个参数
+      "field": ["x","y"],//一次更改多个参数
       "type": ["int", "int"],
-      "default": [["1", "1"],["2","2"]],#可输入的下拉框中会显示1,1和2,2,默认选中1,1
+      "default": [["1", "1"],["2","2"]],//可输入的下拉框中会显示1,1和2,2,默认选中1,1
       "pipeline_override": {
           "任务A": {
             "roi": ["{x}","{y}",3,4]
