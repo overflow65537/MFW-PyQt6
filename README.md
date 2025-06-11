@@ -4,7 +4,7 @@
 </p>
 <div align="center">
 
-# MFW-链程助手
+# MFW-ChainFlow Assistant(链程助手)
 
 **[简体中文](./README.md) | [English](./README-en.md)**
 
