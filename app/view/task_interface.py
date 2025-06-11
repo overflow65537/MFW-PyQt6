@@ -962,21 +962,49 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if not await self.connect_controller(controller_type):
             if cfg.get(cfg.when_connect_failed):
                 self.send_notice(
-                            "failed",
-                            self.tr("Connection failed,please check the program"),
-                        )
+                    "failed",
+                    self.tr("Connection failed,please check the program"),
+                )
             return
-        fast_name ,cost = self.get_speed_test()
+        fast_name, cost = self.get_speed_test()
         if fast_name and cost:
             logger.info(f"截图速度最快的方法是{fast_name},耗时{cost}ms")
-            if 0<cost<50:
-                self.insert_colored_text("[color:ForestGreen]"+self.tr("fastest screenshot method cost:")+str(cost)+"ms("+fast_name+")[/color]")
-            elif 51<cost<100:
-                self.insert_colored_text("[color:DeepSkyBlue]"+self.tr("fastest screenshot method cost:")+str(cost)+"ms("+fast_name+")[/color]")
-            elif 101<cost<300:
-                self.insert_colored_text("[color:LightSalmon]"+self.tr("fastest screenshot method cost:")+str(cost)+"ms("+fast_name+")[/color]")
-            elif 301<cost:
-                self.insert_colored_text("[color:Tomato]"+self.tr("fastest screenshot method cost:")+str(cost)+"ms("+fast_name+")[/color]")
+            if 0 < cost < 50:
+                self.insert_colored_text(
+                    "[color:ForestGreen]"
+                    + self.tr("fastest screenshot method cost:")
+                    + str(cost)
+                    + "ms("
+                    + fast_name
+                    + ")[/color]"
+                )
+            elif 51 < cost < 100:
+                self.insert_colored_text(
+                    "[color:DeepSkyBlue]"
+                    + self.tr("fastest screenshot method cost:")
+                    + str(cost)
+                    + "ms("
+                    + fast_name
+                    + ")[/color]"
+                )
+            elif 101 < cost < 300:
+                self.insert_colored_text(
+                    "[color:LightSalmon]"
+                    + self.tr("fastest screenshot method cost:")
+                    + str(cost)
+                    + "ms("
+                    + fast_name
+                    + ")[/color]"
+                )
+            elif 301 < cost:
+                self.insert_colored_text(
+                    "[color:Tomato]"
+                    + self.tr("fastest screenshot method cost:")
+                    + str(cost)
+                    + "ms("
+                    + fast_name
+                    + ")[/color]"
+                )
         if cfg.get(cfg.when_connect_success):
             self.send_notice("info", self.tr("Connection success"))
 
@@ -1005,6 +1033,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         # 更改按钮状态
         self.update_S2_Button("Start", self.Start_Up)
+
     # endregion
 
     def get_speed_test(self):
@@ -1014,14 +1043,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         try:
             log_path = os.path.join(os.getcwd(), "debug", "maa.log")
             # 读取文件的前部分内容以检测编码
-            with open(log_path, 'rb') as raw_file:
+            with open(log_path, "rb") as raw_file:
                 raw_data = raw_file.read(1024)
                 result = chardet.detect(raw_data)
-                encoding = result['encoding']
+                encoding = result["encoding"]
             logger.debug(f"检测到的编码: {encoding}")
 
             # 使用检测到的编码读取文件
-            with open(log_path, "r", encoding=encoding, errors='replace') as file:
+            with open(log_path, "r", encoding=encoding, errors="replace") as file:
                 lines = file.readlines()
                 # 倒序
                 lines.reverse()
@@ -1031,7 +1060,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         method_part = line.split("The fastest method is")[1].strip()
                         method = method_part.split(" ")[0]
                         # 提取耗时
-                        cost_part = method_part.split("[cost=")[1].split("ms")[0].strip()
+                        cost_part = (
+                            method_part.split("[cost=")[1].split("ms")[0].strip()
+                        )
                         try:
                             cost = int(cost_part)
                         except ValueError:
@@ -1042,7 +1073,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         except Exception as e:
             logger.error(f"获取截图速度失败:{e}")
             return None, None
-            
 
     def update_S2_Button(self, text, slot, enable=True):
         """
@@ -1349,7 +1379,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     if not self.entry:
                         logger.error(f"未找到任务入口: {task_list.get('name')}")
                         if cfg.get(cfg.when_task_failed):
-                            self.send_notice("failed", self.tr("Task Entry")+":")
+                            self.send_notice("failed", self.tr("Task Entry") + ":")
                         self.insert_colored_text(self.tr("Task Entry Failed"))
                         return
                     enter_index = index
@@ -2421,7 +2451,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.error("未检测到设备")
             self.show_error(error_message)
         else:
-            signalBus.infobar_message.emit({"status": "success", "msg": success_message})
+            signalBus.infobar_message.emit(
+                {"status": "success", "msg": success_message}
+            )
             self.Autodetect_combox.clear()
             processed_list = list(set(processed_list))
             self.Autodetect_combox.addItems(processed_list)
