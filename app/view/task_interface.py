@@ -1443,30 +1443,43 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                         for f, cv in zip(field_list, converted_values):
                                             placeholder = f"{{{f}}}"
 
-                                            # 处理字符串类型
-                                            if (
-                                                isinstance(resolved_val, str)
-                                                and placeholder == resolved_val
-                                            ):
-                                                resolved_val = cv
+                                            def replace_placeholder(obj):
+                                                """
+                                                递归替换占位符
+                                                :param obj: 要处理的对象
+                                                :return: 替换后的对象
+                                                """
+                                                if (
+                                                    isinstance(obj, str)
+                                                    and obj == placeholder
+                                                ):  # 如果是字符串且等于占位符
+                                                    return cv
 
-                                            # 处理列表/元组类型（完整遍历所有元素）
-                                            elif isinstance(
-                                                resolved_val, (list, tuple)
-                                            ):
-                                                # 遍历列表中每个元素进行替换
-                                                result = []
+                                                elif isinstance(
+                                                    obj, (list, tuple)
+                                                ):  # 如果是列表或者元组
+                                                    return [
+                                                        replace_placeholder(item)
+                                                        for item in obj
+                                                    ]
 
-                                                # 显式遍历原列表每个元素
-                                                for item in resolved_val:
-                                                    # 条件判断并添加元素到结果列表
-                                                    if item == placeholder:
-                                                        result.append(cv)
-                                                    else:
-                                                        result.append(item)
-                                                resolved_val = (
-                                                    result  # 更新解析值为新列表
-                                                )
+                                                elif isinstance(
+                                                    obj, dict
+                                                ):  # 如果是字典
+                                                    return {
+                                                        key: replace_placeholder(value)
+                                                        for key, value in obj.items()
+                                                    }
+
+                                                else:  # 这啥玩意
+                                                    logger.debug(
+                                                        f"高级设置 [{advanced_key}] 未处理的类型: {type(obj)}"
+                                                    )
+                                                    return obj
+                                                
+                                            resolved_val = replace_placeholder(
+                                                resolved_val
+                                            )
 
                                         resolved_task_config[key] = resolved_val
                                     resolved_pipeline[task_name] = resolved_task_config
