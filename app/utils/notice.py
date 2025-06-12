@@ -19,7 +19,7 @@
 """
 MFW-ChainFlow Assistant
 MFW-ChainFlow Assistant 外部通知单元
-作者:overflow65537
+作者:weinibuliu，overflow65537,FDrag0n
 """
 
 import re
