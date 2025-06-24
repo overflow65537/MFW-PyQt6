@@ -19,7 +19,7 @@
 """
 MFW-ChainFlow Assistant
 MFW-ChainFlow Assistant 外部通知单元
-作者:overflow65537
+作者:weinibuliu，overflow65537,FDrag0n
 """
 
 import re
@@ -244,23 +244,22 @@ class QYWX:
         msg = {"msgtype": "text", "text": {"content": msg_dict["title"] + msg_text}}
         return msg
 
-    def send(self, msg_type: dict) -> bool:
+    def send(self, msg_dict: dict) -> bool:
         QYWX_KEY = decode_key("QYWX")
         url = f"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={QYWX_KEY}"
-        msg = self.msg(msg_type)
+        msg = self.msg(msg_dict)
         try:
             response = requests.post(url=url, json=msg)
             status_code = response.json()["errcode"]
         except Exception as e:
             logger.error(f"企业微信机器人消息 发送失败 {e}")
-            return False
+            return NoticeErrorCode.NETWORK_ERROR 
 
         if status_code != 0:
             logger.error(f"企业微信机器人消息 发送失败 {response.json()}")
-            return False
-
+            return NoticeErrorCode.RESPONSE_ERROR
         else:
-            return True
+            return NoticeErrorCode.SUCCESS
 
 class NoticeSendThread(QThread):
     """通用通知发送线程类"""
@@ -413,24 +412,5 @@ def QYWX_send(
         return NoticeErrorCode.DISABLED  
 
     app = QYWX()
-    QYWX_KEY = cfg.get(cfg.Notice_QYWX_key)
-    if not QYWX_KEY:
-        logger.error("企业微信机器人Key为空")
-        return NoticeErrorCode.PARAM_EMPTY  
-
-    url = f"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={QYWX_KEY}"
-    msg = app.msg(msg_dict)
-
-    try:
-        response = requests.post(url=url, json=msg)
-        status_code = response.json()["errcode"]
-    except Exception as e:
-        logger.error(f"企业微信机器人消息 发送失败: {e}")
-        return NoticeErrorCode.NETWORK_ERROR  
-
-    if status_code != 0:
-        logger.error(f"企业微信机器人消息 发送失败: {response.json()}")
-        return NoticeErrorCode.RESPONSE_ERROR 
-
-    logger.info(f"企业微信机器人消息 发送成功")
-    return NoticeErrorCode.SUCCESS  
+    result = app.send(msg_dict)
+    return result
