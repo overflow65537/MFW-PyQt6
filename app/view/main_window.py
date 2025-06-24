@@ -61,6 +61,7 @@ from ..common.maa_config_data import maa_config_data
 from ..utils.notice_message import NoticeMessageBox
 from ..utils.notice_enum import NoticeErrorCode
 from ..utils.widget import NoticeType, SendSettingCard
+from ..utils.tool import Read_Config
 
 class CustomSystemThemeListener(SystemThemeListener):
     def run(self):
@@ -416,11 +417,26 @@ class MainWindow(FluentWindow):
         resource_name = cfg.get(cfg.maa_resource_name)
         config_name = cfg.get(cfg.maa_config_name)
         version = maa_config_data.interface_config.get("version", "")
-        version_file_path = os.path.join(os.getcwd(), "config", "version.txt")
-        with open(version_file_path, "r", encoding="utf-8") as f:
-            version_data = f.read().split()
-        if version_data[2]:
-            title += f" {version_data[2]}"
+        if os.path.exists(os.path.join(os.getcwd(), "config", "version.json")):
+            logger.debug("从json文件读取版本号")
+            version_data =  Read_Config(os.path.join(os.getcwd(), "config", "version.json"))
+        else:
+            logger.debug("从txt文件读取版本号")
+            try:
+                with open("config/version.txt", "r", encoding="utf-8") as f:
+                    version_list = f.read().strip().split()
+                    version_data = {
+                        "os": version_list[0],
+                        "arch": version_list[1],
+                        "version": version_list[2],
+                    }
+                    version_data =  version_data
+            except Exception as e:
+                logger.error(f" 读取版本号失败，错误信息：{e}")
+                version_data = {"os": "unknown", "arch": "unknown", "version": "unknown"}
+        if resource_name and config_name:
+            title += f" {version_data['version']}"
+        
         if resource_name != "":
             title += f" {resource_name}"
         if version != "":

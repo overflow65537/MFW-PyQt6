@@ -636,26 +636,12 @@ class Update(BaseUpdate):
 
     def mirror_download(self, res_id, mirror_data: Dict[str, dict]):
         """mirror下载更新"""
-        try:
-            # 版本文件读取
-            version_file_path = os.path.join(".", "config", "version.txt")
-            logger.info(f"正在读取版本文件: {version_file_path}")
-            with open(version_file_path, "r") as version_file:
-                v_data = version_file.read().split()
-                version = v_data[2][1:]
-                logger.debug(f"当前版本: {version}")
-        except FileNotFoundError:
-            logger.exception("版本文件未找到")
-            signalBus.update_download_finished.emit(
-                {"status": "failed_info", "msg": self.tr("version file not found")}
-            )
-            return False
-        except IndexError:
-            logger.exception("版本文件格式错误")
-            signalBus.update_download_finished.emit(
-                {"status": "failed_info", "msg": self.tr("version file format error")}
-            )
-            return False
+
+        version_datas = self.read_version()
+        if version_datas:
+            version = version_datas.get("version", "v0.0.1")
+        else:
+            raise ValueError(self.tr("update failed: version_data is None"))
 
         self.stop_flag = False
         try:
@@ -1258,17 +1244,6 @@ class UpdateSelf(BaseUpdate):
             Save_Config(
                 os.path.join(os.getcwd(), "config", "version.json"), version_data
             )
-            try:
-                version_file_path = os.path.join(os.getcwd(), "config", "version.txt")
-                with open(version_file_path, "w", encoding="utf-8") as f:
-                    f.write(" ".join(version_data))
-                    logger.info(f"版本文件更新成功: {version_data}")
-            except IOError as e:
-                logger.error(f"版本文件写入失败: {str(e)}")
-                signalBus.download_self_finished.emit(
-                    {"status": "failed", "msg": self.tr("Version file write failed")}
-                )
-                return
             return
         else:
             logger.warning("镜像检查成功但未找到CDK，切换到GitHub下载")
