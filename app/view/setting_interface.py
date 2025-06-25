@@ -51,7 +51,7 @@ from ..utils.widget import (
     ProxySettingCard,
 )
 from ..utils.update import Update, UpdateSelf
-from ..utils.tool import Save_Config, for_config_get_url, decrypt, encrypt
+from ..utils.tool import Save_Config, for_config_get_url, decrypt, encrypt,read_version
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 
@@ -521,16 +521,17 @@ class SettingInterface(ScrollArea):
 
     def initialize_about_settings(self):
         """初始化关于设置。"""
-        self.aboutGroup = SettingCardGroup(self.tr("About"), self.Setting_scroll_widget)
-        with open(
-            os.path.join(os.getcwd(), "config", "version.txt"), "r", encoding="utf-8"
-        ) as f:
-            try:
-                MFW_Version = f.read().split()[2]
-            except:
-                MFW_Version = "Unknown"
+
         MFW_update_channel = cfg.get(cfg.MFW_update_channel)
         resource_update_channel = cfg.get(cfg.resource_update_channel)
+        MFW_Version=read_version()
+
+        if MFW_Version is None:
+            MFW_Version="unknown"
+        else:
+            MFW_Version=MFW_Version.get("version")
+
+        self.aboutGroup = SettingCardGroup(self.tr("About"), self.Setting_scroll_widget)
 
         self.updateCard = DoubleButtonSettingCard(
             text2=self.tr("Check for updates"),
@@ -546,6 +547,7 @@ class SettingInterface(ScrollArea):
             text2=self.tr("Check for updates"),
             icon=FIF.INFO,
             title=self.tr("ChainFlow Assistant") + " " + MFW_Version,
+
             configItem=cfg.MFW_update_channel,
             content=self.tr(
                 "ChainFlow Assistant is open source under the GPLv3 license. Visit the project URL for more information."

@@ -52,7 +52,7 @@ from app.common.config import cfg
 from app.utils.logger import logger
 from app.view.main_window import MainWindow
 from app.common.config import Language
-from app.utils.tool import show_error_message
+from app.utils.tool import show_error_message,read_version
 from app.utils.check_utils import check
 from app.utils.maafw import maafw
 
@@ -205,26 +205,25 @@ if __name__ == "__main__":
 
     atexit.register(clear_agent)
     try:
-        with open(
-            os.path.join(".", "config", "version.txt"), "r", encoding="utf-8"
-        ) as f:
-
-            version = f.read().split()[2]
+        version = read_version()["version"]
     except:
-        with open(
-            os.path.join(".", "config", "version.txt"), "w", encoding="utf-8"
-        ) as f:
-            if sys.platform.startswith("linux"):
-                platf = "linux"
-            elif sys.platform.startswith("win"):
-                platf = "win"
-            elif sys.platform.startswith("darwin"):
-                platf = "macos"
-            else:
-                platf = "unknown"
+        version="unknown"
 
-            version = "DEV"
-            f.write(f"{platf} DEV DEV v0.0.0.1")
+        if sys.platform.startswith("linux"):
+            platf = "linux"
+        elif sys.platform.startswith("win"):
+            platf = "win"
+        elif sys.platform.startswith("darwin"):
+            platf = "macos"
+        else:
+            platf = "unknown"
+
+        version_data = {
+            "version": version,
+            "os": platf,
+            "arch": "unknown",
+        }
+        
     start_symbol()
     logger.info(f"MFW 版本:{version}")
     parser = argparse.ArgumentParser()

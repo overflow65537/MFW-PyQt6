@@ -44,6 +44,7 @@ from ..utils.tool import (
     Read_Config,
     Save_Config,
     decrypt,
+    read_version
 )
 
 
@@ -276,26 +277,6 @@ class BaseUpdate(QThread):
 
         return response
 
-    def read_version(self):
-        if os.path.exists(os.path.join(os.getcwd(), "config", "version.json")):
-            logger.debug("从json文件读取版本号")
-            return Read_Config(os.path.join(os.getcwd(), "config", "version.json"))
-        else:
-            logger.debug("从txt文件读取版本号")
-            try:
-                with open("config/version.txt", "r", encoding="utf-8") as f:
-                    version_list = f.read().strip().split()
-                    version_data = {
-                        "os": version_list[0],
-                        "arch": version_list[1],
-                        "version": version_list[2],
-                    }
-                    return version_data
-
-            except Exception as e:
-                logger.exception(f"读取版本号时出错: {e}")
-                return None
-
     def mirror_check(
         self,
         res_id: str,
@@ -509,7 +490,7 @@ class Update(BaseUpdate):
         version = maa_config_data.interface_config.get("version")
         channel = self.channel_map.get(cfg.get(cfg.resource_update_channel))
 
-        version_data = self.read_version()
+        version_data =  read_version()
         if version_data:
             os_type = version_data.get("os")
             arch = version_data.get("arch")
@@ -637,7 +618,7 @@ class Update(BaseUpdate):
     def mirror_download(self, res_id, mirror_data: Dict[str, dict]):
         """mirror下载更新"""
 
-        version_datas = self.read_version()
+        version_datas =  read_version()
         if version_datas:
             version = version_datas.get("version", "v0.0.1")
         else:
@@ -791,7 +772,7 @@ class Update(BaseUpdate):
 
     def github_download(self, update_dict: Dict):
         """github下载更新"""
-        version_data = self.read_version()
+        version_data =  read_version()
         if version_data:
             os_type = version_data.get("os")
             arch = version_data.get("arch")
@@ -1109,7 +1090,7 @@ class DownloadBundle(Update):
 # region 更新自身
 class UpdateSelf(BaseUpdate):
     def run(self):
-        version_data = self.read_version()
+        version_data =  read_version()
         if version_data:
             os_type = version_data.get("os")
             arch = version_data.get("arch")

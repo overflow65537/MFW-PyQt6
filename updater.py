@@ -80,10 +80,6 @@ elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
 else:
     sys.exit("Unsupported platform")
 
-# 读取版本文件
-with open(os.path.join(os.getcwd(), "config", "version.txt"), "r") as version_file:
-    version_data = version_file.read().split()
-
 zip_file_name = os.path.join(os.getcwd(), "update.zip")
 
 # 检查ZIP文件是否存在

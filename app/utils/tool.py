@@ -871,13 +871,40 @@ def path_to_list(path):
             break
     return parts
 
+def read_version():
+    if os.path.exists(os.path.join(os.getcwd(), "config", "version.json")):
+        logger.debug("从json文件读取版本号")
+        return Read_Config(os.path.join(os.getcwd(), "config", "version.json"))
+    elif os.path.exists(os.path.join(os.getcwd(), "config", "version.txt")):
+        logger.debug("从txt文件读取版本号")
+        try:
+            with open("config/version.txt", "r", encoding="utf-8") as f:
+                version_list = f.read().strip().split()
+                version_data = {
+                    "os": version_list[0],
+                    "arch": version_list[1],
+                    "version": version_list[2],
+                }
+                return version_data
 
+        except Exception as e:
+            logger.exception(f"读取版本号时出错: {e}")
+            return None
+
+    else:
+        logger.error("未找到版本号文件")
+        return {
+            "os": "unknown",
+            "arch": "unknown",
+            "version": "unknown",
+        }    
 class MyNotificationHandler(NotificationHandler):
 
     def __init__(self, parent=None):
         self.callbackSignal = signalBus
 
     def on_controller_action(
+            
         self,
         noti_type: NotificationType,
         detail: NotificationHandler.ControllerActionDetail,
