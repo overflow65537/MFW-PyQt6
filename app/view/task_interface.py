@@ -91,12 +91,8 @@ from ..common.typeddict import (
     InterfaceData,
 )
 from ..utils.notice import (
-    dingtalk_send,
-    lark_send,
-    SMTP_send,
-    WxPusher_send,
-    QYWX_send,
-    NoticeSendThread,
+
+    send_thread
 )
 from datetime import datetime, timedelta
 
@@ -2574,23 +2570,19 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         else:
             return
 
-        # 保存线程实例到列表，便于后续管理
-        self.notice_threads = []
-
         # 动态创建并启动线程
         for sender, status_key in [
-            (dingtalk_send, cfg.Notice_DingTalk_status),
-            (lark_send, cfg.Notice_Lark_status),
-            (SMTP_send, cfg.Notice_SMTP_status),
-            (WxPusher_send, cfg.Notice_WxPusher_status),
-            (QYWX_send, cfg.Notice_QYWX_status),
+            ("dingtalk", cfg.Notice_DingTalk_status),
+            ("lark", cfg.Notice_Lark_status),
+            ("smtp", cfg.Notice_SMTP_status),
+            ("WxPusher", cfg.Notice_WxPusher_status),
+            ("qywx", cfg.Notice_QYWX_status),
         ]:
             if cfg.get(status_key):  # 仅启用状态为 True 时发送
-                logger.info(f"发送通知: {sender.__name__}, 状态: {status_key}")
+                logger.info(f"发送通知: {sender}, 状态: {status_key}")
+                send_thread.add_task(sender, msg, True)
 
-                thread = NoticeSendThread(sender, msg, True)
-                thread.start()
-                self.notice_threads.append(thread)  # 保存线程实例
+
 
     def show_error(self, error_message):
         signalBus.infobar_message.emit({"status": "failed", "msg": error_message})

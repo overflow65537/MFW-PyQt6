@@ -92,14 +92,7 @@ from ..utils.tool import (
     encrypt,
     decrypt,
 )
-from ..utils.notice import (
-    lark_send,
-    dingtalk_send,
-    WxPusher_send,
-    SMTP_send,
-    QYWX_send,
-    NoticeSendThread,
-)
+from ..utils.notice import send_thread
 from ..common.config import cfg
 from ..common.maa_config_data import maa_config_data
 from ..utils.update import DownloadBundle
@@ -293,23 +286,10 @@ class NoticeType(MessageBoxBase):
 
     def on_test(self):
         test_msg = {"title": "Test Title", "text": "Test Text"}
-        # 创建一个字典来映射通知类型和发送函数
-        notification_methods = {
-            "DingTalk": dingtalk_send,
-            "Lark": lark_send,
-            "SMTP": SMTP_send,
-            "WxPusher": WxPusher_send,
-            "QYWX": QYWX_send,
-        }
-
-        # 获取对应的发送函数
-        send_method = notification_methods.get(self.notice_type)
-
-        if send_method:
-            self.testButton.setDisabled(True)
-            self.send_thread = NoticeSendThread(send_method, test_msg, True)
-            self.send_thread.start()
-        else:
+        try:
+            send_thread.add_task(self.notice_type.lower(), test_msg, True)
+            self.testButton.setEnabled(False)
+        except Exception as e:
             logger.error(f"不支持的通知类型: {self.notice_type}")
             raise Exception(f"不支持的通知类型: {self.notice_type}")
 

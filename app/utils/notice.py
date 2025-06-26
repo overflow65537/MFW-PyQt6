@@ -31,6 +31,7 @@ import urllib.parse
 import requests
 import smtplib
 from email.mime.text import MIMEText
+from queue import Queue
 from PySide6.QtCore import QThread
 
 from ..common.signal_bus import signalBus
@@ -188,9 +189,9 @@ class SMTP:
         try:
             if self.used_ssl:
                 smtp = smtplib.SMTP_SSL(self.sever_address, port)
-                smtp.login(self.uesr_name, self.password)
             else:
                 smtp = smtplib.SMTP(self.sever_address, port, timeout=1)
+            smtp.login(self.uesr_name, self.password)
         except Exception as e:
             logger.error(f"SMTP 连接失败: {e}")
             return NoticeErrorCode.SMTP_CONNECT_FAILED  
@@ -260,34 +261,61 @@ class QYWX:
             return NoticeErrorCode.RESPONSE_ERROR
         else:
             return NoticeErrorCode.SUCCESS
-
+dingtalk= DingTalk()
+lark = Lark()
+smtp= SMTP()
+wxpusher = WxPusher()
+qywx = QYWX()
 class NoticeSendThread(QThread):
     """通用通知发送线程类"""
-    def __init__(self, send_func, msg_dict: dict, status: bool) -> None:
+    def __init__(self):
         super().__init__()
-        self.send_func = send_func
-        self.msg_dict = msg_dict
-        self.status = status
-        self._stop_flag = False  
+        self._stop_flag = False
+        self.queue = Queue()  # 创建消息队列
+        # 内置映射表，将通知类型映射到对应的发送函数
+        self.notice_mapping = {
+            "dingtalk": dingtalk_send,
+            "lark": lark_send,
+            "smtp": SMTP_send,
+            "wxpusher": WxPusher_send,
+            "qywx": QYWX_send
+        }
+
+    def add_task(self, notice_type, msg_dict, status):
+        """向队列添加任务，通过通知类型查找对应的发送函数"""
+        send_func = self.notice_mapping.get(notice_type)
+        if send_func:
+            self.queue.put((send_func, msg_dict, status))
+            if not self.isRunning():
+                self.start()
+        else:
+            logger.error(f"未找到 {notice_type} 对应的通知发送函数")
 
     def run(self):
         """线程执行逻辑"""
-        if self._stop_flag: 
-            return
-
-        try:
-            result = self.send_func(self.msg_dict, self.status)
-            signalBus.notice_finished.emit(result, self.send_func.__name__)
-        except Exception as e:
-            logger.error(f"通知线程 {self.send_func.__name__} 执行异常: {str(e)}")
-            signalBus.notice_finished.emit(NoticeErrorCode.UNKNOWN_ERROR, self.send_func.__name__)
-        finally:
-            self._stop_flag = True  
+        while not self._stop_flag:
+            if not self.queue.empty():
+                send_func, msg_dict, status = self.queue.get()
+                try:
+                    result = send_func(msg_dict, status)
+                    signalBus.notice_finished.emit(result, send_func.__name__)
+                except Exception as e:
+                    logger.error(f"通知线程 {send_func.__name__} 执行异常: {str(e)}")
+                    signalBus.notice_finished.emit(NoticeErrorCode.UNKNOWN_ERROR, send_func.__name__)
+            else:
+                self.msleep(100)
 
     def stop(self):
-        """主动停止线程（需在应用退出时调用）"""
+        """主动停止线程"""
         self._stop_flag = True
-        self.wait()  
+        self.wait()
+
+    def __del__(self):
+        """析构函数，确保线程在对象销毁前停止"""
+        self.stop()
+
+
+
 
 def dingtalk_send(
     msg_dict: dict = {"title": "Test", "text": "Test"}, status: bool = False
@@ -296,7 +324,7 @@ def dingtalk_send(
         logger.info(f"DingTalk 未启用")
         return NoticeErrorCode.DISABLED
 
-    APP = DingTalk()
+    APP = dingtalk
     url = APP.sign()[0]
     msg = APP.msg(msg_dict)
     headers = APP.headers
@@ -332,7 +360,7 @@ def lark_send(
         logger.info(f"Lark 未启用")
         return NoticeErrorCode.DISABLED  
 
-    APP = Lark()
+    APP = lark
     url = APP.sign()[0]
     msg = APP.msg(msg_dict)
     headers = APP.headers
@@ -368,7 +396,7 @@ def SMTP_send(
         logger.info(f"SMTP 未启用")
         return NoticeErrorCode.DISABLED  
 
-    app = SMTP()
+    app = smtp
     result = app.send(msg_dict)  # 获取枚举结果
 
     if result == NoticeErrorCode.SUCCESS:
@@ -385,7 +413,7 @@ def WxPusher_send(
         logger.info(f"WxPusher 未启用")
         return NoticeErrorCode.DISABLED  
 
-    app = WxPusher()
+    app = wxpusher
     try:
         response = requests.post(
             url="https://wxpusher.zjiecode.com/api/send/message/simple-push",
@@ -411,6 +439,8 @@ def QYWX_send(
         logger.info(f"企业微信机器人消息 未启用")
         return NoticeErrorCode.DISABLED  
 
-    app = QYWX()
+    app = qywx
     result = app.send(msg_dict)
     return result
+
+send_thread = NoticeSendThread()
