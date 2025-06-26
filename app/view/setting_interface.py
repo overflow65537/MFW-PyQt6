@@ -51,7 +51,7 @@ from ..utils.widget import (
     ProxySettingCard,
 )
 from ..utils.update import Update, UpdateSelf
-from ..utils.tool import Save_Config, for_config_get_url, decrypt, encrypt,read_version
+from ..utils.tool import Save_Config, for_config_get_url, decrypt, encrypt, read_version
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 
@@ -524,12 +524,12 @@ class SettingInterface(ScrollArea):
 
         MFW_update_channel = cfg.get(cfg.MFW_update_channel)
         resource_update_channel = cfg.get(cfg.resource_update_channel)
-        MFW_Version=read_version()
+        MFW_Version = read_version()
 
         if MFW_Version is None:
-            MFW_Version="unknown"
+            MFW_Version = "unknown"
         else:
-            MFW_Version=MFW_Version.get("version")
+            MFW_Version = MFW_Version.get("version")
 
         self.aboutGroup = SettingCardGroup(self.tr("About"), self.Setting_scroll_widget)
 
@@ -547,7 +547,6 @@ class SettingInterface(ScrollArea):
             text2=self.tr("Check for updates"),
             icon=FIF.INFO,
             title=self.tr("ChainFlow Assistant") + " " + MFW_Version,
-
             configItem=cfg.MFW_update_channel,
             content=self.tr(
                 "ChainFlow Assistant is open source under the GPLv3 license. Visit the project URL for more information."
@@ -648,7 +647,9 @@ class SettingInterface(ScrollArea):
         self.micaCard.checkedChanged.connect(signalBus.micaEnableChanged)
         # 连接更新信号
         self.MirrorCard.button.clicked.connect(
-            lambda: QDesktopServices.openUrl(QUrl("https://mirrorchyan.com/source=MFW-CL_Setting"))
+            lambda: QDesktopServices.openUrl(
+                QUrl("https://mirrorchyan.com/source=MFW-CL_Setting")
+            )
         )
         self.MirrorCard.lineEdit.textChanged.connect(self._onMirrorCardChange)
 

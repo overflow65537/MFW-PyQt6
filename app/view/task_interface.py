@@ -90,10 +90,7 @@ from ..common.typeddict import (
     SpeedrunConfig,
     InterfaceData,
 )
-from ..utils.notice import (
-
-    send_thread
-)
+from ..utils.notice import send_thread
 from datetime import datetime, timedelta
 
 
@@ -1407,7 +1404,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                     .get(advanced_key, {})
                                     .get("mode", "combox")
                                     == "combox"
-                                ):  
+                                ):
                                     """
                                     可输入的下拉框模式
                                     """
@@ -1542,7 +1539,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                     .get(advanced_key, {})
                                     .get("mode", "combox")
                                     == "checkbox"
-                                ):  
+                                ):
                                     """
                                     多选框模式
                                     """
@@ -2581,8 +2578,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             if cfg.get(status_key):  # 仅启用状态为 True 时发送
                 logger.info(f"发送通知: {sender}, 状态: {status_key}")
                 send_thread.add_task(sender, msg, True)
-
-
 
     def show_error(self, error_message):
         signalBus.infobar_message.emit({"status": "failed", "msg": error_message})

@@ -272,7 +272,8 @@ def Get_Task_List(path: str, target: str) -> List:
     lists.reverse()
     return lists
 
-def Get_Task_advanced_List(path: str, target: str) -> List[List[Any]]|None:
+
+def Get_Task_advanced_List(path: str, target: str) -> List[List[Any]] | None:
     """根据选项名称获取所有advanced的default列表，并处理不同数据类型格式。
 
     Args:
@@ -288,7 +289,7 @@ def Get_Task_advanced_List(path: str, target: str) -> List[List[Any]]|None:
     advanced_option = Read_Config(path)["advanced"].get(target, {})
     if not advanced_option:
         return None
-    
+
     advanced_Config = advanced_option.get("default")
 
     if not advanced_Config:
@@ -300,13 +301,17 @@ def Get_Task_advanced_List(path: str, target: str) -> List[List[Any]]|None:
         advanced_field = advanced_option.get("field")
         if not advanced_field:
             return None
-        elif isinstance(advanced_field, str) or isinstance(advanced_field, list) and len(advanced_field)==1:
+        elif (
+            isinstance(advanced_field, str)
+            or isinstance(advanced_field, list)
+            and len(advanced_field) == 1
+        ):
             # ["str", "str", "str"]
             return_list = []
             for item in advanced_Config:
                 return_list.append([item])
             return return_list
-                
+
         elif isinstance(advanced_field, list):
             if isinstance(advanced_Config[0], list):
                 # [["str1", "str2"], ["str3", "str4"]]
@@ -314,9 +319,6 @@ def Get_Task_advanced_List(path: str, target: str) -> List[List[Any]]|None:
             else:
                 # ["str1", "str2", "str3"]
                 return [advanced_Config]  # 处理单字段的列表
-            
-            
-
 
     return None
 
@@ -871,6 +873,7 @@ def path_to_list(path):
             break
     return parts
 
+
 def read_version():
     if os.path.exists(os.path.join(os.getcwd(), "config", "version.json")):
         logger.debug("从json文件读取版本号")
@@ -897,14 +900,15 @@ def read_version():
             "os": "unknown",
             "arch": "unknown",
             "version": "unknown",
-        }    
+        }
+
+
 class MyNotificationHandler(NotificationHandler):
 
     def __init__(self, parent=None):
         self.callbackSignal = signalBus
 
     def on_controller_action(
-            
         self,
         noti_type: NotificationType,
         detail: NotificationHandler.ControllerActionDetail,
@@ -931,17 +935,15 @@ class MyNotificationHandler(NotificationHandler):
             2: "succeeded",
             3: "failed",
         }
-        send_msg =  {
-                "name": "on_task_recognition",
-                "task": detail.name,
-                "status": noti_type.value,
-                "focus": detail.focus.get(focus_mapping[noti_type.value], ""),
-            }
+        send_msg = {
+            "name": "on_task_recognition",
+            "task": detail.name,
+            "status": noti_type.value,
+            "focus": detail.focus.get(focus_mapping[noti_type.value], ""),
+        }
         if detail.focus.get("aborted"):
             send_msg["aborted"] = True
-        self.callbackSignal.callback.emit(
-           send_msg
-        )
+        self.callbackSignal.callback.emit(send_msg)
 
 
 class ProcessThread(QThread):

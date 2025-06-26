@@ -42,7 +42,7 @@ from PySide6.QtGui import (
     QCursor,
     QIntValidator,
 )
-from PySide6.QtCore import Qt, Signal,  QMimeData
+from PySide6.QtCore import Qt, Signal, QMimeData
 
 from qfluentwidgets import (
     FluentIconBase,
@@ -328,15 +328,14 @@ class NoticeType(MessageBoxBase):
             case "QYWX":
                 self.save_qywx_fields()
 
-    def encrypt_key(self,obj):
+    def encrypt_key(self, obj):
         """加密密钥"""
         with open("k.ey", "rb") as file:
             key = file.read()
             encrypt_key = encrypt(obj(), key)
         return encrypt_key
 
-
-    def decode_key(self,key_name) -> str:
+    def decode_key(self, key_name) -> str:
         """解密密钥"""
         mapping = {
             "dingtalk": cfg.Notice_DingTalk_secret,
@@ -356,7 +355,10 @@ class NoticeType(MessageBoxBase):
     def save_dingtalk_fields(self):
         """保存钉钉相关的输入框"""
         cfg.set(cfg.Notice_DingTalk_url, self.dingtalk_url_input.text())
-        cfg.set(cfg.Notice_DingTalk_secret, self.encrypt_key(self.dingtalk_secret_input.text))
+        cfg.set(
+            cfg.Notice_DingTalk_secret,
+            self.encrypt_key(self.dingtalk_secret_input.text),
+        )
         cfg.set(cfg.Notice_DingTalk_status, self.dingtalk_status_switch.isChecked())
 
     def save_lark_fields(self):
@@ -385,7 +387,10 @@ class NoticeType(MessageBoxBase):
 
     def save_wxpusher_fields(self):
         """保存 WxPusher 相关的输入框"""
-        cfg.set(cfg.Notice_WxPusher_SPT_token, self.encrypt_key(self.wxpusher_spt_input.text))
+        cfg.set(
+            cfg.Notice_WxPusher_SPT_token,
+            self.encrypt_key(self.wxpusher_spt_input.text),
+        )
         cfg.set(cfg.Notice_WxPusher_status, self.wxpusher_status_switch.isChecked())
 
     def save_qywx_fields(self):
@@ -853,8 +858,7 @@ class SendSettingCard(MessageBoxBase):
         col1 = QVBoxLayout()
         col2 = QVBoxLayout()
 
-        col1.addWidget(self.when_start_up
-                       )
+        col1.addWidget(self.when_start_up)
         col1.addWidget(self.when_connect_failed)
         col1.addWidget(self.when_connect_success)
         col2.addWidget(self.when_post_task)

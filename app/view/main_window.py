@@ -60,7 +60,8 @@ from ..common.maa_config_data import maa_config_data
 from ..utils.notice_message import NoticeMessageBox
 from ..utils.notice_enum import NoticeErrorCode
 from ..utils.widget import NoticeType, SendSettingCard
-from ..utils.tool import Read_Config , read_version
+from ..utils.tool import Read_Config, read_version
+
 
 class CustomSystemThemeListener(SystemThemeListener):
     def run(self):
@@ -69,6 +70,7 @@ class CustomSystemThemeListener(SystemThemeListener):
             super().run()
         except NotImplementedError:
             print("当前环境不支持主题监听，已忽略", file=sys.stderr)
+
 
 class MainWindow(FluentWindow):
 
@@ -202,7 +204,7 @@ class MainWindow(FluentWindow):
             elif cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg):
                 logger.info("启动GUI后运行任务")
                 QTimer.singleShot(500, self.taskInterface.Start_Up)
-                #self.taskInterface.Start_Up()
+                # self.taskInterface.Start_Up()
 
     def initShortcuts(self):
         """初始化快捷键"""
@@ -418,13 +420,13 @@ class MainWindow(FluentWindow):
         config_name = cfg.get(cfg.maa_config_name)
         version = maa_config_data.interface_config.get("version", "")
 
-        MFW_version=read_version()
+        MFW_version = read_version()
 
         if MFW_version is None:
-            title+=" unknown"
+            title += " unknown"
         elif MFW_version:
             title += f" {MFW_version.get('version')}"
-        
+
         if resource_name != "":
             title += f" {resource_name}"
         if version != "":

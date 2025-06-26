@@ -41,15 +41,15 @@ from ..utils.notice_enum import NoticeErrorCode
 from ..utils.tool import decrypt
 
 
-#解码密钥
+# 解码密钥
 def decode_key(key_name) -> str:
     mapping = {
-            "dingtalk": cfg.Notice_DingTalk_secret,
-            "lark": cfg.Notice_Lark_secret,
-            "smtp": cfg.Notice_SMTP_password,
-            "wxpusher": cfg.Notice_WxPusher_SPT_token,
-            "QYWX": cfg.Notice_QYWX_key,
-        }
+        "dingtalk": cfg.Notice_DingTalk_secret,
+        "lark": cfg.Notice_Lark_secret,
+        "smtp": cfg.Notice_SMTP_password,
+        "wxpusher": cfg.Notice_WxPusher_SPT_token,
+        "QYWX": cfg.Notice_QYWX_key,
+    }
     try:
         with open("k.ey", "rb") as key_file:
             key = key_file.read()
@@ -57,6 +57,8 @@ def decode_key(key_name) -> str:
     except Exception as e:
         logger.exception("获取ckd失败")
         return ""
+
+
 class DingTalk:
     def __init__(self) -> None:
         self.sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
@@ -178,13 +180,13 @@ class SMTP:
 
         return msg
 
-    def send(self, msg_dict: dict) -> NoticeErrorCode:  
+    def send(self, msg_dict: dict) -> NoticeErrorCode:
         msg = self.msg(msg_dict)
         try:
             port = int(self.sever_port)
         except ValueError:
             logger.error(f"SMTP 端口号 {self.sever_port} 不是有效的整数")
-            return NoticeErrorCode.SMTP_PORT_INVALID  
+            return NoticeErrorCode.SMTP_PORT_INVALID
 
         try:
             if self.used_ssl:
@@ -194,14 +196,14 @@ class SMTP:
             smtp.login(self.uesr_name, self.password)
         except Exception as e:
             logger.error(f"SMTP 连接失败: {e}")
-            return NoticeErrorCode.SMTP_CONNECT_FAILED  
+            return NoticeErrorCode.SMTP_CONNECT_FAILED
 
         try:
             smtp.sendmail(self.send_mail, self.receive_mail, msg.as_string())
-            return NoticeErrorCode.SUCCESS 
+            return NoticeErrorCode.SUCCESS
         except Exception as e:
             logger.error(f"SMTP 发送邮件失败: {e}")
-            return NoticeErrorCode.NETWORK_ERROR  
+            return NoticeErrorCode.NETWORK_ERROR
         finally:
             smtp.quit()
 
@@ -209,7 +211,7 @@ class SMTP:
 class WxPusher:
     def msg(self, msg_dict: dict) -> dict:
         sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
-        msg_text = f"{sendtime}: {msg_dict['text']}"  
+        msg_text = f"{sendtime}: {msg_dict['text']}"
         msg = {
             "content": msg_text,
             "summary": msg_dict["title"],
@@ -241,7 +243,7 @@ class WxPusher:
 class QYWX:
     def msg(self, msg_dict: dict) -> dict:
         sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
-        msg_text = f"{sendtime}: {msg_dict['text']}"  
+        msg_text = f"{sendtime}: {msg_dict['text']}"
         msg = {"msgtype": "text", "text": {"content": msg_dict["title"] + msg_text}}
         return msg
 
@@ -254,20 +256,25 @@ class QYWX:
             status_code = response.json()["errcode"]
         except Exception as e:
             logger.error(f"企业微信机器人消息 发送失败 {e}")
-            return NoticeErrorCode.NETWORK_ERROR 
+            return NoticeErrorCode.NETWORK_ERROR
 
         if status_code != 0:
             logger.error(f"企业微信机器人消息 发送失败 {response.json()}")
             return NoticeErrorCode.RESPONSE_ERROR
         else:
             return NoticeErrorCode.SUCCESS
-dingtalk= DingTalk()
+
+
+dingtalk = DingTalk()
 lark = Lark()
-smtp= SMTP()
+smtp = SMTP()
 wxpusher = WxPusher()
 qywx = QYWX()
+
+
 class NoticeSendThread(QThread):
     """通用通知发送线程类"""
+
     def __init__(self):
         super().__init__()
         self._stop_flag = False
@@ -278,7 +285,7 @@ class NoticeSendThread(QThread):
             "lark": lark_send,
             "smtp": SMTP_send,
             "wxpusher": WxPusher_send,
-            "qywx": QYWX_send
+            "qywx": QYWX_send,
         }
 
     def add_task(self, notice_type, msg_dict, status):
@@ -301,7 +308,9 @@ class NoticeSendThread(QThread):
                     signalBus.notice_finished.emit(result, send_func.__name__)
                 except Exception as e:
                     logger.error(f"通知线程 {send_func.__name__} 执行异常: {str(e)}")
-                    signalBus.notice_finished.emit(NoticeErrorCode.UNKNOWN_ERROR, send_func.__name__)
+                    signalBus.notice_finished.emit(
+                        NoticeErrorCode.UNKNOWN_ERROR, send_func.__name__
+                    )
             else:
                 self.msleep(100)
 
@@ -315,11 +324,9 @@ class NoticeSendThread(QThread):
         self.stop()
 
 
-
-
 def dingtalk_send(
     msg_dict: dict = {"title": "Test", "text": "Test"}, status: bool = False
-) -> NoticeErrorCode:  
+) -> NoticeErrorCode:
     if not status:
         logger.info(f"DingTalk 未启用")
         return NoticeErrorCode.DISABLED
@@ -355,10 +362,10 @@ def dingtalk_send(
 
 def lark_send(
     msg_dict: dict = {"title": "Test", "text": "Test"}, status: bool = False
-) -> NoticeErrorCode:  
+) -> NoticeErrorCode:
     if not status:
         logger.info(f"Lark 未启用")
-        return NoticeErrorCode.DISABLED  
+        return NoticeErrorCode.DISABLED
 
     APP = lark
     url = APP.sign()[0]
@@ -367,11 +374,11 @@ def lark_send(
 
     if not url:
         logger.error("Lark Url空")
-        return NoticeErrorCode.PARAM_EMPTY  
+        return NoticeErrorCode.PARAM_EMPTY
 
     if not re.match(APP.correct_url, url):
         logger.error(f"Lark Url不正确")
-        return NoticeErrorCode.PARAM_INVALID  
+        return NoticeErrorCode.PARAM_INVALID
 
     response = None
     try:
@@ -379,22 +386,22 @@ def lark_send(
         status_code = response.json()[APP.codename]
     except Exception as e:
         logger.error(f"Lark 发送失败: {e}{response.json() if response else ''}")
-        return NoticeErrorCode.NETWORK_ERROR  
+        return NoticeErrorCode.NETWORK_ERROR
 
     if status_code != APP.code:
         logger.error(f"Lark 发送失败: {response.json()}")
-        return NoticeErrorCode.RESPONSE_ERROR 
+        return NoticeErrorCode.RESPONSE_ERROR
 
     logger.info(f"Lark 发送成功")
-    return NoticeErrorCode.SUCCESS  
+    return NoticeErrorCode.SUCCESS
 
 
 def SMTP_send(
     msg_dict: dict = {"title": "Test", "text": "Test"}, status: bool = False
-) -> NoticeErrorCode:  
+) -> NoticeErrorCode:
     if not status:
         logger.info(f"SMTP 未启用")
-        return NoticeErrorCode.DISABLED  
+        return NoticeErrorCode.DISABLED
 
     app = smtp
     result = app.send(msg_dict)  # 获取枚举结果
@@ -406,41 +413,43 @@ def SMTP_send(
 
     return result
 
+
 def WxPusher_send(
     msg_dict: dict[str, str] = {"title": "Test", "text": "Test"}, status: bool = False
-) -> NoticeErrorCode:  
+) -> NoticeErrorCode:
     if not status:
         logger.info(f"WxPusher 未启用")
-        return NoticeErrorCode.DISABLED  
+        return NoticeErrorCode.DISABLED
 
     app = wxpusher
     try:
         response = requests.post(
             url="https://wxpusher.zjiecode.com/api/send/message/simple-push",
-            json=app.msg(msg_dict)
+            json=app.msg(msg_dict),
         )
         status_code = response.json()["code"]
     except Exception as e:
         logger.error(f"WxPusher 发送失败: {e}")
-        return NoticeErrorCode.NETWORK_ERROR  
+        return NoticeErrorCode.NETWORK_ERROR
 
     if status_code != 1000:
         logger.error(f"WxPusher 发送失败: {response.json()}")
-        return NoticeErrorCode.RESPONSE_ERROR 
+        return NoticeErrorCode.RESPONSE_ERROR
 
     logger.info(f"WxPusher 发送成功")
-    return NoticeErrorCode.SUCCESS  
+    return NoticeErrorCode.SUCCESS
 
 
 def QYWX_send(
     msg_dict: dict[str, str] = {"title": "Test", "text": "Test"}, status: bool = False
-) -> NoticeErrorCode:  
+) -> NoticeErrorCode:
     if not status:
         logger.info(f"企业微信机器人消息 未启用")
-        return NoticeErrorCode.DISABLED  
+        return NoticeErrorCode.DISABLED
 
     app = qywx
     result = app.send(msg_dict)
     return result
+
 
 send_thread = NoticeSendThread()
