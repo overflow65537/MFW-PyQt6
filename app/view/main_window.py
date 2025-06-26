@@ -201,7 +201,8 @@ class MainWindow(FluentWindow):
 
             elif cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg):
                 logger.info("启动GUI后运行任务")
-                signalBus.start_task_inmediately.emit()
+                QTimer.singleShot(500, self.taskInterface.Start_Up)
+                #self.taskInterface.Start_Up()
 
     def initShortcuts(self):
         """初始化快捷键"""
