@@ -987,7 +987,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     + str(cost)
                     + "ms("
                     + fast_name
-                    + ")[/color]"
+                    + ")\n"
+                    + self.tr("May have an impact on the operation.")
+                    +"[/color]"
                 )
             elif 301 < cost:
                 self.insert_colored_text(
@@ -996,7 +998,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     + str(cost)
                     + "ms("
                     + fast_name
-                    + ")[/color]"
+                    + ")\n"
+                    + self.tr("May have an impact on the operation.")
+                    +"[/color]"
                 )
         if cfg.get(cfg.when_connect_success):
             self.send_notice("info", self.tr("Connection success"))
