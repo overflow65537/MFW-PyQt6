@@ -60,7 +60,7 @@ from ..common.maa_config_data import maa_config_data
 from ..utils.notice_message import NoticeMessageBox
 from ..utils.notice_enum import NoticeErrorCode
 from ..utils.widget import NoticeType, SendSettingCard
-from ..utils.tool import Read_Config, read_version
+from ..utils.tool import read_version
 
 
 class CustomSystemThemeListener(SystemThemeListener):

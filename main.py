@@ -212,7 +212,11 @@ if __name__ == "__main__":
 
     atexit.register(clear_agent)
     try:
-        version = read_version()["version"]
+        version_data = read_version()
+        if version_data:
+            version = version_data.get("version","")
+        else:
+            version = "unknown"
     except:
         version = "unknown"
 

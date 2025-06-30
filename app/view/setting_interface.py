@@ -529,7 +529,7 @@ class SettingInterface(ScrollArea):
         if MFW_Version is None:
             MFW_Version = "unknown"
         else:
-            MFW_Version = MFW_Version.get("version")
+            MFW_Version = MFW_Version.get("version","")
 
         self.aboutGroup = SettingCardGroup(self.tr("About"), self.Setting_scroll_widget)
 
