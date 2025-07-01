@@ -348,189 +348,194 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../../app/view/main_window.py" line="133"/>
+        <location filename="../../app/view/main_window.py" line="148"/>
+        <source>New task found: </source>
+        <translation type="unfinished">发现新任务: </translation>
+    </message>
+    <message>
+        <location filename="../../app/view/main_window.py" line="160"/>
         <source>DingTalk Notification Enabled</source>
         <translation>钉钉通知已启用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="137"/>
+        <location filename="../../app/view/main_window.py" line="164"/>
         <source>DingTalk Notification Disabled</source>
         <translation>钉钉通知已禁用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="144"/>
+        <location filename="../../app/view/main_window.py" line="171"/>
         <source>Lark Notification Enabled</source>
         <translation>飞书通知已启用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="148"/>
+        <location filename="../../app/view/main_window.py" line="175"/>
         <source>Lark Notification Disabled</source>
         <translation>飞书通知已禁用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="155"/>
+        <location filename="../../app/view/main_window.py" line="182"/>
         <source>SMTP Notification Enabled</source>
         <translation>SMTP通知已启用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="159"/>
+        <location filename="../../app/view/main_window.py" line="186"/>
         <source>SMTP Notification Disabled</source>
         <translation>SMTP通知已禁用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="166"/>
+        <location filename="../../app/view/main_window.py" line="193"/>
         <source>WXPusher Notification Enabled</source>
         <translation>微信通知已启用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="170"/>
+        <location filename="../../app/view/main_window.py" line="197"/>
         <source>WXPusher Notification Disabled</source>
         <translation>微信通知已禁用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="177"/>
+        <location filename="../../app/view/main_window.py" line="204"/>
         <source>QYWX Notification Enabled</source>
         <translation>企业微信通知已启用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="181"/>
+        <location filename="../../app/view/main_window.py" line="208"/>
         <source>QYWX Notification Disabled</source>
         <translation>企业微信通知已禁用</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="268"/>
+        <location filename="../../app/view/main_window.py" line="295"/>
         <source>Error</source>
         <translation>错误</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="275"/>
+        <location filename="../../app/view/main_window.py" line="302"/>
         <source>Warning</source>
         <translation>警报</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="282"/>
+        <location filename="../../app/view/main_window.py" line="309"/>
         <source>Success</source>
         <translation>成功</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="289"/>
+        <location filename="../../app/view/main_window.py" line="316"/>
         <source>Info</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="343"/>
+        <location filename="../../app/view/main_window.py" line="370"/>
         <source>Send message success</source>
         <translation>发送测试成功</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="345"/>
+        <location filename="../../app/view/main_window.py" line="372"/>
         <source>Notification is disabled, cannot send message</source>
         <translation>通知已关闭,无法发送通知</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="347"/>
+        <location filename="../../app/view/main_window.py" line="374"/>
         <source>Required parameters are empty, send failed</source>
         <translation>需求参数为空,发送失败</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="349"/>
+        <location filename="../../app/view/main_window.py" line="376"/>
         <source>Parameter format is invalid, send failed</source>
         <translation>输入参数不合法,发送失败</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="351"/>
+        <location filename="../../app/view/main_window.py" line="378"/>
         <source>Network request failed, send failed</source>
         <translation>网络请求失败</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="353"/>
+        <location filename="../../app/view/main_window.py" line="380"/>
         <source>Server response error, send failed</source>
         <translation>服务器返回错误</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="355"/>
+        <location filename="../../app/view/main_window.py" line="382"/>
         <source>SMTP port is invalid, send failed</source>
         <translation>SMTP端口为空,发送失败</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="357"/>
+        <location filename="../../app/view/main_window.py" line="384"/>
         <source>SMTP connection failed, send failed</source>
         <translation>SMTP连接失败</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="359"/>
+        <location filename="../../app/view/main_window.py" line="386"/>
         <source>Unknown error, send failed</source>
         <translation>未知错误</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="371"/>
+        <location filename="../../app/view/main_window.py" line="398"/>
         <source>Task</source>
         <translation>任务</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="375"/>
+        <location filename="../../app/view/main_window.py" line="402"/>
         <source>Resource Setting</source>
         <translation>资源设置</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="380"/>
+        <location filename="../../app/view/main_window.py" line="407"/>
         <source>TaskCooldown</source>
         <translation>任务冷却管理</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="386"/>
+        <location filename="../../app/view/main_window.py" line="413"/>
         <source>Assis Tool Task</source>
         <translation>辅助工具</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="481"/>
-        <location filename="../../app/view/main_window.py" line="395"/>
-        <location filename="../../app/view/main_window.py" line="392"/>
+        <location filename="../../app/view/main_window.py" line="508"/>
+        <location filename="../../app/view/main_window.py" line="422"/>
+        <location filename="../../app/view/main_window.py" line="419"/>
         <source>Announcement</source>
         <translation>公告</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="402"/>
+        <location filename="../../app/view/main_window.py" line="429"/>
         <source>Setting</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="422"/>
+        <location filename="../../app/view/main_window.py" line="449"/>
         <source>ChainFlow Assistant</source>
         <translation>链程助手</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="441"/>
+        <location filename="../../app/view/main_window.py" line="468"/>
         <source>admin</source>
         <translation>管理员</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="447"/>
+        <location filename="../../app/view/main_window.py" line="474"/>
         <source>Debug</source>
         <translation>调试模式</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="514"/>
+        <location filename="../../app/view/main_window.py" line="541"/>
         <source>MFW Announcement</source>
         <translation>MFW 公告</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="516"/>
+        <location filename="../../app/view/main_window.py" line="543"/>
         <source>Resource Announcement</source>
         <translation>资源公告</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="518"/>
+        <location filename="../../app/view/main_window.py" line="545"/>
         <source>MFW Changelog</source>
         <translation>MFW更新日志</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="520"/>
+        <location filename="../../app/view/main_window.py" line="547"/>
         <source>Resource Changelog</source>
         <translation>资源更新日志</translation>
     </message>
     <message>
-        <location filename="../../app/view/main_window.py" line="563"/>
+        <location filename="../../app/view/main_window.py" line="590"/>
         <source>AssistTool Task</source>
         <translation>辅助工具</translation>
     </message>

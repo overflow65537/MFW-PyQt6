@@ -196,6 +196,7 @@ def Get_Values_list(path: str, key1: str, sp: bool = False) -> List:
     Args:
         path (str): 配置文件路径。
         key1 (str): 查询的键。
+        sp (bool, optional): 是否包含特殊参数。默认值为False。
 
     Returns:
         list: 组件名称列表。

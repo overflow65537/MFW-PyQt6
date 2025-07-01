@@ -110,6 +110,7 @@ class MainConfig(TypedDict, total=True):
     exe_path: str
     exe_args: str
     exe_wait_time: str
+    know_task:list
 
 
 InnerConfig = Dict[str, str]
@@ -176,6 +177,7 @@ def get_initial_main_config() -> MainConfig:
         "exe_path": "",
         "exe_args": "",
         "exe_wait_time": "10", 
+        "know_task": [],
     }
 
 class MaaConfigData:
