@@ -529,13 +529,26 @@ class SettingInterface(ScrollArea):
         if MFW_Version is None:
             MFW_Version = "unknown"
         else:
-            MFW_Version = MFW_Version.get("version","")
+            MFW_Version = MFW_Version.get("version", "")
 
-        self.aboutGroup = SettingCardGroup(self.tr("About"), self.Setting_scroll_widget)
+        self.aboutGroup = SettingCardGroup(
+            self.tr("Feedback and About"), self.Setting_scroll_widget
+        )
+
+        self.feedbackCard = DoubleButtonSettingCard(
+            text=self.tr("Open the debug folder"),
+            text2=self.tr("Generate a debug ZIP package"),
+            icon=FIF.UPDATE,
+            title=self.tr("Feedback"),
+            configItem=cfg.resource_update_channel,
+            comboBox=False,
+            content=self.tr("Current"),
+            parent=self.aboutGroup,
+        )
 
         self.updateCard = DoubleButtonSettingCard(
             text2=self.tr("Check for updates"),
-            text=self.tr("Submit Feedback"),
+            text=self.tr("About Resource"),
             icon=FIF.UPDATE,
             title=self.tr("Check for updates"),
             configItem=cfg.resource_update_channel,
@@ -543,7 +556,7 @@ class SettingInterface(ScrollArea):
             parent=self.aboutGroup,
         )
         self.aboutCard = DoubleButtonSettingCard(
-            text=self.tr("About"),
+            text=self.tr("About UI"),
             text2=self.tr("Check for updates"),
             icon=FIF.INFO,
             title=self.tr("ChainFlow Assistant") + " " + MFW_Version,
@@ -556,6 +569,7 @@ class SettingInterface(ScrollArea):
         self.aboutCard.combobox.setCurrentIndex(MFW_update_channel)
         self.updateCard.combobox.setCurrentIndex(resource_update_channel)
 
+        self.aboutGroup.addSettingCard(self.feedbackCard)
         self.aboutGroup.addSettingCard(self.updateCard)
         self.aboutGroup.addSettingCard(self.aboutCard)
 
@@ -656,7 +670,7 @@ class SettingInterface(ScrollArea):
         # 连接关于信号
         self.updateCard.clicked2.connect(self.update_check)
         self.updateCard.clicked2.connect(lambda: cfg.set(cfg.start_complete, True))
-        resource_issue_link = for_config_get_url(self.project_url, "issue")
+        resource_issue_link = for_config_get_url(self.project_url, "about")
         if resource_issue_link is None:
             resource_issue_link = self.project_url
             # 绑定一个弹出信息
