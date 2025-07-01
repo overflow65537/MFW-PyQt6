@@ -64,7 +64,7 @@ from ..common.signal_bus import signalBus
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 from ..common.config import cfg
-from ..utils.tool import Read_Config,path_to_list
+from ..utils.tool import Read_Config, path_to_list
 from ..utils.tool import ProcessThread
 
 
@@ -78,6 +78,7 @@ class MaaFW:
     agent: AgentClient | None
 
     def __init__(self):
+
         Toolkit.init_option("./")
         self.activate_resource = ""
         self.need_register_report = True
@@ -88,8 +89,20 @@ class MaaFW:
         self.agent = None
         self.agent_thread = None
 
-    def load_custom_objects(self, custom_dir):
+    def change_log_path(self, new_path: str):
+        """
+        在运行时更改用户目录。
 
+        Args:
+            new_path (str): 新的用户目录路径。
+        """
+        if not self.tasker:
+            self.tasker = Tasker(notification_handler=self.notification_handler)
+        logger.info(f"更改日志路径为{new_path}")
+        if new_path:
+            self.tasker.set_log_dir(new_path)
+
+    def load_custom_objects(self, custom_dir):
 
         if not os.path.exists(custom_dir):
             logger.warning(f"自定义文件夹 {custom_dir} 不存在")
