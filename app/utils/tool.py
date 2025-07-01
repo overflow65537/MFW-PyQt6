@@ -638,6 +638,8 @@ def for_config_get_url(url: str, mode: str) -> str | None:
         return_url = (
             f"https://api.github.com/repos/{username}/{repository}/releases/latest"
         )
+    elif mode == "about":
+        return_url = f"https://github.com/{username}/{repository}"
     return return_url
 
 

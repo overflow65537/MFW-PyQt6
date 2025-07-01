@@ -59,6 +59,7 @@ from ..common.maa_config_data import maa_config_data
 import subprocess
 import os
 import sys
+import zipfile
 
 
 class SettingInterface(ScrollArea):
@@ -529,13 +530,25 @@ class SettingInterface(ScrollArea):
         if MFW_Version is None:
             MFW_Version = "unknown"
         else:
-            MFW_Version = MFW_Version.get("version","")
+            MFW_Version = MFW_Version.get("version", "")
 
-        self.aboutGroup = SettingCardGroup(self.tr("About"), self.Setting_scroll_widget)
+        self.aboutGroup = SettingCardGroup(
+            self.tr("Feedback and About"), self.Setting_scroll_widget
+        )
+
+        self.feedbackCard = DoubleButtonSettingCard(
+            text=self.tr("Open the debug folder"),
+            text2=self.tr("Generate a debug ZIP package"),
+            icon=FIF.UPDATE,
+            title=self.tr("Feedback"),
+            configItem=cfg.resource_update_channel,
+            comboBox=False,
+            parent=self.aboutGroup,
+        )
 
         self.updateCard = DoubleButtonSettingCard(
             text2=self.tr("Check for updates"),
-            text=self.tr("Submit Feedback"),
+            text=self.tr("About Resource"),
             icon=FIF.UPDATE,
             title=self.tr("Check for updates"),
             configItem=cfg.resource_update_channel,
@@ -543,7 +556,7 @@ class SettingInterface(ScrollArea):
             parent=self.aboutGroup,
         )
         self.aboutCard = DoubleButtonSettingCard(
-            text=self.tr("About"),
+            text=self.tr("About UI"),
             text2=self.tr("Check for updates"),
             icon=FIF.INFO,
             title=self.tr("ChainFlow Assistant") + " " + MFW_Version,
@@ -556,6 +569,7 @@ class SettingInterface(ScrollArea):
         self.aboutCard.combobox.setCurrentIndex(MFW_update_channel)
         self.updateCard.combobox.setCurrentIndex(resource_update_channel)
 
+        self.aboutGroup.addSettingCard(self.feedbackCard)
         self.aboutGroup.addSettingCard(self.updateCard)
         self.aboutGroup.addSettingCard(self.aboutCard)
 
@@ -654,9 +668,12 @@ class SettingInterface(ScrollArea):
         self.MirrorCard.lineEdit.textChanged.connect(self._onMirrorCardChange)
 
         # 连接关于信号
+        self.feedbackCard.clicked.connect(self.open_debug_folder)
+        self.feedbackCard.clicked2.connect(self.zip_debug_folder)
+
         self.updateCard.clicked2.connect(self.update_check)
         self.updateCard.clicked2.connect(lambda: cfg.set(cfg.start_complete, True))
-        resource_issue_link = for_config_get_url(self.project_url, "issue")
+        resource_issue_link = for_config_get_url(self.project_url, "about")
         if resource_issue_link is None:
             resource_issue_link = self.project_url
             # 绑定一个弹出信息
@@ -676,6 +693,73 @@ class SettingInterface(ScrollArea):
             )
         self.aboutCard.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(REPO_URL)))
         self.aboutCard.clicked2.connect(self.update_self_func)
+    def open_debug_folder(self):
+        """打开debug文件夹"""
+        debug_path = os.path.join(".", "debug",maa_config_data.resource_name)
+        if os.path.exists(debug_path):
+            os.startfile(debug_path)
+    def zip_debug_folder(self):
+        """压缩debug文件夹"""
+        debug_path = os.path.join(".", "debug","maa.log")
+        log_path = os.path.join(".", "debug",maa_config_data.resource_name,"maa.log")
+        log_bak_path = os.path.join(".", "debug",maa_config_data.resource_name,"maa.log.bak")
+        #读取log_path中的maa.log和maa.log.bak并拼接,maa.log在后
+        maa_log = ""
+        if os.path.exists(log_bak_path):
+            with open(log_path, 'r', encoding='utf-8') as log_file:
+                maa_log += log_file.read()
+        if os.path.exists(log_path):
+            with open(log_bak_path, 'r', encoding='utf-8') as log_file:
+                maa_log += log_file.read()
+        print(maa_log)
+        if os.path.exists(debug_path):
+            os.remove(debug_path)
+        with open(debug_path, 'w', encoding='utf-8') as log_file:
+            log_file.write(maa_log)
+
+        #将maa.log和gui.log和vision文件夹和所有的png文件打包到一个zip中
+        
+        zip_path = os.path.join(".", "debug", "debug" + ".zip")
+        if os.path.exists(zip_path):
+            os.remove(zip_path)
+        with zipfile.ZipFile(zip_path, 'w') as zipf:
+            # 定义要添加到 zip 的文件和文件夹
+            files_to_add = ["maa.log", "gui.log"]
+            folders_to_add = ["vision"]
+
+            # 添加单个文件
+            for file in files_to_add:
+                file_path = os.path.join(".", "debug", file)
+                if os.path.exists(file_path):
+                    # 写入文件时保留相对路径
+                    zipf.write(file_path, os.path.relpath(file_path, "."))
+
+            # 添加文件夹及其内容
+            for folder in folders_to_add:
+                folder_path = os.path.join(".", "debug", folder)
+                if os.path.exists(folder_path):
+                    for root, dirs, files in os.walk(folder_path):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            # 写入文件时保留相对路径
+                            zipf.write(file_path, os.path.relpath(file_path, "."))
+
+            # 遍历 debug 文件夹，将所有 png 文件添加到 zip 中
+            debug_path = os.path.join(".", "debug")
+            for root, dirs, files in os.walk(debug_path):
+                for file in files:
+                    if file.endswith('.png'):
+                        file_path = os.path.join(root, file)
+                        # 写入文件时保留相对路径
+                        zipf.write(file_path, os.path.relpath(file_path, "."))
+                        
+        debug_zip_path = os.path.join(".", "debug")
+        if os.path.exists(debug_zip_path):
+            os.startfile(debug_zip_path)
+                
+        
+        
+
 
     def update_self_func(self):
         """更新程序。"""

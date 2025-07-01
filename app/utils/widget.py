@@ -989,6 +989,7 @@ class DoubleButtonSettingCard(SettingCard):
         icon: Union[str, QIcon, FluentIconBase],
         title,
         configItem: ConfigItem | None = None,
+        comboBox = True,
         content=None,
         parent=None,
     ):
@@ -1014,25 +1015,29 @@ class DoubleButtonSettingCard(SettingCard):
         super().__init__(icon, title, content, parent)
         self.button = PrimaryPushButton(text, self)
         self.button2 = PrimaryPushButton(text2, self)
-        self.combobox = ComboBox(self)
 
-        self.hBoxLayout.addWidget(self.combobox, 0, Qt.AlignmentFlag.AlignRight)
-        self.hBoxLayout.addSpacing(16)
+        if comboBox:
+            self.combobox = ComboBox(self)
+            self.hBoxLayout.addWidget(self.combobox, 0, Qt.AlignmentFlag.AlignRight)
+            self.hBoxLayout.addSpacing(16)
+            self.combobox.addItems(
+            [
+                self.tr("stable"),
+                self.tr("beta"),
+            ]
+             )
+            self.combobox.currentIndexChanged.connect(self.setValue)
+
         self.hBoxLayout.addWidget(self.button2, 0, Qt.AlignmentFlag.AlignRight)
         self.hBoxLayout.addSpacing(16)
         self.hBoxLayout.addWidget(self.button, 0, Qt.AlignmentFlag.AlignRight)
         self.hBoxLayout.addSpacing(16)
 
-        self.combobox.addItems(
-            [
-                self.tr("stable"),
-                self.tr("beta"),
-            ]
-        )
+        
 
         self.button.clicked.connect(self.clicked)
         self.button2.clicked.connect(self.clicked2)
-        self.combobox.currentIndexChanged.connect(self.setValue)
+        
         self.configItem = configItem
         if configItem:
             self.setValue(qconfig.get(configItem))

@@ -61,6 +61,7 @@ from ..utils.notice_message import NoticeMessageBox
 from ..utils.notice_enum import NoticeErrorCode
 from ..utils.widget import NoticeType, SendSettingCard
 from ..utils.tool import read_version
+from ..utils.maafw import maafw
 
 
 class CustomSystemThemeListener(SystemThemeListener):
@@ -119,6 +120,9 @@ class MainWindow(FluentWindow):
         self.stara_finish()
 
         QTimer.singleShot(5000, lambda: cfg.set(cfg.start_complete, True))
+        maafw.change_log_path(
+            os.path.join(".", "debug", maa_config_data.resource_name)
+        )
 
         logger.info(" 主界面初始化完成。")
 
