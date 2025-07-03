@@ -706,10 +706,10 @@ class SettingInterface(ScrollArea):
         #读取log_path中的maa.log和maa.log.bak并拼接,maa.log在后
         maa_log = ""
         if os.path.exists(log_bak_path):
-            with open(log_path, 'r', encoding='utf-8') as log_file:
+            with open(log_bak_path, 'r', encoding='utf-8') as log_file:
                 maa_log += log_file.read()
         if os.path.exists(log_path):
-            with open(log_bak_path, 'r', encoding='utf-8') as log_file:
+            with open(log_path, 'r', encoding='utf-8') as log_file:
                 maa_log += log_file.read()
         print(maa_log)
         if os.path.exists(debug_path):
