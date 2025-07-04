@@ -72,7 +72,11 @@ def init_maa_config_data(status: bool):
             maa_config_data.resource_name_list = list(
                 maa_config_data.resource_data.keys()
             )
+            maa_config_data.log_path = os.path.join(
+                ".", "debug", maa_config_data.resource_name
+            )
             logger.debug("配置文件初始化")
+            logger.debug(f"log_path: {maa_config_data.log_path}")
             logger.debug(
                 f"interface_config:\n{json.dumps(maa_config_data.interface_config, indent=4,ensure_ascii=False)}"
             )

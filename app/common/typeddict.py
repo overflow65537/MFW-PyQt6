@@ -197,4 +197,6 @@ class MaaConfigData:
     resource_data: Dict[str, str] = {}
     resource_name_list: List[str] = []
 
+    log_path: str = ""
+
 

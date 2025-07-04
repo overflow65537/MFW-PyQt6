@@ -121,7 +121,7 @@ class MainWindow(FluentWindow):
 
         QTimer.singleShot(5000, lambda: cfg.set(cfg.start_complete, True))
         maafw.change_log_path(
-            os.path.join(".", "debug", maa_config_data.resource_name)
+            maa_config_data.log_path
         )
 
         self.know_task()
