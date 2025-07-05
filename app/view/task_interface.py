@@ -1442,7 +1442,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                         "pipeline_override", {}
                                     )
                                     field = advanced_value.get("field", "")
-                                    value_list = task_option.get("value", "")
+                                    value_list = task_option.get("value", [])
                                     types = advanced_value.get(
                                         "type", []
                                     )  # 获取类型信息
@@ -1457,6 +1457,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                         type_list = types
                                     else:
                                         type_list = [types]
+                                    
+                                    if isinstance(value_list, str):
+                                        value_list = value_list.split(",")
 
                                     # 确保字段、类型、值数量匹配
                                     if len(field_list) != len(type_list) or len(
