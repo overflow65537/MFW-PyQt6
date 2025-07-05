@@ -574,6 +574,9 @@ class Update(BaseUpdate):
                         ),
                     }
                 )
+                mirror_version=mirror_data.get("data", {}).get("version_name")
+                if mirror_version:
+                    url=f"https://api.github.com/repos/{username}/{repository}/releases/tags/{mirror_version}"
 
                 github_dict = self.github_check(url, version=version)
                 if (
