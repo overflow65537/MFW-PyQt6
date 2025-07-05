@@ -285,7 +285,7 @@ def Get_Task_advanced_List(path: str, target: str) -> List[List[Any]] | None:
         List[List[Any]]: 格式化后的选项列表，结构为二维列表：
                         - 字符串 → [[value]]（单选项单字段）
                         - 列表 → [[value1], [value2], ...]（多选项单字段）
-                        - 列表的列表 → [[v1, v2], [v3, v4], ...]（多选项多字段）
+                        - 两个选项的列表 → [[v1, v2,v5,v6], [v3, v4,v7,v8]]（多选项多字段）
     """
     advanced_option = Read_Config(path)["advanced"].get(target, {})
     if not advanced_option:

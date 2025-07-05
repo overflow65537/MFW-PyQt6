@@ -76,7 +76,6 @@ from ..utils.tool import (
     show_error_message,
     get_console_path,
     MyNotificationHandler,
-    Get_Task_advanced_List,
 )
 from ..utils.maafw import maafw
 from ..common.config import cfg
@@ -668,7 +667,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         logger.info("配置文件存在")
         return_init = gui_init(resource_Path, maa_pi_config_Path, interface_Path)
-        self.Task_List.addItems(Get_Values_list_Option(maa_pi_config_Path, "task"))
+        self.update_task_list()
         self.Resource_Combox.addItems(Get_Values_list(interface_Path, key1="resource"))
         self.Control_Combox.addItems(Get_Values_list(interface_Path, key1="controller"))
         self.SelectTask_Combox_1.addItems(
@@ -989,7 +988,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     + fast_name
                     + ")\n"
                     + self.tr("May have an impact on the operation.")
-                    +"[/color]"
+                    + "[/color]"
                 )
             elif 301 < cost:
                 self.insert_colored_text(
@@ -1000,7 +999,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     + fast_name
                     + ")\n"
                     + self.tr("May have an impact on the operation.")
-                    +"[/color]"
+                    + "[/color]"
                 )
         if cfg.get(cfg.when_connect_success):
             self.send_notice("info", self.tr("Connection success"))
@@ -1416,7 +1415,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                         "pipeline_override", {}
                                     )
                                     field = advanced_value.get("field", "")
-                                    value = task_option.get("value", "")
+                                    value_list = task_option.get("value", "")
                                     types = advanced_value.get(
                                         "type", []
                                     )  # 获取类型信息
@@ -1431,11 +1430,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                         type_list = types
                                     else:
                                         type_list = [types]
-
-                                    if isinstance(value, str):
-                                        value_list = value.split(",")
-                                    else:
-                                        value_list = [value]
 
                                     # 确保字段、类型、值数量匹配
                                     if len(field_list) != len(type_list) or len(
@@ -1847,12 +1841,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 logger.error(f"最终杀死 ADB 进程失败: {e}")
                 return False
 
-    def task_list_changed(self):
-        self.Task_List.clear()
-        self.Task_List.addItems(
-            Get_Values_list_Option(maa_config_data.config_path, "task")
-        )
-
     def dragging_finished(self):
         self.AddTask_Button.setText(self.tr("Add Task"))
         self.Task_List.setCurrentRow(-1)
@@ -1968,7 +1956,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             name_list = []
             name_list.append(task.get("name", ""))
             for i in task.get("option", []):
-                name_list.append(i.get("value", ""))
+                value=i.get("value", "")
+                if isinstance(value,list):
+                    name_list.extend(value)
+                else:
+                    name_list.append(value)
             name = " ".join(name_list)
 
             item = QListWidgetItem(name)
@@ -2258,30 +2250,55 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         option_layout.addLayout(v_layout)
 
                 # 处理advanced字段
-                advanced = task.get("advanced", [])
-                if advanced:
-                    for advanced in advanced:
+                advanced_list = task.get("advanced", [])
+                if advanced_list:
+                    for advanced in advanced_list:
                         advanced_layout = QVBoxLayout()
-                        advanced_label = BodyLabel(self)
-                        advanced_label.setText(advanced)
-                        advanced_label.setFont(QFont("Arial", 10))
-                        advanced_layout.addWidget(advanced_label)
-                        advanced_select_box = EditableComboBox(self)
-                        combox_list = Get_Task_advanced_List(
-                            maa_config_data.interface_config_path, advanced
-                        )
-                        if not combox_list:
-                            raise ValueError(f"{advanced} 的配置错误")
-                        for item in combox_list:
-                            display_text = ",".join(map(str, item))
-                            advanced_select_box.addItem(display_text)
+                        advanced_layout.setObjectName(advanced)
+                        advanced_dict = maa_config_data.interface_config.get(
+                            "advanced", {}
+                        ).get(advanced)
+                        if isinstance(advanced_dict.get("field"), str)or len(advanced_dict.get("field", [])) == 1:
+                            advanced_label = BodyLabel(self)
+                            if isinstance(advanced_dict.get("field"), str):
+                                # 如果是字符串，则直接设置文本
+                                advanced_label.setText(advanced_dict.get("field"))
+                            else:
+                                advanced_label.setText(advanced_dict.get("field")[0])
+                            advanced_layout.addWidget(advanced_label)
+                            advanced_select_box = EditableComboBox(self)
+                            advanced_select_box.addItems(
+                                advanced_dict.get("default", [])
+                            )
 
-                        advanced_select_box.setSizePolicy(
-                            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-                        )
-                        scroll_area_width = self.scroll_area.width()
-                        advanced_select_box.setFixedWidth(scroll_area_width - 20)
-                        advanced_layout.addWidget(advanced_select_box)
+                            advanced_select_box.setSizePolicy(
+                                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+                            )
+                            scroll_area_width = self.scroll_area.width()
+                            advanced_select_box.setFixedWidth(scroll_area_width - 20)
+                            advanced_layout.addWidget(advanced_select_box)
+
+                        elif isinstance(advanced_dict.get("field"), list):
+                            for idx, filed in enumerate(advanced_dict.get("field", [])):
+                                # 如果是列表，则逐个添加标签和选择框
+                                advanced_label = BodyLabel(self)
+                                advanced_label.setText(filed)
+                                advanced_layout.addWidget(advanced_label)
+
+                                advanced_select_box = EditableComboBox(self)
+                                advanced_select_box.addItems(
+                                    advanced_dict.get("default", [])[idx]
+                                )
+                                advanced_select_box.setSizePolicy(
+                                    QSizePolicy.Policy.Expanding,
+                                    QSizePolicy.Policy.Fixed,
+                                )
+                                scroll_area_width = self.scroll_area.width()
+                                advanced_select_box.setFixedWidth(
+                                    scroll_area_width - 20
+                                )
+                                advanced_layout.addWidget(advanced_select_box)
+
                         option_layout.addLayout(advanced_layout)
 
                 # 处理 doc 字段
@@ -2363,6 +2380,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             item = layout.itemAt(i)
             if not isinstance(item, QVBoxLayout):
                 continue  # 如果item不是QVBoxLayout，跳过本次循环
+            widget_name=item.objectName()
             for j in range(item.count()):
                 widget = item.itemAt(j).widget()
                 if isinstance(widget, BodyLabel):
@@ -2374,17 +2392,26 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     advanced = True
                     advanced_glabal = True
 
-            if name and selected_value:
-                if advanced:
-                    selected_options.append(
-                        {"name": name, "value": selected_value, "advanced": advanced}
-                    )
-                else:
-                    selected_options.append({"name": name, "value": selected_value})
+                if name and selected_value:
+                    if advanced:
+                        found = False
+                        for i in selected_options:
+                            if i["name"] == widget_name:
+                                i["value"].append(selected_value)
+                                found = True
+                                break                
+                        if not found:
+                            selected_options.append(
+                                {"name": widget_name, "value": [selected_value], "advanced": advanced}
+                            )
+            
+                    else:
+                        selected_options.append({"name": name, "value": selected_value})
 
-            # 重置变量
-            name = None
-            selected_value = None
+                    # 重置变量
+                    name = None
+                    selected_value = None
+                    advanced = False
 
         return advanced_glabal, selected_options
 
