@@ -1198,6 +1198,33 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         连接 ADB
         """
+        # 雷电模拟器特殊方法,重新获取pid
+        emu_type = maa_config_data.config.get("adb", {}).get("adb_path", "")
+        if "LDPlayer" in emu_type:
+            logger.debug("获取雷电模拟器pid")
+            device = await maafw.detect_adb()
+            for i in device:
+                if i.name == "LDPlayer":
+                    if (
+                        maa_config_data.config.get("adb", {})["config"].get(
+                            "extras"
+                        )
+                        is None
+                    ):
+                        logger.debug("extras不存在，创建")
+                        maa_config_data.config.get("adb", {})["config"] = i.config
+                    else:
+                        logger.debug("extras存在，更新pid")
+                        maa_config_data.config.get("adb", {})["config"]["extras"][
+                            "ld"
+                        ]["pid"] = (
+                            i.config.get("extras", {}).get("ld", {}).get("pid", 0)
+                        )
+                    logger.debug(
+                        f"获取到pid: {maa_config_data.config.get("adb",{})['config']['extras']['ld']['pid']}"
+                    )
+                    Save_Config(maa_config_data.config_path, maa_config_data.config)
+                    break
         if (
             not await maafw.connect_adb(
                 maa_config_data.config.get("adb", {})["adb_path"],
