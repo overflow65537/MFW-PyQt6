@@ -2168,13 +2168,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 for j in range(item.count()):
                     widget = item.itemAt(j).widget()
                     if isinstance(widget, BodyLabel) and widget.text() == name:
+                        advenced_idx=0
                         for k in range(item.count()):
                             combo_box = item.itemAt(k).widget()
-                            if isinstance(combo_box, ComboBox) or isinstance(
-                                combo_box, EditableComboBox
-                            ):
+                            if isinstance(combo_box, ComboBox) :
                                 combo_box.setCurrentText(value)
                                 break
+                            elif isinstance(combo_box, EditableComboBox ) :
+                                combo_box.setText(value[advenced_idx])
+                                advenced_idx+=1
+                                continue
                         break
 
     def Save_Resource(self):
@@ -2426,13 +2429,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     if advanced:
                         found = False
                         for i in selected_options:
-                            if i["name"] == widget_name:
+                            if i["name"] == name:
                                 i["value"].append(selected_value)
                                 found = True
                                 break                
                         if not found:
                             selected_options.append(
-                                {"name": widget_name, "value": [selected_value], "advanced": advanced}
+                                {"name": name, "value": [selected_value], "advanced": advanced}
                             )
             
                     else:
