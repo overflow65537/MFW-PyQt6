@@ -1206,20 +1206,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             for i in device:
                 if i.name == "LDPlayer":
                     if (
-                        maa_config_data.config.get("adb", {})["config"].get(
-                            "extras"
-                        )
+                        maa_config_data.config.get("adb", {})["config"].get("extras")
                         is None
                     ):
                         logger.debug("extras不存在，创建")
                         maa_config_data.config.get("adb", {})["config"] = i.config
                     else:
                         logger.debug("extras存在，更新pid")
-                        maa_config_data.config.get("adb", {})["config"]["extras"][
-                            "ld"
-                        ]["pid"] = (
-                            i.config.get("extras", {}).get("ld", {}).get("pid", 0)
-                        )
+                        maa_config_data.config.get("adb", {})["config"]["extras"]["ld"][
+                            "pid"
+                        ] = (i.config.get("extras", {}).get("ld", {}).get("pid", 0))
                     logger.debug(
                         f"获取到pid: {maa_config_data.config.get("adb",{})['config']['extras']['ld']['pid']}"
                     )
@@ -1376,13 +1372,57 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         await maafw.run_task(task.get("entry", ""), task.get("pipeline_override", {}))
 
         # 找到task的entry
+    def merge_advanced_options(self,option):
 
+        # 存储合并结果的字典
+        advanced_groups = {}
+        # 存储没有 advanced 字段的选项
+        non_advanced_options = []
+
+        # 遍历 option 列表，按 advanced 值分组
+        for item in option:
+            if "advanced" in item:
+                advanced_key = item["advanced"]
+                if advanced_key not in advanced_groups:
+                    advanced_groups[advanced_key] = []
+                advanced_groups[advanced_key].append(item["value"])
+            else:
+                non_advanced_options.append(item)
+
+        # 创建包含合并后高级选项的列表
+        merged_advanced_options = [
+            {
+                "name": advanced_key,
+                "value": value_list,
+                "advanced": True
+            }
+            for advanced_key, value_list in advanced_groups.items()
+        ]
+
+        # 合并非高级选项和合并后的高级选项
+        new_option = non_advanced_options + merged_advanced_options
+        return new_option
     async def run_tasks(self):
         """
         运行任务
         """
+        
+
+
         self.task_failed = None
         self.S2_Button.setEnabled(True)
+        restore_task_list=[
+    
+        ]
+        for task_object in maa_config_data.config.get("task", []):
+            if task_object.get("advanced"):
+                task_object["option"]=self.merge_advanced_options(task_object["option"])
+                restore_task_list.append(task_object)
+            else:
+                restore_task_list.append(task_object)
+        print(restore_task_list)
+
+
         for task_list in maa_config_data.config.get("task", []):
 
             override_options = {}
@@ -1457,7 +1497,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                         type_list = types
                                     else:
                                         type_list = [types]
-                                    
+
                                     if isinstance(value_list, str):
                                         value_list = value_list.split(",")
 
@@ -1518,11 +1558,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                                     :param obj: 要处理的对象
                                                     :return: 替换后的对象
                                                     """
-                                                    if (
-                                                        isinstance(obj, str)
-                                                        and (placeholder in obj)
+                                                    if isinstance(obj, str) and (
+                                                        placeholder in obj
                                                     ):  # 如果是字符串且等于占位符
-                                                        return obj.replace(placeholder, str(cv))
+                                                        return obj.replace(
+                                                            placeholder, str(cv)
+                                                        )
 
                                                     elif isinstance(
                                                         obj, (list, tuple)
@@ -1986,8 +2027,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             name_list = []
             name_list.append(task.get("name", ""))
             for i in task.get("option", []):
-                value=i.get("value", "")
-                if isinstance(value,list):
+                value = i.get("value", "")
+                if isinstance(value, list):
                     name_list.extend(value)
                 else:
                     name_list.append(value)
@@ -2168,16 +2209,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 for j in range(item.count()):
                     widget = item.itemAt(j).widget()
                     if isinstance(widget, BodyLabel) and widget.text() == name:
-                        advenced_idx=0
                         for k in range(item.count()):
                             combo_box = item.itemAt(k).widget()
-                            if isinstance(combo_box, ComboBox) :
+                            if isinstance(combo_box, ComboBox) and combo_box.objectName() == name:
                                 combo_box.setCurrentText(value)
                                 break
-                            elif isinstance(combo_box, EditableComboBox ) :
-                                combo_box.setText(value[advenced_idx])
-                                advenced_idx+=1
-                                continue
+                            elif isinstance(combo_box, EditableComboBox) and combo_box.objectName() == name:
+                                combo_box.setText(value)
+                                break
                         break
 
     def Save_Resource(self):
@@ -2264,6 +2303,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         v_layout.addWidget(label)
 
                         select_box = ComboBox(self)
+                        select_box.setObjectName(option)
 
                         select_box.addItems(
                             list(
@@ -2291,15 +2331,22 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         advanced_dict = maa_config_data.interface_config.get(
                             "advanced", {}
                         ).get(advanced)
-                        if isinstance(advanced_dict.get("field"), str)or len(advanced_dict.get("field", [])) == 1:
+                        if (
+                            isinstance(advanced_dict.get("field"), str)
+                            or len(advanced_dict.get("field", [])) == 1
+                        ):
                             advanced_label = BodyLabel(self)
+                            advanced_select_box = EditableComboBox(self)
                             if isinstance(advanced_dict.get("field"), str):
                                 # 如果是字符串，则直接设置文本
                                 advanced_label.setText(advanced_dict.get("field"))
+                                advanced_select_box.setObjectName(advanced_dict.get("field"))
                             else:
                                 advanced_label.setText(advanced_dict.get("field")[0])
+                                advanced_select_box.setObjectName(advanced_dict.get("field")[0])
+
                             advanced_layout.addWidget(advanced_label)
-                            advanced_select_box = EditableComboBox(self)
+                            
                             advanced_select_box.addItems(
                                 advanced_dict.get("default", [])
                             )
@@ -2312,13 +2359,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             advanced_layout.addWidget(advanced_select_box)
 
                         elif isinstance(advanced_dict.get("field"), list):
-                            for idx, filed in enumerate(advanced_dict.get("field", [])):
+                            for idx, field in enumerate(advanced_dict.get("field", [])):
                                 # 如果是列表，则逐个添加标签和选择框
                                 advanced_label = BodyLabel(self)
-                                advanced_label.setText(filed)
+                                advanced_label.setText(field)
                                 advanced_layout.addWidget(advanced_label)
 
                                 advanced_select_box = EditableComboBox(self)
+                                advanced_select_box.setObjectName(field)
+
                                 advanced_select_box.addItems(
                                     advanced_dict.get("default", [])[idx]
                                 )
@@ -2413,7 +2462,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             item = layout.itemAt(i)
             if not isinstance(item, QVBoxLayout):
                 continue  # 如果item不是QVBoxLayout，跳过本次循环
-            widget_name=item.objectName()
+            widget_name = item.objectName()
             for j in range(item.count()):
                 widget = item.itemAt(j).widget()
                 if isinstance(widget, BodyLabel):
@@ -2427,17 +2476,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
                 if name and selected_value:
                     if advanced:
-                        found = False
-                        for i in selected_options:
-                            if i["name"] == name:
-                                i["value"].append(selected_value)
-                                found = True
-                                break                
-                        if not found:
-                            selected_options.append(
-                                {"name": name, "value": [selected_value], "advanced": advanced}
-                            )
-            
+                        selected_options.append(
+                            {
+                                "name": name,
+                                "value": selected_value,
+                                "advanced": widget_name,
+                            }
+                        )
+
                     else:
                         selected_options.append({"name": name, "value": selected_value})
 
