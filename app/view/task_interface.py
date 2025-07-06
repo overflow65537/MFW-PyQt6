@@ -53,7 +53,7 @@ from qfluentwidgets import (
     InfoBarPosition,
     BodyLabel,
     ComboBox,
-    EditableComboBox,
+    EditableComboBox,ToolTipFilter, ToolTipPosition
 )
 
 from ..view.UI_task_interface import Ui_Task_Interface
@@ -1372,7 +1372,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         await maafw.run_task(task.get("entry", ""), task.get("pipeline_override", {}))
 
         # 找到task的entry
-    def merge_advanced_options(self,option):
+
+    def merge_advanced_options(self, option):
 
         # 存储合并结果的字典
         advanced_groups = {}
@@ -1391,37 +1392,31 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         # 创建包含合并后高级选项的列表
         merged_advanced_options = [
-            {
-                "name": advanced_key,
-                "value": value_list,
-                "advanced": True
-            }
+            {"name": advanced_key, "value": value_list, "advanced": True}
             for advanced_key, value_list in advanced_groups.items()
         ]
 
         # 合并非高级选项和合并后的高级选项
         new_option = non_advanced_options + merged_advanced_options
         return new_option
+
     async def run_tasks(self):
         """
         运行任务
         """
-        
-
 
         self.task_failed = None
         self.S2_Button.setEnabled(True)
-        restore_task_list=[
-    
-        ]
+        restore_task_list = []
         for task_object in maa_config_data.config.get("task", []):
             if task_object.get("advanced"):
-                task_object["option"]=self.merge_advanced_options(task_object["option"])
+                task_object["option"] = self.merge_advanced_options(
+                    task_object["option"]
+                )
                 restore_task_list.append(task_object)
             else:
                 restore_task_list.append(task_object)
         print(restore_task_list)
-
 
         for task_list in maa_config_data.config.get("task", []):
 
@@ -2211,10 +2206,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     if isinstance(widget, BodyLabel) and widget.text() == name:
                         for k in range(item.count()):
                             combo_box = item.itemAt(k).widget()
-                            if isinstance(combo_box, ComboBox) and combo_box.objectName() == name:
+                            if (
+                                isinstance(combo_box, ComboBox)
+                                and combo_box.objectName() == name
+                            ):
                                 combo_box.setCurrentText(value)
                                 break
-                            elif isinstance(combo_box, EditableComboBox) and combo_box.objectName() == name:
+                            elif (
+                                isinstance(combo_box, EditableComboBox)
+                                and combo_box.objectName() == name
+                            ):
                                 combo_box.setText(value)
                                 break
                         break
@@ -2340,13 +2341,25 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             if isinstance(advanced_dict.get("field"), str):
                                 # 如果是字符串，则直接设置文本
                                 advanced_label.setText(advanced_dict.get("field"))
-                                advanced_select_box.setObjectName(advanced_dict.get("field"))
+                                advanced_label.setToolTip(advanced_dict.get("doc"))
+                                advanced_label.installEventFilter(ToolTipFilter(advanced_label, 0, ToolTipPosition.TOP))
+                                advanced_select_box.setObjectName(
+                                    advanced_dict.get("field")
+                                )
+                                advanced_select_box.setToolTip(advanced_dict.get("doc"))
+                                advanced_select_box.installEventFilter(ToolTipFilter(advanced_select_box, 0, ToolTipPosition.TOP))
                             else:
                                 advanced_label.setText(advanced_dict.get("field")[0])
-                                advanced_select_box.setObjectName(advanced_dict.get("field")[0])
+                                advanced_label.setToolTip(advanced_dict.get("doc")[0])
+                                advanced_label.installEventFilter(ToolTipFilter(advanced_label, 0, ToolTipPosition.TOP))
 
+                                advanced_select_box.setObjectName(
+                                    advanced_dict.get("field")[0]
+                                )
+                                advanced_select_box.setToolTip(advanced_dict.get("doc")[0]) 
+                                advanced_select_box.installEventFilter(ToolTipFilter(advanced_select_box, 0, ToolTipPosition.TOP))
                             advanced_layout.addWidget(advanced_label)
-                            
+
                             advanced_select_box.addItems(
                                 advanced_dict.get("default", [])
                             )
@@ -2363,10 +2376,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                 # 如果是列表，则逐个添加标签和选择框
                                 advanced_label = BodyLabel(self)
                                 advanced_label.setText(field)
+                                advanced_label.setToolTip(advanced_dict.get("doc")[idx])
+                                advanced_label.installEventFilter(ToolTipFilter(advanced_label, 0, ToolTipPosition.TOP))
                                 advanced_layout.addWidget(advanced_label)
 
                                 advanced_select_box = EditableComboBox(self)
                                 advanced_select_box.setObjectName(field)
+                                advanced_select_box.setToolTip(advanced_dict.get("doc")[idx])
+                                advanced_select_box.installEventFilter(ToolTipFilter(advanced_select_box, 0, ToolTipPosition.TOP))
+
 
                                 advanced_select_box.addItems(
                                     advanced_dict.get("default", [])[idx]
