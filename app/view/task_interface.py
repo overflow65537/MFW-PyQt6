@@ -1520,9 +1520,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                                     """
                                                     if (
                                                         isinstance(obj, str)
-                                                        and obj == placeholder
+                                                        and (placeholder in obj)
                                                     ):  # 如果是字符串且等于占位符
-                                                        return cv
+                                                        return obj.replace(placeholder, str(cv))
 
                                                     elif isinstance(
                                                         obj, (list, tuple)
