@@ -53,7 +53,9 @@ from qfluentwidgets import (
     InfoBarPosition,
     BodyLabel,
     ComboBox,
-    EditableComboBox,ToolTipFilter, ToolTipPosition
+    EditableComboBox,
+    ToolTipFilter,
+    ToolTipPosition,
 )
 
 from ..view.UI_task_interface import Ui_Task_Interface
@@ -2342,22 +2344,40 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                 # 如果是字符串，则直接设置文本
                                 advanced_label.setText(advanced_dict.get("field"))
                                 advanced_label.setToolTip(advanced_dict.get("doc"))
-                                advanced_label.installEventFilter(ToolTipFilter(advanced_label, 0, ToolTipPosition.TOP))
+                                advanced_label.installEventFilter(
+                                    ToolTipFilter(
+                                        advanced_label, 0, ToolTipPosition.TOP
+                                    )
+                                )
                                 advanced_select_box.setObjectName(
                                     advanced_dict.get("field")
                                 )
                                 advanced_select_box.setToolTip(advanced_dict.get("doc"))
-                                advanced_select_box.installEventFilter(ToolTipFilter(advanced_select_box, 0, ToolTipPosition.TOP))
+                                advanced_select_box.installEventFilter(
+                                    ToolTipFilter(
+                                        advanced_select_box, 0, ToolTipPosition.TOP
+                                    )
+                                )
                             else:
                                 advanced_label.setText(advanced_dict.get("field")[0])
                                 advanced_label.setToolTip(advanced_dict.get("doc")[0])
-                                advanced_label.installEventFilter(ToolTipFilter(advanced_label, 0, ToolTipPosition.TOP))
+                                advanced_label.installEventFilter(
+                                    ToolTipFilter(
+                                        advanced_label, 0, ToolTipPosition.TOP
+                                    )
+                                )
 
                                 advanced_select_box.setObjectName(
                                     advanced_dict.get("field")[0]
                                 )
-                                advanced_select_box.setToolTip(advanced_dict.get("doc")[0]) 
-                                advanced_select_box.installEventFilter(ToolTipFilter(advanced_select_box, 0, ToolTipPosition.TOP))
+                                advanced_select_box.setToolTip(
+                                    advanced_dict.get("doc")[0]
+                                )
+                                advanced_select_box.installEventFilter(
+                                    ToolTipFilter(
+                                        advanced_select_box, 0, ToolTipPosition.TOP
+                                    )
+                                )
                             advanced_layout.addWidget(advanced_label)
 
                             advanced_select_box.addItems(
@@ -2377,14 +2397,23 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                 advanced_label = BodyLabel(self)
                                 advanced_label.setText(field)
                                 advanced_label.setToolTip(advanced_dict.get("doc")[idx])
-                                advanced_label.installEventFilter(ToolTipFilter(advanced_label, 0, ToolTipPosition.TOP))
+                                advanced_label.installEventFilter(
+                                    ToolTipFilter(
+                                        advanced_label, 0, ToolTipPosition.TOP
+                                    )
+                                )
                                 advanced_layout.addWidget(advanced_label)
 
                                 advanced_select_box = EditableComboBox(self)
                                 advanced_select_box.setObjectName(field)
-                                advanced_select_box.setToolTip(advanced_dict.get("doc")[idx])
-                                advanced_select_box.installEventFilter(ToolTipFilter(advanced_select_box, 0, ToolTipPosition.TOP))
-
+                                advanced_select_box.setToolTip(
+                                    advanced_dict.get("doc")[idx]
+                                )
+                                advanced_select_box.installEventFilter(
+                                    ToolTipFilter(
+                                        advanced_select_box, 0, ToolTipPosition.TOP
+                                    )
+                                )
 
                                 advanced_select_box.addItems(
                                     advanced_dict.get("default", [])[idx]
