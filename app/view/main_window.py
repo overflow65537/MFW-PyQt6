@@ -503,46 +503,55 @@ class MainWindow(FluentWindow):
 
             QTimer.singleShot(500, self.show_announcement)
 
+    def read_announcement_file(self, file_path):
+        """
+        读取指定路径的公告文件，返回标题和内容。
+
+        :param file_path: 公告文件的路径
+        :return: 标题和内容，若文件读取失败则返回 None, None
+        """
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                if lines:
+                    title = lines[0].strip()
+                    content = ''.join(lines[1:])
+                    return title, content
+        except Exception as e:
+            logger.error(f"读取文件 {file_path} 失败，错误信息：{e}")
+        return None, None
+
     def show_announcement(self):
         """显示公告 MessageBox"""
         title = self.tr("Announcement")
-
-        with open("./MFW_resource/doc/Announcement.md", "r", encoding="utf-8") as f:
-            gui_announced = f.read()
-
-        try:
-            with open(
-                os.path.join(maa_config_data.resource_path, "Announcement.md"),
-                "r",
-                encoding="utf-8",
-            ) as f:
-                resource = f.read()
-        except Exception as e:
-            resource = None
-        try:
-            with open(
-                os.path.join(os.getcwd(), "MFW_changelog.md"),
-                "r",
-                encoding="utf-8",
-            ) as f:
-                MFW_Changelog = f.read()
-        except Exception as e:
-            MFW_Changelog = None
-        try:
-            with open(
-                os.path.join(maa_config_data.resource_path, "resource_changelog.md"),
-                "r",
-                encoding="utf-8",
-            ) as f:
-                resource_Changelog = f.read()
-        except Exception as e:
-            resource_Changelog = None
         content = {}
-        content[self.tr("MFW Announcement")] = gui_announced
-        if resource:
-            content[self.tr("Resource Announcement")] = resource
+
+        # 读取 MFW 公告
+        gui_announce_path = os.path.join(".", "MFW_resource", "doc", "Announcement.md")
+        gui_title, gui_announced = self.read_announcement_file(gui_announce_path)
+        if gui_announced:
+            content[self.tr("MFW Announcement")] = gui_announced
+
+        # 读取 MFW 更新日志
+        mfw_changelog_path = os.path.join(".", "MFW_changelog.md")
+        mfw_changelog_title, MFW_Changelog = self.read_announcement_file(mfw_changelog_path)
         if MFW_Changelog:
             content[self.tr("MFW Changelog")] = MFW_Changelog
+
+        # 读取资源公告文件夹里的所有 md 文件
+        resource_announce_folder = os.path.join(maa_config_data.resource_path, "announcement")
+        if os.path.isdir(resource_announce_folder):
+            for root, _, files in os.walk(resource_announce_folder):
+                for file in sorted(files):
+                    if file.lower().endswith('.md') and file != "resource_changelog.md":
+                        file_path = os.path.join(root, file)
+                        custom_title, custom_content = self.read_announcement_file(file_path)
+                        if custom_content:
+                            content[custom_title or file] = custom_content
+
+        # 读取资源更新日志
+        resource_changelog_path = os.path.join(maa_config_data.resource_path, "resource_changelog.md")
+        resource_changelog_title, resource_Changelog = self.read_announcement_file(resource_changelog_path)
         if resource_Changelog:
             content[self.tr("Resource Changelog")] = resource_Changelog
 
@@ -557,7 +566,6 @@ class MainWindow(FluentWindow):
             cfg.set(cfg.hide_notice, True)
 
         cfg.set(cfg.show_notice, False)
-
     def resizeEvent(self, e):
         """重写尺寸事件。"""
         super().resizeEvent(e)
