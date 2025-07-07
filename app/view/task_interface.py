@@ -1418,9 +1418,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 restore_task_list.append(task_object)
             else:
                 restore_task_list.append(task_object)
-        print(restore_task_list)
 
-        for task_list in maa_config_data.config.get("task", []):
+        for task_list in restore_task_list:
 
             override_options = {}
             if not self.need_runing:
