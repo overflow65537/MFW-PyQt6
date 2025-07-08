@@ -138,13 +138,12 @@ jobs:
       - name: Install(macos)
         if: matrix.os == 'macos-13'
         run: |
-          sudo python ./build_pyinstaller.py ${{ needs.meta.outputs.tag }}
-        shell: pwsh  
+          sudo python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
 
       - name: Install(other)
         if: matrix.os != 'macos-13'
         run: |
-          python ./build_pyinstaller.py ${{ needs.meta.outputs.tag }}
+          python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
         shell: pwsh  
 
       - name: Upload artifact

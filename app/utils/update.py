@@ -168,8 +168,8 @@ class BaseUpdate(QThread):
         比较两个版本号的大小。
 
         参数：
-        version1 (str): 第一个版本号字符串。
-        version2 (str): 第二个版本号字符串。
+        version1 (str): interface版本号字符串。
+        version2 (str): ui版本号字符串。
 
         返回：
         int: 如果 version1 大于 version2，则返回 1；如果 version1 小于 version2，则返回 -1；如果 version1 等于 version2，则返回 0。
@@ -186,14 +186,13 @@ class BaseUpdate(QThread):
 
             for i in range(max_length):
                 if v1_parts[i] > v2_parts[i]:
-                    return 1  # version1 大于 version2
-                elif v1_parts[i] < v2_parts[i]:
-                    return -1  # version1 小于 version2
-
-            return 0  # version1 等于 version2
+                    return False  # version1 大于 version2
+                elif v1_parts[i] <= v2_parts[i]:
+                    return True # version1 小于等于 version2
+            return False
         except Exception as e:
             logger.exception(f"比较版本号时出错: {e}")
-            return 0
+            return False
 
     def _mirror_response(self, url):
         """
@@ -663,7 +662,7 @@ class Update(BaseUpdate):
             logger.info(f"版本检查 - 最低需求: {check_interface} | 当前: {version}")
 
             compare_result = self.compare_versions(check_interface, version)
-            if compare_result == 1:
+            if not compare_result:
                 logger.warning("当前版本过低，已中止更新")
                 signalBus.update_download_finished.emit(
                     {
@@ -881,7 +880,7 @@ class Update(BaseUpdate):
             logger.info(f"最低需求版本: {check_interface} | 当前版本: {version}")
 
             compare_result = self.compare_versions(check_interface, version)
-            if compare_result == 1:
+            if not compare_result:
                 logger.warning("当前版本过低，已中止更新")
                 signalBus.update_download_finished.emit(
                     {
