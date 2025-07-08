@@ -111,10 +111,41 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if cfg.get(cfg.resource_exist):
             self.init_ui()
             self.check_task_consistency()
+            self.know_task()
 
         else:
             logger.warning("资源缺失")
             self.show_error(self.tr("Resource file not detected"))
+
+    def know_task(self):
+        """获取已知任务"""
+        know_task = maa_config_data.config.get("know_task")
+        unknow_task = []
+        if know_task == [] or know_task is None:
+            maa_config_data.config["know_task"] = Get_Values_list(
+                maa_config_data.interface_config_path, key1="task", sp=True
+            )
+            Save_Config(maa_config_data.config_path, maa_config_data.config)
+        else:
+            task_list = Get_Values_list(
+                maa_config_data.interface_config_path, key1="task", sp=True
+            )
+            for task in task_list:
+                if task not in know_task:
+                    logger.info(f"未知任务: {task}")
+
+                    know_task.append(task)
+                    unknow_task.append(task)
+        if unknow_task != []:
+            self.show_info_bar(
+                {
+                    "status": "info",
+                    "msg": self.tr("New task found: ")
+                    + ", ".join(map(str, unknow_task)),
+                }
+            )
+        maa_config_data.config["know_task"] = know_task
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def get_option_case_names(
         self, interface_data: Union[dict, InterfaceData], option_key: str
@@ -267,6 +298,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.clear_content()
             self.init_ui()
             self.check_task_consistency()
+            self.know_task()
 
         else:
             logger.info("资源缺失,清空界面")

@@ -123,39 +123,7 @@ class MainWindow(FluentWindow):
         QTimer.singleShot(5000, lambda: cfg.set(cfg.start_complete, True))
         maafw.change_log_path(maa_config_data.log_path)
 
-        self.know_task()
-
         logger.info(" 主界面初始化完成。")
-
-    def know_task(self):
-        """获取已知任务"""
-        know_task = maa_config_data.config.get("know_task")
-        unknow_task = []
-        if know_task == [] or know_task is None:
-            maa_config_data.config["know_task"] = Get_Values_list(
-                maa_config_data.interface_config_path, key1="task", sp=True
-            )
-            Save_Config(maa_config_data.config_path, maa_config_data.config)
-        else:
-            task_list = Get_Values_list(
-                maa_config_data.interface_config_path, key1="task", sp=True
-            )
-            for task in task_list:
-                if task not in know_task:
-                    logger.info(f"未知任务: {task}")
-
-                    know_task.append(task)
-                    unknow_task.append(task)
-        if unknow_task != []:
-            self.show_info_bar(
-                {
-                    "status": "info",
-                    "msg": self.tr("New task found: ")
-                    + ", ".join(map(str, unknow_task)),
-                }
-            )
-        maa_config_data.config["know_task"] = know_task
-        Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def dingtalk_setting(self):
         if self.dingtalk.exec():
