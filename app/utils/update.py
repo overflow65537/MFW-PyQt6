@@ -44,8 +44,10 @@ from ..utils.tool import (
     Read_Config,
     Save_Config,
     decrypt,
-    read_version
+    get_os_type,
+    get_arch,   
 )
+from ..common.__version__ import __version__
 
 
 # region 更新
@@ -490,12 +492,10 @@ class Update(BaseUpdate):
         version = maa_config_data.interface_config.get("version")
         channel = self.channel_map.get(cfg.get(cfg.resource_update_channel))
 
-        version_data =  read_version()
-        if version_data:
-            os_type = version_data.get("os")
-            arch = version_data.get("arch")
-        else:
-            raise Exception("Update failed: version_data is None")
+
+        os_type = get_os_type()
+        arch = get_arch()
+
         # 检查 url 类型并转换
         if url is None:
             logger.error("URL 为 None，无法进行 GitHub 检查")
@@ -621,11 +621,7 @@ class Update(BaseUpdate):
     def mirror_download(self, res_id, mirror_data: Dict[str, dict]):
         """mirror下载更新"""
 
-        version_datas =  read_version()
-        if version_datas:
-            version = version_datas.get("version", "v0.0.1")
-        else:
-            raise ValueError(self.tr("update failed: version_data is None"))
+        version =__version__
 
         self.stop_flag = False
         try:
@@ -775,14 +771,9 @@ class Update(BaseUpdate):
 
     def github_download(self, update_dict: Dict):
         """github下载更新"""
-        version_data =  read_version()
-        if version_data:
-            os_type = version_data.get("os")
-            arch = version_data.get("arch")
-            version = version_data.get("version", "v0.0.1")
-        else:
-            raise ValueError(self.tr("update failed: version_data is None"))
-
+        os_type = get_os_type()
+        arch = get_arch()
+        version = __version__
         self.stop_flag = False
         download_url = None
         try:
@@ -1093,13 +1084,10 @@ class DownloadBundle(Update):
 # region 更新自身
 class UpdateSelf(BaseUpdate):
     def run(self):
-        version_data =  read_version()
-        if version_data:
-            os_type = version_data.get("os")
-            arch = version_data.get("arch")
-            version = version_data.get("version", "v0.0.1")
-        else:
-            raise ValueError(self.tr("update failed: version_data is None"))
+        os_type = get_os_type()
+        arch = get_arch()
+        version = __version__
+
         channel = self.channel_map.get(cfg.get(cfg.MFW_update_channel))
 
         cdk = self.Mirror_ckd()
@@ -1164,18 +1152,7 @@ class UpdateSelf(BaseUpdate):
 
             if not self._download(download_url, use_proxies=True):
                 return
-            try:
-                tag_name = github_dict.get("tag_name")
-                version_data["version"] = str(tag_name)
-                Save_Config(
-                    os.path.join(os.getcwd(), "config", "version.json"), version_data
-                )
-            except Exception as e:
-                logger.exception("版本文件更新失败")
-                signalBus.download_self_finished.emit(
-                    {"status": "failed", "msg": self.tr("Version file update failed")}
-                )
-                return
+            
         if mirror_data.get("code") != 0:
             logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
             signalBus.download_self_finished.emit(
@@ -1223,11 +1200,6 @@ class UpdateSelf(BaseUpdate):
                 changelog_path = os.path.join(os.getcwd(), "MFW_changelog.md")
                 with open(changelog_path, "w", encoding="utf-8") as f:
                     f.write(changelog)
-            version_name = mirror_data["data"].get("version_name", "")
-            version_data["version"] = version_name
-            Save_Config(
-                os.path.join(os.getcwd(), "config", "version.json"), version_data
-            )
             return
         else:
             logger.warning("镜像检查成功但未找到CDK，切换到GitHub下载")
@@ -1244,7 +1216,7 @@ class UpdateSelf(BaseUpdate):
                 target_version = mirror_data["data"].get(
                     "version_name", "default_version"
                 )
-                github_url = self.assemble_gitHub_url(version_data, target_version)
+                github_url = self.assemble_gitHub_url( target_version)
                 logger.debug(f"GitHub下载地址: {github_url}")
 
                 if not self._download(github_url,use_proxies = False):
@@ -1259,25 +1231,13 @@ class UpdateSelf(BaseUpdate):
                     }
                 )
                 return
-
-            version_name = mirror_data["data"].get("version_name", "")
-            version_data["version"] = str(version_name)
-            try:
-                Save_Config(
-                    os.path.join(os.getcwd(), "config", "version.json"), version_data
-                )
-            except Exception as e:
-                logger.exception("版本文件更新失败")
-                signalBus.download_self_finished.emit(
-                    {"status": "failed", "msg": self.tr("Version file update failed")}
-                )
             return
 
-    def assemble_gitHub_url(self, version_data: dict, target_version: str) -> str:
+    def assemble_gitHub_url(self, target_version: str) -> str:
         """
         输入版本号和项目地址，返回GitHub项目源代码压缩包下载地址
         """
-        url = f"https://github.com/overflow65537/MFW-PyQt6/releases/download/{target_version}/MFW-PyQt6-{version_data["os"]}-{version_data["arch"]}-{target_version}.zip"
+        url = f"https://github.com/overflow65537/MFW-PyQt6/releases/download/{target_version}/MFW-PyQt6-{get_os_type()}-{get_arch()}-{target_version}.zip"
         return url
 
     def _download(self, download_url, use_proxies):

@@ -51,10 +51,10 @@ from ..utils.widget import (
     ProxySettingCard,
 )
 from ..utils.update import Update, UpdateSelf
-from ..utils.tool import Save_Config, for_config_get_url, decrypt, encrypt, read_version
+from ..utils.tool import Save_Config, for_config_get_url, decrypt, encrypt
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
-
+from ..common.__version__ import __version__
 
 import subprocess
 import os
@@ -525,13 +525,6 @@ class SettingInterface(ScrollArea):
 
         MFW_update_channel = cfg.get(cfg.MFW_update_channel)
         resource_update_channel = cfg.get(cfg.resource_update_channel)
-        MFW_Version = read_version()
-
-        if MFW_Version is None:
-            MFW_Version = "unknown"
-        else:
-            MFW_Version = MFW_Version.get("version", "")
-
         self.aboutGroup = SettingCardGroup(
             self.tr("Feedback and About"), self.Setting_scroll_widget
         )
@@ -559,7 +552,7 @@ class SettingInterface(ScrollArea):
             text=self.tr("About UI"),
             text2=self.tr("Check for updates"),
             icon=FIF.INFO,
-            title=self.tr("ChainFlow Assistant") + " " + MFW_Version,
+            title=self.tr("ChainFlow Assistant") + " " + __version__,
             configItem=cfg.MFW_update_channel,
             content=self.tr(
                 "ChainFlow Assistant is open source under the GPLv3 license. Visit the project URL for more information."

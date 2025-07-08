@@ -12,8 +12,6 @@ on:
   workflow_dispatch:
 
 jobs:
-
-
   changelog:
     name: Generate changelog
     runs-on: ubuntu-latest
@@ -107,6 +105,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
+        
+      - name: set version
+        run: |
+          echo "VERSION=${{ needs.meta.outputs.tag }}" >> app/common/__version__.py
 
       - name: Set up Python
         if: matrix.os == 'macos-13'

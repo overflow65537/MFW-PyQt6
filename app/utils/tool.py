@@ -877,33 +877,25 @@ def path_to_list(path):
     return parts
 
 
-def read_version():
-    if os.path.exists(os.path.join(os.getcwd(), "config", "version.json")):
-        logger.debug("从json文件读取版本号")
-        return Read_Config(os.path.join(os.getcwd(), "config", "version.json"))
-    elif os.path.exists(os.path.join(os.getcwd(), "config", "version.txt")):
-        logger.debug("从txt文件读取版本号")
-        try:
-            with open("config/version.txt", "r", encoding="utf-8") as f:
-                version_list = f.read().strip().split()
-                version_data = {
-                    "os": version_list[0],
-                    "arch": version_list[1],
-                    "version": version_list[2],
-                }
-                return version_data
-
-        except Exception as e:
-            logger.exception(f"读取版本号时出错: {e}")
-            return None
-
+def get_os_type():
+    if sys.platform.startswith("linux"):
+        os_type = "linux"
+    elif sys.platform.startswith("win"):
+        os_type = "win"
+    elif sys.platform.startswith("darwin"):
+        os_type = "macos"
     else:
-        logger.error("未找到版本号文件")
-        return {
-            "os": "unknown",
-            "arch": "unknown",
-            "version": "unknown",
-        }
+        os_type = "unknown"
+    return os_type
+
+
+def get_arch():
+    arch = platform.machine()
+    if arch in ["x86_64", "AMD64", "x64", "i386", "i686"]:
+        arch = "x86_64"
+    elif arch in ["arm64", "aarch64"]:
+        arch = "aarch64"
+    return arch
 
 
 class MyNotificationHandler(NotificationHandler):

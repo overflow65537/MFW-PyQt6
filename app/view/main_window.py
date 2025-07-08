@@ -60,8 +60,9 @@ from ..common.maa_config_data import maa_config_data
 from ..utils.notice_message import NoticeMessageBox
 from ..utils.notice_enum import NoticeErrorCode
 from ..utils.widget import NoticeType, SendSettingCard
-from ..utils.tool import Save_Config, read_version,Get_Values_list
+from ..utils.tool import Save_Config, Get_Values_list
 from ..utils.maafw import maafw
+from ..common.__version__ import __version__
 
 
 class CustomSystemThemeListener(SystemThemeListener):
@@ -120,38 +121,41 @@ class MainWindow(FluentWindow):
         self.stara_finish()
 
         QTimer.singleShot(5000, lambda: cfg.set(cfg.start_complete, True))
-        maafw.change_log_path(
-            maa_config_data.log_path
-        )
+        maafw.change_log_path(maa_config_data.log_path)
 
         self.know_task()
 
         logger.info(" 主界面初始化完成。")
+
     def know_task(self):
         """获取已知任务"""
         know_task = maa_config_data.config.get("know_task")
         unknow_task = []
         if know_task == [] or know_task is None:
-            maa_config_data.config["know_task"] =  Get_Values_list(maa_config_data.interface_config_path, key1="task", sp=True)
-            Save_Config(maa_config_data.config_path,maa_config_data.config)
+            maa_config_data.config["know_task"] = Get_Values_list(
+                maa_config_data.interface_config_path, key1="task", sp=True
+            )
+            Save_Config(maa_config_data.config_path, maa_config_data.config)
         else:
-            task_list = Get_Values_list(maa_config_data.interface_config_path, key1="task", sp=True)
+            task_list = Get_Values_list(
+                maa_config_data.interface_config_path, key1="task", sp=True
+            )
             for task in task_list:
                 if task not in know_task:
                     logger.info(f"未知任务: {task}")
-                    
+
                     know_task.append(task)
                     unknow_task.append(task)
         if unknow_task != []:
-            self.show_info_bar({
-                        "status":"info",
-                        "msg":self.tr("New task found: ")+", ".join(map(str, unknow_task))
-                    })
+            self.show_info_bar(
+                {
+                    "status": "info",
+                    "msg": self.tr("New task found: ")
+                    + ", ".join(map(str, unknow_task)),
+                }
+            )
         maa_config_data.config["know_task"] = know_task
-        Save_Config(
-            maa_config_data.config_path, maa_config_data.config
-        )
-            
+        Save_Config(maa_config_data.config_path, maa_config_data.config)
 
     def dingtalk_setting(self):
         if self.dingtalk.exec():
@@ -451,12 +455,7 @@ class MainWindow(FluentWindow):
         config_name = cfg.get(cfg.maa_config_name)
         version = maa_config_data.interface_config.get("version", "")
 
-        MFW_version = read_version()
-
-        if MFW_version is None:
-            title += " unknown"
-        elif MFW_version:
-            title += f" {MFW_version.get('version')}"
+        title += f" {__version__}"
 
         if resource_name != "":
             title += f" {resource_name}"
@@ -515,7 +514,7 @@ class MainWindow(FluentWindow):
                 lines = f.readlines()
                 if lines:
                     title = lines[0].strip()
-                    content = ''.join(lines[1:])
+                    content = "".join(lines[1:])
                     return title, content
         except Exception as e:
             logger.error(f"读取文件 {file_path} 失败，错误信息：{e}")
@@ -534,24 +533,34 @@ class MainWindow(FluentWindow):
 
         # 读取 MFW 更新日志
         mfw_changelog_path = os.path.join(".", "MFW_changelog.md")
-        mfw_changelog_title, MFW_Changelog = self.read_announcement_file(mfw_changelog_path)
+        mfw_changelog_title, MFW_Changelog = self.read_announcement_file(
+            mfw_changelog_path
+        )
         if MFW_Changelog:
             content[self.tr("MFW Changelog")] = MFW_Changelog
 
         # 读取资源公告文件夹里的所有 md 文件
-        resource_announce_folder = os.path.join(maa_config_data.resource_path, "announcement")
+        resource_announce_folder = os.path.join(
+            maa_config_data.resource_path, "announcement"
+        )
         if os.path.isdir(resource_announce_folder):
             for root, _, files in os.walk(resource_announce_folder):
                 for file in sorted(files):
-                    if file.lower().endswith('.md') and file != "resource_changelog.md":
+                    if file.lower().endswith(".md") and file != "resource_changelog.md":
                         file_path = os.path.join(root, file)
-                        custom_title, custom_content = self.read_announcement_file(file_path)
+                        custom_title, custom_content = self.read_announcement_file(
+                            file_path
+                        )
                         if custom_content:
                             content[custom_title or file] = custom_content
 
         # 读取资源更新日志
-        resource_changelog_path = os.path.join(maa_config_data.resource_path, "resource_changelog.md")
-        resource_changelog_title, resource_Changelog = self.read_announcement_file(resource_changelog_path)
+        resource_changelog_path = os.path.join(
+            maa_config_data.resource_path, "resource_changelog.md"
+        )
+        resource_changelog_title, resource_Changelog = self.read_announcement_file(
+            resource_changelog_path
+        )
         if resource_Changelog:
             content[self.tr("Resource Changelog")] = resource_Changelog
 
@@ -566,6 +575,7 @@ class MainWindow(FluentWindow):
             cfg.set(cfg.hide_notice, True)
 
         cfg.set(cfg.show_notice, False)
+
     def resizeEvent(self, e):
         """重写尺寸事件。"""
         super().resizeEvent(e)

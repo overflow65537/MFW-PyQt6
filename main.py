@@ -52,10 +52,10 @@ from app.common.config import cfg
 from app.utils.logger import logger
 from app.view.main_window import MainWindow
 from app.common.config import Language
-from app.utils.tool import show_error_message, read_version
+from app.utils.tool import show_error_message
 from app.utils.check_utils import check
 from app.utils.maafw import maafw
-
+from app.common.__version__ import __version__
 
 def main(resource: str, config: str, directly: bool, DEV: bool):
     check(resource, config, directly, DEV)
@@ -211,32 +211,9 @@ if __name__ == "__main__":
             maafw.agent_thread.stop()  # 确保线程停止
 
     atexit.register(clear_agent)
-    try:
-        version_data = read_version()
-        if version_data:
-            version = version_data.get("version","")
-        else:
-            version = "unknown"
-    except:
-        version = "unknown"
-
-        if sys.platform.startswith("linux"):
-            platf = "linux"
-        elif sys.platform.startswith("win"):
-            platf = "win"
-        elif sys.platform.startswith("darwin"):
-            platf = "macos"
-        else:
-            platf = "unknown"
-
-        version_data = {
-            "version": version,
-            "os": platf,
-            "arch": "unknown",
-        }
 
     start_symbol()
-    logger.info(f"MFW 版本:{version}")
+    logger.info(f"MFW 版本:{__version__}")
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--resource", default=False)
     parser.add_argument("-c", "--config", default=False)
