@@ -176,6 +176,10 @@ class BaseUpdate(QThread):
 
         """
         try:
+            #去掉v
+            version1 = version1.replace("v", "")
+            version2 = version2.replace("v", "")
+
             v1_parts = [int(part) for part in version1.split(".")]
             v2_parts = [int(part) for part in version2.split(".")]
 
