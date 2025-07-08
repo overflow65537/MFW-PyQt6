@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
 )
 
 from qfluentwidgets import (
+    PrimaryPushButton,
     PushButton,
     BodyLabel,
     ComboBox,
@@ -108,7 +109,7 @@ class Ui_Task_Interface(object):
         # 启动/停止按钮和完成后操作标签
 
         self.S2But_FinLayout = QHBoxLayout()
-        self.S2_Button = PushButton(Task_Interface)
+        self.S2_Button = PrimaryPushButton(Task_Interface)
         self.S2_Button.setObjectName("S2_Button")
 
         self.S2But_FinLayout.addWidget(self.S2_Button)

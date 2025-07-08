@@ -38,7 +38,7 @@ from qfluentwidgets import (
     ScrollArea,
     BodyLabel,
     ComboBox,
-    PushButton,
+    PrimaryPushButton
 )
 
 from typing import List, Optional, Dict
@@ -100,7 +100,7 @@ class AssistToolTaskInterface(QWidget):
         self.stacked_widget = QStackedWidget(self)
         self.stacked_v_layout.addWidget(self.stacked_widget, 1)
 
-        self.S2_Button = PushButton(self.tr("start"), self)
+        self.S2_Button = PrimaryPushButton(self.tr("start"), self)
         self.S2_Button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.stacked_v_layout.addWidget(self.S2_Button, 0)
 
