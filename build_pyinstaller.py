@@ -29,32 +29,14 @@ import shutil
 import sys
 import json  # 导入 json 模块
 
-
-def write_version_file(platform, architecture, version):
-    version_file_path = os.path.join(
-        os.getcwd(), "dist", "MFW", "config", "version.json"  
-    )
-    # 准备要写入 JSON 文件的数据
-    version_data = {
-        "os": platform,
-        "arch": architecture,  
-        "version": version
-    }
-    with open(version_file_path, "w", encoding="utf-8") as version_file:
-        # 使用 json.dump 将数据以 JSON 格式写入文件
-        json.dump(version_data, version_file, ensure_ascii=False, indent=4)
-        print(f"write version file to {version_file_path}")
-
-
 # 获取参数
 # === 构建参数处理 ===
 print("[INFO] Received command line arguments:", sys.argv)
-if len(sys.argv) != 4:  # 参数校验：平台/架构/版本号
-    sys.argv = [sys.argv[0], "win", "x86_64", "你不该下到这个版本"]
+version = sys.argv[-1]
 
-platform = sys.argv[1]
-architecture = sys.argv[2]
-version = sys.argv[3]
+#写入版本号
+with open(os.path.join(os.getcwd(), "app", "common","__version__.py"), "w") as f:
+    f.write(f"__version__ = \"{version}\"")
 
 
 # === 依赖包路径发现 ===
@@ -162,9 +144,6 @@ for i in bin_files:
     os.remove(os.path.join(os.getcwd(), "dist", "MFW", "_internal", i))
 
 shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin"))
-
-# 写入版本信息
-write_version_file(platform, architecture, version)
 
 # 复制README和许可证并在开头加上MFW_前缀
 for file in ["README.md", "README-en.md", "LICENSE"]:

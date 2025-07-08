@@ -106,10 +106,6 @@ jobs:
         with:
           submodules: true
         
-      - name: set version
-        run: |
-          echo "VERSION=${{ needs.meta.outputs.tag }}" >> app/common/__version__.py
-
       - name: Set up Python
         if: matrix.os == 'macos-13'
         uses: actions/setup-python@v4
@@ -142,13 +138,13 @@ jobs:
       - name: Install(macos)
         if: matrix.os == 'macos-13'
         run: |
-          sudo python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          sudo python ./build_pyinstaller.py ${{ needs.meta.outputs.tag }}
         shell: pwsh  
 
       - name: Install(other)
         if: matrix.os != 'macos-13'
         run: |
-          python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          python ./build_pyinstaller.py ${{ needs.meta.outputs.tag }}
         shell: pwsh  
 
       - name: Upload artifact
