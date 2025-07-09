@@ -28,29 +28,18 @@ import os
 import time
 import sys
 import subprocess
-import psutil 
-
-
-def clear_zip_file():
-    try:
-        if os.path.exists(zip_file_name):
-            os.remove(zip_file_name)
-            print(f"Deleted: {zip_file_name}")
-    except:
-        error_message = f"failed to delete {zip_file_name}"
-        with open("ERROR.log", "a") as log_file:
-            log_file.write(error_message + "\n")
+import psutil
 
 
 def is_mfw_running():
     try:
         if sys.platform.startswith("win32"):
-            for proc in psutil.process_iter(['name']):
-                if proc.info['name'] == 'MFW.exe':
+            for proc in psutil.process_iter(["name"]):
+                if proc.info["name"] == "MFW.exe":
                     return True
         elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
-            for proc in psutil.process_iter(['name']):
-                if proc.info['name'] == 'MFW':
+            for proc in psutil.process_iter(["name"]):
+                if proc.info["name"] == "MFW":
                     return True
         return False
     except psutil.Error:
@@ -66,7 +55,20 @@ def close_mfw_with_retry():
         try:
             if sys.platform.startswith("win32"):
                 # 以管理员权限执行 taskkill 命令
-                subprocess.run(["powershell", "-Command", "Start-Process", "taskkill", "-ArgumentList", "'/F', '/IM', 'MFW.exe'", "-Verb", "RunAs", "-Wait"], check=True)
+                subprocess.run(
+                    [
+                        "powershell",
+                        "-Command",
+                        "Start-Process",
+                        "taskkill",
+                        "-ArgumentList",
+                        "'/F', '/IM', 'MFW.exe'",
+                        "-Verb",
+                        "RunAs",
+                        "-Wait",
+                    ],
+                    check=True,
+                )
             elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
                 # 以管理员权限执行 pkill 命令
                 subprocess.run(["sudo", "pkill", "MFW"], check=True)
@@ -77,18 +79,43 @@ def close_mfw_with_retry():
                 log_file.write(error_message + "\n")
             retry_count += 1
             if retry_count < max_retries:
-                print("Failed to get permission, waiting 5 seconds before retrying...")
-                time.sleep(5)
-    if retry_count == max_retries and is_mfw_running():  # 达到最大重试次数且 MFW 仍在运行
+                print("Failed to get permission, retrying in 5 seconds...")
+                for sec in range(5, 0, -1):
+                    print(f"Retrying in {sec} seconds...")
+                    time.sleep(1)
+
+    if (
+        retry_count == max_retries and is_mfw_running()
+    ):  # 达到最大重试次数且 MFW 仍在运行
+        #写入错误日志
+        with open("ERROR.log", "a") as log_file:
+            log_file.write("Failed to close MFW after multiple attempts\n")
         sys.exit("Failed to close MFW after multiple attempts")
 
+
+# 删除ERROR文件
+if os.path.exists("ERROR.log"):
+    os.remove("ERROR.log")
 
 for i in range(4, 0, -1):
     print(f"update in {i} seconds")
     time.sleep(1)
 
-# 检查MFW-ChainFlow Assistant是否在运行,在运行的话尝试关闭
-close_mfw_with_retry()
+# 最多检查 3 次，每次间隔 5 秒
+max_checks = 3
+check_count = 0
+while check_count < max_checks:
+    if not is_mfw_running():
+        break
+    print("MFW is still running, checking again in 5 seconds...")
+    for sec in range(5, 0, -1):
+        print(f"Checking again in {sec} seconds...")
+        time.sleep(1)
+    check_count += 1
+
+# 如果 3 次检查后 MFW 仍在运行，尝试关闭它
+if is_mfw_running():
+    close_mfw_with_retry()
 
 zip_file_name = os.path.join(os.getcwd(), "update.zip")
 
@@ -107,6 +134,7 @@ if os.path.exists(zip_file_name):
                     )
                     with open("ERROR.log", "a") as log_file:
                         log_file.write(error_message + "\n")
+                    exit(1)
     except zipfile.BadZipFile:
         error_message = f"file {zip_file_name} is not a zip file"
         if sys.platform.startswith("win32"):
@@ -116,23 +144,13 @@ if os.path.exists(zip_file_name):
             print(error_message)
             input("Press Enter to continue...")
         sys.exit(error_message)
+        exit(1)
 
 # 删除ZIP文件
-clear_zip_file()
-if os.path.exists("changes.json"):
-    import json
 
-    with open("changes.json", "r") as f:
-        changes: dict = json.load(f)
-    delete_list = changes.get("deleted", [])
-    for i in delete_list:
-        try:
-            os.remove(i)
-            print(f"Deleted: {i}")
-        except:
-            error_message = f"failed to delete {i}"
-            with open("ERROR.log", "a") as log_file:
-                log_file.write(error_message + "\n")
+if os.path.exists(zip_file_name):
+    os.remove(zip_file_name)
+    print(f"Deleted: {zip_file_name}")
 
 # 重启程序
 if sys.platform.startswith("win32"):
