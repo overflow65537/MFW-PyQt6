@@ -28,6 +28,7 @@ import os
 import time
 import sys
 import subprocess
+import psutil 
 
 
 def clear_zip_file():
@@ -41,44 +42,54 @@ def clear_zip_file():
             log_file.write(error_message + "\n")
 
 
+def is_mfw_running():
+    try:
+        if sys.platform.startswith("win32"):
+            for proc in psutil.process_iter(['name']):
+                if proc.info['name'] == 'MFW.exe':
+                    return True
+        elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
+            for proc in psutil.process_iter(['name']):
+                if proc.info['name'] == 'MFW':
+                    return True
+        return False
+    except psutil.Error:
+        return False
+
+
+def close_mfw_with_retry():
+    max_retries = 3
+    retry_count = 0
+    while retry_count < max_retries:
+        if not is_mfw_running():  # 检查 MFW 是否在运行
+            break
+
+        try:
+            if sys.platform.startswith("win32"):
+                # 以管理员权限执行 taskkill 命令
+                subprocess.run(["powershell", "-Command", "Start-Process", "taskkill", "-ArgumentList", "'/F', '/IM', 'MFW.exe'", "-Verb", "RunAs", "-Wait"], check=True)
+            elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
+                # 以管理员权限执行 pkill 命令
+                subprocess.run(["sudo", "pkill", "MFW"], check=True)
+            break  # 关闭成功，跳出循环
+        except subprocess.CalledProcessError as e:
+            error_message = f"Failed to close MFW: {e}"
+            with open("ERROR.log", "a") as log_file:
+                log_file.write(error_message + "\n")
+            retry_count += 1
+            if retry_count < max_retries:
+                print("Failed to get permission, waiting 5 seconds before retrying...")
+                time.sleep(5)
+    if retry_count == max_retries and is_mfw_running():  # 达到最大重试次数且 MFW 仍在运行
+        sys.exit("Failed to close MFW after multiple attempts")
+
+
 for i in range(4, 0, -1):
     print(f"update in {i} seconds")
     time.sleep(1)
 
 # 检查MFW-ChainFlow Assistant是否在运行,在运行的话尝试关闭
-if sys.platform.startswith("win32"):
-    try:
-        subprocess.run(["taskkill", "/F", "/IM", "MFW.exe"], check=True)
-    except subprocess.CalledProcessError as e:
-        error_message = f"Failed to close MFW.exe: {e}"
-        with open("ERROR.log", "a") as log_file:
-            log_file.write(error_message + "\n")
-elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
-    try:
-        subprocess.run(["pkill", "MFW"], check=True)
-    except subprocess.CalledProcessError as e:
-        error_message = f"Failed to close MFW: {e}"
-        with open("ERROR.log", "a") as log_file:
-            log_file.write(error_message + "\n")
-else:
-    sys.exit("Unsupported platform")
-# 关闭adb服务
-if sys.platform.startswith("win32"):
-    try:
-        subprocess.run(["taskkill", "/F", "/IM", "adb.exe"], check=True)
-    except subprocess.CalledProcessError as e:
-        error_message = f"Failed to close adb.exe: {e}"
-        with open("ERROR.log", "a") as log_file:
-            log_file.write(error_message + "\n")
-elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
-    try:
-        subprocess.run(["pkill", "adb"], check=True)
-    except subprocess.CalledProcessError as e:
-        error_message = f"Failed to close adb.exe: {e}"
-        with open("ERROR.log", "a") as log_file:
-            log_file.write(error_message + "\n")
-else:
-    sys.exit("Unsupported platform")
+close_mfw_with_retry()
 
 zip_file_name = os.path.join(os.getcwd(), "update.zip")
 
