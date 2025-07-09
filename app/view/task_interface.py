@@ -2759,7 +2759,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             ("dingtalk", cfg.Notice_DingTalk_status),
             ("lark", cfg.Notice_Lark_status),
             ("smtp", cfg.Notice_SMTP_status),
-            ("WxPusher", cfg.Notice_WxPusher_status),
+            ("wxpusher", cfg.Notice_WxPusher_status),
             ("qywx", cfg.Notice_QYWX_status),
         ]:
             if cfg.get(status_key):  # 仅启用状态为 True 时发送
