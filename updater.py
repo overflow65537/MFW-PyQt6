@@ -63,7 +63,6 @@ def close_mfw_with_retry():
     while retry_count < max_retries:
         if not is_mfw_running():  # 检查 MFW 是否在运行
             break
-
         try:
             if sys.platform.startswith("win32"):
                 # 以管理员权限执行 taskkill 命令

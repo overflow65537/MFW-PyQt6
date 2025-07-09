@@ -27,13 +27,12 @@ import os
 import site
 import shutil
 import sys
-import json  # 导入 json 模块
 
 # 获取参数
 # === 构建参数处理 ===
 print("[INFO] Received command line arguments:", sys.argv)
 if len(sys.argv) != 4:  # 参数校验：平台/架构/版本号
-    sys.argv = [sys.argv[0], "win", "x86_64", "你不该下到这个版本"]
+    sys.argv = [sys.argv[0], "win", "x86_64", "v1.0.0"]
 
 platform = sys.argv[1]
 architecture = sys.argv[2]
