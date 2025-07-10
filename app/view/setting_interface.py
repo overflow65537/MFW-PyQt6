@@ -809,9 +809,10 @@ class SettingInterface(ScrollArea):
         """启动更新程序。"""
         try:
             if sys.platform.startswith("win32"):
-                subprocess.Popen(["./MFWUpdater1.exe"])
+                from subprocess import CREATE_NEW_PROCESS_GROUP, DETACHED_PROCESS
+                subprocess.Popen(["./MFWUpdater1.exe", "-update"], creationflags=CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS)
             elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
-                subprocess.Popen(["./MFWUpdater1"])
+                subprocess.Popen(["./MFWUpdater1", "-update"], start_new_session=True)
             else:
                 raise NotImplementedError("Unsupported platform")
         except Exception as e:

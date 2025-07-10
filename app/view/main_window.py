@@ -122,9 +122,15 @@ class MainWindow(FluentWindow):
 
         QTimer.singleShot(5000, lambda: cfg.set(cfg.start_complete, True))
         maafw.change_log_path(maa_config_data.log_path)
+        self.update_failed()
 
         logger.info(" 主界面初始化完成。")
-
+    def update_failed(self):
+        if os.path.exists("ERROR.log"):
+            self.show_info_bar({
+                "status": "failed",
+                "msg": self.tr("Update Failed, Please Check Log File"),
+            })
     def dingtalk_setting(self):
         if self.dingtalk.exec():
             if cfg.get(cfg.Notice_DingTalk_status):
