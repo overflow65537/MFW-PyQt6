@@ -81,7 +81,7 @@ def extract_zip_file(update1_zip_name):
                         error_message = f"try extract {file_info.filename} failed: {e}"
                         with open("ERROR.log", "a") as log_file:
                             log_file.write(error_message + "\n")
-                            if sys.argv[1] == "-update":
+                            if sys.argv[1] != "-update":
                                 input(f"{error_message}\nPress Enter to continue...")
                         sys.exit(1)
 
