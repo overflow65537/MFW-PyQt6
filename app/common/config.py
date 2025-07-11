@@ -129,7 +129,7 @@ class Config(QConfig):
     auto_update_resource = ConfigItem(
         "Maa", "auto_update_resource", True, BoolValidator()
     )
-    auto_update_MFW = ConfigItem("Maa", "auto_update_MFW", False, BoolValidator())
+    auto_update_MFW = ConfigItem("Maa", "auto_update_MFW", True, BoolValidator())
     force_github = ConfigItem("Maa", "force_github", False, BoolValidator())
     start_complete = ConfigItem("Maa", "start_complete", False, BoolValidator())
     # 外部通知

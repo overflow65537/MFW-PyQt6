@@ -59,7 +59,7 @@ from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 from ..utils.notice_message import NoticeMessageBox
 from ..utils.notice_enum import NoticeErrorCode
-from ..utils.widget import NoticeType, SendSettingCard
+from ..utils.widget import NoticeType, SendSettingCard, ShowDownload
 from ..utils.tool import Save_Config, Get_Values_list
 from ..utils.maafw import maafw
 from ..common.__version__ import __version__
@@ -125,12 +125,16 @@ class MainWindow(FluentWindow):
         self.update_failed()
 
         logger.info(" 主界面初始化完成。")
+
     def update_failed(self):
         if os.path.exists("ERROR.log"):
-            self.show_info_bar({
-                "status": "failed",
-                "msg": self.tr("Update Failed, Please Check Log File"),
-            })
+            self.show_info_bar(
+                {
+                    "status": "failed",
+                    "msg": self.tr("Update Failed, Please Check Log File"),
+                }
+            )
+
     def dingtalk_setting(self):
         if self.dingtalk.exec():
             if cfg.get(cfg.Notice_DingTalk_status):
@@ -188,32 +192,69 @@ class MainWindow(FluentWindow):
 
     def stara_finish(self):
         """启动完成后的操作"""
-        if cfg.get(cfg.auto_update_MFW):
-            self.settingInterface.update_self_func()
         if (
             maa_config_data.config.get("adb", {}).get("adb_path") == ""
             and "adb" not in self.taskInterface.Control_Combox.currentText()
         ):
             self.taskInterface.AutoDetect_Button.click()
-        if cfg.get(cfg.resource_exist):
+            
+        if cfg.get(cfg.resource_exist) and cfg.get(cfg.auto_update_resource):
+            logger.info("启动GUI后自动更新资源")
+            
+            signalBus.update_download_finished.connect(self.on_resource_update_finished)
+            # signalBus.update_download_stopped.connect(self.on_resource_update_finished)
+            self.settingInterface.update_check()
+        else:
+            self.check_ui_update()
 
-            if cfg.get(cfg.auto_update_resource) and (
-                cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg)
-            ):
-                logger.info("启动GUI后自动更新,启动GUI后运行任务")
-                signalBus.update_download_finished.connect(
-                    self.taskInterface.Auto_update_Start_up
-                )
-                signalBus.auto_update.emit()
+    def on_resource_update_finished(self,return_dict):
+        """资源更新完成后的处理"""
+        logger.info("资源更新完成")
+        if return_dict.get("status") in ["success","failed","no_need"]:
+            self.check_ui_update()
 
-            elif cfg.get(cfg.auto_update_resource):
-                logger.info("启动GUI后自动更新")
-                signalBus.auto_update.emit()
+    def check_ui_update(self):
+        """检查是否需要自动更新UI"""
+        if cfg.get(cfg.auto_update_MFW):
+            logger.info("启动GUI后自动更新UI")
+            # 连接UI更新完成信号，更新完成后执行下一步
+            signalBus.download_self_finished.connect(self.on_ui_update_finished)
+            signalBus.download_self_stopped.connect(self.on_ui_update_stopped)
 
-            elif cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg):
-                logger.info("启动GUI后运行任务")
-                QTimer.singleShot(500, self.taskInterface.Start_Up)
-                # self.taskInterface.Start_Up()
+            self.settingInterface.update_self_func()
+        else:
+            # 若不需要更新UI，直接检查是否需要开始任务
+            self.check_start_task()
+
+    def on_ui_update_stopped(self):
+        """UI更新完成后的处理"""
+        logger.info("UI更新中断")
+
+    def on_ui_update_finished(self,return_dict=None):
+        """UI更新完成后的处理"""
+        logger.info("UI更新完成")
+        try:
+            if return_dict is None:
+                return_dict = {}
+            if return_dict.get("status") in ["success","failed","no_need"]:
+                if self.settingInterface.aboutCard.button2.text() == self.tr("Update Now"):
+                    self.settingInterface.aboutCard.button2.click()
+                else:
+                    self.check_start_task()
+        except Exception as e:
+            logger.error(f"UI更新完成后处理异常: {e}")
+
+    def check_start_task(self):
+        """检查是否需要开始任务"""
+        if cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg):
+            logger.info("启动GUI后运行任务")
+            if self.taskInterface.S2_Button.text() == self.tr("Start"):
+                QTimer.singleShot(500, self.taskInterface.S2_Button.click())
+
+    def show_download(self):
+        """显示下载窗口"""
+        w = ShowDownload(self)
+        w.show()
 
     def initShortcuts(self):
         """初始化快捷键"""
@@ -299,6 +340,7 @@ class MainWindow(FluentWindow):
 
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
+        signalBus.show_download.connect(self.show_download)
         signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
         signalBus.title_changed.connect(self.set_title)
         signalBus.bundle_download_finished.connect(self.show_info_bar)

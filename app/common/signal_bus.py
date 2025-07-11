@@ -31,7 +31,7 @@ class SignalBus(QObject):
     """Signal bus"""
 
     micaEnableChanged = Signal(bool)  # Mica效果开关信号
-    auto_update = Signal()  # 自动更新设置信号
+    auto_update = Signal()  # 自动更新资源信号
     update_adb = (
         Signal()
     )  # 更新设置界面adb设备信息信号 从task_interface中获取adb信息,传到setting_interface中同步显示
@@ -68,6 +68,7 @@ class SignalBus(QObject):
     show_AssistTool_task = Signal(bool)  # 显示隐藏子面板信号
     TaskCooldownPageClicked = Signal()  # 子面板点击信号
     notice_finished = Signal(NoticeErrorCode,str)  # 外部通知完成信号
+    show_download = Signal(bool)  # 显示UI下载窗口信号
 
 
 signalBus = SignalBus()

@@ -686,35 +686,39 @@ class SettingInterface(ScrollArea):
             )
         self.aboutCard.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(REPO_URL)))
         self.aboutCard.clicked2.connect(self.update_self_func)
+
     def open_debug_folder(self):
         """打开debug文件夹"""
-        debug_path = os.path.join(".", "debug",maa_config_data.resource_name)
+        debug_path = os.path.join(".", "debug", maa_config_data.resource_name)
         if os.path.exists(debug_path):
             os.startfile(debug_path)
+
     def zip_debug_folder(self):
         """压缩debug文件夹"""
-        debug_path = os.path.join(".", "debug","maa.log")
-        log_path = os.path.join(".", "debug",maa_config_data.resource_name,"maa.log")
-        log_bak_path = os.path.join(".", "debug",maa_config_data.resource_name,"maa.log.bak")
-        #读取log_path中的maa.log和maa.log.bak并拼接,maa.log在后
+        debug_path = os.path.join(".", "debug", "maa.log")
+        log_path = os.path.join(".", "debug", maa_config_data.resource_name, "maa.log")
+        log_bak_path = os.path.join(
+            ".", "debug", maa_config_data.resource_name, "maa.log.bak"
+        )
+        # 读取log_path中的maa.log和maa.log.bak并拼接,maa.log在后
         maa_log = ""
         if os.path.exists(log_bak_path):
-            with open(log_bak_path, 'r', encoding='utf-8') as log_file:
+            with open(log_bak_path, "r", encoding="utf-8") as log_file:
                 maa_log += log_file.read()
         if os.path.exists(log_path):
-            with open(log_path, 'r', encoding='utf-8') as log_file:
+            with open(log_path, "r", encoding="utf-8") as log_file:
                 maa_log += log_file.read()
         if os.path.exists(debug_path):
             os.remove(debug_path)
-        with open(debug_path, 'w', encoding='utf-8') as log_file:
+        with open(debug_path, "w", encoding="utf-8") as log_file:
             log_file.write(maa_log)
 
-        #将maa.log和gui.log和vision文件夹和所有的png文件打包到一个zip中
-        
+        # 将maa.log和gui.log和vision文件夹和所有的png文件打包到一个zip中
+
         zip_path = os.path.join(".", "debug", "debug" + ".zip")
         if os.path.exists(zip_path):
             os.remove(zip_path)
-        with zipfile.ZipFile(zip_path, 'w') as zipf:
+        with zipfile.ZipFile(zip_path, "w") as zipf:
             # 定义要添加到 zip 的文件和文件夹
             files_to_add = ["maa.log", "gui.log"]
             folders_to_add = ["vision"]
@@ -740,26 +744,21 @@ class SettingInterface(ScrollArea):
             debug_path = os.path.join(".", "debug")
             for root, dirs, files in os.walk(debug_path):
                 for file in files:
-                    if file.endswith('.png'):
+                    if file.endswith(".png"):
                         file_path = os.path.join(root, file)
                         # 写入文件时保留相对路径
                         zipf.write(file_path, os.path.relpath(file_path, "."))
-                        
+
         debug_zip_path = os.path.join(".", "debug")
         if os.path.exists(debug_zip_path):
             os.startfile(debug_zip_path)
-                
-        
-        
-
 
     def update_self_func(self):
         """更新程序。"""
         self.update_self.start()
         self.aboutCard.button2.setEnabled(False)
         self.aboutCard.button2.setText(self.tr("Updating..."))
-        w = ShowDownload(self)
-        w.show()
+        signalBus.show_download.emit(True)
 
     def update_self_finished(self, status: dict):
         """更新程序停止。"""
@@ -810,7 +809,11 @@ class SettingInterface(ScrollArea):
         try:
             if sys.platform.startswith("win32"):
                 from subprocess import CREATE_NEW_PROCESS_GROUP, DETACHED_PROCESS
-                subprocess.Popen(["./MFWUpdater1.exe", "-update"], creationflags=CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS)
+
+                subprocess.Popen(
+                    ["./MFWUpdater1.exe", "-update"],
+                    creationflags=CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS,
+                )
             elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
                 subprocess.Popen(["./MFWUpdater1", "-update"], start_new_session=True)
             else:
