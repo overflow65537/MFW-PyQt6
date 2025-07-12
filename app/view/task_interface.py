@@ -1442,12 +1442,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.task_failed = None
         self.S2_Button.setEnabled(True)
         restore_task_list = []
-        for task_object in maa_config_data.config.get("task", []):
+        new_task_object = {}
+
+        for task_object in maa_config_data.config.copy().get("task", []):
             if task_object.get("advanced"):
-                task_object["option"] = self.merge_advanced_options(
+                new_task_object = task_object.copy()
+                new_task_object["option"] = self.merge_advanced_options(
                     task_object["option"]
                 )
-                restore_task_list.append(task_object)
+
+                restore_task_list.append(new_task_object)
             else:
                 restore_task_list.append(task_object)
 
@@ -1655,6 +1659,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             logger.info(
                 f"运行任务:{self.entry}\n任务选项:\n{json.dumps(override_options, indent=4,ensure_ascii=False)}"
             )
+            logger.debug(f"任务{maa_config_data.config.get('task')}")
             # 提取公共配置（简化嵌套访问）
             speedrun_cfg = task_list.get("speedrun", {})
             if speedrun_cfg.get("enabled", False):
