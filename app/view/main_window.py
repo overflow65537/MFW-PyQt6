@@ -117,23 +117,28 @@ class MainWindow(FluentWindow):
         elif "win32" in self.taskInterface.Control_Combox.currentText().lower():
             signalBus.setting_Visible.emit("win32")
         self.initShortcuts()
-
+        self.update_failed()
         self.stara_finish()
 
         QTimer.singleShot(5000, lambda: cfg.set(cfg.start_complete, True))
         maafw.change_log_path(maa_config_data.log_path)
-        self.update_failed()
 
         logger.info(" 主界面初始化完成。")
 
     def update_failed(self):
+        cfg.set(cfg.update_ui_failed, False)
         if os.path.exists("ERROR.log"):
+            cfg.set(cfg.update_ui_failed, True)
             self.show_info_bar(
                 {
                     "status": "failed",
                     "msg": self.tr("Update Failed, Please Check Log File"),
                 }
             )
+            with open("ERROR.log", "r") as log_file:
+                log_content = log_file.read()
+                logger.error(f"更新UI失败: {log_content}")
+            os.remove("ERROR.log")
 
     def dingtalk_setting(self):
         if self.dingtalk.exec():
@@ -197,25 +202,25 @@ class MainWindow(FluentWindow):
             and "adb" not in self.taskInterface.Control_Combox.currentText()
         ):
             self.taskInterface.AutoDetect_Button.click()
-            
+
         if cfg.get(cfg.resource_exist) and cfg.get(cfg.auto_update_resource):
             logger.info("启动GUI后自动更新资源")
-            
+
             signalBus.update_download_finished.connect(self.on_resource_update_finished)
             # signalBus.update_download_stopped.connect(self.on_resource_update_finished)
             self.settingInterface.update_check()
         else:
             self.check_ui_update()
 
-    def on_resource_update_finished(self,return_dict):
+    def on_resource_update_finished(self, return_dict):
         """资源更新完成后的处理"""
         logger.info("资源更新完成")
-        if return_dict.get("status") in ["success","failed","no_need"]:
+        if return_dict.get("status") in ["success", "failed", "no_need"]:
             self.check_ui_update()
 
     def check_ui_update(self):
         """检查是否需要自动更新UI"""
-        if cfg.get(cfg.auto_update_MFW):
+        if cfg.get(cfg.auto_update_MFW) and not cfg.get(cfg.update_ui_failed):
             logger.info("启动GUI后自动更新UI")
             # 连接UI更新完成信号，更新完成后执行下一步
             signalBus.download_self_finished.connect(self.on_ui_update_finished)
@@ -230,14 +235,16 @@ class MainWindow(FluentWindow):
         """UI更新完成后的处理"""
         logger.info("UI更新中断")
 
-    def on_ui_update_finished(self,return_dict=None):
+    def on_ui_update_finished(self, return_dict=None):
         """UI更新完成后的处理"""
         logger.info("UI更新完成")
         try:
             if return_dict is None:
                 return_dict = {}
-            if return_dict.get("status") in ["success","failed","no_need"]:
-                if self.settingInterface.aboutCard.button2.text() == self.tr("Update Now"):
+            if return_dict.get("status") in ["success", "failed", "no_need"]:
+                if self.settingInterface.aboutCard.button2.text() == self.tr(
+                    "Update Now"
+                ):
                     self.settingInterface.aboutCard.button2.click()
                 else:
                     self.check_start_task()
