@@ -662,6 +662,22 @@ def get_controller_type(select_value: str, interface_path: str) -> str | None:
             return i["type"]
     return None
 
+def find_program_in_folder(folder_path: str, program_name: str) -> str | None:
+    """
+    遍历指定文件夹及其子文件夹，查找匹配的程序名并返回其路径。
+
+    Args:
+        folder_path (str): 要遍历的文件夹路径。
+        program_name (str): 要查找的程序名。
+
+    Returns:
+        str or None: 若找到程序，返回其完整路径；否则返回 None。
+    """
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            if file == program_name:
+                return os.path.join(root, file)
+    return None
 
 def get_console_path(path: str) -> dict[str, str] | None:
     """获取控制台路径。
@@ -674,37 +690,45 @@ def get_console_path(path: str) -> dict[str, str] | None:
     """
     mumu = {
         "type": "mumu",
-        "path": os.path.join(os.path.dirname(path), "MuMuManager.exe"),
+        "path": find_program_in_folder(os.path.dirname(path), "MuMuManager.exe"),
     }
+    mumu_v5 = {
+        "type": "mumu",
+        "path": find_program_in_folder(os.path.dirname(os.path.dirname(path)), "MuMuManager.exe"),
+    }
+
     LD_emu = {
         "type": "LD",
-        "path": os.path.join(os.path.dirname(path), "dnconsole.exe"),
+        "path": find_program_in_folder(os.path.dirname(path), "dnconsole.exe"),
     }
     Nox = {
         "type": "Nox",
-        "path": os.path.join(os.path.dirname(path), "NoxConsole.exe"),
+        "path": find_program_in_folder(os.path.dirname(path), "NoxConsole.exe"),
     }
     MEmu = {
         "type": "MEmu",
-        "path": os.path.join(os.path.dirname(path), "memuc.exe"),
+        "path": find_program_in_folder(os.path.dirname(path), "memuc.exe"),
     }
     BlueStacks = {
         "type": "BlueStacks",
-        "path": os.path.join(os.path.dirname(path), "bsconsole.exe"),
+        "path": find_program_in_folder(os.path.dirname(path), "bsconsole.exe"),
     }
-    if os.path.exists(mumu["path"]):
+    if mumu["path"]:
         logger.info(f"mumu控制台: {mumu}")
         return mumu
-    elif os.path.exists(LD_emu["path"]):
+    elif mumu_v5["path"]:
+        logger.info(f"mumu_v5控制台: {mumu_v5}")
+        return mumu_v5
+    elif LD_emu["path"]:
         logger.info(f"LD控制台: {LD_emu}")
         return LD_emu
-    elif os.path.exists(Nox["path"]):
+    elif Nox["path"]:
         logger.info(f"Nox控制台: {Nox}")
         return Nox
-    elif os.path.exists(MEmu["path"]):
+    elif MEmu["path"]:
         logger.info(f"MEmu控制台: {MEmu}")
         return MEmu
-    elif os.path.exists(BlueStacks["path"]):
+    elif BlueStacks["path"]:
         logger.info(f"BlueStacks控制台: {BlueStacks}")
         return BlueStacks
     else:
