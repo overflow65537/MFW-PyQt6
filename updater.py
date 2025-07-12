@@ -161,5 +161,13 @@ if __name__ == "__main__":
         os.remove("ERROR.log")
     if len(sys.argv) > 1 and sys.argv[1] == "-update":
         standard_update()
-    else:
-        recovery_mode()
+    else :
+        mode=input("1. 更新模式 / Standard update\n2. 恢复模式 / Recovery update\n")
+        if mode == "1":
+            standard_update()
+        elif mode == "2":
+            recovery_mode()
+        else:
+            print("无效输入 / Invalid input")
+            input("按回车键继续... / Press Enter to continue...")    
+    
