@@ -220,13 +220,13 @@ class MainWindow(FluentWindow):
 
     def check_ui_update(self):
         """检查是否需要自动更新UI"""
-        if cfg.get(cfg.auto_update_MFW) and not cfg.get(cfg.update_ui_failed):
+        if cfg.get(cfg.auto_update_MFW):
             logger.info("启动GUI后自动更新UI")
             # 连接UI更新完成信号，更新完成后执行下一步
             signalBus.download_self_finished.connect(self.on_ui_update_finished)
             signalBus.download_self_stopped.connect(self.on_ui_update_stopped)
-
-            self.settingInterface.update_self_func()
+            if not cfg.get(cfg.update_ui_failed):
+                self.settingInterface.update_self_func()
         else:
             # 若不需要更新UI，直接检查是否需要开始任务
             self.check_start_task()
@@ -255,8 +255,9 @@ class MainWindow(FluentWindow):
         """检查是否需要开始任务"""
         if cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg):
             logger.info("启动GUI后运行任务")
-            if self.taskInterface.S2_Button.text() == self.tr("Start"):
-                QTimer.singleShot(500, self.taskInterface.S2_Button.click())
+            name=self.taskInterface.S2_Button.text()
+            if self.taskInterface.S2_Button.text() in["Start","开始","開始"] :
+                QTimer.singleShot(500, self.taskInterface.Start_Up)
 
     def show_download(self):
         """显示下载窗口"""
