@@ -77,6 +77,7 @@ from ..utils.tool import (
     find_process_by_name,
     show_error_message,
     get_console_path,
+    find_executable_path_by_port,
     MyNotificationHandler,
 )
 from ..utils.maafw import maafw
@@ -1212,10 +1213,34 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 return False
             # 再次尝试连接 ADB
             if not await self.connect_adb():
+                parts = maa_config_data.config.get("adb", {}).get("address", "").split(':')
+                if len(parts) == 2:
+                    try:
+                        port = int(parts[1])
+                    except ValueError:
+                        logger.error(f'连接adb失败\n{maa_config_data.config.get("adb", {}).get("address", "")}，端口分析错误')
+                        self.insert_colored_text(self.tr("Connection Failed"))
+                        await maafw.stop_task()
+                        self.update_S2_Button("Start", self.Start_Up)
+                        return False
+                
+                adb_path=find_executable_path_by_port(port)
+                if not adb_path:
+                    logger.error(f'连接adb失败\n{maa_config_data.config.get("adb", {}).get("address", "")}，端口未被占用')
+                    self.insert_colored_text(self.tr("Connection Failed"))
+                    await maafw.stop_task()
+                    self.update_S2_Button("Start", self.Start_Up)
+                    return False
+                elif "adb" not in adb_path.lower():
+                    logger.error(f'连接adb失败\n{adb_path}，文件名错误')
+                    self.insert_colored_text(self.tr("Connection Failed"))
+                    await maafw.stop_task()
+                    self.update_S2_Button("Start", self.Start_Up)
+                    return False
                 self.insert_colored_text(
                     self.tr("Connection Failed,try to kill ADB process")
                 )
-                if not self.kill_adb_process():
+                if not self.kill_adb_process(adb_path):
                     self.insert_colored_text(self.tr("kill ADB Failed"))
                 if not await self.connect_adb():
                     logger.error(
@@ -1894,56 +1919,21 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.need_runing = False
         await maafw.stop_task()
 
-    def kill_adb_process(self):
+    def kill_adb_process(self,adb_path):
+
         """
         杀死 ADB 进程
         """
-        system = platform.system()
         try:
-            startupinfo = None
-            if system == "Windows":
-                startupinfo = subprocess.STARTUPINFO()
-                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-
-                subprocess.run(
-                    ["taskkill", "/F", "/IM", "adb.exe"],
-                    check=True,
-                    startupinfo=startupinfo,
-                )
-                logger.info("使用 taskkill 杀死 ADB 进程成功")
-                return True
-            elif system in ("Darwin", "Linux"):
-                subprocess.run(["pkill", "-f", "adb"], check=True)
-                logger.info("使用 pkill 杀死 ADB 进程成功")
-                return True
-            else:
-                logger.warning(f"不支持的操作系统: {system}")
-
+            subprocess.run([adb_path, "kill-server"], check=True)
+            logger.info("使用 adb kill-server 关闭 ADB 服务器成功")
+            return True
+        except FileNotFoundError:
+            logger.error("未找到 adb 命令，请检查 adb 是否正确安装并配置环境变量")
+            return False
         except subprocess.CalledProcessError as e:
-            try:
-                if system == "Windows":
-                    startupinfo = subprocess.STARTUPINFO()
-                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                    subprocess.run(
-                        [
-                            "wmic",
-                            "process",
-                            "where",
-                            "name='adb.exe'",
-                            "call",
-                            "terminate",
-                        ],
-                        check=True,
-                        startupinfo=startupinfo,
-                    )
-                    logger.info("使用 wmic 杀死 ADB 进程成功")
-                elif system in ("Darwin", "Linux"):
-                    subprocess.run(["killall", "adb"], check=True)
-                    logger.info("使用 killall 杀死 ADB 进程成功")
-                return True
-            except subprocess.CalledProcessError as e:
-                logger.error(f"最终杀死 ADB 进程失败: {e}")
-                return False
+            logger.error(f"使用 adb kill-server 关闭 ADB 服务器失败: {e}")
+            return False
 
     def dragging_finished(self):
         self.AddTask_Button.setText(self.tr("Add Task"))

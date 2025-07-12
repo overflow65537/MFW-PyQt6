@@ -365,6 +365,27 @@ def find_existing_file(info_dict: Dict[str, str]) -> str | Literal[False]:
     # 如果没有找到任何存在的文件
     return False
 
+def find_executable_path_by_port(port: int) -> str | None:
+    """
+    通过端口号查找使用该端口的进程的可执行程序路径
+
+    Args:
+        port (int): 要查找的端口号
+
+    Returns:
+        str | None: 可执行程序的路径，如果未找到则返回 None
+    """
+    for conn in psutil.net_connections(kind='inet'):
+        try:
+            # 检查是否为监听指定端口的连接
+            if conn.laddr.port == port and conn.status == psutil.CONN_LISTEN:
+                process = psutil.Process(conn.pid)
+                exe_path = process.exe()
+                if exe_path:
+                    return exe_path
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+    return None
 
 async def check_port(port: List[str]) -> List[str]:
     """检查指定端口是否打开。

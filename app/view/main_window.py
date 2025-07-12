@@ -255,7 +255,6 @@ class MainWindow(FluentWindow):
         """检查是否需要开始任务"""
         if cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg):
             logger.info("启动GUI后运行任务")
-            name=self.taskInterface.S2_Button.text()
             if self.taskInterface.S2_Button.text() in["Start","开始","開始"] :
                 QTimer.singleShot(500, self.taskInterface.Start_Up)
 
