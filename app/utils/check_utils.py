@@ -26,7 +26,6 @@ MFW-ChainFlow Assistant 检查单元
 import os
 import json
 from typing import Dict
-from cryptography.fernet import Fernet
 from app.common.maa_config_data import maa_config_data, init_maa_config_data
 from app.utils.tool import Save_Config, show_error_message
 from app.common.config import cfg
@@ -35,12 +34,7 @@ from app.common.signal_bus import signalBus
 
 
 def check(resource: str, config: str, directly: bool, DEV: bool):
-    # 检查密钥文件是否存在
     try:
-        if not os.path.exists("k.ey"):
-            key = Fernet.generate_key()
-            with open("k.ey", "wb") as key_file:
-                key_file.write(key)
         # 检查资源文件是否存在
         maa_config_name: str = cfg.get(cfg.maa_config_name)
         maa_config_path: str = cfg.get(cfg.maa_config_path)

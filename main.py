@@ -138,6 +138,11 @@ def start_symbol():
 
 
 if __name__ == "__main__":
+    from cryptography.fernet import Fernet
+    if not os.path.exists("k.ey"):
+            key = Fernet.generate_key()
+            with open("k.ey", "wb") as key_file:
+                key_file.write(key)
     if sys.platform.startswith("darwin"):
 
         PID_FILE = os.path.join(os.getcwd(), "MFW.pid")  # PID文件路径
