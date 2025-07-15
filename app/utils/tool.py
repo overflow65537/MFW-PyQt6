@@ -378,7 +378,7 @@ def find_executable_path_by_port(port: int) -> str | None:
     for conn in psutil.net_connections(kind='inet'):
         try:
             # 检查是否为监听指定端口的连接
-            if conn.laddr.port == port and conn.status == psutil.CONN_LISTEN:
+            if len(conn.laddr) >= 2 and conn.laddr[1] == port and conn.status == psutil.CONN_LISTEN:
                 process = psutil.Process(conn.pid)
                 exe_path = process.exe()
                 if exe_path:

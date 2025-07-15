@@ -1473,7 +1473,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             if task_object.get("advanced"):
                 new_task_object = task_object.copy()
                 new_task_object["option"] = self.merge_advanced_options(
-                    task_object["option"]
+                    task_object.get("option", [])
                 )
 
                 restore_task_list.append(new_task_object)
@@ -2360,6 +2360,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         advanced_dict = maa_config_data.interface_config.get(
                             "advanced", {}
                         ).get(advanced)
+                        if advanced_dict is None:
+                            continue
+
                         if (
                             isinstance(advanced_dict.get("field"), str)
                             or len(advanced_dict.get("field", [])) == 1

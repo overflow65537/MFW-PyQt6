@@ -246,7 +246,7 @@ class QYWX:
         msg = {"msgtype": "text", "text": {"content": msg_dict["title"] + msg_text}}
         return msg
 
-    def send(self, msg_dict: dict) -> bool:
+    def send(self, msg_dict: dict) -> NoticeErrorCode:
         QYWX_KEY = decode_key("QYWX")
         url = f"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={QYWX_KEY}"
         msg = self.msg(msg_dict)
