@@ -61,7 +61,6 @@ def decode_key(key_name) -> str:
 
 class DingTalk:
     def __init__(self) -> None:
-        self.sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
         self.correct_url = r"^https://oapi.dingtalk.com/robot/.*$"
         self.url = cfg.get(cfg.Notice_DingTalk_url)
         self.secret = decode_key("dingtalk")
@@ -70,8 +69,8 @@ class DingTalk:
         self.code = 0
 
     def msg(self, msg_dict: dict) -> dict:
-
-        msg_text = f"{self.sendtime}: " + msg_dict["text"]
+        sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+        msg_text = f"{sendtime}: " + msg_dict["text"]
         msg = {
             "msgtype": "markdown",
             "markdown": {
@@ -109,7 +108,6 @@ class DingTalk:
 
 class Lark:
     def __init__(self) -> None:
-        self.sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
         self.correct_url = r"^https://open.feishu.cn/open-apis/bot/.*$"
         self.url = cfg.get(cfg.Notice_Lark_url)
         self.secret = decode_key("lark")
@@ -118,8 +116,9 @@ class Lark:
         self.code = 0
 
     def msg(self, msg_dict: dict) -> dict:
+        sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
 
-        msg_text = f"{self.sendtime}: " + msg_dict["text"]
+        msg_text = f"{sendtime}: " + msg_dict["text"]
 
         sign_cache = self.sign()
         msg = {
@@ -168,11 +167,11 @@ class SMTP:
         self.password = decode_key("smtp")
         self.send_mail = cfg.get(cfg.Notice_SMTP_user_name)
         self.receive_mail = cfg.get(cfg.Notice_SMTP_receive_mail)
-        self.sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
         self.used_ssl = cfg.get(cfg.Notice_SMTP_used_ssl)
 
     def msg(self, msg_dict: dict) -> MIMEText:
-        msg_text = f"{self.sendtime}: " + msg_dict["text"]
+        sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+        msg_text = f"{sendtime}: " + msg_dict["text"]
         msg = MIMEText(msg_text, "html", "utf-8")
         msg["Subject"] = msg_dict["title"]
         msg["From"] = self.send_mail

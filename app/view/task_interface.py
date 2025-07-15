@@ -138,7 +138,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     know_task.append(task)
                     unknow_task.append(task)
         if unknow_task != []:
-            self.show_info_bar(
+            signalBus.infobar_message.emit(
                 {
                     "status": "info",
                     "msg": self.tr("New task found: ")
