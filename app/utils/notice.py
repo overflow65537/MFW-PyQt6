@@ -62,8 +62,6 @@ def decode_key(key_name) -> str:
 class DingTalk:
     def __init__(self) -> None:
         self.correct_url = r"^https://oapi.dingtalk.com/robot/.*$"
-        self.url = cfg.get(cfg.Notice_DingTalk_url)
-        self.secret = decode_key("dingtalk")
         self.headers = {"Content-Type": "application/json"}
         self.codename = "errcode"
         self.code = 0
@@ -83,8 +81,9 @@ class DingTalk:
 
     def sign(self) -> list[str]:
         # 钉钉的签名校验方法为将 sign 与 timestamp 组合进 url 中
-        url = self.url
-        secret = self.secret
+        url = cfg.get(cfg.Notice_DingTalk_url)
+        secret = decode_key("dingtalk")
+
 
         if url == "":
             logger.error("DingTalk 通知地址为空")
@@ -109,8 +108,6 @@ class DingTalk:
 class Lark:
     def __init__(self) -> None:
         self.correct_url = r"^https://open.feishu.cn/open-apis/bot/.*$"
-        self.url = cfg.get(cfg.Notice_Lark_url)
-        self.secret = decode_key("lark")
         self.headers = {"Content-Type": "application/json"}
         self.codename = "code"
         self.code = 0
@@ -145,7 +142,7 @@ class Lark:
 
     def sign(self) -> list[str]:
         # 飞书的签名校验方法为将 sign 与 timestamp 写进 message 中
-        secret = self.secret
+        secret = decode_key("lark")
         timestamp = str(round(time.time()))
         # 拼接timestamp和secret
         string_to_sign = "{}\n{}".format(timestamp, secret)
@@ -156,49 +153,40 @@ class Lark:
         # 对结果进行base64处理
         sign = base64.b64encode(hmac_code).decode("utf-8")
 
-        return [self.url, timestamp, sign]
+        return [cfg.get(cfg.Notice_Lark_url), timestamp, sign]
 
 
 class SMTP:
-    def __init__(self) -> None:
-        self.sever_address = cfg.get(cfg.Notice_SMTP_sever_address)
-        self.sever_port = cfg.get(cfg.Notice_SMTP_sever_port)
-        self.uesr_name = cfg.get(cfg.Notice_SMTP_user_name)
-        self.password = decode_key("smtp")
-        self.send_mail = cfg.get(cfg.Notice_SMTP_user_name)
-        self.receive_mail = cfg.get(cfg.Notice_SMTP_receive_mail)
-        self.used_ssl = cfg.get(cfg.Notice_SMTP_used_ssl)
-
     def msg(self, msg_dict: dict) -> MIMEText:
         sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
         msg_text = f"{sendtime}: " + msg_dict["text"]
-        msg = MIMEText(msg_text, "html", "utf-8")
+        msg = MIMEText(msg_text, "plain", "utf-8")
         msg["Subject"] = msg_dict["title"]
-        msg["From"] = self.send_mail
-        msg["To"] = self.receive_mail
+        msg["From"] = cfg.get(cfg.Notice_SMTP_user_name)
+        msg["To"] = cfg.get(cfg.Notice_SMTP_receive_mail)
 
         return msg
 
     def send(self, msg_dict: dict) -> NoticeErrorCode:
         msg = self.msg(msg_dict)
         try:
-            port = int(self.sever_port)
+            port = int(cfg.get(cfg.Notice_SMTP_sever_port))
         except ValueError:
-            logger.error(f"SMTP 端口号 {self.sever_port} 不是有效的整数")
+            logger.error(f"SMTP 端口号 {cfg.get(cfg.Notice_SMTP_sever_port)} 不是有效的整数")
             return NoticeErrorCode.SMTP_PORT_INVALID
 
         try:
-            if self.used_ssl:
-                smtp = smtplib.SMTP_SSL(self.sever_address, port)
+            if cfg.get(cfg.Notice_SMTP_used_ssl):
+                smtp = smtplib.SMTP_SSL(cfg.get(cfg.Notice_SMTP_sever_address), port)
             else:
-                smtp = smtplib.SMTP(self.sever_address, port, timeout=1)
-            smtp.login(self.uesr_name, self.password)
+                smtp = smtplib.SMTP(cfg.get(cfg.Notice_SMTP_sever_address), port, timeout=1)
+            smtp.login(cfg.get(cfg.Notice_SMTP_user_name), decode_key("smtp"))
         except Exception as e:
             logger.error(f"SMTP 连接失败: {e}")
             return NoticeErrorCode.SMTP_CONNECT_FAILED
 
         try:
-            smtp.sendmail(self.send_mail, self.receive_mail, msg.as_string())
+            smtp.sendmail(cfg.get(cfg.Notice_SMTP_user_name), cfg.get(cfg.Notice_SMTP_receive_mail), msg.as_string())
             return NoticeErrorCode.SUCCESS
         except Exception as e:
             logger.error(f"SMTP 发送邮件失败: {e}")
@@ -370,7 +358,6 @@ def lark_send(
     url = APP.sign()[0]
     msg = APP.msg(msg_dict)
     headers = APP.headers
-
     if not url:
         logger.error("Lark Url空")
         return NoticeErrorCode.PARAM_EMPTY

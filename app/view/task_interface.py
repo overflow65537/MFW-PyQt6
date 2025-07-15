@@ -101,6 +101,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     devices = []  # 用于存储设备信息的列表
     need_runing = False  # 是否需要运行任务
     task_failed = None  # 是否有任务失败
+    all_task_list = []  # 所有任务列表
+    task_idx=-1  # 当前任务序号
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -541,12 +543,17 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             elif message["status"] == 2:
                 self.insert_colored_text(message["task"] + " " + self.tr("Succeeded"))
                 logger.debug(f"{message['task']} 任务成功")
+                if self.all_task_list[self.task_idx]["status"]==0:
+                    self.all_task_list[self.task_idx]["status"]=1
+                
             elif message["status"] == 3:
                 self.task_failed = message["task"]
                 self.insert_colored_text(
                     message["task"] + " " + self.tr("Failed"), "red"
                 )
                 logger.debug(f"{message["task"]} 任务失败")
+                if self.all_task_list[self.task_idx]["status"]==0:
+                    self.all_task_list[self.task_idx]["status"]=-1
                 if cfg.get(cfg.when_task_failed):
                     self.send_notice("failed", message["task"])
         if message["name"] == "on_task_recognition":
@@ -567,6 +574,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     message["task"] + " " + self.tr("aborted"), "red"
                 )
                 logger.debug(f"{message['task']} 任务中止")
+                if self.all_task_list[self.task_idx]["status"]==0:
+                    self.all_task_list[self.task_idx]["status"]=-1
                 if cfg.get(cfg.when_task_failed):
                     self.send_notice("failed", message["task"])
 
@@ -1430,8 +1439,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         await maafw.run_task(task.get("entry", ""), task.get("pipeline_override", {}))
 
-        # 找到task的entry
-
     def merge_advanced_options(self, option):
 
         # 存储合并结果的字典
@@ -1468,6 +1475,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.S2_Button.setEnabled(True)
         restore_task_list = []
         new_task_object = {}
+        self.all_task_list = []
+        self.task_idx=-1
+        for key in maa_config_data.config.get("task",[]):
+            self.all_task_list.append({"name":key.get("name"),"status":0})
+        
+
 
         for task_object in maa_config_data.config.copy().get("task", []):
             if task_object.get("advanced"):
@@ -1480,7 +1493,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             else:
                 restore_task_list.append(task_object)
 
-        for task_list in restore_task_list:
+   
+        for idx, task_list in enumerate(restore_task_list):
+            # 当前任务序号
+            self.task_idx=idx
 
             override_options = {}
             if not self.need_runing:
@@ -2720,14 +2736,36 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 filed_task (str): 发送失败的任务名。
 
         """
+        status_mapping = {
+            -1: self.tr("Failed"),
+            0: self.tr("Not Run"),
+            1: self.tr("Success")
+        }
+        result_lines = []
+        for task in self.all_task_list:
+            name = task.get("name", 'Unknown Task')
+            status_code = task.get('status', 0)
+            status = status_mapping.get(status_code, self.tr("Unknown Status"))
+            result_lines.append(f"{name}: {status}")
+            
+
         if msg_type == "completed":
+            result_lines = []
+            for task in self.all_task_list:
+                name = task.get("name", 'Unknown Task')
+                status_code = task.get('status', 0)
+                status = status_mapping.get(status_code, self.tr("Unknown Status"))
+                result_lines.append(f"{name}: {status}")
+                
             msg = {
                 "title": self.tr("task completed"),
                 "text": maa_config_data.resource_name
                 + " "
                 + maa_config_data.config_name
                 + " "
-                + self.tr("task completed"),
+                + self.tr("task completed")
+                +"\n"
+                +"\n".join(result_lines)
             }
         elif msg_type == "info":
             msg = {
