@@ -1013,7 +1013,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         fast_name, cost = self.get_speed_test()
         if fast_name and cost:
             logger.info(f"截图速度最快的方法是{fast_name},耗时{cost}ms")
-            if 0 < cost < 50:
+            if 0 <= cost <= 50:
                 self.insert_colored_text(
                     "[color:ForestGreen]"
                     + self.tr("fastest screenshot method cost:")
@@ -1022,7 +1022,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     + fast_name
                     + ")[/color]"
                 )
-            elif 51 < cost < 100:
+            elif 50 < cost <= 100:
                 self.insert_colored_text(
                     "[color:DeepSkyBlue]"
                     + self.tr("fastest screenshot method cost:")
@@ -1031,7 +1031,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     + fast_name
                     + ")[/color]"
                 )
-            elif 101 < cost < 300:
+            elif 100 < cost <= 300:
                 self.insert_colored_text(
                     "[color:LightSalmon]"
                     + self.tr("fastest screenshot method cost:")
@@ -1042,7 +1042,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     + self.tr("May have an impact on the operation.")
                     + "[/color]"
                 )
-            elif 301 < cost:
+            else:
                 self.insert_colored_text(
                     "[color:Tomato]"
                     + self.tr("fastest screenshot method cost:")
