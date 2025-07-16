@@ -545,7 +545,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 if self.all_task_list[self.task_idx]["status"] == 0:
                     self.all_task_list[self.task_idx]["status"] = 1
                     self.insert_colored_text(
-                        message["task"] + " " + self.tr("Succeeded")
+                        message["task"] + " " + self.tr("completed")
                     )
 
             elif message["status"] == 3:
@@ -1233,6 +1233,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 parts = (
                     maa_config_data.config.get("adb", {}).get("address", "").split(":")
                 )
+                port = None
                 if len(parts) == 2:
                     try:
                         port = int(parts[1])
@@ -1244,6 +1245,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         await maafw.stop_task()
                         self.update_S2_Button("Start", self.Start_Up)
                         return False
+                if not port:
+                    return False
 
                 adb_path = find_executable_path_by_port(port)
                 if not adb_path:
