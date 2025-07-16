@@ -91,6 +91,7 @@ from ..utils.tool import (
     delete_contorller,
     encrypt,
     decrypt,
+    get_override
 )
 from ..utils.notice import send_thread
 from ..common.config import cfg
@@ -663,6 +664,8 @@ class ListWidge_Menu_Draggable(ListWidget):
         self.setDragEnabled(True)
         self.setDefaultDropAction(Qt.DropAction.MoveAction)
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        # 设置选择模式为多选
+        self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
 
     def get_task_list_widget(self) -> list:
         items = []
@@ -688,27 +691,39 @@ class ListWidge_Menu_Draggable(ListWidget):
 
         selected_row = self.currentRow()
 
+        action_run_alone = Action(FIF.PLAY_SOLID,self.tr("Run Alone"))
         action_move_up = Action(FIF.UP, self.tr("Move Up"))
         action_move_down = Action(FIF.DOWN, self.tr("Move Down"))
         action_delete = Action(FIF.DELETE, self.tr("Delete"))
         action_delete_all = Action(FIF.DELETE, self.tr("Delete All"))
 
         if selected_row == -1:
+            action_run_alone.setEnabled(False)
             action_move_up.setEnabled(False)
             action_move_down.setEnabled(False)
             action_delete.setEnabled(False)
 
+        action_run_alone.triggered.connect(self.Run_Alone)
         action_move_up.triggered.connect(self.Move_Up)
         action_move_down.triggered.connect(self.Move_Down)
         action_delete.triggered.connect(self.Delete_Task)
         action_delete_all.triggered.connect(self.Delete_All_Task)
 
+        menu.addAction(action_run_alone)
         menu.addAction(action_move_up)
         menu.addAction(action_move_down)
         menu.addAction(action_delete)
         menu.addAction(action_delete_all)
 
         menu.exec(e.globalPos(), aniType=MenuAnimationType.DROP_DOWN)
+
+    def Run_Alone(self):
+        Select_Target = self.currentRow()
+        if Select_Target == -1:
+            return
+        task_obj = maa_config_data.config.get("task")[Select_Target]
+        task_dict = get_override(task_obj,maa_config_data.interface_config)
+        signalBus.run_sp_task.emit(task_dict)
 
     def Delete_All_Task(self):
         self.clear()

@@ -130,9 +130,6 @@ class MaaFW:
                 ):
                     logger.warning(f"配置项 {custom} 缺少必要信息，跳过")
                     continue
-                print(
-                    f"custom_type: {custom_type}, custom_name: {custom_name}, custom_class_name: {custom_class_name}, custom_file_path: {custom_file_path}"
-                )
                 module_name = os.path.splitext(os.path.basename(custom_file_path))[0]
                 # 动态导入模块
                 spec = importlib.util.spec_from_file_location(
@@ -147,7 +144,6 @@ class MaaFW:
                     logger.error(f"模块 {module_name} 的 loader 为 None，跳过加载")
                     continue
                 spec.loader.exec_module(module)
-                print(f"模块 {module} 导入成功")
 
                 # 获取类对象
                 class_obj = getattr(module, custom_class_name)

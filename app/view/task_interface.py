@@ -63,7 +63,6 @@ from ..view.UI_task_interface import Ui_Task_Interface
 from ..utils.widget import ClickableLabel
 from ..common.signal_bus import signalBus
 from ..utils.tool import (
-    Get_Values_list_Option,
     Get_Values_list,
     gui_init,
     Save_Config,
@@ -78,6 +77,7 @@ from ..utils.tool import (
     show_error_message,
     get_console_path,
     find_executable_path_by_port,
+    get_override,
     MyNotificationHandler,
 )
 from ..utils.maafw import maafw
@@ -130,10 +130,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             )
             Save_Config(maa_config_data.config_path, maa_config_data.config)
         else:
-            task_list = Get_Values_list(
+            task_obj = Get_Values_list(
                 maa_config_data.interface_config_path, key1="task"
             )
-            for task in task_list:
+            for task in task_obj:
                 if task not in know_task:
                     logger.info(f"未知任务: {task}")
 
@@ -1057,6 +1057,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.send_notice("info", self.tr("Connection success"))
 
         # 运行任务
+
+        self.task_failed = None
+        self.S2_Button.setEnabled(True)
+        self.all_task_list = []
+        self.task_idx = -1
+
+        for key in maa_config_data.config.get("task", []):# 创建任务列表
+            self.all_task_list.append({"name": key.get("name"), "status": 0})
+
         if task:
             await self.run_task_sp(task)
         else:
@@ -1456,267 +1465,26 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         await maafw.run_task(task.get("entry", ""), task.get("pipeline_override", {}))
 
-    def merge_advanced_options(self, option):
-
-        # 存储合并结果的字典
-        advanced_groups = {}
-        # 存储没有 advanced 字段的选项
-        non_advanced_options = []
-
-        # 遍历 option 列表，按 advanced 值分组
-        for item in option:
-            if "advanced" in item:
-                advanced_key = item["advanced"]
-                if advanced_key not in advanced_groups:
-                    advanced_groups[advanced_key] = []
-                advanced_groups[advanced_key].append(item["value"])
-            else:
-                non_advanced_options.append(item)
-
-        # 创建包含合并后高级选项的列表
-        merged_advanced_options = [
-            {"name": advanced_key, "value": value_list, "advanced": True}
-            for advanced_key, value_list in advanced_groups.items()
-        ]
-
-        # 合并非高级选项和合并后的高级选项
-        new_option = non_advanced_options + merged_advanced_options
-        return new_option
-
     async def run_tasks(self):
         """
         运行任务
         """
-
-        self.task_failed = None
-        self.S2_Button.setEnabled(True)
-        restore_task_list = []
-        new_task_object = {}
-        self.all_task_list = []
-        self.task_idx = -1
-        for key in maa_config_data.config.get("task", []):
-            self.all_task_list.append({"name": key.get("name"), "status": 0})
-
-        for task_object in maa_config_data.config.copy().get("task", []):
-            if task_object.get("advanced"):
-                new_task_object = task_object.copy()
-                new_task_object["option"] = self.merge_advanced_options(
-                    task_object.get("option", [])
-                )
-
-                restore_task_list.append(new_task_object)
-            else:
-                restore_task_list.append(task_object)
-
-        for idx, task_list in enumerate(restore_task_list):
+        for idx, task_obj in enumerate(maa_config_data.config.get("task", [])):#开始循环
             # 当前任务序号
-            self.task_idx = idx
-
-            override_options = {}
             if not self.need_runing:
-                await maafw.stop_task()
-                return
-            elif task_list.get("disabled"):
-                logger.debug(f"任务{task_list.get('name')}已禁用")
+                break
+            self.task_idx = idx
+            task_dict = get_override(task_obj,maa_config_data.interface_config)
+            if not task_dict:
+                logger.error(f"任务{task_obj.get('name','')}配置错误")
                 continue
-            # 找到task的entry
-            enter_index = 0
-            for index, task_enter in enumerate(
-                maa_config_data.interface_config.get("task", [])
-            ):
-                if task_enter.get("name", "M1") == task_list.get("name", "M2"):
-                    self.entry = task_enter.get("entry", "")
-                    if not self.entry:
-                        logger.error(f"未找到任务入口: {task_list.get('name')}")
-                        if cfg.get(cfg.when_task_failed):
-                            self.send_notice("failed", self.tr("Task Entry") + ":")
-                        self.insert_colored_text(self.tr("Task Entry Failed"))
-                        return
-                    enter_index = index
-                    break
-
-            # 解析task中的pipeline_override
-            if maa_config_data.interface_config.get("task", [])[enter_index].get(
-                "pipeline_override", False
-            ):
-                update_data = maa_config_data.interface_config.get("task", [])[
-                    enter_index
-                ].get("pipeline_override", {})
-                override_options.update(update_data)
-
-            # 解析task中的option
-            if task_list.get("option", []) != []:
-                for task_option in task_list.get("option", []):
-                    # 解析advanced
-                    if task_option.get("advanced", False):
-                        for (
-                            advanced_key,
-                            advanced_value,
-                        ) in maa_config_data.interface_config.get(
-                            "advanced", {}
-                        ).items():
-                            if advanced_key == task_option.get("name", ""):
-                                if (
-                                    maa_config_data.interface_config.get("advanced", {})
-                                    .get(advanced_key, {})
-                                    .get("mode", "combox")
-                                    == "combox"
-                                ):
-                                    """
-                                    可输入的下拉框模式
-                                    """
-                                    template_pipeline = advanced_value.get(
-                                        "pipeline_override", {}
-                                    )
-                                    field = advanced_value.get("field", "")
-                                    value_list = task_option.get("value", [])
-                                    types = advanced_value.get(
-                                        "type", []
-                                    )  # 获取类型信息
-
-                                    # 处理多字段/多类型场景（field和type可能是列表）
-                                    if isinstance(field, list):
-                                        field_list = field
-                                    else:
-                                        field_list = [field]
-
-                                    if isinstance(types, list):
-                                        type_list = types
-                                    else:
-                                        type_list = [types]
-
-                                    if isinstance(value_list, str):
-                                        value_list = value_list.split(",")
-
-                                    # 确保字段、类型、值数量匹配
-                                    if len(field_list) != len(type_list) or len(
-                                        field_list
-                                    ) != len(value_list):
-                                        logger.warning(
-                                            f"高级设置 [{advanced_key}] 字段/类型/值数量不匹配，field: {field_list}, type: {type_list}, value: {value_list}"
-                                        )
-                                        continue
-
-                                    # 类型转换
-                                    converted_values = []
-                                    for v, t in zip(value_list, type_list):
-                                        try:
-                                            if t == "int":
-                                                converted = int(v.strip())  # 转为整数
-                                            elif t == "string":
-                                                converted = v.strip()  # 转为字符串
-                                            elif t == "double":
-                                                converted = float(
-                                                    v.strip()
-                                                )  # 转为浮点数
-                                            elif t == "bool":
-                                                converted = (
-                                                    v.strip().lower() == "true"
-                                                )  # 转为布尔值
-                                            else:
-                                                converted = v.strip()  # 未知类型
-                                            converted_values.append(converted)
-                                        except ValueError:
-                                            logger.warning(
-                                                f"高级设置 [{advanced_key}] 值 [{v}] 转换为类型 [{t}] 失败"
-                                            )
-                                            converted_values.append(v.strip())
-
-                                    # 替换占位符
-                                    resolved_pipeline = {}
-                                    for (
-                                        task_name,
-                                        task_config,
-                                    ) in template_pipeline.items():
-                                        resolved_task_config = {}
-                                        for key, val in task_config.items():
-                                            # 初始化解析值为原始值
-                                            resolved_val = val
-
-                                            # 遍历所有字段-值对进行替换 f:roi cv:[1,2,3,4]
-                                            for f, cv in zip(
-                                                field_list, converted_values
-                                            ):
-                                                placeholder = f"{{{f}}}"
-
-                                                def replace_placeholder(obj):
-                                                    """
-                                                    递归替换占位符
-                                                    :param obj: 要处理的对象
-                                                    :return: 替换后的对象
-                                                    """
-                                                    if isinstance(obj, str) and (
-                                                        placeholder in obj
-                                                    ):  # 如果是字符串且等于占位符
-                                                        return obj.replace(
-                                                            placeholder, str(cv)
-                                                        )
-
-                                                    elif isinstance(
-                                                        obj, (list, tuple)
-                                                    ):  # 如果是列表或者元组
-                                                        return [
-                                                            replace_placeholder(item)
-                                                            for item in obj
-                                                        ]
-
-                                                    elif isinstance(
-                                                        obj, dict
-                                                    ):  # 如果是字典
-                                                        return {
-                                                            key: replace_placeholder(
-                                                                value
-                                                            )
-                                                            for key, value in obj.items()
-                                                        }
-
-                                                    else:  # 这啥玩意
-                                                        logger.debug(
-                                                            f"高级设置 [{advanced_key}] 未处理的类型: {type(obj)}"
-                                                        )
-                                                        return obj
-
-                                                resolved_val = replace_placeholder(
-                                                    resolved_val
-                                                )
-
-                                            resolved_task_config[key] = resolved_val
-                                        resolved_pipeline[task_name] = (
-                                            resolved_task_config
-                                        )
-
-                                    override_options.update(resolved_pipeline)
-                                    logger.debug(
-                                        f"高级设置 [{advanced_key}] 解析后的 pipeline_override: {resolved_pipeline}"
-                                    )
-
-                                elif (
-                                    maa_config_data.interface_config.get("advanced", {})
-                                    .get(advanced_key, {})
-                                    .get("mode", "combox")
-                                    == "checkbox"
-                                ):
-                                    """
-                                    多选框模式
-                                    """
-                                    pass
-
-                    else:
-                        for override in maa_config_data.interface_config.get(
-                            "option", []
-                        )[task_option["name"]]["cases"]:
-                            if override["name"] == task_option["value"]:
-
-                                override_options.update(
-                                    override.get("pipeline_override", {})
-                                )
-
+            self.entry = task_dict.get("entry","")
             logger.info(
-                f"运行任务:{self.entry}\n任务选项:\n{json.dumps(override_options, indent=4,ensure_ascii=False)}"
+                f"运行任务:{self.entry}\n任务选项:\n{json.dumps(task_dict.get("option"), indent=4,ensure_ascii=False)}"
             )
             logger.debug(f"任务{maa_config_data.config.get('task')}")
             # 提取公共配置（简化嵌套访问）
-            speedrun_cfg = task_list.get("speedrun", {})
+            speedrun_cfg = task_obj.get("speedrun", {})
             if speedrun_cfg.get("enabled", False):
                 logger.info(f"{self.entry}速通启用")
 
@@ -1753,7 +1521,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 if remaining_loops > 0 and self.entry:
                     if cfg.get(cfg.when_post_task):
                         self.send_notice("info", self.tr("Post Task :") + self.entry)
-                    await maafw.run_task(self.entry, override_options)
+                    await maafw.run_task(task_dict)
                     if self.task_failed:
                         if cfg.get(cfg.when_task_failed):
                             self.send_notice(
@@ -1768,7 +1536,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 logger.info(f"{self.entry}速通未启用")
                 if cfg.get(cfg.when_post_task):
                     self.send_notice("info", self.tr("Post Task :") + self.entry)
-                await maafw.run_task(self.entry, override_options)
+                await maafw.run_task(self.entry, task_dict.get("pipeline_override", {}))
+
 
         logger.info("任务完成")
         if cfg.get(cfg.when_task_finished):
@@ -2401,41 +2170,44 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                             if isinstance(advanced_dict.get("field"), str):
                                 # 如果是字符串，则直接设置文本
                                 advanced_label.setText(advanced_dict.get("field"))
-                                advanced_label.setToolTip(advanced_dict.get("doc"))
-                                advanced_label.installEventFilter(
-                                    ToolTipFilter(
-                                        advanced_label, 0, ToolTipPosition.TOP
-                                    )
-                                )
+
                                 advanced_select_box.setObjectName(
                                     advanced_dict.get("field")
                                 )
-                                advanced_select_box.setToolTip(advanced_dict.get("doc"))
-                                advanced_select_box.installEventFilter(
-                                    ToolTipFilter(
-                                        advanced_select_box, 0, ToolTipPosition.TOP
+                                if advanced_dict.get("doc"):
+                                    advanced_label.setToolTip(advanced_dict.get("doc")[0])
+                                    advanced_label.installEventFilter(
+                                        ToolTipFilter(
+                                            advanced_label, 0, ToolTipPosition.TOP
+                                        )
                                     )
-                                )
+                                    advanced_select_box.setToolTip(advanced_dict.get("doc"))
+                                    advanced_select_box.installEventFilter(
+                                        ToolTipFilter(
+                                            advanced_select_box, 0, ToolTipPosition.TOP
+                                        )
+                                    )
                             else:
                                 advanced_label.setText(advanced_dict.get("field")[0])
-                                advanced_label.setToolTip(advanced_dict.get("doc")[0])
-                                advanced_label.installEventFilter(
-                                    ToolTipFilter(
-                                        advanced_label, 0, ToolTipPosition.TOP
-                                    )
-                                )
 
                                 advanced_select_box.setObjectName(
                                     advanced_dict.get("field")[0]
                                 )
-                                advanced_select_box.setToolTip(
-                                    advanced_dict.get("doc")[0]
-                                )
-                                advanced_select_box.installEventFilter(
-                                    ToolTipFilter(
-                                        advanced_select_box, 0, ToolTipPosition.TOP
+                                if advanced_dict.get("doc"):
+                                    advanced_select_box.setToolTip(advanced_dict.get("doc")[0])
+                                    advanced_label.installEventFilter(
+                                        ToolTipFilter(
+                                            advanced_label, 0, ToolTipPosition.TOP
+                                        )
                                     )
-                                )
+                                    advanced_select_box.setToolTip(
+                                        advanced_dict.get("doc")[0]
+                                    )
+                                    advanced_select_box.installEventFilter(
+                                        ToolTipFilter(
+                                            advanced_select_box, 0, ToolTipPosition.TOP
+                                        )
+                                    )
                             advanced_layout.addWidget(advanced_label)
 
                             advanced_select_box.addItems(
@@ -2454,24 +2226,25 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                 # 如果是列表，则逐个添加标签和选择框
                                 advanced_label = BodyLabel(self)
                                 advanced_label.setText(field)
-                                advanced_label.setToolTip(advanced_dict.get("doc")[idx])
-                                advanced_label.installEventFilter(
-                                    ToolTipFilter(
-                                        advanced_label, 0, ToolTipPosition.TOP
-                                    )
-                                )
                                 advanced_layout.addWidget(advanced_label)
 
                                 advanced_select_box = EditableComboBox(self)
                                 advanced_select_box.setObjectName(field)
-                                advanced_select_box.setToolTip(
-                                    advanced_dict.get("doc")[idx]
-                                )
-                                advanced_select_box.installEventFilter(
-                                    ToolTipFilter(
-                                        advanced_select_box, 0, ToolTipPosition.TOP
+                                if advanced_dict.get("doc"):
+                                    advanced_label.setToolTip(advanced_dict.get("doc")[idx])
+                                    advanced_label.installEventFilter(
+                                        ToolTipFilter(
+                                            advanced_label, 0, ToolTipPosition.TOP
+                                        )
                                     )
-                                )
+                                    advanced_select_box.setToolTip(
+                                        advanced_dict.get("doc")[idx]
+                                    )
+                                    advanced_select_box.installEventFilter(
+                                        ToolTipFilter(
+                                            advanced_select_box, 0, ToolTipPosition.TOP
+                                        )
+                                    )
 
                                 advanced_select_box.addItems(
                                     advanced_dict.get("default", [])[idx]

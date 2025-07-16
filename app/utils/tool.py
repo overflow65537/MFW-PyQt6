@@ -952,7 +952,233 @@ def get_arch():
         arch = "aarch64"
     return arch
 
+def merge_advanced_options(option):
 
+    # 存储合并结果的字典
+    advanced_groups = {}
+    # 存储没有 advanced 字段的选项
+    non_advanced_options = []
+
+    # 遍历 option 列表，按 advanced 值分组
+    for item in option:
+        if "advanced" in item:
+            advanced_key = item["advanced"]
+            if advanced_key not in advanced_groups:
+                advanced_groups[advanced_key] = []
+            advanced_groups[advanced_key].append(item["value"])
+        else:
+            non_advanced_options.append(item)
+
+    # 创建包含合并后高级选项的列表
+    merged_advanced_options = [
+        {"name": advanced_key, "value": value_list, "advanced": True}
+        for advanced_key, value_list in advanced_groups.items()
+    ]
+
+    # 合并非高级选项和合并后的高级选项
+    new_option = non_advanced_options + merged_advanced_options
+    return new_option
+    
+def get_override(origin_task_obj,interface_config):
+
+    task_obj = origin_task_obj.copy()
+
+    if origin_task_obj.get("advanced", False):
+        task_obj["option"] = merge_advanced_options(origin_task_obj.get("option", []))
+    # 找到task的entry
+    enter_index = 0
+    entry = None
+    for index, task_enter in enumerate(
+        interface_config.get("task", [])
+    ):
+        if task_enter.get("name", "M1") == task_obj.get("name", "M2"):
+            entry = task_enter.get("entry", "")
+            enter_index = index
+            break
+    if not entry:
+        return None
+
+        
+    override_options = {}
+    # 解析task中的pipeline_override
+    if interface_config.get("task", [])[enter_index].get(
+        "pipeline_override", False
+    ):
+        update_data = interface_config.get("task", [])[
+            enter_index
+        ].get("pipeline_override", {})
+        override_options.update(update_data)
+
+    # 解析task中的option
+    if task_obj.get("option", []) != []:
+        for task_option in task_obj.get("option", []):
+            # 解析advanced
+            if task_option.get("advanced", False):
+                for (
+                    advanced_key,
+                    advanced_value,
+                ) in interface_config.get(
+                    "advanced", {}
+                ).items():
+                    if advanced_key == task_option.get("name", ""):
+                        if (
+                            interface_config.get("advanced", {})
+                            .get(advanced_key, {})
+                            .get("mode", "combox")
+                            == "combox"
+                        ):
+                            """
+                            可输入的下拉框模式
+                            """
+                            template_pipeline = advanced_value.get(
+                                "pipeline_override", {}
+                            )
+                            field = advanced_value.get("field", "")
+                            value_list = task_option.get("value", [])
+                            types = advanced_value.get(
+                                "type", []
+                            )  # 获取类型信息
+
+                            # 处理多字段/多类型场景（field和type可能是列表）
+                            if isinstance(field, list):
+                                field_list = field
+                            else:
+                                field_list = [field]
+
+                            if isinstance(types, list):
+                                type_list = types
+                            else:
+                                type_list = [types]
+
+                            if isinstance(value_list, str):
+                                value_list = value_list.split(",")
+
+                            # 确保字段、类型、值数量匹配
+                            if len(field_list) != len(type_list) or len(
+                                field_list
+                            ) != len(value_list):
+                                logger.warning(
+                                    f"高级设置 [{advanced_key}] 字段/类型/值数量不匹配，field: {field_list}, type: {type_list}, value: {value_list}"
+                                )
+                                continue
+
+                            # 类型转换
+                            converted_values = []
+                            for v, t in zip(value_list, type_list):
+                                try:
+                                    if t == "int":
+                                        converted = int(v.strip())  # 转为整数
+                                    elif t == "string":
+                                        converted = v.strip()  # 转为字符串
+                                    elif t == "double":
+                                        converted = float(
+                                            v.strip()
+                                        )  # 转为浮点数
+                                    elif t == "bool":
+                                        converted = (
+                                            v.strip().lower() == "true"
+                                        )  # 转为布尔值
+                                    else:
+                                        converted = v.strip()  # 未知类型
+                                    converted_values.append(converted)
+                                except ValueError:
+                                    logger.warning(
+                                        f"高级设置 [{advanced_key}] 值 [{v}] 转换为类型 [{t}] 失败"
+                                    )
+                                    converted_values.append(v.strip())
+
+                            # 替换占位符
+                            resolved_pipeline = {}
+                            for (
+                                task_name,
+                                task_config,
+                            ) in template_pipeline.items():
+                                resolved_task_config = {}
+                                for key, val in task_config.items():
+                                    # 初始化解析值为原始值
+                                    resolved_val = val
+
+                                    # 遍历所有字段-值对进行替换 f:roi cv:[1,2,3,4]
+                                    for f, cv in zip(
+                                        field_list, converted_values
+                                    ):
+                                        placeholder = f"{{{f}}}"
+
+                                        def replace_placeholder(obj):
+                                            """
+                                            递归替换占位符
+                                            :param obj: 要处理的对象
+                                            :return: 替换后的对象
+                                            """
+                                            if isinstance(obj, str) and (
+                                                placeholder in obj
+                                            ):  # 如果是字符串且等于占位符
+                                                return obj.replace(
+                                                    placeholder, str(cv)
+                                                )
+
+                                            elif isinstance(
+                                                obj, (list, tuple)
+                                            ):  # 如果是列表或者元组
+                                                return [
+                                                    replace_placeholder(item)
+                                                    for item in obj
+                                                ]
+
+                                            elif isinstance(
+                                                obj, dict
+                                            ):  # 如果是字典
+                                                return {
+                                                    key: replace_placeholder(
+                                                        value
+                                                    )
+                                                    for key, value in obj.items()
+                                                }
+
+                                            else:  # 这啥玩意
+                                                logger.debug(
+                                                    f"高级设置 [{advanced_key}] 未处理的类型: {type(obj)}"
+                                                )
+                                                return obj
+
+                                        resolved_val = replace_placeholder(
+                                            resolved_val
+                                        )
+
+                                    resolved_task_config[key] = resolved_val
+                                resolved_pipeline[task_name] = (
+                                    resolved_task_config
+                                )
+
+                            override_options.update(resolved_pipeline)
+                            logger.debug(
+                                f"高级设置 [{advanced_key}] 解析后的 pipeline_override: {resolved_pipeline}"
+                            )
+
+                        elif (
+                            interface_config.get("advanced", {})
+                            .get(advanced_key, {})
+                            .get("mode", "combox")
+                            == "checkbox"
+                        ):
+                            """
+                            多选框模式
+                            """
+                            pass
+
+            else:
+                for override in interface_config.get(
+                    "option", []
+                )[task_option["name"]]["cases"]:
+                    if override["name"] == task_option["value"]:
+
+                        override_options.update(
+                            override.get("pipeline_override", {})
+                        )
+    return {
+        "entry":entry,
+        "pipeline_override":override_options
+    }
 class MyNotificationHandler(NotificationHandler):
 
     def __init__(self, parent=None):
