@@ -126,12 +126,12 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         unknow_task = []
         if know_task == [] or know_task is None:
             maa_config_data.config["know_task"] = Get_Values_list(
-                maa_config_data.interface_config_path, key1="task", sp=True
+                maa_config_data.interface_config_path, key1="task"
             )
             Save_Config(maa_config_data.config_path, maa_config_data.config)
         else:
             task_list = Get_Values_list(
-                maa_config_data.interface_config_path, key1="task", sp=True
+                maa_config_data.interface_config_path, key1="task"
             )
             for task in task_list:
                 if task not in know_task:
