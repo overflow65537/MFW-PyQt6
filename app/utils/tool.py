@@ -365,6 +365,7 @@ def find_existing_file(info_dict: Dict[str, str]) -> str | Literal[False]:
     # 如果没有找到任何存在的文件
     return False
 
+
 def find_executable_path_by_port(port: int) -> str | None:
     """
     通过端口号查找使用该端口的进程的可执行程序路径
@@ -375,10 +376,14 @@ def find_executable_path_by_port(port: int) -> str | None:
     Returns:
         str | None: 可执行程序的路径，如果未找到则返回 None
     """
-    for conn in psutil.net_connections(kind='inet'):
+    for conn in psutil.net_connections(kind="inet"):
         try:
             # 检查是否为监听指定端口的连接
-            if len(conn.laddr) >= 2 and conn.laddr[1] == port and conn.status == psutil.CONN_LISTEN:
+            if (
+                len(conn.laddr) >= 2
+                and conn.laddr[1] == port
+                and conn.status == psutil.CONN_LISTEN
+            ):
                 process = psutil.Process(conn.pid)
                 exe_path = process.exe()
                 if exe_path:
@@ -386,6 +391,7 @@ def find_executable_path_by_port(port: int) -> str | None:
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
     return None
+
 
 async def check_port(port: List[str]) -> List[str]:
     """检查指定端口是否打开。
@@ -683,6 +689,7 @@ def get_controller_type(select_value: str, interface_path: str) -> str | None:
             return i["type"]
     return None
 
+
 def find_program_in_folder(folder_path: str, program_name: str) -> str | None:
     """
     遍历指定文件夹及其子文件夹，查找匹配的程序名并返回其路径。
@@ -700,6 +707,7 @@ def find_program_in_folder(folder_path: str, program_name: str) -> str | None:
                 return os.path.join(root, file)
     return None
 
+
 def get_console_path(path: str) -> dict[str, str] | None:
     """获取控制台路径。
 
@@ -715,7 +723,9 @@ def get_console_path(path: str) -> dict[str, str] | None:
     }
     mumu_v5 = {
         "type": "mumu",
-        "path": find_program_in_folder(os.path.dirname(os.path.dirname(path)), "MuMuManager.exe"),
+        "path": find_program_in_folder(
+            os.path.dirname(os.path.dirname(path)), "MuMuManager.exe"
+        ),
     }
 
     LD_emu = {
@@ -981,7 +991,12 @@ class MyNotificationHandler(NotificationHandler):
             "status": noti_type.value,
             "focus": detail.focus.get(focus_mapping[noti_type.value], ""),
         }
-        if detail.focus.get("aborted"):
+        if (
+            detail.focus.get("aborted")
+            and not detail.focus.get(focus_mapping[1])
+            and not detail.focus.get(focus_mapping[2])
+            and not detail.focus.get(focus_mapping[3])
+        ):
             send_msg["aborted"] = True
         self.callbackSignal.callback.emit(send_msg)
 

@@ -102,7 +102,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
     need_runing = False  # 是否需要运行任务
     task_failed = None  # 是否有任务失败
     all_task_list = []  # 所有任务列表
-    task_idx=-1  # 当前任务序号
+    task_idx = -1  # 当前任务序号
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -541,19 +541,24 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             elif message["status"] == 1:
                 self.insert_colored_text(message["task"] + " " + self.tr("Started"))
             elif message["status"] == 2:
-                self.insert_colored_text(message["task"] + " " + self.tr("Succeeded"))
                 logger.debug(f"{message['task']} 任务成功")
-                if self.all_task_list[self.task_idx]["status"]==0:
-                    self.all_task_list[self.task_idx]["status"]=1
-                
+                if self.all_task_list[self.task_idx]["status"] == 0:
+                    self.all_task_list[self.task_idx]["status"] = 1
+                    self.insert_colored_text(
+                        message["task"] + " " + self.tr("Succeeded")
+                    )
+
             elif message["status"] == 3:
                 self.task_failed = message["task"]
-                self.insert_colored_text(
-                    message["task"] + " " + self.tr("Failed"), "red"
-                )
                 logger.debug(f"{message["task"]} 任务失败")
-                if self.all_task_list[self.task_idx]["status"]==0:
-                    self.all_task_list[self.task_idx]["status"]=-1
+                if (
+                    self.all_task_list[self.task_idx]["status"] == 0
+                    or self.all_task_list[self.task_idx]["status"] == -1
+                ):
+                    self.all_task_list[self.task_idx]["status"] = -1
+                    self.insert_colored_text(
+                        message["task"] + " " + self.tr("Failed"), "red"
+                    )
                 if cfg.get(cfg.when_task_failed):
                     self.send_notice("failed", message["task"])
         if message["name"] == "on_task_recognition":
@@ -570,12 +575,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         )
             if message.get("aborted"):
                 self.task_failed = message["task"]
-                self.insert_colored_text(
-                    message["task"] + " " + self.tr("aborted"), "red"
-                )
                 logger.debug(f"{message['task']} 任务中止")
-                if self.all_task_list[self.task_idx]["status"]==0:
-                    self.all_task_list[self.task_idx]["status"]=-1
+                if self.all_task_list[self.task_idx]["status"] == 0:
+                    self.all_task_list[self.task_idx]["status"] = -1
+                    self.insert_colored_text(
+                        self.tr(
+                            "The task has failed. Subsequent operations will continue. Please wait."
+                        ),
+                        "red",
+                    )
                 if cfg.get(cfg.when_task_failed):
                     self.send_notice("failed", message["task"])
 
@@ -1222,26 +1230,32 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 return False
             # 再次尝试连接 ADB
             if not await self.connect_adb():
-                parts = maa_config_data.config.get("adb", {}).get("address", "").split(':')
+                parts = (
+                    maa_config_data.config.get("adb", {}).get("address", "").split(":")
+                )
                 if len(parts) == 2:
                     try:
                         port = int(parts[1])
                     except ValueError:
-                        logger.error(f'连接adb失败\n{maa_config_data.config.get("adb", {}).get("address", "")}，端口分析错误')
+                        logger.error(
+                            f'连接adb失败\n{maa_config_data.config.get("adb", {}).get("address", "")}，端口分析错误'
+                        )
                         self.insert_colored_text(self.tr("Connection Failed"))
                         await maafw.stop_task()
                         self.update_S2_Button("Start", self.Start_Up)
                         return False
-                
-                adb_path=find_executable_path_by_port(port)
+
+                adb_path = find_executable_path_by_port(port)
                 if not adb_path:
-                    logger.error(f'连接adb失败\n{maa_config_data.config.get("adb", {}).get("address", "")}，端口未被占用')
+                    logger.error(
+                        f'连接adb失败\n{maa_config_data.config.get("adb", {}).get("address", "")}，端口未被占用'
+                    )
                     self.insert_colored_text(self.tr("Connection Failed"))
                     await maafw.stop_task()
                     self.update_S2_Button("Start", self.Start_Up)
                     return False
                 elif "adb" not in adb_path.lower():
-                    logger.error(f'连接adb失败\n{adb_path}，文件名错误')
+                    logger.error(f"连接adb失败\n{adb_path}，文件名错误")
                     self.insert_colored_text(self.tr("Connection Failed"))
                     await maafw.stop_task()
                     self.update_S2_Button("Start", self.Start_Up)
@@ -1476,11 +1490,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         restore_task_list = []
         new_task_object = {}
         self.all_task_list = []
-        self.task_idx=-1
-        for key in maa_config_data.config.get("task",[]):
-            self.all_task_list.append({"name":key.get("name"),"status":0})
-        
-
+        self.task_idx = -1
+        for key in maa_config_data.config.get("task", []):
+            self.all_task_list.append({"name": key.get("name"), "status": 0})
 
         for task_object in maa_config_data.config.copy().get("task", []):
             if task_object.get("advanced"):
@@ -1493,10 +1505,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             else:
                 restore_task_list.append(task_object)
 
-   
         for idx, task_list in enumerate(restore_task_list):
             # 当前任务序号
-            self.task_idx=idx
+            self.task_idx = idx
 
             override_options = {}
             if not self.need_runing:
@@ -1935,8 +1946,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.need_runing = False
         await maafw.stop_task()
 
-    def kill_adb_process(self,adb_path):
-
+    def kill_adb_process(self, adb_path):
         """
         杀死 ADB 进程
         """
@@ -2739,24 +2749,23 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         status_mapping = {
             -1: self.tr("Failed"),
             0: self.tr("Not Run"),
-            1: self.tr("Success")
+            1: self.tr("Success"),
         }
         result_lines = []
         for task in self.all_task_list:
-            name = task.get("name", 'Unknown Task')
-            status_code = task.get('status', 0)
+            name = task.get("name", "Unknown Task")
+            status_code = task.get("status", 0)
             status = status_mapping.get(status_code, self.tr("Unknown Status"))
             result_lines.append(f"{name}: {status}")
-            
 
         if msg_type == "completed":
             result_lines = []
             for task in self.all_task_list:
-                name = task.get("name", 'Unknown Task')
-                status_code = task.get('status', 0)
+                name = task.get("name", "Unknown Task")
+                status_code = task.get("status", 0)
                 status = status_mapping.get(status_code, self.tr("Unknown Status"))
                 result_lines.append(f"{name}: {status}")
-                
+
             msg = {
                 "title": self.tr("task completed"),
                 "text": maa_config_data.resource_name
@@ -2764,8 +2773,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 + maa_config_data.config_name
                 + " "
                 + self.tr("task completed")
-                +"\n"
-                +"\n".join(result_lines)
+                + "\n"
+                + "\n".join(result_lines),
             }
         elif msg_type == "info":
             msg = {
