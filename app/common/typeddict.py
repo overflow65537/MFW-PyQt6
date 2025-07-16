@@ -86,6 +86,7 @@ class TaskItem(TypedDict, total=False):
     speedrun: SpeedrunConfig
     disabled : bool
     advanced : bool
+    color : List[int]
 
 
 
