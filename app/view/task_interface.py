@@ -471,7 +471,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         拖动进入事件
         """
-        if event.mimeData().hasText():
+        if event.mimeData().hasFormat("application/x-listwidgetrow"):
             event.acceptProposedAction()
         else:
             event.ignore()
@@ -480,24 +480,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         拖动释放事件
         """
-        dropped_text = event.mimeData().text()
-        self.Delete_label.setText(self.tr("Delete: ") + dropped_text)
-        if " " in dropped_text:
-            dropped_text = dropped_text.split(" ")[0]
+        if event.mimeData().hasFormat("application/x-listwidgetrow"):
+            rows_data = event.mimeData().data("application/x-listwidgetrow").data().decode() # type: ignore
+            selected_rows = sorted([int(row) for row in rows_data.split(",")], reverse=True)
 
-        dragged_item = self.Task_List.currentItem()
-        if not dragged_item:
-            event.ignore()
-            return
+            Task_List = maa_config_data.config.get("task", [])
+            for row in selected_rows:
+                if 0 <= row < len(Task_List):
+                    del Task_List[row]
 
-        task_index = dragged_item.data(Qt.ItemDataRole.UserRole)
-        if task_index is None or not isinstance(task_index, int):
-            event.ignore()
-            return
-
-        Task_List = maa_config_data.config.get("task", [])
-        if 0 <= task_index < len(Task_List):
-            del Task_List[task_index]
             self.update_task_list_passive()
             maa_config_data.config["task"] = Task_List
             Save_Config(maa_config_data.config_path, maa_config_data.config)
@@ -507,6 +498,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.Delete_label.setText("")
             self.Delete_label.setStyleSheet("background-color: rgba(255, 255, 255, 0);")
             event.acceptProposedAction()
+            signalBus.update_task_list.emit()
+            signalBus.dragging_finished.emit()
         else:
             event.ignore()
 

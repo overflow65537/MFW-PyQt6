@@ -41,6 +41,8 @@ from PySide6.QtGui import (
     QContextMenuEvent,
     QCursor,
     QIntValidator,
+    QPainter,
+    QPixmap,
 )
 from PySide6.QtCore import Qt, Signal, QMimeData
 
@@ -91,7 +93,7 @@ from ..utils.tool import (
     delete_contorller,
     encrypt,
     decrypt,
-    get_override
+    get_override,
 )
 from ..utils.notice import send_thread
 from ..common.config import cfg
@@ -664,7 +666,6 @@ class ListWidge_Menu_Draggable(ListWidget):
         self.setDragEnabled(True)
         self.setDefaultDropAction(Qt.DropAction.MoveAction)
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
-        # 设置选择模式为多选
         self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
 
     def get_task_list_widget(self) -> list:
@@ -689,15 +690,17 @@ class ListWidge_Menu_Draggable(ListWidget):
     def contextMenuEvent(self, e: QContextMenuEvent):
         menu = RoundMenu(parent=self)
 
-        selected_row = self.currentRow()
+        # 获取所有选中项的行号
+        selected_items = self.selectedItems()
+        selected_rows = [self.row(item) for item in selected_items]
 
-        action_run_alone = Action(FIF.PLAY_SOLID,self.tr("Run Alone"))
+        action_run_alone = Action(FIF.PLAY_SOLID, self.tr("Run Alone"))
         action_move_up = Action(FIF.UP, self.tr("Move Up"))
         action_move_down = Action(FIF.DOWN, self.tr("Move Down"))
         action_delete = Action(FIF.DELETE, self.tr("Delete"))
         action_delete_all = Action(FIF.DELETE, self.tr("Delete All"))
 
-        if selected_row == -1:
+        if not selected_rows:
             action_run_alone.setEnabled(False)
             action_move_up.setEnabled(False)
             action_move_down.setEnabled(False)
@@ -722,7 +725,7 @@ class ListWidge_Menu_Draggable(ListWidget):
         if Select_Target == -1:
             return
         task_obj = maa_config_data.config.get("task")[Select_Target]
-        task_dict = get_override(task_obj,maa_config_data.interface_config)
+        task_dict = get_override(task_obj, maa_config_data.interface_config)
         signalBus.run_sp_task.emit(task_dict)
 
     def Delete_All_Task(self):
@@ -733,49 +736,56 @@ class ListWidge_Menu_Draggable(ListWidget):
         signalBus.dragging_finished.emit()
 
     def Delete_Task(self):
-        Select_Target = self.currentRow()
+        # 获取所有选中项的行号
+        selected_items = self.selectedItems()
+        selected_rows = sorted(
+            [self.row(item) for item in selected_items], reverse=True
+        )
+        task_list = maa_config_data.config.get("task", [])
 
-        if Select_Target == -1:
-            return
+        for row in selected_rows:
+            if 0 <= row < len(task_list):
+                self.takeItem(row)
+                del task_list[row]
 
-        self.takeItem(Select_Target)
-        Task_List = Get_Values_list2(maa_config_data.config_path, "task")
-
-        # 只有在有效索引时更新任务配置
-        if 0 <= Select_Target < len(Task_List):
-            del Task_List[Select_Target]
-            self.update_task_config(Task_List)
-
-        self.update_selection(Select_Target)
+        self.update_task_config(task_list)
+        self.clearSelection()
 
         signalBus.update_task_list.emit()
         signalBus.dragging_finished.emit()
 
     def Move_Up(self):
-        Select_Target = self.currentRow()
-        self.move_task(Select_Target, Select_Target - 1)
+        # 获取所有选中项的行号
+        selected_items = self.selectedItems()
+        selected_rows = sorted([self.row(item) for item in selected_items])
+        self.move_tasks(selected_rows, -1)
 
     def Move_Down(self):
-        Select_Target = self.currentRow()
-        self.move_task(Select_Target, Select_Target + 1)
+        # 获取所有选中项的行号
+        selected_items = self.selectedItems()
+        selected_rows = sorted(
+            [self.row(item) for item in selected_items], reverse=True
+        )
+        self.move_tasks(selected_rows, 1)
 
-    def move_task(self, from_index, to_index):
-        if (
-            from_index < 0
-            or from_index >= self.count()
-            or to_index < 0
-            or to_index >= self.count()
-        ):
-            return  # 索引无效，直接返回
+    def move_tasks(self, selected_rows, offset):
+        task_list = maa_config_data.config.get("task", [])
+        moved_indices = []
 
-        # 执行移动操作
-        Select_Task = maa_config_data.config["task"].pop(from_index)
-        maa_config_data.config["task"].insert(to_index, Select_Task)
-        Save_Config(maa_config_data.config_path, maa_config_data.config)
+        for row in selected_rows:
+            new_index = row + offset
+            if 0 <= new_index < len(task_list) and new_index not in moved_indices:
+                task = task_list.pop(row)
+                task_list.insert(new_index, task)
+                moved_indices.append(new_index)
 
+        self.update_task_config(task_list)
         self.clear()
         self.addItems(Get_Values_list_Option(maa_config_data.config_path, "task"))
-        self.setCurrentRow(to_index)
+
+        # 重新设置选中状态
+        for index in moved_indices:
+            self.item(index).setSelected(True)
 
         signalBus.update_task_list.emit()
         signalBus.dragging_finished.emit()
@@ -791,66 +801,117 @@ class ListWidge_Menu_Draggable(ListWidget):
             self.setCurrentRow(Select_Target - 1)
 
     def startDrag(self, supportedActions):
-        item = self.currentItem()
-        if item is not None:
-            item_rect = self.visualItemRect(item)
-            pixmap = self.viewport().grab(item_rect)
+        selected_items = self.selectedItems()
+        if not selected_items:
+            return
 
-            drag = QDrag(self)
-            mimeData = QMimeData()
-            mimeData.setText(item.text())
+        # 创建一个组合的 pixmap 用于拖动显示
+        combined_pixmap = self.create_combined_pixmap(selected_items)
 
-            drag.setMimeData(mimeData)
-            drag.setPixmap(pixmap)
-            drag.setHotSpot(self.mapFromGlobal(QCursor.pos()) - item_rect.topLeft())
+        drag = QDrag(self)
+        mimeData = QMimeData()
+        # 存储所有选中项的文本，用换行符分隔
+        texts = [item.text() for item in selected_items]
+        mimeData.setText("\n".join(texts))
+        # 存储所有选中项的行号，用逗号分隔
+        rows = [str(self.row(item)) for item in selected_items]
+        mimeData.setData("application/x-listwidgetrow", ",".join(rows).encode())
 
-            drag.exec(supportedActions)
+        drag.setMimeData(mimeData)
+        drag.setPixmap(combined_pixmap)
+        drag.setHotSpot(
+            self.mapFromGlobal(QCursor.pos())
+            - self.visualItemRect(selected_items[0]).topLeft()
+        )
+
+        drag.exec(supportedActions)
+
+    def create_combined_pixmap(self, items):
+        """创建组合的 pixmap 用于显示多个选中项"""
+        rect = self.visualItemRect(items[0])
+        width = rect.width()
+        height = rect.height() * len(items)
+
+        combined_pixmap = QPixmap(width, height)
+        combined_pixmap.fill(Qt.GlobalColor.transparent)
+
+        painter = QPainter(combined_pixmap)
+        for i, item in enumerate(items):
+            pixmap = self.viewport().grab(self.visualItemRect(item))
+            painter.drawPixmap(0, i * rect.height(), pixmap)
+        painter.end()
+
+        return combined_pixmap
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
-        if event.mimeData().hasText():
+        if event.mimeData().hasText() and event.mimeData().hasFormat("application/x-listwidgetrow"):
             event.acceptProposedAction()
         else:
             event.ignore()
 
     def dragMoveEvent(self, event: QDragMoveEvent) -> None:
-        if event.mimeData().hasText():
+        if event.mimeData().hasText() and event.mimeData().hasFormat("application/x-listwidgetrow"):
             event.acceptProposedAction()
         else:
             event.ignore()
 
     def dropEvent(self, event: QDropEvent) -> None:
-        if event.proposedAction() == Qt.DropAction.MoveAction:
-            source_item = self.currentItem()
-            if source_item is None:
-                super(ListWidge_Menu_Draggable, self).dropEvent(event)
-                return
+        if event.source() == self:
+            if event.proposedAction() == Qt.DropAction.MoveAction:
+                selected_items = self.selectedItems()
+                if not selected_items:
+                    super(ListWidge_Menu_Draggable, self).dropEvent(event)
+                    return
 
-            begin = self.row(source_item)
+                source_rows = sorted(
+                    [self.row(item) for item in selected_items], reverse=True
+                )
+                position = event.position().toPoint()
+                target_item = self.itemAt(position)
+                target_row = self.row(target_item) if target_item else self.count()
 
-            position = event.position().toPoint()
-            target_item = self.itemAt(position)
-            end = self.row(target_item) if target_item else self.count()
+                task_list = maa_config_data.config.get("task", [])
+                # 先移除选中的任务
+                moved_tasks = []
+                for row in source_rows:
+                    if 0 <= row < len(task_list):
+                        moved_tasks.insert(0, task_list.pop(row))
 
-            if (
-                begin == end
-                or begin < 0
-                or end < 0
-                or begin >= self.count()
-                or end > self.count()
-            ):
-                super(ListWidge_Menu_Draggable, self).dropEvent(event)
-                return
+                # 计算插入位置
+                insert_index = target_row
+                if insert_index > source_rows[0]:
+                    insert_index -= len(source_rows)
 
-            task_list = maa_config_data.config.get("task", [])
-            if 0 <= begin < len(task_list):
-                moved_task = task_list.pop(begin)
-                task_list.insert(min(end, len(task_list)), moved_task)
+                # 插入移动的任务
+                for task in moved_tasks:
+                    task_list.insert(insert_index, task)
+                    insert_index += 1
+
                 maa_config_data.config["task"] = task_list
                 Save_Config(maa_config_data.config_path, maa_config_data.config)
-                signalBus.update_task_list.emit()
 
-        super(ListWidge_Menu_Draggable, self).dropEvent(event)
-        signalBus.dragging_finished.emit()
+                # 刷新列表
+                self.clear()
+                self.addItems(Get_Values_list_Option(maa_config_data.config_path, "task"))
+
+                # 重新设置选中状态
+                if selected_items:  # 添加空值检查
+                    try:
+                        for task_text in [item.text() for item in selected_items]:
+                            for i in range(self.count()):
+                                if self.item(i).text() == task_text:
+                                    self.item(i).setSelected(True)
+                                    break
+                    except Exception as e:
+                        logger.error(f"重新设置选中状态时出错: {e}")
+                else:
+                    logger.warning("selected_items 为空，跳过重新设置选中状态")
+
+                signalBus.update_task_list.emit()
+            super(ListWidge_Menu_Draggable, self).dropEvent(event)
+            signalBus.dragging_finished.emit()
+        else:
+            event.ignore()
 
 
 class SendSettingCard(MessageBoxBase):
@@ -1004,7 +1065,7 @@ class DoubleButtonSettingCard(SettingCard):
         icon: Union[str, QIcon, FluentIconBase],
         title,
         configItem: ConfigItem | None = None,
-        comboBox = True,
+        comboBox=True,
         content=None,
         parent=None,
     ):
@@ -1036,11 +1097,11 @@ class DoubleButtonSettingCard(SettingCard):
             self.hBoxLayout.addWidget(self.combobox, 0, Qt.AlignmentFlag.AlignRight)
             self.hBoxLayout.addSpacing(16)
             self.combobox.addItems(
-            [
-                self.tr("stable"),
-                self.tr("beta"),
-            ]
-             )
+                [
+                    self.tr("stable"),
+                    self.tr("beta"),
+                ]
+            )
             self.combobox.currentIndexChanged.connect(self.setValue)
 
         self.hBoxLayout.addWidget(self.button2, 0, Qt.AlignmentFlag.AlignRight)
@@ -1048,11 +1109,9 @@ class DoubleButtonSettingCard(SettingCard):
         self.hBoxLayout.addWidget(self.button, 0, Qt.AlignmentFlag.AlignRight)
         self.hBoxLayout.addSpacing(16)
 
-        
-
         self.button.clicked.connect(self.clicked)
         self.button2.clicked.connect(self.clicked2)
-        
+
         self.configItem = configItem
         if configItem:
             self.setValue(qconfig.get(configItem))
