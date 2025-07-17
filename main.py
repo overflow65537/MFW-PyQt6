@@ -39,10 +39,43 @@ if not os.path.exists("k.ey"):
             key_file.write(key)
 import argparse
 import threading
+import shutil
+if getattr(sys, 'frozen', False):
+    # 打包环境，获取临时目录路径
+    temp_dir = sys._MEIPASS  # type: ignore
+    # 根目录的 maa 模块路径
+    source_maa_path = os.path.join(os.getcwd(), "maa")
+    
+    # 临时目录的 maa 模块路径
+    target_maa_path = os.path.join(temp_dir, "maa")
+    target_bin_path = os.path.join(target_maa_path, "bin")
 
-if os.path.exists("MaaFramework.dll") or os.path.exists("MaaFramework.so") or os.path.exists("MaaFramework.dylib"):
-    os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
+    if os.path.exists(source_maa_path):
+        if os.path.exists(target_maa_path):
+            # 若目标路径存在，先删除
+            shutil.rmtree(target_maa_path)
+        # 复制 maa 模块到临时目录
+        shutil.copytree(source_maa_path, target_maa_path)
+        print(f"已将 {source_maa_path} 复制到 {target_maa_path}")
+
+        # 创建目标 bin 目录
+        os.makedirs(target_bin_path, exist_ok=True)
+
+        # 遍历根目录查找 dll/so/dylib 文件
+        for file in os.listdir(os.getcwd()):
+            file_path = os.path.join(os.getcwd(), file)
+            if os.path.isfile(file_path) and file.lower().endswith(('.dll', '.so', '.dylib')):
+                try:
+                    shutil.copy2(file_path, target_bin_path)
+                    print(f"已复制 {file_path} 到 {target_bin_path}")
+                except Exception as e:
+                    print(f"复制 {file_path} 时出错: {e}")
+    else:
+        print(f"根目录下的 {source_maa_path} 不存在")
+
+
 import maa
+
 from maa.context import Context
 from maa.custom_action import CustomAction
 from maa.custom_recognition import CustomRecognition

@@ -21,8 +21,6 @@ MFW-ChainFlow Assistant
 MFW-ChainFlow Assistant 打包脚本
 作者:overflow65537
 """
-
-from difflib import restore
 import PyInstaller.__main__
 import os
 import site
@@ -63,6 +61,7 @@ try:
     maa_path = locate_package("maa")  # MAA 框架核心库
     agent_path = locate_package("MaaAgentBinary")  # 设备连接组件
     darkdetect_path = locate_package("darkdetect")  # 系统主题检测库
+    strenum = locate_package("strenum")  
 except FileNotFoundError as e:
     print(f"[FATAL] Dependency missing: {str(e)}")
     sys.exit(1)
@@ -74,15 +73,19 @@ base_command = [
     "--onefile",
     "--clean",
     "--noconfirm",  # 禁用确认提示
+    "--exclude-module=maa",
     # 资源包含规则（格式：源路径{分隔符}目标目录）
+    f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
     f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
+    f"--add-data={strenum}{os.pathsep}strenum",
     # 自动收集包数据
-    "--collect-data=darkdetect",
-    "--collect-data=maa",
     "--collect-data=MaaAgentBinary",
+    "--collect-data=darkdetect",
+    "--collect-data=strenum",
     # 隐式依赖声明
-    "--hidden-import=darkdetect",
     "--hidden-import=MaaAgentBinary",
+    "--hidden-import=darkdetect",
+    "--hidden-import=strenum",
     "--distpath",
     os.path.join("dist", "MFW"),
 ]
@@ -106,30 +109,21 @@ elif sys.platform == "win32":
         "--noconsole",  # 禁用控制台窗口
     ]
 
-# === 二进制文件处理 ===
-# 收集 MAA 的本地库文件
-bin_dir = os.path.join(maa_path, "bin")
-bin_files = []
-for f in os.listdir(bin_dir):
-    print(f"[DEBUG] Found binary file: {f}")
-    print(f"[DEBUG] Adding binary file: {os.path.join(bin_dir, f)}")
-    bin_files.append(f)
-    base_command += [f"--add-binary={os.path.join(bin_dir, f)}{os.pathsep}."]
-
-
 # === 开始构建 ===
 print("[INFO] Starting MFW build")
 print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
 
-# === 构建后处理 ===
-if sys.platform == "win32":
-    # 复制 DLL 到 dist/MFW 目录
+if os.path.exists(maa_path):
     shutil.copytree(
-        os.path.join(os.getcwd(), "dll"),
-        os.path.join(os.getcwd(), "dist", "MFW"),
+        maa_path,
+        os.path.join(os.getcwd(), "dist", "MFW", "maa"),
         dirs_exist_ok=True,
     )
+    for file in os.listdir(os.path.join(os.getcwd(), "dist", "MFW", "maa","bin")):
+        file_path = os.path.join(os.getcwd(), "dist", "MFW", "maa","bin", file)
+        shutil.move(file_path, os.path.join(os.getcwd(), "dist", "MFW"))
+    
 
 # 复制资源文件夹
 if os.path.exists(os.path.join(os.getcwd(), "MFW_resource")):
