@@ -40,7 +40,7 @@ if not os.path.exists("k.ey"):
 import argparse
 import threading
 
-if not os.path.exists("main.py"):
+if os.path.exists("MaaFramework.dll") or os.path.exists("MaaFramework.so") or os.path.exists("MaaFramework.dylib"):
     os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
 import maa
 from maa.context import Context

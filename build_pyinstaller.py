@@ -22,11 +22,16 @@ MFW-ChainFlow Assistant 打包脚本
 作者:overflow65537
 """
 
+from difflib import restore
 import PyInstaller.__main__
 import os
 import site
 import shutil
 import sys
+
+#删除dist
+if os.path.exists(os.path.join(os.getcwd(), "dist","MFW")):
+    shutil.rmtree(os.path.join(os.getcwd(), "dist","MFW"))
 
 # 获取参数
 # === 构建参数处理 ===
@@ -38,9 +43,9 @@ platform = sys.argv[1]
 architecture = sys.argv[2]
 version = sys.argv[3]
 
-#写入版本号
-with open(os.path.join(os.getcwd(), "app", "common","__version__.py"), "w") as f:
-    f.write(f"__version__ = \"{version}\"")
+# 写入版本号
+with open(os.path.join(os.getcwd(), "app", "common", "__version__.py"), "w") as f:
+    f.write(f'__version__ = "{version}"')
 
 
 # === 依赖包路径发现 ===
@@ -66,22 +71,20 @@ except FileNotFoundError as e:
 base_command = [
     "main.py",
     "--name=MFW",
+    "--onefile",
     "--clean",
     "--noconfirm",  # 禁用确认提示
     # 资源包含规则（格式：源路径{分隔符}目标目录）
-    f"--add-data={maa_path}{os.pathsep}maa",
-    f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
     f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
-    f"--add-data={os.path.join(os.getcwd(), 'MFW_resource')}{os.pathsep}TEM_files{os.sep}MFW_resource",
-    f"--add-data={os.path.join(os.getcwd(), 'config','emulator.json')}{os.pathsep}TEM_files{os.sep}config",
     # 自动收集包数据
     "--collect-data=darkdetect",
     "--collect-data=maa",
     "--collect-data=MaaAgentBinary",
     # 隐式依赖声明
     "--hidden-import=darkdetect",
-    "--hidden-import=maa",
     "--hidden-import=MaaAgentBinary",
+    "--distpath",
+    os.path.join("dist", "MFW"),
 ]
 
 # === 平台特定配置 ===
@@ -128,26 +131,13 @@ if sys.platform == "win32":
         dirs_exist_ok=True,
     )
 
-# 复制TEM_files的内容到 dist/MFW 目录
-shutil.copytree(
-    os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"),
-    os.path.join(os.getcwd(), "dist", "MFW"),
-    dirs_exist_ok=True,
-)
-# 删除临时目录
-shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"))
-
-
-for i in bin_files:
-    # 复制二进制文件到 dist/MFW 目录
-    shutil.copy(
-        os.path.join(os.getcwd(), "dist", "MFW", "_internal", i),
-        os.path.join(os.getcwd(), "dist", "MFW"),
+# 复制资源文件夹
+if os.path.exists(os.path.join(os.getcwd(), "MFW_resource")):
+    shutil.copytree(
+        os.path.join(os.getcwd(), "MFW_resource"),
+        os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource"),
+        dirs_exist_ok=True,
     )
-    # 删除临时文件
-    os.remove(os.path.join(os.getcwd(), "dist", "MFW", "_internal", i))
-
-shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin"))
 
 # 复制README和许可证并在开头加上MFW_前缀
 for file in ["README.md", "README-en.md", "LICENSE"]:
