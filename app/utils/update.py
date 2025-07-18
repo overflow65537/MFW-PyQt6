@@ -45,7 +45,7 @@ from ..utils.tool import (
     Save_Config,
     decrypt,
     get_os_type,
-    get_arch,   
+    get_arch,
 )
 from ..common.__version__ import __version__
 
@@ -55,7 +55,7 @@ class BaseUpdate(QThread):
     stop_flag = False
     channel_map = {0: "stable", 1: "beta", 2: "alpha"}
 
-    def get_proxy_data(self) -> dict|None:
+    def get_proxy_data(self) -> dict | None:
         proxy_config = {}
         if cfg.get(cfg.proxy) == 0:
             proxy_config["http"] = f"http://{cfg.get(cfg.http_proxy)}"
@@ -68,14 +68,16 @@ class BaseUpdate(QThread):
         for key, value in proxy_config.items():
             if value:
                 proxies[key] = value
-        if proxies == {'http': 'http://', 'https': 'http://'}:
+        if proxies == {"http": "http://", "https": "http://"}:
             logger.debug("代理配置为空")
             return None
         else:
             logger.debug(f"使用代理配置: {proxies}")
             return proxies
 
-    def download_file(self, url, file_path, progress_signal: SignalInstance, use_proxies):
+    def download_file(
+        self, url, file_path, progress_signal: SignalInstance, use_proxies
+    ):
         need_clear_update = False
         response = None
         if use_proxies:
@@ -176,7 +178,7 @@ class BaseUpdate(QThread):
 
         """
         try:
-            #去掉v
+            # 去掉v
             version1 = version1.replace("v", "")
             version2 = version2.replace("v", "")
 
@@ -192,7 +194,7 @@ class BaseUpdate(QThread):
                 if v1_parts[i] > v2_parts[i]:
                     return False  # version1 大于 version2
                 elif v1_parts[i] <= v2_parts[i]:
-                    return True # version1 小于等于 version2
+                    return True  # version1 小于等于 version2
             return False
         except Exception as e:
             logger.exception(f"比较版本号时出错: {e}")
@@ -388,7 +390,23 @@ class BaseUpdate(QThread):
 
         data = mirror_data.get("data")
         if data is not None and data.get("version_name") == version:
-            return {"status": "success", "msg": self.tr("current version is latest")}
+            return {"status": "no_need", "msg": self.tr("current version is latest")}
+        elif "beta" in version or "alpha" in version:
+            logger.info(f"当前为测试版本")
+            stable_data = self.mirror_check(
+                res_id, cdk, "v0.0.1", update_type, os_type, arch, "stable"
+            )
+            logger.info(f"最新稳定版本数据: {stable_data}")
+            logger.info(f"当前测试版本数据: {mirror_data}")
+            if stable_data.get("data", {}).get("version_number") < mirror_data.get(
+                "data", {}
+            ).get("version_number"):
+                return mirror_data
+            else:
+                return {
+                    "status": "no_need",
+                    "msg": self.tr("current version is latest"),
+                }
         return mirror_data
 
     def github_check(self, project_url: str, version: str):
@@ -495,7 +513,6 @@ class Update(BaseUpdate):
         version = maa_config_data.interface_config.get("version")
         channel = self.channel_map.get(cfg.get(cfg.resource_update_channel))
 
-
         os_type = get_os_type()
         arch = get_arch()
 
@@ -544,16 +561,17 @@ class Update(BaseUpdate):
                 # URL构造
 
                 github_dict = self.github_check(url, version=version)
-                if (
-                    github_dict.get("status") == "failed"
-                    or github_dict.get("status") == "success"
-                ):  # github检查失败:
+                if github_dict.get("status") in [
+                    "failed",
+                    "success",
+                    "no_need",
+                ]:  # github检查失败:
                     signalBus.update_download_finished.emit(github_dict)
                     return
                 else:
                     self.github_download(github_dict)
                     return
-            elif mirror_data.get("status") == "success":  # 无需更新
+            elif mirror_data.get("status") == "no_need":  # 无需更新
                 signalBus.update_download_finished.emit(mirror_data)
                 return
 
@@ -577,25 +595,27 @@ class Update(BaseUpdate):
                         ),
                     }
                 )
-                mirror_version=mirror_data.get("data", {}).get("version_name")
+                mirror_version = mirror_data.get("data", {}).get("version_name")
                 if mirror_version:
-                    url=f"https://api.github.com/repos/{username}/{repository}/releases/tags/{mirror_version}"
+                    url = f"https://api.github.com/repos/{username}/{repository}/releases/tags/{mirror_version}"
 
                 github_dict = self.github_check(url, version=version)
-                if (
-                    github_dict.get("status") == "failed"
-                    or github_dict.get("status") == "success"
-                ):  # github检查失败:
+                if github_dict.get("status") in [
+                    "failed",
+                    "success",
+                    "no_need",
+                ]:  # github检查失败:
                     signalBus.update_download_finished.emit(github_dict)
                     return
                 self.github_download(github_dict)
                 return
         else:
             github_dict = self.github_check(url, version=version)
-            if (
-                github_dict.get("status") == "failed"
-                or github_dict.get("status") == "success"
-            ):  # github检查失败:
+            if github_dict.get("status") in [
+                "failed",
+                "success",
+                "no_need",
+            ]:  # github检查失败:
                 signalBus.update_download_finished.emit(github_dict)
                 return
 
@@ -624,7 +644,7 @@ class Update(BaseUpdate):
     def mirror_download(self, res_id, mirror_data: Dict[str, dict]):
         """mirror下载更新"""
 
-        version =__version__
+        version = __version__
 
         self.stop_flag = False
         try:
@@ -721,7 +741,9 @@ class Update(BaseUpdate):
             # 保存更新日志
             changelog = mirror_data.get("data", {}).get("release_note", "")
             if changelog:
-                changelog_path = os.path.join(maa_config_data.resource_path, "resource_changelog.md")
+                changelog_path = os.path.join(
+                    maa_config_data.resource_path, "resource_changelog.md"
+                )
                 with open(changelog_path, "w", encoding="utf-8") as f:
                     f.write(changelog)
 
@@ -925,10 +947,12 @@ class Update(BaseUpdate):
                         {"status": "failed", "msg": self.tr("Clean up failed")}
                     )
                     return
-                
+
             changelog = update_dict.get("body", "")
             if changelog:
-                changelog_path = os.path.join(maa_config_data.resource_path,"resource_changelog.md")
+                changelog_path = os.path.join(
+                    maa_config_data.resource_path, "resource_changelog.md"
+                )
                 with open(changelog_path, "w", encoding="utf-8") as f:
                     f.write(changelog)
 
@@ -1032,7 +1056,10 @@ class DownloadBundle(Update):
         )
 
         if not self.download_file(
-            download_url, zip_file_path, signalBus.bundle_download_progress,use_proxies = False
+            download_url,
+            zip_file_path,
+            signalBus.bundle_download_progress,
+            use_proxies=False,
         ):
             signalBus.download_finished.emit(
                 {"status": "failed", "msg": self.tr("Download failed")}
@@ -1115,11 +1142,11 @@ class UpdateSelf(BaseUpdate):
                 f"https://api.github.com/repos/overflow65537/MFW-PyQt6/releases/latest"
             )
             github_dict = self.github_check(update_url, version)
-            if (
-                github_dict.get("status") == "failed"
-                or github_dict.get("status") == "success"
-                or github_dict.get("status") == "no_need"
-            ):  # github检查失败:
+            if github_dict.get("status") in [
+                "failed",
+                "success",
+                "no_need",
+            ]:  # github检查失败:
                 signalBus.download_self_finished.emit(github_dict)
                 return
             try:
@@ -1127,7 +1154,7 @@ class UpdateSelf(BaseUpdate):
                 if changelog:
                     changelog_path = os.path.join(os.getcwd(), "MFW_changelog.md")
                     with open(changelog_path, "w", encoding="utf-8") as f:
-                        f.write(changelog) # type: ignore
+                        f.write(changelog)  # type: ignore
                 download_url = None
                 for i in github_dict.get("assets", {}) or []:
                     if not isinstance(i, dict):
@@ -1154,9 +1181,17 @@ class UpdateSelf(BaseUpdate):
                 return
 
             if not self._download(download_url, use_proxies=True):
+                signalBus.download_self_finished.emit(
+                    {
+                        "status": "failed",
+                        "msg": self.tr("Failed to get download address"),
+                    }
+                )
                 return
-            
-        if mirror_data.get("code") != 0:
+        elif mirror_data.get("status") == "no_need":
+            signalBus.download_self_finished.emit(mirror_data)
+            return
+        if mirror_data.get("code") is not None and mirror_data.get("code") != 0:
             logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
             signalBus.download_self_finished.emit(
                 {
@@ -1165,13 +1200,6 @@ class UpdateSelf(BaseUpdate):
                     + "\n"
                     + self.tr("switching to Github download"),
                 }
-            )
-            return
-
-        elif mirror_data.get("data", {}).get("version_name") == version:
-            logger.warning(f"当前版本已是最新版本")
-            signalBus.download_self_finished.emit(
-                {"status": "no_need", "msg": self.tr("current version is latest")}
             )
             return
         elif mirror_data.get("data", {}).get("url"):
@@ -1219,10 +1247,10 @@ class UpdateSelf(BaseUpdate):
                 target_version = mirror_data["data"].get(
                     "version_name", "default_version"
                 )
-                github_url = self.assemble_gitHub_url( target_version)
+                github_url = self.assemble_gitHub_url(target_version)
                 logger.debug(f"GitHub下载地址: {github_url}")
 
-                if not self._download(github_url,use_proxies = False):
+                if not self._download(github_url, use_proxies=False):
                     logger.error("GitHub下载失败")
                     return
             except KeyError as e:
