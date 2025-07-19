@@ -23,6 +23,7 @@ MFW-ChainFlow Assistant 更新器
 """
 
 import zipfile
+import tarfile
 import os
 import time
 import sys
@@ -84,7 +85,42 @@ def extract_zip_file(update1_zip_name):
                             if sys.argv[1] != "-update":
                                 input(f"{error_message}\nPress Enter to continue...")
                         sys.exit(1)
-
+    except zipfile.BadZipfile as e:
+        tar_file_path = update1_zip_name.replace(".zip", ".tar.gz")
+        os.rename(update1_zip_name, tar_file_path)
+        #按照上面的逻辑
+        with tarfile.open(tar_file_path, "r") as tar_ref:
+            for file_info in tar_ref.getmembers():
+                # 排除列表
+                exclude_list = [
+                    "msvcp140.dll",
+                    "vcruntime140.dll",
+                    "onnxruntime_maa.dll",
+                    "onnxruntime_maa.so",
+                    "onnxruntime_maa.dylib",
+                    "fastdeploy_ppocr_maa.dll",
+                    "fastdeploy_ppocr_maa.so",
+                    "fastdeploy_ppocr_maa.dylib",
+                ]
+                if file_info.name in exclude_list:
+                    continue
+                try:
+                    tar_ref.extract(file_info, os.getcwd())
+                    print(f"Extracted: {file_info.name}")
+                except PermissionError as e:
+                    # 等待 3 秒
+                    time.sleep(3)
+                    # 再次尝试解压
+                    try:
+                        tar_ref.extract(file_info, os.getcwd())
+                        print(f"Extracted: {file_info.name}")
+                    except Exception as e:
+                        error_message = f"try extract {file_info.name} failed: {e}"
+                        with open("ERROR.log", "a") as log_file:
+                            log_file.write(error_message + "\n")
+                            if sys.argv[1] != "-update":
+                                input(f"{error_message}\nPress Enter to continue...")
+                        sys.exit(1)
     except Exception as e:
         error_message = f"extract {update1_zip_name} failed: {e},enter to continue"
         input(error_message)
