@@ -66,6 +66,10 @@ except FileNotFoundError as e:
     print(f"[FATAL] Dependency missing: {str(e)}")
     sys.exit(1)
 
+#将maa_path/bin文件夹整体移动出来
+if os.path.exists(os.path.join(maa_path,"bin")):
+    shutil.move(os.path.join(maa_path,"bin"), os.path.join(os.getcwd(), "dist"))
+
 # === PyInstaller 配置生成 ===
 base_command = [
     "main.py",
@@ -73,16 +77,18 @@ base_command = [
     "--onefile",
     "--clean",
     "--noconfirm",  # 禁用确认提示
-    "--exclude-module=maa",
     # 资源包含规则（格式：源路径{分隔符}目标目录）
+    f"--add-data={maa_path}{os.pathsep}maa",
     f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
     f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
     f"--add-data={strenum}{os.pathsep}strenum",
     # 自动收集包数据
+    "--collect-data=maa",
     "--collect-data=MaaAgentBinary",
     "--collect-data=darkdetect",
     "--collect-data=strenum",
     # 隐式依赖声明
+    "--hidden-import=maa",
     "--hidden-import=MaaAgentBinary",
     "--hidden-import=darkdetect",
     "--hidden-import=strenum",
@@ -112,44 +118,60 @@ elif sys.platform == "win32":
 # === 开始构建 ===
 print("[INFO] Starting MFW build")
 print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
-PyInstaller.__main__.run(base_command)
+try:
+    PyInstaller.__main__.run(base_command)
 
-if os.path.exists(maa_path):
-    shutil.copytree(
-        maa_path,
-        os.path.join(os.getcwd(), "dist", "MFW", "maa"),
-        dirs_exist_ok=True,
-    )
-    for file in os.listdir(os.path.join(os.getcwd(), "dist", "MFW", "maa","bin")):
-        file_path = os.path.join(os.getcwd(), "dist", "MFW", "maa","bin", file)
-        shutil.move(file_path, os.path.join(os.getcwd(), "dist", "MFW"))
-    
+    #复制bin文件夹内的文件到MFW目录内
+    if os.path.exists(os.path.join(os.getcwd(), "dist","bin")):
+        for file in os.listdir(os.path.join(os.getcwd(), "dist","bin")):
+            file_path = os.path.join(os.getcwd(), "dist","bin", file)
+            shutil.copy(file_path, os.path.join(os.getcwd(), "dist", "MFW"))
 
-# 复制资源文件夹
-if os.path.exists(os.path.join(os.getcwd(), "MFW_resource")):
-    shutil.copytree(
-        os.path.join(os.getcwd(), "MFW_resource"),
-        os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource"),
-        dirs_exist_ok=True,
-    )
+    if os.path.exists(maa_path):
+        shutil.copytree(
+            maa_path,
+            os.path.join(os.getcwd(), "dist", "MFW", "maa"),
+            dirs_exist_ok=True,
+        )
+        for file in os.listdir(os.path.join(os.getcwd(), "dist", "MFW", "maa","bin")):
+            file_path = os.path.join(os.getcwd(), "dist", "MFW", "maa","bin", file)
+            shutil.move(file_path, os.path.join(os.getcwd(), "dist", "MFW"))
+        
 
-# 复制README和许可证并在开头加上MFW_前缀
-for file in ["README.md", "README-en.md", "LICENSE"]:
-    shutil.copy(
-        os.path.join(os.getcwd(), file),
-        os.path.join(os.getcwd(), "dist", "MFW", f"MFW_{file}"),
-    )
+    # 复制资源文件夹
+    if os.path.exists(os.path.join(os.getcwd(), "MFW_resource")):
+        shutil.copytree(
+            os.path.join(os.getcwd(), "MFW_resource"),
+            os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource"),
+            dirs_exist_ok=True,
+        )
+
+    # 复制README和许可证并在开头加上MFW_前缀
+    for file in ["README.md", "README-en.md", "LICENSE"]:
+        shutil.copy(
+            os.path.join(os.getcwd(), file),
+            os.path.join(os.getcwd(), "dist", "MFW", f"MFW_{file}"),
+        )
 
 
-# === 构建updater ===
+    # === 构建updater ===
 
-updater_command = [
-    "updater.py",
-    "--name=MFWUpdater",
-    "--onefile",
-    "--clean",
-    "--noconfirm",  # 禁用确认提示
-    "--distpath",
-    os.path.join("dist", "MFW"),
-]
-PyInstaller.__main__.run(updater_command)
+    updater_command = [
+        "updater.py",
+        "--name=MFWUpdater",
+        "--onefile",
+        "--clean",
+        "--noconfirm",  # 禁用确认提示
+        "--distpath",
+        os.path.join("dist", "MFW"),
+    ]
+    PyInstaller.__main__.run(updater_command)
+
+except Exception as e:
+    print(f"[FATAL] PyInstaller build failed: {str(e)}")
+    sys.exit(1)
+
+finally:
+    #将bin文件夹移动回去
+    if os.path.exists(os.path.join(os.getcwd(), "dist","bin")):
+        shutil.move(os.path.join(os.getcwd(), "dist","bin"), os.path.join(maa_path,"bin"))
