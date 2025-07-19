@@ -27,9 +27,9 @@ import site
 import shutil
 import sys
 
-#删除dist
-if os.path.exists(os.path.join(os.getcwd(), "dist","MFW")):
-    shutil.rmtree(os.path.join(os.getcwd(), "dist","MFW"))
+# 删除dist
+if os.path.exists(os.path.join(os.getcwd(), "dist", "MFW")):
+    shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW"))
 
 # 获取参数
 # === 构建参数处理 ===
@@ -61,7 +61,7 @@ try:
     maa_path = locate_package("maa")  # MAA 框架核心库
     agent_path = locate_package("MaaAgentBinary")  # 设备连接组件
     darkdetect_path = locate_package("darkdetect")  # 系统主题检测库
-    strenum = locate_package("strenum")  
+    strenum = locate_package("strenum")
 except FileNotFoundError as e:
     print(f"[FATAL] Dependency missing: {str(e)}")
     sys.exit(1)
@@ -72,7 +72,7 @@ base_command = [
     "--name=MFW",
     "--onefile",
     "--clean",
-    "--noconfirm", 
+    "--noconfirm",
     # 资源包含规则（格式：源路径{分隔符}目标目录）
     f"--add-data={maa_path}{os.pathsep}maa",
     f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
@@ -111,25 +111,10 @@ elif sys.platform == "win32":
         "--noconsole",  # 禁用控制台窗口
     ]
 
-# === 二进制文件处理 ===
-# 收集 MAA 的本地库文件
-bin_dir = os.path.join(maa_path, "bin")
-bin_files = []
-for f in os.listdir(bin_dir):
-    print(f"[DEBUG] Found binary file: {f}")
-    print(f"[DEBUG] Adding binary file: {os.path.join(bin_dir, f)}")
-    bin_files.append(f)
-    base_command += [f"--add-binary={os.path.join(bin_dir, f)}{os.pathsep}."]
-
 # === 开始构建 ===
 print("[INFO] Starting MFW build")
 print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
-
-if sys.platform == "darwin":
-    # 修复OSX上的可执行文件权限
-    for f in bin_files:
-        os.chmod(os.path.join(os.getcwd(), "dist", "MFW", "maa", "bin", f), 0o755)
 
 # 复制资源文件夹
 if os.path.exists(os.path.join(os.getcwd(), "MFW_resource")):
