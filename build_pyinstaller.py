@@ -126,6 +126,11 @@ print("[INFO] Starting MFW build")
 print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
 
+if sys.platform == "darwin":
+    # 修复OSX上的可执行文件权限
+    for f in bin_files:
+        os.chmod(os.path.join(os.getcwd(), "dist", "MFW", "maa", "bin", f), 0o755)
+
 # 复制资源文件夹
 if os.path.exists(os.path.join(os.getcwd(), "MFW_resource")):
     shutil.copytree(
