@@ -30,6 +30,7 @@ import json
 import os
 import shutil
 import zipfile
+import tarfile
 import time
 from typing import Dict, Optional
 
@@ -124,6 +125,7 @@ class BaseUpdate(QThread):
                 response.close()
 
     def extract_zip(self, zip_file_path, extract_to):
+        actual_main_folder = None
         try:
             with zipfile.ZipFile(
                 zip_file_path, "r", metadata_encoding="utf-8"
@@ -132,8 +134,18 @@ class BaseUpdate(QThread):
                 actual_main_folder = all_members[0].split("/")[0]
                 zip_ref.extractall(extract_to)
             return actual_main_folder
+        except zipfile.BadZipFile as e:
+            tar_file_path = zip_file_path.replace(".zip", ".tar.gz")
+            os.rename(zip_file_path, tar_file_path)
+            with tarfile.open(tar_file_path, "r") as tar_ref:
+                members = tar_ref.getmembers()
+                if members:
+                    # 从第一个成员路径提取主文件夹名
+                    actual_main_folder = members[0].name.split("/")[0]
+                tar_ref.extractall(extract_to)
+            return actual_main_folder
         except Exception as e:
-            logger.exception(f"解压文件时出错 {zip_file_path}解压到{extract_to}")
+            logger.exception(f"解压文件时出错 {e}")
             return False
 
     def move_files(self, src, dst):

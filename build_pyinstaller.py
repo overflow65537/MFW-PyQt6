@@ -21,12 +21,15 @@ MFW-ChainFlow Assistant
 MFW-ChainFlow Assistant 打包脚本
 作者:overflow65537
 """
-
 import PyInstaller.__main__
 import os
 import site
 import shutil
 import sys
+
+# 删除dist
+if os.path.exists(os.path.join(os.getcwd(), "dist", "MFW")):
+    shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW"))
 
 # 获取参数
 # === 构建参数处理 ===
@@ -38,9 +41,9 @@ platform = sys.argv[1]
 architecture = sys.argv[2]
 version = sys.argv[3]
 
-#写入版本号
-with open(os.path.join(os.getcwd(), "app", "common","__version__.py"), "w") as f:
-    f.write(f"__version__ = \"{version}\"")
+# 写入版本号
+with open(os.path.join(os.getcwd(), "app", "common", "__version__.py"), "w") as f:
+    f.write(f'__version__ = "{version}"')
 
 
 # === 依赖包路径发现 ===
@@ -58,6 +61,7 @@ try:
     maa_path = locate_package("maa")  # MAA 框架核心库
     agent_path = locate_package("MaaAgentBinary")  # 设备连接组件
     darkdetect_path = locate_package("darkdetect")  # 系统主题检测库
+    strenum = locate_package("strenum")
 except FileNotFoundError as e:
     print(f"[FATAL] Dependency missing: {str(e)}")
     sys.exit(1)
@@ -66,22 +70,26 @@ except FileNotFoundError as e:
 base_command = [
     "main.py",
     "--name=MFW",
+    "--onefile",
     "--clean",
-    "--noconfirm",  # 禁用确认提示
+    "--noconfirm",
     # 资源包含规则（格式：源路径{分隔符}目标目录）
     f"--add-data={maa_path}{os.pathsep}maa",
     f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
     f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
-    f"--add-data={os.path.join(os.getcwd(), 'MFW_resource')}{os.pathsep}TEM_files{os.sep}MFW_resource",
-    f"--add-data={os.path.join(os.getcwd(), 'config','emulator.json')}{os.pathsep}TEM_files{os.sep}config",
+    f"--add-data={strenum}{os.pathsep}strenum",
     # 自动收集包数据
-    "--collect-data=darkdetect",
     "--collect-data=maa",
     "--collect-data=MaaAgentBinary",
+    "--collect-data=darkdetect",
+    "--collect-data=strenum",
     # 隐式依赖声明
-    "--hidden-import=darkdetect",
     "--hidden-import=maa",
     "--hidden-import=MaaAgentBinary",
+    "--hidden-import=darkdetect",
+    "--hidden-import=strenum",
+    "--distpath",
+    os.path.join("dist", "MFW"),
 ]
 
 # === 平台特定配置 ===
@@ -103,51 +111,18 @@ elif sys.platform == "win32":
         "--noconsole",  # 禁用控制台窗口
     ]
 
-# === 二进制文件处理 ===
-# 收集 MAA 的本地库文件
-bin_dir = os.path.join(maa_path, "bin")
-bin_files = []
-for f in os.listdir(bin_dir):
-    print(f"[DEBUG] Found binary file: {f}")
-    print(f"[DEBUG] Adding binary file: {os.path.join(bin_dir, f)}")
-    bin_files.append(f)
-    base_command += [f"--add-binary={os.path.join(bin_dir, f)}{os.pathsep}."]
-
-
 # === 开始构建 ===
 print("[INFO] Starting MFW build")
 print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
 
-# === 构建后处理 ===
-if sys.platform == "win32":
-    # 复制 DLL 到 dist/MFW 目录
+# 复制资源文件夹
+if os.path.exists(os.path.join(os.getcwd(), "MFW_resource")):
     shutil.copytree(
-        os.path.join(os.getcwd(), "dll"),
-        os.path.join(os.getcwd(), "dist", "MFW"),
+        os.path.join(os.getcwd(), "MFW_resource"),
+        os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource"),
         dirs_exist_ok=True,
     )
-
-# 复制TEM_files的内容到 dist/MFW 目录
-shutil.copytree(
-    os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"),
-    os.path.join(os.getcwd(), "dist", "MFW"),
-    dirs_exist_ok=True,
-)
-# 删除临时目录
-shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"))
-
-
-for i in bin_files:
-    # 复制二进制文件到 dist/MFW 目录
-    shutil.copy(
-        os.path.join(os.getcwd(), "dist", "MFW", "_internal", i),
-        os.path.join(os.getcwd(), "dist", "MFW"),
-    )
-    # 删除临时文件
-    os.remove(os.path.join(os.getcwd(), "dist", "MFW", "_internal", i))
-
-shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin"))
 
 # 复制README和许可证并在开头加上MFW_前缀
 for file in ["README.md", "README-en.md", "LICENSE"]:
