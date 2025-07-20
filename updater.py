@@ -88,7 +88,7 @@ def extract_zip_file(update1_zip_name):
     except zipfile.BadZipfile as e:
         tar_file_path = update1_zip_name.replace(".zip", ".tar.gz")
         os.rename(update1_zip_name, tar_file_path)
-        #按照上面的逻辑
+        # 按照上面的逻辑
         with tarfile.open(tar_file_path, "r") as tar_ref:
             for file_info in tar_ref.getmembers():
                 # 排除列表
@@ -162,6 +162,8 @@ def standard_update():
     # 重命名 update.zip 为 update1.zip
     if os.path.exists(zip_file_name):
         os.rename(zip_file_name, update1_zip_name)
+    elif os.path.exists(os.path.join(os.getcwd(), "update.tar.gz")):
+        os.rename(os.path.join(os.getcwd(), "update.tar.gz"), update1_zip_name)
 
     # 重启程序
     if sys.platform.startswith("win32"):
@@ -180,6 +182,8 @@ def recovery_mode():
     # 检查 update1.zip 文件是否存在
     if os.path.exists(update1_zip_name):
         extract_zip_file(update1_zip_name)
+    if os.path.exists(os.path.join(os.getcwd(), "update.tar.gz")):
+        os.rename(os.path.join(os.getcwd(), "update.tar.gz"), "update1.zip")
 
     # 重启程序
     if sys.platform.startswith("win32"):
@@ -197,13 +201,12 @@ if __name__ == "__main__":
         os.remove("ERROR.log")
     if len(sys.argv) > 1 and sys.argv[1] == "-update":
         standard_update()
-    else :
-        mode=input("1. 更新模式 / Standard update\n2. 恢复模式 / Recovery update\n")
+    else:
+        mode = input("1. 更新模式 / Standard update\n2. 恢复模式 / Recovery update\n")
         if mode == "1":
             standard_update()
         elif mode == "2":
             recovery_mode()
         else:
             print("无效输入 / Invalid input")
-            input("按回车键继续... / Press Enter to continue...")    
-
+            input("按回车键继续... / Press Enter to continue...")

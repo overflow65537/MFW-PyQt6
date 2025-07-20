@@ -9,3 +9,4 @@ wmi
 cryptography
 markdown
 chardet
+pyperclip
