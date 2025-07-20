@@ -104,7 +104,7 @@ if sys.platform == "darwin":
         "--osx-bundle-identifier=com.overflow65537.MFW",
         "--windowed",
         # 图标
-        "--icon=MFW_resource/icon/logo.ico",
+        "--icon=MFW_resource/icon/logo.icns",
     ]
 
 elif sys.platform == "win32":
