@@ -152,7 +152,11 @@ updater_command = [
     "--clean",
     "--noconfirm",  # 禁用确认提示
     "--distpath",
-    os.path.join("dist", "MFW") if sys.platform != "darwin" else os.path.join("dist", "MFW", "MFW.app","Contents","MacOS"),
+    os.path.join("dist", "MFW")
 ]
 PyInstaller.__main__.run(updater_command)
-
+if sys.platform == "darwin":
+    shutil.copy(
+        os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater"),
+        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app","Contents","MacOS","MFWUpdater"),
+    )
