@@ -24,6 +24,7 @@ MFW-ChainFlow Assistant 检查单元
 """
 
 import os
+import sys
 import json
 from typing import Dict
 from app.common.maa_config_data import maa_config_data, init_maa_config_data
@@ -51,10 +52,15 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
             or maa_config_list == {}
             or maa_resource_list == {}
         ):
-            if os.path.exists("interface.json") and os.path.exists("resource"):
+            _path = (
+                os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd())))
+                if sys.platform.startswith("darwin")
+                else os.getcwd()
+            )  
+            if os.path.exists(os.path.join(_path,"interface.json")) and os.path.exists(os.path.join(_path,"resource")):
                 logger.info("检测到配置文件,开始转换")
 
-                with open("interface.json", "r", encoding="utf-8") as f:
+                with open(os.path.join(_path,"interface.json"), "r", encoding="utf-8") as f:
                     interface_config: dict = json.load(f)
                 cfg.set(cfg.maa_config_name, "default")
                 cfg.set(cfg.maa_resource_name, interface_config.get("name", "resource"))
@@ -62,7 +68,7 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
                 cfg.set(
                     cfg.maa_config_path,
                     os.path.join(
-                        ".",
+                        _path,
                         "config",
                         cfg.get(cfg.maa_resource_name),
                         "config",
@@ -71,7 +77,7 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
                     ),
                 )
 
-                cfg.set(cfg.maa_resource_path, os.getcwd())
+                cfg.set(cfg.maa_resource_path, _path)
                 cfg.set(
                     cfg.maa_config_list,
                     {
