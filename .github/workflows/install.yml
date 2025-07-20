@@ -180,9 +180,8 @@ jobs:
           cd assets
           for f in *; do
             if [[ $f == *"macos"* ]]; then
-              #为macos添加权限
-              chmod +x $f/MFW.app/Contents/MacOS/MFW
-              chmod +x $f/MFW.app/Contents/MacOS/MFWUpdater
+              find $f -type f -name "MFW" -exec chmod +x {} \; 2>/dev/null || true
+              find $f -type f -name "MFWUpdater" -exec chmod +x {} \; 2>/dev/null || true
               tar -cpzf $f-${{ needs.meta.outputs.tag }}.tar.gz -C $f .
             else
               (cd $f && zip -r ../$f-${{ needs.meta.outputs.tag }}.zip .)
