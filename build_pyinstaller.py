@@ -134,8 +134,8 @@ if os.path.exists(
             os.path.join(os.getcwd(), "dist", "MFW", "MFW.app","Contents","MacOS","MFW_resource"),
             dirs_exist_ok=True,
         )
-        #删除MFW
-        shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))
+        #删除MFW文件
+        os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))
 
 # 复制README和许可证并在开头加上MFW_前缀
 for file in ["README.md", "README-en.md", "LICENSE"]:
