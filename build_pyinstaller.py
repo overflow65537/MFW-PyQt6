@@ -27,6 +27,8 @@ import site
 import shutil
 import sys
 
+from app.utils.maafw import MaaFW
+
 # 删除dist
 if os.path.exists(os.path.join(os.getcwd(), "dist", "MFW")):
     shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW"))
@@ -103,6 +105,10 @@ if sys.platform == "darwin":
     base_command += [
         "--osx-bundle-identifier=com.overflow65537.MFW",
         "--windowed",
+        # 图标
+        "--icon=MFW_resource/icon/logo.icns",
+        # 添加MFW_resource
+        "--add-data=MFW_resource{os.pathsep}MFW_resource",
     ]
 
 elif sys.platform == "win32":
@@ -117,7 +123,9 @@ print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
 
 # 复制资源文件夹
-if os.path.exists(os.path.join(os.getcwd(), "MFW_resource")):
+if sys.platform != "darwin" and os.path.exists(
+    os.path.join(os.getcwd(), "MFW_resource")
+):
     shutil.copytree(
         os.path.join(os.getcwd(), "MFW_resource"),
         os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource"),
