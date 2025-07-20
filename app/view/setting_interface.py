@@ -47,7 +47,6 @@ from ..common.style_sheet import StyleSheet
 from ..utils.widget import (
     LineEditCard,
     DoubleButtonSettingCard,
-    ShowDownload,
     ProxySettingCard,
 )
 from ..utils.update import Update, UpdateSelf

@@ -176,7 +176,7 @@ def start_symbol():
 
 
 if __name__ == "__main__":
-    """if sys.platform.startswith("darwin"):
+    if sys.platform.startswith("darwin"):
 
         PID_FILE = os.path.join(os.getcwd(), "MFW.pid")  # PID文件路径
 
@@ -204,7 +204,7 @@ if __name__ == "__main__":
         with open(PID_FILE, "w") as f:
             f.write(str(os.getpid()))
         atexit.register(cleanup_pid)  # 程序正常退出时自动清理
-        logger.debug(f"创建PID文件（当前PID: {os.getpid()}）")"""
+        logger.debug(f"创建PID文件（当前PID: {os.getpid()}）")
 
     def clear_agent():
         if maafw.agent:
