@@ -68,7 +68,7 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
                 cfg.set(
                     cfg.maa_config_path,
                     os.path.join(
-                        _path,
+                        os.getcwd(),
                         "config",
                         cfg.get(cfg.maa_resource_name),
                         "config",
