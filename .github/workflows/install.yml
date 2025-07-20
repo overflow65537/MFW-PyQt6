@@ -177,14 +177,8 @@ jobs:
           path: assets
 
       - run: |
-          cd assets
           for f in *; do
-            if [[ $f == *"win"* ]]; then
-              (cd $f && zip -r ../$f-${{ needs.meta.outputs.tag }}.zip .)
-            else
-              find "$f" -type d -name "MFW.app" -exec find {} -type f \( -name "MFW" -o -name "MFWUpdater" \) -exec chmod +x {} \; \; 2>/dev/null || true
-              tar -cpzf $f-${{ needs.meta.outputs.tag }}.tar.gz -C $f .
-            fi
+            (cd $f && zip -r -9 ../$f-${{ needs.meta.outputs.tag }}.zip .)
           done
 
       - uses: softprops/action-gh-release@v2.2.2
