@@ -160,7 +160,11 @@ if sys.platform == "darwin":
         os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater"),
         os.path.join(os.getcwd(), "dist", "MFW", "MFW.app","Contents","MacOS","MFWUpdater"),
     )
-    #os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater"))
-    #os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))
+    mfw_executable = os.path.join(os.getcwd(), "dist", "MFW", "MFW.app", "Contents", "MacOS", "MFW")
+    mfw_updater = os.path.join(os.getcwd(), "dist", "MFW", "MFW.app", "Contents", "MacOS", "MFWUpdater")
+    os.chmod(mfw_executable, 0o755)
+    os.chmod(mfw_updater, 0o755)
+    os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater"))
+    os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))
     
 
