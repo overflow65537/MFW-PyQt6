@@ -179,7 +179,11 @@ jobs:
       - run: |
           cd assets
           for f in *; do
-            (cd $f && zip -r -9 ../$f-${{ needs.meta.outputs.tag }}.zip .)
+            if [[ $f == *"macos"* ]]; then
+              tar -cpzf $f-${{ needs.meta.outputs.tag }}.tar.gz -C $f .
+            else
+              (cd $f && zip -r ../$f-${{ needs.meta.outputs.tag }}.zip .)
+            fi
           done
 
       - uses: softprops/action-gh-release@v2.2.2
