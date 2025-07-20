@@ -169,7 +169,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         return [
             case["name"] for case in cases if isinstance(case, dict) and "name" in case
         ]
-
     def check_task_consistency(self):
         """
         检查配置任务与接口模板的一致性（任务存在性+选项匹配）
@@ -194,12 +193,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             # 检查任务是否存在于 interface 模板
             if task_name not in task_keys:
                 inconsistent_tasks.append(task_name)
-                maa_config_data.config["task"][i]["disabled"] = True
-                maa_config_data.config["task"][i]["color"] = [255,0,0,0]
+                maa_config_data.config["task"][i]["task_invalidation"] = True
                 Save_Config(maa_config_data.config_path, maa_config_data.config)
                 item = self.Task_List.item(i)
-                if maa_config_data.config["task"][i].get("color"):
-                    item.setForeground(QColor(maa_config_data.config["task"][i].get("color",[0,0,0,0])))
+                item.setBackground(QColor(255, 0, 0))
                 continue
             for cfg_option in task_option:
                 # 检查选项是否存在于 interface 模板
@@ -207,12 +204,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                     inconsistent_tasks.append(
                         task_name + "-" + cfg_option.get("name", "")
                     )
-                    maa_config_data.config["task"][i]["disabled"] = True
-                    maa_config_data.config["task"][i]["color"] = [255,0,0,0]
+                    maa_config_data.config["task"][i]["task_invalidation"] = True
                     Save_Config(maa_config_data.config_path, maa_config_data.config)
                     item = self.Task_List.item(i)
-                    if maa_config_data.config["task"][i].get("color"):
-                        item.setForeground(QColor(maa_config_data.config["task"][i].get("color",[0,0,0,0])))
+                    item.setBackground(QColor(255, 0, 0))
                     continue
                 case_list = self.get_option_case_names(
                     interface_data, cfg_option.get("name", "")
@@ -226,12 +221,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         + "-"
                         + cfg_option.get("value", "")
                     )
-                    maa_config_data.config["task"][i]["disabled"] = True
-                    maa_config_data.config["task"][i]["color"] = [255,0,0,0]
+                    maa_config_data.config["task"][i]["task_invalidation"] = True
                     Save_Config(maa_config_data.config_path, maa_config_data.config)
                     item = self.Task_List.item(i)
-                    if maa_config_data.config["task"][i].get("color"):
-                        item.setForeground(QColor(maa_config_data.config["task"][i].get("color",[0,0,0,0])))
+                    item.setBackground(QColor(255, 0, 0))
                     continue
 
         # 输出结果
@@ -1464,6 +1457,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             # 当前任务序号
             if not self.need_runing:
                 break
+            elif task_obj.get("task_invalidation", False):
+                continue
             self.task_idx = idx
             task_dict = get_override(task_obj,maa_config_data.interface_config)
             if not task_dict:
