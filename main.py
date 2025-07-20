@@ -181,7 +181,7 @@ if __name__ == "__main__":
         PID_FILE = os.path.join(os.getcwd(), "MFW.pid")  # PID文件路径
 
         # 清理PID文件的函数
-        def cleanup_pid():
+        """def cleanup_pid():
             if os.path.exists(PID_FILE):
                 os.remove(PID_FILE)
                 logger.debug("已清理PID文件")
@@ -204,7 +204,7 @@ if __name__ == "__main__":
         with open(PID_FILE, "w") as f:
             f.write(str(os.getpid()))
         atexit.register(cleanup_pid)  # 程序正常退出时自动清理
-        logger.debug(f"创建PID文件（当前PID: {os.getpid()}）")
+        logger.debug(f"创建PID文件（当前PID: {os.getpid()}）")"""
 
     def clear_agent():
         if maafw.agent:
