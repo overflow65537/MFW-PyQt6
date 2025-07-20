@@ -166,5 +166,3 @@ if sys.platform == "darwin":
     os.chmod(mfw_updater, 0o755)
     os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater"))
     os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))
-    
-
