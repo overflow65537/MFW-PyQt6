@@ -107,8 +107,6 @@ if sys.platform == "darwin":
         "--windowed",
         # 图标
         "--icon=MFW_resource/icon/logo.icns",
-        # 添加MFW_resource
-        "--add-data=MFW_resource{os.pathsep}MFW_resource",
     ]
 
 elif sys.platform == "win32":
@@ -123,14 +121,23 @@ print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
 
 # 复制资源文件夹
-if sys.platform != "darwin" and os.path.exists(
+if os.path.exists(
     os.path.join(os.getcwd(), "MFW_resource")
 ):
-    shutil.copytree(
-        os.path.join(os.getcwd(), "MFW_resource"),
-        os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource"),
-        dirs_exist_ok=True,
-    )
+    if sys.platform != "darwin":
+        shutil.copytree(
+            os.path.join(os.getcwd(), "MFW_resource"),
+            os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource"),
+            dirs_exist_ok=True,
+        )
+    else:
+        shutil.copytree(
+            os.path.join(os.getcwd(), "MFW_resource"),
+            os.path.join(os.getcwd(), "dist", "MFW", "MFW.app","Contents","MacOS","MFW_resource"),
+            dirs_exist_ok=True,
+        )
+        #删除MFW
+        shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))
 
 # 复制README和许可证并在开头加上MFW_前缀
 for file in ["README.md", "README-en.md", "LICENSE"]:
@@ -149,6 +156,8 @@ updater_command = [
     "--clean",
     "--noconfirm",  # 禁用确认提示
     "--distpath",
-    os.path.join("dist", "MFW"),
+    os.path.join("dist", "MFW") if sys.platform != "darwin" else os.path.join("dist", "MFW", "MFW.app","Contents","MacOS"),
 ]
 PyInstaller.__main__.run(updater_command)
+
+
