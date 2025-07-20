@@ -159,21 +159,6 @@ class SwitchSettingCardCustom(SettingCard):
             logger.info(f"保存设置时出错: {e}")
 
 
-def show_error_message():
-    """显示错误消息框"""
-    logger.exception("发生了一个异常：")
-    traceback_info = traceback.format_exc()
-
-    msg_box = QMessageBox()
-    msg_box.setIcon(QMessageBox.Icon.Critical)
-    msg_box.setWindowTitle("错误")
-    msg_box.setText(f"发生了一个异常：\n{str(traceback_info)}")
-
-    msg_box.setWindowIcon(QIcon("./icon/ERROR.png"))
-
-    msg_box.exec()
-
-
 class ShowDownload(MessageBoxBase):
     """下载进度对话框"""
 

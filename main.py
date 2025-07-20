@@ -176,12 +176,12 @@ def start_symbol():
 
 
 if __name__ == "__main__":
-    if sys.platform.startswith("darwin"):
+    """if sys.platform.startswith("darwin"):
 
         PID_FILE = os.path.join(os.getcwd(), "MFW.pid")  # PID文件路径
 
         # 清理PID文件的函数
-        """def cleanup_pid():
+        def cleanup_pid():
             if os.path.exists(PID_FILE):
                 os.remove(PID_FILE)
                 logger.debug("已清理PID文件")

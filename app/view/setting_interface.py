@@ -686,12 +686,25 @@ class SettingInterface(ScrollArea):
             )
         self.aboutCard.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(REPO_URL)))
         self.aboutCard.clicked2.connect(self.update_self_func)
-
+    def open_file_or_folder(self,path):
+        try:
+            if sys.platform == "win32":
+                os.startfile(path)
+            elif sys.platform == "darwin":
+                # macOS 系统使用 open 命令
+                subprocess.run(["open", path], check=True)
+            elif sys.platform == "linux":
+                # Linux 系统使用 xdg-open 命令
+                subprocess.run(["xdg-open", path], check=True)
+            else:
+                logger.error(f"不支持的操作系统: {sys.platform}")
+        except Exception as e:
+            logger.error(f"打开 {path} 时出错: {e}")
     def open_debug_folder(self):
         """打开debug文件夹"""
         debug_path = os.path.join(".", "debug", maa_config_data.resource_name)
         if os.path.exists(debug_path):
-            os.startfile(debug_path)
+            self.open_file_or_folder(debug_path)
 
     def zip_debug_folder(self):
         """压缩debug文件夹"""
@@ -751,7 +764,7 @@ class SettingInterface(ScrollArea):
 
         debug_zip_path = os.path.join(".", "debug")
         if os.path.exists(debug_zip_path):
-            os.startfile(debug_zip_path)
+            self.open_file_or_folder(debug_zip_path)
 
     def update_self_func(self):
         """更新程序。"""

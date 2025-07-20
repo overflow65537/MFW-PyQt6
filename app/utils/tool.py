@@ -40,9 +40,13 @@ import base64
 import logging
 from datetime import datetime, timedelta
 from maa.notification_handler import NotificationHandler, NotificationType
+
 from PySide6.QtCore import QThread
-from PySide6.QtWidgets import QMessageBox
 from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton, QDialogButtonBox
+
+from qfluentwidgets import Dialog,TextEdit,PushButton
+
 from app.utils.logger import logger
 from ..common.signal_bus import signalBus
 
@@ -63,16 +67,21 @@ def replace_ocr(path):
 
 
 def show_error_message():
-    """显示错误信息的弹窗。"""
+    """显示错误信息的弹窗。将错误堆栈信息分页显示，并提供复制功能。"""
     traceback_info = traceback.format_exc()
+    def copy_traceback():
+        """复制错误堆栈信息"""
+        import pyperclip
+        pyperclip.copy(traceback_info)
 
-    msg_box = QMessageBox()
-
-    msg_box.setIcon(QMessageBox.Icon.Critical)
-    msg_box.setWindowTitle("ERROR")
-    msg_box.setText(f"{str(traceback_info)}")
-    msg_box.setWindowIcon(QIcon("./MFW_resource/icon/ERROR.png"))
-    msg_box.exec()
+    # 创建自定义对话框
+    dialog = Dialog("traceback info",traceback_info)
+    dialog.yesButton.clicked.connect(copy_traceback)
+    dialog.yesButton.setText(dialog.tr("copy traceback"))
+    dialog.cancelButton.hide()
+    dialog.setWindowIcon(QIcon("./MFW_resource/icon/ERROR.png"))
+    dialog.setMinimumSize(800, 600)
+    dialog.exec()
 
 
 def Read_Config(paths: str) -> Dict:
