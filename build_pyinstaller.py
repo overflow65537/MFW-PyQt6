@@ -27,8 +27,6 @@ import site
 import shutil
 import sys
 
-from app.utils.maafw import MaaFW
-
 # 删除dist
 if os.path.exists(os.path.join(os.getcwd(), "dist", "MFW")):
     shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW"))
