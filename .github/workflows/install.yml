@@ -177,6 +177,7 @@ jobs:
           path: assets
 
       - run: |
+          cd assets
           for f in *; do
             (cd $f && zip -r -9 ../$f-${{ needs.meta.outputs.tag }}.zip .)
           done
