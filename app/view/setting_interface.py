@@ -733,7 +733,7 @@ class SettingInterface(ScrollArea):
         with zipfile.ZipFile(zip_path, "w") as zipf:
             # 定义要添加到 zip 的文件和文件夹
             files_to_add = ["maa.log", "gui.log"]
-            folders_to_add = ["vision"]
+            folders_to_add = [os.path.join(os.getcwd(),"debug",maa_config_data.resource_name, "vision")]
 
             # 添加单个文件
             for file in files_to_add:
