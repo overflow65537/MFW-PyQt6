@@ -200,6 +200,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 continue
             for cfg_option in task_option:
                 # 检查选项是否存在于 interface 模板
+                if cfg_option.get("advanced"):
+                    continue
                 if cfg_option.get("name", "") not in option_keys:
                     inconsistent_tasks.append(
                         task_name + "-" + cfg_option.get("name", "")
@@ -1842,8 +1844,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             name = " ".join(name_list)
 
             item = QListWidgetItem(name)
-            if task.get("color"):
-                item.setBackground(QColor(*task.get("color")))
             item.setData(Qt.ItemDataRole.UserRole, index)
             self.Task_List.addItem(item)
 
