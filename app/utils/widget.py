@@ -910,8 +910,8 @@ class SendSettingCard(MessageBoxBase):
 
     def init_widget(self):
         self.when_start_up = CheckBox(self.tr("When Start Up"), self)
-        self.when_connect_failed = CheckBox(self.tr("When Connect Succeed"), self)
-        self.when_connect_success = CheckBox(self.tr("When Connect Failed"), self)
+        self.when_connect_failed = CheckBox(self.tr("When Connect Failed"), self)
+        self.when_connect_success = CheckBox(self.tr("When Connect Succeed"), self)
         self.when_post_task = CheckBox(self.tr("When Post Task"), self)
         self.when_task_failed = CheckBox(self.tr("When Task Failed"), self)
         self.when_task_finished = CheckBox(self.tr("When Task Finished"), self)
