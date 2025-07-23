@@ -107,13 +107,16 @@ if sys.platform == "darwin":
             "--target-arch=arm64",
         ]
         print("[DEBUG] Target arch: aarch64")
+
+    match = re.search(r'(\d+\.\d+\.\d+)', version)
+    macos_version = match.group(1) if match else "0.0.1"
     base_command += [
         "--osx-bundle-identifier=com.overflow65537.MFW",
         "--windowed",
         # 图标
         "--icon=MFW_resource/icon/logo.icns",
         #版本
-        f"--osx-bundle-version={version}",
+        f"--osx-bundle-version={macos_version}",
     ]
 
 elif sys.platform == "win32":
