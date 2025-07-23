@@ -158,7 +158,7 @@ jobs:
           sudo python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
 
       - name: Install(other)
-        if: matrix.platform != 'macos-latest'
+        if: matrix.platform != 'macos'
         run: |
           python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
         shell: pwsh  
