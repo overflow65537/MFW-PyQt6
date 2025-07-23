@@ -121,36 +121,21 @@ jobs:
           submodules: true
         
       - name: Set up Python
-        if: matrix.platform == 'macos'
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
           architecture: ${{ matrix.python_arch }}
 
-      - name: Set up Python (other)
-        if: matrix.platform != 'macos' 
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-
-      - name: Install dependencies(macos x86_64)
-        if: matrix.platform == 'macos' && matrix.arch == 'x86_64'
+      - name: Install dependencies(x86_64)
+        if: matrix.arch == 'x86_64'
         run: |
           arch -x86_64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
 
-      - name: Install dependencies(macos arm64)
-        if: matrix.platform == 'macos' && matrix.arch == 'aarch64'
+      - name: Install dependencies(arm64)
+        if: matrix.arch == 'aarch64'
         run: |
           uname -m
           arch -arm64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
-
-
-      - name: Install dependencies (other)
-        if: matrix.platform != 'macos' 
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pyinstaller
-          python -m pip install -r./requirements.txt
 
       - name: Install(macos)
         if: matrix.platform == 'macos'
