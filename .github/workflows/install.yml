@@ -141,7 +141,8 @@ jobs:
       - name: Install dependencies(macos arm64)
         if: matrix.os == 'macos-13' && matrix.arch == 'aarch64'
         run: |
-          arch -ARM64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+          uname -m
+          arch -arm64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
 
 
       - name: Install dependencies (other)
