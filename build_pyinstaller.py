@@ -112,6 +112,7 @@ if sys.platform == "darwin":
         "--windowed",
         # 图标
         "--icon=MFW_resource/icon/logo.icns"
+
     ]
 
 elif sys.platform == "win32":
