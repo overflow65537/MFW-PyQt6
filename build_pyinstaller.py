@@ -111,11 +111,7 @@ if sys.platform == "darwin":
         "--osx-bundle-identifier=com.overflow65537.MFW",
         "--windowed",
         # 图标
-        "--icon=MFW_resource/icon/logo.icns",
-        # 使用 Info.plist 模板
-        f"--osx-bundle-plist=Info.plist.template",
-        # 运行时钩子，替换模板中的版本号
-        f"--runtime-hook=set_version.py"
+        "--icon=MFW_resource/icon/logo.icns"
     ]
 
 elif sys.platform == "win32":

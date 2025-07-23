@@ -85,13 +85,13 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-13
+          - os: macos-latest
             platform: macos
             arch: x86_64 
             target_arch: x86_64
             python_arch: x64
 
-          - os: macos-13
+          - os: macos-latest
             platform: macos
             arch: aarch64  
             target_arch: arm64
@@ -133,14 +133,17 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install dependencies
-        if: matrix.os == 'macos-13'
+      - name: Install dependencies(macos x86_64)
+        if: matrix.os == 'macos-13' && matrix.arch == 'x86_64'
         run: |
-          if [ "${{ matrix.arch }}" = "x86_64" ]; then
-            arch -x86_64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
-          else
-            python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
-          fi
+          arch -x86_64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+
+      - name: Install dependencies(macos arm64)
+        if: matrix.os == 'macos-13' && matrix.arch == 'aarch64'
+        run: |
+          uname -m
+          arch -arm64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+
 
       - name: Install dependencies (other)
         if: matrix.os != 'macos-13' 
