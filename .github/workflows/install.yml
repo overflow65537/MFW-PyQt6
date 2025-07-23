@@ -136,7 +136,7 @@ jobs:
       - name: Install dependencies
         if: matrix.os == 'macos-13'
         run: |
-          if [ "${{ matrix.arch }}" = "x86_64" ]; then
+          if [ "${{ matrix.arch }}" == "x86_64" ]; then
             arch -x86_64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
           else
             python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
