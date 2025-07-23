@@ -115,8 +115,6 @@ if sys.platform == "darwin":
         "--windowed",
         # 图标
         "--icon=MFW_resource/icon/logo.icns",
-        #版本
-        f"--osx-bundle-version={macos_version}",
     ]
 
 elif sys.platform == "win32":
