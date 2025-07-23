@@ -1047,6 +1047,7 @@ def get_override(origin_task_obj,interface_config):
                             types = advanced_value.get(
                                 "type", []
                             )  # 获取类型信息
+                            regex = advanced_value.get("regex", [])
 
                             # 处理多字段/多类型场景（field和type可能是列表）
                             if isinstance(field, list):
@@ -1070,6 +1071,26 @@ def get_override(origin_task_obj,interface_config):
                                     f"高级设置 [{advanced_key}] 字段/类型/值数量不匹配，field: {field_list}, type: {type_list}, value: {value_list}"
                                 )
                                 continue
+
+                            # 正则匹配
+                            if regex:
+                                for i in range(len(value_list)):
+                                    if regex[i] == "":
+                                        _regex = ".*"
+                                    else:
+                                        _regex = regex[i]
+                                    if not re.match(_regex, value_list[i]):
+                                        logger.warning(
+                                            f"高级设置 [{advanced_key}] 值 [{value_list[i]}] 不匹配正则表达式 [{regex[i]}]"
+                                        )
+                                        signalBus.infobar_message.emit(
+                                            {
+                                                "status": "error_sp",
+                                                "type": "advanced",
+                                                 "msg": [advanced_key,value_list[i],regex[i]],
+                                            }
+                                        )
+                                        return
 
                             # 类型转换
                             converted_values = []

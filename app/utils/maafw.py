@@ -103,7 +103,6 @@ class MaaFW:
             self.tasker.set_log_dir(new_path)
 
     def load_custom_objects(self, custom_dir):
-
         if not os.path.exists(custom_dir):
             logger.warning(f"自定义文件夹 {custom_dir} 不存在")
             return

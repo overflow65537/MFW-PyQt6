@@ -33,10 +33,11 @@ os.chdir(
     else os.path.dirname(os.path.abspath(__file__))
 )
 from cryptography.fernet import Fernet
+
 if not os.path.exists("k.ey"):
-        key = Fernet.generate_key()
-        with open("k.ey", "wb") as key_file:
-            key_file.write(key)
+    key = Fernet.generate_key()
+    with open("k.ey", "wb") as key_file:
+        key_file.write(key)
 import argparse
 import threading
 

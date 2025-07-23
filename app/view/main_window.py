@@ -255,7 +255,7 @@ class MainWindow(FluentWindow):
         """检查是否需要开始任务"""
         if cfg.get(cfg.run_after_startup) or cfg.get(cfg.run_after_startup_arg):
             logger.info("启动GUI后运行任务")
-            if self.taskInterface.S2_Button.text() in["Start","开始","開始"] :
+            if self.taskInterface.S2_Button.text() in ["Start", "开始", "開始"]:
                 QTimer.singleShot(500, self.taskInterface.Start_Up)
 
     def show_download(self):
@@ -344,7 +344,24 @@ class MainWindow(FluentWindow):
                 duration=duration,
                 parent=self,
             )
-
+        elif data_dict["status"] == "error_sp":
+            if data_dict["type"] == "advanced":
+                error_msg = (
+                    self.tr("advanced setting [")
+                    + data_dict.get("msg", [])[0]
+                    + self.tr("] value [")
+                    + data_dict.get("msg", [])[1]
+                    + self.tr("] not match regex [")
+                    + data_dict.get("msg", [])[2]
+                    + "]"
+                )
+                InfoBar.error(
+                    title=self.tr("Error"),
+                    content=error_msg,
+                    duration=duration,
+                    parent=self,
+                )
+                self.taskInterface.S2_Button.click()
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
         signalBus.show_download.connect(self.show_download)

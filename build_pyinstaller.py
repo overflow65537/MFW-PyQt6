@@ -96,15 +96,24 @@ base_command = [
 print(f"[DEBUG] Platform: {sys.platform}")
 
 if sys.platform == "darwin":
+
     if architecture == "x86_64":  # intel CPU
         base_command += [
             "--target-arch=x86_64",
         ]
+        print("[DEBUG] Target arch: x86_64")
+    elif architecture == "aarch64":  # M1/M2 CPU
+        base_command += [
+            "--target-arch=arm64",
+        ]
+        print("[DEBUG] Target arch: aarch64")
     base_command += [
         "--osx-bundle-identifier=com.overflow65537.MFW",
         "--windowed",
         # 图标
         "--icon=MFW_resource/icon/logo.icns",
+        #版本
+        f"--osx-bundle-version={version}",
     ]
 
 elif sys.platform == "win32":
