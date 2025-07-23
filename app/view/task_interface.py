@@ -522,7 +522,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             elif message["status"] == 4:
                 self.insert_colored_text(self.tr("Unknown Error"), "red")
         elif message["name"] == "on_tasker_task":
-            if not self.need_runing or message["task"] == "MaaNS::Tasker::post_stop":
+            if not self.need_runing or  "MaaNS::Tasker::post_stop" in message["task"]:
                 return
             elif message["status"] == 1:
                 self.insert_colored_text(message["task"] + " " + self.tr("Started"))
