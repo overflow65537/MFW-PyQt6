@@ -134,7 +134,7 @@ jobs:
       - name: Install dependencies
         run: |
           uname -m
-          if [[ "$RUNNER_OS" == "macOS" ]]; then
+          if [[ ${{ matrix.platform }} == "macos" ]]; then
             arch -${{ matrix.target_arch }} python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
           else
             python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
