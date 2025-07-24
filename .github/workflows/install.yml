@@ -169,15 +169,15 @@ jobs:
           include-onefile-external-data: ./MFW_resource
           windows-console-mode: disable
           windows-icon-from-ico: ./MFW_resource/icon/logo.ico
-          #product-version: ${{ needs.meta.outputs.build_tag }}
-          #company-name: overflow65537
-          #product-name: MFW-CFA
+          product-version: 1.0.0
+          company-name: overflow65537
+          product-name: MFW-CFA
           copyright: Copyright (c) 2025 overflow65537
           linux-icon: ./MFW_resource/icon/logo.ico
           macos-app-icon: ./MFW_resource/icon/logo.icns
           macos-app-name: MFW-CFA
           macos-target-arch: ${{ matrix.target_arch }}
-          #macos-app-version: ${{ needs.meta.outputs.build_tag }}
+          macos-app-version: 1.0.0
 
 
       - name: Upload artifact
