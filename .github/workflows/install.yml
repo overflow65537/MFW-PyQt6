@@ -173,7 +173,6 @@ jobs:
           windows-product-name: MFW-CFA
           windows-copyright: Copyright (c) 2025 overflow65537
           linux-icon: ./MFW_resource/icon/logo.ico
-          target-architecture: ${{ matrix.target_arch }}
           macos-icon: ./MFW_resource/icon/logo.icns
           macos-bundle-name: MFW-CFA
           macos-bundle-identifier: com.overflow65537.MFW-CFA
