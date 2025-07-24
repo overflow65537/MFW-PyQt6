@@ -78,7 +78,7 @@ jobs:
       is_release: ${{ steps.set_tag.outputs.is_release }}
       is_prerelease: ${{ steps.set_tag.outputs.is_prerelease }}
 
-  build:
+  pyinstaller:
     needs: meta
     name: Build (${{ matrix.platform }}-${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
@@ -100,21 +100,25 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             arch: x86_64
+            target_arch: x86_64
             python_arch: x64
 
           - os: ubuntu-latest
             platform: linux
             arch: aarch64
+            target_arch: arm64
             python_arch: arm64
             
           - os: windows-latest
             platform: win
             arch: x86_64
+            target_arch: x86_64
             python_arch: x64
             
           - os: windows-latest
             platform: win
             arch: aarch64
+            target_arch: arm64
             python_arch: arm64
 
       fail-fast: false
@@ -125,20 +129,36 @@ jobs:
           submodules: true
         
       - name: Set up Python
+        if: matrix.platform == 'macos'
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
           architecture: ${{ matrix.python_arch }}
 
+      - name: Set up Python (other)
+        if: matrix.platform != 'macos' 
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
 
-      - name: Install dependencies
+      - name: Install dependencies(macos x86_64)
+        if: matrix.platform == 'macos' && matrix.arch == 'x86_64'
+        run: |
+          arch -x86_64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+
+      - name: Install dependencies(macos arm64)
+        if: matrix.platform == 'macos' && matrix.arch == 'aarch64'
         run: |
           uname -m
-          if [[ ${{ matrix.platform }} == "macos" ]]; then
-            arch -${{ matrix.target_arch }} python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
-          else
-            python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
-          fi
+          arch -arm64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+
+
+      - name: Install dependencies (other)
+        if: matrix.platform != 'macos' 
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller
+          python -m pip install -r./requirements.txt
 
       - name: Build
         uses: nuitka/nuitka-action@main
@@ -169,7 +189,7 @@ jobs:
 
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
-    needs: [meta, build,changelog]
+    needs: [meta, pyinstaller,changelog]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
