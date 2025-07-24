@@ -78,7 +78,7 @@ jobs:
       is_release: ${{ steps.set_tag.outputs.is_release }}
       is_prerelease: ${{ steps.set_tag.outputs.is_prerelease }}
 
-  pyinstaller:
+  build:
     needs: meta
     name: Build (${{ matrix.platform }}-${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
@@ -166,10 +166,10 @@ jobs:
           nuitka-version: main
           script-name: main.py
           enable-plugins: pyside6
-          include-package-data: ./MFW_resource
+          include-onefile-external-data: ./MFW_resource
           windows-console-mode: disable
           windows-icon-from-ico: ./MFW_resource/icon/logo.ico
-          product-version: ${{ needs.meta.outputs.tag }}
+          #product-version: ${{ needs.meta.outputs.tag }}
           company-name: overflow65537
           product-name: MFW-CFA
           copyright: Copyright (c) 2025 overflow65537
@@ -177,7 +177,7 @@ jobs:
           macos-app-icon: ./MFW_resource/icon/logo.icns
           macos-app-name: MFW-CFA
           macos-target-arch: ${{ matrix.target_arch }}
-          macos-app-version: ${{ needs.meta.outputs.tag }}
+          #macos-app-version: ${{ needs.meta.outputs.tag }}
 
 
       - name: Upload artifact
@@ -189,7 +189,7 @@ jobs:
 
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
-    needs: [meta, pyinstaller,changelog]
+    needs: [meta, build,changelog]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
