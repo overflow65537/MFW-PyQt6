@@ -100,25 +100,21 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             arch: x86_64
-            target_arch: x86_64
             python_arch: x64
 
           - os: ubuntu-latest
             platform: linux
             arch: aarch64
-            target_arch: arm64
             python_arch: arm64
             
           - os: windows-latest
             platform: win
             arch: x86_64
-            target_arch: x86_64
             python_arch: x64
             
           - os: windows-latest
             platform: win
             arch: aarch64
-            target_arch: arm64
             python_arch: arm64
 
       fail-fast: false
@@ -135,11 +131,14 @@ jobs:
           architecture: ${{ matrix.python_arch }}
 
 
-      - name: Install dependencies(macos x86_64)
+      - name: Install dependencies
         run: |
           uname -m
-          arch -${{ matrix.target_arch }} python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
-
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            arch -${{ matrix.target_arch }} python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+          else
+            python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+          fi
 
       - name: Build
         uses: nuitka/nuitka-action@main
