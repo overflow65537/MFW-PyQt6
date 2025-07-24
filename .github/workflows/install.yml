@@ -166,16 +166,18 @@ jobs:
           nuitka-version: main
           script-name: main.py
           enable-plugins: pyside6
+          include-package-data: ./MFW_resource
           windows-console-mode: disable
           windows-icon-from-ico: ./MFW_resource/icon/logo.ico
-          windows-product-version: ${{ needs.meta.outputs.tag }}
-          windows-company-name: overflow65537
-          windows-product-name: MFW-CFA
-          windows-copyright: Copyright (c) 2025 overflow65537
+          product-version: ${{ needs.meta.outputs.tag }}
+          company-name: overflow65537
+          product-name: MFW-CFA
+          copyright: Copyright (c) 2025 overflow65537
           linux-icon: ./MFW_resource/icon/logo.ico
-          macos-icon: ./MFW_resource/icon/logo.icns
-          macos-bundle-name: MFW-CFA
-          macos-bundle-identifier: com.overflow65537.MFW-CFA
+          macos-app-icon: ./MFW_resource/icon/logo.icns
+          macos-app-name: MFW-CFA
+          macos-target-arch: ${{ matrix.target_arch }}
+          macos-app-version: ${{ needs.meta.outputs.tag }}
 
 
       - name: Upload artifact
