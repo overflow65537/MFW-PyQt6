@@ -129,36 +129,17 @@ jobs:
           submodules: true
         
       - name: Set up Python
-        if: matrix.platform == 'macos'
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
           architecture: ${{ matrix.python_arch }}
 
-      - name: Set up Python (other)
-        if: matrix.platform != 'macos' 
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
 
       - name: Install dependencies(macos x86_64)
-        if: matrix.platform == 'macos' && matrix.arch == 'x86_64'
-        run: |
-          arch -x86_64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
-
-      - name: Install dependencies(macos arm64)
-        if: matrix.platform == 'macos' && matrix.arch == 'aarch64'
         run: |
           uname -m
-          arch -arm64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+          arch -${{ matrix.target_arch }} python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
 
-
-      - name: Install dependencies (other)
-        if: matrix.platform != 'macos' 
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pyinstaller
-          python -m pip install -r./requirements.txt
 
       - name: Build
         uses: nuitka/nuitka-action@main
@@ -169,15 +150,15 @@ jobs:
           include-onefile-external-data: ./MFW_resource
           windows-console-mode: disable
           windows-icon-from-ico: ./MFW_resource/icon/logo.ico
-          #product-version: ${{ needs.meta.outputs.tag }}
-          company-name: overflow65537
-          product-name: MFW-CFA
+          #product-version: ${{ needs.meta.outputs.build_tag }}
+          #company-name: overflow65537
+          #product-name: MFW-CFA
           copyright: Copyright (c) 2025 overflow65537
           linux-icon: ./MFW_resource/icon/logo.ico
           macos-app-icon: ./MFW_resource/icon/logo.icns
           macos-app-name: MFW-CFA
           macos-target-arch: ${{ matrix.target_arch }}
-          #macos-app-version: ${{ needs.meta.outputs.tag }}
+          #macos-app-version: ${{ needs.meta.outputs.build_tag }}
 
 
       - name: Upload artifact
