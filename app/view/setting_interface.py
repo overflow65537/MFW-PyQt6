@@ -707,7 +707,7 @@ class SettingInterface(ScrollArea):
 
     def zip_debug_folder(self):
         """压缩debug文件夹"""
-        debug_path = os.path.join(".", "debug", "maa.log")
+        debug_path = os.path.join(".", "debug", "maa.tem.log")
         log_path = os.path.join(".", "debug", maa_config_data.resource_name, "maa.log")
         log_bak_path = os.path.join(
             ".", "debug", maa_config_data.resource_name, "maa.log.bak"
@@ -732,7 +732,7 @@ class SettingInterface(ScrollArea):
             os.remove(zip_path)
         with zipfile.ZipFile(zip_path, "w") as zipf:
             # 定义要添加到 zip 的文件和文件夹
-            files_to_add = ["maa.log", "gui.log"]
+            files_to_add = ["maa.tem.log", "gui.log"]
             folders_to_add = [os.path.join(os.getcwd(),"debug",maa_config_data.resource_name, "vision")]
 
             # 添加单个文件
@@ -742,6 +742,9 @@ class SettingInterface(ScrollArea):
                     # 写入文件时保留相对路径
                     zipf.write(file_path, os.path.relpath(file_path, "."))
 
+            if os.path.exists(debug_path):
+                os.remove(debug_path)
+                
             # 添加文件夹及其内容
             for folder in folders_to_add:
                 folder_path = os.path.join(".", "debug", folder)
