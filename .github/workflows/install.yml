@@ -178,6 +178,7 @@ jobs:
           macos-app-name: MFW-CFA
           macos-target-arch: ${{ matrix.target_arch }}
           macos-app-version: 1.0.0
+          output-dir: dist/MFW
 
 
       - name: Upload artifact
