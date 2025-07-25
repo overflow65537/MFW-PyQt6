@@ -23,6 +23,7 @@ MFW-ChainFlow Assistant 启动文件
 """
 
 
+from ast import Try
 import os
 import sys
 
@@ -172,18 +173,6 @@ if __name__ == "__main__":
             f.write(str(os.getpid()))
         atexit.register(cleanup_pid)  # 程序正常退出时自动清理
         logger.debug(f"创建PID文件（当前PID: {os.getpid()}）")
-
-    def clear_agent():
-        if maafw.agent:
-            maafw.agent.disconnect()
-        exec_path = cfg.get(cfg.agent_path)
-        if not exec_path:
-            logger.debug("没有找到agent")
-            return
-        if maafw.agent_thread:
-            maafw.agent_thread.stop()  # 确保线程停止
-
-    atexit.register(clear_agent)
 
     start_symbol()
     logger.info(f"MFW 版本:{__version__}")

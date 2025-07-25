@@ -52,6 +52,7 @@ from .resource_setting_interface import ResourceSettingInterface
 from .task_cooldown_interface import TaskCooldownInterface
 from .assist_tool_task_interface import AssistToolTaskInterface
 from .setting_interface import SettingInterface
+import atexit
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
 from ..common import resource
@@ -63,6 +64,7 @@ from ..utils.widget import NoticeType, SendSettingCard, ShowDownload
 from ..utils.tool import Save_Config, Get_Values_list
 from ..utils.maafw import maafw
 from ..common.__version__ import __version__
+from ..utils.notice import send_thread
 
 
 class CustomSystemThemeListener(SystemThemeListener):
@@ -89,6 +91,9 @@ class MainWindow(FluentWindow):
         self.TaskCooldownInterface = TaskCooldownInterface(self)
         self.AssistToolTaskInterface = AssistToolTaskInterface(self)
         self.settingInterface = SettingInterface(self)
+
+        # 设置清理程序
+        atexit.register(self.clear_thread)
 
         # 启用Fluent主题效果
         self.navigationInterface.setAcrylicEnabled(True)
@@ -650,3 +655,23 @@ class MainWindow(FluentWindow):
             )
         else:
             self.removeInterface(self.AssistToolTaskInterface)
+    def clear_thread(self):
+        try:
+            if maafw.agent:
+                maafw.agent.disconnect()
+                logger.debug("断开agent连接")
+            exec_path = cfg.get(cfg.agent_path)
+            if maafw.agent_thread:
+                maafw.agent_thread.stop() 
+                logger.debug("关闭agent线程")
+            if send_thread:
+                send_thread.stop()
+                logger.debug("关闭发送线程")
+            if self.settingInterface.Updatethread:
+                self.settingInterface.Updatethread.stop()
+                logger.debug("关闭更新线程")
+            if self.settingInterface.update_self:
+                self.settingInterface.update_self.stop()
+                logger.debug("关闭更新自身进程")
+        except Exception as e:
+            logger.exception("关闭agent进程失败", exc_info=e)
