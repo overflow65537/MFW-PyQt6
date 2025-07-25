@@ -166,7 +166,8 @@ jobs:
           nuitka-version: main
           script-name: main.py
           enable-plugins: pyside6
-          include-onefile-external-data: ./MFW_resource
+          mode: onefile
+          #include-onefile-external-data: ./MFW_resource
           windows-console-mode: disable
           windows-icon-from-ico: ./MFW_resource/icon/logo.ico
           product-version: 1.0.0
@@ -179,6 +180,7 @@ jobs:
           macos-target-arch: ${{ matrix.target_arch }}
           macos-app-version: 1.0.0
           output-dir: dist/MFW
+    
 
 
       - name: Upload artifact
