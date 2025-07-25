@@ -161,6 +161,7 @@ jobs:
           python -m pip install -r./requirements.txt
 
       - name: Build
+        if: matrix.platform != 'macos'
         uses: nuitka/nuitka-action@main
         with:
           nuitka-version: main
@@ -181,7 +182,27 @@ jobs:
           macos-app-version: 1.0.0
           output-dir: dist/MFW
     
-
+      - name: Build
+        if: matrix.platform == 'macos'
+        uses: nuitka/nuitka-action@main
+        with:
+          nuitka-version: main
+          script-name: main.py
+          enable-plugins: pyside6
+          mode: app
+          #include-onefile-external-data: ./MFW_resource
+          windows-console-mode: disable
+          windows-icon-from-ico: ./MFW_resource/icon/logo.ico
+          product-version: 1.0.0
+          company-name: overflow65537
+          product-name: MFW-CFA
+          copyright: Copyright (c) 2025 overflow65537
+          linux-icon: ./MFW_resource/icon/logo.ico
+          macos-app-icon: ./MFW_resource/icon/logo.icns
+          macos-app-name: MFW-CFA
+          macos-target-arch: ${{ matrix.target_arch }}
+          macos-app-version: 1.0.0
+          output-dir: dist/MFW
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
