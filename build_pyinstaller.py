@@ -133,7 +133,7 @@ if os.path.exists(
 
     shutil.copytree(
         os.path.join(os.getcwd(), "MFW_resource"),
-        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app","Contents","MacOS","MFW_resource"),
+        os.path.join(os.getcwd(), "dist", "MFW","MFW_resource"),
         dirs_exist_ok=True,
     )
 
