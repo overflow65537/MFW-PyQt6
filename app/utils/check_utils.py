@@ -52,11 +52,7 @@ def check(resource: str, config: str, directly: bool, DEV: bool):
             or maa_config_list == {}
             or maa_resource_list == {}
         ):
-            _path = (
-                os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd())))
-                if sys.platform.startswith("darwin")
-                else os.getcwd()
-            )  
+            _path = os.getcwd()
             if os.path.exists(os.path.join(_path,"interface.json")) and os.path.exists(os.path.join(_path,"resource")):
                 logger.info("检测到配置文件,开始转换")
 
