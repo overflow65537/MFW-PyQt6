@@ -168,7 +168,15 @@ def standard_update():
     # 重启程序
     if sys.platform.startswith("win32"):
         subprocess.Popen(".\\MFW.exe")
-    elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
+    elif sys.platform.startswith("darwin"):
+        try:
+            subprocess.run(["xattr", "-rd", "com.apple.quarantine", "."], check=True)
+            print("Successfully removed quarantine attributes.")
+        except subprocess.CalledProcessError as e:
+            print(f"Error removing quarantine attributes: {e}")
+        finally:
+            subprocess.Popen("./MFW.app/Contents/MacOS/MFW")
+    elif sys.platform.startswith("linux"):
         subprocess.Popen("./MFW")
     else:
         sys.exit("Unsupported platform")

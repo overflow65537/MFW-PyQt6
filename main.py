@@ -23,16 +23,25 @@ MFW-ChainFlow Assistant 启动文件
 """
 
 
-from ast import Try
 import os
 import sys
 
 # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
-os.chdir(
-    os.path.dirname(sys.executable)
-    if getattr(sys, "frozen", False)
-    else os.path.dirname(os.path.abspath(__file__))
-)
+if getattr(sys, "frozen", False):
+    # 如果程序是打包后的可执行文件，将工作目录设置为可执行文件所在目录
+    if sys.platform.startswith("darwin"):
+        # MacOS平台
+        target_dir = os.path.dirname(os.path.dirname(sys.executable))
+    else:
+        # 非MacOS平台
+        target_dir = os.path.dirname(sys.executable)
+else:
+    # 如果是脚本运行，将工作目录设置为脚本文件所在目录
+    target_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 切换工作目录
+os.chdir(target_dir)
+
 from cryptography.fernet import Fernet
 
 if not os.path.exists("k.ey"):
