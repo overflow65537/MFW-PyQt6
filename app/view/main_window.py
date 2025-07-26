@@ -662,16 +662,20 @@ class MainWindow(FluentWindow):
                 logger.debug("断开agent连接")
             exec_path = cfg.get(cfg.agent_path)
             if maafw.agent_thread:
-                maafw.agent_thread.stop() 
+                maafw.agent_thread.quit()
+                maafw.agent_thread.wait()
                 logger.debug("关闭agent线程")
             if send_thread:
-                send_thread.stop()
+                send_thread.quit()
+                send_thread.wait()
                 logger.debug("关闭发送线程")
             if self.settingInterface.Updatethread:
-                self.settingInterface.Updatethread.stop()
+                self.settingInterface.Updatethread.quit()
+                self.settingInterface.Updatethread.wait()
                 logger.debug("关闭更新线程")
             if self.settingInterface.update_self:
-                self.settingInterface.update_self.stop()
+                self.settingInterface.update_self.quit()
+                self.settingInterface.update_self.wait()
                 logger.debug("关闭更新自身进程")
         except Exception as e:
             logger.exception("关闭agent进程失败", exc_info=e)
