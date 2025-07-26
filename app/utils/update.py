@@ -177,6 +177,21 @@ class BaseUpdate(QThread):
             logger.exception("获取ckd失败")
             return ""
 
+    def get_version_prefix(self, version: str) -> str:
+        """
+        获取版本号的前半部分，若版本号无 'v' 前缀则添加。
+
+        参数:
+        version (str): 输入的版本号，如 '1.0.0-测试.1'、'v1.0.0' 或 'v1.0.0-ci.123794'。
+
+        返回:
+        str: 处理后的版本号前半部分，带有 'v' 前缀。
+        """
+        # 按 - 分割版本号，取前半部分
+        prefix = version.split("-")[0]
+        
+        return prefix.replace("v", "")
+
     def compare_versions(self, version1: str, version2: str) -> int:
         """
         比较两个版本号的大小。
@@ -191,8 +206,8 @@ class BaseUpdate(QThread):
         """
         try:
             # 去掉v
-            version1 = version1.replace("v", "")
-            version2 = version2.replace("v", "")
+            version1 = self.get_version_prefix(version1)
+            version2 = self.get_version_prefix(version2)
 
             v1_parts = [int(part) for part in version1.split(".")]
             v2_parts = [int(part) for part in version2.split(".")]
@@ -400,10 +415,10 @@ class BaseUpdate(QThread):
                 "msg": msg_value + "\n" + self.tr("switching to Github download"),
             }
 
-        data = mirror_data.get("data")
+        data:dict = mirror_data.get("data",{})
         if data is not None and data.get("version_name") == version:
             return {"status": "no_need", "msg": self.tr("current version is latest")}
-        elif "beta" in version or "alpha" in version:
+        """elif self.compare_versions(version, data.get("version_name","")) < 0:
             logger.info(f"当前为测试版本")
             stable_data = self.mirror_check(
                 res_id, cdk, "v0.0.1", update_type, os_type, arch, "stable"
@@ -418,7 +433,7 @@ class BaseUpdate(QThread):
                 return {
                     "status": "no_need",
                     "msg": self.tr("current version is latest"),
-                }
+                }"""
         return mirror_data
 
     def github_check(self, project_url: str, version: str):
