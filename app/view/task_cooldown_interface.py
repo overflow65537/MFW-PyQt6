@@ -61,28 +61,32 @@ class TaskCooldownInterface(Ui_TaskCooldown_Interface, QWidget):
     def init_notice(self):
         """初始化通知标签"""
         notice = ""
-        if cfg.get(cfg.language) is Language.CHINESE_SIMPLIFIED:
-            with open(
-                "./MFW_resource/doc/task_cooldown_instructions_zh_cn.html",
-                "r",
-                encoding="utf-8",
-            ) as f:
-                notice = f.read()
-        elif cfg.get(cfg.language) is Language.CHINESE_TRADITIONAL:
-            with open(
-                "./MFW_resource/doc/task_cooldown_instructions_zh_hk.html",
-                "r",
-                encoding="utf-8",
-            ) as f:
-                notice = f.read()
+        try:
+            if cfg.get(cfg.language) is Language.CHINESE_SIMPLIFIED:
+                with open(
+                    "./MFW_resource/doc/task_cooldown_instructions_zh_cn.html",
+                    "r",
+                    encoding="utf-8",
+                ) as f:
+                    notice = f.read()
+            elif cfg.get(cfg.language) is Language.CHINESE_TRADITIONAL:
+                with open(
+                    "./MFW_resource/doc/task_cooldown_instructions_zh_hk.html",
+                    "r",
+                    encoding="utf-8",
+                ) as f:
+                    notice = f.read()
 
-        else:
-            with open(
-                "./MFW_resource/doc/task_cooldown_instructions_en_us.html",
-                "r",
-                encoding="utf-8",
-            ) as f:
-                notice = f.read()
+            else:
+                with open(
+                    "./MFW_resource/doc/task_cooldown_instructions_en_us.html",
+                    "r",
+                    encoding="utf-8",
+                ) as f:
+                    notice = f.read()
+
+        except Exception as e:
+            print(f"Failed to load notice: {e}")
         self.notice_label.setText(notice)
 
     def bind_signals(self):
