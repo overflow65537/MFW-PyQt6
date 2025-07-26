@@ -130,18 +130,12 @@ PyInstaller.__main__.run(base_command)
 if os.path.exists(
     os.path.join(os.getcwd(), "MFW_resource")
 ):
-    if sys.platform != "darwin":
-        shutil.copytree(
-            os.path.join(os.getcwd(), "MFW_resource"),
-            os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource"),
-            dirs_exist_ok=True,
-        )
-    else:
-        shutil.copytree(
-            os.path.join(os.getcwd(), "MFW_resource"),
-            os.path.join(os.getcwd(), "dist", "MFW", "MFW.app","Contents","MacOS","MFW_resource"),
-            dirs_exist_ok=True,
-        )
+
+    shutil.copytree(
+        os.path.join(os.getcwd(), "MFW_resource"),
+        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app","Contents","MacOS","MFW_resource"),
+        dirs_exist_ok=True,
+    )
 
 # 复制README和许可证并在开头加上MFW_前缀
 for file in ["README.md", "README-en.md", "LICENSE"]:
@@ -164,9 +158,4 @@ updater_command = [
 ]
 PyInstaller.__main__.run(updater_command)
 if sys.platform == "darwin":
-    shutil.copy(
-        os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater"),
-        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app","Contents","MacOS","MFWUpdater"),
-    )
-    os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater"))
     os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))
