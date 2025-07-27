@@ -31,7 +31,7 @@ if getattr(sys, "frozen", False):
     # 如果程序是打包后的可执行文件，将工作目录设置为可执行文件所在目录
     if sys.platform.startswith("darwin"):
         # MacOS平台
-        target_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable)))))
+        target_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
     else:
         # 非MacOS平台
         target_dir = os.path.dirname(sys.executable)
