@@ -125,10 +125,9 @@ elif sys.platform == "win32":
     ]
 
 elif sys.platform == "linux":
-    base_command += [
-       f"--add-binary={os.path.join(maa_path,'bin','*.so')}{os.pathsep}maa/bin",
-    ]
-
+   bin_path=os.path.join(maa_path,'bin')
+   for i in os.listdir(bin_path):
+       base_command.append(f"--add-binary={os.path.join(bin_path,i)}{os.pathsep}maa/bin")
 # === 开始构建 ===
 print("[INFO] Starting MFW build")
 print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
