@@ -78,9 +78,11 @@ class CustomSystemThemeListener(SystemThemeListener):
 
 class MainWindow(FluentWindow):
 
-    def __init__(self):
+    def __init__(self, loop):
         super().__init__()
         self.initWindow()
+        
+        self.loop = loop
 
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)
@@ -657,10 +659,12 @@ class MainWindow(FluentWindow):
             self.removeInterface(self.AssistToolTaskInterface)
     def clear_thread(self):
         try:
+            if maafw.tasker and maafw.tasker.running:
+                maafw.tasker.post_stop().wait()
+                logger.debug("停止任务线程")
             if maafw.agent:
                 maafw.agent.disconnect()
                 logger.debug("断开agent连接")
-            exec_path = cfg.get(cfg.agent_path)
             if maafw.agent_thread:
                 maafw.agent_thread.quit()
                 maafw.agent_thread.wait()
@@ -677,5 +681,10 @@ class MainWindow(FluentWindow):
                 self.settingInterface.update_self.quit()
                 self.settingInterface.update_self.wait()
                 logger.debug("关闭更新自身进程")
+            
+            # 停止事件循环
+            if self.loop :
+                self.loop.stop()
+                logger.debug("事件循环已停止")
         except Exception as e:
             logger.exception("关闭agent进程失败", exc_info=e)

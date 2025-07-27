@@ -332,6 +332,7 @@ class MaaFW:
                     self.agent_thread = ProcessThread(
                         child_exec, [*child_args, maa_bin, socket_id]
                     )
+                    self.agent_thread.setObjectName("AgentThread")
                     self.agent_thread.start()
                 logger.debug(
                     f"agent启动: {agent_data.get('child_exec', '').replace('{PROJECT_DIR}', maa_config_data.resource_path)}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"

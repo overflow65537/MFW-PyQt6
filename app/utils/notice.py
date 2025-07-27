@@ -264,6 +264,7 @@ class NoticeSendThread(QThread):
 
     def __init__(self):
         super().__init__()
+        self.setObjectName("NoticeSendThread")
         self._stop_flag = False
         self.queue = Queue()  # 创建消息队列
         # 内置映射表，将通知类型映射到对应的发送函数

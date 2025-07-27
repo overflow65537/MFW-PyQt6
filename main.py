@@ -69,7 +69,6 @@ from app.view.main_window import MainWindow
 from app.common.config import Language
 from app.utils.tool import show_error_message
 from app.utils.check_utils import check
-from app.utils.maafw import maafw
 from app.common.__version__ import __version__
 
 def main(resource: str, config: str, directly: bool, DEV: bool):
@@ -101,13 +100,6 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
     app = QApplication(sys.argv)
     app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
 
-    # 捕获Qt未处理异常
-    def qt_except_hook(etype, value, tb):
-        logger.exception("Qt未处理异常:", exc_info=(etype, value, tb))
-        show_error_message()
-
-    sys.excepthook = qt_except_hook
-
     # internationalization
     locale: ConfigItem = cfg.get(cfg.language)
     translator = FluentTranslator(locale.value)
@@ -129,12 +121,12 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
 
     app.installTranslator(translator)
     app.installTranslator(galleryTranslator)
-    # create main window
-    w = MainWindow()
-    w.show()
+
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
-
+    # create main window
+    w = MainWindow(loop=loop)
+    w.show()
     # 异步异常处理
     def handle_async_exception(loop, context):
         logger.exception("异步任务异常:", exc_info=context.get("exception"))

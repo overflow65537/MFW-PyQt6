@@ -148,8 +148,10 @@ class SettingInterface(ScrollArea):
             self.MirrorCard.lineEdit.setEnabled(False)
             logger.debug("使用Github更新")
         self.Updatethread = Update(self)
+        self.Updatethread.setObjectName("UpdateThread")
         signalBus.update_download_stopped.connect(self.Updatethread.stop)
         self.update_self = UpdateSelf(self)
+        self.update_self.setObjectName("UpdateSelfThread")
         signalBus.download_self_stopped.connect(self.update_self.stop)
 
     def init_info(self):
