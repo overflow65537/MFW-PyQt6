@@ -83,6 +83,9 @@ base_command = [
     "--collect-data=MaaAgentBinary",
     "--collect-data=darkdetect",
     "--collect-data=strenum",
+    # 自动收集二进制文件
+    "--collect-binaries=maa",
+    "--collect-binaries=MaaAgentBinary",
     # 隐式依赖声明
     "--hidden-import=maa",
     "--hidden-import=MaaAgentBinary",
