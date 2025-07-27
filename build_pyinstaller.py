@@ -83,6 +83,7 @@ base_command = [
     "--collect-data=MaaAgentBinary",
     "--collect-data=darkdetect",
     "--collect-data=strenum",
+    f"--add-binary={os.path.join(maa_path,'bin','*.so')}{os.pathsep}maa/bin",
     # 自动收集二进制文件
     "--collect-binaries=maa",
     "--collect-binaries=MaaAgentBinary",
