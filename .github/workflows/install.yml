@@ -100,26 +100,18 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             arch: x86_64
-            target_arch: x86_64
-            python_arch: x64
 
           - os: ubuntu-latest
             platform: linux
             arch: aarch64
-            target_arch: arm64
-            python_arch: arm64
             
           - os: windows-latest
             platform: win
             arch: x86_64
-            target_arch: x86_64
-            python_arch: x64
             
           - os: windows-latest
             platform: win
             arch: aarch64
-            target_arch: arm64
-            python_arch: arm64
 
       fail-fast: false
 
@@ -129,10 +121,17 @@ jobs:
           submodules: true
         
       - name: Set up Python
+        if: matrix.platform == 'macos'
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
           architecture: ${{ matrix.python_arch }}
+
+      - name: Set up Python (other)
+        if: matrix.platform != 'macos' 
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
 
       - name: Install dependencies(macos x86_64)
         if: matrix.platform == 'macos' && matrix.arch == 'x86_64'
