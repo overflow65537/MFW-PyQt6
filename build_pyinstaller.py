@@ -83,7 +83,6 @@ base_command = [
     "--collect-data=MaaAgentBinary",
     "--collect-data=darkdetect",
     "--collect-data=strenum",
-    f"--add-binary={os.path.join(maa_path,'bin','*.so')}{os.pathsep}maa/bin",
     # 自动收集二进制文件
     "--collect-binaries=maa",
     "--collect-binaries=MaaAgentBinary",
@@ -123,6 +122,11 @@ elif sys.platform == "win32":
     base_command += [
         "--icon=MFW_resource/icon/logo.ico",
         "--noconsole",  # 禁用控制台窗口
+    ]
+
+elif sys.platform == "linux":
+    base_command += [
+       f"--add-binary={os.path.join(maa_path,'bin','*.so')}{os.pathsep}maa/bin",
     ]
 
 # === 开始构建 ===
