@@ -78,7 +78,8 @@ jobs:
       is_release: ${{ steps.set_tag.outputs.is_release }}
       is_prerelease: ${{ steps.set_tag.outputs.is_prerelease }}
 
-  pyinstaller:
+    # macOS x86_64 构建任务
+  macos-x86_64:
     needs: meta
     name: Build (${{ matrix.platform }}-${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
@@ -127,7 +128,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
-        
+      
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -138,42 +139,108 @@ jobs:
         if: matrix.platform == 'macos' && matrix.arch == 'x86_64'
         run: |
           arch -x86_64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
-
-      - name: Install dependencies(macos arm64)
-        if: matrix.platform == 'macos' && matrix.arch == 'aarch64'
+  
+      - name: Build
         run: |
-          uname -m
-          arch -arm64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
-
-
-      - name: Install dependencies (other)
-        if: matrix.platform != 'macos' 
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pyinstaller
-          python -m pip install -r./requirements.txt
-
-      - name: Install(macos)
-        if: matrix.platform == 'macos'
-        run: |
-          sudo python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
-
-      - name: Install(other)
-        if: matrix.platform != 'macos'
-        run: |
-          python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
-        shell: pwsh  
-
+          python ./build_pyinstaller.py linux x86_64 ${{ needs.meta.outputs.tag }}
+  
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
+          name: MFW-PyQt6-linux-x86_64
+          path: "dist/MFW"
+  
+  linux-aarch64:
+    needs: meta
+    name: Build (linux-aarch64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          architecture: arm64
+  
+      - name: Install dependencies
+        run: |
+          arch -arm64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+  
+      - name: Build
+        run: |
+          python ./build_pyinstaller.py linux aarch64 ${{ needs.meta.outputs.tag }}
+  
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MFW-PyQt6-linux-aarch64
           path: "dist/MFW"
 
+  windows-x86_64:
+    needs: meta
+    name: Build (windows-x86_64)
+    runs-on: windows-latest     
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          architecture: x64
+  
+      - name: Install dependencies
+        run: |
+          arch -x86_64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+  
+      - name: Build
+        run: |
+          python ./build_pyinstaller.py windows x86_64 ${{ needs.meta.outputs.tag }}
+  
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MFW-PyQt6-windows-x86_64
+          path: "dist/MFW"
+
+  windows-aarch64:
+    needs: meta
+    name: Build (windows-aarch64)
+    runs-on: windows-latest     
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          architecture: arm64
+  
+      - name: Install dependencies
+        run: |
+          arch -arm64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+  
+      - name: Build
+        run: |
+          python ./build_pyinstaller.py windows aarch64 ${{ needs.meta.outputs.tag }}
+  
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MFW-PyQt6-windows-aarch64
+          path: "dist/MFW"
 
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
-    needs: [meta, pyinstaller,changelog]
+    # 需要依赖所有独立构建任务
+    needs: [meta, changelog, macos-x86_64, macos-aarch64, linux-x86_64, linux-aarch64, windows-x86_64, windows-aarch64]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
