@@ -70,7 +70,7 @@ except FileNotFoundError as e:
 base_command = [
     "main.py",
     "--name=MFW",
-
+    "--onefile",
     "--clean",
     "--noconfirm",
     # 资源包含规则（格式：源路径{分隔符}目标目录）
@@ -92,7 +92,7 @@ base_command = [
     "--hidden-import=darkdetect",
     "--hidden-import=strenum",
     "--distpath",
-
+    os.path.join("dist", "MFW"),
 ]
 
 # === 平台特定配置 ===
@@ -111,37 +111,35 @@ if sys.platform == "darwin":
         ]
         print("[DEBUG] Target arch: aarch64")
     base_command += [
-            "--onefile",    os.path.join("dist", "MFW"),
         "--osx-bundle-identifier=com.overflow65537.MFW",
         "--windowed",
         # 图标
-        "--icon=MFW_resource/icon/logo.icns"
-
+        "--icon=MFW_resource/icon/logo.icns",
     ]
 
 elif sys.platform == "win32":
-    base_command += [    "--onefile",    os.path.join("dist", "MFW"),
+    base_command += [
         "--icon=MFW_resource/icon/logo.ico",
         "--noconsole",  # 禁用控制台窗口
     ]
 
 elif sys.platform == "linux":
-   bin_path=os.path.join(maa_path,'bin')
-   for i in os.listdir(bin_path):
-       base_command.append(f"--add-binary={os.path.join(bin_path,i)}{os.pathsep}maa/bin")
+    bin_path = os.path.join(maa_path, "bin")
+    for i in os.listdir(bin_path):
+        base_command.append(
+            f"--add-binary={os.path.join(bin_path,i)}{os.pathsep}maa/bin"
+        )
 # === 开始构建 ===
 print("[INFO] Starting MFW build")
 print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
 
 # 复制资源文件夹
-if os.path.exists(
-    os.path.join(os.getcwd(), "MFW_resource")
-):
+if os.path.exists(os.path.join(os.getcwd(), "MFW_resource")):
 
     shutil.copytree(
         os.path.join(os.getcwd(), "MFW_resource"),
-        os.path.join(os.getcwd(), "dist", "MFW","MFW_resource"),
+        os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource"),
         dirs_exist_ok=True,
     )
 
@@ -162,7 +160,7 @@ updater_command = [
     "--clean",
     "--noconfirm",  # 禁用确认提示
     "--distpath",
-    os.path.join("dist", "MFW")
+    os.path.join("dist", "MFW"),
 ]
 PyInstaller.__main__.run(updater_command)
 if sys.platform == "darwin":
