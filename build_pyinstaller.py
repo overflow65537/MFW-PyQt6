@@ -70,13 +70,14 @@ except FileNotFoundError as e:
 base_command = [
     "main.py",
     "--name=MFW",
+    "--onefile",
     "--clean",
     "--noconfirm",
     # 资源包含规则（格式：源路径{分隔符}目标目录）
-    f"--add-data={maa_path}{os.pathsep}maa",
-    f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
-    f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
-    f"--add-data={strenum}{os.pathsep}strenum",
+    #f"--add-data={maa_path}{os.pathsep}maa",
+    #f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
+    #f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
+    #f"--add-data={strenum}{os.pathsep}strenum",
     # 自动收集包数据
     "--collect-data=maa",
     "--collect-data=MaaAgentBinary",
@@ -90,6 +91,8 @@ base_command = [
     "--hidden-import=MaaAgentBinary",
     "--hidden-import=darkdetect",
     "--hidden-import=strenum",
+    "--distpath",
+    os.path.join("dist", "MFW"),
 ]
 
 # === 平台特定配置 ===
@@ -112,45 +115,25 @@ if sys.platform == "darwin":
         "--windowed",
         # 图标
         "--icon=MFW_resource/icon/logo.icns",
-        "--onefile",
-        "--distpath",
-        os.path.join("dist", "MFW"),
     ]
 
 elif sys.platform == "win32":
     base_command += [
         "--icon=MFW_resource/icon/logo.ico",
         "--noconsole",  # 禁用控制台窗口
-        "--onefile",
-        "--distpath",
-        os.path.join("dist", "MFW"),
     ]
 
 elif sys.platform == "linux":
-    bin_dir = os.path.join(maa_path, "bin")
-    bin_files = []
-    for f in os.listdir(bin_dir):
-        print(f"[DEBUG] Found binary file: {f}")
-        print(f"[DEBUG] Adding binary file: {os.path.join(bin_dir, f)}")
-        bin_files.append(f)
-        base_command += [f"--add-binary={os.path.join(bin_dir, f)}{os.pathsep}."]
-
+    bin_path = os.path.join(maa_path, "bin")
+    for i in os.listdir(bin_path):
+        base_command.append(
+            f"--add-binary={os.path.join(bin_path,i)}{os.pathsep}."
+        )
 # === 开始构建 ===
 print("[INFO] Starting MFW build")
 print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
 
-if sys.platform == "linux":
-    for i in bin_files:
-    # 复制二进制文件到 dist/MFW 目录
-        shutil.copy(
-            os.path.join(os.getcwd(), "dist", "MFW", "_internal", i),
-            os.path.join(os.getcwd(), "dist", "MFW"),
-        )
-        # 删除临时文件
-        os.remove(os.path.join(os.getcwd(), "dist", "MFW", "_internal", i))
-
-    shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin"))
 # 复制资源文件夹
 if os.path.exists(os.path.join(os.getcwd(), "MFW_resource")):
 

@@ -36,9 +36,10 @@ if getattr(sys, "frozen", False):
 
     else:
         target_dir = os.path.dirname(sys.executable)        # 非MacOS平台
-        if sys.platform == "linux":
-            #临时目录
-            os.environ["MAAFW_BINARY_PATH"] = target_dir
+        """if sys.platform == "linux":
+            #打包后的临时目录
+            os.environ["MAAFW_BINARY_PATH"] = os.path.join(sys._MEIPAS,"maa" ,"bin")"""
+
 
 else:
     # 如果是脚本运行，将工作目录设置为脚本文件所在目录
@@ -76,7 +77,6 @@ from app.utils.tool import show_error_message
 from app.utils.check_utils import check
 from app.common.__version__ import __version__
 
-logger.info(f"设置工作目录: {target_dir}")
 
 
 def main(resource: str, config: str, directly: bool, DEV: bool):
