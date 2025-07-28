@@ -1,8 +1,8 @@
-numpy == 2.2.6
+numpy 
 qasync
 asyncify
 requests
-MaaFw == 4.4.0
+MaaFw 
 psutil
 PySide6-Fluent-Widgets
 wmi
