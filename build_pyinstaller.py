@@ -70,7 +70,7 @@ except FileNotFoundError as e:
 base_command = [
     "main.py",
     "--name=MFW",
-    "--onefile",
+
     "--clean",
     "--noconfirm",
     # 资源包含规则（格式：源路径{分隔符}目标目录）
@@ -92,7 +92,7 @@ base_command = [
     "--hidden-import=darkdetect",
     "--hidden-import=strenum",
     "--distpath",
-    os.path.join("dist", "MFW"),
+
 ]
 
 # === 平台特定配置 ===
@@ -111,6 +111,7 @@ if sys.platform == "darwin":
         ]
         print("[DEBUG] Target arch: aarch64")
     base_command += [
+            "--onefile",    os.path.join("dist", "MFW"),
         "--osx-bundle-identifier=com.overflow65537.MFW",
         "--windowed",
         # 图标
@@ -119,7 +120,7 @@ if sys.platform == "darwin":
     ]
 
 elif sys.platform == "win32":
-    base_command += [
+    base_command += [    "--onefile",    os.path.join("dist", "MFW"),
         "--icon=MFW_resource/icon/logo.ico",
         "--noconsole",  # 禁用控制台窗口
     ]

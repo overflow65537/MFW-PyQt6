@@ -25,6 +25,7 @@ MFW-ChainFlow Assistant 启动文件
 
 import os
 import sys
+from app.utils.logger import logger
 
 # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
 if getattr(sys, "frozen", False):
@@ -32,12 +33,23 @@ if getattr(sys, "frozen", False):
     if sys.platform.startswith("darwin"):
         # MacOS平台
         target_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
+
     else:
-        # 非MacOS平台
-        target_dir = os.path.dirname(sys.executable)
+        target_dir = os.path.dirname(sys.executable)        # 非MacOS平台
+        if sys.platform == "linux":
+            #临时目录
+            maa_bin_path = os.path.join(sys._MEIPASS, "maa", "bin")
+            if "LD_LIBRARY_PATH" in os.environ:
+                os.environ["LD_LIBRARY_PATH"] = maa_bin_path + os.pathsep + os.environ["LD_LIBRARY_PATH"]
+            else:
+                os.environ["LD_LIBRARY_PATH"] = maa_bin_path
+            # 打印 LD_LIBRARY_PATH 用于调试
+            logger.debug(f"LD_LIBRARY_PATH: {os.environ['LD_LIBRARY_PATH']}")
+
 else:
     # 如果是脚本运行，将工作目录设置为脚本文件所在目录
     target_dir = os.path.dirname(os.path.abspath(__file__))
+logger.debug(f"设置工作目录: {target_dir}")
 
 # 切换工作目录
 os.chdir(target_dir)
@@ -50,7 +62,6 @@ if not os.path.exists("k.ey"):
         key_file.write(key)
 import argparse
 import threading
-
 import maa
 from maa.context import Context
 from maa.custom_action import CustomAction
@@ -64,7 +75,7 @@ from PySide6.QtWidgets import QApplication
 from qfluentwidgets import FluentTranslator
 
 from app.common.config import cfg
-from app.utils.logger import logger
+
 from app.view.main_window import MainWindow
 from app.common.config import Language
 from app.utils.tool import show_error_message
