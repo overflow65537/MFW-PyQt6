@@ -563,13 +563,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 self.task_failed = message["task"]
                 logger.debug(f"{message['task']} 任务中止")
                 if self.all_task_list[self.task_idx]["status"] == 0:
-                    self.all_task_list[self.task_idx]["status"] = -1
                     self.insert_colored_text(
                         self.tr(
                             "The task has failed. Subsequent operations will continue. Please wait."
                         ),
                         "red",
                     )
+                self.all_task_list[self.task_idx]["status"] = -1
                 if cfg.get(cfg.when_task_failed):
                     self.send_notice("failed", message["task"])
 
