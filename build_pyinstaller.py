@@ -150,7 +150,7 @@ if sys.platform == "linux":
         # 删除临时文件
         os.remove(os.path.join(os.getcwd(), "dist", "MFW", "_internal", i))
 
-shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin"))
+    shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin"))
 # 复制资源文件夹
 if os.path.exists(os.path.join(os.getcwd(), "MFW_resource")):
 

@@ -38,13 +38,7 @@ if getattr(sys, "frozen", False):
         target_dir = os.path.dirname(sys.executable)        # 非MacOS平台
         if sys.platform == "linux":
             #临时目录
-            maa_bin_path = os.path.join(sys._MEIPASS, "maa", "bin")
-            if "LD_LIBRARY_PATH" in os.environ:
-                os.environ["LD_LIBRARY_PATH"] = maa_bin_path + os.pathsep + os.environ["LD_LIBRARY_PATH"]
-            else:
-                os.environ["LD_LIBRARY_PATH"] = maa_bin_path
-            # 打印 LD_LIBRARY_PATH 用于调试
-            logger.debug(f"LD_LIBRARY_PATH: {os.environ['LD_LIBRARY_PATH']}")
+            os.environ["MAAFW_BINARY_PATH"] = target_dir
 
 else:
     # 如果是脚本运行，将工作目录设置为脚本文件所在目录
