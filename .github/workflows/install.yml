@@ -139,14 +139,12 @@ jobs:
         run: |
           git clone https://github.com/microsoft/vcpkg.git ${{ github.workspace }}\vcpkg
 
-          ${{ github.workspace }}\vcpkg\bootstrap-vcpkg.bat -arm64
+          ${{ github.workspace }}\vcpkg\bootstrap-vcpkg.bat
           
           $env:PATH += ";${{ github.workspace }}\vcpkg"
           $env:VCPKG_ROOT = "${{ github.workspace }}\vcpkg"
-
-          vcpkg install openssl --target arm64-windows-static-md
           
-        
+          vcpkg install openssl:arm64-windows-static-md
         shell: pwsh
 
       - name: Install dependencies (macos)
