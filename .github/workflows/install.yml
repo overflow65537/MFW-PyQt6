@@ -137,9 +137,18 @@ jobs:
       - name: Install dependencies (Windows ARM64)
         if: matrix.platform == 'win' && matrix.arch == 'aarch64'
         run: |
+          # 升级 pip 并安装基础编译工具
           python -m pip install --upgrade pip
-          python -m pip install --only-binary cryptography cryptography
+          python -m pip install setuptools wheel
 
+          # 安装 Rust 工具链（cryptography 源码编译依赖）
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          $env:PATH += ";$HOME\.cargo\bin"  # 将 Rust 工具链添加到 PATH
+
+          # 从源码安装 cryptography（移除 --only-binary 限制）
+          python -m pip install cryptography>=45.0.0  # 指定版本以确保兼容性
+
+          # 安装其他依赖
           python -m pip install pyinstaller
           python -m pip install -r ./requirements.txt
         shell: pwsh
