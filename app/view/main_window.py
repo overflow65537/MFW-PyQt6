@@ -681,10 +681,5 @@ class MainWindow(FluentWindow):
                 self.settingInterface.update_self.quit()
                 self.settingInterface.update_self.wait()
                 logger.debug("关闭更新自身进程")
-            
-            # 停止事件循环
-            if self.loop :
-                self.loop.stop()
-                logger.debug("事件循环已停止")
         except Exception as e:
             logger.exception("关闭agent进程失败", exc_info=e)
