@@ -114,7 +114,6 @@ class Config(QConfig):
     # 保存截图
     recording = ConfigItem("program", "recording", False, BoolValidator())
     save_draw = ConfigItem("program", "save_draw", False, BoolValidator())
-    show_hit_draw = ConfigItem("program", "show_hit_draw", False, BoolValidator())
 
     # MAA路径
     maa_config_name = ConfigItem("Maa", "Maa_config_name", "")

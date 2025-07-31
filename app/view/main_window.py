@@ -515,7 +515,6 @@ class MainWindow(FluentWindow):
         if (
             cfg.get(cfg.save_draw)
             or cfg.get(cfg.recording)
-            or cfg.get(cfg.show_hit_draw)
         ):
             title += " " + self.tr("Debug")
 
