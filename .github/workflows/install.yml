@@ -118,8 +118,8 @@ jobs:
           - os: windows-latest
             platform: win
             arch: aarch64
-            target_arch: arm64
-            python_arch: arm64
+            target_arch: x86_64
+            python_arch: x64
 
       fail-fast: false
 
