@@ -134,21 +134,6 @@ jobs:
           python-version: '3.12'
           architecture: ${{ matrix.python_arch }}
 
-      - name: Install vcpkg (Windows ARM64)
-        if: matrix.platform == 'win' && matrix.arch == 'aarch64' 
-        run: |
-          git clone https://github.com/microsoft/vcpkg.git ${{ github.workspace }}\vcpkg
-
-          ${{ github.workspace }}\vcpkg\bootstrap-vcpkg.bat -arm64
-          
-          $env:PATH += ";${{ github.workspace }}\vcpkg"
-          $env:VCPKG_ROOT = "${{ github.workspace }}\vcpkg"
-
-          vcpkg install openssl --target arm64-windows-static-md
-          
-        
-        shell: pwsh
-
       - name: Install dependencies (macos)
         if: matrix.platform == 'macos'
         run: |
