@@ -115,7 +115,7 @@ jobs:
             target_arch: x86_64
             python_arch: x64
             
-          - os: windows-11-arm
+          - os: windows-latest
             platform: win
             arch: aarch64
             target_arch: arm64
