@@ -152,8 +152,8 @@ jobs:
           $env:PATH += ";$HOME\.cargo\bin"
 
           # 从源码构建 cryptography（指定 Rust 目标架构）
-          $env:RUSTFLAGS="--cfg=webpki_roots=\"webpki_roots\""
-          python -m pip install cryptography>=45.0.0 --no-binary cryptography
+          $env:RUSTFLAGS="--cfg=webpki_roots=webpki_roots"
+          python -m pip install cryptography
           
           # 安装其他依赖
           python -m pip install pyinstaller
