@@ -515,7 +515,6 @@ class MainWindow(FluentWindow):
         if (
             cfg.get(cfg.save_draw)
             or cfg.get(cfg.recording)
-            or cfg.get(cfg.show_hit_draw)
         ):
             title += " " + self.tr("Debug")
 
@@ -657,6 +656,7 @@ class MainWindow(FluentWindow):
             )
         else:
             self.removeInterface(self.AssistToolTaskInterface)
+
     def clear_thread(self):
         try:
             if maafw.tasker and maafw.tasker.running:
@@ -681,10 +681,14 @@ class MainWindow(FluentWindow):
                 self.settingInterface.update_self.quit()
                 self.settingInterface.update_self.wait()
                 logger.debug("关闭更新自身进程")
-            
-            # 停止事件循环
-            if self.loop :
-                self.loop.stop()
-                logger.debug("事件循环已停止")
+            # 清理异步任务
+            import asyncio
+            loop = asyncio.get_event_loop()
+            if not loop.is_closed():
+                loop.stop()
+                loop.close()
+
+            logger.info("清理线程完成")
+
         except Exception as e:
             logger.exception("关闭agent进程失败", exc_info=e)
