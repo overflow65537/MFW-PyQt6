@@ -384,7 +384,6 @@ class SettingInterface(ScrollArea):
         # 设置开发者配置
         cfg.set(cfg.recording, False)
         cfg.set(cfg.save_draw, False)
-        cfg.set(cfg.show_hit_draw, False)
 
         self.Show_Agent_CMD_Card = SwitchSettingCard(
             FIF.APPLICATION,
@@ -412,29 +411,16 @@ class SettingInterface(ScrollArea):
             configItem=cfg.save_draw,
             parent=self.advancedGroup,
         )
-        self.show_hit_draw = SwitchSettingCard(
-            FIF.PHOTO,
-            self.tr("Show Hit Draw"),
-            self.tr(
-                "Show the node hit pop-up window. A pop-up window will appear to display the recognition results every time the recognition is successful."
-            ),
-            configItem=cfg.show_hit_draw,
-            parent=self.advancedGroup,
-        )
 
         self.advancedGroup.addSettingCard(self.Show_Agent_CMD_Card)
         self.advancedGroup.addSettingCard(self.RecordingCard)
         self.advancedGroup.addSettingCard(self.SaveDrawCard)
-        self.advancedGroup.addSettingCard(self.show_hit_draw)
 
         # 更改标题栏至调试模式
         self.RecordingCard.switchButton.checkedChanged.connect(
             lambda: signalBus.title_changed.emit()
         )
         self.SaveDrawCard.switchButton.checkedChanged.connect(
-            lambda: signalBus.title_changed.emit()
-        )
-        self.show_hit_draw.switchButton.checkedChanged.connect(
             lambda: signalBus.title_changed.emit()
         )
 

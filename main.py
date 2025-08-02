@@ -56,7 +56,6 @@ if not os.path.exists("k.ey"):
     with open("k.ey", "wb") as key_file:
         key_file.write(key)
 import argparse
-import threading
 import maa
 from maa.context import Context
 from maa.custom_action import CustomAction
@@ -89,15 +88,6 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
         )
 
     sys.excepthook = global_except_hook
-
-    # 处理线程未捕获异常
-    def thread_except_hook(args):
-        logger.exception(
-            "未捕获的线程异常:",
-            exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
-        )
-
-    threading.excepthook = thread_except_hook
 
     # enable dpi scale
     if cfg.get(cfg.dpiScale) != "Auto":
