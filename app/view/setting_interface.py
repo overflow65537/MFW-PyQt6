@@ -798,7 +798,6 @@ class SettingInterface(ScrollArea):
         self._start_updater()
 
         QApplication.quit()
-        sys.exit()
 
     def _rename_updater(self, old_name, new_name):
         """重命名更新程序。"""
