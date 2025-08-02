@@ -137,6 +137,7 @@ jobs:
       - name: Install dependencies (Windows ARM64)
         if: matrix.platform == 'win' && matrix.arch == 'aarch64'
         run: |
+          $env:CRYPTOGRAPHY_DONT_BUILD_RUST=1
           # 安装 vcpkg 并获取 OpenSSL（cryptography 依赖）
           git clone https://github.com/microsoft/vcpkg.git ${{ github.workspace }}\vcpkg
           ${{ github.workspace }}\vcpkg\bootstrap-vcpkg.bat
@@ -150,10 +151,6 @@ jobs:
           # 安装 Rust 工具链并指定 ARM64 目标
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable-aarch64-pc-windows-msvc
           $env:PATH += ";$HOME\.cargo\bin"
-
-          # 从源码构建 cryptography（指定 Rust 目标架构）
-          $env:RUSTFLAGS="--cfg=webpki_roots=webpki_roots"
-          python -m pip install cryptography
           
           # 安装其他依赖
           python -m pip install pyinstaller
