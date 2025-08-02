@@ -1060,13 +1060,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         # 结束后脚本
         if task:
             pass
-        else:
+        elif self.need_runing:
             await self.run_after_finish_script()
 
         # 完成后运行
         if task:
             pass
-        elif self.S2_Button.text() == self.tr("Stop"):
+        elif self.S2_Button.text() == self.tr("Stop") and self.need_runing:
             await self.execute_finish_action()
 
         maafw.tasker = None
@@ -1528,7 +1528,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
 
         logger.info("任务完成")
-        if cfg.get(cfg.when_task_finished):
+        if cfg.get(cfg.when_task_finished) and self.need_runing:
             self.send_notice("completed")
 
     def calculate_next_run_time(

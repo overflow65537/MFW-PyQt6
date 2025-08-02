@@ -123,7 +123,7 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
     # create main window
-    w = MainWindow(loop=loop)
+    w = MainWindow()
     w.show()
     # 异步异常处理
     def handle_async_exception(loop, context):
@@ -131,7 +131,13 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
 
     loop.set_exception_handler(handle_async_exception)
 
-    loop.run_forever()
+    with loop:
+        loop.run_forever()
+    # 清理异步任务
+       
+        loop.run_until_complete(loop.shutdown_asyncgens())
+    logger.debug("关闭异步任务完成")
+    loop.close()
 
 
 def start_symbol():
