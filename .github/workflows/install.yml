@@ -115,11 +115,11 @@ jobs:
             target_arch: x86_64
             python_arch: x64
             
-          - os: windows-latest
+          - os: windows-11-arm
             platform: win
             arch: aarch64
-            target_arch: x86_64
-            python_arch: x64
+            target_arch: arm64
+            python_arch: arm64
 
       fail-fast: false
 
@@ -134,6 +134,29 @@ jobs:
           python-version: '3.12'
           architecture: ${{ matrix.python_arch }}
 
+      - name: Install dependencies (Windows ARM64)
+        if: matrix.platform == 'win' && matrix.arch == 'aarch64'
+        run: |
+          $env:CRYPTOGRAPHY_DONT_BUILD_RUST=1
+          # 安装 vcpkg 并获取 OpenSSL（cryptography 依赖）
+          git clone https://github.com/microsoft/vcpkg.git ${{ github.workspace }}\vcpkg
+          ${{ github.workspace }}\vcpkg\bootstrap-vcpkg.bat
+          ${{ github.workspace }}\vcpkg\vcpkg install openssl:arm64-windows-static-md
+          $env:OPENSSL_DIR = "${{ github.workspace }}\vcpkg\installed\arm64-windows-static-md"  # 告知 cryptography 依赖位置
+
+          # 升级 pip 并安装基础工具
+          python -m pip install --upgrade pip
+          python -m pip install setuptools wheel maturin  # maturin 用于 Rust-Python 混合编译
+
+          # 安装 Rust 工具链并指定 ARM64 目标
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable-aarch64-pc-windows-msvc
+          $env:PATH += ";$HOME\.cargo\bin"
+          
+          # 安装其他依赖
+          python -m pip install pyinstaller
+          python -m pip install -r ./requirements.txt
+        shell: pwsh
+
       - name: Install dependencies (macos)
         if: matrix.platform == 'macos'
         run: |
@@ -145,11 +168,11 @@ jobs:
           fi
 
       - name: Install dependencies (other)
-        if: matrix.platform != 'macos' 
+        if: matrix.platform != 'macos' && !(matrix.platform == 'win' && matrix.arch == 'aarch64')
         run: |
           python -m pip install --upgrade pip
           python -m pip install pyinstaller
-          python -m pip install -r./requirements.txt
+          python -m pip install -r ./requirements.txt
 
       - name: Install(macos)
         if: matrix.platform == 'macos'
@@ -204,5 +227,3 @@ jobs:
           gh workflow run --repo $GITHUB_REPOSITORY mirrorchyan_release_note
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      
