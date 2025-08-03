@@ -66,7 +66,8 @@ def isWin11():
 
 class Config(QConfig):
     """Config of application"""
-
+    # 无人监管模式
+    timeout = ConfigItem("Unsupervised_Mod", "timeout", -1)
     # 代理设置
     proxy = ConfigItem("proxy", "proxy", 0)
     http_proxy = ConfigItem("proxy", "http_proxy", "")

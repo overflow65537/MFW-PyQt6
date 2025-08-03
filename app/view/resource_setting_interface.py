@@ -27,7 +27,7 @@ from qfluentwidgets import (
     SettingCardGroup,
     ScrollArea,
     ExpandLayout,
-    InfoBar,
+    InfoBar,  ComboBoxSettingCard,
 )
 import os
 import shutil
@@ -615,6 +615,27 @@ class ResourceSettingInterface(ScrollArea):
         self.res_cfg_group.addSettingCard(self.cfg_setting)
         self.resource_expandLayout.addWidget(self.res_cfg_group)
 
+    def initialize_Unsupervised_Mod_settings(self):
+        """初始化无人监管模式设置"""
+        self.Unsupervised_Mod_setting=SettingCardGroup(self.tr("Unsupervised Mod"), self.resource_scrollWidget)
+        self.timeout_setting= LineEditCard(
+            icon=FIF.DATE_TIME,
+            title=self.tr("timeout setting"),
+            content=self.tr("set a value of timeout,0 is off"),
+            parent=self.Unsupervised_Mod_setting,
+        )
+        self.timeout_action=ComboBoxSettingCard(
+            configItem=cfg.timeout_action,
+            icon=FIF.DATE_TIME,
+            title=self.tr("timeout setting"),
+            content=self.tr("set a value of timeout,0 is off"),
+            parent=self.Unsupervised_Mod_setting,
+        )
+        self.Unsupervised_Mod_setting.addSettingCard(self.timeout_setting)
+
+
+        
+        
     def initialize_adb_settings(self):
         """初始化 ADB 设置。"""
         self.ADB_Setting = SettingCardGroup(self.tr("ADB"), self.resource_scrollWidget)
