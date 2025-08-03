@@ -22,7 +22,7 @@ MFW-ChainFlow Assistant 工具任务界面
 作者:overflow65537
 """
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QPoint
 from PySide6.QtWidgets import (
     QWidget,
     QStackedWidget,
@@ -293,6 +293,21 @@ class AssistToolTaskInterface(QWidget):
         try:
             task_index = int(index.split("_")[-1])
             self.switch_to_task_page(task_index)
+            
+            # 滚动到选中项居中
+            item = self.pivot.currentItem()
+            if item:
+                # 获取item在scroll_area中的位置
+                item_pos = item.mapTo(self.scroll_area, QPoint(0, 0))
+                item_width = item.width()
+                scroll_area_width = self.scroll_area.viewport().width()
+                
+                # 计算目标滚动位置
+                target_x = item_pos.x() + (item_width / 2) - (scroll_area_width / 2)
+                h_bar = self.scroll_area.horizontalScrollBar()
+                
+                # 设置滚动位置，确保不小于0
+                h_bar.setValue(max(0, int(target_x)))
         except (ValueError, IndexError):
             logger.warning(f"无效的routeKey: {index}，无法提取索引")
 
