@@ -81,6 +81,10 @@ class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
         self.initWindow()
+
+        #注册atexit
+        atexit.register(self.clear_thread)
+
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)
 
@@ -626,28 +630,6 @@ class MainWindow(FluentWindow):
         """关闭事件"""
         self.themeListener.terminate()
         self.themeListener.deleteLater()
-        if maafw.tasker and maafw.tasker.running:
-            maafw.tasker.post_stop().wait()
-            logger.debug("停止任务线程")
-        if maafw.agent:
-            maafw.agent.disconnect()
-            logger.debug("断开agent连接")
-        if maafw.agent_thread:
-            maafw.agent_thread.quit()
-            maafw.agent_thread.wait()
-            logger.debug("关闭agent线程")
-        if send_thread:
-            send_thread.quit()
-            send_thread.wait()
-            logger.debug("关闭发送线程")
-        if self.settingInterface.Updatethread:
-            self.settingInterface.Updatethread.quit()
-            self.settingInterface.Updatethread.wait()
-            logger.debug("关闭更新线程")
-        if self.settingInterface.update_self:
-            self.settingInterface.update_self.quit()
-            self.settingInterface.update_self.wait()
-            logger.debug("关闭更新自身进程")
         e.accept()
         super().closeEvent(e)
 
