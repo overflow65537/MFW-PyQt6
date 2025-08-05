@@ -1069,7 +1069,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if task:
             pass
         elif self.S2_Button.text() == self.tr("Stop") and self.need_runing:
-            self.execute_finish_action()
+            QTimer.singleShot(1000, self.execute_finish_action)
 
         maafw.tasker = None
         if maafw.agent:
