@@ -120,8 +120,12 @@ if sys.platform == "darwin":
 elif sys.platform == "win32":
     base_command += [
         "--icon=MFW_resource/icon/logo.ico",
-        "--noconsole",  # 禁用控制台窗口
+       
     ]
+    if "ci" not in version:
+        base_command += [
+            "--noconsole",  # 禁用控制台窗口
+        ]
 
 elif sys.platform == "linux":
     bin_path = os.path.join(maa_path, "bin")
