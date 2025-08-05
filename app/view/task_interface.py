@@ -1061,13 +1061,15 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if task:
             pass
         elif self.need_runing:
-            await self.run_after_finish_script()
+            self.run_after_finish_script()
+            # 等待3秒
+            await asyncio.sleep(3)
 
         # 完成后运行
         if task:
             pass
         elif self.S2_Button.text() == self.tr("Stop") and self.need_runing:
-            await self.execute_finish_action()
+            self.execute_finish_action()
 
         maafw.tasker = None
         if maafw.agent:
@@ -1640,7 +1642,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         return target_date_time
 
-    async def run_after_finish_script(self):
+    def run_after_finish_script(self):
         """
         运行后脚本
         """
@@ -1659,10 +1661,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             except FileNotFoundError as e:
                 self.show_error(self.tr("File not found"))
                 logger.error(f'运行后脚本"{e}"')
-            finally:
-                await asyncio.sleep(3)
-
-    async def execute_finish_action(self):
+    def execute_finish_action(self):
         """
         执行完成后的动作
         """

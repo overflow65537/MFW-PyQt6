@@ -133,9 +133,6 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
 
     with loop:
         loop.run_forever()
-    # 清理异步任务
-       
-        loop.run_until_complete(loop.shutdown_asyncgens())
     logger.debug("关闭异步任务完成")
     loop.close()
 
