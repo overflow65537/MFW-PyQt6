@@ -27,7 +27,7 @@ from qfluentwidgets import (
     SettingCardGroup,
     ScrollArea,
     ExpandLayout,
-    InfoBar,  ComboBoxSettingCard,
+    InfoBar,
 )
 import os
 import shutil
@@ -104,6 +104,13 @@ class ResourceSettingInterface(ScrollArea):
             32: "MinicapStream",
             64: "EmulatorExtras",
         }
+
+        self.unsupervised_action_mapping={
+            0:self.tr("Do Noting"),
+            1:self.tr("Skip"),
+            2:self.tr("Stop"),
+            3:self.tr("Rerun"),
+        }
         self.gpu_mapping = get_gpu_info()
         self.gpu_combox_list = self.get_unique_gpu_mapping(self.gpu_mapping)
         self.gpu_mapping[-1] = self.tr("Auto")
@@ -131,6 +138,8 @@ class ResourceSettingInterface(ScrollArea):
 
         # 初始化设置
         self.initialize_res_cfg_setting()
+        self.initialize_Unsupervised_Mod_settings()
+        
         self.initialize_adb_settings()
         self.initialize_win32_settings()
         self.initialize_start_settings()
@@ -624,16 +633,18 @@ class ResourceSettingInterface(ScrollArea):
             content=self.tr("set a value of timeout,0 is off"),
             parent=self.Unsupervised_Mod_setting,
         )
-        self.timeout_action=ComboBoxSettingCard(
-            configItem=cfg.timeout_action,
-            icon=FIF.DATE_TIME,
-            title=self.tr("timeout setting"),
-            content=self.tr("set a value of timeout,0 is off"),
+        self.timeout_action=ComboBoxSettingCardCustom(
+          icon=FIF.SAVE_AS,
+            title=self.tr("Select timeout action"),
+            texts=[self.tr("Do Noting"),self.tr("Skip"),self.tr("Stop"),self.tr("Rerun")],
+            target=["timeout_action"],
+            path=maa_config_data.config_path,
             parent=self.Unsupervised_Mod_setting,
+            mode="setting",
+            mapping=self.unsupervised_action_mapping,
         )
         self.Unsupervised_Mod_setting.addSettingCard(self.timeout_setting)
-
-
+        self.Unsupervised_Mod_setting.addSettingCard(self.timeout_action)
         
         
     def initialize_adb_settings(self):
@@ -902,6 +913,7 @@ class ResourceSettingInterface(ScrollArea):
         self.resource_expandLayout.setSpacing(28)
         self.resource_expandLayout.setContentsMargins(36, 10, 36, 0)
         self.resource_expandLayout.addWidget(self.res_cfg_group)
+        self.resource_expandLayout.addWidget(self.Unsupervised_Mod_setting)
         self.resource_expandLayout.addWidget(self.ADB_Setting)
         self.resource_expandLayout.addWidget(self.Win32_Setting)
         self.resource_expandLayout.addWidget(self.start_Setting)
