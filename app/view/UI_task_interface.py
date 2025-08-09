@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-#   This file is part of MFW-ChainFlow Assistant.
+# -*- coding: utf-8 -*-#   This file is part of MFW-ChainFlow Assistant.
 
 #   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published
@@ -20,7 +19,7 @@
 """
 MFW-ChainFlow Assistant
 MFW-ChainFlow Assistant 计划任务界面
-作者:overflow65537
+作者: overflow65537
 """
 
 from PySide6.QtCore import QSize, QMetaObject, Qt
@@ -45,11 +44,19 @@ from ..utils.widget import ListWidge_Menu_Draggable, RightCheckButton
 
 
 class Ui_Task_Interface(object):
+    """任务界面UI类，负责定义计划任务界面的布局和组件"""
+
     def setupUi(self, Task_Interface):
+        """设置UI界面
+
+        Args:
+            Task_Interface: 任务界面窗口组件
+        """
         Task_Interface.setObjectName("Task_Interface")
         Task_Interface.resize(900, 600)
         Task_Interface.setMinimumSize(QSize(0, 0))
-        # 设置主窗口
+
+        # 设置主窗口布局
         self.main_layout = QHBoxLayout(Task_Interface)
 
         # 自动检测按钮;资源,控制器和完成后运行标签布局
@@ -95,7 +102,6 @@ class Ui_Task_Interface(object):
         self.AutoDet_Res_Ctl_Layout.addLayout(self.AutoDetCom_ResCom_CtlCom)
 
         # 完成后操作
-
         self.Finish_combox_res = ComboBox(Task_Interface)
         self.Finish_combox_cfg = ComboBox(Task_Interface)
         self.Finish_combox_layout = QHBoxLayout()
@@ -107,7 +113,6 @@ class Ui_Task_Interface(object):
         self.Finish_combox_cfg.setObjectName("Finish_combox_cfg")
 
         # 启动/停止按钮和完成后操作标签
-
         self.S2But_FinLayout = QHBoxLayout()
         self.S2_Button = PrimaryPushButton(Task_Interface)
         self.S2_Button.setObjectName("S2_Button")
@@ -164,7 +169,7 @@ class Ui_Task_Interface(object):
         self.option_layout = QVBoxLayout(self.option_widget)
         self.option_widget.setSizePolicy(
             QSizePolicy.Policy.Preferred,  # 水平策略保持不变
-            QSizePolicy.Policy.Minimum,  # 垂直策略根据内容自动调整
+            QSizePolicy.Policy.Minimum,    # 垂直策略根据内容自动调整
         )
 
         # doc区域
@@ -172,7 +177,7 @@ class Ui_Task_Interface(object):
         self.doc_layout = QVBoxLayout(self.doc_widget)
         self.doc_widget.setSizePolicy(
             QSizePolicy.Policy.Preferred,  # 水平策略保持不变
-            QSizePolicy.Policy.Minimum,  # 垂直策略根据内容自动调整
+            QSizePolicy.Policy.Minimum,    # 垂直策略根据内容自动调整
         )
 
         # 主滚动区域布局
@@ -186,8 +191,6 @@ class Ui_Task_Interface(object):
         self.Option_area_Label = QVBoxLayout()
         self.Option_area_Label.addWidget(self.scroll_area, 1)
 
-        self.AddMission_layout.addLayout(self.Main_Task_Label)
-        self.AddMission_layout.addWidget(self.line)
         self.AddMission_layout.addLayout(self.Option_area_Label)
 
         # 左侧布局
@@ -195,13 +198,8 @@ class Ui_Task_Interface(object):
         self.line2.setFrameShape(QFrame.Shape.HLine)
         self.line2.setFrameShadow(QFrame.Shadow.Plain)
 
-        self.left_layout = QVBoxLayout()
-        self.left_layout.addLayout(self.AddMission_layout)
-        self.left_layout.addWidget(self.line2)
-        self.left_layout.addLayout(self.FullLayout_LeftDown)
-
         # 中间布局（包含任务列表）
-        self.middle_layout = QVBoxLayout()
+        self.task_list_layout = QVBoxLayout()
         self.Task_List = ListWidge_Menu_Draggable(self)
 
         self.Task_List.setDragDropMode(QAbstractItemView.DragDropMode.DragDrop)
@@ -214,8 +212,10 @@ class Ui_Task_Interface(object):
         )
         self.Delete_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.Delete_label.setAcceptDrops(True)
-        self.middle_layout.addWidget(self.Task_List)
-        self.middle_layout.addWidget(self.Delete_label)
+        self.task_list_layout.addLayout(self.Main_Task_Label)
+        self.task_list_layout.addWidget(self.line)
+        self.task_list_layout.addWidget(self.Task_List)
+        self.task_list_layout.addWidget(self.Delete_label)
 
         # 右侧布局（包含文本编辑区域）
         self.scroll_area = ScrollArea(Task_Interface)
@@ -233,8 +233,13 @@ class Ui_Task_Interface(object):
         self.right_layout.addStretch()
 
         # 将子布局添加到主布局中
+        self.left_layout = QVBoxLayout()
+        self.left_layout.addLayout(self.task_list_layout)
+        self.left_layout.addWidget(self.line2)
+        self.left_layout.addLayout(self.FullLayout_LeftDown)
+
         self.main_layout.addLayout(self.left_layout, 3)
-        self.main_layout.addLayout(self.middle_layout, 3)
+        self.main_layout.addLayout(self.AddMission_layout, 3)
         self.main_layout.addWidget(self.scroll_area, 3)
 
         QMetaObject.connectSlotsByName(Task_Interface)

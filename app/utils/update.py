@@ -1323,5 +1323,8 @@ class UpdateSelf(BaseUpdate):
     def stop(self):
         self.stop_flag = True
 
+update_res_thread = Update()
+update_self_thread = UpdateSelf()
+download_bundle_thread = DownloadBundle()
 
 # endregion

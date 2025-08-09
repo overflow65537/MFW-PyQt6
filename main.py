@@ -22,42 +22,8 @@ MFW-ChainFlow Assistant 启动文件
 作者:overflow65537
 """
 
-
 import os
 import sys
-from app.utils.logger import logger
-
-# 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
-if getattr(sys, "frozen", False):
-    # 如果程序是打包后的可执行文件，将工作目录设置为可执行文件所在目录
-    if sys.platform.startswith("darwin"):
-        # MacOS平台
-        target_dir = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.dirname(sys.executable)))
-        )
-
-    else:
-        target_dir = os.path.dirname(sys.executable)  # 非MacOS平台
-        """if sys.platform == "linux":
-            #打包后的临时目录
-            os.environ["MAAFW_BINARY_PATH"] = os.path.join(sys._MEIPAS,"maa" ,"bin")"""
-
-
-else:
-    # 如果是脚本运行，将工作目录设置为脚本文件所在目录
-    target_dir = os.path.dirname(os.path.abspath(__file__))
-logger.debug(f"设置工作目录: {target_dir}")
-
-# 切换工作目录
-os.chdir(target_dir)
-logger.debug(f"当前工作目录: {os.getcwd()}")
-
-from cryptography.fernet import Fernet
-
-if not os.path.exists("k.ey"):
-    key = Fernet.generate_key()
-    with open("k.ey", "wb") as key_file:
-        key_file.write(key)
 import argparse
 import json
 from typing import Dict
@@ -69,11 +35,12 @@ from maa.custom_recognition import CustomRecognition
 
 import atexit
 from qasync import QEventLoop, asyncio
-from qfluentwidgets import ConfigItem
+from qfluentwidgets import ConfigItem, FluentTranslator
 from PySide6.QtCore import Qt, QTranslator
 from PySide6.QtWidgets import QApplication
-from qfluentwidgets import FluentTranslator
+from cryptography.fernet import Fernet
 
+from app.utils.logger import logger
 from app.common.config import cfg
 from app.view.main_window import MainWindow
 from app.common.config import Language
@@ -81,45 +48,11 @@ from app.common.__version__ import __version__
 from app.common.maa_config_data import maa_config_data, init_maa_config_data
 from app.utils.tool import Save_Config, show_error_message
 from app.common.signal_bus import signalBus
-
-
-def initialize_environment():
-    """环境初始化"""
-    # macOS 单实例检查
-    if sys.platform.startswith("darwin"):
-        PID_FILE = os.path.join(os.getcwd(), "MFW.pid")
-
-        def cleanup_pid():
-            if os.path.exists(PID_FILE):
-                os.remove(PID_FILE)
-                logger.debug("已清理PID文件")
-
-        if os.path.exists(PID_FILE):
-            try:
-                with open(PID_FILE, "r") as f:
-                    existing_pid = int(f.read().strip())
-                os.kill(existing_pid, 0)  # 检测进程是否存活
-                logger.error(f"检测到已有实例运行（PID: {existing_pid}），当前实例退出")
-                sys.exit(0)
-            except (ValueError, ProcessLookupError):
-                cleanup_pid()
-                logger.debug("检测到残留PID文件，已清理")
-
-        with open(PID_FILE, "w") as f:
-            f.write(str(os.getpid()))
-        atexit.register(cleanup_pid)
-        logger.debug(f"创建PID文件（当前PID: {os.getpid()}）")
-
-    # 参数解析与配置检查
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-r", "--resource", default=False)
-    parser.add_argument("-c", "--config", default=False)
-    parser.add_argument("-d", "--directly", action="store_true")
-    parser.add_argument("-DEV", "--DEV", action="store_true")
-    args = parser.parse_args()
-
-    # 执行配置检查
-    _check_resource_and_config(args.resource, args.config, args.directly, args.DEV)
+from app.utils.update import (
+    update_res_thread,
+    update_self_thread,
+    download_bundle_thread,
+)
 
 
 def _check_resource_and_config(resource: str, config: str, directly: bool, DEV: bool):
@@ -265,8 +198,70 @@ def _check_resource_and_config(resource: str, config: str, directly: bool, DEV: 
         return False
 
 
-def initialize_application():
-    """应用初始化"""
+if __name__ == "__main__":
+
+    logger.info(f"MFW 版本:{__version__}")
+
+    # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
+    if getattr(
+        sys, "frozen", False
+    ):  # 如果程序是打包后的可执行文件，将工作目录设置为可执行文件所在目录
+        if sys.platform.startswith("darwin"):  # MacOS平台
+            target_dir = os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.dirname(sys.executable)))
+            )
+        else:
+            target_dir = os.path.dirname(sys.executable)  # 非MacOS平台
+            """if sys.platform == "linux":
+                #打包后的临时目录
+                os.environ["MAAFW_BINARY_PATH"] = os.path.join(sys._MEIPAS,"maa" ,"bin")"""
+    else:  # 如果是脚本运行，将工作目录设置为脚本文件所在目录
+        target_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(target_dir)  # 切换工作目录
+    logger.debug(f"设置工作目录: {target_dir}")
+
+    # 检查是否存在密钥文件
+    if not os.path.exists("k.ey"):
+        logger.debug("生成密钥文件")
+        key = Fernet.generate_key()
+        with open("k.ey", "wb") as key_file:
+            key_file.write(key)
+
+    # macOS 单实例检查
+    if sys.platform.startswith("darwin"):
+        PID_FILE = os.path.join(os.getcwd(), "MFW.pid")
+
+        def cleanup_pid():
+            if os.path.exists(PID_FILE):
+                os.remove(PID_FILE)
+                logger.debug("已清理PID文件")
+
+        if os.path.exists(PID_FILE):
+            try:
+                with open(PID_FILE, "r") as f:
+                    existing_pid = int(f.read().strip())
+                os.kill(existing_pid, 0)  # 检测进程是否存活
+                logger.error(f"检测到已有实例运行（PID: {existing_pid}），当前实例退出")
+                sys.exit(0)
+            except (ValueError, ProcessLookupError):
+                cleanup_pid()
+                logger.debug("检测到残留PID文件，已清理")
+
+        with open(PID_FILE, "w") as f:
+            f.write(str(os.getpid()))
+        atexit.register(cleanup_pid)
+        logger.debug(f"创建PID文件（当前PID: {os.getpid()}）")
+
+    # 参数解析与配置检查
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r", "--resource", default=False)
+    parser.add_argument("-c", "--config", default=False)
+    parser.add_argument("-d", "--directly", action="store_true")
+    parser.add_argument("-DEV", "--DEV", action="store_true")
+    args = parser.parse_args()
+
+    # 执行配置检查
+    _check_resource_and_config(args.resource, args.config, args.directly, args.DEV)
 
     # 全局异常钩子
     def global_except_hook(exc_type, exc_value, exc_traceback):
@@ -289,7 +284,6 @@ def initialize_application():
     locale: ConfigItem = cfg.get(cfg.language)
     translator = FluentTranslator(locale.value)
     galleryTranslator = QTranslator()
-
     if locale == Language.CHINESE_SIMPLIFIED:
         galleryTranslator.load(
             os.path.join(".", "MFW_resource", "i18n", "i18n.zh_CN.qm")
@@ -302,7 +296,6 @@ def initialize_application():
         logger.info("加载繁体中文翻译")
     elif locale == Language.ENGLISH:
         logger.info("加载英文翻译")
-
     app.installTranslator(translator)
     app.installTranslator(galleryTranslator)
 
@@ -310,7 +303,6 @@ def initialize_application():
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
-    # 启动主窗口并运行事件循环
     # 创建主窗口
     w = MainWindow()
     w.show()
@@ -326,11 +318,3 @@ def initialize_application():
         loop.run_forever()
     logger.debug("关闭异步任务完成")
     loop.close()
-
-
-if __name__ == "__main__":
-    logger.info(f"MFW 版本:{__version__}")
-
-    initialize_environment()
-
-    initialize_application()

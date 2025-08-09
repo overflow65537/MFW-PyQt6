@@ -33,7 +33,7 @@ import os
 import sys
 
 from PySide6.QtCore import QSize, QTimer
-from PySide6.QtGui import QIcon, QShortcut, QKeySequence
+from PySide6.QtGui import QIcon, QShortcut, QKeySequence, QGuiApplication
 from PySide6.QtWidgets import QApplication
 
 from qfluentwidgets import (
@@ -52,6 +52,8 @@ from .resource_setting_interface import ResourceSettingInterface
 from .task_cooldown_interface import TaskCooldownInterface
 from .assist_tool_task_interface import AssistToolTaskInterface
 from .setting_interface import SettingInterface
+from .fast_start_interface.fast_start_logic import FastStartInterface
+
 import atexit
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
@@ -70,10 +72,9 @@ from ..utils.notice import send_thread
 class CustomSystemThemeListener(SystemThemeListener):
     def run(self):
         try:
-            # 调用原始的 run 方法
             super().run()
         except NotImplementedError:
-            print("当前环境不支持主题监听，已忽略", file=sys.stderr)
+            logger.error("当前环境不支持主题监听，已忽略")
 
 
 class MainWindow(FluentWindow):
@@ -82,53 +83,95 @@ class MainWindow(FluentWindow):
         super().__init__()
         self.initWindow()
 
-        #注册atexit
+        # 显示公告 MessageBox
+        if (
+            cfg.get(cfg.show_notice)
+            or maa_config_data.interface_config.get("show_notice")
+        ) and not cfg.get(cfg.hide_notice):
+            QTimer.singleShot(500, self.show_announcement)
+
+        # 注册atexit
         atexit.register(self.clear_thread)
 
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)
 
         # 创建子界面
-        self.taskInterface = TaskInterface(self)
-        self.resourceSettingInterface = ResourceSettingInterface(self)
-        self.TaskCooldownInterface = TaskCooldownInterface(self)
-        self.AssistToolTaskInterface = AssistToolTaskInterface(self)
-        self.settingInterface = SettingInterface(self)
+        # self.taskInterface = TaskInterface(self)
+        # self.resourceSettingInterface = ResourceSettingInterface(self)
+        # self.TaskCooldownInterface = TaskCooldownInterface(self)
+        # self.AssistToolTaskInterface = AssistToolTaskInterface(self)
+        # self.settingInterface = SettingInterface(self)
+        self.FastStartInterface = FastStartInterface(self)
 
-        # 启用Fluent主题效果
-        self.navigationInterface.setAcrylicEnabled(True)
+        self.navigationInterface.addSeparator()
 
-        self.connectSignalToSlot()
+        self.addSubInterface(self.FastStartInterface, FIF.CHECKBOX, self.tr("Task"))
+
+        # self.connectSignalToSlot()
 
         # 记录 AssistToolTaskInterface 导航项索引
         self.AssistTool_task_nav_index = None
 
         # 添加导航项
-        self.initNavigation()
+        # self.initNavigation()
         self.splashScreen.finish()
 
         # 初始化通知对象
-        self.dingtalk = NoticeType(self, "DingTalk")
-        self.lark = NoticeType(self, "Lark")
-        self.smtp = NoticeType(self, "SMTP")
-        self.wxpusher = NoticeType(self, "WxPusher")
-        self.QYWX = NoticeType(self, "QYWX")
-        self.send_setting = SendSettingCard(self)
+        # self.dingtalk = NoticeType(self, "DingTalk")
+        # self.lark = NoticeType(self, "Lark")
+        # self.smtp = NoticeType(self, "SMTP")
+        # self.wxpusher = NoticeType(self, "WxPusher")
+        # self.QYWX = NoticeType(self, "QYWX")
+        # self.send_setting = SendSettingCard(self)
 
         # 启动主题监听器
         self.themeListener.start()
-        if "adb" in self.taskInterface.Control_Combox.currentText().lower():
-            signalBus.setting_Visible.emit("adb")
-        elif "win32" in self.taskInterface.Control_Combox.currentText().lower():
-            signalBus.setting_Visible.emit("win32")
-        self.initShortcuts()
-        self.update_failed()
-        self.stara_finish()
+        # if "adb" in self.taskInterface.Control_Combox.currentText().lower():
+        #    signalBus.setting_Visible.emit("adb")
+        # elif "win32" in self.taskInterface.Control_Combox.currentText().lower():
+        #    signalBus.setting_Visible.emit("win32")
+        # self.initShortcuts()
+        # self.update_failed()
+        # self.stara_finish()
 
-        QTimer.singleShot(5000, lambda: cfg.set(cfg.start_complete, True))
-        maafw.change_log_path(maa_config_data.log_path)
+        # QTimer.singleShot(5000, lambda: cfg.set(cfg.start_complete, True))
+        # maafw.change_log_path(maa_config_data.log_path)
 
         logger.info(" 主界面初始化完成。")
+
+    def initWindow(self):
+        """初始化窗口设置。"""
+        self.resize(1170, 760)
+        self.setMinimumWidth(1170)
+        self.setMinimumHeight(760)
+        self.setWindowIcon(QIcon("./MFW_resource/icon/logo.png"))
+        self.set_title()
+        self.setMicaEffectEnabled(cfg.get(cfg.micaEnabled))
+
+        # 创建启动画面
+        self.splashScreen = SplashScreen(self.windowIcon(), self)
+        self.splashScreen.setIconSize(QSize(106, 106))
+        self.splashScreen.raise_()
+
+        # 设置启动位置
+        desktop = QApplication.screens()[0].availableGeometry()
+        w, h = desktop.width(), desktop.height()
+        self.move(w // 2 - self.width() // 2, h // 2 - self.height() // 2)
+        self.show()
+        QApplication.processEvents()
+
+        # 设置侧边栏宽度
+        self.navigationInterface.setExpandWidth(226)
+
+        # 侧边栏默认展开
+        self.navigationInterface.expand(useAni=False)
+
+        # 隐藏返回按钮
+        self.navigationInterface.panel.setReturnButtonVisible(False)
+
+        # 启用Fluent主题效果
+        self.navigationInterface.setAcrylicEnabled(True)
 
     def update_failed(self):
         cfg.set(cfg.update_ui_failed, False)
@@ -367,6 +410,7 @@ class MainWindow(FluentWindow):
                     parent=self,
                 )
                 self.taskInterface.S2_Button.click()
+
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
         signalBus.show_download.connect(self.show_download)
@@ -510,41 +554,11 @@ class MainWindow(FluentWindow):
             title += f" {config_name}"
         if self.is_admin():
             title += " " + self.tr("admin")
-        if (
-            cfg.get(cfg.save_draw)
-            or cfg.get(cfg.recording)
-        ):
+        if cfg.get(cfg.save_draw) or cfg.get(cfg.recording):
             title += " " + self.tr("Debug")
 
         logger.info(f" 设置窗口标题：{title}")
         self.setWindowTitle(title)
-
-    def initWindow(self):
-        """初始化窗口设置。"""
-        self.resize(960, 780)
-        self.setMinimumWidth(760)
-        self.setWindowIcon(QIcon("./MFW_resource/icon/logo.png"))
-        self.set_title()
-        self.setMicaEffectEnabled(cfg.get(cfg.micaEnabled))
-
-        # 创建启动画面
-        self.splashScreen = SplashScreen(self.windowIcon(), self)
-        self.splashScreen.setIconSize(QSize(106, 106))
-        self.splashScreen.raise_()
-
-        desktop = QApplication.screens()[0].availableGeometry()
-        w, h = desktop.width(), desktop.height()
-        self.move(w // 2 - self.width() // 2, h // 2 - self.height() // 2)
-        self.show()
-        QApplication.processEvents()
-
-        # 显示公告 MessageBox
-        if (
-            cfg.get(cfg.show_notice)
-            or maa_config_data.interface_config.get("show_notice")
-        ) and not cfg.get(cfg.hide_notice):
-
-            QTimer.singleShot(500, self.show_announcement)
 
     def read_announcement_file(self, file_path):
         """
@@ -682,6 +696,7 @@ class MainWindow(FluentWindow):
                 logger.debug("关闭更新自身进程")
             # 清理异步任务
             import asyncio
+
             loop = asyncio.get_event_loop()
             if not loop.is_closed():
                 loop.stop()
