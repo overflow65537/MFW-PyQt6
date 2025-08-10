@@ -31,6 +31,10 @@ from qfluentwidgets import (
     FluentIcon as FIF,
     CardWidget,
     SimpleCardWidget,
+    TransparentPushButton,
+    ToolTipFilter,
+    ToolTipPosition
+
 )
 from ...widget.DashboardCard import DashboardCard
 
@@ -82,10 +86,12 @@ class UI_FastStartInterface(object):
         self.log_output_title.setStyleSheet("font-size: 20px;")
 
         # 生成日志压缩包按钮
-        self.generate_log_zip_button = ToolButton(FIF.SETTING, self)
-
+        self.generate_log_zip_button = ToolButton(FIF.FEEDBACK, self)
+        # 悬浮提示
+        self.generate_log_zip_button.installEventFilter(ToolTipFilter(self.generate_log_zip_button, 0, ToolTipPosition.TOP))
         # 日志等级下拉框
         self.log_level_combox = ComboBox(self)
+        self.log_level_combox.installEventFilter(ToolTipFilter(self.log_level_combox, 0, ToolTipPosition.TOP))
         self.log_level_combox.setObjectName("log_level_combox")
         self.log_level_combox.addItems(
             ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
@@ -213,7 +219,11 @@ class UI_FastStartInterface(object):
     def _init_start_bar(self):
         """初始化启动栏"""
         # 启动按钮
-        self.start_button = PrimaryPushButton("启动")
+        self.start_button = TransparentPushButton("启动",self,FIF.PLAY)
+
+        # 停止按钮
+        self.stop_button = TransparentPushButton("停止",self,FIF.CLOSE)
+        self.stop_button.setDisabled(True)
 
         # 完成后运行
         self.run_after_finish = BodyLabel("完成后")
@@ -236,6 +246,8 @@ class UI_FastStartInterface(object):
 
         self.start_bar_layout = QHBoxLayout(self.start_bar)
         self.start_bar_layout.addWidget(self.start_button)
+        self.start_bar_layout.addWidget(self.stop_button)
+
         self.start_bar_layout.addStretch()
         self.start_bar_layout.addWidget(self.run_after_finish)
         self.start_bar_layout.addWidget(self.run_after_finish_combox)
