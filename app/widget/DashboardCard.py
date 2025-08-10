@@ -1,7 +1,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from qfluentwidgets import (
-    CardWidget,
+    SimpleCardWidget,
     LargeTitleLabel,
     StrongBodyLabel,
     IconWidget,
@@ -10,7 +10,7 @@ from qfluentwidgets import (
 )
 
 
-class DashboardCard(CardWidget):
+class DashboardCard(SimpleCardWidget):
     def __init__(
         self,
         title: str,
@@ -44,7 +44,7 @@ class DashboardCard(CardWidget):
             self.iconWidget = None  # 如果存在图标则进行跟踪
 
         self.titleLabel = BodyLabel(title, self)
-        self.titleLabel.setTextColor("#665353") # type: ignore
+        self.titleLabel.setTextColor("#665353")  # type: ignore
         self.topLayout.addWidget(self.titleLabel, 1)
 
         # --- 中间区域：数值和单位 ---
@@ -53,8 +53,7 @@ class DashboardCard(CardWidget):
         self.unitLabel.setAlignment(
             Qt.AlignmentFlag.AlignBottom
         )  # 将单位对齐到数值标签行的底部
-        self.unitLabel.setTextColor("#404040") #type: ignore
-
+        self.unitLabel.setTextColor("#404040")  # type: ignore
 
         self.valueLayout = QHBoxLayout()
         self.valueLayout.setContentsMargins(0, 0, 0, 0)

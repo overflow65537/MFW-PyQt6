@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QLayout,
     QListWidget,
+    QGridLayout,
 )
 
 from qfluentwidgets import (
@@ -26,11 +27,12 @@ from qfluentwidgets import (
     PrimarySplitPushButton,
     RoundMenu,
     Action,
-    PrimaryPushButton
+    PrimaryPushButton,
+    FluentIcon as FIF,
+    CardWidget,
+    SimpleCardWidget,
 )
-from qfluentwidgets import FlowLayout, FluentIcon as FIF
 from ...widget.DashboardCard import DashboardCard
-
 
 
 class UI_FastStartInterface(object):
@@ -46,8 +48,10 @@ class UI_FastStartInterface(object):
 
         self.main_layout.addWidget(self.control_panel)
         self.main_layout.addWidget(self.log_output_widget)
-        self.main_layout.setStretch(0, 4)
-        self.main_layout.setStretch(1, 6)
+        self.main_layout.setStretch(0, 1)
+        self.main_layout.setStretch(1, 9)
+
+
 
         FastStartInterface.setLayout(self.main_layout)
         self.retranslateUi(FastStartInterface)
@@ -56,27 +60,20 @@ class UI_FastStartInterface(object):
     def _init_log_output(self):
         """初始化日志输出区域"""
         self._log_output_title()
-
+        # 日志输出区域
         self.log_output_area = TextEdit()
         self.log_output_area.setReadOnly(True)
         self.log_output_area.setDisabled(True)
 
+        # 日志输出区域总体布局
         self.log_output_widget = QWidget()
         self.log_output_layout = QVBoxLayout(self.log_output_widget)
-        self.log_output_widget.setSizePolicy(
-            QSizePolicy.Policy.Preferred,  # 水平策略保持不变
-            QSizePolicy.Policy.Minimum,  # 垂直策略根据内容自动调整
-        )
         self.log_output_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.log_output_layout.addLayout(self.log_output_title_layout)
         self.log_output_layout.addWidget(self.log_output_area)
 
     def _log_output_title(self):
         """初始化日志输出标题"""
-        # 日志输出标题布局
-        self.log_output_title_layout = QHBoxLayout()
-        # 设置上边距
-        self.log_output_title_layout.setContentsMargins(0, 5, 0, 0)
 
         # 日志输出标题
         self.log_output_title = BodyLabel("日志输出")
@@ -95,7 +92,9 @@ class UI_FastStartInterface(object):
         )
         self.log_level_combox.setFixedWidth(120)
 
-        # 标题左对齐,按钮和下拉框右对齐
+        # 日志输出区域标题栏总体布局
+        self.log_output_title_layout = QHBoxLayout()
+        self.log_output_title_layout.setContentsMargins(0, 5, 0, 0)
         self.log_output_title_layout.addWidget(self.log_output_title)
         self.log_output_title_layout.addWidget(self.generate_log_zip_button)
         self.log_output_title_layout.addWidget(self.log_level_combox)
@@ -109,74 +108,20 @@ class UI_FastStartInterface(object):
         # 控制面板布局
         self.control_panel = QWidget()
         self.control_panel_layout = QVBoxLayout(self.control_panel)
+        # 控制面板总体布局
+
         self.control_panel_layout.addWidget(self.task_info)
         self.control_panel_layout.addWidget(self.config_selection)
-        self.control_panel_layout.addStretch()
-        self.control_panel_layout.addWidget(self.start_bar)
-
-    def _init_config_selection(self):
-        """初始化配置选择"""
-        # 配置选择布局
-        self.config_selection = QWidget()
-        self.config_selection_main_layout = QVBoxLayout(self.config_selection)
-
-        self.config_selection_layout = FlowLayout()
-
-        # 配置选择标题
-        self.config_selection_title = BodyLabel("配置选择")
-        self.config_selection_title.setStyleSheet("font-size: 20px;")
-
-        self.config_selection_main_layout.addWidget(self.config_selection_title)
-        self.config_selection_main_layout.addLayout(self.config_selection_layout)
-
-        self.config_selection_combox = ListWidget(self)
-        #设置长度
-        self.config_selection_combox.setFixedWidth(335)
-
-        self.config_selection_combox.setObjectName("config_selection_combox")
-        self.config_selection_combox.addItems(["配置1", "配置2", "配置3"])
-        # 左对齐
-
-        self.config_selection_layout.addWidget(self.config_selection_combox)
-
-    def _init_start_bar(self):
-        """初始化启动栏"""
-        # 启动栏布局
-        self.start_bar = QWidget()
-        # 水平布局
-        self.start_bar_layout = QHBoxLayout(self.start_bar)
-
-        # 启动按钮
-        self.start_button = PrimaryPushButton("启动")
-
-        self.start_bar_layout.addWidget(self.start_button)
-
-        # 伸缩器
-        self.start_bar_layout.addStretch()
-
-        # 完成后运行
-        self.run_after_finish = BodyLabel("完成后")
-        self.start_bar_layout.addWidget(self.run_after_finish)
-
-        # 下拉框
-        self.run_after_finish_combox = ComboBox(self)
-        self.run_after_finish_combox.setObjectName("run_after_finish_combox")
-        self.run_after_finish_combox.addItems(["配置1", "配置2", "配置3"])
-        self.start_bar_layout.addWidget(self.run_after_finish_combox)
+        self.control_panel_layout.addWidget(self.start_bar_main)
 
     def _init_task_info(self):
         """初始化任务信息"""
-        # 任务信息布局
-        self.task_info = QWidget()
-        self.task_info_main_layout = QVBoxLayout(self.task_info)
-        self.task_info_layout = FlowLayout()
-
-        # 设置标题
+        # 标题
         self.task_info_title = BodyLabel("任务信息")
         self.task_info_title.setStyleSheet("font-size: 20px;")
+        self.task_info_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
-        self.task_info_main_layout.addWidget(self.task_info_title)
-        self.task_info_main_layout.addLayout(self.task_info_layout)
+
         # 任务状态
         self.status = DashboardCard(
             title="状态",
@@ -223,11 +168,80 @@ class UI_FastStartInterface(object):
         self.cumulative_time.setFixedSize(160, 160)
 
         # 任务信息布局
-        self.task_info_layout.addWidget(self.status)
+        self.task_info_layout = QGridLayout()
+        self.task_info_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.task_info_layout.addWidget(self.status, 0, 0)
+        self.task_info_layout.addWidget(self.total_node, 1, 0)
+        self.task_info_layout.addWidget(self.fail_node, 0, 1)
+        self.task_info_layout.addWidget(self.cumulative_time, 1, 1)
 
-        self.task_info_layout.addWidget(self.total_node)
-        self.task_info_layout.addWidget(self.fail_node)
-        self.task_info_layout.addWidget(self.cumulative_time)
+        # 任务信息总体布局
+        self.task_info = QWidget()
+        self.task_info.setFixedWidth(350)
+        self.task_info_main_layout = QVBoxLayout(self.task_info)
+        self.task_info_main_layout.addWidget(self.task_info_title)
+        self.task_info_main_layout.addLayout(self.task_info_layout)
+
+    def _init_config_selection(self):
+        """初始化配置选择"""
+        # 配置选择标题
+        self.config_selection_title = BodyLabel("配置选择")
+        self.config_selection_title.setStyleSheet("font-size: 20px;")
+        self.config_selection_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+
+        # 配置选择列表
+        self.config_selection_list = ListWidget(self)
+        self.config_selection_list.setObjectName("config_selection_list")
+        
+
+        # 配置选择列表布局
+        self.config_selection_widget = SimpleCardWidget()
+        self.config_selection_widget.setClickEnabled(False)
+        self.config_selection_widget.setBorderRadius(8)
+        self.config_selection_widget.setFixedWidth(330)
+
+        self.config_selection_layout = QVBoxLayout(self.config_selection_widget)
+        self.config_selection_layout.addWidget(self.config_selection_list)
+
+        # 配置选择总体布局
+        self.config_selection = QWidget()
+        self.config_selection_main_layout = QVBoxLayout(self.config_selection)
+        self.config_selection_main_layout.addWidget(self.config_selection_title)
+        self.config_selection_main_layout.addWidget(self.config_selection_widget)
+
+    def _init_start_bar(self):
+        """初始化启动栏"""
+        # 启动按钮
+        self.start_button = PrimaryPushButton("启动")
+
+        # 完成后运行
+        self.run_after_finish = BodyLabel("完成后")
+
+        # 下拉框
+        self.run_after_finish_combox = ComboBox(self)
+        self.run_after_finish_combox.setObjectName("run_after_finish_combox")
+        self.run_after_finish_combox.addItems(["配置1", "配置2", "配置3"])
+        # 
+        self.start_bar_main = QWidget()
+        self.start_bar_main.setFixedWidth(350)
+
+        self.start_bar_main_layout = QHBoxLayout(self.start_bar_main)
+
+        # 启动栏总体布局
+        self.start_bar = SimpleCardWidget()
+        self.start_bar.setClickEnabled(False)
+        self.start_bar.setBorderRadius(8)
+
+
+        self.start_bar_layout = QHBoxLayout(self.start_bar)
+        self.start_bar_layout.addWidget(self.start_button)
+        self.start_bar_layout.addStretch()
+        self.start_bar_layout.addWidget(self.run_after_finish)
+        self.start_bar_layout.addWidget(self.run_after_finish_combox)
+
+        self.start_bar_main_layout.addWidget(self.start_bar)
+
 
     def retranslateUi(self, FastStartInterface):
         _translate = QCoreApplication.translate
