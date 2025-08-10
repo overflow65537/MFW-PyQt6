@@ -1,40 +1,22 @@
 from PySide6.QtCore import Qt, QSize, QMetaObject, QCoreApplication
 from PySide6.QtWidgets import (
-    QSizePolicy,
     QVBoxLayout,
     QHBoxLayout,
     QWidget,
-    QFrame,
-    QLayout,
-    QListWidget,
     QGridLayout,
 )
 
 from qfluentwidgets import (
-    PushButton,
     BodyLabel,
     ComboBox,
-    RadioButton,
-    CheckBox,
-    SpinBox,
     ListWidget,
-    ScrollArea,
-    FlowLayout,
     ToolButton,
     TextEdit,
-    LineEdit,
-    ListView,
-    PrimarySplitPushButton,
-    RoundMenu,
-    Action,
-    PrimaryPushButton,
     FluentIcon as FIF,
-    CardWidget,
     SimpleCardWidget,
     TransparentPushButton,
     ToolTipFilter,
-    ToolTipPosition
-
+    ToolTipPosition,
 )
 from ...widget.DashboardCard import DashboardCard
 
@@ -55,8 +37,6 @@ class UI_FastStartInterface(object):
         self.main_layout.setStretch(0, 1)
         self.main_layout.setStretch(1, 9)
 
-
-
         FastStartInterface.setLayout(self.main_layout)
         self.retranslateUi(FastStartInterface)
         QMetaObject.connectSlotsByName(FastStartInterface)
@@ -72,6 +52,7 @@ class UI_FastStartInterface(object):
         # 日志输出区域总体布局
         self.log_output_widget = QWidget()
         self.log_output_layout = QVBoxLayout(self.log_output_widget)
+        self.log_output_layout.setContentsMargins(0, 15, 0, 20)
         self.log_output_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.log_output_layout.addLayout(self.log_output_title_layout)
         self.log_output_layout.addWidget(self.log_output_area)
@@ -88,10 +69,14 @@ class UI_FastStartInterface(object):
         # 生成日志压缩包按钮
         self.generate_log_zip_button = ToolButton(FIF.FEEDBACK, self)
         # 悬浮提示
-        self.generate_log_zip_button.installEventFilter(ToolTipFilter(self.generate_log_zip_button, 0, ToolTipPosition.TOP))
+        self.generate_log_zip_button.installEventFilter(
+            ToolTipFilter(self.generate_log_zip_button, 0, ToolTipPosition.TOP)
+        )
         # 日志等级下拉框
         self.log_level_combox = ComboBox(self)
-        self.log_level_combox.installEventFilter(ToolTipFilter(self.log_level_combox, 0, ToolTipPosition.TOP))
+        self.log_level_combox.installEventFilter(
+            ToolTipFilter(self.log_level_combox, 0, ToolTipPosition.TOP)
+        )
         self.log_level_combox.setObjectName("log_level_combox")
         self.log_level_combox.addItems(
             ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
@@ -100,7 +85,6 @@ class UI_FastStartInterface(object):
 
         # 日志输出区域标题栏总体布局
         self.log_output_title_layout = QHBoxLayout()
-        self.log_output_title_layout.setContentsMargins(0, 5, 0, 0)
         self.log_output_title_layout.addWidget(self.log_output_title)
         self.log_output_title_layout.addWidget(self.generate_log_zip_button)
         self.log_output_title_layout.addWidget(self.log_level_combox)
@@ -126,7 +110,6 @@ class UI_FastStartInterface(object):
         self.task_info_title = BodyLabel("任务信息")
         self.task_info_title.setStyleSheet("font-size: 20px;")
         self.task_info_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
-
 
         # 任务状态
         self.status = DashboardCard(
@@ -167,7 +150,7 @@ class UI_FastStartInterface(object):
         # 累计时间
         self.cumulative_time = DashboardCard(
             title="累计时间",
-            value="00:00",
+            value="--:--",
             unit="",
             icon=FIF.STOP_WATCH,
         )
@@ -195,11 +178,9 @@ class UI_FastStartInterface(object):
         self.config_selection_title.setStyleSheet("font-size: 20px;")
         self.config_selection_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
-
         # 配置选择列表
         self.config_selection_list = ListWidget(self)
         self.config_selection_list.setObjectName("config_selection_list")
-        
 
         # 配置选择列表布局
         self.config_selection_widget = SimpleCardWidget()
@@ -219,10 +200,10 @@ class UI_FastStartInterface(object):
     def _init_start_bar(self):
         """初始化启动栏"""
         # 启动按钮
-        self.start_button = TransparentPushButton("启动",self,FIF.PLAY)
+        self.start_button = TransparentPushButton("启动", self, FIF.PLAY)
 
         # 停止按钮
-        self.stop_button = TransparentPushButton("停止",self,FIF.CLOSE)
+        self.stop_button = TransparentPushButton("停止", self, FIF.CLOSE)
         self.stop_button.setDisabled(True)
 
         # 完成后运行
@@ -232,7 +213,7 @@ class UI_FastStartInterface(object):
         self.run_after_finish_combox = ComboBox(self)
         self.run_after_finish_combox.setObjectName("run_after_finish_combox")
         self.run_after_finish_combox.addItems(["配置1", "配置2", "配置3"])
-        # 
+        #
         self.start_bar_main = QWidget()
         self.start_bar_main.setFixedWidth(350)
 
@@ -243,7 +224,6 @@ class UI_FastStartInterface(object):
         self.start_bar.setClickEnabled(False)
         self.start_bar.setBorderRadius(8)
 
-
         self.start_bar_layout = QHBoxLayout(self.start_bar)
         self.start_bar_layout.addWidget(self.start_button)
         self.start_bar_layout.addWidget(self.stop_button)
@@ -253,7 +233,6 @@ class UI_FastStartInterface(object):
         self.start_bar_layout.addWidget(self.run_after_finish_combox)
 
         self.start_bar_main_layout.addWidget(self.start_bar)
-
 
     def retranslateUi(self, FastStartInterface):
         _translate = QCoreApplication.translate
