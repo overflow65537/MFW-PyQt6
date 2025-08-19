@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
 
 
 from ..fast_start_interface.fast_start_ui import UI_FastStartInterface
-from ...widget.TaskWidgetItem import ListItem
 
 
 

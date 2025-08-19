@@ -10,24 +10,20 @@ from qfluentwidgets import (
     SimpleCardWidget,
     ToolTipFilter,
     ToolTipPosition,
+    ComboBox,
     FluentIcon as FIF,
 )
 
 
-class ListItem(QWidget):
+class TaskListItem(QWidget):
     def __init__(self, text, parent=None):
-        super(ListItem, self).__init__(parent)
+        super(TaskListItem, self).__init__(parent)
         self.text = text
         self.initUI()
 
     def initUI(self):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(5, 2, 5, 2)
-
-        """#拖动按钮
-        self.drag_button = TransparentToolButton(FIF.SCROLL)
-        layout.addWidget(self.drag_button)"""
-
 
         # 复选框
         self.checkbox = CheckBox(self.text)
@@ -47,3 +43,25 @@ class ListItem(QWidget):
     def on_checkbox_changed(self, state):
         status = "选中" if state == 2 else "未选中"
         print(f"{self.text} {status}")
+
+class ResourceListItem(QWidget):
+    def __init__(self, text, parent=None):
+        super(ResourceListItem, self).__init__(parent)
+        self.text = text
+        self.initUI()
+
+    def initUI(self):
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(5, 2, 5, 2)
+
+
+        # 下拉框
+        self.comboBox = ComboBox()
+        self.comboBox.currentTextChanged.connect(self.on_combox_change)
+
+        layout.addWidget(self.comboBox)
+
+
+    def on_combox_change(self, text):
+        print(text)
+

@@ -27,8 +27,6 @@ from PySide6.QtWidgets import QWidget, QTableWidgetItem
 from qfluentwidgets import CheckBox, TransparentToolButton, FluentIcon as FIF
 from ..task_interface.task_interface_ui import Ui_Task_Interface
 
-from ...widget.TaskWidgetItem import ListItem
-
 
 class TaskInterface(Ui_Task_Interface, QWidget):
 

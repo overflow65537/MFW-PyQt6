@@ -30,7 +30,7 @@ class LogoutputWidget(QWidget):
         # 日志输出区域总体布局
         self.log_output_widget = QWidget()
         self.log_output_layout = QVBoxLayout(self.log_output_widget)
-        self.log_output_layout.setContentsMargins(0, 15, 0, 20)
+        self.log_output_layout.setContentsMargins(0, 6, 0, 10)
         self.log_output_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.log_output_layout.addLayout(self.log_output_title_layout)
         self.log_output_layout.addWidget(self.log_output_area)

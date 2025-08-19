@@ -1,5 +1,12 @@
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QListWidgetItem,QListWidget,QAbstractItemView
+from PySide6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QListWidgetItem,
+    QListWidget,
+    QAbstractItemView,
+)
 
 
 from qfluentwidgets import (
@@ -13,10 +20,10 @@ from qfluentwidgets import (
     FluentIcon as FIF,
 )
 
-from .TaskWidgetItem import ListItem
+from .TaskWidgetItem import TaskListItem
+
 from .DragListWidget import DragListWidget
-
-
+from .SimpleCardWidgetWithTitle import SimpleCardWidgetWithTitle
 
 
 class GenericListToolBarWidget(QWidget):
@@ -34,9 +41,6 @@ class GenericListToolBarWidget(QWidget):
         self.select_all_button.clicked.connect(self.select_all)
         # 取消选择全部按钮
         self.deselect_all_button.clicked.connect(self.deselect_all)
-
-
-
 
     def _init_config_title(self):
         """初始化配置选择标题"""
@@ -89,15 +93,14 @@ class GenericListToolBarWidget(QWidget):
         self.config_selection_layout = QVBoxLayout(self.config_selection_widget)
         self.config_selection_layout.addWidget(self.task_list)
 
-
     def add_item(self, text):
         # 创建自定义widget
-        item_widget = ListItem(text)
-        
+        item_widget = TaskListItem(text)
+
         # 创建列表项
         list_item = QListWidgetItem(self.task_list)
         list_item.setSizeHint(item_widget.sizeHint())
-        
+
         # 将widget与列表项关联
         self.task_list.addItem(list_item)
         self.task_list.setItemWidget(list_item, item_widget)
@@ -109,4 +112,3 @@ class GenericListToolBarWidget(QWidget):
     def deselect_all(self):
         """取消选择全部"""
         self.task_list.deselect_all()
-

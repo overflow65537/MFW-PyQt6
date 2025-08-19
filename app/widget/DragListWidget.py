@@ -16,7 +16,8 @@ from PySide6.QtGui import (
 
 
 from qfluentwidgets import ListWidget
-from .TaskWidgetItem import ListItem
+from .TaskWidgetItem import TaskListItem
+
 
 
 class DragListWidget(ListWidget):
@@ -41,7 +42,8 @@ class DragListWidget(ListWidget):
                 continue
 
             # 获取列表项对应的widget实例
-            item_widget: ListItem = self.itemWidget(list_item)  # type: ignore
+            item_widget: TaskListItem = self.itemWidget(list_item)  # type: ignore
+
             if hasattr(item_widget, "checkbox"):
                 item_widget.checkbox.setChecked(checked)
 

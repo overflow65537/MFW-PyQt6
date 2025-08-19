@@ -29,8 +29,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QFrame,
     QAbstractItemView,
-    QWidget,QTreeWidgetItem,
-
+    QWidget,
+    QTreeWidgetItem,
 )
 
 from qfluentwidgets import (
@@ -43,10 +43,13 @@ from qfluentwidgets import (
     ToolButton,
     FluentIcon as FIF,
     TreeWidget,
-    
+    SimpleCardWidget,
 )
 
+from app.widget import SimpleCardWidgetWithTitle
+
 from ...widget.GenericListToolBarWidget import GenericListToolBarWidget
+from ...widget.SimpleCardWidgetWithTitle import SimpleCardWidgetWithTitle
 
 
 class Ui_Task_Interface(object):
@@ -55,8 +58,6 @@ class Ui_Task_Interface(object):
     def setupUi(self, Task_Interface):
         """设置UI界面"""
         Task_Interface.setObjectName("Task_Interface")
-        Task_Interface.resize(900, 600)
-        Task_Interface.setMinimumSize(QSize(0, 0))
         self.task_list = GenericListToolBarWidget()
 
         self._init_option_area()
@@ -64,26 +65,25 @@ class Ui_Task_Interface(object):
         self.main_layout = QHBoxLayout(Task_Interface)
         self.main_layout.addWidget(self.task_list)
         self.main_layout.addWidget(self.option_area)
-        #比例50:50
+        # 比例50:50
         self.main_layout.setStretch(0, 50)
         self.main_layout.setStretch(1, 50)
 
         Task_Interface.setLayout(self.main_layout)
         QMetaObject.connectSlotsByName(Task_Interface)
 
+    def __init_resource_setting(self):
+        """初始化资源设置"""
+
+        self.resource_setting_area = SimpleCardWidgetWithTitle("资源设置", QVBoxLayout)
 
     def _init_option_area(self):
         """初始化选项区域"""
-        self.option_area = QWidget()
-        self.option_area_layout = QVBoxLayout(self.option_area)
+
+        self.option_area = SimpleCardWidgetWithTitle("任务选项", QVBoxLayout)
 
         for i in range(5):
             self.hbox = QHBoxLayout()
             self.hbox.addWidget(BodyLabel(f"任务{i}"))
             self.hbox.addWidget(ComboBox())
-            self.option_area_layout.addLayout(self.hbox)
-
-
-
-
-
+            self.option_area.main_widget_layout.addLayout(self.hbox)
