@@ -1,5 +1,7 @@
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QListWidgetItem,QListWidget,QAbstractItemView
+
+
 from qfluentwidgets import (
     SimpleCardWidget,
     ToolTipPosition,
@@ -11,8 +13,9 @@ from qfluentwidgets import (
     FluentIcon as FIF,
 )
 
+from .TaskWidgetItem import ListItem
 from .DragListWidget import DragListWidget
-from .TaskWidgetItem import TaskWidgetItem
+
 
 
 
@@ -74,6 +77,10 @@ class GenericListToolBarWidget(QWidget):
     def _init_config_selection(self):
         """初始化配置选择"""
         self.task_list = DragListWidget()
+        self.task_list.setDragEnabled(True)
+        self.task_list.setAcceptDrops(True)
+        self.task_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.task_list.setDefaultDropAction(Qt.DropAction.MoveAction)
         # 配置选择列表布局
         self.config_selection_widget = SimpleCardWidget()
         self.config_selection_widget.setClickEnabled(False)
@@ -82,16 +89,24 @@ class GenericListToolBarWidget(QWidget):
         self.config_selection_layout = QVBoxLayout(self.config_selection_widget)
         self.config_selection_layout.addWidget(self.task_list)
 
+
+    def add_item(self, text):
+        # 创建自定义widget
+        item_widget = ListItem(text)
+        
+        # 创建列表项
+        list_item = QListWidgetItem(self.task_list)
+        list_item.setSizeHint(item_widget.sizeHint())
+        
+        # 将widget与列表项关联
+        self.task_list.addItem(list_item)
+        self.task_list.setItemWidget(list_item, item_widget)
+
     def select_all(self):
         """选择全部"""
-        for i in range(self.task_list.main_layout.count()):
-            item = self.task_list.main_layout.itemAt(i).widget()
-            if isinstance(item, TaskWidgetItem):
-                item.checkBox.setCheckState(Qt.CheckState.Checked)
+        self.task_list.select_all()
 
     def deselect_all(self):
         """取消选择全部"""
-        for i in range(self.task_list.main_layout.count()):
-            item = self.task_list.main_layout.itemAt(i).widget()
-            if isinstance(item, TaskWidgetItem):
-                item.checkBox.setCheckState(Qt.CheckState.Unchecked)
+        self.task_list.deselect_all()
+
