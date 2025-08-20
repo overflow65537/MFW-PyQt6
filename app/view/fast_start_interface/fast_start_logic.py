@@ -19,3 +19,7 @@ class FastStartInterface(UI_FastStartInterface, QWidget):
         self.config_selection.add_item("配置1")
         self.config_selection.add_item("配置2")
 
+        self.task_info.add_item("任务1")
+        self.task_info.add_item("任务2")
+
+

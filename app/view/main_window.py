@@ -43,6 +43,7 @@ from qfluentwidgets import (
     SystemThemeListener,
     isDarkTheme,
     InfoBar,
+    MSFluentWindow
 )
 from qfluentwidgets import FluentIcon as FIF
 
@@ -66,7 +67,7 @@ class CustomSystemThemeListener(SystemThemeListener):
             logger.error("当前环境不支持主题监听，已忽略")
 
 
-class MainWindow(FluentWindow):
+class MainWindow(MSFluentWindow):
 
     def __init__(self):
         super().__init__()
@@ -78,7 +79,6 @@ class MainWindow(FluentWindow):
         self.FastStartInterface = FastStartInterface(self)
         self.taskInterface = TaskInterface(self)
 
-        self.navigationInterface.addSeparator()
 
         self.addSubInterface(self.FastStartInterface, FIF.CHECKBOX, self.tr("Task"))
         self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("Task2"))
@@ -112,17 +112,6 @@ class MainWindow(FluentWindow):
         self.show()
         QApplication.processEvents()
 
-        # 设置侧边栏宽度
-        self.navigationInterface.setExpandWidth(226)
-
-        # 侧边栏默认展开
-        self.navigationInterface.expand(useAni=False)
-
-        # 隐藏返回按钮
-        self.navigationInterface.panel.setReturnButtonVisible(False)
-
-        # 启用Fluent主题效果
-        self.navigationInterface.setAcrylicEnabled(True)
 
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""

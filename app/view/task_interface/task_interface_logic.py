@@ -34,6 +34,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         super().__init__(parent=parent)
         self.setupUi(self)
         self.task_list.add_button.clicked.connect(self.add_task)
+        self.task_list.add_item("任务1")
+        self.task_list.add_item("任务2")
 
     def add_task(self):
         """添加任务"""

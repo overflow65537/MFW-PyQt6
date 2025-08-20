@@ -1,5 +1,6 @@
 from PySide6.QtCore import QPoint
-from PySide6.QtWidgets import QWidget, QHBoxLayout
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
+
 from qfluentwidgets import (
     BodyLabel,
     ComboBox,
@@ -8,17 +9,29 @@ from qfluentwidgets import (
     TransparentDropDownPushButton,
     RoundMenu,
     Action,
+    ToolButton,
     FluentIcon as FIF,
 )
+
 
 
 class StartBarWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._init_start_bar()
-        self.start_bar_main_layout = QHBoxLayout(self)
-        self.start_bar_main_layout.addWidget(self.start_bar)
+        self.start_bar_main_layout = QVBoxLayout(self)
 
+        self.title = BodyLabel("启动栏")
+
+        self.setting = ToolButton(FIF.SETTING)
+
+        self.title_layout = QHBoxLayout()
+        self.title_layout.addWidget(self.title)
+        self.title_layout.addWidget(self.setting)
+
+        self.start_bar_main_layout.addLayout(self.title_layout)
+
+        self.start_bar_main_layout.addWidget(self.main_widget)
 
     def setRunAfterFinishVisible(self, visible: bool):
         """设置完成后运行是否显示"""
@@ -65,22 +78,49 @@ class StartBarWidget(QWidget):
         self.run_after_finish_combox = TransparentDropDownPushButton(self)
         self.run_after_finish_combox.setMenu(menu)
 
-        # 启动栏总体布局
-        self.start_bar = SimpleCardWidget()
-        self.start_bar.setClickEnabled(False)
-        self.start_bar.setBorderRadius(8)
+        self.auto_search_button = TransparentPushButton("搜索", self, FIF.SEARCH)
+
+        self.controller_select = TransparentDropDownPushButton(self)
+
+        self.controller = QWidget()
+
+        self.controller_layout = QHBoxLayout(self.controller)
+        self.controller_layout.addWidget(self.auto_search_button)
+        self.controller_layout.addWidget(self.controller_select)
+
+        self.start_bar = QWidget()
 
         self.start_bar_layout = QHBoxLayout(self.start_bar)
         self.start_bar_layout.addWidget(self.start_button)
+
         # 增加一条竖线
         line = BodyLabel("|")
         self.start_bar_layout.addWidget(line)
-
-        # self.start_bar_layout.addWidget(self.stop_button)
-
         self.start_bar_layout.addWidget(self.run_after_finish)
         self.start_bar_layout.addStretch()
         self.start_bar_layout.addWidget(self.run_after_finish_combox)
+
+        self.controller_type = ComboBox()
+        self.resource_type = ComboBox()
+
+        self.top_widget = QWidget()
+
+        self.top_widget_layout = QHBoxLayout(self.top_widget)
+        self.top_widget_layout.addWidget(self.controller_type)
+        self.top_widget_layout.addWidget(self.resource_type)
+
+
+
+        # 启动栏总体布局
+        self.main_widget = SimpleCardWidget()
+        self.main_widget.setClickEnabled(False)
+        self.main_widget.setBorderRadius(8)
+
+        self.main_widget_layout = QVBoxLayout(self.main_widget)
+        self.main_widget_layout.addWidget(self.top_widget)
+
+        self.main_widget_layout.addWidget(self.controller)
+        self.main_widget_layout.addWidget(self.start_bar)
 
     def _do_noting(self):
         """无动作"""
