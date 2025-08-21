@@ -45,7 +45,7 @@ from app.common.config import cfg
 from app.view.main_window import MainWindow
 from app.common.config import Language
 from app.common.__version__ import __version__
-from app.common.maa_config_data import maa_config_data, init_maa_config_data
+from app.common.resource_config import res_cfg, init_res_cfg
 from app.utils.tool import Save_Config, show_error_message
 from app.common.signal_bus import signalBus
 from app.utils.update import (
@@ -146,7 +146,7 @@ def _check_resource_and_config(resource: str, config: str, directly: bool, DEV: 
                 }
                 Save_Config(cfg.get(cfg.maa_config_path), data)
                 cfg.set(cfg.resource_exist, True)
-                init_maa_config_data(True)
+                init_res_cfg(True)
 
             else:
                 logger.error("资源文件不存在")
@@ -188,7 +188,7 @@ def _check_resource_and_config(resource: str, config: str, directly: bool, DEV: 
 
             signalBus.resource_exist.emit(True)
             logger.info(
-                f"资源版本:{maa_config_data.interface_config.get('version','unknown')}"
+                f"资源版本:{res_cfg.interface_config.get('version','unknown')}"
             )
     except:
         logger.error("检查资源文件失败")

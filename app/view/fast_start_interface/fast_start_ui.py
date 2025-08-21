@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QWidget,
     QGridLayout,
-    QSizePolicy
+    QSizePolicy,
 )
 
 from qfluentwidgets import (
@@ -34,9 +34,6 @@ class UI_FastStartInterface(object):
         self.main_layout = QHBoxLayout()
         self.log_output_widget = LogoutputWidget()
 
-
-
-
         self._init_control_panel()
         self._init_option_panel()
 
@@ -59,7 +56,6 @@ class UI_FastStartInterface(object):
         self.option_panel.setFixedWidth(344)
         self.option_panel_layout.addWidget(self.option_panel)
 
-
     def _init_control_panel(self):
         """初始化控制面板"""
         self.config_selection = GenericListToolBarWidget()
@@ -68,7 +64,6 @@ class UI_FastStartInterface(object):
 
         self.start_bar = StartBarWidget()
         self.start_bar.setFixedWidth(344)
-
 
         # 控制面板布局
         self.control_panel = QWidget()
@@ -81,7 +76,6 @@ class UI_FastStartInterface(object):
         self.control_panel_layout.addWidget(self.task_info)
         self.control_panel_layout.addWidget(self.start_bar)
 
-
         # 设置比例
         self.control_panel_layout.setStretch(0, 5)
         self.control_panel_layout.setStretch(1, 10)
@@ -90,4 +84,3 @@ class UI_FastStartInterface(object):
     def retranslateUi(self, FastStartInterface):
         _translate = QCoreApplication.translate
         FastStartInterface.setWindowTitle(_translate("FastStartInterface", "Form"))
-

@@ -55,7 +55,7 @@ import atexit
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
 from ..utils.logger import logger
-from ..common.maa_config_data import maa_config_data
+from ..common.resource_config import res_cfg
 from ..common.__version__ import __version__
 
 
@@ -77,11 +77,10 @@ class MainWindow(MSFluentWindow):
 
         # 创建子界面
         self.FastStartInterface = FastStartInterface(self)
-        self.taskInterface = TaskInterface(self)
 
 
         self.addSubInterface(self.FastStartInterface, FIF.CHECKBOX, self.tr("Task"))
-        self.addSubInterface(self.taskInterface, FIF.CHECKBOX, self.tr("Task2"))
+
 
         # 添加导航项
         self.splashScreen.finish()
@@ -137,7 +136,7 @@ class MainWindow(MSFluentWindow):
             title = self.tr("ChainFlow Assistant")
         resource_name = cfg.get(cfg.maa_resource_name)
         config_name = cfg.get(cfg.maa_config_name)
-        version = maa_config_data.interface_config.get("version", "")
+        version = res_cfg.interface_config.get("version", "")
 
         title += f" {__version__}"
 

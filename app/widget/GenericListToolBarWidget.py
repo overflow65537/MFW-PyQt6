@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QListWidget,
     QAbstractItemView,
+    QSizePolicy,
 )
 
 
@@ -18,12 +19,19 @@ from qfluentwidgets import (
     ToolButton,
     ScrollArea,
     FluentIcon as FIF,
+    CheckBox,
+    TransparentToolButton,
 )
+from typing import Dict
+
+from app.common.typeddict import InterfaceData
 
 from .TaskWidgetItem import TaskListItem
 
 from .DragListWidget import DragListWidget
 from .SimpleCardWidgetWithTitle import SimpleCardWidgetWithTitle
+
+from ..common.resource_config import res_cfg
 
 
 class GenericListToolBarWidget(QWidget):
@@ -93,12 +101,19 @@ class GenericListToolBarWidget(QWidget):
         self.config_selection_layout = QVBoxLayout(self.config_selection_widget)
         self.config_selection_layout.addWidget(self.task_list)
 
-    def add_item(self, text):
+    def add_item(self, config):
         # 创建自定义widget
-        item_widget = TaskListItem(text)
+        item_widget = TaskListItem(config)
+        if not self.is_option_exist(
+            res_cfg.interface_config, config.get("name", "")
+        ) and not self.is_speedrun_exist(
+            res_cfg.interface_config, config.get("name", "")
+        ):
+            item_widget.hiden_setting_button()
 
         # 创建列表项
         list_item = QListWidgetItem(self.task_list)
+
         list_item.setSizeHint(item_widget.sizeHint())
 
         # 将widget与列表项关联
@@ -112,3 +127,47 @@ class GenericListToolBarWidget(QWidget):
     def deselect_all(self):
         """取消选择全部"""
         self.task_list.deselect_all()
+
+    def is_option_exist(self, config: InterfaceData, key: str) -> bool:
+        """检查配置字典中是否存在指定的键。
+
+        Args:
+            config (InterfaceData): interface配置。
+            key (str): 要检查的键。
+
+        Returns:
+            bool: 如果键存在，返回True；否则返回False。
+        """
+        target_task = None
+        for task in config.get("task", []):
+            if task.get("name") == key:
+                target_task = task
+                break
+        if not target_task:
+            return False
+        elif target_task.get("option", []):
+            return True
+        else:
+            return False
+
+    def is_speedrun_exist(self, config: InterfaceData, key: str) -> bool:
+        """检查配置字典中是否存在指定的键。
+
+        Args:
+            config (InterfaceData): interface配置。
+            key (str): 要检查的键。
+
+        Returns:
+            bool: 如果键存在，返回True；否则返回False。
+        """
+        target_task = None
+        for task in config.get("task", []):
+            if task.get("name") == key:
+                target_task = task
+                break
+        if not target_task:
+            return False
+        elif target_task.get("speedrun", []):
+            return True
+        else:
+            return False

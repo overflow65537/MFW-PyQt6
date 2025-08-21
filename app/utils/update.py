@@ -37,7 +37,7 @@ from typing import Dict, Optional
 
 from ..common.signal_bus import signalBus
 from ..utils.logger import logger
-from ..common.maa_config_data import maa_config_data
+from ..common.resource_config import res_cfg
 from ..common.config import cfg
 from ..utils.tool import (
     for_config_get_url,
@@ -322,7 +322,7 @@ class BaseUpdate(QThread):
         channel: Optional[str] = "stable",
     ) -> Dict:
         if update_type == 0:  # 资源更新
-            if maa_config_data.interface_config.get("mirrorchyan_multiplatform", False):
+            if res_cfg.interface_config.get("mirrorchyan_multiplatform", False):
                 logger.debug("检查到agent字段,使用多平台更新")
                 url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&os={os_type}&arch={arch}&channel={channel}&user_agent=MFW_PyQt6"
             else:
@@ -486,12 +486,12 @@ class BaseUpdate(QThread):
                 for file in change_data:
                     if "install" in file[:10]:
                         file_path = file.replace(
-                            "install", maa_config_data.resource_path, 1
+                            "install", res_cfg.resource_path, 1
                         )
                     elif "resource" in file[:10]:
                         file_path = file.replace(
                             "resource",
-                            f"{maa_config_data.resource_path}/resource",
+                            f"{res_cfg.resource_path}/resource",
                             1,
                         )
                     else:
@@ -509,7 +509,7 @@ class BaseUpdate(QThread):
                             logger.error(f"删除失败 [{file_path}]: {str(e)}")
             else:
                 logger.warning("未找到 changes.json 文件,执行全部清理")
-                shutil.rmtree(maa_config_data.resource_path)
+                shutil.rmtree(res_cfg.resource_path)
 
         except Exception as e:
             logger.exception("清理旧文件时发生错误")
@@ -530,14 +530,14 @@ class Update(BaseUpdate):
 
     def run(self):
         time.sleep(0.5)
-        parts = maa_config_data.interface_config.get("url", "").split("/")
+        parts = res_cfg.interface_config.get("url", "").split("/")
         username = parts[3]
         repository = parts[4]
 
         url = f"https://api.github.com/repos/{username}/{repository}/releases/latest"
         cdk = self.Mirror_ckd()
-        res_id = maa_config_data.interface_config.get("mirrorchyan_rid")
-        version = maa_config_data.interface_config.get("version")
+        res_id = res_cfg.interface_config.get("mirrorchyan_rid")
+        version = res_cfg.interface_config.get("version")
         channel = self.channel_map.get(cfg.get(cfg.resource_update_channel))
 
         os_type = get_os_type()
@@ -735,12 +735,12 @@ class Update(BaseUpdate):
                     for file in change_data:
                         if "install" in file[:10]:
                             file_path = file.replace(
-                                "install", maa_config_data.resource_path, 1
+                                "install", res_cfg.resource_path, 1
                             )
                         elif "resource" in file[:10]:
                             file_path = file.replace(
                                 "resource",
-                                f"{maa_config_data.resource_path}/resource",
+                                f"{res_cfg.resource_path}/resource",
                                 1,
                             )
                         else:
@@ -769,16 +769,16 @@ class Update(BaseUpdate):
             changelog = mirror_data.get("data", {}).get("release_note", "")
             if changelog:
                 changelog_path = os.path.join(
-                    maa_config_data.resource_path, "resource_changelog.md"
+                    res_cfg.resource_path, "resource_changelog.md"
                 )
                 with open(changelog_path, "w", encoding="utf-8") as f:
                     f.write(changelog)
 
             # 移动文件
-            logger.info(f"移动文件到资源目录: {maa_config_data.resource_path}")
-            if not self.move_files(target_path, maa_config_data.resource_path):
+            logger.info(f"移动文件到资源目录: {res_cfg.resource_path}")
+            if not self.move_files(target_path, res_cfg.resource_path):
                 logger.error(
-                    f"文件移动失败: {target_path} -> {maa_config_data.resource_path}"
+                    f"文件移动失败: {target_path} -> {res_cfg.resource_path}"
                 )
                 signalBus.update_download_finished.emit(
                     {"status": "failed_info", "msg": self.tr("Move file failed")}
@@ -788,7 +788,7 @@ class Update(BaseUpdate):
             # 更新配置
             version_name: str = mirror_data["data"].get("version_name", "v0.0.1")
             version_data: dict = {"version": version_name}
-            maa_config_data.interface_config.update(version_data)
+            res_cfg.interface_config.update(version_data)
             logger.info(f"版本号更新为: {version_name}")
 
             # 清理临时文件
@@ -830,7 +830,7 @@ class Update(BaseUpdate):
         download_url = None
         try:
             # 下载过程
-            if maa_config_data.interface_config.get("agent", False):
+            if res_cfg.interface_config.get("agent", False):
                 project_name_number = 4
                 signalBus.update_download_finished.emit(
                     {
@@ -893,7 +893,7 @@ class Update(BaseUpdate):
                     {"status": "failed", "msg": self.tr("Extraction failed")}
                 )
                 return
-            if maa_config_data.interface_config.get("agent", False):
+            if res_cfg.interface_config.get("agent", False):
                 # 修正路径处理：代理包直接解压到hotfix目录
                 main_folder = os.path.join(os.getcwd(), "hotfix")
                 files_to_keep = [
@@ -946,7 +946,7 @@ class Update(BaseUpdate):
                 return
 
             # 清理旧资源
-            target_path = maa_config_data.resource_path
+            target_path = res_cfg.resource_path
             if os.path.exists(target_path):
                 logger.info("开始清理旧资源")
                 try:
@@ -978,7 +978,7 @@ class Update(BaseUpdate):
             changelog = update_dict.get("body", "")
             if changelog:
                 changelog_path = os.path.join(
-                    maa_config_data.resource_path, "resource_changelog.md"
+                    res_cfg.resource_path, "resource_changelog.md"
                 )
                 with open(changelog_path, "w", encoding="utf-8") as f:
                     f.write(changelog)
@@ -995,9 +995,9 @@ class Update(BaseUpdate):
             # 更新配置
             replace_ocr(target_path)
             logger.info("更新接口配置版本号")
-            interface_date = Read_Config(maa_config_data.interface_config_path)
+            interface_date = Read_Config(res_cfg.interface_config_path)
             interface_date["version"] = update_dict["tag_name"]
-            Save_Config(maa_config_data.interface_config_path, interface_date)
+            Save_Config(res_cfg.interface_config_path, interface_date)
 
             # 清理临时文件
             logger.debug("清理临时文件")

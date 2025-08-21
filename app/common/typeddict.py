@@ -180,7 +180,7 @@ def get_initial_main_config() -> MainConfig:
         "know_task": [],
     }
 
-class MaaConfigData:
+class ResourceConfig:
     interface_config: InterfaceData = {}
     interface_config_path: str = ""
 

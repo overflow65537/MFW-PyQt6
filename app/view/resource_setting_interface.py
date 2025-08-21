@@ -47,7 +47,7 @@ from ..utils.widget import (
 )
 from ..utils.tool import Save_Config, get_gpu_info
 from ..utils.logger import logger,logger_manager
-from ..common.maa_config_data import maa_config_data
+from ..common.resource_config import maa_config_data
 from ..utils.maafw import maafw
 
 

@@ -1,12 +1,17 @@
 from PySide6.QtWidgets import (
-
-    QWidget,QTableWidgetItem,QListWidgetItem
-
-
+    QWidget,
+    QTableWidgetItem,
+    QListWidgetItem,
+    QHBoxLayout,
+    QSizePolicy,
 )
+from qfluentwidgets import CheckBox, TransparentToolButton, FluentIcon as FIF
 
 
 from ..fast_start_interface.fast_start_ui import UI_FastStartInterface
+from ...common.resource_config import res_cfg
+from ...common.signal_bus import signalBus
+from ...utils.logger import logger
 
 
 
@@ -16,10 +21,11 @@ class FastStartInterface(UI_FastStartInterface, QWidget):
         super().__init__(parent=parent)
         self.setupUi(self)
 
-        self.config_selection.add_item("配置1")
-        self.config_selection.add_item("配置2")
+        self._init_task_info()
 
-        self.task_info.add_item("任务1")
-        self.task_info.add_item("任务2")
 
+    def _init_task_info(self):
+        """填充信息至组件"""
+        for task_config in res_cfg.config.get("task",[]):
+            self.task_info.add_item(task_config)
 

@@ -62,7 +62,7 @@ from maa.define import MaaAdbScreencapMethodEnum, MaaAdbInputMethodEnum
 
 from ..common.signal_bus import signalBus
 from ..utils.logger import logger
-from ..common.maa_config_data import maa_config_data
+from ..common.resource_config import res_cfg
 from ..common.config import cfg
 from ..utils.tool import Read_Config, path_to_list
 from ..utils.tool import ProcessThread
@@ -233,7 +233,7 @@ class MaaFW:
     def load_resource(self, dir: str) -> bool:
         if not self.resource:
             self.resource = Resource()
-        gpu_index = maa_config_data.config.get("gpu", -1)
+        gpu_index = res_cfg.config.get("gpu", -1)
         if not isinstance(gpu_index, int):
             logger.warning("gpu_index 不是 int 类型，使用默认值 -1")
             gpu_index = -1
@@ -260,23 +260,23 @@ class MaaFW:
         self.tasker.bind(self.resource, self.controller)
 
         # 动态加载.py
-        if self.activate_resource != maa_config_data.resource_name:
+        if self.activate_resource != res_cfg.resource_name:
             self.need_register_report = True
         self.resource.clear_custom_recognition()
         self.resource.clear_custom_action()
         custom_dir = os.path.join(
-            maa_config_data.resource_path,
+            res_cfg.resource_path,
             "custom",
         )
         try:
             self.load_custom_objects(custom_dir)
         except Exception as e:
             logger.error(f"加载自定义内容时发生错误: {e}")
-        self.activate_resource = maa_config_data.resource_name
+        self.activate_resource = res_cfg.resource_name
         self.need_register_report = False
 
         # agent加载
-        agent_data_raw = maa_config_data.interface_config.get("agent", {})
+        agent_data_raw = res_cfg.interface_config.get("agent", {})
         if isinstance(agent_data_raw, list):
             if agent_data_raw:
                 agent_data: dict = agent_data_raw[0]
@@ -306,14 +306,14 @@ class MaaFW:
                     maa_bin = os.getcwd()
 
                 child_exec = agent_data.get("child_exec", "").replace(
-                    "{PROJECT_DIR}", maa_config_data.resource_path
+                    "{PROJECT_DIR}", res_cfg.resource_path
                 )
                 child_args = agent_data.get("child_args", [])
 
                 for i in range(len(child_args)):
                     if "{PROJECT_DIR}" in child_args[i]:
                         child_args[i] = child_args[i].replace(
-                            "{PROJECT_DIR}", maa_config_data.resource_path
+                            "{PROJECT_DIR}", res_cfg.resource_path
                         )
                 print(
                     f"agent启动: {child_exec}\n参数{child_args}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
@@ -335,7 +335,7 @@ class MaaFW:
                     self.agent_thread.setObjectName("AgentThread")
                     self.agent_thread.start()
                 logger.debug(
-                    f"agent启动: {agent_data.get('child_exec', '').replace('{PROJECT_DIR}', maa_config_data.resource_path)}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
+                    f"agent启动: {agent_data.get('child_exec', '').replace('{PROJECT_DIR}', res_cfg.resource_path)}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
                 )
                 cfg.set(cfg.agent_path, agent_data.get("child_exec"))
 

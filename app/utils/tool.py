@@ -118,6 +118,20 @@ def Save_Config(paths: str, data):
         json.dump(data, MAA_Config, indent=4, ensure_ascii=False)
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def gui_init(
     resource_Path: str, maa_pi_config_Path: str, interface_Path: str
 ) -> Dict[str, int]:
