@@ -101,18 +101,30 @@ class GenericListToolBarWidget(QWidget):
         self.config_selection_layout = QVBoxLayout(self.config_selection_widget)
         self.config_selection_layout.addWidget(self.task_list)
 
-    def add_item(self, config):
+    def add_item(self, config, can_move=True):
+
         # 创建自定义widget
         item_widget = TaskListItem(config)
-        if not self.is_option_exist(
-            res_cfg.interface_config, config.get("name", "")
-        ) and not self.is_speedrun_exist(
-            res_cfg.interface_config, config.get("name", "")
+        if (
+            not self.is_option_exist(res_cfg.interface_config, config.get("name", ""))
+            and not self.is_speedrun_exist(
+                res_cfg.interface_config, config.get("name", "")
+            )
+            and can_move
         ):
             item_widget.hiden_setting_button()
 
+
+
         # 创建列表项
         list_item = QListWidgetItem(self.task_list)
+        if not can_move:
+            list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
+            item_widget.checkbox.setChecked(True)
+            item_widget.checkbox.setDisabled(True)
+
+
+
 
         list_item.setSizeHint(item_widget.sizeHint())
 

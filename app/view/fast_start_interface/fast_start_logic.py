@@ -23,9 +23,23 @@ class FastStartInterface(UI_FastStartInterface, QWidget):
 
         self._init_task_info()
 
-
     def _init_task_info(self):
         """填充信息至组件"""
+        #填充控制器和资源设置
+        controller_setting = {
+
+            "name": "控制器",
+            "type": "controller",
+            
+        }
+        resource_setting = {
+            "name": "资源",
+            "type": "resource",
+
+            
+        }
+        self.task_info.add_item(controller_setting,False)
+        self.task_info.add_item(resource_setting,False)
         for task_config in res_cfg.config.get("task",[]):
             self.task_info.add_item(task_config)
 
