@@ -1,3 +1,4 @@
+from asyncio import Task
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget,
@@ -8,6 +9,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QSizePolicy,
 )
+from PySide6.QtGui import QColor
 
 
 from qfluentwidgets import (
@@ -22,23 +24,21 @@ from qfluentwidgets import (
     CheckBox,
     TransparentToolButton,
 )
-from typing import Dict
 
-from app.common.typeddict import InterfaceData
-
-from .TaskWidgetItem import TaskListItem
 
 from .DragListWidget import DragListWidget
 from .SimpleCardWidgetWithTitle import SimpleCardWidgetWithTitle
-
-from ..common.resource_config import res_cfg
+from ..core.TaskManager import TaskManager
 
 
 class GenericListToolBarWidget(QWidget):
+
     def __init__(self, parent=None):
         super().__init__(parent)
+       
         self._init_config_title()
         self._init_config_selection()
+        
 
         self.title_layout.setContentsMargins(0, 0, 2, 0)
         self.main_layout = QVBoxLayout(self)
@@ -88,7 +88,7 @@ class GenericListToolBarWidget(QWidget):
 
     def _init_config_selection(self):
         """初始化配置选择"""
-        self.task_list = DragListWidget()
+        self.task_list = DragListWidget(parent=self)
         self.task_list.setDragEnabled(True)
         self.task_list.setAcceptDrops(True)
         self.task_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
@@ -101,36 +101,6 @@ class GenericListToolBarWidget(QWidget):
         self.config_selection_layout = QVBoxLayout(self.config_selection_widget)
         self.config_selection_layout.addWidget(self.task_list)
 
-    def add_item(self, config, can_move=True):
-
-        # 创建自定义widget
-        item_widget = TaskListItem(config)
-        if (
-            not self.is_option_exist(res_cfg.interface_config, config.get("name", ""))
-            and not self.is_speedrun_exist(
-                res_cfg.interface_config, config.get("name", "")
-            )
-            and can_move
-        ):
-            item_widget.hiden_setting_button()
-
-
-
-        # 创建列表项
-        list_item = QListWidgetItem(self.task_list)
-        if not can_move:
-            list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
-            item_widget.checkbox.setChecked(True)
-            item_widget.checkbox.setDisabled(True)
-
-
-
-
-        list_item.setSizeHint(item_widget.sizeHint())
-
-        # 将widget与列表项关联
-        self.task_list.addItem(list_item)
-        self.task_list.setItemWidget(list_item, item_widget)
 
     def select_all(self):
         """选择全部"""
@@ -139,47 +109,3 @@ class GenericListToolBarWidget(QWidget):
     def deselect_all(self):
         """取消选择全部"""
         self.task_list.deselect_all()
-
-    def is_option_exist(self, config: InterfaceData, key: str) -> bool:
-        """检查配置字典中是否存在指定的键。
-
-        Args:
-            config (InterfaceData): interface配置。
-            key (str): 要检查的键。
-
-        Returns:
-            bool: 如果键存在，返回True；否则返回False。
-        """
-        target_task = None
-        for task in config.get("task", []):
-            if task.get("name") == key:
-                target_task = task
-                break
-        if not target_task:
-            return False
-        elif target_task.get("option", []):
-            return True
-        else:
-            return False
-
-    def is_speedrun_exist(self, config: InterfaceData, key: str) -> bool:
-        """检查配置字典中是否存在指定的键。
-
-        Args:
-            config (InterfaceData): interface配置。
-            key (str): 要检查的键。
-
-        Returns:
-            bool: 如果键存在，返回True；否则返回False。
-        """
-        target_task = None
-        for task in config.get("task", []):
-            if task.get("name") == key:
-                target_task = task
-                break
-        if not target_task:
-            return False
-        elif target_task.get("speedrun", []):
-            return True
-        else:
-            return False

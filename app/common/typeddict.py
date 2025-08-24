@@ -25,6 +25,8 @@ MFW-ChainFlow Assistant 类型标记
 
 from typing import Dict, List,  TypedDict,Optional,Any
 
+from attr import dataclass
+
 
 # 定义模拟器extra的类型
 class EmuExtrasConfig(TypedDict, total=False):
@@ -80,12 +82,16 @@ class SpeedrunConfig(TypedDict, total=False):
 
 
 # 定义任务项的类型
-class TaskItem(TypedDict, total=False):
+@dataclass
+class TaskItem:
     name: str
+    task_id : str
+    is_checked: bool
     option: List[Dict]
-    speedrun: SpeedrunConfig
+    speedrun: dict
     task_invalidation : bool
     advanced : bool
+    task_type : str
 
 
 

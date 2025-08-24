@@ -58,7 +58,7 @@ class Ui_Task_Interface(object):
     def setupUi(self, Task_Interface):
         """设置UI界面"""
         Task_Interface.setObjectName("Task_Interface")
-        self.task_list = GenericListToolBarWidget()
+        self.task_list = QWidget()
 
         self._init_option_area()
 

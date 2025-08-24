@@ -49,14 +49,13 @@ from qfluentwidgets import FluentIcon as FIF
 
 
 from .fast_start_interface.fast_start_logic import FastStartInterface
-from .task_interface.task_interface_logic import TaskInterface
 
 import atexit
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
 from ..utils.logger import logger
-from ..common.resource_config import res_cfg
 from ..common.__version__ import __version__
+from ..core.TaskManager import TaskManager
 
 
 class CustomSystemThemeListener(SystemThemeListener):
@@ -75,8 +74,14 @@ class MainWindow(MSFluentWindow):
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)
 
+        # 初始化任务管理器
+        self.task_manager = TaskManager(cfg.get(cfg.maa_config_name), cfg.get(cfg.maa_config_list))
+
         # 创建子界面
-        self.FastStartInterface = FastStartInterface(self)
+        self.FastStartInterface = FastStartInterface(parent=self)
+        self.FastStartInterface.task_info.task_list.set_task_manager(self.task_manager)
+        self.task_manager.tasks_changed.emit()
+
 
 
         self.addSubInterface(self.FastStartInterface, FIF.CHECKBOX, self.tr("Task"))
@@ -136,14 +141,14 @@ class MainWindow(MSFluentWindow):
             title = self.tr("ChainFlow Assistant")
         resource_name = cfg.get(cfg.maa_resource_name)
         config_name = cfg.get(cfg.maa_config_name)
-        version = res_cfg.interface_config.get("version", "")
+        #version = res_cfg.interface_config.get("version", "")
 
         title += f" {__version__}"
 
         if resource_name != "":
             title += f" {resource_name}"
-        if version != "":
-            title += f" {version}"
+        """if version != "":
+            title += f" {version}"""
         if config_name != "":
             title += f" {config_name}"
         if self.is_admin():

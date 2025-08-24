@@ -1,4 +1,3 @@
-from asyncio import new_event_loop
 from PySide6.QtWidgets import QApplication, QListWidgetItem, QAbstractItemView
 
 from PySide6.QtCore import Qt, Signal, QPoint, QMimeData, QThread
@@ -18,10 +17,12 @@ from PySide6.QtGui import (
 
 from qfluentwidgets import ListWidget
 from .TaskWidgetItem import TaskListItem
+from ..core.TaskManager import TaskManager, TaskItem
 
 
 class DragListWidget(ListWidget):
-    order_changed = Signal(list)
+    task_order_changed = Signal(list)
+    checkbox_state_changed = Signal(str, bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -29,6 +30,41 @@ class DragListWidget(ListWidget):
         self.setAcceptDrops(True)
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.setDefaultDropAction(Qt.DropAction.MoveAction)
+        self.task_manager: TaskManager | None = None  
+
+
+    def set_task_manager(self, task_manager: TaskManager):
+        """设置任务流对象并连接信号槽"""
+        if self.task_manager is None:
+            self.task_manager = task_manager
+            self.task_order_changed.connect(self.task_manager.onTaskOrderChanged)
+            self.task_manager.tasks_changed.connect(self.update_task_list)
+        else:
+            print("任务流对象已存在，不重复设置")
+
+
+    def update_task_list(self):
+        print("列表更新")
+        """从模型更新任务列表UI"""
+        if self.task_manager is None:
+            print("任务流对象未设置，无法更新任务列表")
+            return
+
+        self.clear()
+        task_list: list[TaskItem] = self.task_manager.task_list  # type: ignore
+
+        for task in task_list:  # type: ignore
+            print(f"创建任务项:{task.task_id}")
+
+            list_item = QListWidgetItem()
+            task_widget = TaskListItem()
+            task_widget.set_task_info(task.task_id, task.name, task.is_checked)
+            # 连接UI操作到模型更新
+            task_widget.checkbox_state_changed.connect(self.task_manager.update_task_status)
+
+            self.addItem(list_item)
+            self.setItemWidget(list_item, task_widget)
+
 
     def toggle_all_checkboxes(self, checked):
         """批量设置所有项的复选框状态
@@ -46,23 +82,6 @@ class DragListWidget(ListWidget):
             if hasattr(item_widget, "checkbox"):
                 item_widget.checkbox.setChecked(checked)
 
-    def get_checkbox_text_order(self):
-        """获取所有复选框的文本顺序"""
-        text_order = []
-        for i in range(self.count()):
-            list_item = self.item(i)
-            if not list_item:
-                continue
-
-            item_widget: TaskListItem = self.itemWidget(list_item)  # type: ignore
-            if hasattr(item_widget, "checkbox"):
-                text_order.append(item_widget.config)
-                item_widget.checkbox.isPressed = False
-                item_widget.checkbox.isHover = False
-                item_widget.checkbox.update()
-
-        return text_order
-
     def select_all(self):
         """全选所有复选框"""
         self.toggle_all_checkboxes(True)
@@ -70,10 +89,6 @@ class DragListWidget(ListWidget):
     def deselect_all(self):
         """取消全选所有复选框"""
         self.toggle_all_checkboxes(False)
-
-    def on_item_changed(self):
-        """列表项状态改变时触发"""
-        self.order_changed.emit(self.get_checkbox_text_order())
 
     def startDrag(self, supportedActions):
         # 获取当前选中的项
@@ -96,7 +111,7 @@ class DragListWidget(ListWidget):
         # 检查目标项是否为不可拖动项，如果是则调整放置位置到其下方
 
         if target_item and not (target_item.flags() & Qt.ItemFlag.ItemIsDragEnabled):
-            print("无法移动控制器")
+
             return
 
         super().dropEvent(event)
@@ -112,4 +127,10 @@ class DragListWidget(ListWidget):
             if drop_pos.y() > mid_y:
                 new_row += 1  # 下半部分，插入到目标项下方
             self.setCurrentRow(new_row)
-        self.on_item_changed()
+        task_list = []
+        for i in range(self.count()):
+            item = self.item(i)
+            tem_widget: TaskListItem = self.itemWidget(item)  # type: ignore
+            task_list.append(tem_widget.item_id)
+        print(task_list)
+        self.task_order_changed.emit(task_list)

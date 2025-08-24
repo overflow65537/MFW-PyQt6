@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Signal, Qt, QMimeData, QPoint, QEvent
 
 
-from PySide6.QtGui import QWheelEvent, QMouseEvent, QDrag, QPixmap, QPainter
+from PySide6.QtGui import QWheelEvent, QMouseEvent, QDrag, QPixmap, QPainter, QColor
 import click
 from fastapi import Body
 from qfluentwidgets import (
@@ -35,12 +35,24 @@ class ClickableLabel(BodyLabel):
 
 class TaskListItem(QWidget):
     show_option = Signal(dict)
+    # 信号：复选框状态变化
+    checkbox_state_changed = Signal(str, bool)
 
-    def __init__(self, config, parent=None):
+    is_checked: bool = False
+    name: str = ""
+    item_id: str = ""
+
+    def __init__(self, parent=None):
         super(TaskListItem, self).__init__(parent)
-        self.config = config
-        print(self.config)
         self.initUI()
+
+    def set_task_info(self, item_id: str, name: str, is_checked: bool):
+
+        self.name = name
+        self.is_checked = is_checked
+        self.item_id = item_id
+        self.checkbox.setChecked(self.is_checked)
+        self.placeholder_label.setText(self.name)
 
     def initUI(self):
         layout = QHBoxLayout(self)
@@ -48,19 +60,16 @@ class TaskListItem(QWidget):
 
         # 复选框
         self.checkbox = CheckBox()
-        self.checkbox.setFixedHeight(10)
+
+        self.checkbox.setFixedSize(34, 34)
 
         layout.addWidget(self.checkbox)
 
         # 占位label
-        self.placeholder_label = ClickableLabel(self.config["name"])
-
+        self.placeholder_label = ClickableLabel()
         self.placeholder_label.setFixedHeight(34)
+
         self.placeholder_label.clicked.connect(self.on_button_clicked)
-        # 左对齐,上下居中
-        self.placeholder_label.setAlignment(
-            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
-        )
 
         # 设置占用所有剩余空间
         self.placeholder_label.setSizePolicy(
@@ -71,6 +80,8 @@ class TaskListItem(QWidget):
 
         # 按钮
         self.setting_button = TransparentToolButton(FIF.SETTING)
+        self.setting_button.setFixedSize(34, 34)
+
         self.setting_button.clicked.connect(self.on_button_clicked)
 
         layout.addWidget(self.setting_button)
@@ -79,12 +90,11 @@ class TaskListItem(QWidget):
         self.checkbox.stateChanged.connect(self.on_checkbox_changed)
 
     def on_button_clicked(self):
-        print("点击按钮")
-        self.show_option.emit(self.config)
+        print(f"{self.name}点击按钮")
+        self.show_option.emit(self.item_id)
 
     def on_checkbox_changed(self, state):
-        status = "选中" if state == 2 else "未选中"
-        print(f"{self.config['name']} {status}")
+        self.checkbox_state_changed.emit(self.item_id, state == 2)
 
     def hiden_setting_button(self):
         self.setting_button.hide()
