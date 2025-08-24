@@ -1,21 +1,25 @@
+import signal
 from PySide6.QtCore import QObject, Signal, Property, Slot
 from dataclasses import dataclass
 from typing import List, Dict
 from ..common.config import cfg
 from ..utils.tool import Read_Config
-from ..common.typeddict import TaskItem
+from ..core.ConfigManager import TaskItem, ConfigManager
 
 
 class TaskManager(QObject):
     """任务数据模型，管理所有任务数据"""
 
     tasks_changed = Signal()  # 任务列表变化信号
+    save_task_list = Signal()
 
-    def __init__(self, current_config_name: str, config_dict: dict):
+    def __init__(self, config_manager: ConfigManager):
+
         super().__init__()
-        self.__task_list: List[TaskItem] = []
-        self.current_config_name = current_config_name
-        self.config_dict = config_dict
+        self.__task_list: List[TaskItem] = config_manager.curr_config.task
+        self.__config = config_manager.curr_config
+        self.save_task_list.connect(config_manager.update_task_list)
+
         self.load__task_list()
 
     @Property(list)
@@ -31,7 +35,7 @@ class TaskManager(QObject):
         """添加任务"""
         self.__task_list.append(task)
         # 保存到配置文件
-        self.save_task_list()
+        self.save_task_list.emit(self.__task_list)
 
     def remove_task(self, task_id: str):
         """删除任务"""
@@ -39,7 +43,7 @@ class TaskManager(QObject):
             task for task in self.__task_list if task.task_id != task_id
         ]
         # 保存到配置文件
-        self.save_task_list()
+        self.save_task_list.emit(self.__task_list)
 
     def update_task_status(self, task_id: str, is_checked: bool):
         """更新任务状态"""
@@ -48,7 +52,7 @@ class TaskManager(QObject):
                 task.is_checked = is_checked
                 break
         print(f"更新任务状态：{task_id}，{is_checked}")
-        self.save_task_list()
+        self.save_task_list.emit(self.__task_list)
 
     @Slot(list)
     def onTaskOrderChanged(self, new_order):
@@ -56,14 +60,7 @@ class TaskManager(QObject):
         self.__task_list = [self.get_task_by_id(id) for id in new_order]
         print(f"更新任务顺序：{new_order}")
         # 保存到配置文件
-        self.save_task_list()
-
-    def save_task_list(self):
-        """保存任务到配置文件"""
-        config: dict = self.load_config()
-
-        config["task"] = self.__task_list
-        self.save_config(config)
+        self.save_task_list.emit(self.__task_list)
 
     # 随机生成task_id
     @staticmethod
@@ -76,32 +73,12 @@ class TaskManager(QObject):
 
     def load__task_list(self):
         """从配置文件加载任务"""
-        config: dict = self.load_config()
+        config = self.__config
 
-        for item in config.get("task", []):
-            name: str = item.get("name", "")
-            task_id: str = item.get("task_id", self.generate_task_id())
-            is_checked: bool = item.get("is_checked", False)
+        for item in config.task:
 
-            option: List[Dict] = item.get("option", [])
-            speedrun: dict = item.get("speedrun", {})
-            task_invalidation: bool = item.get("task_invalidation", False)
-            advanced: bool = item.get("advanced", False)
-            task_type: str = item.get("task_type", "")
-            self.__task_list.append(
-                TaskItem(
-                    name=name,
-                    task_id=task_id,
-                    is_checked=is_checked,
-                    option=option,
-                    speedrun=speedrun,
-                    task_invalidation=task_invalidation,
-                    advanced=advanced,
-                    task_type=task_type,
-                )
-            )
+            self.__task_list.append(item)
 
-        print(self.__task_list)
         self.tasks_changed.emit()
 
     def get_task_by_id(self, task_id: str) -> TaskItem:
@@ -110,11 +87,3 @@ class TaskManager(QObject):
             if task.task_id == task_id:
                 return task
         raise ValueError(f"Task with id {task_id} not found")
-
-    def load_config(self):
-        """从配置文件加载任务"""
-        return Read_Config(self.config_dict[self.current_config_name])
-
-    def save_config(self, config: dict):
-        """保存配置文件"""
-        pass

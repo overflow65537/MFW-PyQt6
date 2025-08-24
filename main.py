@@ -45,7 +45,7 @@ from app.common.config import cfg
 from app.view.main_window import MainWindow
 from app.common.config import Language
 from app.common.__version__ import __version__
-from app.utils.tool import Save_Config, show_error_message
+from app.utils.tool import Save_Config
 from app.common.signal_bus import signalBus
 
 

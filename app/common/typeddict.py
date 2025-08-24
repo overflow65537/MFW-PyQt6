@@ -23,13 +23,14 @@ MFW-ChainFlow Assistant 类型标记
 作者:overflow65537
 """
 
-from typing import Dict, List,  TypedDict,Optional,Any
+from typing import Dict, List, TypedDict, Optional, Any
 
-from attr import dataclass
+from dataclasses import dataclass
 
 
 # 定义模拟器extra的类型
-class EmuExtrasConfig(TypedDict, total=False):
+@dataclass
+class EmuExtrasConfig:
     enable: bool
     index: int
     path: str
@@ -37,7 +38,8 @@ class EmuExtrasConfig(TypedDict, total=False):
 
 
 # 定义 ADB 配置的类型
-class AdbConfig(TypedDict, total=True):
+@dataclass
+class AdbConfig:
     adb_path: str
     address: str
     input_method: int
@@ -46,26 +48,30 @@ class AdbConfig(TypedDict, total=True):
 
 
 # 定义 Win32 配置的类型
-class Win32Config(TypedDict, total=False):
+@dataclass
+class Win32Config:
     hwnd: int
     input_method: int
     screen_method: int
 
 
 # 定义 Controller 配置的类型
-class ControllerConfig(TypedDict, total=False):
+@dataclass
+class ControllerConfig:
     name: str
 
 
 # 定义 refresh_time 的类型
-class RefreshTime(TypedDict, total=False):
+@dataclass
+class RefreshTime:
     H: int
     w: int
     d: int
 
 
 # 定义 interval 的类型
-class Interval(TypedDict, total=False):
+@dataclass
+class Interval:
     unit: int
     item: int
     loop_item: int
@@ -73,7 +79,8 @@ class Interval(TypedDict, total=False):
 
 
 # 定义 speedrun 的类型
-class SpeedrunConfig(TypedDict, total=False):
+@dataclass
+class SpeedrunConfig:
     schedule_mode: str
     refresh_time: RefreshTime
     interval: Interval
@@ -82,21 +89,12 @@ class SpeedrunConfig(TypedDict, total=False):
 
 
 # 定义任务项的类型
-@dataclass
-class TaskItem:
-    name: str
-    task_id : str
-    is_checked: bool
-    option: List[Dict]
-    speedrun: dict
-    task_invalidation : bool
-    advanced : bool
-    task_type : str
 
 
 
 # 定义完整的配置类型
-class MainConfig(TypedDict, total=True):
+@dataclass
+class MainConfig:
     adb: AdbConfig
     win32: Win32Config
     controller: ControllerConfig
@@ -116,23 +114,25 @@ class MainConfig(TypedDict, total=True):
     exe_path: str
     exe_args: str
     exe_wait_time: str
-    know_task:list
+    know_task: list
 
 
 InnerConfig = Dict[str, str]
 
 MaaConfigList = Dict[str, InnerConfig]
 
-class ControllerItem(TypedDict):
+@dataclass
+class ControllerItem:
     name: str
     type: str
 
-class ResourcePath(TypedDict):
+@dataclass
+class ResourcePath:
     name: str
     path: List[str]
 
-
-class TaskItem_interface(TypedDict, total=False):
+@dataclass
+class TaskItem_interface:
     name: str
     entry: str
     option: Optional[List[str]]
@@ -140,7 +140,8 @@ class TaskItem_interface(TypedDict, total=False):
     pipeline_override: dict
     doc: Optional[str]
 
-class InterfaceData(TypedDict,total=False):
+@dataclass
+class InterfaceData:
     url: str
     name: str
     MFW_min_req_version: str
@@ -152,39 +153,7 @@ class InterfaceData(TypedDict,total=False):
     version: str
     show_notice: bool
 
-def get_initial_main_config() -> MainConfig:
-    return {
-        "adb": {
-            "adb_path": "",
-            "address": "",
-            "input_method": 0,
-            "screen_method": 0,
-            "config": {},
-        },
-        "win32": {
-            "hwnd": 0,
-            "input_method": 0,
-            "screen_method": 0,
-        },
-        "controller": {"name": ""},
-        "gpu": -1,
-        "resource": "",
-        "task": [],
-        "finish_option": 0,
-        "finish_option_res": 0,
-        "finish_option_cfg": 0,
-        "run_before_start": "",
-        "run_before_start_args": "",
-        "run_after_finish": "",
-        "run_after_finish_args": "",
-        "emu_path": "",
-        "emu_args": "",
-        "emu_wait_time": "10",
-        "exe_path": "",
-        "exe_args": "",
-        "exe_wait_time": "10", 
-        "know_task": [],
-    }
+
 
 class ResourceConfig:
     interface_config: InterfaceData = {}
@@ -204,5 +173,3 @@ class ResourceConfig:
     resource_name_list: List[str] = []
 
     log_path: str = ""
-
-

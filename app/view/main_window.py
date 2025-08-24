@@ -31,6 +31,7 @@ MFW-ChainFlow Assistant 主界面
 
 import os
 import sys
+from pathlib import Path
 
 from PySide6.QtCore import QSize, QTimer
 from PySide6.QtGui import QIcon, QShortcut, QKeySequence, QGuiApplication
@@ -43,7 +44,7 @@ from qfluentwidgets import (
     SystemThemeListener,
     isDarkTheme,
     InfoBar,
-    MSFluentWindow
+    MSFluentWindow,
 )
 from qfluentwidgets import FluentIcon as FIF
 
@@ -56,6 +57,7 @@ from ..common.signal_bus import signalBus
 from ..utils.logger import logger
 from ..common.__version__ import __version__
 from ..core.TaskManager import TaskManager
+from ..core.ConfigManager import ConfigManager
 
 
 class CustomSystemThemeListener(SystemThemeListener):
@@ -74,18 +76,19 @@ class MainWindow(MSFluentWindow):
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)
 
+        # 初始化配置管理器
+        multi_config_path = Path.cwd() / "config" / "multi_config.json"
+        self.config_manager = ConfigManager(multi_config_path)
+
         # 初始化任务管理器
-        self.task_manager = TaskManager(cfg.get(cfg.maa_config_name), cfg.get(cfg.maa_config_list))
+        self.task_manager = TaskManager(self.config_manager)
 
         # 创建子界面
         self.FastStartInterface = FastStartInterface(parent=self)
         self.FastStartInterface.task_info.task_list.set_task_manager(self.task_manager)
         self.task_manager.tasks_changed.emit()
 
-
-
         self.addSubInterface(self.FastStartInterface, FIF.CHECKBOX, self.tr("Task"))
-
 
         # 添加导航项
         self.splashScreen.finish()
@@ -116,7 +119,6 @@ class MainWindow(MSFluentWindow):
         self.show()
         QApplication.processEvents()
 
-
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
         signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
@@ -141,7 +143,7 @@ class MainWindow(MSFluentWindow):
             title = self.tr("ChainFlow Assistant")
         resource_name = cfg.get(cfg.maa_resource_name)
         config_name = cfg.get(cfg.maa_config_name)
-        #version = res_cfg.interface_config.get("version", "")
+        # version = res_cfg.interface_config.get("version", "")
 
         title += f" {__version__}"
 
