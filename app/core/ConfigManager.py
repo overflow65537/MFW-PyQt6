@@ -1,11 +1,12 @@
 from turtle import st
 from typing import Dict, List, TypedDict, Optional, Any
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 import json
 
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
+from funkify import T
 
 
 @dataclass
@@ -15,10 +16,12 @@ class TaskItem:
     is_checked: bool
     task_option: dict
     task_type: str
+    def to_dict(self):
+        """将MultiConfig对象递归转换为字典"""
+        return asdict(self)
 
 
-@dataclass
-class Config:
+class Config(TypedDict):
     is_enabled: bool
     task: List[TaskItem]
     gpu: int
@@ -37,8 +40,7 @@ class Config:
     start_time: str
 
 
-@dataclass
-class MultiConfig:
+class MultiConfig(TypedDict):
     curr_config_name: str
     config_data: dict[str, Config]
 
@@ -57,10 +59,9 @@ class ConfigManager(QObject):
         self.__config_data: dict[str, Config] = self.__config.config_data
 
         self.__curr_config = self.__config_data[self.__curr_config_name]
-        self.__task_list: List[TaskItem] = []
+        self.__task_list: List[TaskItem] = self.__curr_config.task
 
-        for item in self.__curr_config.task:
-            self.__task_list.append(item)
+   
 
     @property
     def curr_config_name(self) -> str:
@@ -73,10 +74,7 @@ class ConfigManager(QObject):
 
         self.__curr_config_name = config_name
         self.__curr_config = self.__config_data[config_name]
-        self.__task_list = []
-        for item in self.__curr_config.task:
-            self.__task_list.append(item)
-
+        self.__task_list = self.__curr_config.task
         self.save_config()
 
     @property
@@ -86,39 +84,43 @@ class ConfigManager(QObject):
     @curr_config.setter
     def set_curr_config(self, config: Config) -> None:
         self.__curr_config = config
-        self.__task_list = []
-        for item in self.__curr_config.task:
-            self.__task_list.append(item)
+        self.__task_list = self.__curr_config.task
         self.save_config()
 
     def load_config(self) -> None:
-        """加载主配置文件，初始化多配置字典"""
+        """加载配置文件，初始化多配置字典"""
         if not self.multi_config_path.exists():
             self.__config: MultiConfig = MultiConfig(
                 curr_config_name="default",
                 config_data={"default": self.create_empty_config()},
             )
+            self.save_config()
 
             return
 
         try:
             with open(self.multi_config_path, "r", encoding="utf-8") as f:
-                self.__config: MultiConfig = json.load(
-                    f
-                )  # 读取所有子配置到__config_dict
+                json_obj = json.load(f)
+                self.__config: MultiConfig = MultiConfig(**json_obj)
+                if not self.__config or not self.__config.config_data:
+                    raise ValueError("配置数据无效")
         except Exception as e:
-            print(f"加载主配置失败：{e}")
+            print(f"加载配置失败：{e}")
             self.__config: MultiConfig = MultiConfig(
-                curr_config_name="default", config_data={}
+                curr_config_name="default", config_data={"default": self.create_empty_config()}
+
             )
+            self.save_config()
 
     def save_config(self) -> None:
         """保存主配置文件"""
+        print(f"保存配置：{self.__curr_config_name}")
+
         try:
             with open(self.multi_config_path, "w", encoding="utf-8") as f:
-                json.dump(self.__config, f, ensure_ascii=False, indent=4)
+                json.dump(self.__config.to_dict(), f, ensure_ascii=False, indent=4)
         except Exception as e:
-            print(f"保存主配置失败：{e}")
+            print(f"保存配置失败：{e}")
 
     def get_config(self, config_name: str) -> Config:
         """获取指定名称的子配置（不存在则返回空字典）"""
@@ -133,9 +135,7 @@ class ConfigManager(QObject):
         """切换当前配置"""
         self.__curr_config_name = config_name
         self.__curr_config = self.__config_data[config_name]
-        self.__task_list = []
-        for item in self.__curr_config.task:
-            self.__task_list.append(item)
+        self.__task_list = self.__curr_config.task
 
         self.save_config()
 
@@ -146,11 +146,25 @@ class ConfigManager(QObject):
 
     # 生成一份空配置
     def create_empty_config(self) -> Config:
+        resource_task = TaskItem(
+            name="资源",
+            task_id="resource_task",
+            is_checked=True,
+            task_option={},
+            task_type="resource",
+        )
+        controller_task = TaskItem(
+            name="控制器",
+            task_id="controller_task",
+            is_checked=True,
+            task_option={},
+            task_type="controller",
+        )
         """创建一个空配置"""
         empty_config = Config(
             is_enabled=True,
-            task=[],
-            gpu=0,
+            task=[ controller_task,resource_task],
+            gpu=-1,
             finish_option=0,
             run_before_start="",
             run_before_start_args="",

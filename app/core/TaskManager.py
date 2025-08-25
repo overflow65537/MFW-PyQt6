@@ -16,7 +16,7 @@ class TaskManager(QObject):
     def __init__(self, config_manager: ConfigManager):
 
         super().__init__()
-        self.__task_list: List[TaskItem] = config_manager.curr_config.task
+        self.__task_list: List[TaskItem] = config_manager.curr_config.get("task", [])
         self.__config = config_manager.curr_config
         self.save_task_list.connect(config_manager.update_task_list)
 
@@ -75,7 +75,7 @@ class TaskManager(QObject):
         """从配置文件加载任务"""
         config = self.__config
 
-        for item in config.task:
+        for item in config.get("task", []):
 
             self.__task_list.append(item)
 
