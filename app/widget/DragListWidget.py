@@ -54,11 +54,17 @@ class DragListWidget(ListWidget):
         task_list: list[TaskItem] = self.task_manager.task_list  # type: ignore
 
         for task in task_list:  # type: ignore
-            print(f"创建任务项:{task.task_id}")
+            print(f"创建任务项:{task.get('task_id')}")
 
             list_item = QListWidgetItem()
             task_widget = TaskListItem()
-            task_widget.set_task_info(task.task_id, task.name, task.is_checked)
+            if task.get("task_id") in ["resource_task","controller_task"]:
+                task_widget.checkbox.setChecked(True)
+                task_widget.checkbox.setDisabled(True)
+                #设置不可拖动
+                list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
+
+            task_widget.set_task_info(task.get("task_id"), task.get("name"), task.get("is_checked"))
             # 连接UI操作到模型更新
             task_widget.checkbox_state_changed.connect(self.task_manager.update_task_status)
 

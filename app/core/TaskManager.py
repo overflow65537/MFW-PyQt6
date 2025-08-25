@@ -11,19 +11,19 @@ class TaskManager(QObject):
     """任务数据模型，管理所有任务数据"""
 
     tasks_changed = Signal()  # 任务列表变化信号
-    save_task_list = Signal()
+    save_task_list = Signal(list)  # 保存任务列表信号
 
     def __init__(self, config_manager: ConfigManager):
 
         super().__init__()
-        self.__task_list: List[TaskItem] = config_manager.curr_config.get("task", [])
-        self.__config = config_manager.curr_config
+        self.__config = config_manager.curr_config.copy()
+        self.__task_list: List[TaskItem] = self.__config.copy().get("task", [])
         self.save_task_list.connect(config_manager.update_task_list)
 
-        self.load__task_list()
+        self.tasks_changed.emit()
 
     @Property(list)
-    def task_list(self) -> list[TaskItem]:
+    def task_list(self) -> List[TaskItem]:
         return self.__task_list
 
     @task_list.setter
@@ -40,7 +40,7 @@ class TaskManager(QObject):
     def remove_task(self, task_id: str):
         """删除任务"""
         self.__task_list = [
-            task for task in self.__task_list if task.task_id != task_id
+            task for task in self.__task_list if task.get("task_id") != task_id
         ]
         # 保存到配置文件
         self.save_task_list.emit(self.__task_list)
@@ -48,8 +48,8 @@ class TaskManager(QObject):
     def update_task_status(self, task_id: str, is_checked: bool):
         """更新任务状态"""
         for task in self.__task_list:
-            if task.task_id == task_id:
-                task.is_checked = is_checked
+            if task.get("task_id") == task_id:
+                task["is_checked"] = is_checked
                 break
         print(f"更新任务状态：{task_id}，{is_checked}")
         self.save_task_list.emit(self.__task_list)
@@ -71,19 +71,10 @@ class TaskManager(QObject):
 
         return "".join(random.choices(string.ascii_letters + string.digits, k=10))
 
-    def load__task_list(self):
-        """从配置文件加载任务"""
-        config = self.__config
-
-        for item in config.get("task", []):
-
-            self.__task_list.append(item)
-
-        self.tasks_changed.emit()
 
     def get_task_by_id(self, task_id: str) -> TaskItem:
         """根据任务id获取任务数据"""
         for task in self.__task_list:
-            if task.task_id == task_id:
+            if task.get("task_id") == task_id:
                 return task
         raise ValueError(f"Task with id {task_id} not found")
