@@ -47,7 +47,7 @@ import re
 from datetime import datetime
 
 
-from ..common.maa_config_data import (
+from ..common.resource_config import (
     maa_config_data,
 )
 from ..common.typeddict import (

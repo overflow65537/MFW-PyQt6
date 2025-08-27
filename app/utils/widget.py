@@ -97,7 +97,7 @@ from ..utils.tool import (
 )
 from ..utils.notice import send_thread
 from ..common.config import cfg
-from ..common.maa_config_data import maa_config_data
+from ..common.resource_config import res_cfg
 from ..utils.update import DownloadBundle
 
 
@@ -709,14 +709,14 @@ class ListWidge_Menu_Draggable(ListWidget):
         Select_Target = self.currentRow()
         if Select_Target == -1:
             return
-        task_obj = maa_config_data.config.get("task")[Select_Target]
-        task_dict = get_override(task_obj, maa_config_data.interface_config)
+        task_obj = res_cfg.config.get("task")[Select_Target]
+        task_dict = get_override(task_obj, res_cfg.interface_config)
         signalBus.run_sp_task.emit(task_dict)
 
     def Delete_All_Task(self):
         self.clear()
-        maa_config_data.config["task"] = []
-        Save_Config(maa_config_data.config_path, maa_config_data.config)
+        res_cfg.config["task"] = []
+        Save_Config(res_cfg.config_path, res_cfg.config)
         signalBus.update_task_list.emit()
         signalBus.dragging_finished.emit()
 
@@ -726,7 +726,7 @@ class ListWidge_Menu_Draggable(ListWidget):
         selected_rows = sorted(
             [self.row(item) for item in selected_items], reverse=True
         )
-        task_list = maa_config_data.config.get("task", [])
+        task_list = res_cfg.config.get("task", [])
 
         for row in selected_rows:
             if 0 <= row < len(task_list):
@@ -754,7 +754,7 @@ class ListWidge_Menu_Draggable(ListWidget):
         self.move_tasks(selected_rows, 1)
 
     def move_tasks(self, selected_rows, offset):
-        task_list = maa_config_data.config.get("task", [])
+        task_list = res_cfg.config.get("task", [])
         moved_indices = []
 
         for row in selected_rows:
@@ -766,7 +766,7 @@ class ListWidge_Menu_Draggable(ListWidget):
 
         self.update_task_config(task_list)
         self.clear()
-        self.addItems(Get_Values_list_Option(maa_config_data.config_path, "task"))
+        self.addItems(Get_Values_list_Option(res_cfg.config_path, "task"))
 
         # 重新设置选中状态
         for index in moved_indices:
@@ -776,8 +776,8 @@ class ListWidge_Menu_Draggable(ListWidget):
         signalBus.dragging_finished.emit()
 
     def update_task_config(self, Task_List):
-        maa_config_data.config["task"] = Task_List
-        Save_Config(maa_config_data.config_path, maa_config_data.config)
+        res_cfg.config["task"] = Task_List
+        Save_Config(res_cfg.config_path, res_cfg.config)
 
     def update_selection(self, Select_Target):
         if Select_Target == 0 and self.count() > 0:
@@ -855,7 +855,7 @@ class ListWidge_Menu_Draggable(ListWidget):
                 target_item = self.itemAt(position)
                 target_row = self.row(target_item) if target_item else self.count()
 
-                task_list = maa_config_data.config.get("task", [])
+                task_list = res_cfg.config.get("task", [])
                 # 先移除选中的任务
                 moved_tasks = []
                 for row in source_rows:
@@ -872,12 +872,12 @@ class ListWidge_Menu_Draggable(ListWidget):
                     task_list.insert(insert_index, task)
                     insert_index += 1
 
-                maa_config_data.config["task"] = task_list
-                Save_Config(maa_config_data.config_path, maa_config_data.config)
+                res_cfg.config["task"] = task_list
+                Save_Config(res_cfg.config_path, res_cfg.config)
 
                 # 刷新列表
                 self.clear()
-                self.addItems(Get_Values_list_Option(maa_config_data.config_path, "task"))
+                self.addItems(Get_Values_list_Option(res_cfg.config_path, "task"))
 
                 # 重新设置选中状态
                 if selected_items:  # 添加空值检查

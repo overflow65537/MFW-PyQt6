@@ -52,7 +52,7 @@ from ..utils.widget import (
 from ..utils.update import Update, UpdateSelf
 from ..utils.tool import Save_Config, for_config_get_url, decrypt, encrypt
 from ..utils.logger import logger
-from ..common.maa_config_data import maa_config_data
+from ..common.resource_config import maa_config_data
 from ..common.__version__ import __version__
 
 import subprocess
