@@ -11,12 +11,7 @@ from qfluentwidgets import CheckBox, TransparentToolButton, FluentIcon as FIF
 
 
 from ..fast_start_interface.fast_start_ui import UI_FastStartInterface
-from ...common.signal_bus import signalBus
-from ...utils.logger import logger
 
-
-from ...widget.TaskWidgetItem import TaskListItem
-from ...core.TaskManager import TaskManager
 
 
 class FastStartInterface(UI_FastStartInterface, QWidget):

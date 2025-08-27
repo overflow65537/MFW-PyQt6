@@ -19,7 +19,6 @@ class StartBarWidget(QWidget):
         self.start_bar_main_layout = QHBoxLayout(self)
         self.start_bar_main_layout.addWidget(self.start_bar)
 
-
     def setRunAfterFinishVisible(self, visible: bool):
         """设置完成后运行是否显示"""
         if not visible:

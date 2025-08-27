@@ -33,7 +33,7 @@ class ClickableLabel(BodyLabel):
         super().mousePressEvent(event)
 
 
-class TaskListItem(QWidget):
+class ListItem(QWidget):
     show_option = Signal(dict)
     # 信号：复选框状态变化
     checkbox_state_changed = Signal(str, bool)
@@ -43,7 +43,7 @@ class TaskListItem(QWidget):
     item_id: str = ""
 
     def __init__(self, parent=None):
-        super(TaskListItem, self).__init__(parent)
+        super(ListItem, self).__init__(parent)
         self.initUI()
 
     def set_task_info(self, item_id: str, name: str, is_checked: bool):

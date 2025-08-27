@@ -56,8 +56,7 @@ from ..common.config import cfg
 from ..common.signal_bus import signalBus
 from ..utils.logger import logger
 from ..common.__version__ import __version__
-from ..core.TaskManager import TaskManager
-from ..core.ConfigManager import ConfigManager
+from ..core.ItemManager import TaskManager,ConfigManager
 
 
 class CustomSystemThemeListener(SystemThemeListener):
@@ -83,10 +82,16 @@ class MainWindow(MSFluentWindow):
         # 初始化任务管理器
         self.task_manager = TaskManager(self.config_manager)
 
+
+
         # 创建子界面
         self.FastStartInterface = FastStartInterface(parent=self)
+        self.FastStartInterface.config_selection.task_list.set_config_manager(self.config_manager)
         self.FastStartInterface.task_info.task_list.set_task_manager(self.task_manager)
-        self.task_manager.tasks_changed.emit()
+        self.config_manager.items_changed.emit()
+        self.task_manager.items_changed.emit()
+
+
 
         self.addSubInterface(self.FastStartInterface, FIF.CHECKBOX, self.tr("Task"))
 

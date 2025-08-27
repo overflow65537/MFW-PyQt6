@@ -22,7 +22,7 @@ from qfluentwidgets import (
 )
 from ...widget.DashboardCard import DashboardCard
 from ...widget.LogoutputWidget import LogoutputWidget
-from ...widget.GenericListToolBarWidget import GenericListToolBarWidget
+from ...widget.ListToolBarWidget import TaskListToolBarWidget,ConfigListToolBarWidget
 from ...widget.StartBarWidget import StartBarWidget
 
 
@@ -52,13 +52,13 @@ class UI_FastStartInterface(object):
         """初始化选项面板"""
         self.option_panel_widget = QWidget()
         self.option_panel_layout = QVBoxLayout(self.option_panel_widget)
-        self.option_panel = GenericListToolBarWidget()
+        self.option_panel = TaskListToolBarWidget()
         self.option_panel.setFixedWidth(344)
         self.option_panel_layout.addWidget(self.option_panel)
 
     def _init_control_panel(self):
         """初始化控制面板"""
-        self.config_selection = GenericListToolBarWidget()
+        self.config_selection = ConfigListToolBarWidget()
         self.config_selection.setFixedWidth(344)
         self.config_selection.setFixedHeight(180)
 
@@ -69,7 +69,7 @@ class UI_FastStartInterface(object):
         self.control_panel = QWidget()
         self.control_panel_layout = QVBoxLayout(self.control_panel)
         # 控制面板总体布局
-        self.task_info = GenericListToolBarWidget()
+        self.task_info = TaskListToolBarWidget()
         self.task_info.setFixedWidth(344)
 
         self.control_panel_layout.addWidget(self.config_selection)
