@@ -135,7 +135,6 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
         loop.run_forever()
     logger.debug("关闭异步任务完成")
     loop.close()
-    exit(0)
 
 
 def start_symbol():
