@@ -1511,7 +1511,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 if remaining_loops > 0 and self.entry:
                     if cfg.get(cfg.when_post_task):
                         self.send_notice("info", self.tr("Post Task :") + self.entry)
-                    await maafw.run_task(self.entry,task_dict)
+                    await maafw.run_task(self.entry,task_dict.get("pipeline_override", {}))
                     if self.task_failed:
                         if cfg.get(cfg.when_task_failed):
                             self.send_notice(
