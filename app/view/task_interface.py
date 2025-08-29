@@ -27,7 +27,6 @@ import os
 import subprocess
 import platform
 
-from httpx import get
 from qasync import asyncSlot, asyncio
 from pathlib import Path
 import json
