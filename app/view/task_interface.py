@@ -27,6 +27,7 @@ import os
 import subprocess
 import platform
 
+from httpx import get
 from qasync import asyncSlot, asyncio
 from pathlib import Path
 import json
@@ -1996,6 +1997,8 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.restore_options(
                 maa_config_data.config["task"][Select_Target].get("option", [])
             )
+            if maa_config_data.config["task"][Select_Target].get("task_invalidation"):
+                maa_config_data.config["task"][Select_Target]["task_invalidation"] = False
         except IndexError:
             pass
 
