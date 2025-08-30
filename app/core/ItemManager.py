@@ -69,7 +69,7 @@ class BaseItemManaget(QObject):
                 self.save_item_list.emit(self._item_list)
                 return True
         raise ValueError(f"task with id {item_id} not found")
-        
+
     @Slot(list)
     def onItemOrderChanged(self, new_order):
         # 根据新顺序重新排列元素数据
@@ -97,6 +97,8 @@ class BaseItemManaget(QObject):
 class ConfigManager(BaseItemManaget):
     """配置数据模型，管理所有配置数据"""
 
+    task_items_changed = Signal()
+
     def __init__(self, multi_config_path: Path | str):
         super().__init__()
         self.multi_config_path = Path(multi_config_path)
@@ -104,11 +106,21 @@ class ConfigManager(BaseItemManaget):
         self.load_config()
         self._item_list: list[ConfigItem] = self.__config["config_list"]
 
-        self.curr_config_id = self.__config["curr_config_id"]
+        self.__curr_config_id = self.__config["curr_config_id"]
 
-        self.__curr_config = self.get_item_by_id(self.curr_config_id)
+        self.__curr_config = self.get_item_by_id(self.__curr_config_id)
         self.save_item_list.connect(self.save_config)
 
+    @property
+    def curr_config_id(self) -> str:
+        return self.__curr_config_id
+
+    @curr_config_id.setter
+    def curr_config_id(self, value: str):
+        self.__curr_config_id = value
+        self.__curr_config = self.get_item_by_id(value)
+        self._item_list = self.__config["config_list"]
+        self.task_items_changed.emit()
 
     @property
     def curr_config(self) -> ConfigItem:
@@ -196,14 +208,21 @@ class TaskManager(BaseItemManaget):
     def __init__(self, config_manager: ConfigManager):
 
         super().__init__()
-        self.__config = config_manager.curr_config.copy()
-        self._item_list: List[TaskItem] = self.__config.copy().get("task", [])
+        self.config_manager = config_manager
+        self.__config = config_manager.curr_config
+        self._item_list: List[TaskItem] = self.__config.get("task", [])
         self.save_item_list.connect(config_manager.onItemOrderChanged)
+        self.config_manager.task_items_changed.connect(self.update_item)
 
     def get_item_by_id(self, item_id: str):
         """根据任务id获取任务数据"""
-
         for item in self._item_list:
             if item.get("item_id") == item_id:
                 return item
         raise ValueError(f"task with id {item_id} not found")
+
+    def update_item(self):
+        print("更新任务")
+        self.__config = self.config_manager.curr_config
+        self._item_list: List[TaskItem] = self.__config.get("task", [])
+        self.items_changed.emit()

@@ -10,8 +10,6 @@ from PySide6.QtCore import Signal, Qt, QMimeData, QPoint, QEvent
 
 
 from PySide6.QtGui import QWheelEvent, QMouseEvent, QDrag, QPixmap, QPainter, QColor
-import click
-from fastapi import Body
 from qfluentwidgets import (
     CheckBox,
     TransparentToolButton,
@@ -22,6 +20,8 @@ from qfluentwidgets import (
     ComboBox,
     FluentIcon as FIF,
 )
+
+from ..core.ItemManager import TaskItem,ConfigItem
 
 
 class ClickableLabel(BodyLabel):
@@ -46,11 +46,10 @@ class ListItem(QWidget):
         super(ListItem, self).__init__(parent)
         self.initUI()
 
-    def set_task_info(self, item_id: str, name: str, is_checked: bool):
-
-        self.name = name
-        self.is_checked = is_checked
-        self.item_id = item_id
+    def set_task_info(self, item:TaskItem|ConfigItem):
+        self.item = item
+        self.name = item.get("name")
+        self.is_checked = item.get("is_checked")
         self.checkbox.setChecked(self.is_checked)
         self.placeholder_label.setText(self.name)
 
@@ -91,7 +90,7 @@ class ListItem(QWidget):
 
     def on_button_clicked(self):
         print(f"{self.name}点击按钮")
-        self.show_option.emit(self.item_id)
+        self.show_option.emit(self.item)
 
     def on_checkbox_changed(self, state):
         self.checkbox_state_changed.emit(self.item_id, state == 2)

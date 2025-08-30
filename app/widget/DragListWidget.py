@@ -108,6 +108,10 @@ class BaseDragListWidget(ListWidget):
     def update_list(self):
         """从模型更新任务列表UI"""
         pass
+    def show_option(self, item: dict):
+        """显示选项"""
+        print(item)
+        
 
 
 class TaskDragListWidget(BaseDragListWidget):
@@ -122,6 +126,7 @@ class TaskDragListWidget(BaseDragListWidget):
             self.task_manager = task_manager
             self.item_order_changed.connect(self.task_manager.onItemOrderChanged)
             self.task_manager.items_changed.connect(self.update_list)
+            
         else:
             print("任务流对象已存在，不重复设置")
 
@@ -147,12 +152,14 @@ class TaskDragListWidget(BaseDragListWidget):
                 #设置不可拖动
                 list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
 
-            task_widget.set_task_info(task.get("item_id"), task.get("name"), task.get("is_checked"))
+            task_widget.set_task_info(task)
             # 连接UI操作到模型更新
             task_widget.checkbox_state_changed.connect(self.task_manager.update_item_status)
+            task_widget.show_option.connect(self.show_option)
 
             self.addItem(list_item)
             self.setItemWidget(list_item, task_widget)
+
 
 
 class ConfigDragListWidget(BaseDragListWidget):
@@ -174,19 +181,28 @@ class ConfigDragListWidget(BaseDragListWidget):
         if self.config_manager is None:
             print("配置流对象未设置，无法更新配置列表")
             return
+        print("配置列表更新")
         self.clear()
         config_list: list[ConfigItem] = self.config_manager.item_list  # type: ignore
 
         for config in config_list:  # type: ignore
+            
             print(f"创建任务项:{config.get('item_id')}")
-
             list_item = QListWidgetItem()
             config_widget = ListItem()
 
-            config_widget.set_task_info(config.get("item_id"), config.get("name"), config.get("is_checked"))
+            config_widget.set_task_info(config)
             # 连接UI操作到模型更新
             
             config_widget.checkbox_state_changed.connect(self.config_manager.update_item_status)
+            config_widget.show_option.connect(self.show_option)
 
             self.addItem(list_item)
             self.setItemWidget(list_item, config_widget)
+            
+    def show_option(self, item: dict):
+        """显示选项"""
+        if self.config_manager is None:
+            return
+        print(item.get("item_id"))
+        self.config_manager.curr_config_id = item.get("item_id","")
