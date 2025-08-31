@@ -66,10 +66,8 @@ class ListItem(QWidget):
         layout.addWidget(self.checkbox)
 
         # 占位label
-        self.placeholder_label = ClickableLabel()
+        self.placeholder_label = BodyLabel()
         self.placeholder_label.setFixedHeight(34)
-
-        self.placeholder_label.clicked.connect(self.on_button_clicked)
 
         # 设置占用所有剩余空间
         self.placeholder_label.setSizePolicy(

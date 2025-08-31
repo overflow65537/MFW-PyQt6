@@ -73,8 +73,7 @@ class BaseItemManaget(QObject):
     @Slot(list)
     def onItemOrderChanged(self, new_order):
         # 根据新顺序重新排列元素数据
-        print(new_order)
-        print(self._item_list)
+        print(f"接收新列表{new_order}")
         self._item_list = [self.get_item_by_id(id) for id in new_order]
         print(f"更新任务顺序：{new_order}")
         # 保存到配置文件
@@ -138,6 +137,16 @@ class ConfigManager(BaseItemManaget):
         self.curr_config = item_list
         self.save_config()
 
+    @Slot(list)
+    def onItemOrderChanged(self, new_order):
+        # 根据新顺序重新排列元素数据
+        print(f"接收新列表{new_order}")
+        self._item_list = [self.get_item_by_id(id) for id in new_order]
+        print(f"更新任务顺序：{new_order}")
+        # 保存到配置文件
+        self.__config["config_list"] = self._item_list
+        self.save_config()
+
     def load_config(self) -> None:
         """加载配置文件，初始化多配置字典"""
         if not self.multi_config_path.exists():
@@ -164,6 +173,7 @@ class ConfigManager(BaseItemManaget):
                 "config_list": [empty_config],
             }
             self.save_config()
+
 
     def save_config(self) -> None:
         """保存主配置文件"""

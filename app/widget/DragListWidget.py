@@ -17,10 +17,7 @@ from PySide6.QtGui import (
 
 from qfluentwidgets import ListWidget
 from .ListItem import ListItem
-from ..core.ItemManager import TaskManager,ConfigManager, TaskItem,ConfigItem
-
-
-
+from ..core.ItemManager import TaskManager, ConfigManager, TaskItem, ConfigItem
 
 
 class BaseDragListWidget(ListWidget):
@@ -33,8 +30,6 @@ class BaseDragListWidget(ListWidget):
         self.setAcceptDrops(True)
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.setDefaultDropAction(Qt.DropAction.MoveAction)
-
-
 
     def toggle_all_checkboxes(self, checked):
         """批量设置所有项的复选框状态
@@ -77,13 +72,9 @@ class BaseDragListWidget(ListWidget):
     def dropEvent(self, event: QDropEvent) -> None:
         drop_pos = event.pos()
         target_item = self.itemAt(drop_pos)
-
         # 检查目标项是否为不可拖动项，如果是则调整放置位置到其下方
-
         if target_item and not (target_item.flags() & Qt.ItemFlag.ItemIsDragEnabled):
-
             return
-
         super().dropEvent(event)
         drop_pos = event.pos()
         target_item = self.itemAt(drop_pos)
@@ -102,23 +93,22 @@ class BaseDragListWidget(ListWidget):
             item = self.item(i)
             tem_widget: ListItem = self.itemWidget(item)  # type: ignore
             item_list.append(tem_widget.item_id)
-        print(item_list)
         self.item_order_changed.emit(item_list)
+        print(f"发送新列表{item_list}")
 
     def update_list(self):
         """从模型更新任务列表UI"""
         pass
+
     def show_option(self, item_id: str):
         """显示选项"""
         print(item_id)
-        
 
 
 class TaskDragListWidget(BaseDragListWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.task_manager: TaskManager | None = None  
-
+        self.task_manager: TaskManager | None = None
 
     def set_task_manager(self, task_manager: TaskManager):
         """设置任务流对象并连接信号槽"""
@@ -126,10 +116,9 @@ class TaskDragListWidget(BaseDragListWidget):
             self.task_manager = task_manager
             self.item_order_changed.connect(self.task_manager.onItemOrderChanged)
             self.task_manager.items_changed.connect(self.update_list)
-            
+
         else:
             print("任务流对象已存在，不重复设置")
-
 
     def update_list(self):
         print("列表更新")
@@ -139,33 +128,33 @@ class TaskDragListWidget(BaseDragListWidget):
             return
 
         self.clear()
-        task_list: list[TaskItem] = self.task_manager.item_list  # type: ignore
+        task_list: list[TaskItem] = self.task_manager.item_list
 
-        for task in task_list:  # type: ignore
+        for task in task_list:
             print(f"创建任务项:{task.get('item_id')}")
 
             list_item = QListWidgetItem()
             task_widget = ListItem()
-            if task.get("item_id") in ["resource_task","controller_task"]:
+            if task.get("task_type") in ["resource", "controller"]:
                 task_widget.checkbox.setChecked(True)
                 task_widget.checkbox.setDisabled(True)
-                #设置不可拖动
                 list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
 
             task_widget.set_task_info(task)
             # 连接UI操作到模型更新
-            task_widget.checkbox_state_changed.connect(self.task_manager.update_item_status)
+            task_widget.checkbox_state_changed.connect(
+                self.task_manager.update_item_status
+            )
             task_widget.show_option.connect(self.show_option)
 
             self.addItem(list_item)
             self.setItemWidget(list_item, task_widget)
 
 
-
 class ConfigDragListWidget(BaseDragListWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.config_manager: ConfigManager | None = None  
+        self.config_manager: ConfigManager | None = None
 
     def set_config_manager(self, config_manager: ConfigManager):
         """设置配置流对象并连接信号槽"""
@@ -176,6 +165,7 @@ class ConfigDragListWidget(BaseDragListWidget):
 
         else:
             print("配置流对象已存在，不重复设置")
+
     def update_list(self):
         """从模型更新配置列表UI"""
         if self.config_manager is None:
@@ -183,23 +173,25 @@ class ConfigDragListWidget(BaseDragListWidget):
             return
         print("配置列表更新")
         self.clear()
-        config_list: list[ConfigItem] = self.config_manager.item_list  # type: ignore
+        config_list: list[ConfigItem] = self.config_manager.item_list
 
-        for config in config_list:  # type: ignore
-            
+        for config in config_list:
+
             print(f"创建任务项:{config.get('item_id')}")
             list_item = QListWidgetItem()
             config_widget = ListItem()
 
             config_widget.set_task_info(config)
             # 连接UI操作到模型更新
-            
-            config_widget.checkbox_state_changed.connect(self.config_manager.update_item_status)
+
+            config_widget.checkbox_state_changed.connect(
+                self.config_manager.update_item_status
+            )
             config_widget.show_option.connect(self.show_option)
 
             self.addItem(list_item)
             self.setItemWidget(list_item, config_widget)
-            
+
     def show_option(self, item_id: str):
         """显示选项"""
         if self.config_manager is None:
