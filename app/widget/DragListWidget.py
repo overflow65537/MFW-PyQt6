@@ -108,9 +108,9 @@ class BaseDragListWidget(ListWidget):
     def update_list(self):
         """从模型更新任务列表UI"""
         pass
-    def show_option(self, item: dict):
+    def show_option(self, item_id: str):
         """显示选项"""
-        print(item)
+        print(item_id)
         
 
 
@@ -200,9 +200,9 @@ class ConfigDragListWidget(BaseDragListWidget):
             self.addItem(list_item)
             self.setItemWidget(list_item, config_widget)
             
-    def show_option(self, item: dict):
+    def show_option(self, item_id: str):
         """显示选项"""
         if self.config_manager is None:
             return
-        print(item.get("item_id"))
-        self.config_manager.curr_config_id = item.get("item_id","")
+        print(item_id)
+        self.config_manager.curr_config_id = item_id

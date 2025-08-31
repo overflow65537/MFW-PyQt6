@@ -73,6 +73,8 @@ class BaseItemManaget(QObject):
     @Slot(list)
     def onItemOrderChanged(self, new_order):
         # 根据新顺序重新排列元素数据
+        print(new_order)
+        print(self._item_list)
         self._item_list = [self.get_item_by_id(id) for id in new_order]
         print(f"更新任务顺序：{new_order}")
         # 保存到配置文件
@@ -126,6 +128,15 @@ class ConfigManager(BaseItemManaget):
     def curr_config(self) -> ConfigItem:
 
         return self.__curr_config
+    
+    @curr_config.setter
+    def curr_config(self, value: list[TaskItem]):
+        self.__curr_config["task"] = value
+        #self.task_items_changed.emit()
+    
+    def save_list(self, item_list: list[TaskItem]):
+        self.curr_config = item_list
+        self.save_config()
 
     def load_config(self) -> None:
         """加载配置文件，初始化多配置字典"""
@@ -211,7 +222,7 @@ class TaskManager(BaseItemManaget):
         self.config_manager = config_manager
         self.__config = config_manager.curr_config
         self._item_list: List[TaskItem] = self.__config.get("task", [])
-        self.save_item_list.connect(config_manager.onItemOrderChanged)
+        self.save_item_list.connect(config_manager.save_list)
         self.config_manager.task_items_changed.connect(self.update_item)
 
     def get_item_by_id(self, item_id: str):
