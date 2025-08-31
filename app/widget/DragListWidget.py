@@ -103,6 +103,18 @@ class BaseDragListWidget(ListWidget):
     def show_option(self, item_id: str):
         """显示选项"""
         print(item_id)
+        self.select_item(item_id)
+
+    def select_item(self, item_id: str):
+        """选择指定项"""
+        for i in range(self.count()):
+            item = self.item(i)
+            if not item:
+                continue
+            widget: ListItem = self.itemWidget(item)  # type: ignore
+            if hasattr(widget, "item_id") and widget.item_id == item_id:
+                self.setCurrentItem(item)
+                break
 
 
 class TaskDragListWidget(BaseDragListWidget):
@@ -149,6 +161,8 @@ class TaskDragListWidget(BaseDragListWidget):
 
             self.addItem(list_item)
             self.setItemWidget(list_item, task_widget)
+
+        
 
 
 class ConfigDragListWidget(BaseDragListWidget):
@@ -198,3 +212,4 @@ class ConfigDragListWidget(BaseDragListWidget):
             return
         print(item_id)
         self.config_manager.curr_config_id = item_id
+        self.select_item(item_id)
