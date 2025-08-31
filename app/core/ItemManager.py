@@ -247,3 +247,8 @@ class TaskManager(BaseItemManaget):
         self.__config = self.config_manager.curr_config
         self._item_list: List[TaskItem] = self.__config.get("task", [])
         self.items_changed.emit()
+
+class BaseOptionManager(QObject):
+    """选项数据模型，管理所有选项数据"""
+    def __init__(self, parent=None):
+        super().__init__(parent)

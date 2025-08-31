@@ -34,7 +34,7 @@ class ClickableLabel(BodyLabel):
 
 
 class ListItem(QWidget):
-    show_option = Signal(str)
+    show_option = Signal(dict)
     # 信号：复选框状态变化
     checkbox_state_changed = Signal(str, bool)
 
@@ -91,7 +91,7 @@ class ListItem(QWidget):
 
     def on_button_clicked(self):
         print(f"{self.name}点击按钮")
-        self.show_option.emit(self.item_id)
+        self.show_option.emit(self.item)
 
     def on_checkbox_changed(self, state):
         self.checkbox_state_changed.emit(self.item_id, state == 2)

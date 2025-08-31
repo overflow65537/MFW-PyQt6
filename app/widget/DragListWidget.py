@@ -17,7 +17,7 @@ from PySide6.QtGui import (
 
 from qfluentwidgets import ListWidget
 from .ListItem import ListItem
-from ..core.ItemManager import TaskManager, ConfigManager, TaskItem, ConfigItem
+from ..core.ItemManager import TaskManager, ConfigManager ,TaskItem, ConfigItem
 
 
 class BaseDragListWidget(ListWidget):
@@ -100,10 +100,10 @@ class BaseDragListWidget(ListWidget):
         """从模型更新任务列表UI"""
         pass
 
-    def show_option(self, item_id: str):
+    def show_option(self, item: dict):
         """显示选项"""
-        print(item_id)
-        self.select_item(item_id)
+        print(item)
+        self.select_item(item.get("item_id",""))
 
     def select_item(self, item_id: str):
         """选择指定项"""
@@ -206,10 +206,10 @@ class ConfigDragListWidget(BaseDragListWidget):
             self.addItem(list_item)
             self.setItemWidget(list_item, config_widget)
 
-    def show_option(self, item_id: str):
+    def show_option(self, item: dict):
         """显示选项"""
         if self.config_manager is None:
             return
-        print(item_id)
-        self.config_manager.curr_config_id = item_id
-        self.select_item(item_id)
+        print(item)
+        self.config_manager.curr_config_id = item.get("item_id","")
+        self.select_item(item.get("item_id",""))
