@@ -18,3 +18,10 @@ class FastStartInterface(UI_FastStartInterface, QWidget):
     def __init__(self, parent=None):
         QWidget.__init__(self, parent=parent)
         self.setupUi(self)
+        self.task_info.set_config_title(
+            self.tr("任务信息")
+        )
+        self.config_selection.set_config_title(
+            self.tr("配置选择")
+        )
+        self.option_panel.set_title(self.tr("选项"))

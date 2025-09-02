@@ -1,14 +1,10 @@
-
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-
     QAbstractItemView,
-
 )
-
 
 
 from qfluentwidgets import (
@@ -18,21 +14,19 @@ from qfluentwidgets import (
     BodyLabel,
     ListWidget,
     ToolButton,
-
+    ScrollArea,
     FluentIcon as FIF,
-
 )
 
 
-from .DragListWidget import TaskDragListWidget,ConfigDragListWidget
-
+from .DragListWidget import TaskDragListWidget, ConfigDragListWidget
 
 
 class BaseListToolBarWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-       
+
         self._init_config_title()
         self._init_config_selection()
 
@@ -40,8 +34,6 @@ class BaseListToolBarWidget(QWidget):
         self.main_layout = QVBoxLayout(self)
         self.main_layout.addLayout(self.title_layout)
         self.main_layout.addWidget(self.config_selection_widget)
-
-
 
     def _init_config_title(self):
         """初始化配置选择标题"""
@@ -87,11 +79,9 @@ class BaseListToolBarWidget(QWidget):
         self.task_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.task_list.setDefaultDropAction(Qt.DropAction.MoveAction)
 
-
     def _init_config_selection(self):
         """初始化配置选择"""
         self._init_task_list()
-
 
         # 配置选择列表布局
         self.config_selection_widget = SimpleCardWidget()
@@ -100,9 +90,6 @@ class BaseListToolBarWidget(QWidget):
 
         self.config_selection_layout = QVBoxLayout(self.config_selection_widget)
         self.config_selection_layout.addWidget(self.task_list)
-
-
-
 
     def set_config_title(self, title: str):
         """设置标题"""
@@ -117,7 +104,6 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         # 取消选择全部按钮
         self.deselect_all_button.clicked.connect(self.deselect_all)
 
-
     def _init_task_list(self):
         """初始化任务列表"""
         self.task_list = TaskDragListWidget(parent=self)
@@ -129,6 +115,7 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
     def deselect_all(self):
         """取消选择全部"""
         self.task_list.deselect_all()
+
 
 class ConfigListToolBarWidget(BaseListToolBarWidget):
     def __init__(self, parent=None):
@@ -149,3 +136,35 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
     def deselect_all(self):
         """取消选择全部"""
         self.task_list.deselect_all()
+
+class OptionWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._init_ui()
+
+    def _init_ui(self):
+        """初始化UI"""
+        self.main_layout = QVBoxLayout(self)
+
+        self.title_widget = BodyLabel()
+        self.title_widget.setStyleSheet("font-size: 20px;")
+        self.title_widget.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        self.title_layout = QHBoxLayout()
+        self.title_layout.addWidget(self.title_widget)
+
+        self.option_area_card = SimpleCardWidget()
+        self.option_area_card.setClickEnabled(False)
+        self.option_area_card.setBorderRadius(8)
+
+        self.option_area_widget = ScrollArea()
+        self.option_area_layout = QVBoxLayout(self.option_area_widget)
+        self.option_area_card.setLayout(self.option_area_layout)
+
+        self.main_layout.addLayout(self.title_layout)
+        self.main_layout.addWidget(self.option_area_card)
+
+    def set_title(self, title: str):
+        """设置标题"""
+        self.title_widget.setText(title)
+

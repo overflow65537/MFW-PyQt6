@@ -17,7 +17,7 @@ from PySide6.QtGui import (
 
 from qfluentwidgets import ListWidget
 from .ListItem import ListItem
-from ..core.ItemManager import TaskManager, ConfigManager ,TaskItem, ConfigItem
+from ..core.ItemManager import TaskManager, ConfigManager, TaskItem, ConfigItem
 
 
 class BaseDragListWidget(ListWidget):
@@ -100,11 +100,6 @@ class BaseDragListWidget(ListWidget):
         """从模型更新任务列表UI"""
         pass
 
-    def show_option(self, item: dict):
-        """显示选项"""
-        print(item)
-        self.select_item(item.get("item_id",""))
-
     def select_item(self, item_id: str):
         """选择指定项"""
         for i in range(self.count()):
@@ -162,7 +157,23 @@ class TaskDragListWidget(BaseDragListWidget):
             self.addItem(list_item)
             self.setItemWidget(list_item, task_widget)
 
-        
+    def show_option(self, item: dict):
+        """显示选项"""
+        print(f"显示选项: {item}")
+        self.select_item(item.get("item_id", ""))
+
+        # 解析任务类型
+        task_type = item.get("task_type", "")
+        print(f"任务类型: {task_type}")
+
+        if task_type == "task":
+            print("启动task设置")
+
+        elif task_type == "controller":
+            print("显示控制器设置")
+
+        elif task_type == "resource":
+            print("显示资源设置")
 
 
 class ConfigDragListWidget(BaseDragListWidget):
@@ -211,5 +222,5 @@ class ConfigDragListWidget(BaseDragListWidget):
         if self.config_manager is None:
             return
         print(item)
-        self.config_manager.curr_config_id = item.get("item_id","")
-        self.select_item(item.get("item_id",""))
+        self.config_manager.curr_config_id = item.get("item_id", "")
+        self.select_item(item.get("item_id", ""))
