@@ -44,11 +44,11 @@ class BaseItemManaget(QObject):
         import random
         import string
 
-        if t[0].lower() == "c":  # 配置
+        if t[0].lower() == "c":  # 配置(config)
             key = "c_" + "".join(
                 random.choices(string.ascii_letters + string.digits, k=10)
             )
-        elif t[0].lower() == "t":  # 任务
+        elif t[0].lower() == "t":  # 任务(task)
             key = "t_" + "".join(
                 random.choices(string.ascii_letters + string.digits, k=10)
             )
@@ -221,7 +221,57 @@ class ConfigManager(BaseItemManaget):
 
 class TaskManager(BaseItemManaget):
     """任务数据模型，管理所有任务数据"""
+    need_save = core_signalBus.need_save
 
     def __init__(self, config_manager: ConfigManager):
 
         self.config_manager = config_manager
+        core_signalBus.change_task_flow.connect(self.init_task_flow)
+        self.init_task_flow()
+
+    def save_config(self) -> None:
+        """保存配置"""
+        new_config = json.loads(json.dumps(self.config_manager.config))
+        for cfg in new_config["config_list"]:
+            if cfg["item_id"] == self.config_manager.curr_config_id:
+                cfg["task"] = self.task_list
+                break
+
+        self.config_manager.config = new_config
+        
+    def init_task_flow(self):
+        """初始化任务流"""
+        self.task_list = []
+        for config in self.config_manager.config_list:
+            if config["item_id"] == self.config_manager.curr_config_id:
+                for task in config["task"]:
+                    self.task_list.append(task)
+                return
+        raise ValueError(f"未找到当前配置id{self.config_manager.curr_config_id}")
+    
+    def add_task(self, task: TaskItem) -> None:
+        """添加任务"""
+        self.task_list.append(task)
+        self.save_config()
+
+
+    def del_task(self, task_id: str) -> None:
+        """删除任务"""
+        for task in self.task_list:
+            if task["item_id"] == task_id:
+                self.task_list.remove(task)
+                self.save_config()
+                break
+        else:
+            logger.error(f"未找到任务{task_id}")
+
+    def move_task(self, task_id: str, index: int) -> None:
+        """移动任务"""
+        for task in self.task_list:
+            if task["item_id"] == task_id:
+                self.task_list.remove(task)
+                self.task_list.insert(index, task)
+                self.save_config()
+                break
+        else:
+            logger.error(f"未找到任务{task_id}")
