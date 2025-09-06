@@ -1,26 +1,52 @@
-from typing import TypedDict
 from pathlib import Path
 import json
-import queue
-import asyncio
-import aiofiles
-import json
-from PySide6.QtCore import QObject
-from PySide6.QtCore import QObject, Signal, Property, Slot
+from dataclasses import dataclass
+from PySide6.QtCore import QObject, Signal
 
 from ..utils.logger import logger
-from ..core.CoreSignalBus import core_signalBus
 
 
-class TaskItem(TypedDict, total=True):
+class CoreSignalBus(QObject):
+
+    change_task_flow = Signal()  # 切换任务列表
+    show_option = Signal(dict)  # 显示选项
+    need_save = Signal()  # 配置文件需要保存
+    task_update = Signal(list)  # 任务列表更新
+
+
+core_signalBus = CoreSignalBus()
+
+
+@dataclass
+class TaskItem:
     name: str
     item_id: str
     is_checked: bool
     task_option: dict
     task_type: str
 
+    def __init__(
+        self,
+        name: str,
+        item_id: str,
+        is_checked: bool,
+        task_option: dict,
+        task_type: str,
+    ):
+        super().__init__()
+        self.name = name
+        self.item_id = item_id
+        self.is_checked = is_checked
+        self.task_option = task_option
+        self.task_type = task_type
 
-class ConfigItem(TypedDict, total=True):
+    def save(self) -> dict:
+        """保存任务"""
+        return self.__dict__.copy()
+
+
+@dataclass
+class ConfigItem:
     name: str
     item_id: str
     is_checked: bool
@@ -30,13 +56,99 @@ class ConfigItem(TypedDict, total=True):
     know_task: list
     task_type: str
 
+    def __init__(
+        self,
+        name: str,
+        item_id: str,
+        is_checked: bool,
+        task: list[TaskItem],
+        gpu: int,
+        finish_option: int,
+        know_task: list,
+        task_type: str,
+    ):
+        super().__init__()
+        self.name = name
+        self.item_id = item_id
+        self.is_checked = is_checked
+        self.task = task
+        self.gpu = gpu
+        self.finish_option = finish_option
+        self.know_task = know_task
+        self.task_type = task_type
 
-class MultiConfig(TypedDict, total=True):
+    def save(self) -> dict:
+        """保存配置"""
+        task_list = []
+        for task in self.task:
+            task_list.append(task.save())
+        return_dict = self.__dict__.copy()
+        return_dict["task"] = task_list
+        return return_dict
+
+
+@dataclass
+class MultiConfig:
     curr_config_id: str
     config_list: list[ConfigItem]
 
+    def __init__(self, config: dict):
+        super().__init__()
+        logger.debug(f"接收到的配置：{config}")
+        self.load(config)
 
-class BaseItemManaget(QObject):
+    def load(self, config: dict) -> bool:
+        """加载配置"""
+        self.curr_config_id = config["curr_config_id"]
+        self.config_list = []
+        for config_item in config["config_list"]:
+            task_list = []
+            for task_item in config_item["task"]:
+                task = TaskItem(
+                    task_item["name"],
+                    task_item["item_id"],
+                    task_item["is_checked"],
+                    task_item["task_option"],
+                    task_item["task_type"],
+                )
+                task_list.append(task)
+            config_item = ConfigItem(
+                config_item["name"],
+                config_item["item_id"],
+                config_item["is_checked"],
+                task_list,
+                config_item["gpu"],
+                config_item["finish_option"],
+                config_item["know_task"],
+                config_item["task_type"],
+            )
+            self.config_list.append(config_item)
+        return True
+
+    def save(self, path: Path) -> bool:
+        """保存配置"""
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                config = {"curr_config_id": self.curr_config_id, "config_list": []}
+                for config_item in self.config_list:
+                    config_item_dict = config_item.save()
+                    config["config_list"].append(config_item_dict)
+                json.dump(config, f, ensure_ascii=False, indent=4)
+            return True
+        except Exception as e:
+            logger.error(f"保存配置失败：{e}")
+            return False
+
+    def show(self) -> dict:
+        """显示配置"""
+        config = {"curr_config_id": self.curr_config_id, "config_list": []}
+        for config_item in self.config_list:
+            config_item_dict = config_item.save()
+            config["config_list"].append(config_item_dict)
+        return config
+
+
+class BaseItemManager(QObject):
 
     @staticmethod
     def generate_id(t: str) -> str:
@@ -57,129 +169,178 @@ class BaseItemManaget(QObject):
         return key
 
 
-class ConfigManager(BaseItemManaget):
+class ConfigManager(BaseItemManager):
     """配置数据模型，管理所有配置数据"""
 
-    need_save = core_signalBus.need_save  # 配置文件需要保存
-    change_task_flow = core_signalBus.change_task_flow  # 任务流改变
-
-    def __init__(self, multi_config_path: Path | str):
+    def __init__(self, multi_config_path: Path | str, signal_bus: CoreSignalBus):
+        super().__init__()
+        self.signal_bus = signal_bus
+        self.need_save = self.signal_bus.need_save
+        self.change_task_flow = self.signal_bus.change_task_flow
+        self.task_update = self.signal_bus.task_update
+        self.need_save.connect(self.save_config)
+        self.task_update.connect(self.update_current_config_tasks)
 
         self.multi_config_path = Path(multi_config_path)
         logger.info(f"加载配置文件：{self.multi_config_path}")
         self.load_config()
-        self.save_queue = queue.Queue()
-        self.is_saving = False
-        self.loop = asyncio.get_event_loop()
-
-        # 连接信号到队列处理函数
-        self.need_save.connect(self.add_to_save_queue)
 
     @property
     def curr_config_id(self) -> str:
-        return self.__config["curr_config_id"]
+        """获取当前配置id"""
+        return self.__config.curr_config_id
 
     @curr_config_id.setter
-    def curr_config_id(self, value: str) -> None:
-        logger.info(f"手动修改当前配置为{value}")
-        self.__config["curr_config_id"] = value
-        self.need_save.emit()
-        self.change_task_flow.emit()
+    def curr_config_id(self, value: str) -> bool:
+        """设置当前配置id"""
+        self.__config.curr_config_id = value
+        self.save_config()
+        return True
 
     @property
     def config_list(self) -> list[ConfigItem]:
-        return self.__config["config_list"]
+        """获取配置列表"""
+        return self.__config.config_list
 
     @property
-    def config(self) -> MultiConfig:
+    def all_config(self) -> MultiConfig:
+        """获取所有配置"""
         return self.__config
 
-    @config.setter
-    def config(self, value: MultiConfig) -> None:
+    @all_config.setter
+    def all_config(self, value: MultiConfig) -> bool:
+        """设置所有配置"""
         self.__config = value
         logger.info("手动修改配置")
-        self.need_save.emit()
+        self.save_config()
         self.change_task_flow.emit()
+        return True
 
-    def add_config(self, config: ConfigItem) -> None:
+    @property
+    def config(self) -> ConfigItem:
+        """获取当前配置"""
+        return self.from_id_get_config(self.curr_config_id)
+
+    @config.setter
+    def config(self, value: ConfigItem) -> bool:
+        """设置当前配置"""
+        self.from_id_set_config(self.curr_config_id, value)
+        return True
+
+    def get_current_config_tasks(self) -> list[TaskItem]:
+        """获取当前配置的任务列表"""
+        return self.config.task.copy()
+
+    def update_current_config_tasks(self, tasks: list[TaskItem]) -> bool:
+        """更新当前配置的任务列表"""
+        try:
+            current_config = self.config
+            current_config.task = tasks
+            self.config = current_config
+            return True
+        except Exception as e:
+            logger.error(f"更新任务列表失败：{e}")
+            return False
+
+    def add_config(self, config: ConfigItem) -> bool:
         """添加配置"""
         self.config_list.append(config)
         logger.info("手动添加配置")
-        self.need_save.emit()
+        self.save_config()
+        return True
 
-    def remove_config(self, config_id: str) -> None:
+    def remove_config(self, config_id: str) -> bool:
         """删除配置"""
-        for config in self.config_list:
-            if config["item_id"] == config_id:
-                self.config_list.remove(config)
+        found = False
+        for i, config in enumerate(self.config_list):
+            if config.item_id == config_id:
+                # 找到配置，执行删除
+                self.config_list.pop(i)
+                found = True
+                # 如果删除的是当前配置，则更新当前配置
+                if config_id == self.curr_config_id and self.config_list:
+                    self.curr_config_id = self.config_list[0].item_id
                 break
-            else:
-                logger.error(f"未找到配置{config_id}")
-        else:
+
+        if not found:
             logger.error(f"未找到配置{config_id}")
-        self.need_save.emit()
+            return False
+        else:
+            # 只有成功删除配置后才保存
+            self.save_config()
+            return True
 
-    def config_checkbox_state_changed(self, config_id: str, checked: bool) -> None:
+    def config_checkbox_state_changed(self, config_id: str, checked: bool) -> bool:
         """配置复选框状态改变"""
+        found = False
         for config in self.config_list:
-            if config["item_id"] == config_id:
-                config["is_checked"] = checked
+            if config.item_id == config_id:
+                config.is_checked = checked
+                found = True
                 break
-            else:
-                logger.error(f"未找到配置{config_id}")
-        logger.info(f"配置{config_id}复选框状态改变为{checked}")
-        self.need_save.emit()
 
-    def load_config(self) -> None:
+        if not found:
+            logger.error(f"未找到配置{config_id}")
+            return False
+
+        logger.info(f"配置{config_id}复选框状态改变为{checked}")
+        self.save_config()
+        return True
+
+    def load_config(self) -> bool:
         """加载配置文件，初始化多配置字典"""
         if not self.multi_config_path.exists():
-            logger.warning(f"配置文件不存在，创建新文件：")
-            empty_config = self.create_empty_config()
-            self.__config: MultiConfig = {
-                "curr_config_id": empty_config["item_id"],
-                "config_list": [empty_config],
-            }
-            logger.info(f"{json.dumps(empty_config, indent=4, ensure_ascii=False)}")
-            self.need_save.emit()
+            logger.warning(f"配置文件不存在，创建新文件：{self.multi_config_path}")
 
-            return
+            self.__config = self.create_empty_config()
+            logger.info(
+                f"{json.dumps(self.__config.show(), indent=4, ensure_ascii=False)}"
+            )
+            self.save_config()
+            return True
 
         try:
             with open(self.multi_config_path, "r", encoding="utf-8") as f:
-                self.__config: MultiConfig = json.load(f)
-                if not self.__config or not self.__config.get("config_list"):
-                    raise ValueError("配置数据无效")
+                config = json.load(f)
+                if (
+                    config.get("curr_config_id") is None
+                    or config.get("config_list") is None
+                ):
+                    raise ValueError("配置文件格式错误")
+
+                self.__config = MultiConfig(config)
                 logger.info(
-                    f"加载配置成功：\n{json.dumps(self.__config, indent=4, ensure_ascii=False)}"
+                    f"加载配置成功：\n{json.dumps(self.__config.show(), indent=4, ensure_ascii=False)}"
                 )
+                return True
         except Exception as e:
             logger.error(f"加载配置失败：{e}\n使用新配置")
-            empty_config = self.create_empty_config()
-            self.__config: MultiConfig = {
-                "curr_config_id": empty_config["item_id"],
-                "config_list": [empty_config],
-            }
-            logger.info(f"{json.dumps(empty_config, indent=4, ensure_ascii=False)}")
-            self.need_save.emit()
+            self.__config = self.create_empty_config()
+            logger.info(
+                f"{json.dumps(self.__config.show(), indent=4, ensure_ascii=False)}"
+            )
+            self.save_config()
+            return True
 
-    def create_empty_config(self) -> ConfigItem:
-        resource_task: TaskItem = {
-            "name": "资源",
+    def create_empty_config(self, name: str = "New Config") -> MultiConfig:
+        resource_task: dict = {
+            "name": "resource",
             "item_id": self.generate_id("task"),
             "is_checked": True,
             "task_option": {},
             "task_type": "resource",
         }
-        controller_task: TaskItem = {
-            "name": "控制器",
+        controller_task: dict = {
+            "name": "controller",
             "item_id": self.generate_id("task"),
             "is_checked": True,
             "task_option": {},
             "task_type": "controller",
         }
+
         """创建一个空配置"""
-        empty_config: ConfigItem = {
-            "name": "新配置",
+        empty_config: dict = {
+            "name": name,
             "item_id": self.generate_id("config"),
             "is_checked": True,
             "task": [resource_task, controller_task],
@@ -188,90 +349,97 @@ class ConfigManager(BaseItemManaget):
             "know_task": [],
             "task_type": "config",
         }
-        return empty_config
 
-    @Slot(dict)
-    def add_to_save_queue(self, data):
-        """将需要保存的数据添加到队列"""
-        self.save_queue.put(data)
-        if not self.is_saving:
-            self.loop.create_task(self.async_save_data())
+        empty_muit_config_dict: dict = {
+            "curr_config_id": empty_config["item_id"],
+            "config_list": [empty_config],
+        }
+        return MultiConfig(empty_muit_config_dict)
 
-    async def async_save_data(self):
-        """异步处理保存队列中的数据"""
-        self.is_saving = True
-        while not self.save_queue.empty():
-            data = self.save_queue.get()
-            try:
-                await self._save_to_file(data)
-                logger.info(f"配置数据保存成功: {json.dumps(data, ensure_ascii=False)}")
-            except Exception as e:
-                logger.error(f"配置数据保存失败: {str(e)}")
-            finally:
-                self.save_queue.task_done()
-        self.is_saving = False
+    def from_id_get_config(self, config_id: str) -> ConfigItem:
+        """根据配置id获取配置"""
+        for config in self.config_list:
+            if config.item_id == config_id:
+                return config
+        raise ValueError(f"未找到配置{config_id}")
 
-    async def _save_to_file(self, data):
-        """实际保存数据到文件的异步方法"""
-        # 根据实际需求修改文件路径
-        file_path = self.multi_config_path
-        async with aiofiles.open(file_path, "w", encoding="utf-8") as f:
-            await f.write(json.dumps(data, indent=4, ensure_ascii=False))
+    def from_id_set_config(self, config_id: str, config: ConfigItem) -> bool:
+        """根据配置id设置配置"""
+        for i, item in enumerate(self.config_list):
+            if item.item_id == config_id:
+                self.config_list[i] = config
+                self.save_config()
+                return True
+
+        logger.error(f"未找到配置{config_id}")
+        return False
+
+    def save_config(self) -> bool:
+        """保存配置"""
+        try:
+            result = self.__config.save(self.multi_config_path)
+            if result:
+                logger.info(f"配置保存成功：{self.multi_config_path}")
+            return result
+        except Exception as e:
+            logger.error(f"保存配置时发生异常：{e}")
+            return False
 
 
-class TaskManager(BaseItemManaget):
-    """任务数据模型，管理所有任务数据"""
-    need_save = core_signalBus.need_save
+class TaskManager(BaseItemManager):
 
-    def __init__(self, config_manager: ConfigManager):
+    def __init__(
+        self, config_manager: ConfigManager, signal_bus: CoreSignalBus
+    ) -> None:
+        super().__init__()
+
+        self.signal_bus = signal_bus
+        self.need_save = self.signal_bus.need_save
+        self.change_task_flow = self.signal_bus.change_task_flow
+        self.task_update = self.signal_bus.task_update
 
         self.config_manager = config_manager
-        core_signalBus.change_task_flow.connect(self.init_task_flow)
-        self.init_task_flow()
-
-    def save_config(self) -> None:
-        """保存配置"""
-        new_config = json.loads(json.dumps(self.config_manager.config))
-        for cfg in new_config["config_list"]:
-            if cfg["item_id"] == self.config_manager.curr_config_id:
-                cfg["task"] = self.task_list
-                break
-
-        self.config_manager.config = new_config
-        
-    def init_task_flow(self):
-        """初始化任务流"""
         self.task_list = []
-        for config in self.config_manager.config_list:
-            if config["item_id"] == self.config_manager.curr_config_id:
-                for task in config["task"]:
-                    self.task_list.append(task)
-                return
-        raise ValueError(f"未找到当前配置id{self.config_manager.curr_config_id}")
-    
-    def add_task(self, task: TaskItem) -> None:
-        """添加任务"""
-        self.task_list.append(task)
-        self.save_config()
+        self.change_task_flow.connect(self.init_list)
+        self.init_list()
 
+    def init_list(self) -> None:
+        self.task_list = self.config_manager.get_current_config_tasks()
 
-    def del_task(self, task_id: str) -> None:
-        """删除任务"""
+    def add_task(self, task: TaskItem) -> bool:
+        try:
+            self.task_list.append(task)
+            self.task_update.emit(self.task_list)
+            self.need_save.emit()
+
+            return True
+        except Exception as e:
+            logger.error(f"添加任务失败：{e}")
+            return False
+
+    def remove_task(self, task_id: str) -> bool:
+        for i, task in enumerate(self.task_list):
+            if task.item_id == task_id:
+                self.task_list.pop(i)
+                self.task_update.emit(self.task_list)
+                self.need_save.emit()
+                return True
+        return False
+
+    def update_task(self, task_id: str, task: TaskItem) -> bool:
+        for i, t in enumerate(self.task_list):
+            if t.item_id == task_id:
+                self.task_list[i] = task
+                self.task_update.emit(self.task_list)
+                self.need_save.emit()
+                return True
+        return False
+
+    def task_checkbox_state_changed(self, task_id: str, checked: bool) -> bool:
         for task in self.task_list:
-            if task["item_id"] == task_id:
-                self.task_list.remove(task)
-                self.save_config()
-                break
-        else:
-            logger.error(f"未找到任务{task_id}")
-
-    def move_task(self, task_id: str, index: int) -> None:
-        """移动任务"""
-        for task in self.task_list:
-            if task["item_id"] == task_id:
-                self.task_list.remove(task)
-                self.task_list.insert(index, task)
-                self.save_config()
-                break
-        else:
-            logger.error(f"未找到任务{task_id}")
+            if task.item_id == task_id:
+                task.is_checked = checked
+                self.task_update.emit(self.task_list)
+                self.need_save.emit()
+                return True
+        return False
