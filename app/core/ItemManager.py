@@ -4,17 +4,9 @@ from dataclasses import dataclass
 from PySide6.QtCore import QObject, Signal
 
 from ..utils.logger import logger
+from .CoreSignalBus import CoreSignalBus
 
 
-class CoreSignalBus(QObject):
-
-    change_task_flow = Signal()  # 切换任务列表
-    show_option = Signal(dict)  # 显示选项
-    need_save = Signal()  # 配置文件需要保存
-    task_update = Signal(list)  # 任务列表更新
-
-
-core_signalBus = CoreSignalBus()
 
 
 @dataclass
@@ -85,7 +77,7 @@ class ConfigItem:
         return_dict = self.__dict__.copy()
         return_dict["task"] = task_list
         return return_dict
-
+    
 
 @dataclass
 class MultiConfig:
@@ -127,6 +119,9 @@ class MultiConfig:
 
     def save(self, path: Path) -> bool:
         """保存配置"""
+        #如果路径不存在，创建路径
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True)
         try:
             with open(path, "w", encoding="utf-8") as f:
                 config = {"curr_config_id": self.curr_config_id, "config_list": []}
@@ -146,7 +141,6 @@ class MultiConfig:
             config_item_dict = config_item.save()
             config["config_list"].append(config_item_dict)
         return config
-
 
 class BaseItemManager(QObject):
 
@@ -399,17 +393,22 @@ class TaskManager(BaseItemManager):
         self.task_update = self.signal_bus.task_update
 
         self.config_manager = config_manager
-        self.task_list = []
+        self.__task_list = []
         self.change_task_flow.connect(self.init_list)
         self.init_list()
 
     def init_list(self) -> None:
-        self.task_list = self.config_manager.get_current_config_tasks()
+        self.__task_list = self.config_manager.get_current_config_tasks()
+
+    
+    @property
+    def task_list(self) -> list[TaskItem]:
+        return self.__task_list
 
     def add_task(self, task: TaskItem) -> bool:
         try:
-            self.task_list.append(task)
-            self.task_update.emit(self.task_list)
+            self.__task_list.append(task)
+            self.task_update.emit(self.__task_list)
             self.need_save.emit()
 
             return True
@@ -418,28 +417,34 @@ class TaskManager(BaseItemManager):
             return False
 
     def remove_task(self, task_id: str) -> bool:
-        for i, task in enumerate(self.task_list):
+        for i, task in enumerate(self.__task_list):
             if task.item_id == task_id:
-                self.task_list.pop(i)
-                self.task_update.emit(self.task_list)
+                self.__task_list.pop(i)
+                self.task_update.emit(self.__task_list)
                 self.need_save.emit()
                 return True
         return False
 
     def update_task(self, task_id: str, task: TaskItem) -> bool:
-        for i, t in enumerate(self.task_list):
+        for i, t in enumerate(self.__task_list):
             if t.item_id == task_id:
-                self.task_list[i] = task
-                self.task_update.emit(self.task_list)
+                self.__task_list[i] = task
+                self.task_update.emit(self.__task_list)
                 self.need_save.emit()
                 return True
         return False
 
     def task_checkbox_state_changed(self, task_id: str, checked: bool) -> bool:
-        for task in self.task_list:
+        for task in self.__task_list:
             if task.item_id == task_id:
                 task.is_checked = checked
-                self.task_update.emit(self.task_list)
+                self.task_update.emit(self.__task_list)
                 self.need_save.emit()
                 return True
         return False
+    
+    def get_task(self, task_id: str) -> TaskItem|None:
+        for task in self.__task_list:
+            if task.item_id == task_id:
+                return task
+        return None

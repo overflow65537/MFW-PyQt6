@@ -18,6 +18,7 @@ from PySide6.QtGui import (
 from qfluentwidgets import ListWidget
 from .ListItem import ListItem
 from ..core.ItemManager import TaskManager, ConfigManager, TaskItem, ConfigItem
+from ..core.CoreSignalBus import CoreSignalBus
 
 
 class BaseDragListWidget(ListWidget):
@@ -117,13 +118,13 @@ class TaskDragListWidget(BaseDragListWidget):
         super().__init__(parent)
         self.task_manager: TaskManager | None = None
 
-    def set_task_manager(self, task_manager: TaskManager):
+    def set_task_manager(self, task_manager: TaskManager, coresignalbus: CoreSignalBus):
         """设置任务流对象并连接信号槽"""
         if self.task_manager is None:
             self.task_manager = task_manager
-            self.item_order_changed.connect(self.task_manager.onItemOrderChanged)
-            self.task_manager.items_changed.connect(self.update_list)
-
+            self.coresignalbus = coresignalbus
+            self.update_list()
+            self.coresignalbus.change_task_flow.connect(self.update_list)
         else:
             print("任务流对象已存在，不重复设置")
 
@@ -135,24 +136,17 @@ class TaskDragListWidget(BaseDragListWidget):
             return
 
         self.clear()
-        task_list: list[TaskItem] = self.task_manager.item_list
-
+        task_list: list[TaskItem] = self.task_manager.task_list
         for task in task_list:
-            print(f"创建任务项:{task.get('item_id')}")
+            print(f"创建任务项:{task.item_id}")
 
             list_item = QListWidgetItem()
-            task_widget = ListItem()
-            if task.get("task_type") in ["resource", "controller"]:
+            task_widget = ListItem(task, self.coresignalbus)
+            if task.task_type in ["resource", "controller"]:
                 task_widget.checkbox.setChecked(True)
                 task_widget.checkbox.setDisabled(True)
                 list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
-
-            task_widget.set_task_info(task)
             # 连接UI操作到模型更新
-            task_widget.checkbox_state_changed.connect(
-                self.task_manager.update_item_status
-            )
-            task_widget.show_option.connect(self.show_option)
 
             self.addItem(list_item)
             self.setItemWidget(list_item, task_widget)
@@ -181,12 +175,12 @@ class ConfigDragListWidget(BaseDragListWidget):
         super().__init__(parent)
         self.config_manager: ConfigManager | None = None
 
-    def set_config_manager(self, config_manager: ConfigManager):
+    def set_config_manager(self, config_manager: ConfigManager, coresignalbus: CoreSignalBus):
         """设置配置流对象并连接信号槽"""
         if self.config_manager is None:
             self.config_manager = config_manager
-            self.item_order_changed.connect(self.config_manager.onItemOrderChanged)
-            self.config_manager.items_changed.connect(self.update_list)
+            self.coresignalbus = coresignalbus
+            self.update_list()
 
         else:
             print("配置流对象已存在，不重复设置")
@@ -198,22 +192,13 @@ class ConfigDragListWidget(BaseDragListWidget):
             return
         print("配置列表更新")
         self.clear()
-        config_list: list[ConfigItem] = self.config_manager.item_list
+        config_list: list[ConfigItem] = self.config_manager.config_list
 
         for config in config_list:
 
-            print(f"创建任务项:{config.get('item_id')}")
+            print(f"创建任务项:{config.item_id}")
             list_item = QListWidgetItem()
-            config_widget = ListItem()
-
-            config_widget.set_task_info(config)
-            # 连接UI操作到模型更新
-
-            config_widget.checkbox_state_changed.connect(
-                self.config_manager.update_item_status
-            )
-            config_widget.show_option.connect(self.show_option)
-
+            config_widget = ListItem(config, self.coresignalbus)
             self.addItem(list_item)
             self.setItemWidget(list_item, config_widget)
 

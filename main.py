@@ -51,33 +51,20 @@ from app.common.signal_bus import signalBus
 
 
 if __name__ == "__main__":
-
     logger.info(f"MFW 版本:{__version__}")
-
     # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
-    if getattr(
-        sys, "frozen", False
-    ):  # 如果程序是打包后的可执行文件，将工作目录设置为可执行文件所在目录
-        if sys.platform.startswith("darwin"):  # MacOS平台
-            target_dir = os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.dirname(sys.executable)))
-            )
-        else:
-            target_dir = os.path.dirname(sys.executable)  # 非MacOS平台
-            """if sys.platform == "linux":
-                #打包后的临时目录
-                os.environ["MAAFW_BINARY_PATH"] = os.path.join(sys._MEIPAS,"maa" ,"bin")"""
-    else:  # 如果是脚本运行，将工作目录设置为脚本文件所在目录
-        target_dir = os.path.dirname(os.path.abspath(__file__))
-    os.chdir(target_dir)  # 切换工作目录
-    logger.debug(f"设置工作目录: {target_dir}")
+
+    # TODO 使用应用支持目录,Windows存放在C:\ProgramData,linux存放在~/.local/share/和~/.config/和~/.cache/,macos存放在/Library/Application Support
+    # TODO 检查根目录下是否存在需要转移的文件,并且检查应用支持目录中是否存在配置
+    #os.chdir(target_dir)  # 切换工作目录
+    logger.debug(f"设置工作目录: {os.getcwd()}")
 
     # 检查是否存在密钥文件
     if not os.path.exists("k.ey"):
         logger.debug("生成密钥文件")
         key = Fernet.generate_key()
         with open("k.ey", "wb") as key_file:
-            key_file.write(key)
+            key_file.write(key)#TODO 密钥应该放在应用支持目录中
 
     # macOS 单实例检查
     if sys.platform.startswith("darwin"):

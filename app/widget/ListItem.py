@@ -20,8 +20,8 @@ from qfluentwidgets import (
     ComboBox,
     FluentIcon as FIF,
 )
-
-from ..core.ItemManager import TaskItem,ConfigItem
+from ..core.CoreSignalBus import CoreSignalBus
+from ..core.ItemManager import TaskItem, ConfigItem
 
 
 class ClickableLabel(BodyLabel):
@@ -34,25 +34,20 @@ class ClickableLabel(BodyLabel):
 
 
 class ListItem(QWidget):
-    show_option = Signal(dict)
-    # 信号：复选框状态变化
-    checkbox_state_changed = Signal(str, bool)
-
     is_checked: bool = False
     name: str = ""
     item_id: str = ""
 
-    def __init__(self, parent=None):
+    def __init__(
+        self, item: TaskItem | ConfigItem, coresignalbus: CoreSignalBus, parent=None
+    ):
         super(ListItem, self).__init__(parent)
         self.initUI()
-
-    def set_task_info(self, item:TaskItem|ConfigItem):
         self.item = item
-        self.name = item.get("name")
-        self.is_checked = item.get("is_checked")
-        self.item_id = item.get("item_id")
-        self.checkbox.setChecked(self.is_checked)
-        self.placeholder_label.setText(self.name)
+        self.coresignalbus = coresignalbus
+        self.show_option = self.coresignalbus.show_option
+        self.checkbox.setChecked(self.item.is_checked)
+        self.placeholder_label.setText(self.item.name)
 
     def initUI(self):
         layout = QHBoxLayout(self)
@@ -90,11 +85,12 @@ class ListItem(QWidget):
         self.checkbox.stateChanged.connect(self.on_checkbox_changed)
 
     def on_button_clicked(self):
-        print(f"{self.name}点击按钮")
+        print(f"{self.item.name}点击按钮")
         self.show_option.emit(self.item)
 
     def on_checkbox_changed(self, state):
-        self.checkbox_state_changed.emit(self.item_id, state == 2)
+        self.item.is_checked = state == 2
+        self.coresignalbus.need_save.emit()
 
     def hiden_setting_button(self):
         self.setting_button.hide()

@@ -23,6 +23,7 @@ MFW-ChainFlow Assistant 信号总线
 作者:overflow65537
 """
 
+from re import S
 from PySide6.QtCore import Signal, QObject
 
 
@@ -34,6 +35,9 @@ class SignalBus(QObject):
     # 主布局中的配置切换和选项切换
     change_task_flow = Signal(dict) # 切换任务列表
     show_option = Signal(dict) # 显示选项
+    agent_info = Signal(dict) # 智能体信息
+    infobar_message = Signal(dict) # 信息栏消息
+    title_changed = Signal(str) # 窗口标题改变
 
 
 

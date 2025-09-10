@@ -57,6 +57,7 @@ from ..common.signal_bus import signalBus
 from ..utils.logger import logger
 from ..common.__version__ import __version__
 from ..core.ItemManager import TaskManager,ConfigManager
+from ..core.CoreSignalBus import core_signalBus
 
 
 class CustomSystemThemeListener(SystemThemeListener):
@@ -77,19 +78,18 @@ class MainWindow(MSFluentWindow):
 
         # 初始化配置管理器
         multi_config_path = Path.cwd() / "config" / "multi_config.json"
-        self.config_manager = ConfigManager(multi_config_path)
+        self.config_manager = ConfigManager(multi_config_path,core_signalBus)
 
         # 初始化任务管理器
-        self.task_manager = TaskManager(self.config_manager)
+        self.task_manager = TaskManager(self.config_manager,core_signalBus)
 
 
 
         # 创建子界面
         self.FastStartInterface = FastStartInterface(parent=self)
-        self.FastStartInterface.config_selection.task_list.set_config_manager(self.config_manager)
-        self.FastStartInterface.task_info.task_list.set_task_manager(self.task_manager)
-        self.config_manager.items_changed.emit()
-        self.task_manager.items_changed.emit()
+        self.FastStartInterface.config_selection.task_list.set_config_manager(self.config_manager,core_signalBus)
+        self.FastStartInterface.task_info.task_list.set_task_manager(self.task_manager,core_signalBus)
+
 
 
 
