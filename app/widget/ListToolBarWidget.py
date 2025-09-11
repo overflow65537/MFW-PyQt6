@@ -20,6 +20,7 @@ from qfluentwidgets import (
 
 
 from .DragListWidget import TaskDragListWidget, ConfigDragListWidget
+from .AddTaskMessageBox import AddConfigDialog,AddTaskDialog
 
 
 class BaseListToolBarWidget(QWidget):
@@ -103,6 +104,8 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         self.select_all_button.clicked.connect(self.select_all)
         # 取消选择全部按钮
         self.deselect_all_button.clicked.connect(self.deselect_all)
+        # 添加按钮
+        self.add_button.clicked.connect(self.add_task)
 
     def _init_task_list(self):
         """初始化任务列表"""
@@ -116,6 +119,28 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         """取消选择全部"""
         self.task_list.deselect_all()
 
+    def add_task(self):
+        """添加任务"""
+
+        if self.task_list.task_manager is None:
+            return
+
+        task_names = []
+        for task_dict in self.task_list.task_manager.interface['task']:
+                # 确保当前项是字典并且包含name键
+                if isinstance(task_dict, dict) and 'name' in task_dict:
+                    task_names.append(task_dict['name'])
+
+        dialog = AddTaskDialog(task_names,parent=self.window())
+        task_item = None
+        if dialog.exec():
+            task_item = dialog.get_task_item()
+            if task_item is None:
+                return
+            self.task_list.add_task(task_item)
+            
+
+
 
 class ConfigListToolBarWidget(BaseListToolBarWidget):
     def __init__(self, parent=None):
@@ -124,6 +149,8 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
         self.select_all_button.clicked.connect(self.select_all)
         # 取消选择全部按钮
         self.deselect_all_button.clicked.connect(self.deselect_all)
+        # 添加按钮
+        self.add_button.clicked.connect(self.add_config)
 
     def _init_task_list(self):
         """初始化配置列表"""
@@ -136,6 +163,21 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
     def deselect_all(self):
         """取消选择全部"""
         self.task_list.deselect_all()
+
+    def add_config(self):
+        """添加配置项"""
+        if self.task_list.config_manager is None:
+            return
+        bundle_list = self.task_list.config_manager.all_config.bundle
+        dialog = AddConfigDialog(bundle_list, parent=self.window())
+        config_item = None
+        if dialog.exec():
+            config_item = dialog.get_config_item()
+            if config_item is None:
+                return
+            self.task_list.config_manager.add_config(config_item)
+            self.task_list.add_config(config_item)
+
 
 class OptionWidget(QWidget):
     def __init__(self, parent=None):
@@ -167,4 +209,3 @@ class OptionWidget(QWidget):
     def set_title(self, title: str):
         """设置标题"""
         self.title_widget.setText(title)
-

@@ -45,7 +45,9 @@ class BaseDragListWidget(ListWidget):
             # 获取列表项对应的widget实例
             item_widget: ListItem = self.itemWidget(list_item)  # type: ignore
 
-            if hasattr(item_widget, "checkbox"):
+            if item_widget.item.task_type in ["controller","resource"]:
+                return
+            elif hasattr(item_widget, "checkbox"):
                 item_widget.checkbox.setChecked(checked)
 
     def select_all(self):
@@ -93,7 +95,7 @@ class BaseDragListWidget(ListWidget):
         for i in range(self.count()):
             item = self.item(i)
             tem_widget: ListItem = self.itemWidget(item)  # type: ignore
-            item_list.append(tem_widget.item_id)
+            item_list.append(tem_widget.item.item_id)
         self.item_order_changed.emit(item_list)
         print(f"发送新列表{item_list}")
 
@@ -108,7 +110,7 @@ class BaseDragListWidget(ListWidget):
             if not item:
                 continue
             widget: ListItem = self.itemWidget(item)  # type: ignore
-            if hasattr(widget, "item_id") and widget.item_id == item_id:
+            if hasattr(widget, "item_id") and widget.item.item_id == item_id:
                 self.setCurrentItem(item)
                 break
 
@@ -125,6 +127,7 @@ class TaskDragListWidget(BaseDragListWidget):
             self.coresignalbus = coresignalbus
             self.update_list()
             self.coresignalbus.change_task_flow.connect(self.update_list)
+            self.item_order_changed.connect(self.task_manager.update_task_order)
         else:
             print("任务流对象已存在，不重复设置")
 
@@ -169,6 +172,16 @@ class TaskDragListWidget(BaseDragListWidget):
         elif task_type == "resource":
             print("显示资源设置")
 
+    def add_task(self, task: TaskItem):
+        """添加任务项"""
+        if self.task_manager is None:
+            return
+        self.task_manager.add_task(task)
+        print(f"添加任务项:{task.item_id}")
+        list_item = QListWidgetItem()
+        task_widget = ListItem(task, self.coresignalbus)
+        self.addItem(list_item)
+        self.setItemWidget(list_item, task_widget)
 
 class ConfigDragListWidget(BaseDragListWidget):
     def __init__(self, parent=None):
@@ -180,6 +193,7 @@ class ConfigDragListWidget(BaseDragListWidget):
         if self.config_manager is None:
             self.config_manager = config_manager
             self.coresignalbus = coresignalbus
+            self.item_order_changed.connect(self.config_manager.update_config_order)
             self.update_list()
 
         else:
@@ -196,7 +210,7 @@ class ConfigDragListWidget(BaseDragListWidget):
 
         for config in config_list:
 
-            print(f"创建任务项:{config.item_id}")
+            print(f"创建配置项:{config.item_id}")
             list_item = QListWidgetItem()
             config_widget = ListItem(config, self.coresignalbus)
             self.addItem(list_item)
@@ -209,3 +223,13 @@ class ConfigDragListWidget(BaseDragListWidget):
         print(item)
         self.config_manager.curr_config_id = item.get("item_id", "")
         self.select_item(item.get("item_id", ""))
+
+    def add_config(self, config: ConfigItem):
+        """添加配置项"""
+        if self.config_manager is None:
+            return
+        print(f"添加任务项:{config.item_id}")
+        list_item = QListWidgetItem()
+        config_widget = ListItem(config, self.coresignalbus)
+        self.addItem(list_item)
+        self.setItemWidget(list_item, config_widget)

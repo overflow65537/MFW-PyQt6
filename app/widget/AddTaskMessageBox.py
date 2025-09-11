@@ -1,11 +1,230 @@
+from PySide6.QtWidgets import QVBoxLayout
+from qfluentwidgets import (
+    MessageBoxBase,
+    LineEdit,
+    ComboBox,
+    SubtitleLabel,
+    BodyLabel,
+)
+from ..core.ItemManager import ConfigItem, TaskItem, BaseItemManager
 
 
-
-
-
-
-
-
-class NoticeType(MessageBoxBase):
-    def __init__(self, parent=None):
+class BaseAddDialog(MessageBoxBase):
+    """添加类对话框的基类"""
+    def __init__(self, title: str, parent=None):
         super().__init__(parent)
+
+        # 设置对话框标题和大小
+        self.titleLabel = SubtitleLabel(title, self)
+        self.widget.setMinimumWidth(400)
+        self.widget.setMinimumHeight(180)
+
+        # 存储返回的项
+        self.item = None
+
+        # 连接确认按钮信号
+        self.yesButton.clicked.connect(self.on_confirm)
+        self.cancelButton.clicked.connect(self.on_cancel)
+
+        # 设置按钮文本
+        self.yesButton.setText(self.tr("Confirm"))
+        self.cancelButton.setText(self.tr("Cancel"))
+
+        # 添加标题到布局
+        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addSpacing(10)
+
+    def on_confirm(self):
+        """确认添加"""
+        pass
+
+    def on_cancel(self):
+        """取消添加"""
+        self.item = None
+        self.reject()
+
+    def show_error(self, message):
+        """显示错误信息"""
+        from qfluentwidgets import InfoBar, InfoBarPosition
+        from PySide6.QtCore import Qt
+
+        InfoBar.error(
+            title=self.tr("Error"),
+            content=message,
+            orient=Qt.Orientation.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.BOTTOM_RIGHT,
+            duration=-1,
+            parent=self.parent(),
+        )
+
+
+class AddConfigDialog(BaseAddDialog):
+    def __init__(
+        self,
+        resource_bundles: list | None = None,
+        default_resource: str | None = None,
+        parent=None,
+    ):
+        # 调用基类构造函数，设置标题
+        super().__init__(self.tr("Add New Config"), parent)
+
+        # 配置名输入框
+        self.name_layout = QVBoxLayout()
+        self.name_label = BodyLabel(self.tr("Config Name:"), self)
+        self.name_edit = LineEdit(self)
+        self.name_edit.setPlaceholderText(self.tr("Enter the name of the config"))
+        self.name_edit.setClearButtonEnabled(True)
+
+        self.name_layout.addWidget(self.name_label)
+        self.name_layout.addWidget(self.name_edit)
+
+        # 资源包下拉框
+        self.resource_layout = QVBoxLayout()
+        self.resource_label = BodyLabel(self.tr("Resource Bundle:"), self)
+        self.resource_combo = ComboBox(self)
+
+        # 加载可用的资源包
+        self.resource_bundles = resource_bundles
+        self.load_resource_bundles(resource_bundles, default_resource)
+
+        self.resource_layout.addWidget(self.resource_label)
+        self.resource_layout.addWidget(self.resource_combo)
+
+        # 将布局添加到对话框
+        self.viewLayout.addLayout(self.name_layout)
+        self.viewLayout.addSpacing(10)
+        self.viewLayout.addLayout(self.resource_layout)
+
+        # 存储数据的变量
+        self.config_name = ""
+        self.resource_name = ""
+
+    def load_resource_bundles(self, resource_bundles, default_resource):
+        """加载可用的资源包到下拉框"""
+        # 使用传入的资源包列表
+        if resource_bundles:
+            # 清空下拉框
+            self.resource_combo.clear()
+            resource_bundles_name = [bundle["name"] for bundle in resource_bundles]
+            self.resource_combo.addItems(resource_bundles_name)
+            # 如果有默认资源包，选中它
+            if default_resource and default_resource in resource_bundles_name:
+                index = self.resource_combo.findText(default_resource)
+                if index >= 0:
+                    self.resource_combo.setCurrentIndex(index)
+
+    def on_confirm(self):
+        """确认添加配置"""
+        self.config_name = self.name_edit.text().strip()
+        self.resource_name = self.resource_combo.currentText()
+
+        # 验证输入
+        if not self.config_name:
+            self.show_error(self.tr("Config name cannot be empty"))
+            return
+
+        if self.config_name.lower() == "default":
+            self.show_error(self.tr("Cannot use 'default' as config name"))
+            return
+
+        # 创建ConfigItem对象
+        if self.resource_bundles is None:
+            raise ValueError("resource_bundles is None")
+        bundle_path = ""
+        for bundle in self.resource_bundles:
+            if bundle["name"] == self.resource_name:
+                bundle_path = bundle["path"]
+                break
+        if not bundle_path:
+            self.show_error(self.tr("Resource bundle not found"))
+            return
+        self.item = ConfigItem(
+            name=self.config_name,
+            is_checked=True,
+            task_type="config",
+            item_id=BaseItemManager.generate_id("config"),
+            task=BaseItemManager.generate_task(),
+            gpu=0,
+            finish_option=0,
+            know_task=[],
+            bundle={"name": self.resource_name, "path": bundle_path},
+        )
+
+        # 接受对话框
+        self.accept()
+
+    def get_config_item(self):
+        """获取创建的配置项对象"""
+        return self.item
+
+
+class AddTaskDialog(BaseAddDialog):
+    def __init__(
+        self,
+        task_names: list | None = None,
+        default_task: str | None = None,
+        parent=None,
+    ):
+        # 调用基类构造函数，设置标题
+        super().__init__(self.tr("Add New Task"), parent)
+
+        # 任务名下拉框
+        self.task_layout = QVBoxLayout()
+        self.task_label = BodyLabel(self.tr("Task Name:"), self)
+        self.task_combo = ComboBox(self)
+
+        # 加载可用的任务名
+        self.task_names = task_names
+        self.load_task_names(task_names, default_task)
+
+        self.task_layout.addWidget(self.task_label)
+        self.task_layout.addWidget(self.task_combo)
+
+    
+
+
+        # 将布局添加到对话框
+        self.viewLayout.addLayout(self.task_layout)
+
+
+        # 存储数据的变量
+        self.task_name = ""
+        self.task_type = ""
+
+    def load_task_names(self, task_names, default_task):
+        """加载可用的任务名到下拉框"""
+        if task_names:
+            # 清空下拉框
+            self.task_combo.clear()
+            self.task_combo.addItems(task_names)
+            # 如果有默认任务，选中它
+            if default_task and default_task in task_names:
+                index = self.task_combo.findText(default_task)
+                if index >= 0:
+                    self.task_combo.setCurrentIndex(index)
+
+    def on_confirm(self):
+        """确认添加任务"""
+        self.task_name = self.task_combo.currentText().strip()
+
+        # 验证输入
+        if not self.task_name:
+            self.show_error(self.tr("Task name cannot be empty"))
+            return
+
+        # 创建TaskItem对象
+        self.item = TaskItem(
+            name=self.task_name,
+            item_id=BaseItemManager.generate_id("task"),
+            is_checked=True,
+            task_option={},
+            task_type=self.task_type,
+        )
+
+        # 接受对话框
+        self.accept()
+
+    def get_task_item(self):
+        """获取创建的任务项对象"""
+        return self.item

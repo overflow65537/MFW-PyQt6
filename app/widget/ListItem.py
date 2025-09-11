@@ -34,10 +34,6 @@ class ClickableLabel(BodyLabel):
 
 
 class ListItem(QWidget):
-    is_checked: bool = False
-    name: str = ""
-    item_id: str = ""
-
     def __init__(
         self, item: TaskItem | ConfigItem, coresignalbus: CoreSignalBus, parent=None
     ):

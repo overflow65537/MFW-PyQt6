@@ -1,12 +1,11 @@
 from pathlib import Path
 import json
 from dataclasses import dataclass
-from PySide6.QtCore import QObject, Signal
+
+from PySide6.QtCore import QObject
 
 from ..utils.logger import logger
 from .CoreSignalBus import CoreSignalBus
-
-
 
 
 @dataclass
@@ -45,7 +44,8 @@ class ConfigItem:
     task: list[TaskItem]
     gpu: int
     finish_option: int
-    know_task: list
+    know_task: list[str]
+    bundle_path: str
     task_type: str
 
     def __init__(
@@ -57,6 +57,7 @@ class ConfigItem:
         gpu: int,
         finish_option: int,
         know_task: list,
+        bundle: dict[str, str],
         task_type: str,
     ):
         super().__init__()
@@ -67,6 +68,7 @@ class ConfigItem:
         self.gpu = gpu
         self.finish_option = finish_option
         self.know_task = know_task
+        self.bundle = bundle
         self.task_type = task_type
 
     def save(self) -> dict:
@@ -77,12 +79,13 @@ class ConfigItem:
         return_dict = self.__dict__.copy()
         return_dict["task"] = task_list
         return return_dict
-    
+
 
 @dataclass
 class MultiConfig:
     curr_config_id: str
     config_list: list[ConfigItem]
+    bundle: list[dict[str, str]]
 
     def __init__(self, config: dict):
         super().__init__()
@@ -92,6 +95,7 @@ class MultiConfig:
     def load(self, config: dict) -> bool:
         """加载配置"""
         self.curr_config_id = config["curr_config_id"]
+        self.bundle = config["bundle"]
         self.config_list = []
         for config_item in config["config_list"]:
             task_list = []
@@ -112,6 +116,7 @@ class MultiConfig:
                 config_item["gpu"],
                 config_item["finish_option"],
                 config_item["know_task"],
+                config_item["bundle"],
                 config_item["task_type"],
             )
             self.config_list.append(config_item)
@@ -119,12 +124,16 @@ class MultiConfig:
 
     def save(self, path: Path) -> bool:
         """保存配置"""
-        #如果路径不存在，创建路径
+        # 如果路径不存在，创建路径
         if not path.parent.exists():
             path.parent.mkdir(parents=True)
         try:
             with open(path, "w", encoding="utf-8") as f:
-                config = {"curr_config_id": self.curr_config_id, "config_list": []}
+                config = {
+                    "curr_config_id": self.curr_config_id,
+                    "config_list": [],
+                    "bundle": self.bundle,
+                }
                 for config_item in self.config_list:
                     config_item_dict = config_item.save()
                     config["config_list"].append(config_item_dict)
@@ -141,6 +150,7 @@ class MultiConfig:
             config_item_dict = config_item.save()
             config["config_list"].append(config_item_dict)
         return config
+
 
 class BaseItemManager(QObject):
 
@@ -161,6 +171,25 @@ class BaseItemManager(QObject):
         else:
             raise ValueError(f"type:{t} must be config or task")
         return key
+
+    @staticmethod
+    def generate_task() -> list[TaskItem]:
+        """随机生成任务id"""
+        resource_task = TaskItem(
+            name="资源任务",
+            item_id=BaseItemManager.generate_id("task"),
+            is_checked=True,
+            task_option={},
+            task_type="resource",
+        )
+        controller_task = TaskItem(
+            name="控制器任务",
+            item_id=BaseItemManager.generate_id("task"),
+            is_checked=True,
+            task_option={},
+            task_type="controller",
+        )
+        return [resource_task, controller_task]
 
 
 class ConfigManager(BaseItemManager):
@@ -221,9 +250,16 @@ class ConfigManager(BaseItemManager):
         self.from_id_set_config(self.curr_config_id, value)
         return True
 
-    def get_current_config_tasks(self) -> list[TaskItem]:
-        """获取当前配置的任务列表"""
-        return self.config.task.copy()
+    def update_config_order(self, config_list: list[str]) -> bool:
+        """更新配置列表顺序"""
+        # 传入列表,列表中的元素是item_id,根据id更新配置列表顺序
+        new_list = []
+        for config_id in config_list:
+            config = self.from_id_get_config(config_id)
+            new_list.append(config)
+        self.__config.config_list = new_list
+        self.save_config()
+        return True
 
     def update_current_config_tasks(self, tasks: list[TaskItem]) -> bool:
         """更新当前配置的任务列表"""
@@ -284,71 +320,21 @@ class ConfigManager(BaseItemManager):
     def load_config(self) -> bool:
         """加载配置文件，初始化多配置字典"""
         if not self.multi_config_path.exists():
-            logger.warning(f"配置文件不存在，创建新文件：{self.multi_config_path}")
+            raise FileNotFoundError(f"配置文件不存在：{self.multi_config_path}")
+        with open(self.multi_config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+            if config.get("curr_config_id") is None:
+                raise ValueError("配置ID不能为空")
+            elif config.get("config_list") is None:
+                raise ValueError("配置列表不能为空")
+            elif config.get("bundle") is None:
+                raise ValueError("bundle不能为空")
 
-            self.__config = self.create_empty_config()
+            self.__config = MultiConfig(config)
             logger.info(
-                f"{json.dumps(self.__config.show(), indent=4, ensure_ascii=False)}"
+                f"加载配置成功：\n{json.dumps(self.__config.show(), indent=4, ensure_ascii=False)}"
             )
-            self.save_config()
             return True
-
-        try:
-            with open(self.multi_config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
-                if (
-                    config.get("curr_config_id") is None
-                    or config.get("config_list") is None
-                ):
-                    raise ValueError("配置文件格式错误")
-
-                self.__config = MultiConfig(config)
-                logger.info(
-                    f"加载配置成功：\n{json.dumps(self.__config.show(), indent=4, ensure_ascii=False)}"
-                )
-                return True
-        except Exception as e:
-            logger.error(f"加载配置失败：{e}\n使用新配置")
-            self.__config = self.create_empty_config()
-            logger.info(
-                f"{json.dumps(self.__config.show(), indent=4, ensure_ascii=False)}"
-            )
-            self.save_config()
-            return True
-
-    def create_empty_config(self, name: str = "New Config") -> MultiConfig:
-        resource_task: dict = {
-            "name": "resource",
-            "item_id": self.generate_id("task"),
-            "is_checked": True,
-            "task_option": {},
-            "task_type": "resource",
-        }
-        controller_task: dict = {
-            "name": "controller",
-            "item_id": self.generate_id("task"),
-            "is_checked": True,
-            "task_option": {},
-            "task_type": "controller",
-        }
-
-        """创建一个空配置"""
-        empty_config: dict = {
-            "name": name,
-            "item_id": self.generate_id("config"),
-            "is_checked": True,
-            "task": [resource_task, controller_task],
-            "gpu": -1,
-            "finish_option": 0,
-            "know_task": [],
-            "task_type": "config",
-        }
-
-        empty_muit_config_dict: dict = {
-            "curr_config_id": empty_config["item_id"],
-            "config_list": [empty_config],
-        }
-        return MultiConfig(empty_muit_config_dict)
 
     def from_id_get_config(self, config_id: str) -> ConfigItem:
         """根据配置id获取配置"""
@@ -398,9 +384,14 @@ class TaskManager(BaseItemManager):
         self.init_list()
 
     def init_list(self) -> None:
-        self.__task_list = self.config_manager.get_current_config_tasks()
+        self.__task_list = self.config_manager.config.task.copy()
+        with open(
+            Path(self.config_manager.config.bundle.get("path", "")) / "interface.json",
+            "r",
+            encoding="utf-8",
+        ) as f:
+            self.interface = json.load(f)
 
-    
     @property
     def task_list(self) -> list[TaskItem]:
         return self.__task_list
@@ -409,8 +400,6 @@ class TaskManager(BaseItemManager):
         try:
             self.__task_list.append(task)
             self.task_update.emit(self.__task_list)
-            self.need_save.emit()
-
             return True
         except Exception as e:
             logger.error(f"添加任务失败：{e}")
@@ -421,7 +410,6 @@ class TaskManager(BaseItemManager):
             if task.item_id == task_id:
                 self.__task_list.pop(i)
                 self.task_update.emit(self.__task_list)
-                self.need_save.emit()
                 return True
         return False
 
@@ -430,20 +418,37 @@ class TaskManager(BaseItemManager):
             if t.item_id == task_id:
                 self.__task_list[i] = task
                 self.task_update.emit(self.__task_list)
-                self.need_save.emit()
                 return True
         return False
+    
+    def update_task_order(self, task_list: list[str]) -> bool:
+        """更新任务列表顺序"""
+        #传入的是任务id列表
+        #根据id列表更新任务列表
+        new_task_list = []
+        for task_id in task_list:
+            for task in self.__task_list:
+                if task.item_id == task_id:
+                    new_task_list.append(task)
+        self.__task_list = new_task_list
+        self.task_update.emit(self.__task_list)
+        return True
 
     def task_checkbox_state_changed(self, task_id: str, checked: bool) -> bool:
         for task in self.__task_list:
             if task.item_id == task_id:
                 task.is_checked = checked
                 self.task_update.emit(self.__task_list)
-                self.need_save.emit()
                 return True
         return False
-    
-    def get_task(self, task_id: str) -> TaskItem|None:
+
+    def get_task(self, task_id: str) -> TaskItem | None:
+        for task in self.__task_list:
+            if task.item_id == task_id:
+                return task
+        return None
+
+    def from_id_get_task(self, task_id: str) -> TaskItem | None:
         for task in self.__task_list:
             if task.item_id == task_id:
                 return task
