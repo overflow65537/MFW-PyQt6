@@ -20,7 +20,9 @@ from qfluentwidgets import (
 
 
 from .DragListWidget import TaskDragListWidget, ConfigDragListWidget
-from .AddTaskMessageBox import AddConfigDialog,AddTaskDialog
+from .AddTaskMessageBox import AddConfigDialog, AddTaskDialog
+from ..core.CoreSignalBus import core_signalBus
+from ..core.ItemManager import TaskItem, ConfigItem
 
 
 class BaseListToolBarWidget(QWidget):
@@ -28,20 +30,20 @@ class BaseListToolBarWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self._init_config_title()
-        self._init_config_selection()
+        self._init_title()
+        self._init_selection()
 
         self.title_layout.setContentsMargins(0, 0, 2, 0)
         self.main_layout = QVBoxLayout(self)
         self.main_layout.addLayout(self.title_layout)
-        self.main_layout.addWidget(self.config_selection_widget)
+        self.main_layout.addWidget(self.selection_widget)
 
-    def _init_config_title(self):
+    def _init_title(self):
         """初始化配置选择标题"""
         # 配置选择标题
-        self.config_selection_title = BodyLabel()
-        self.config_selection_title.setStyleSheet("font-size: 20px;")
-        self.config_selection_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.selection_title = BodyLabel()
+        self.selection_title.setStyleSheet("font-size: 20px;")
+        self.selection_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         # 选择全部按钮
         self.select_all_button = ToolButton(FIF.CHECKBOX)
@@ -67,7 +69,7 @@ class BaseListToolBarWidget(QWidget):
         # 布局
         self.title_layout = QHBoxLayout()
         # 设置边距
-        self.title_layout.addWidget(self.config_selection_title)
+        self.title_layout.addWidget(self.selection_title)
         self.title_layout.addWidget(self.select_all_button)
         self.title_layout.addWidget(self.deselect_all_button)
         self.title_layout.addWidget(self.add_button)
@@ -80,66 +82,21 @@ class BaseListToolBarWidget(QWidget):
         self.task_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.task_list.setDefaultDropAction(Qt.DropAction.MoveAction)
 
-    def _init_config_selection(self):
+    def _init_selection(self):
         """初始化配置选择"""
         self._init_task_list()
 
         # 配置选择列表布局
-        self.config_selection_widget = SimpleCardWidget()
-        self.config_selection_widget.setClickEnabled(False)
-        self.config_selection_widget.setBorderRadius(8)
+        self.selection_widget = SimpleCardWidget()
+        self.selection_widget.setClickEnabled(False)
+        self.selection_widget.setBorderRadius(8)
 
-        self.config_selection_layout = QVBoxLayout(self.config_selection_widget)
-        self.config_selection_layout.addWidget(self.task_list)
+        self.selection_layout = QVBoxLayout(self.selection_widget)
+        self.selection_layout.addWidget(self.task_list)
 
-    def set_config_title(self, title: str):
+    def set_title(self, title: str):
         """设置标题"""
-        self.config_selection_title.setText(title)
-
-
-class TaskListToolBarWidget(BaseListToolBarWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        # 选择全部按钮
-        self.select_all_button.clicked.connect(self.select_all)
-        # 取消选择全部按钮
-        self.deselect_all_button.clicked.connect(self.deselect_all)
-        # 添加按钮
-        self.add_button.clicked.connect(self.add_task)
-
-    def _init_task_list(self):
-        """初始化任务列表"""
-        self.task_list = TaskDragListWidget(parent=self)
-
-    def select_all(self):
-        """选择全部"""
-        self.task_list.select_all()
-
-    def deselect_all(self):
-        """取消选择全部"""
-        self.task_list.deselect_all()
-
-    def add_task(self):
-        """添加任务"""
-
-        if self.task_list.task_manager is None:
-            return
-
-        task_names = []
-        for task_dict in self.task_list.task_manager.interface['task']:
-                # 确保当前项是字典并且包含name键
-                if isinstance(task_dict, dict) and 'name' in task_dict:
-                    task_names.append(task_dict['name'])
-
-        dialog = AddTaskDialog(task_names,parent=self.window())
-        task_item = None
-        if dialog.exec():
-            task_item = dialog.get_task_item()
-            if task_item is None:
-                return
-            self.task_list.add_task(task_item)
-            
-
+        self.selection_title.setText(title)
 
 
 class ConfigListToolBarWidget(BaseListToolBarWidget):
@@ -179,10 +136,61 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
             self.task_list.add_config(config_item)
 
 
+
+class TaskListToolBarWidget(BaseListToolBarWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        # 选择全部按钮
+        self.select_all_button.clicked.connect(self.select_all)
+        # 取消选择全部按钮
+        self.deselect_all_button.clicked.connect(self.deselect_all)
+        # 添加按钮
+        self.add_button.clicked.connect(self.add_task)
+        core_signalBus.show_option.connect(self._change_title)
+
+    def _init_task_list(self):
+        """初始化任务列表"""
+        self.task_list = TaskDragListWidget(parent=self)
+
+    def select_all(self):
+        """选择全部"""
+        self.task_list.select_all()
+
+    def deselect_all(self):
+        """取消选择全部"""
+        self.task_list.deselect_all()
+
+    def add_task(self):
+        """添加任务"""
+
+        if self.task_list.task_manager is None:
+            return
+
+        task_names = []
+        for task_dict in self.task_list.task_manager.interface["task"]:
+            # 确保当前项是字典并且包含name键
+            if isinstance(task_dict, dict) and "name" in task_dict:
+                task_names.append(task_dict["name"])
+
+        dialog = AddTaskDialog(task_names, parent=self.window())
+        task_item = None
+        if dialog.exec():
+            task_item = dialog.get_task_item()
+            if task_item is None:
+                return
+            self.task_list.add_task(task_item)
+
+    def _change_title(self, item: TaskItem | ConfigItem):
+        """改变标题"""
+        if isinstance(item, ConfigItem):
+            self.set_title(item.name)
+
+
 class OptionWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._init_ui()
+        core_signalBus.show_option.connect(self.show_option)
 
     def _init_ui(self):
         """初始化UI"""
@@ -206,6 +214,21 @@ class OptionWidget(QWidget):
         self.main_layout.addLayout(self.title_layout)
         self.main_layout.addWidget(self.option_area_card)
 
+        self.main_layout.setStretch(0, 1)
+        self.main_layout.setStretch(1, 99)
+
     def set_title(self, title: str):
         """设置标题"""
         self.title_widget.setText(title)
+
+    def show_option(self, item: TaskItem | ConfigItem):
+        """显示选项"""
+        if isinstance(item, TaskItem):
+            self.set_title(item.name)
+
+            """if item.task_type == "task":
+                self._show_task_option(item)
+            elif item.task_type == "resource":
+                self._show_resource_option(item)
+            elif item.task_type == "controller":
+                self._show_controller_option(item)"""

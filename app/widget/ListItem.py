@@ -41,7 +41,6 @@ class ListItem(QWidget):
         self.initUI()
         self.item = item
         self.coresignalbus = coresignalbus
-        self.show_option = self.coresignalbus.show_option
         self.checkbox.setChecked(self.item.is_checked)
         self.placeholder_label.setText(self.item.name)
 
@@ -81,8 +80,7 @@ class ListItem(QWidget):
         self.checkbox.stateChanged.connect(self.on_checkbox_changed)
 
     def on_button_clicked(self):
-        print(f"{self.item.name}点击按钮")
-        self.show_option.emit(self.item)
+        self.coresignalbus.show_option.emit(self.item)
 
     def on_checkbox_changed(self, state):
         self.item.is_checked = state == 2

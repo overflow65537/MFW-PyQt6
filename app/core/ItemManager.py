@@ -198,11 +198,9 @@ class ConfigManager(BaseItemManager):
     def __init__(self, multi_config_path: Path | str, signal_bus: CoreSignalBus):
         super().__init__()
         self.signal_bus = signal_bus
-        self.need_save = self.signal_bus.need_save
-        self.change_task_flow = self.signal_bus.change_task_flow
-        self.task_update = self.signal_bus.task_update
-        self.need_save.connect(self.save_config)
-        self.task_update.connect(self.update_current_config_tasks)
+        self.signal_bus.need_save.connect(self.save_config)
+        self.signal_bus.task_update.connect(self.update_current_config_tasks)
+        self.signal_bus.show_option.connect(self.show_option)
 
         self.multi_config_path = Path(multi_config_path)
         logger.info(f"加载配置文件：{self.multi_config_path}")
@@ -236,7 +234,7 @@ class ConfigManager(BaseItemManager):
         self.__config = value
         logger.info("手动修改配置")
         self.save_config()
-        self.change_task_flow.emit()
+        self.signal_bus.change_task_flow.emit()
         return True
 
     @property
@@ -250,14 +248,11 @@ class ConfigManager(BaseItemManager):
         self.from_id_set_config(self.curr_config_id, value)
         return True
 
-    def update_config_order(self, config_list: list[str]) -> bool:
+    def update_config_order(self, config_list: list[ConfigItem]) -> bool:
         """更新配置列表顺序"""
         # 传入列表,列表中的元素是item_id,根据id更新配置列表顺序
-        new_list = []
-        for config_id in config_list:
-            config = self.from_id_get_config(config_id)
-            new_list.append(config)
-        self.__config.config_list = new_list
+
+        self.__config.config_list = config_list
         self.save_config()
         return True
 
@@ -358,13 +353,17 @@ class ConfigManager(BaseItemManager):
         """保存配置"""
         try:
             result = self.__config.save(self.multi_config_path)
-            if result:
-                logger.info(f"配置保存成功：{self.multi_config_path}")
             return result
         except Exception as e:
             logger.error(f"保存配置时发生异常：{e}")
             return False
-
+        
+    def show_option(self, item: TaskItem | ConfigItem) -> None:
+        """接受ListItem的点击来来切换配置"""
+        if isinstance(item, ConfigItem):
+            logger.info(f"点击了配置{item.name}")
+            self.curr_config_id = item.item_id
+            self.signal_bus.change_task_flow.emit()
 
 class TaskManager(BaseItemManager):
 
@@ -374,13 +373,9 @@ class TaskManager(BaseItemManager):
         super().__init__()
 
         self.signal_bus = signal_bus
-        self.need_save = self.signal_bus.need_save
-        self.change_task_flow = self.signal_bus.change_task_flow
-        self.task_update = self.signal_bus.task_update
-
         self.config_manager = config_manager
         self.__task_list = []
-        self.change_task_flow.connect(self.init_list)
+        self.signal_bus.change_task_flow.connect(self.init_list)
         self.init_list()
 
     def init_list(self) -> None:
@@ -399,7 +394,7 @@ class TaskManager(BaseItemManager):
     def add_task(self, task: TaskItem) -> bool:
         try:
             self.__task_list.append(task)
-            self.task_update.emit(self.__task_list)
+            self.signal_bus.task_update.emit(self.__task_list)
             return True
         except Exception as e:
             logger.error(f"添加任务失败：{e}")
@@ -409,7 +404,7 @@ class TaskManager(BaseItemManager):
         for i, task in enumerate(self.__task_list):
             if task.item_id == task_id:
                 self.__task_list.pop(i)
-                self.task_update.emit(self.__task_list)
+                self.signal_bus.task_update.emit(self.__task_list)
                 return True
         return False
 
@@ -417,28 +412,21 @@ class TaskManager(BaseItemManager):
         for i, t in enumerate(self.__task_list):
             if t.item_id == task_id:
                 self.__task_list[i] = task
-                self.task_update.emit(self.__task_list)
+                self.signal_bus.task_update.emit(self.__task_list)
                 return True
         return False
     
-    def update_task_order(self, task_list: list[str]) -> bool:
+    def update_task_order(self, task_list: list[TaskItem]) -> bool:
         """更新任务列表顺序"""
-        #传入的是任务id列表
-        #根据id列表更新任务列表
-        new_task_list = []
-        for task_id in task_list:
-            for task in self.__task_list:
-                if task.item_id == task_id:
-                    new_task_list.append(task)
-        self.__task_list = new_task_list
-        self.task_update.emit(self.__task_list)
+        self.__task_list =  task_list
+        self.signal_bus.task_update.emit(self.__task_list)
         return True
 
     def task_checkbox_state_changed(self, task_id: str, checked: bool) -> bool:
         for task in self.__task_list:
             if task.item_id == task_id:
                 task.is_checked = checked
-                self.task_update.emit(self.__task_list)
+                self.signal_bus.task_update.emit(self.__task_list)
                 return True
         return False
 

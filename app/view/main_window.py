@@ -29,7 +29,7 @@ MFW-ChainFlow Assistant 主界面
 修改:overflow65537
 """
 
-import os
+
 import sys
 from pathlib import Path
 
@@ -49,9 +49,9 @@ from qfluentwidgets import (
 from qfluentwidgets import FluentIcon as FIF
 
 
+
 from .fast_start_interface.fast_start_logic import FastStartInterface
 
-import atexit
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
 from ..utils.logger import logger
@@ -91,7 +91,9 @@ class MainWindow(MSFluentWindow):
         self.FastStartInterface.task_info.task_list.set_task_manager(
             self.task_manager, core_signalBus
         )
-
+        self.FastStartInterface.task_info.set_title(
+            self.config_manager.config.name
+        )
         self.addSubInterface(self.FastStartInterface, FIF.CHECKBOX, self.tr("Task"))
 
         # 添加导航项

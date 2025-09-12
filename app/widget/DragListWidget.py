@@ -1,3 +1,4 @@
+from venv import logger
 from PySide6.QtWidgets import QApplication, QListWidgetItem, QAbstractItemView
 
 from PySide6.QtCore import Qt, Signal, QPoint, QMimeData, QThread
@@ -45,7 +46,7 @@ class BaseDragListWidget(ListWidget):
             # 获取列表项对应的widget实例
             item_widget: ListItem = self.itemWidget(list_item)  # type: ignore
 
-            if item_widget.item.task_type in ["controller","resource"]:
+            if item_widget.item.task_type in ["controller", "resource"]:
                 return
             elif hasattr(item_widget, "checkbox"):
                 item_widget.checkbox.setChecked(checked)
@@ -95,9 +96,9 @@ class BaseDragListWidget(ListWidget):
         for i in range(self.count()):
             item = self.item(i)
             tem_widget: ListItem = self.itemWidget(item)  # type: ignore
-            item_list.append(tem_widget.item.item_id)
+            item_list.append(tem_widget.item)
         self.item_order_changed.emit(item_list)
-        print(f"发送新列表{item_list}")
+        logger.info(f"更改新列表{[item.name for item in item_list]}")
 
     def update_list(self):
         """从模型更新任务列表UI"""
@@ -141,7 +142,7 @@ class TaskDragListWidget(BaseDragListWidget):
         self.clear()
         task_list: list[TaskItem] = self.task_manager.task_list
         for task in task_list:
-            print(f"创建任务项:{task.item_id}")
+            print(f"创建任务项:{task.name}")
 
             list_item = QListWidgetItem()
             task_widget = ListItem(task, self.coresignalbus)
@@ -183,18 +184,22 @@ class TaskDragListWidget(BaseDragListWidget):
         self.addItem(list_item)
         self.setItemWidget(list_item, task_widget)
 
+
 class ConfigDragListWidget(BaseDragListWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.config_manager: ConfigManager | None = None
 
-    def set_config_manager(self, config_manager: ConfigManager, coresignalbus: CoreSignalBus):
+    def set_config_manager(
+        self, config_manager: ConfigManager, coresignalbus: CoreSignalBus
+    ):
         """设置配置流对象并连接信号槽"""
         if self.config_manager is None:
             self.config_manager = config_manager
             self.coresignalbus = coresignalbus
             self.item_order_changed.connect(self.config_manager.update_config_order)
             self.update_list()
+            self.set_curr_config_id(self.config_manager.curr_config_id)
 
         else:
             print("配置流对象已存在，不重复设置")
@@ -233,3 +238,13 @@ class ConfigDragListWidget(BaseDragListWidget):
         config_widget = ListItem(config, self.coresignalbus)
         self.addItem(list_item)
         self.setItemWidget(list_item, config_widget)
+
+    def set_curr_config_id(self, config_id: str):
+        """设置当前配置项"""
+        if self.config_manager is None:
+            return
+
+        for idx, config in enumerate(self.config_manager.config_list):
+            if config.item_id == config_id:
+                self.setCurrentIndex(self.model().index(idx, 0))
+                break
