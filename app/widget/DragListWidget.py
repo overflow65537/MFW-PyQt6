@@ -47,10 +47,9 @@ class BaseDragListWidget(ListWidget):
             item_widget: ListItem = self.itemWidget(list_item)  # type: ignore
 
             if item_widget.item.task_type in ["controller", "resource"]:
-                return
+                continue  
             elif hasattr(item_widget, "checkbox"):
                 item_widget.checkbox.setChecked(checked)
-
     def select_all(self):
         """全选所有复选框"""
         self.toggle_all_checkboxes(True)
