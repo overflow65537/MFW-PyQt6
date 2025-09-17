@@ -60,7 +60,7 @@ class UI_FastStartInterface(object):
         """初始化控制面板"""
         self.config_selection = ConfigListToolBarWidget()
         self.config_selection.setFixedWidth(344)
-        self.config_selection.setFixedHeight(180)
+        self.config_selection.setFixedHeight(195)
 
         self.start_bar = StartBarWidget()
         self.start_bar.setFixedWidth(344)

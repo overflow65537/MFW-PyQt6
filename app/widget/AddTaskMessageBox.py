@@ -190,7 +190,7 @@ class AddTaskDialog(BaseAddDialog):
 
         # 存储数据的变量
         self.task_name = ""
-        self.task_type = ""
+        self.task_type = "task"
 
     def load_task_names(self, task_names, default_task):
         """加载可用的任务名到下拉框"""

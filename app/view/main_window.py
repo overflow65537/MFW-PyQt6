@@ -94,6 +94,7 @@ class MainWindow(MSFluentWindow):
         self.FastStartInterface.task_info.set_title(
             self.config_manager.config.name
         )
+        self.FastStartInterface.option_panel._init_obj(self.task_manager, core_signalBus)
         self.addSubInterface(self.FastStartInterface, FIF.CHECKBOX, self.tr("Task"))
 
         # 添加导航项

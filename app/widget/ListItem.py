@@ -80,11 +80,30 @@ class ListItem(QWidget):
         self.checkbox.stateChanged.connect(self.on_checkbox_changed)
 
     def on_button_clicked(self):
+        # 发出显示选项的信号
         self.coresignalbus.show_option.emit(self.item)
+        
 
+        parent = self.parent()
+        while parent is not None:
+           
+            if hasattr(parent, 'findItems'):
+    
+                for i in range(parent.count()):
+                    list_item = parent.item(i)
+                
+                    widget = parent.itemWidget(list_item)
+                    
+                    if widget == self:
+            
+                        parent.setCurrentItem(list_item)
+                        break
+                break
+           
+            parent = parent.parent()
     def on_checkbox_changed(self, state):
         self.item.is_checked = state == 2
         self.coresignalbus.need_save.emit()
 
-    def hiden_setting_button(self):
+    def hide_setting_button(self):
         self.setting_button.hide()
