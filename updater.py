@@ -46,15 +46,6 @@ def is_mfw_running():
         return False
 
 
-import zipfile
-import tarfile
-import os
-import time
-import sys
-
-# ... existing code ...
-
-
 def extract_zip_file(update_file_path):
     """
     解压指定的压缩文件，自动判断是zip还是tar.gz格式。
