@@ -175,3 +175,8 @@ updater_command = [
 PyInstaller.__main__.run(updater_command)
 if sys.platform == "darwin":
     os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))
+    #移动updater
+    shutil.move(
+        os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater"),
+        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app", "Contents", "MacOS", "MFWUpdater"),
+    )
