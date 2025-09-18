@@ -1,9 +1,15 @@
+from json import tool
+import re
+import markdown
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
     QAbstractItemView,
+    QSplitter, 
+    QPushButton, 
 )
 from PySide6.QtGui import QIcon
 
@@ -23,6 +29,7 @@ from qfluentwidgets import (
     
     
     FluentIcon as FIF,
+
 )
 
 
@@ -197,6 +204,7 @@ class OptionWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._init_ui()
+        self._toggle_description(visible=False)
         
     #传入外部对象
     def _init_obj(self, task_manager: TaskManager, core_signalBus: CoreSignalBus):
@@ -212,24 +220,114 @@ class OptionWidget(QWidget):
         self.title_widget.setStyleSheet("font-size: 20px;")
         self.title_widget.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
-        self.title_layout = QHBoxLayout()
-        self.title_layout.addWidget(self.title_widget)
-
+        # ==================== 选项区域 ==================== #
+        # 创建选项卡片
         self.option_area_card = SimpleCardWidget()
         self.option_area_card.setClickEnabled(False)
         self.option_area_card.setBorderRadius(8)
 
         self.option_area_widget = ScrollArea()
         self.option_area_layout = QVBoxLayout(self.option_area_widget)
-     
+        
         self.option_area_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.option_area_card.setLayout(self.option_area_layout)
+        
+        # ==================== 描述区域 ==================== #
+        # 创建描述标题（直接放在主布局中）
+        self.description_title = BodyLabel("功能描述")
+        self.description_title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.description_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        
+        # 创建描述卡片
+        self.description_area_card = SimpleCardWidget()
+        self.description_area_card.setClickEnabled(False)
+        self.description_area_card.setBorderRadius(8)
+        
+        self.description_area_widget = ScrollArea()
+        self.description_layout = QVBoxLayout(self.description_area_widget)
+        
+        # 描述内容区域
+        self.description_content = BodyLabel()
+        self.description_content.setWordWrap(True)
+        self.description_layout.addWidget(self.description_content)
+        
+        self.description_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.description_area_card.setLayout(self.description_layout)
+        
+        # ==================== 分割器 ==================== #
+        # 创建垂直分割器，实现可调整比例功能
+        self.splitter = QSplitter(Qt.Orientation.Vertical)
+        
+        # 创建选项区域容器（仅用于分割器）
+        self.option_splitter_widget = QWidget()
+        self.option_splitter_layout = QVBoxLayout(self.option_splitter_widget)
+        self.option_splitter_layout.addWidget(self.option_area_card)
+        self.option_splitter_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # 创建描述区域容器（仅用于分割器）
+        self.description_splitter_widget = QWidget()
+        self.description_splitter_layout = QVBoxLayout(self.description_splitter_widget)
+        self.description_splitter_layout.addWidget(self.description_title)
+        self.description_splitter_layout.addWidget(self.description_area_card)
+        # 设置占用比例
+        self.description_splitter_layout.setStretch(0, 1)  # 标题占用1单位
+        self.description_splitter_layout.setStretch(1, 99)  # 内容占用99单位
+        self.description_splitter_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # 添加到分割器
+        self.splitter.addWidget(self.option_splitter_widget)  # 上方：选项区域
+        self.splitter.addWidget(self.description_splitter_widget)  # 下方：描述区域
+        
+        # 设置初始比例
+        self.splitter.setSizes([90, 10])  # 90% 和 10% 的初始比例
+        
+        # 添加到主布局
+        self.main_layout.addWidget(self.title_widget)  # 直接添加标题
+        self.main_layout.addWidget(self.splitter)  # 添加分割器
+        # 添加主布局间距
+        self.main_layout.setContentsMargins(10, 10, 10, 10)
+        self.main_layout.setSpacing(10)
 
-        self.main_layout.addLayout(self.title_layout)
-        self.main_layout.addWidget(self.option_area_card)
 
-        self.main_layout.setStretch(0, 1)
-        self.main_layout.setStretch(1, 99)
+    def _toggle_description(self, visible=None):
+        """切换描述区域的显示/隐藏
+        visible: True显示，False隐藏，None切换当前状态
+        """
+        if visible is None:
+            # 切换当前状态
+            visible = not self.description_splitter_widget.isVisible()
+        
+        if visible:
+            self.description_splitter_widget.show()
+            # 恢复初始比例
+            self.splitter.setSizes([90, 10])
+        else:
+            self.description_splitter_widget.hide()
+            # 让选项区域占据全部空间
+            self.splitter.setSizes([100, 0])
+
+    def set_description(self, description: str):
+        """设置描述内容"""
+
+        html = markdown.markdown(description).replace("\n", "")
+        html = re.sub(
+            r"<code>(.*?)</code>",
+            r"<span style='color: #009faa;'>\1</span>",
+            html,
+        )
+        html = re.sub(
+            r'(<a\s+[^>]*href="[^"]+"[^>]*)>', r'\1 style="color: #009faa;">', html
+        )
+        html = re.sub(r"<li><p>(.*?)</p></li>", r"<p><strong>◆ </strong>\1</p>", html)
+        html = re.sub(r"<ul>(.*?)</ul>", r"\1", html)
+
+        self.description_content.setText(html)
+    
+    def reset(self):
+        """重置选项区域和描述区域"""
+        self.set_title(self.tr("Options"))
+        self._clear_options()
+        self._toggle_description(visible=False)
 
     def set_title(self, title: str):
         """设置标题"""
@@ -252,19 +350,50 @@ class OptionWidget(QWidget):
 
     def _show_task_option(self, item: TaskItem):
         """显示任务选项"""
-        interfere=self.task_manager.interface
+        interface=self.task_manager.interface
         target_task=None
-        for task_template in interfere["task"]:
+        for task_template in interface["task"]:
             if task_template["name"] == item.name:
                 target_task=task_template
                 break
         if target_task is None:
             print(f"未找到任务模板: {item.name}")
             return
+        for option in target_task["option"]:
+            current=item.task_option.get(option)
+
+            cases=self.Get_Task_List(interface,option)
+            options_tooltips={}
+            for o in cases:
+                options_tooltips[o]=f"这是{o}的介绍"
 
 
+
+
+            self._add_combox_option(option, cases, current, tooltip="test" ,option_tooltips=options_tooltips)
+        
         
 
+    from typing import List
+    def Get_Task_List(self,interface: dict, target: str) -> List[str]:
+        """根据选项名称获取所有case的name列表。
+
+        Args:
+            path (str): 配置文件路径。
+            target (str): 选项名称。
+
+        Returns:
+            list: 包含所有case的name列表。
+        """
+        lists = []
+        Task_Config = interface["option"][target]["cases"]
+        if not Task_Config:
+            return []
+        Lens = len(Task_Config) - 1
+        for i in range(Lens, -1, -1):
+            lists.append(Task_Config[i]["name"])
+        lists.reverse()
+        return lists
     def _show_resource_option(self, item: TaskItem):
         """显示资源选项"""
         self._clear_options()
@@ -272,7 +401,7 @@ class OptionWidget(QWidget):
     def _show_controller_option(self, item: TaskItem):
         self._clear_options()
             
-    def _add_combox_option(self, name: str, options: list[str], current: str, icon_path: str = "",
+    def _add_combox_option(self, name: str, options: list[str], current: str|None=None, icon_path: str = "",
                           editable: bool = False, tooltip: str = "", option_tooltips: dict[str, str] | None = None):
         """添加下拉选项"""
         v_layout = QVBoxLayout()
@@ -308,7 +437,10 @@ class OptionWidget(QWidget):
         combo_box.setObjectName(name)
         v_layout.setObjectName(f"{name}_layout")
         combo_box.addItems(options)
-        combo_box.setCurrentText(current)
+        if current:
+            combo_box.setCurrentText(current)
+        else:
+            current = combo_box.currentText()
         v_layout.addWidget(combo_box)
         
         # 设置标签的工具提示（第一种工具提示：任务介绍）
