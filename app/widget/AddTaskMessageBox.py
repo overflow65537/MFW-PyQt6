@@ -11,6 +11,7 @@ from ..core.ItemManager import ConfigItem, TaskItem, BaseItemManager
 
 class BaseAddDialog(MessageBoxBase):
     """添加类对话框的基类"""
+
     def __init__(self, title: str, parent=None):
         super().__init__(parent)
 
@@ -162,8 +163,7 @@ class AddConfigDialog(BaseAddDialog):
 class AddTaskDialog(BaseAddDialog):
     def __init__(
         self,
-        task_names: list | None = None,
-        default_task: str | None = None,
+        task_map: dict[str, dict[str, dict]],
         parent=None,
     ):
         # 调用基类构造函数，设置标题
@@ -175,34 +175,26 @@ class AddTaskDialog(BaseAddDialog):
         self.task_combo = ComboBox(self)
 
         # 加载可用的任务名
-        self.task_names = task_names
-        self.load_task_names(task_names, default_task)
+        self.task_names = list(task_map.keys())
+        self.task_map = task_map
+        self.load_task_names(self.task_names)
 
         self.task_layout.addWidget(self.task_label)
         self.task_layout.addWidget(self.task_combo)
 
-    
-
-
         # 将布局添加到对话框
         self.viewLayout.addLayout(self.task_layout)
-
 
         # 存储数据的变量
         self.task_name = ""
         self.task_type = "task"
 
-    def load_task_names(self, task_names, default_task):
+    def load_task_names(self, task_names):
         """加载可用的任务名到下拉框"""
         if task_names:
             # 清空下拉框
             self.task_combo.clear()
             self.task_combo.addItems(task_names)
-            # 如果有默认任务，选中它
-            if default_task and default_task in task_names:
-                index = self.task_combo.findText(default_task)
-                if index >= 0:
-                    self.task_combo.setCurrentIndex(index)
 
     def on_confirm(self):
         """确认添加任务"""
@@ -218,7 +210,7 @@ class AddTaskDialog(BaseAddDialog):
             name=self.task_name,
             item_id=BaseItemManager.generate_id("task"),
             is_checked=True,
-            task_option={},
+            task_option=self.task_map[self.task_name],
             task_type=self.task_type,
         )
 

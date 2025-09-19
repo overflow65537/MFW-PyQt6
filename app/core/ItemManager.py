@@ -2,6 +2,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 import os
+from typing import Any
 
 from PySide6.QtCore import QObject
 
@@ -22,7 +23,7 @@ class TaskItem:
         name: str,
         item_id: str,
         is_checked: bool,
-        task_option: dict,
+        task_option: dict[str, Any],
         task_type: str,
     ):
         super().__init__()
@@ -550,3 +551,17 @@ class TaskManager(BaseItemManager):
             if task.item_id == task_id:
                 return task
         return None
+    def gen_default_option(self) -> dict[str, dict[str, dict]]:
+        """生成默认的任务选项映射"""
+        default_option = {}
+        for task in self.interface.get("task", []):
+            default_option[task["name"]]={}
+            for option in task.get("option",[]):
+                for option_name, option_template in self.interface.get("option", {}).items():
+                    if option == option_name:
+                        if option_template.get("default_case"):
+                            default_option[task["name"]].update({option_name:{"value":option_template.get("default_case"),"type":option_template.get("type","select")}})
+                        else:
+                            default_option[task["name"]].update({option_name: {"value":option_template.get("cases",[])[0]["name"],"type":option_template.get("type","select")}})
+        return default_option
+       
