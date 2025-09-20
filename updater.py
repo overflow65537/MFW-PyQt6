@@ -57,7 +57,7 @@ def extract_zip_file(update_file_path):
         # 确定解压目标目录
         if sys.platform.startswith("darwin"):
             # macOS系统，解压到上两级目录
-            target_dir = os.path.abspath(os.path.join(os.getcwd(), "..", ".."))
+            target_dir = os.path.abspath(os.path.join(os.getcwd(), "..", "..",".."))
         else:
             # 其他系统，解压到当前目录
             target_dir = os.getcwd()
@@ -142,13 +142,7 @@ def standard_update():
     if sys.platform.startswith("win32"):
         subprocess.Popen(".\\MFW.exe")
     elif sys.platform.startswith("darwin"):
-        try:
-            subprocess.run(["xattr", "-rd", "com.apple.quarantine", "."], check=True)
-            print("Successfully removed quarantine attributes.")
-        except subprocess.CalledProcessError as e:
-            print(f"Error removing quarantine attributes: {e}")
-        finally:
-            subprocess.Popen("./MFW.app/Contents/MacOS/MFW")
+        subprocess.Popen("open ..\\..\\..\\MFW.app")
     elif sys.platform.startswith("linux"):
         subprocess.Popen("./MFW")
     else:
