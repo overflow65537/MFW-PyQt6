@@ -20,8 +20,8 @@ from qfluentwidgets import (
     ComboBox,
     FluentIcon as FIF,
 )
-from ..core.CoreSignalBus import CoreSignalBus
-from ..core.ItemManager import TaskItem, ConfigItem
+from ..core.core import CoreSignalBus
+from ..core.core import TaskItem, ConfigItem
 
 
 class ClickableLabel(BodyLabel):
