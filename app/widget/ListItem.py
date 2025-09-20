@@ -89,14 +89,14 @@ class ListItem(QWidget):
            
             if hasattr(parent, 'findItems'):
     
-                for i in range(parent.count()):
-                    list_item = parent.item(i)
+                for i in range(parent.count()):# type: ignore 
+                    list_item = parent.item(i) # type: ignore 
                 
-                    widget = parent.itemWidget(list_item)
+                    widget = parent.itemWidget(list_item) # type: ignore 
                     
                     if widget == self:
             
-                        parent.setCurrentItem(list_item)
+                        parent.setCurrentItem(list_item) # type: ignore 
                         break
                 break
            
