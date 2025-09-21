@@ -46,85 +46,58 @@ def is_mfw_running():
         return False
 
 
-def extract_zip_file(update1_zip_name):
+def extract_zip_file(update_file_path):
     """
-    解压指定的 ZIP 文件。
+    解压指定的压缩文件，自动判断是zip还是tar.gz格式。
+    在macOS系统上解压到上两级目录，其他系统上解压到当前目录。
 
-    :param update1_zip_name: 要解压的 ZIP 文件的路径
+    :param update_file_path: 要解压的压缩文件的路径
     """
     try:
-        with zipfile.ZipFile(update1_zip_name, "r") as zip_ref:
-            for file_info in zip_ref.infolist():
-                # 排除列表
-                exclude_list = [
-                    "msvcp140.dll",
-                    "vcruntime140.dll",
-                    "onnxruntime_maa.dll",
-                    "onnxruntime_maa.so",
-                    "onnxruntime_maa.dylib",
-                    "fastdeploy_ppocr_maa.dll",
-                    "fastdeploy_ppocr_maa.so",
-                    "fastdeploy_ppocr_maa.dylib",
-                ]
-                if file_info.filename in exclude_list:
-                    continue
-                try:
-                    zip_ref.extract(file_info, os.getcwd())
-                    print(f"Extracted: {file_info.filename}")
-                except PermissionError as e:
-                    # 等待 3 秒
-                    time.sleep(3)
-                    # 再次尝试解压
-                    try:
-                        zip_ref.extract(file_info, os.getcwd())
-                        print(f"Extracted: {file_info.filename}")
-                    except Exception as e:
-                        error_message = f"try extract {file_info.filename} failed: {e}"
-                        with open("ERROR.log", "a") as log_file:
-                            log_file.write(error_message + "\n")
-                            if sys.argv[1] != "-update":
-                                input(f"{error_message}\nPress Enter to continue...")
-                        sys.exit(1)
-    except zipfile.BadZipfile as e:
-        tar_file_path = update1_zip_name.replace(".zip", ".tar.gz")
-        os.rename(update1_zip_name, tar_file_path)
-        # 按照上面的逻辑
-        with tarfile.open(tar_file_path, "r") as tar_ref:
-            for file_info in tar_ref.getmembers():
-                # 排除列表
-                exclude_list = [
-                    "msvcp140.dll",
-                    "vcruntime140.dll",
-                    "onnxruntime_maa.dll",
-                    "onnxruntime_maa.so",
-                    "onnxruntime_maa.dylib",
-                    "fastdeploy_ppocr_maa.dll",
-                    "fastdeploy_ppocr_maa.so",
-                    "fastdeploy_ppocr_maa.dylib",
-                ]
-                if file_info.name in exclude_list:
-                    continue
-                try:
-                    tar_ref.extract(file_info, os.getcwd())
-                    print(f"Extracted: {file_info.name}")
-                except PermissionError as e:
-                    # 等待 3 秒
-                    time.sleep(3)
-                    # 再次尝试解压
-                    try:
-                        tar_ref.extract(file_info, os.getcwd())
-                        print(f"Extracted: {file_info.name}")
-                    except Exception as e:
-                        error_message = f"try extract {file_info.name} failed: {e}"
-                        with open("ERROR.log", "a") as log_file:
-                            log_file.write(error_message + "\n")
-                            if sys.argv[1] != "-update":
-                                input(f"{error_message}\nPress Enter to continue...")
-                        sys.exit(1)
+        # 确定解压目标目录
+        if sys.platform.startswith("darwin"):
+            # macOS系统，解压到上两级目录
+            target_dir = os.path.abspath(os.path.join(os.getcwd(), "..", "..",".."))
+        else:
+            # 其他系统，解压到当前目录
+            target_dir = os.getcwd()
+
+        print(f"解压目标目录: {target_dir}")
+
+        try:
+            with zipfile.ZipFile(update_file_path, "r") as zip_ref:
+                for file_info in zip_ref.infolist():
+                    zip_ref.extract(file_info, target_dir)
+                    print(f"已解压: {file_info.filename}")
+        except zipfile.BadZipfile:
+            try:
+                with tarfile.open(update_file_path, "r") as tar_ref:
+                    for file_info in tar_ref.getmembers():
+                        tar_ref.extract(file_info, target_dir)
+                        print(f"已解压: {file_info.name}")
+            except tarfile.TarError as e:
+                error_message = f"无法识别的文件格式或文件已损坏: {update_file_path}"
+                input(error_message)
+                sys.exit(error_message)
     except Exception as e:
-        error_message = f"extract {update1_zip_name} failed: {e},enter to continue"
+        error_message = f"解压 {update_file_path} 失败: {e}"
         input(error_message)
         sys.exit(error_message)
+
+
+def handle_extract_error(filename, error):
+    """
+    处理解压过程中的错误
+
+    :param filename: 解压失败的文件名
+    :param error: 错误信息
+    """
+    error_message = f"解压 {filename} 失败: {error}"
+    with open("ERROR.log", "a") as log_file:
+        log_file.write(error_message + "\n")
+        if len(sys.argv) > 1 and sys.argv[1] != "-update":
+            input(f"{error_message}\n按回车键继续...")
+    sys.exit(1)
 
 
 def standard_update():
@@ -169,13 +142,7 @@ def standard_update():
     if sys.platform.startswith("win32"):
         subprocess.Popen(".\\MFW.exe")
     elif sys.platform.startswith("darwin"):
-        try:
-            subprocess.run(["xattr", "-rd", "com.apple.quarantine", "."], check=True)
-            print("Successfully removed quarantine attributes.")
-        except subprocess.CalledProcessError as e:
-            print(f"Error removing quarantine attributes: {e}")
-        finally:
-            subprocess.Popen("./MFW.app/Contents/MacOS/MFW")
+        subprocess.Popen("open ..\\..\\..\\MFW.app")
     elif sys.platform.startswith("linux"):
         subprocess.Popen("./MFW")
     else:
