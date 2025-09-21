@@ -30,7 +30,14 @@ import sys
 # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
 if getattr(sys, "frozen", False):
     # 如果程序是打包后的可执行文件，将工作目录设置为可执行文件所在目录
-    target_dir = os.path.dirname(sys.executable)        # 非MacOS平台
+    if sys.platform.startswith("darwin"):
+        # MacOS平台
+        target_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
+
+    else:
+        target_dir = os.path.dirname(sys.executable)        # 非MacOS平台
+
+
 
 else:
     # 如果是脚本运行，将工作目录设置为脚本文件所在目录
@@ -50,7 +57,7 @@ import maa
 from maa.context import Context
 from maa.custom_action import CustomAction
 from maa.custom_recognition import CustomRecognition
-from app.utils.logger import logger
+
 import atexit
 from qasync import QEventLoop, asyncio
 from qfluentwidgets import ConfigItem
