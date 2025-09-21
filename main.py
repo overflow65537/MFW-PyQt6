@@ -36,12 +36,15 @@ if getattr(sys, "frozen", False):
 
     else:
         target_dir = os.path.dirname(sys.executable)        # 非MacOS平台
-
+        """if sys.platform == "linux":
+            #打包后的临时目录
+            os.environ["MAAFW_BINARY_PATH"] = os.path.join(sys._MEIPAS,"maa" ,"bin")"""
 
 
 else:
     # 如果是脚本运行，将工作目录设置为脚本文件所在目录
     target_dir = os.path.dirname(os.path.abspath(__file__))
+
 
 # 切换工作目录
 os.chdir(target_dir)
