@@ -76,8 +76,8 @@ base_command = [
     # 资源包含规则（格式：源路径{分隔符}目标目录）
     #f"--add-data={maa_path}{os.pathsep}maa",
     #f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
-    f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
-    f"--add-data={strenum}{os.pathsep}strenum",
+    #f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
+    #f"--add-data={strenum}{os.pathsep}strenum",
     # 自动收集包数据
     "--collect-data=maa",
     "--collect-data=MaaAgentBinary",
@@ -140,18 +140,12 @@ PyInstaller.__main__.run(base_command)
 
 # 复制资源文件夹
 if os.path.exists(os.path.join(os.getcwd(), "MFW_resource")):
-    if sys.platform == "darwin":
-        shutil.copytree(
-            os.path.join(os.getcwd(), "MFW_resource"),
-            os.path.join(os.getcwd(), "dist", "MFW", "MFW.app", "Contents", "MacOS", "MFW_resource"),
-            dirs_exist_ok=True,
-        )
-    else:
-        shutil.copytree(
-            os.path.join(os.getcwd(), "MFW_resource"),
-            os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource"),
-            dirs_exist_ok=True,
-        )
+
+    shutil.copytree(
+        os.path.join(os.getcwd(), "MFW_resource"),
+        os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource"),
+        dirs_exist_ok=True,
+    )
 
 # 复制README和许可证并在开头加上MFW_前缀
 for file in ["README.md", "README-en.md", "LICENSE"]:
@@ -175,8 +169,3 @@ updater_command = [
 PyInstaller.__main__.run(updater_command)
 if sys.platform == "darwin":
     os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))
-    #移动updater
-    shutil.move(
-        os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater"),
-        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app", "Contents", "MacOS", "MFWUpdater"),
-    )

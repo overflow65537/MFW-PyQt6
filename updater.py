@@ -49,18 +49,12 @@ def is_mfw_running():
 def extract_zip_file(update_file_path):
     """
     解压指定的压缩文件，自动判断是zip还是tar.gz格式。
-    在macOS系统上解压到上两级目录，其他系统上解压到当前目录。
 
     :param update_file_path: 要解压的压缩文件的路径
     """
     try:
         # 确定解压目标目录
-        if sys.platform.startswith("darwin"):
-            # macOS系统，解压到上两级目录
-            target_dir = os.path.abspath(os.path.join(os.getcwd(), "..", "..",".."))
-        else:
-            # 其他系统，解压到当前目录
-            target_dir = os.getcwd()
+        target_dir = os.getcwd()
 
         print(f"解压目标目录: {target_dir}")
 
@@ -142,7 +136,7 @@ def standard_update():
     if sys.platform.startswith("win32"):
         subprocess.Popen(".\\MFW.exe")
     elif sys.platform.startswith("darwin"):
-        subprocess.Popen("open ..\\..\\..\\MFW.app")
+        subprocess.Popen("open .\\MFW.app")
     elif sys.platform.startswith("linux"):
         subprocess.Popen("./MFW")
     else:
