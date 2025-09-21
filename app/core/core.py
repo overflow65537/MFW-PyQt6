@@ -77,8 +77,6 @@ class ConfigItem:
     item_id: str
     is_checked: bool
     tasks: List[TaskItem]
-    gpu: int
-    finish_option: int
     know_task: List[str]
     bundle: Dict[str, str]
     task_type: str
@@ -90,8 +88,6 @@ class ConfigItem:
             "item_id": self.item_id,
             "is_checked": self.is_checked,
             "tasks": [task.to_dict() for task in self.tasks],
-            "gpu": self.gpu,
-            "finish_option": self.finish_option,
             "know_task": self.know_task,
             "bundle": self.bundle,
             "task_type": self.task_type,
@@ -105,8 +101,6 @@ class ConfigItem:
             item_id=data.get("item_id", ""),
             is_checked=data.get("is_checked", False),
             tasks=[TaskItem.from_dict(task) for task in data.get("tasks", [])],
-            gpu=data.get("gpu", 0),
-            finish_option=data.get("finish_option", 0),
             know_task=data.get("know_task", []),
             bundle=data.get("bundle", {}),
             task_type=data.get("task_type", ""),
@@ -240,7 +234,9 @@ class JsonConfigRepository(IConfigRepository):
             default_config = {
                 "curr_config_id": "",
                 "config_list": [],
-                "bundle": {interface.get("name", "Bundle"): "./"},
+                "bundle": [
+                    {"name": interface.get("name", "Default Bundle"), "path": "./"}
+                ],
             }
             self.save_main_config(default_config)
             return default_config
@@ -443,6 +439,20 @@ class ConfigService(IConfigService):
                 configs.append(summary)
         return configs
 
+    def get_bundle(self, bundle_name: str) -> dict:
+        """获取bundle数据"""
+        if self._main_config:
+            for bundle in self._main_config["bundle"]:
+                if bundle["name"] == bundle_name:
+                    return bundle
+        raise FileNotFoundError(f"Bundle {bundle_name} not found")
+
+    def list_bundles(self) -> List[str]:
+        """列出所有bundle名称"""
+        if self._main_config:
+            return list(map(lambda x: x["name"], self._main_config["bundle"]))
+        return []
+
 
 class TaskService(ITaskService):
     """任务服务实现"""
@@ -451,6 +461,7 @@ class TaskService(ITaskService):
         self.config_service = config_service
         self.signal_bus = signal_bus
         self.current_tasks = []
+        self._on_config_changed(self.config_service.current_config_id)
 
         # 连接信号
         self.signal_bus.config_changed.connect(self._on_config_changed)
@@ -485,9 +496,9 @@ class TaskService(ITaskService):
                 task_updated = True
                 break
 
-        # 如果是新任务，添加到列表
+        # 如果是新任务，添加到列表倒数第二个，确保完成后操作在最后
         if not task_updated:
-            config.tasks.append(TaskItem.from_dict(task_data))
+            config.tasks.insert(-1, TaskItem.from_dict(task_data))
 
         # 保存配置
         if self.config_service.update_config(config_id, config.to_dict()):
@@ -666,9 +677,14 @@ class ServiceCoordinator:
 
         # 连接信号
         self._connect_signals()
-        if not self.config_service.current_config_id and not self.config_service.list_configs():
+        if (
+            not self.config_service.current_config_id
+            and not self.config_service.list_configs()
+        ):
+            bundle_name = self.config_service.list_bundles()[0]
+            bundle_data = self.config_service.get_bundle(bundle_name)
             # 没有当前配置时，创建默认配置
-            self._on_create_config("Default Config")
+            self._on_create_config("Default Config", bundle_data)
 
     def _connect_signals(self):
         """连接所有信号"""
@@ -698,20 +714,50 @@ class ServiceCoordinator:
         self.config_service.save_main_config()
         self.signal_bus.config_saved.emit(True)
 
-    def _on_create_config(self, config_name: str):
+    def _on_create_config(self, config_name: str, bundle: dict):
         """创建新配置"""
+        import random
+        import string
+
         default_config = {
             "name": config_name,
             "is_checked": True,
-            "tasks": [],
-            "gpu": 0,
-            "finish_option": 0,
+            "tasks": [
+                {
+                    "name": "控制器",
+                    "item_id": "c_" + "".join(
+                        random.choices(string.ascii_letters + string.digits, k=10)
+                    ),
+                    "is_checked": True,
+                    "task_option": {},
+                    "task_type": "controller",
+                },
+                {
+                    "name": "资源",
+                    "item_id": "r_" + "".join(
+                        random.choices(string.ascii_letters + string.digits, k=10)
+                    ),
+                    "is_checked": True,
+                    "task_option": {},
+                    "task_type": "resource",
+                },
+                {
+                    "name": "完成后操作",
+                    "item_id": "f_" + "".join(
+                        random.choices(string.ascii_letters + string.digits, k=10)
+                    ),
+                    "is_checked": True,
+                    "task_option": {},
+                    "task_type": "finish",
+                },
+            ],
             "know_task": [],
-            "bundle": {},
-            "task_type": "default",
+            "bundle": [bundle],
+            "task_type": "config",
         }
 
         config_id = self.config_service.create_config(default_config)
+
         if config_id:
             # 设置为当前配置
             self.config_service.current_config_id = config_id
@@ -724,12 +770,12 @@ class ServiceCoordinator:
         """选择配置"""
         self.config_service.current_config_id = config_id
 
-    def _on_create_task(self, task_type: str):
+    def _on_create_task(self, name: str, options: Dict[str, Any], task_type: str="task"):
         """创建新任务"""
         default_task = {
-            "name": f"新{task_type}任务",
+            "name": name,
             "is_checked": True,
-            "task_option": {},
+            "task_option": options,
             "task_type": task_type,
         }
 
@@ -761,7 +807,8 @@ if __name__ == "__main__":
     # 测试代码
     main_config_path = Path("main_config.json")
     service_coordinator = ServiceCoordinator(main_config_path)
-    print(service_coordinator.config.current_config_id
-          )
+    print(service_coordinator.config.current_config_id)
     print(service_coordinator.task.current_tasks)
-    
+    service_coordinator._on_create_task("Test Task", {"test": "test"}, "controller")
+    print(service_coordinator.config.current_config_id)
+    print(service_coordinator.task.current_tasks)
