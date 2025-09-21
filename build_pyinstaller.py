@@ -76,8 +76,8 @@ base_command = [
     # 资源包含规则（格式：源路径{分隔符}目标目录）
     #f"--add-data={maa_path}{os.pathsep}maa",
     #f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
-    #f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
-    #f"--add-data={strenum}{os.pathsep}strenum",
+    f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
+    f"--add-data={strenum}{os.pathsep}strenum",
     # 自动收集包数据
     "--collect-data=maa",
     "--collect-data=MaaAgentBinary",
