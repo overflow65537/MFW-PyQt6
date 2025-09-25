@@ -34,7 +34,7 @@ class CoreSignalBus(QObject):
     create_task = Signal(object)  # 任务类型
     delete_task = Signal(str)  # 任务ID
     select_task = Signal(str)  # 任务ID
-
+    toggle_task_check = Signal(str, bool)  # 任务ID, 是否启用
 
 # ==================== 数据模型 ====================
 @dataclass
@@ -186,7 +186,11 @@ class ITaskService(ABC):
     @abstractmethod
     def reorder_tasks(self, task_order: List[str]) -> bool:
         pass
-
+        
+    @abstractmethod
+    def toggle_task_check(self, task_id: str, is_checked: bool) -> bool:
+        """切换任务的启用状态"""
+        pass
 
 class IOptionService(ABC):
     """选项服务接口"""
@@ -453,7 +457,6 @@ class ConfigService(IConfigService):
             return list(map(lambda x: x["name"], self._main_config["bundle"]))
         return []
 
-
 class TaskService(ITaskService):
     """任务服务实现"""
 
@@ -598,7 +601,16 @@ class TaskService(ITaskService):
         # 发出任务顺序更新信号
         self.signal_bus.task_order_updated.emit(task_order)
         return True
-
+    
+    def toggle_task_check(self, task_id: str, is_checked: bool) -> bool:
+        """切换任务的启用状态"""
+        task = self.get_task(task_id)
+        if task:
+            task.is_checked = is_checked
+            # 通过任务更新信号来保存更改
+            self.signal_bus.task_updated.emit(task.to_dict())
+            return True
+        return False
 
 class OptionService(IOptionService):
     """选项服务实现"""
@@ -708,7 +720,10 @@ class ServiceCoordinator:
 
         # UI请求选择任务
         self.signal_bus.select_task.connect(self._on_select_task)
-
+        
+        # 连接任务启用状态切换信号
+        self.signal_bus.toggle_task_check.connect(self._on_toggle_task_check)
+    
     def _on_need_save(self):
         """当UI请求保存时保存所有配置"""
         self.config_service.save_main_config()
@@ -721,10 +736,9 @@ class ServiceCoordinator:
 
         default_config = {
             "name": config_name,
-            "is_checked": True,
             "tasks": [
                 {
-                    "name": "控制器",
+                    "name":"controller",
                     "item_id": "c_" + "".join(
                         random.choices(string.ascii_letters + string.digits, k=10)
                     ),
@@ -733,7 +747,7 @@ class ServiceCoordinator:
                     "task_type": "controller",
                 },
                 {
-                    "name": "资源",
+                    "name": "resource",
                     "item_id": "r_" + "".join(
                         random.choices(string.ascii_letters + string.digits, k=10)
                     ),
@@ -742,7 +756,7 @@ class ServiceCoordinator:
                     "task_type": "resource",
                 },
                 {
-                    "name": "完成后操作",
+                    "name": "finish",
                     "item_id": "f_" + "".join(
                         random.choices(string.ascii_letters + string.digits, k=10)
                     ),
@@ -788,6 +802,10 @@ class ServiceCoordinator:
     def _on_select_task(self, task_id: str):
         """选择任务"""
         self.signal_bus.task_selected.emit(task_id)
+    
+    def _on_toggle_task_check(self, task_id: str, is_checked: bool):
+        """切换任务的启用状态"""
+        self.task_service.toggle_task_check(task_id, is_checked)
 
     # 提供获取服务的属性，以便UI层访问
     @property
