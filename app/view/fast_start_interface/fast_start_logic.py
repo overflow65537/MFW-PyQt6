@@ -15,9 +15,11 @@ from ..fast_start_interface.fast_start_ui import UI_FastStartInterface
 
 
 class FastStartInterface(UI_FastStartInterface, QWidget):
-    def __init__(self, parent=None):
+    def __init__(self,service_coordinator=None ,parent=None ):
         QWidget.__init__(self, parent=parent)
+        UI_FastStartInterface.__init__(self,service_coordinator=service_coordinator,parent=parent)
         self.setupUi(self)
+        self.service_coordinator = service_coordinator
         
         self.task_info.set_title(
             self.tr("任务信息")

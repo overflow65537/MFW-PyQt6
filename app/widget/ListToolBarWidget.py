@@ -113,8 +113,9 @@ class BaseListToolBarWidget(QWidget):
 
 
 class ConfigListToolBarWidget(BaseListToolBarWidget):
-    def __init__(self, parent=None):
+    def __init__(self, service_coordinator=None, parent=None):
         super().__init__(parent)
+        self.service_coordinator = service_coordinator
         # 选择全部按钮
         self.select_all_button.clicked.connect(self.select_all)
         # 取消选择全部按钮
@@ -124,7 +125,7 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
 
     def _init_task_list(self):
         """初始化配置列表"""
-        self.task_list = ConfigDragListWidget(parent=self)
+        self.task_list = ConfigDragListWidget(service_coordinator=self.service_coordinator, parent=self)
 
     def select_all(self):
         """选择全部"""
@@ -198,8 +199,9 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
 
 
 class OptionWidget(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, service_coordinator=None, parent=None):
         super().__init__(parent)
+        self.service_coordinator = service_coordinator
         self._init_ui()
         self._toggle_description(visible=False)
 

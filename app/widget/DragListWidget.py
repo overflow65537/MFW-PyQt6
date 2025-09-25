@@ -1,249 +1,290 @@
-from venv import logger
+
+from typing import Dict, Any, List
 from PySide6.QtWidgets import QApplication, QListWidgetItem, QAbstractItemView
-
-from PySide6.QtCore import Qt, Signal, QPoint, QMimeData, QThread
-
-from PySide6.QtGui import (
-    QDragEnterEvent,
-    QDropEvent,
-    QDragMoveEvent,
-    QDrag,
-    QPixmap,
-    QPainter,
-    QColor,
-    QCursor,
-    QMouseEvent,
-)
-
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QDropEvent, QDragEnterEvent, QDragMoveEvent
 
 from qfluentwidgets import ListWidget
-from .ListItem import ListItem
-from ..core.ItemManager import TaskManager, ConfigManager, TaskItem, ConfigItem
-from ..core.CoreSignalBus import CoreSignalBus
+from ..core.core import TaskItem, ConfigItem, CoreSignalBus, ServiceCoordinator
+from .ListItem import BaseListItem, TaskListItem, ConfigListItem
 
 
 class BaseDragListWidget(ListWidget):
-    item_order_changed = Signal(list)
-    checkbox_state_changed = Signal(str, bool)
+    """基础可拖拽列表组件 - 提供通用的拖拽功能"""
 
-    def __init__(self, parent=None):
+    item_order_changed = Signal(list)  # 列表项顺序变更信号
+    item_selected = Signal(str)  # 列表项选择信号
+
+    def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         super().__init__(parent)
+        self.service_coordinator = service_coordinator
+        self.signal_bus: CoreSignalBus = service_coordinator.signal_bus
+
+        # 设置拖拽相关属性
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.setDefaultDropAction(Qt.DropAction.MoveAction)
 
+        # 连接信号
+        self.currentItemChanged.connect(self._on_item_selected)
+        self.item_order_changed.connect(self._on_order_changed)
+
+    def dropEvent(self, event: QDropEvent) -> None:
+        """处理拖放事件，并发出顺序变更信号"""
+        # 保存原始选择状态
+        current_item = self.currentItem()
+
+        # 执行默认的拖放操作
+        super().dropEvent(event)
+
+        # 收集所有项并发出顺序变更信号
+        self._emit_order_changed_signal()
+
+        # 恢复选择状态
+        if current_item and self.findItems(
+            current_item.text(), Qt.MatchFlag.MatchExactly
+        ):
+            self.setCurrentItem(current_item)
+
+    def _emit_order_changed_signal(self):
+        """收集所有项并发出顺序变更信号"""
+        item_list = []
+        for i in range(self.count()):
+            item = self.item(i)
+            widget = self.itemWidget(item)
+
+            # 根据widget类型获取对应的数据项
+            if isinstance(widget, TaskListItem):
+                item_list.append(widget.task)
+            elif isinstance(widget, ConfigListItem):
+                item_list.append(widget.config)
+
+        self.item_order_changed.emit(item_list)
+
+    def _on_item_selected(self, current, previous):
+        """当选中项变化时的处理"""
+        if current:
+            widget = self.itemWidget(current)
+            if widget and isinstance(widget, (TaskListItem, ConfigListItem)):
+                self.item_selected.emit(widget.item_id)
+
+    def _on_order_changed(self, item_list):
+        """当列表项顺序变化时的处理（子类可以重写）"""
+        pass
+
+    def select_item(self, item_id: str):
+        """选择指定ID的项"""
+        for i in range(self.count()):
+            item = self.item(i)
+            if not item:
+                continue
+
+            widget = self.itemWidget(item)
+            if (
+                widget
+                and isinstance(widget, (TaskListItem, ConfigListItem))
+                and widget.item_id == item_id
+            ):
+                self.setCurrentItem(item)
+                break
+
+    def clear(self):
+        """清空列表"""
+        while self.count() > 0:
+            item = self.takeItem(0)
+            widget = self.itemWidget(item)
+            if widget:
+                widget.deleteLater()
+            del item
+
+
+class TaskDragListWidget(BaseDragListWidget):
+    """任务拖拽列表组件 - 专门用于显示和管理TaskItem，包含复选框逻辑"""
+
+    def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
+        super().__init__(service_coordinator, parent)
+        # 连接任务相关信号
+        self.signal_bus.task_created.connect(self.add_task)
+        self.signal_bus.task_deleted.connect(self.remove_task)
+        self.signal_bus.task_updated.connect(self.update_task)
+
+        # 初始化列表
+        self.update_list()
+
+    def update_list(self):
+        """从服务协调器更新任务列表UI"""
+        self.clear()
+        task_list = self.service_coordinator.task.get_tasks()
+
+        for task in task_list:
+            self._add_task_to_list(task)
+
+    def _add_task_to_list(self, task: TaskItem):
+        """将单个任务添加到列表中"""
+        list_item = QListWidgetItem()
+        task_widget = TaskListItem(task, self.signal_bus)
+
+        # 连接任务项的信号
+        task_widget.checkbox.stateChanged.connect(
+            lambda state, t=task: self._on_task_checkbox_changed(t.item_id, state)
+        )
+
+        # 根据任务类型设置特殊属性
+        if task.task_type in ["resource", "controller", "finish"]:
+            list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
+        if task.task_type == "resource":
+            # 资源在第一位
+            self.insertItem(0, list_item)
+        elif task.task_type == "controller":
+            # 控制器在第二位
+            self.insertItem(1, list_item)
+        elif task.task_type == "finish":
+            # finish在最后
+            self.insertItem(self.count() - 1, list_item)
+        else:
+            # task和其他插入倒数第二个位置
+            self.insertItem(self.count() - 2, list_item)
+
+        self.setItemWidget(list_item, task_widget)
+
+    def add_task(self, task: TaskItem):
+        """添加任务项"""
+        self._add_task_to_list(task)
+
+    def remove_task(self, task_id: str):
+        """移除任务项"""
+        for i in range(self.count()):
+            item = self.item(i)
+            widget = self.itemWidget(item)
+            if isinstance(widget, TaskListItem) and widget.task.item_id == task_id:
+                self.takeItem(i)
+                widget.deleteLater()
+                break
+
+    def update_task(self, task: TaskItem):
+        """更新任务项"""
+        for i in range(self.count()):
+            item = self.item(i)
+            widget = self.itemWidget(item)
+            if isinstance(widget, TaskListItem) and widget.task.item_id == task.item_id:
+                # 更新现有任务信息
+                widget.task = task
+                widget.name_label.setText(task.name)
+                widget.checkbox.setChecked(task.is_checked)
+                return
+
+    def _on_task_checkbox_changed(self, task_id: str, state):
+        """处理任务复选框状态变化"""
+        is_checked = state == Qt.CheckState.Checked
+        self.signal_bus.toggle_task_check.emit(task_id, is_checked)
+
+    def _on_order_changed(self, item_list: list[TaskItem]):
+        """当任务顺序变化时，更新服务协调器中的任务顺序"""
+        self.service_coordinator.task.reorder_tasks(
+            [task.item_id for task in item_list]
+        )
+
     def toggle_all_checkboxes(self, checked):
-        """批量设置所有项的复选框状态
-        Args:
-            checked: True表示全选, False表示取消全选
-        """
+        """批量设置所有任务项的复选框状态"""
         for i in range(self.count()):
             list_item = self.item(i)
             if not list_item:
                 continue
 
             # 获取列表项对应的widget实例
-            item_widget: ListItem = self.itemWidget(list_item)  # type: ignore
+            item_widget = self.itemWidget(list_item)
+            if isinstance(item_widget, TaskListItem):
+                # 检查是否为不可修改的项
+                if item_widget.task.task_type in [
+                    "controller",
+                    "resource",
+                    "finish",
+                ]:
+                    continue
 
-            if item_widget.item.task_type in ["controller", "resource"]:
-                continue  
-            elif hasattr(item_widget, "checkbox"):
                 item_widget.checkbox.setChecked(checked)
+            else:
+                continue
+
     def select_all(self):
-        """全选所有复选框"""
+        """全选所有任务复选框"""
         self.toggle_all_checkboxes(True)
 
     def deselect_all(self):
-        """取消全选所有复选框"""
+        """取消全选所有任务复选框"""
         self.toggle_all_checkboxes(False)
-
-    def startDrag(self, supportedActions):
-        # 获取当前选中的项
-        index = self.currentIndex()
-        if not index.isValid():
-            return
-
-        item = self.itemFromIndex(index)
-        # 检查项是否允许拖动（通过标志判断）
-        if not (item.flags() & Qt.ItemFlag.ItemIsDragEnabled):
-            return
-
-        # 调用父类方法执行拖动
-        super().startDrag(supportedActions)
-
-    def dropEvent(self, event: QDropEvent) -> None:
-        drop_pos = event.pos()
-        target_item = self.itemAt(drop_pos)
-        # 检查目标项是否为不可拖动项，如果是则调整放置位置到其下方
-        if target_item and not (target_item.flags() & Qt.ItemFlag.ItemIsDragEnabled):
-            return
-        super().dropEvent(event)
-        drop_pos = event.pos()
-        target_item = self.itemAt(drop_pos)
-        if target_item:
-            # 获取目标项的视觉矩形
-            item_rect = self.visualItemRect(target_item)
-            # 计算矩形中点的y坐标
-            mid_y = item_rect.top() + item_rect.height() / 2
-            new_row = self.row(target_item)
-            # 根据鼠标位置判断是上半部分还是下半部分
-            if drop_pos.y() > mid_y:
-                new_row += 1  # 下半部分，插入到目标项下方
-            self.setCurrentRow(new_row)
-        item_list = []
-        for i in range(self.count()):
-            item = self.item(i)
-            tem_widget: ListItem = self.itemWidget(item)  # type: ignore
-            item_list.append(tem_widget.item)
-        self.item_order_changed.emit(item_list)
-        logger.info(f"更改新列表{[item.name for item in item_list]}")
-
-    def update_list(self):
-        """从模型更新任务列表UI"""
-        pass
-
-    def select_item(self, item_id: str):
-        """选择指定项"""
-        for i in range(self.count()):
-            item = self.item(i)
-            if not item:
-                continue
-            widget: ListItem = self.itemWidget(item)  # type: ignore
-            if hasattr(widget, "item_id") and widget.item.item_id == item_id:
-                self.setCurrentItem(item)
-                break
-
-
-class TaskDragListWidget(BaseDragListWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.task_manager: TaskManager | None = None
-
-    def set_task_manager(self, task_manager: TaskManager, coresignalbus: CoreSignalBus):
-        """设置任务流对象并连接信号槽"""
-        if self.task_manager is None:
-            self.task_manager = task_manager
-            self.coresignalbus = coresignalbus
-            self.update_list()
-            self.coresignalbus.change_task_flow.connect(self.update_list)
-            self.item_order_changed.connect(self.task_manager.update_task_order)
-        else:
-            print("任务流对象已存在，不重复设置")
-
-    def update_list(self):
-        print("列表更新")
-        """从模型更新任务列表UI"""
-        if self.task_manager is None:
-            print("任务流对象未设置，无法更新任务列表")
-            return
-
-        self.clear()
-        task_list: list[TaskItem] = self.task_manager.task_list
-        for task in task_list:
-            print(f"创建任务项:{task.name}")
-
-            list_item = QListWidgetItem()
-            task_widget = ListItem(task, self.coresignalbus)
-            if task.task_type in ["resource", "controller"]:
-                task_widget.checkbox.setChecked(True)
-                task_widget.checkbox.setDisabled(True)
-                list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
-            # 连接UI操作到模型更新
-
-            self.addItem(list_item)
-            self.setItemWidget(list_item, task_widget)
-
-    def show_option(self, item: dict):
-        """显示选项"""
-        print(f"显示选项: {item}")
-        self.select_item(item.get("item_id", ""))
-
-        # 解析任务类型
-        task_type = item.get("task_type", "")
-        print(f"任务类型: {task_type}")
-
-        if task_type == "task":
-            print("启动task设置")
-
-        elif task_type == "controller":
-            print("显示控制器设置")
-
-        elif task_type == "resource":
-            print("显示资源设置")
-
-    def add_task(self, task: TaskItem):
-        """添加任务项"""
-        if self.task_manager is None:
-            return
-        self.task_manager.add_task(task)
-        print(f"添加任务项:{task.item_id}")
-        list_item = QListWidgetItem()
-        task_widget = ListItem(task, self.coresignalbus)
-        self.addItem(list_item)
-        self.setItemWidget(list_item, task_widget)
 
 
 class ConfigDragListWidget(BaseDragListWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.config_manager: ConfigManager | None = None
+    """配置拖拽列表组件 - 专门用于显示和管理ConfigItem，不包含复选框逻辑"""
 
-    def set_config_manager(
-        self, config_manager: ConfigManager, coresignalbus: CoreSignalBus
-    ):
-        """设置配置流对象并连接信号槽"""
-        if self.config_manager is None:
-            self.config_manager = config_manager
-            self.coresignalbus = coresignalbus
-            self.item_order_changed.connect(self.config_manager.update_config_order)
-            self.update_list()
-            self.set_curr_config_id(self.config_manager.curr_config_id)
+    def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
+        super().__init__(service_coordinator, parent)
 
-        else:
-            print("配置流对象已存在，不重复设置")
+        # 连接配置相关信号
+        self.signal_bus.config_created.connect(self.add_config)
+        self.signal_bus.config_deleted.connect(self.remove_config)
+        self.signal_bus.config_updated.connect(self.update_config)
+
+        # 初始化列表
+        self.update_list()
 
     def update_list(self):
-        """从模型更新配置列表UI"""
-        if self.config_manager is None:
-            print("配置流对象未设置，无法更新配置列表")
-            return
-        print("配置列表更新")
+        """从服务协调器更新配置列表UI"""
         self.clear()
-        config_list: list[ConfigItem] = self.config_manager.config_list
+        config_list = self.service_coordinator.config.list_configs()
 
         for config in config_list:
+            self._add_config_to_list(config)
 
-            print(f"创建配置项:{config.item_id}")
-            list_item = QListWidgetItem()
-            config_widget = ListItem(config, self.coresignalbus)
-            self.addItem(list_item)
-            self.setItemWidget(list_item, config_widget)
-
-    def show_option(self, item: dict):
-        """显示选项"""
-        if self.config_manager is None:
-            return
-        print(item)
-        self.config_manager.curr_config_id = item.get("item_id", "")
-        self.select_item(item.get("item_id", ""))
-
-    def add_config(self, config: ConfigItem):
-        """添加配置项"""
-        if self.config_manager is None:
-            return
-        print(f"添加任务项:{config.item_id}")
+    def _add_config_to_list(self, config: ConfigItem):
+        """将单个配置添加到列表中"""
         list_item = QListWidgetItem()
-        config_widget = ListItem(config, self.coresignalbus)
+        config_widget = ConfigListItem(config, self.signal_bus)
+
         self.addItem(list_item)
         self.setItemWidget(list_item, config_widget)
 
-    def set_curr_config_id(self, config_id: str):
-        """设置当前配置项"""
-        if self.config_manager is None:
-            return
+    def add_config(self, config: ConfigItem):
+        """添加配置项"""
+        # 添加新配置到列表
+        self._add_config_to_list(config)
 
-        for idx, config in enumerate(self.config_manager.config_list):
-            if config.item_id == config_id:
-                self.setCurrentIndex(self.model().index(idx, 0))
+
+    def remove_config(self, config_id: str):
+        """移除配置项"""
+        for i in range(self.count()):
+            item = self.item(i)
+            widget = self.itemWidget(item)
+            if (
+                isinstance(widget, ConfigListItem)
+                and widget.config.item_id == config_id
+            ):
+                self.takeItem(i)
+                widget.deleteLater()
                 break
+
+    def update_config(self, config: ConfigItem):
+        """更新配置项"""
+        for i in range(self.count()):
+            item = self.item(i)
+            widget = self.itemWidget(item)
+            if (
+                isinstance(widget, ConfigListItem)
+                and widget.config.item_id == config.item_id
+            ):
+                # 更新现有配置信息
+                widget.config = config
+                widget.name_label.setText(config.name)
+                break
+
+    def _on_order_changed(self, config_list):
+        """当配置顺序变化时，更新服务协调器中的配置顺序"""
+        self.service_coordinator.reorder_configs(
+            [config.item_id for config in config_list]
+        )
+
+    def set_current_config(self, config_id: str):
+        """设置当前配置项"""
+        self.select_item(config_id)

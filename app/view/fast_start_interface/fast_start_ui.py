@@ -1,3 +1,4 @@
+from re import S
 from PySide6.QtCore import Qt, QSize, QMetaObject, QCoreApplication
 
 from PySide6.QtWidgets import (
@@ -27,6 +28,9 @@ from ...widget.StartBarWidget import StartBarWidget
 
 
 class UI_FastStartInterface(object):
+    def __init__(self,service_coordinator=None,parent=None):
+        self.service_coordinator = service_coordinator
+        self.parent = parent
 
     def setupUi(self, FastStartInterface):
         FastStartInterface.setObjectName("FastStartInterface")
@@ -52,13 +56,13 @@ class UI_FastStartInterface(object):
         """初始化选项面板"""
         self.option_panel_widget = QWidget()
         self.option_panel_layout = QVBoxLayout(self.option_panel_widget)
-        self.option_panel = OptionWidget()
+        self.option_panel = OptionWidget(service_coordinator=self.service_coordinator)
         self.option_panel.setFixedWidth(344)
         self.option_panel_layout.addWidget(self.option_panel)
 
     def _init_control_panel(self):
         """初始化控制面板"""
-        self.config_selection = ConfigListToolBarWidget()
+        self.config_selection = ConfigListToolBarWidget(service_coordinator=self.service_coordinator)
         self.config_selection.setFixedWidth(344)
         self.config_selection.setFixedHeight(195)
 
@@ -69,7 +73,7 @@ class UI_FastStartInterface(object):
         self.control_panel = QWidget()
         self.control_panel_layout = QVBoxLayout(self.control_panel)
         # 控制面板总体布局
-        self.task_info = TaskListToolBarWidget()
+        self.task_info = TaskListToolBarWidget(service_coordinator=self.service_coordinator)
         self.task_info.setFixedWidth(344)
 
         self.control_panel_layout.addWidget(self.config_selection)
