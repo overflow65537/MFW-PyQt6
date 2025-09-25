@@ -25,7 +25,7 @@ MFW-ChainFlow Assistant 启动文件
 
 import os
 import sys
-from app.utils.logger import logger
+
 
 # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
 if getattr(sys, "frozen", False):
@@ -44,7 +44,7 @@ if getattr(sys, "frozen", False):
 else:
     # 如果是脚本运行，将工作目录设置为脚本文件所在目录
     target_dir = os.path.dirname(os.path.abspath(__file__))
-logger.debug(f"设置工作目录: {target_dir}")
+
 
 # 切换工作目录
 os.chdir(target_dir)
@@ -75,8 +75,9 @@ from app.common.config import Language
 from app.utils.tool import show_error_message
 from app.utils.check_utils import check
 from app.common.__version__ import __version__
+from app.utils.logger import logger
 
-
+logger.debug(f"设置工作目录: {target_dir}")
 
 def main(resource: str, config: str, directly: bool, DEV: bool):
     check(resource, config, directly, DEV)
