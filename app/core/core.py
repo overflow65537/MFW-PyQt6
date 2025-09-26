@@ -155,7 +155,7 @@ class IConfigService(ABC):
         pass
 
     @abstractmethod
-    def list_configs(self) -> List[Dict[str, Any]]:
+    def list_configs(self) -> List[ConfigItem]:
         pass
 
 
@@ -424,22 +424,15 @@ class ConfigService(IConfigService):
         # 删除子配置文件
         return self.__repo.delete_config(config_id)
 
-    def list_configs(self) -> List[Dict[str, Any]]:
-        """列出所有配置的概要信息"""
+    def list_configs(self) -> List[ConfigItem]:
+        """列出所有配置的信息"""
         if self.__main_config is None:
             return []
         configs = []
         for config_id in self.__main_config.get("config_list", []):
             config_data = self.__repo.load_config(config_id)
             if config_data:
-                # 只返回概要信息，不包含任务详情
-                summary = {
-                    "item_id": config_id,
-                    "name": config_data.get("name", ""),
-                    "is_checked": config_data.get("is_checked", False),
-                    "task_type": config_data.get("task_type", ""),
-                }
-                configs.append(summary)
+                configs.append(ConfigItem.from_dict(config_data))
         return configs
 
     def get_bundle(self, bundle_name: str) -> dict:
@@ -455,6 +448,17 @@ class ConfigService(IConfigService):
         if self.__main_config:
             return list(map(lambda x: x["name"], self.__main_config["bundle"]))
         return []
+    
+    def reorder_configs(self, config_list: list[ConfigItem]):
+        """重新排序配置"""
+        if self.__main_config is None:
+            return False
+
+        # 更新主配置中的配置列表
+        self.__main_config["config_list"] = [config.item_id for config in config_list]
+
+        # 保存主配置
+        return self.save_main_config()
 
 class TaskService(ITaskService):
     """任务服务实现"""

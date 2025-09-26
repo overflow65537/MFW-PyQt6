@@ -225,7 +225,6 @@ class ConfigDragListWidget(BaseDragListWidget):
         # 连接配置相关信号
         self.signal_bus.config_created.connect(self.add_config)
         self.signal_bus.config_deleted.connect(self.remove_config)
-        self.signal_bus.config_updated.connect(self.update_config)
 
         # 初始化列表
         self.update_list()
@@ -265,25 +264,9 @@ class ConfigDragListWidget(BaseDragListWidget):
                 widget.deleteLater()
                 break
 
-    def update_config(self, config: ConfigItem):
-        """更新配置项"""
-        for i in range(self.count()):
-            item = self.item(i)
-            widget = self.itemWidget(item)
-            if (
-                isinstance(widget, ConfigListItem)
-                and widget.config.item_id == config.item_id
-            ):
-                # 更新现有配置信息
-                widget.config = config
-                widget.name_label.setText(config.name)
-                break
-
-    def _on_order_changed(self, config_list):
+    def _on_order_changed(self, item_list: list[ConfigItem]):
         """当配置顺序变化时，更新服务协调器中的配置顺序"""
-        self.service_coordinator.reorder_configs(
-            [config.item_id for config in config_list]
-        )
+        self.service_coordinator.config.reorder_configs(item_list)
 
     def set_current_config(self, config_id: str):
         """设置当前配置项"""
