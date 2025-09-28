@@ -194,7 +194,9 @@ updater_command = [
 ]
 PyInstaller.__main__.run(updater_command)
 if sys.platform == "darwin":
-    os.remove(os.path.join(os.getcwd(), "dist", "MFW"))
+    os.remove(os.path.join(os.getcwd(), "dist", "MFW","MFW"))
+    #删除文件夹MFW.app
+    shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW","_internal"))
     os.rename(
         os.path.join(os.getcwd(), "dist", "MFW.app"),
         os.path.join(os.getcwd(), "dist", "MFW", "MFW.app"),
