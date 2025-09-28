@@ -61,9 +61,6 @@ from maa.context import Context
 from maa.custom_action import CustomAction
 from maa.custom_recognition import CustomRecognition
 
-if os.path.exists("MaaFramework.dll") or os.path.exists("MaaFramework.so") or os.path.exists("MaaFramework.dylib"):
-    os.environ["MAAFW_BINARY_PATH"] = target_dir
-
 import atexit
 from qasync import QEventLoop, asyncio
 from qfluentwidgets import ConfigItem
@@ -79,8 +76,10 @@ from app.utils.tool import show_error_message
 from app.utils.check_utils import check
 from app.common.__version__ import __version__
 from app.utils.logger import logger
-
+if os.path.exists("MaaFramework.dll") or os.path.exists("MaaFramework.so") or os.path.exists("MaaFramework.dylib"):
+    os.environ["MAAFW_BINARY_PATH"] =os.getcwd( )
 logger.debug(f"设置工作目录: {target_dir}")
+logger.debug(f"环境变量MAAFW_BINARY_PATH: {os.environ.get('MAAFW_BINARY_PATH')}")
 
 def main(resource: str, config: str, directly: bool, DEV: bool):
     check(resource, config, directly, DEV)
