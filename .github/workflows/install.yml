@@ -189,7 +189,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
-          path: "dist/"
+          path: "dist/MFW"
 
 
   release:
