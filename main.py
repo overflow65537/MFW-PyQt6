@@ -61,6 +61,9 @@ from maa.context import Context
 from maa.custom_action import CustomAction
 from maa.custom_recognition import CustomRecognition
 
+if os.path.exists("MaaFramework.dll") or os.path.exists("MaaFramework.so") or os.path.exists("MaaFramework.dylib"):
+    os.environ["MAAFW_BINARY_PATH"] = target_dir
+
 import atexit
 from qasync import QEventLoop, asyncio
 from qfluentwidgets import ConfigItem
