@@ -70,7 +70,7 @@ except FileNotFoundError as e:
 base_command = [
     "main.py",
     "--name=MFW",
-    "--onefile",
+    "--onedir",
     "--clean",
     "--noconfirm",
     # 资源包含规则（格式：源路径{分隔符}目标目录）
