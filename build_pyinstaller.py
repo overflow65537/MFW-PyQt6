@@ -146,7 +146,7 @@ for file in ["README.md", "README-en.md", "LICENSE"]:
         os.path.join(os.getcwd(), file),
         os.path.join(os.getcwd(), "dist", "MFW", f"MFW_{file}"),
     )
-if sys.platform == "darwin":
+"""if sys.platform == "darwin":
     for i in os.listdir(
         os.path.join(
             os.getcwd(),
@@ -180,7 +180,7 @@ else:
         shutil.copy(
             os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin", i),
             os.path.join(os.getcwd(), "dist", "MFW", i),
-        )
+        )"""
 
 # === 构建updater ===
 
@@ -195,9 +195,10 @@ updater_command = [
     os.path.join("dist", "MFW"),
 ]
 PyInstaller.__main__.run(updater_command)
-if sys.platform == "darwin":
+"""if sys.platform == "darwin":
     os.remove(os.path.join(os.getcwd(), "dist", "MFW"))
     os.rename(
         os.path.join(os.getcwd(), "dist", "MFW.app"),
         os.path.join(os.getcwd(), "dist", "MFW", "MFW.app"),
     )
+"""
