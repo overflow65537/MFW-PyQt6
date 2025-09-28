@@ -154,13 +154,13 @@ for file in ["README.md", "README-en.md", "LICENSE"]:
         os.path.join(os.getcwd(), "dist", "MFW", f"MFW_{file}"),
     )
 if sys.platform == "darwin":
-    for i in os.listdir(os.path.join(os.getcwd(), "_internal", "maa", "bin")):
+    for i in os.listdir(os.path.join(os.getcwd(), "dist", "MFW","_internal", "maa", "bin")):
         shutil.copy(
             os.path.join(os.getcwd(),"dist", "MFW.app","Contents","MacOS", "_internal", "maa", "bin", i),
             os.path.join(os.getcwd(), "dist", "MFW", i),
         )
 else:
-    for i in os.listdir(os.path.join(os.getcwd(), "_internal", "maa", "bin")):
+    for i in os.listdir(os.path.join(os.getcwd(), "dist", "MFW","_internal", "maa", "bin")):
         shutil.copy(
             os.path.join(os.getcwd(),"dist", "MFW", "_internal", "maa", "bin", i),
             os.path.join(os.getcwd(), "dist", "MFW", i),
