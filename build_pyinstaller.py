@@ -92,7 +92,7 @@ base_command = [
     "--hidden-import=darkdetect",
     "--hidden-import=strenum",
     "--distpath",
-    os.path.join("dist", "MFW"),
+    os.path.join("dist"),
 ]
 
 # === 平台特定配置 ===
@@ -153,7 +153,18 @@ for file in ["README.md", "README-en.md", "LICENSE"]:
         os.path.join(os.getcwd(), file),
         os.path.join(os.getcwd(), "dist", "MFW", f"MFW_{file}"),
     )
-
+if sys.platform == "darwin":
+    for i in os.listdir(os.path.join(os.getcwd(), "_internal", "maa", "bin")):
+        shutil.copy(
+            os.path.join(os.getcwd(),"dist", "MFW.app","Contents","MacOS", "_internal", "maa", "bin", i),
+            os.path.join(os.getcwd(), "dist", "MFW", i),
+        )
+else:
+    for i in os.listdir(os.path.join(os.getcwd(), "_internal", "maa", "bin")):
+        shutil.copy(
+            os.path.join(os.getcwd(),"dist", "MFW", "_internal", "maa", "bin", i),
+            os.path.join(os.getcwd(), "dist", "MFW", i),
+        )
 
 # === 构建updater ===
 
@@ -167,5 +178,5 @@ updater_command = [
     os.path.join("dist", "MFW"),
 ]
 PyInstaller.__main__.run(updater_command)
-"""if sys.platform == "darwin":
-    os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))"""
+if sys.platform == "darwin":
+    os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))
