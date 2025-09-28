@@ -74,10 +74,10 @@ base_command = [
     "--clean",
     "--noconfirm",
     # 资源包含规则（格式：源路径{分隔符}目标目录）
-    #f"--add-data={maa_path}{os.pathsep}maa",
-    #f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
-    #f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
-    #f"--add-data={strenum}{os.pathsep}strenum",
+    # f"--add-data={maa_path}{os.pathsep}maa",
+    # f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
+    # f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
+    # f"--add-data={strenum}{os.pathsep}strenum",
     # 自动收集包数据
     "--collect-data=maa",
     "--collect-data=MaaAgentBinary",
@@ -92,7 +92,7 @@ base_command = [
     "--hidden-import=darkdetect",
     "--hidden-import=strenum",
     "--distpath",
-    os.path.join("dist", "MFW",),
+    os.path.join("dist"),
 ]
 
 # === 平台特定配置 ===
@@ -120,19 +120,12 @@ if sys.platform == "darwin":
 elif sys.platform == "win32":
     base_command += [
         "--icon=MFW_resource/icon/logo.ico",
-       
     ]
     if "ci" not in version:
         base_command += [
             "--noconsole",  # 禁用控制台窗口
         ]
 
-elif sys.platform == "linux":
-    bin_path = os.path.join(maa_path, "bin")
-    for i in os.listdir(bin_path):
-        base_command.append(
-            f"--add-binary={os.path.join(bin_path,i)}{os.pathsep}."
-        )
 # === 开始构建 ===
 print("[INFO] Starting MFW build")
 print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
@@ -154,19 +147,43 @@ for file in ["README.md", "README-en.md", "LICENSE"]:
         os.path.join(os.getcwd(), "dist", "MFW", f"MFW_{file}"),
     )
 if sys.platform == "darwin":
-    for i in os.listdir(os.path.join(os.getcwd(), "dist", "MFW.app","Contents","MacOS", "_internal", "maa", "bin")):
+    for i in os.listdir(
+        os.path.join(
+            os.getcwd(),
+            "dist",
+            "MFW.app",
+            "Contents",
+            "MacOS",
+            "_internal",
+            "maa",
+            "bin",
+        )
+    ):
         shutil.copy(
-            os.path.join(os.getcwd(),"dist", "MFW.app","Contents","MacOS", "_internal", "maa", "bin", i),
+            os.path.join(
+                os.getcwd(),
+                "dist",
+                "MFW.app",
+                "Contents",
+                "MacOS",
+                "_internal",
+                "maa",
+                "bin",
+                i,
+            ),
             os.path.join(os.getcwd(), "dist", "MFW", i),
         )
 else:
-    for i in os.listdir(os.path.join(os.getcwd(), "dist", "MFW","_internal", "maa", "bin")):
+    for i in os.listdir(
+        os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")
+    ):
         shutil.copy(
-            os.path.join(os.getcwd(),"dist", "MFW", "_internal", "maa", "bin", i),
+            os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin", i),
             os.path.join(os.getcwd(), "dist", "MFW", i),
         )
 
 # === 构建updater ===
+
 
 updater_command = [
     "updater.py",
@@ -179,4 +196,8 @@ updater_command = [
 ]
 PyInstaller.__main__.run(updater_command)
 if sys.platform == "darwin":
-    os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))
+    os.remove(os.path.join(os.getcwd(), "dist", "MFW"))
+    os.rename(
+        os.path.join(os.getcwd(), "dist", "MFW.app"),
+        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app"),
+    )
