@@ -181,8 +181,7 @@ elif sys.platform == "linux":
     )
 elif sys.platform == "darwin":
     os.mkdir(
-        os.path.join(os.getcwd(), "dist", "MFW"),
-        exist_ok=True,
+        os.path.join(os.getcwd(), "dist", "MFW")
     )
     shutil.copytree(
         os.path.join(os.getcwd(), "dist", "MFW.app"),
