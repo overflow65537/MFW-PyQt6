@@ -122,13 +122,13 @@ PyInstaller.__main__.run(base_command)
 if sys.platform == "darwin":
     # 遍历MFW.app/Contents/Resources文件夹下的所有文件
     for file in os.listdir(
-        os.path.join(os.getcwd(), "MFW", "MFW.app", "Contents", "Resources")
+        os.path.join(os.getcwd(), "dist", "MFW.app", "Contents", "Resources")
     ):
         # 删除除了logo.icns以外的所有文件
         if file != "logo.icns":
             os.remove(
                 os.path.join(
-                    os.getcwd(), "dist", "MFW", "MFW.app", "Contents", "Resources", file
+                    os.getcwd(), "dist",  "MFW.app", "Contents", "Resources", file
                 )
             )
 
