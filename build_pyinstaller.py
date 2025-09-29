@@ -132,21 +132,15 @@ print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
 
 # 复制资源文件夹
-if os.path.exists(os.path.join(os.getcwd(), "MFW_resource")):
 
+if sys.platform == "darwin":
     shutil.copytree(
         os.path.join(os.getcwd(), "MFW_resource"),
-        os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource"),
+        os.path.join(
+            os.getcwd(), "dist", "MFW.app", "Contents", "Resources", "MFW_resource"
+        ),
         dirs_exist_ok=True,
     )
-
-# 复制README和许可证并在开头加上MFW_前缀
-for file in ["README.md", "README-en.md", "LICENSE"]:
-    shutil.copy(
-        os.path.join(os.getcwd(), file),
-        os.path.join(os.getcwd(), "dist", "MFW", f"MFW_{file}"),
-    )
-if sys.platform == "darwin":
     for i in os.listdir(
         os.path.join(
             os.getcwd(),
@@ -169,9 +163,14 @@ if sys.platform == "darwin":
                 "bin",
                 i,
             ),
-            os.path.join(os.getcwd(), "dist", "MFW", i),
+            os.path.join(os.getcwd(), "dist", "MFW.app", "Contents", "Macos", i),
         )
 else:
+    shutil.copytree(
+        os.path.join(os.getcwd(), "MFW_resource"),
+        os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource"),
+        dirs_exist_ok=True,
+    )
     for i in os.listdir(
         os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")
     ):
@@ -179,6 +178,14 @@ else:
             os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin", i),
             os.path.join(os.getcwd(), "dist", "MFW", i),
         )
+
+# 复制README和许可证并在开头加上MFW_前缀
+for file in ["README.md", "README-en.md", "LICENSE"]:
+    shutil.copy(
+        os.path.join(os.getcwd(), file),
+        os.path.join(os.getcwd(), "dist", "MFW", f"MFW_{file}"),
+    )
+
 
 # === 构建updater ===
 updater_command = [
