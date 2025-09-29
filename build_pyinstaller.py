@@ -120,6 +120,12 @@ PyInstaller.__main__.run(base_command)
 # 复制资源文件夹
 
 if sys.platform == "darwin":
+    os.remove(
+        os.path.join(os.getcwd(), "dist", "MFW", "MFW")
+    )
+    shutil.rmtree(
+        os.path.join(os.getcwd(), "dist","MFW", "_internal")
+    )
     # 遍历MFW.app/Contents/Resources文件夹下的所有文件
     for file in os.listdir(
         os.path.join(os.getcwd(), "dist", "MFW.app", "Contents", "Resources")
@@ -139,6 +145,10 @@ if sys.platform == "darwin":
                         os.getcwd(), "dist", "MFW.app", "Contents", "Resources", file
                     )
                 )
+    shutil.copytree(
+        os.path.join(os.getcwd(), "dist","MFW.app"),
+        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app"),
+    )
 
 
 else:
