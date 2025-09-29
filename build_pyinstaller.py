@@ -158,7 +158,7 @@ if sys.platform == "darwin":
             "bin",
         )
     ):
-        shutil.copy(
+        shutil.move(
             os.path.join(
                 os.getcwd(),
                 "dist",
@@ -175,14 +175,12 @@ else:
     for i in os.listdir(
         os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")
     ):
-        shutil.copy(
+        shutil.move(
             os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin", i),
             os.path.join(os.getcwd(), "dist", "MFW", i),
         )
 
 # === 构建updater ===
-
-
 updater_command = [
     "updater.py",
     "--name=MFWUpdater",
@@ -194,9 +192,13 @@ updater_command = [
 ]
 PyInstaller.__main__.run(updater_command)
 if sys.platform == "darwin":
-    os.remove(os.path.join(os.getcwd(), "dist", "MFW","MFW"))
-    #删除文件夹MFW.app
-    shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW","_internal"))
+    os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))
+    shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal"))
+    """shutil.rmtree(
+        os.path.join(
+            os.getcwd(), "dist", "MFW", "MFW.app", "Contents", "Frameworks", "maa"
+        )
+    )"""
     os.rename(
         os.path.join(os.getcwd(), "dist", "MFW.app"),
         os.path.join(os.getcwd(), "dist", "MFW", "MFW.app"),
