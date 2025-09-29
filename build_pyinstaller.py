@@ -181,15 +181,4 @@ elif sys.platform == "linux":
     )
 elif sys.platform == "darwin":
 
-    shutil.copytree(
-        os.path.join(os.getcwd(), "dist", "MFW.app"),
-        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app")
-   
-
-    )
-    shutil.copy(
-        os.path.join(os.getcwd(), "dist", "MFWupdater", "MFWUpdater"),
-        os.path.join(
-            os.getcwd(), "dist", "MFW", "MFW.app", "Contents", "MacOS", "MFWUpdater"
-        ),
-    )
+    pass
