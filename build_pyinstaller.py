@@ -210,3 +210,7 @@ if sys.platform == "darwin":
         os.path.join(os.getcwd(), "dist", "MFW.app"),
         os.path.join(os.getcwd(), "dist", "MFW", "MFW.app"),
     )
+    os.rename(
+        os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater"),
+        os.path.join(os.getcwd(), "dist", "MFW","MFW.app", "Contents", "MacOS", "MFWUpdater"),
+    )
