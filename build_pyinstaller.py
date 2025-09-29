@@ -73,24 +73,6 @@ base_command = [
     "--onedir",
     "--clean",
     "--noconfirm",
-    # 资源包含规则（格式：源路径{分隔符}目标目录）
-    # f"--add-data={maa_path}{os.pathsep}maa",
-    # f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
-    # f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
-    # f"--add-data={strenum}{os.pathsep}strenum",
-    # 自动收集包数据
-    "--collect-data=maa",
-    "--collect-data=MaaAgentBinary",
-    "--collect-data=darkdetect",
-    "--collect-data=strenum",
-    # 自动收集二进制文件
-    "--collect-binaries=maa",
-    "--collect-binaries=MaaAgentBinary",
-    # 隐式依赖声明
-    "--hidden-import=maa",
-    "--hidden-import=MaaAgentBinary",
-    "--hidden-import=darkdetect",
-    "--hidden-import=strenum",
     "--distpath",
     os.path.join("dist"),
 ]
