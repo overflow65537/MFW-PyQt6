@@ -180,10 +180,14 @@ elif sys.platform == "linux":
         os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater"),
     )
 elif sys.platform == "darwin":
+    os.mkdir(
+        os.path.join(os.getcwd(), "dist", "MFW"),
+        exist_ok=True,
+    )
     shutil.copytree(
         os.path.join(os.getcwd(), "dist", "MFW.app"),
-        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app"),
-        exist_ok=True
+        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app")
+   
 
     )
     shutil.copy(
