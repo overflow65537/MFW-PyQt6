@@ -126,20 +126,19 @@ if sys.platform == "darwin":
     ):
         # 删除除了logo.icns以外的所有文件和文件夹
         if file != "logo.icns":
-            #这里有可能是文件夹，需要递归删除
+            # 这里有可能是文件夹，需要递归删除
             try:
                 os.remove(
                     os.path.join(
-                        os.getcwd(), "dist",  "MFW.app", "Contents", "Resources", file
+                        os.getcwd(), "dist", "MFW.app", "Contents", "Resources", file
                     )
                 )
             except PermissionError:
                 shutil.rmtree(
                     os.path.join(
-                        os.getcwd(), "dist",  "MFW.app", "Contents", "Resources", file
+                        os.getcwd(), "dist", "MFW.app", "Contents", "Resources", file
                     )
                 )
-
 
 
 else:
@@ -181,14 +180,11 @@ elif sys.platform == "linux":
         os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater"),
     )
 elif sys.platform == "darwin":
-    os.makedirs(
-        os.path.join(os.getcwd(), "dist", "MFW" ),
-        exist_ok=True,
-    )
-    shutil.copy(
+    shutil.copytree(
         os.path.join(os.getcwd(), "dist", "MFW.app"),
         os.path.join(os.getcwd(), "dist", "MFW", "MFW.app"),
-        
+        exist_ok=True
+
     )
     shutil.copy(
         os.path.join(os.getcwd(), "dist", "MFWupdater", "MFWUpdater"),
