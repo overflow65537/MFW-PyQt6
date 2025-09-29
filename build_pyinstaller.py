@@ -46,26 +46,6 @@ with open(os.path.join(os.getcwd(), "app", "common", "__version__.py"), "w") as 
     f.write(f'__version__ = "{version}"')
 
 
-# === 依赖包路径发现 ===
-def locate_package(package_name):
-    """在 site-packages 中定位指定包的安装路径"""
-    for path in site.getsitepackages():
-        candidate = os.path.join(path, package_name)
-        if os.path.exists(candidate):
-            return candidate
-    raise FileNotFoundError(f"Can't find {package_name} package")
-
-
-try:
-    # 核心依赖包定位
-    maa_path = locate_package("maa")  # MAA 框架核心库
-    agent_path = locate_package("MaaAgentBinary")  # 设备连接组件
-    darkdetect_path = locate_package("darkdetect")  # 系统主题检测库
-    strenum = locate_package("strenum")
-except FileNotFoundError as e:
-    print(f"[FATAL] Dependency missing: {str(e)}")
-    sys.exit(1)
-
 # === PyInstaller 配置生成 ===
 base_command = [
     "main.py",
@@ -123,44 +103,12 @@ if sys.platform == "darwin":
         ),
         dirs_exist_ok=True,
     )
-    for i in os.listdir(
-        os.path.join(
-            os.getcwd(),
-            "dist",
-            "MFW.app",
-            "Contents",
-            "Frameworks",
-            "maa",
-            "bin",
-        )
-    ):
-        shutil.copy(
-            os.path.join(
-                os.getcwd(),
-                "dist",
-                "MFW.app",
-                "Contents",
-                "Frameworks",
-                "maa",
-                "bin",
-                i,
-            ),
-            os.path.join(os.getcwd(), "dist", "MFW.app", "Contents", "MacOS", i),
-        )
 else:
     shutil.copytree(
         os.path.join(os.getcwd(), "MFW_resource"),
         os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource"),
         dirs_exist_ok=True,
     )
-    for i in os.listdir(
-        os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin")
-    ):
-        shutil.move(
-            os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin", i),
-            os.path.join(os.getcwd(), "dist", "MFW", i),
-        )
-
 # 复制README和许可证并在开头加上MFW_前缀
 for file in ["README.md", "README-en.md", "LICENSE"]:
     shutil.copy(
