@@ -137,7 +137,7 @@ if sys.platform == "darwin":
     shutil.copytree(
         os.path.join(os.getcwd(), "MFW_resource"),
         os.path.join(
-            os.getcwd(), "dist", "MFW.app", "Contents", "Resources", "MFW_resource"
+            os.getcwd(), "dist", "MFW.app", "Contents", "MacOS", "MFW_resource"
         ),
         dirs_exist_ok=True,
     )
@@ -163,7 +163,7 @@ if sys.platform == "darwin":
                 "bin",
                 i,
             ),
-            os.path.join(os.getcwd(), "dist", "MFW.app", "Contents", "Macos", i),
+            os.path.join(os.getcwd(), "dist", "MFW.app", "Contents", "MacOS", i),
         )
 else:
     shutil.copytree(
