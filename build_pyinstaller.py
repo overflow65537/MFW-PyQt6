@@ -133,7 +133,7 @@ if sys.platform == "darwin":
                         os.getcwd(), "dist",  "MFW.app", "Contents", "Resources", file
                     )
                 )
-            except IsADirectoryError:
+            except PermissionError:
                 shutil.rmtree(
                     os.path.join(
                         os.getcwd(), "dist",  "MFW.app", "Contents", "Resources", file
