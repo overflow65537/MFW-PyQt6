@@ -181,6 +181,15 @@ elif sys.platform == "linux":
         os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater"),
     )
 elif sys.platform == "darwin":
+    os.makedirs(
+        os.path.join(os.getcwd(), "dist", "MFW" ),
+        exist_ok=True,
+    )
+    shutil.copy(
+        os.path.join(os.getcwd(), "dist", "MFW.app"),
+        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app"),
+        
+    )
     shutil.copy(
         os.path.join(os.getcwd(), "dist", "MFWupdater", "MFWUpdater"),
         os.path.join(
