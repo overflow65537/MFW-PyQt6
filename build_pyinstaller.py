@@ -152,7 +152,7 @@ if sys.platform == "darwin":
             "bin",
         )
     ):
-        shutil.move(
+        shutil.copy(
             os.path.join(
                 os.getcwd(),
                 "dist",
