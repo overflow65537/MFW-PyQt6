@@ -46,6 +46,26 @@ with open(os.path.join(os.getcwd(), "app", "common", "__version__.py"), "w") as 
     f.write(f'__version__ = "{version}"')
 
 
+# === 依赖包路径发现 ===
+def locate_package(package_name):
+    """在 site-packages 中定位指定包的安装路径"""
+    for path in site.getsitepackages():
+        candidate = os.path.join(path, package_name)
+        if os.path.exists(candidate):
+            return candidate
+    raise FileNotFoundError(f"Can't find {package_name} package")
+
+
+try:
+    # 核心依赖包定位
+    maa_path = locate_package("maa")  # MAA 框架核心库
+    agent_path = locate_package("MaaAgentBinary")  # 设备连接组件
+    darkdetect_path = locate_package("darkdetect")  # 系统主题检测库
+    strenum = locate_package("strenum")
+except FileNotFoundError as e:
+    print(f"[FATAL] Dependency missing: {str(e)}")
+    sys.exit(1)
+
 # === PyInstaller 配置生成 ===
 base_command = [
     "main.py",
@@ -53,6 +73,10 @@ base_command = [
     "--onedir",
     "--clean",
     "--noconfirm",
+    f"--add-binary={maa_path}{os.pathsep}maa/bin",
+    f"--add-binary={agent_path}{os.pathsep}MaaAgentBinary",
+    f"--add-binary={darkdetect_path}{os.pathsep}darkdetect",
+    f"--add-binary={strenum}{os.pathsep}strenum",
     "--distpath",
     os.path.join("dist"),
 ]
@@ -96,19 +120,25 @@ PyInstaller.__main__.run(base_command)
 # 复制资源文件夹
 
 if sys.platform == "darwin":
-    shutil.copytree(
-        os.path.join(os.getcwd(), "MFW_resource"),
-        os.path.join(
-            os.getcwd(), "dist", "MFW.app", "Contents", "MacOS", "MFW_resource"
-        ),
-        dirs_exist_ok=True,
-    )
+    # 遍历MFW.app/Contents/Resources文件夹下的所有文件
+    for file in os.listdir(
+        os.path.join(os.getcwd(), "MFW", "MFW.app", "Contents", "Resources")
+    ):
+        # 删除除了logo.icns以外的所有文件
+        if file != "logo.icns":
+            os.remove(
+                os.path.join(
+                    os.getcwd(), "dist", "MFW", "MFW.app", "Contents", "Resources", file
+                )
+            )
+
 else:
     shutil.copytree(
         os.path.join(os.getcwd(), "MFW_resource"),
         os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource"),
         dirs_exist_ok=True,
     )
+
 # 复制README和许可证并在开头加上MFW_前缀
 for file in ["README.md", "README-en.md", "LICENSE"]:
     shutil.copy(
@@ -125,22 +155,25 @@ updater_command = [
     "--clean",
     "--noconfirm",  # 禁用确认提示
     "--distpath",
-    os.path.join("dist", "MFW"),
+    os.path.join("dist", "MFWupdater"),
 ]
 PyInstaller.__main__.run(updater_command)
-if sys.platform == "darwin":
-    os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))
-    shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal"))
-    """shutil.rmtree(
-        os.path.join(
-            os.getcwd(), "dist", "MFW", "MFW.app", "Contents", "Frameworks", "maa"
-        )
-    )"""
-    os.rename(
-        os.path.join(os.getcwd(), "dist", "MFW.app"),
-        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app"),
+
+# 转移更新器
+if sys.platform == "win32":
+    shutil.copy(
+        os.path.join(os.getcwd(), "dist", "MFWupdater", "MFWUpdater.exe"),
+        os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater.exe"),
     )
-    os.rename(
+elif sys.platform == "linux":
+    shutil.copy(
+        os.path.join(os.getcwd(), "dist", "MFWupdater", "MFWUpdater"),
         os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater"),
-        os.path.join(os.getcwd(), "dist", "MFW","MFW.app", "Contents", "MacOS", "MFWUpdater"),
+    )
+elif sys.platform == "darwin":
+    shutil.copy(
+        os.path.join(os.getcwd(), "dist", "MFWupdater", "MFWUpdater"),
+        os.path.join(
+            os.getcwd(), "dist", "MFW", "MFW.app", "Contents", "MacOS", "MFWUpdater"
+        ),
     )

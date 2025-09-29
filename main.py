@@ -67,8 +67,6 @@ from app.utils.tool import show_error_message
 from app.utils.check_utils import check
 from app.common.__version__ import __version__
 from app.utils.logger import logger
-if os.path.exists("MaaFramework.dll") or os.path.exists("MaaFramework.so") or os.path.exists("MaaFramework.dylib"):
-    os.environ["MAAFW_BINARY_PATH"] =os.getcwd( )
 logger.debug(f"设置工作目录: {target_dir}")
 logger.debug(f"环境变量MAAFW_BINARY_PATH: {os.environ.get('MAAFW_BINARY_PATH')}")
 
