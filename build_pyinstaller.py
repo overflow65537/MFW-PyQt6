@@ -124,13 +124,23 @@ if sys.platform == "darwin":
     for file in os.listdir(
         os.path.join(os.getcwd(), "dist", "MFW.app", "Contents", "Resources")
     ):
-        # 删除除了logo.icns以外的所有文件
+        # 删除除了logo.icns以外的所有文件和文件夹
         if file != "logo.icns":
-            os.remove(
-                os.path.join(
-                    os.getcwd(), "dist",  "MFW.app", "Contents", "Resources", file
+            #这里有可能是文件夹，需要递归删除
+            try:
+                os.remove(
+                    os.path.join(
+                        os.getcwd(), "dist",  "MFW.app", "Contents", "Resources", file
+                    )
                 )
-            )
+            except IsADirectoryError:
+                shutil.rmtree(
+                    os.path.join(
+                        os.getcwd(), "dist",  "MFW.app", "Contents", "Resources", file
+                    )
+                )
+
+
 
 else:
     shutil.copytree(
