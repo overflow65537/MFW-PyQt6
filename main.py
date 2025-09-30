@@ -30,7 +30,8 @@ import sys
 # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
 if getattr(sys, "frozen", False):
     # 如果程序是打包后的可执行文件，将工作目录设置为可执行文件所在目录
-    target_dir = os.path.dirname(sys.executable)       
+    target_dir = os.path.dirname(sys.executable)
+    os.environ["MAAFW_BINARY_PATH"] = target_dir
 
 else:
     # 如果是脚本运行，将工作目录设置为脚本文件所在目录
@@ -47,8 +48,6 @@ if not os.path.exists("k.ey"):
     with open("k.ey", "wb") as key_file:
         key_file.write(key)
 import argparse
-if os.path.exists("MaaFramework.dll") or os.path.exists("MaaFramework.so") or os.path.exists("MaaFramework.dylib"):
-    os.environ["MAAFW_BINARY_PATH"] =os.getcwd( )
 import maa
 from maa.context import Context
 from maa.custom_action import CustomAction
@@ -72,6 +71,7 @@ from app.utils.logger import logger
 
 logger.debug(f"设置工作目录: {target_dir}")
 logger.debug(f"环境变量MAAFW_BINARY_PATH: {os.environ.get('MAAFW_BINARY_PATH')}")
+
 
 def main(resource: str, config: str, directly: bool, DEV: bool):
     check(resource, config, directly, DEV)
@@ -120,6 +120,7 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
     # create main window
     w = MainWindow()
     w.show()
+
     # 异步异常处理
     def handle_async_exception(loop, context):
         logger.exception("异步任务异常:", exc_info=context.get("exception"))

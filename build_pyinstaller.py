@@ -79,7 +79,7 @@ base_command = [
     f"--add-binary={strenum}{os.pathsep}strenum",
 ]
 
-# === 平台特定配置 ===
+# === 平台特定配置 准备阶段 ===
 print(f"[DEBUG] Platform: {sys.platform}")
 
 if sys.platform == "darwin":
@@ -121,7 +121,7 @@ print("[INFO] Starting MFW build")
 print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
 
-# 复制资源文件夹
+# === 平台特定配置 完成阶段 ===
 if sys.platform == "darwin":
     for file in os.listdir(os.path.join(os.getcwd(), "dist", "MFW")):
         print(file)
