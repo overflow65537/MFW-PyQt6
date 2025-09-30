@@ -78,7 +78,6 @@ base_command = [
     f"--add-binary={darkdetect_path}{os.pathsep}darkdetect",
     f"--add-binary={strenum}{os.pathsep}strenum",
     "--distpath",
-    os.path.join("dist"),
 ]
 
 # === 平台特定配置 ===
@@ -101,34 +100,49 @@ if sys.platform == "darwin":
         "--windowed",
         # 图标
         "--icon=MFW_resource/icon/logo.icns",
+        os.path.join("dist", "MFW"),
     ]
 
 elif sys.platform == "win32":
     base_command += [
         "--icon=MFW_resource/icon/logo.ico",
+        os.path.join("dist"),
     ]
     if "ci" not in version:
         base_command += [
             "--noconsole",  # 禁用控制台窗口
         ]
 
+elif sys.platform == "linux":
+    base_command += [os.path.join("dist")]
 # === 开始构建 ===
 print("[INFO] Starting MFW build")
 print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
 
 # 复制资源文件夹
-
 if sys.platform == "darwin":
-    os.remove(
-        os.path.join(os.getcwd(), "dist", "MFW", "MFW")
+    for file in os.listdir(os.path.join(os.getcwd(), "dist", "MFW")):
+        print(file)
+
+    shutil.copytree(
+        os.path.join(os.getcwd(), "MFW_resource"),
+        os.path.join(
+            os.getcwd(),
+            "dist",
+            "MFW",
+            "MFW.app",
+            "Contents",
+            "MacOS",
+            "MFW_resource",
+        ),
+        dirs_exist_ok=True,
     )
-    shutil.rmtree(
-        os.path.join(os.getcwd(), "dist","MFW", "_internal")
-    )
+    os.remove(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))
+    shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal"))
     # 遍历MFW.app/Contents/Resources文件夹下的所有文件
     for file in os.listdir(
-        os.path.join(os.getcwd(), "dist", "MFW.app", "Contents", "Resources")
+        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app", "Contents", "Resources")
     ):
         # 删除除了logo.icns以外的所有文件和文件夹
         if file != "logo.icns":
@@ -136,19 +150,27 @@ if sys.platform == "darwin":
             try:
                 os.remove(
                     os.path.join(
-                        os.getcwd(), "dist", "MFW.app", "Contents", "Resources", file
+                        os.getcwd(),
+                        "dist",
+                        "MFW",
+                        "MFW.app",
+                        "Contents",
+                        "Resources",
+                        file,
                     )
                 )
             except PermissionError:
                 shutil.rmtree(
                     os.path.join(
-                        os.getcwd(), "dist", "MFW.app", "Contents", "Resources", file
+                        os.getcwd(),
+                        "dist",
+                        "MFW",
+                        "MFW.app",
+                        "Contents",
+                        "Resources",
+                        file,
                     )
                 )
-    shutil.copytree(
-        os.path.join(os.getcwd(), "dist","MFW.app"),
-        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app"),
-    )
 
 
 else:
@@ -191,4 +213,7 @@ elif sys.platform == "linux":
     )
 elif sys.platform == "darwin":
 
-    pass
+    shutil.copy(
+        os.path.join(os.getcwd(), "dist", "MFWupdater", "MFWUpdater"),
+        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app", "Contents","MacOS", "MFWUpdater"),
+    )
