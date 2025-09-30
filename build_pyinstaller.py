@@ -139,9 +139,9 @@ if sys.platform == "darwin":
         ),
         dirs_exist_ok=True,
     )
-    #shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))
+    shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "MFW"))
     # 遍历MFW.app/Contents/Resources文件夹下的所有文件
-    """for file in os.listdir(
+    for file in os.listdir(
         os.path.join(os.getcwd(), "dist", "MFW", "MFW.app", "Contents", "Resources")
     ):
         # 删除除了logo.icns以外的所有文件和文件夹
@@ -170,7 +170,7 @@ if sys.platform == "darwin":
                         "Resources",
                         file,
                     )
-                )"""
+                )
 
 
 else:
