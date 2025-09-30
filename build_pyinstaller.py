@@ -77,7 +77,6 @@ base_command = [
     f"--add-binary={agent_path}{os.pathsep}MaaAgentBinary",
     f"--add-binary={darkdetect_path}{os.pathsep}darkdetect",
     f"--add-binary={strenum}{os.pathsep}strenum",
-    "--distpath",
 ]
 
 # === 平台特定配置 ===
@@ -100,12 +99,14 @@ if sys.platform == "darwin":
         "--windowed",
         # 图标
         "--icon=MFW_resource/icon/logo.icns",
+        "--distpath",
         os.path.join("dist", "MFW"),
     ]
 
 elif sys.platform == "win32":
     base_command += [
         "--icon=MFW_resource/icon/logo.ico",
+        "--distpath",
         os.path.join("dist"),
     ]
     if "ci" not in version:
@@ -114,7 +115,7 @@ elif sys.platform == "win32":
         ]
 
 elif sys.platform == "linux":
-    base_command += [os.path.join("dist")]
+    base_command += ["--distpath", os.path.join("dist")]
 # === 开始构建 ===
 print("[INFO] Starting MFW build")
 print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
@@ -215,5 +216,7 @@ elif sys.platform == "darwin":
 
     shutil.copy(
         os.path.join(os.getcwd(), "dist", "MFWupdater", "MFWUpdater"),
-        os.path.join(os.getcwd(), "dist", "MFW", "MFW.app", "Contents","MacOS", "MFWUpdater"),
+        os.path.join(
+            os.getcwd(), "dist", "MFW", "MFW.app", "Contents", "MacOS", "MFWUpdater"
+        ),
     )
