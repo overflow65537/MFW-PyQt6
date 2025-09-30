@@ -31,7 +31,7 @@ import sys
 if getattr(sys, "frozen", False):
     # 如果程序是打包后的可执行文件，将工作目录设置为可执行文件所在目录
     target_dir = os.path.dirname(sys.executable)
-    os.environ["MAAFW_BINARY_PATH"] = target_dir
+    #os.environ["MAAFW_BINARY_PATH"] = target_dir
 
 else:
     # 如果是脚本运行，将工作目录设置为脚本文件所在目录
