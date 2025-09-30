@@ -73,7 +73,7 @@ base_command = [
     "--onedir",
     "--clean",
     "--noconfirm",
-    f"--add-binary={maa_path}{os.pathsep}maa/bin",
+    f"--add-binary={maa_path}{os.pathsep}maa",
     f"--add-binary={agent_path}{os.pathsep}MaaAgentBinary",
     f"--add-binary={darkdetect_path}{os.pathsep}darkdetect",
     f"--add-binary={strenum}{os.pathsep}strenum",
@@ -206,11 +206,13 @@ if sys.platform == "win32":
         os.path.join(os.getcwd(), "dist", "MFWupdater", "MFWUpdater.exe"),
         os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater.exe"),
     )
+    shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFWupdater"))
 elif sys.platform == "linux":
     shutil.copy(
         os.path.join(os.getcwd(), "dist", "MFWupdater", "MFWUpdater"),
         os.path.join(os.getcwd(), "dist", "MFW", "MFWUpdater"),
     )
+    shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFWupdater"))
 elif sys.platform == "darwin":
 
     shutil.copy(
@@ -219,3 +221,4 @@ elif sys.platform == "darwin":
             os.getcwd(), "dist", "MFW", "MFW.app", "Contents", "MacOS", "MFWUpdater"
         ),
     )
+    shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFWupdater"))
