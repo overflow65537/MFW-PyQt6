@@ -162,9 +162,9 @@ jobs:
         run: |
           uname -m
           if [[ ${{ matrix.arch }} == "x86_64" ]]; then
-            arch -x86_64 python -m pip install --force-reinstall --no-cache-dir py2app -r requirements.txt
+            arch -x86_64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
           elif [[ ${{ matrix.arch }} == "aarch64" ]]; then
-            arch -arm64 python -m pip install --force-reinstall --no-cache-dir py2app -r requirements.txt
+            arch -arm64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
           fi
 
       - name: Install dependencies (other)
