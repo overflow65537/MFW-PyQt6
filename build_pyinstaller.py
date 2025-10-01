@@ -26,6 +26,7 @@ import os
 import site
 import shutil
 import sys
+import subprocess
 
 # 删除dist
 if os.path.exists(os.path.join(os.getcwd(), "dist", "MFW")):
