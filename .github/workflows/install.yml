@@ -177,7 +177,7 @@ jobs:
       - name: Install(macos)
         if: matrix.platform == 'macos'
         run: |
-          sudo python ./build_py2app.py ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          sudo python ./build_py2app.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
           ./dist/main.app/Contents/MacOS/main --version || echo "App built successfully"
           mv ./dist/main.app ./dist/MFW.app
 
