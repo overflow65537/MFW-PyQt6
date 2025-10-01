@@ -162,9 +162,9 @@ jobs:
         run: |
           uname -m
           if [[ ${{ matrix.arch }} == "x86_64" ]]; then
-            arch -x86_64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+            arch -x86_64 python -m pip install --force-reinstall --no-cache-dir py2app -r requirements.txt
           elif [[ ${{ matrix.arch }} == "aarch64" ]]; then
-            arch -arm64 python -m pip install --force-reinstall --no-cache-dir pyinstaller -r requirements.txt
+            arch -arm64 python -m pip install --force-reinstall --no-cache-dir py2app -r requirements.txt
           fi
 
       - name: Install dependencies (other)
@@ -177,7 +177,9 @@ jobs:
       - name: Install(macos)
         if: matrix.platform == 'macos'
         run: |
-          sudo python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          sudo python ./build_py2app.py ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          ./dist/main.app/Contents/MacOS/main --version || echo "App built successfully"
+          mv ./dist/main.app ./dist/MFW.app
 
       - name: Install(other)
         if: matrix.platform != 'macos'
