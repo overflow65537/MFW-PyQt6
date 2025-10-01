@@ -31,7 +31,12 @@ import sys
 if getattr(sys, "frozen", False):
     # 如果程序是打包后的可执行文件，将工作目录设置为可执行文件所在目录
     target_dir = os.path.dirname(sys.executable)
-    #os.environ["MAAFW_BINARY_PATH"] = target_dir
+    if (
+        os.path.exists(os.path.join(target_dir, "libMaaFramework.dylib"))
+        or os.path.exists(os.path.join(target_dir, "MaaFramework.dll"))
+        or os.path.exists(os.path.join(target_dir, "MaaFramework.so"))
+    ):
+        os.environ["MAAFW_BINARY_PATH"] = target_dir
 
 else:
     # 如果是脚本运行，将工作目录设置为脚本文件所在目录
@@ -129,8 +134,8 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
 
     with loop:
         loop.run_forever()
-    logger.debug("关闭异步任务完成")
     loop.close()
+    logger.debug("关闭异步任务完成")
 
 
 def start_symbol():
