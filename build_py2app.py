@@ -11,13 +11,22 @@ def normalize_version(version):
     """
     规范化版本号格式，使其符合Python打包要求
     """
-    # 移除v前缀，将-ci.转换为.post
-    version = re.sub(r'^v', '', version)  # 移除v前缀
-    version = re.sub(r'-ci\.(\d+)', r'.post\1', version)  # 将-ci.251001转换为.post251001
-    version = re.sub(r'-([a-f0-9]+)$', r'.dev\1', version)  # 将-2fe0eb2转换为.dev2fe0eb2
+    # 移除v前缀
+    version = re.sub(r'^v', '', version)
     
-    # 验证版本号格式
-    if re.match(r'^\d+\.\d+\.\d+(\.post\d+)?(\.dev[a-f0-9]+)?$', version):
+    # 将-ci.转换为.post
+    version = re.sub(r'-ci\.(\d+)', r'.post\1', version)
+    
+    # 将git commit hash转换为数字（取前8位并转换为整数）
+    match = re.search(r'-([a-f0-9]+)$', version)
+    if match:
+        commit_hash = match.group(1)
+        # 取前8位并转换为整数（避免十六进制字符）
+        commit_num = int(commit_hash[:8], 16) if len(commit_hash) >= 8 else int(commit_hash + '0' * (8 - len(commit_hash)), 16)
+        version = re.sub(r'-([a-f0-9]+)$', f'.dev{commit_num}', version)
+    
+    # 验证版本号格式是否符合PEP 440
+    if re.match(r'^\d+\.\d+\.\d+(\.post\d+)?(\.dev\d+)?$', version):
         return version
     else:
         # 如果格式仍然不正确，使用默认版本
