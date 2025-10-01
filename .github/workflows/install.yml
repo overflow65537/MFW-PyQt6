@@ -127,7 +127,26 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
-        
+
+      - name: Import signing certificate
+        if: matrix.platform == 'macos'
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.MAC_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+        run: |
+          # 创建证书文件
+          echo "$CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+          
+          # 导入证书到钥匙串
+          security create-keychain -p temp_password build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p temp_password build.keychain
+          security import certificate.p12 -k build.keychain -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:, -k temp_password build.keychain
+          
+          # 清理
+          rm certificate.p12
+ 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
