@@ -178,8 +178,6 @@ jobs:
         if: matrix.platform == 'macos'
         run: |
           sudo python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
-          sudo chmod +x dist/MFW/MFW.app/Contents/MacOS/MFW
-          sudo chmod +x dist/MFW/MFW.app/Contents/MacOS/MFWUpdater
 
       - name: Install(other)
         if: matrix.platform != 'macos'
