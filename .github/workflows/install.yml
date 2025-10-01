@@ -131,7 +131,7 @@ jobs:
       - name: Import signing certificate
         if: matrix.platform == 'macos'
         env:
-          CERTIFICATE_BASE64: ${{ secrets.MAC_CERTIFICAT }}
+          CERTIFICATE_BASE64: ${{ secrets.MAC_CERTIFICAT }}  
           CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
         run: |
           # 创建证书文件
@@ -141,17 +141,38 @@ jobs:
           security create-keychain -p temp_password build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p temp_password build.keychain
-          security import certificate.p12 -k build.keychain -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:, -k temp_password build.keychain
+          
+          # 改进的证书导入命令
+          security import certificate.p12 -k build.keychain -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productbuild
+          
+          # 改进的钥匙串权限设置
+          security set-key-partition-list -S apple-tool:,apple:,codesign:,productbuild: -k temp_password build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          
+          # 验证钥匙串设置
+          security list-keychains -d user
+          security default-keychain -d user
           
           # 清理
           rm certificate.p12
 
-          security find-identity -v -p codesigning
+          # 详细的证书验证
+          echo "=== 检查所有证书 ==="
+          security find-certificate -a -p build.keychain | openssl x509 -text -noout | grep "Subject:"
+          
+          echo "=== 检查可用的签名身份 ==="
+          security find-identity -v -p codesigning build.keychain
+          
+          echo "=== 检查特定证书 ==="
+          security find-certificate -c "overflow65537" -a build.keychain
+          
           # 检查证书是否导入成功
-          security find-identity -v -p codesigning | grep "overflow65537 Developer Certificate"
-          if [[ $? -ne 0 ]]; then
-            echo "Certificate import failed"
+          if security find-identity -v -p codesigning build.keychain | grep -q "overflow65537"; then
+            echo "✅ Certificate import successful"
+          else
+            echo "❌ Certificate import failed"
+            echo "Available identities:"
+            security find-identity -v -p codesigning build.keychain
             exit 1
           fi
  
