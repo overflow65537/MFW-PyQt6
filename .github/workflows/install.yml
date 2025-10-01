@@ -131,7 +131,7 @@ jobs:
       - name: Import signing certificate
         if: matrix.platform == 'macos'
         env:
-          CERTIFICATE_BASE64: ${{ secrets.MAC_CERTIFICATE }}
+          CERTIFICATE_BASE64: ${{ secrets.MAC_CERTIFICAT }}
           CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
         run: |
           # 创建证书文件
