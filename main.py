@@ -34,7 +34,7 @@ if getattr(sys, "frozen", False):
     if (
         os.path.exists(os.path.join(target_dir, "libMaaFramework.dylib"))
         or os.path.exists(os.path.join(target_dir, "MaaFramework.dll"))
-        or os.path.exists(os.path.join(target_dir, "MaaFramework.so"))
+        or os.path.exists(os.path.join(target_dir, "libMaaFramework.so"))
     ):
         os.environ["MAAFW_BINARY_PATH"] = target_dir
 

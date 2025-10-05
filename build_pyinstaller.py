@@ -71,15 +71,21 @@ except FileNotFoundError as e:
 base_command = [
     "main.py",
     "--name=MFW",
-    "--onedir",
     "--clean",
-    "--noconfirm",
-    f"--add-binary={maa_path}{os.pathsep}maa",
-    f"--add-binary={agent_path}{os.pathsep}MaaAgentBinary",
-    f"--add-binary={darkdetect_path}{os.pathsep}darkdetect",
-    f"--add-binary={strenum}{os.pathsep}strenum",
-    "--distpath",
-    os.path.join("dist"),
+    "--noconfirm",  # 禁用确认提示
+    # 资源包含规则（格式：源路径{分隔符}目标目录）
+    f"--add-data={maa_path}{os.pathsep}maa",
+    f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
+    f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
+    f"--add-data={os.path.join(os.getcwd(), 'MFW_resource')}{os.pathsep}TEM_files{os.sep}MFW_resource",
+    # 自动收集包数据
+    "--collect-data=darkdetect",
+    "--collect-data=maa",
+    "--collect-data=MaaAgentBinary",
+    # 隐式依赖声明
+    "--hidden-import=darkdetect",
+    "--hidden-import=maa",
+    "--hidden-import=MaaAgentBinary",
 ]
 
 # === 平台特定配置 准备阶段 ===
@@ -121,12 +127,51 @@ print("[INFO] Starting MFW build")
 print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
 
-# === 平台特定配置 完成阶段 ===
+# === 二进制文件处理 ===
+# 收集 MAA 的本地库文件
+bin_dir = os.path.join(maa_path, "bin")
+bin_files = []
+for f in os.listdir(bin_dir):
+    print(f"[DEBUG] Found binary file: {f}")
+    print(f"[DEBUG] Adding binary file: {os.path.join(bin_dir, f)}")
+    bin_files.append(f)
+    base_command += [f"--add-binary={os.path.join(bin_dir, f)}{os.pathsep}."]
+
+
+# === 开始构建 ===
+print("[INFO] Starting MFW build")
+print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
+PyInstaller.__main__.run(base_command)
+
+# === 构建后处理 ===
+if sys.platform == "win32":
+    # 复制 DLL 到 dist/MFW 目录
+    shutil.copytree(
+        os.path.join(os.getcwd(), "dll"),
+        os.path.join(os.getcwd(), "dist", "MFW"),
+        dirs_exist_ok=True,
+    )
+
+# 复制TEM_files的内容到 dist/MFW 目录
 shutil.copytree(
-    os.path.join(os.getcwd(), "MFW_resource"),
-    os.path.join(os.getcwd(), "dist", "MFW", "MFW_resource"),
+    os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"),
+    os.path.join(os.getcwd(), "dist", "MFW"),
     dirs_exist_ok=True,
 )
+# 删除临时目录
+shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"))
+
+
+for i in bin_files:
+    # 复制二进制文件到 dist/MFW 目录
+    shutil.copy(
+        os.path.join(os.getcwd(), "dist", "MFW", "_internal", i),
+        os.path.join(os.getcwd(), "dist", "MFW"),
+    )
+    # 删除临时文件
+    os.remove(os.path.join(os.getcwd(), "dist", "MFW", "_internal", i))
+
+shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin"))
 
 # 复制README和许可证并在开头加上MFW_前缀
 for file in ["README.md", "README-en.md", "LICENSE"]:
