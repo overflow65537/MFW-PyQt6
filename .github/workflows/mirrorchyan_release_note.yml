@@ -14,6 +14,5 @@ jobs:
         uses: MirrorChyan/release-note-action@v1
         with:
           mirrorchyan_rid: MFW-PyQt6
-
           upload_token: ${{ secrets.MirrorChyanUploadToken }}
           github_token: ${{ secrets.GITHUB_TOKEN }}

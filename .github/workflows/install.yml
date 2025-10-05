@@ -127,7 +127,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
-        
+ 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -179,6 +179,7 @@ jobs:
         run: |
           sudo python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
 
+
       - name: Install(other)
         if: matrix.platform != 'macos'
         run: |
@@ -189,7 +190,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MFW-PyQt6-${{ matrix.platform }}-${{ matrix.arch }}
-          path: "dist/MFW"
+          path: "dist/MFW/"
 
 
   release:
