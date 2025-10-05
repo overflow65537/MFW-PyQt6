@@ -79,7 +79,7 @@ base_command = [
     f"--add-binary={darkdetect_path}{os.pathsep}darkdetect",
     f"--add-binary={strenum}{os.pathsep}strenum",
     "--distpath",
-    os.path.join("dist", "MFW"),
+    os.path.join("dist"),
 ]
 
 # === 平台特定配置 准备阶段 ===

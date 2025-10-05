@@ -97,29 +97,29 @@ jobs:
             target_arch: arm64
             python_arch: arm64
 
-         # - os: ubuntu-latest
-         #   platform: linux
-         #   arch: x86_64
-         #   target_arch: x86_64
-         #   python_arch: x64
-#
-         # - os: ubuntu-24.04-arm
-         #   platform: linux
-         #   arch: aarch64
-         #   target_arch: arm64
-         #   python_arch: arm64
-         #   
-         # - os: windows-latest
-         #   platform: win
-         #   arch: x86_64
-         #   target_arch: x86_64
-         #   python_arch: x64
-         #   
-         # - os: windows-11-arm
-         #   platform: win
-         #   arch: aarch64
-         #   target_arch: arm64
-         #   python_arch: arm64
+          - os: ubuntu-latest
+            platform: linux
+            arch: x86_64
+            target_arch: x86_64
+            python_arch: x64
+
+          - os: ubuntu-24.04-arm
+            platform: linux
+            arch: aarch64
+            target_arch: arm64
+            python_arch: arm64
+            
+          - os: windows-latest
+            platform: win
+            arch: x86_64
+            target_arch: x86_64
+            python_arch: x64
+            
+          - os: windows-11-arm
+            platform: win
+            arch: aarch64
+            target_arch: arm64
+            python_arch: arm64
 
       fail-fast: false
 
