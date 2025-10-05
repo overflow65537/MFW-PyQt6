@@ -144,14 +144,6 @@ print(f"\n\n[DEBUG] base_command: {base_command}\n\n")
 PyInstaller.__main__.run(base_command)
 
 # === 构建后处理 ===
-if sys.platform == "win32":
-    # 复制 DLL 到 dist/MFW 目录
-    shutil.copytree(
-        os.path.join(os.getcwd(), "dll"),
-        os.path.join(os.getcwd(), "dist", "MFW"),
-        dirs_exist_ok=True,
-    )
-
 # 复制TEM_files的内容到 dist/MFW 目录
 shutil.copytree(
     os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"),
