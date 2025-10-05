@@ -53,10 +53,6 @@ if not os.path.exists("k.ey"):
     with open("k.ey", "wb") as key_file:
         key_file.write(key)
 import argparse
-import maa
-from maa.context import Context
-from maa.custom_action import CustomAction
-from maa.custom_recognition import CustomRecognition
 
 import atexit
 from qasync import QEventLoop, asyncio

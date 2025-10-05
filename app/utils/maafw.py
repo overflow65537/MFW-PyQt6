@@ -53,6 +53,11 @@ from typing import List, Dict
 import subprocess
 
 from asyncify import asyncify
+import maa
+from maa.context import Context
+from maa.custom_action import CustomAction
+from maa.custom_recognition import CustomRecognition
+
 from maa.controller import AdbController, Win32Controller
 from maa.tasker import Tasker, NotificationHandler
 from maa.agent_client import AgentClient
