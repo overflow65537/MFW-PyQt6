@@ -136,7 +136,10 @@ def standard_update():
     if sys.platform.startswith("win32"):
         subprocess.Popen(".\\MFW.exe")
     elif sys.platform.startswith("darwin"):
-        subprocess.Popen("open .\\MFW.app")
+        os.chmod("./MFW", 0o755)
+        os.chmod("./MFWUpdater", 0o755)
+        os.chmod("./MFWUpdater1", 0o755)
+        subprocess.Popen("./MFW")
     elif sys.platform.startswith("linux"):
         subprocess.Popen("./MFW")
     else:
