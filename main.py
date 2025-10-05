@@ -30,11 +30,18 @@ import sys
 # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
 if getattr(sys, "frozen", False):
     # 如果程序是打包后的可执行文件，将工作目录设置为可执行文件所在目录
-    target_dir = os.path.dirname(sys.executable)        # 非MacOS平台
+    target_dir = os.path.dirname(sys.executable)
+    if (
+        os.path.exists(os.path.join(target_dir, "libMaaFramework.dylib"))
+        or os.path.exists(os.path.join(target_dir, "MaaFramework.dll"))
+        or os.path.exists(os.path.join(target_dir, "libMaaFramework.so"))
+    ):
+        os.environ["MAAFW_BINARY_PATH"] = target_dir
 
 else:
     # 如果是脚本运行，将工作目录设置为脚本文件所在目录
     target_dir = os.path.dirname(os.path.abspath(__file__))
+
 
 # 切换工作目录
 os.chdir(target_dir)
@@ -50,7 +57,7 @@ import maa
 from maa.context import Context
 from maa.custom_action import CustomAction
 from maa.custom_recognition import CustomRecognition
-from app.utils.logger import logger
+
 import atexit
 from qasync import QEventLoop, asyncio
 from qfluentwidgets import ConfigItem
@@ -65,9 +72,11 @@ from app.common.config import Language
 from app.utils.tool import show_error_message
 from app.utils.check_utils import check
 from app.common.__version__ import __version__
-
+from app.utils.logger import logger
 
 logger.debug(f"设置工作目录: {target_dir}")
+logger.debug(f"环境变量MAAFW_BINARY_PATH: {os.environ.get('MAAFW_BINARY_PATH')}")
+
 
 def main(resource: str, config: str, directly: bool, DEV: bool):
     check(resource, config, directly, DEV)
@@ -116,6 +125,7 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
     # create main window
     w = MainWindow()
     w.show()
+
     # 异步异常处理
     def handle_async_exception(loop, context):
         logger.exception("异步任务异常:", exc_info=context.get("exception"))
@@ -124,8 +134,8 @@ def main(resource: str, config: str, directly: bool, DEV: bool):
 
     with loop:
         loop.run_forever()
-    logger.debug("关闭异步任务完成")
     loop.close()
+    logger.debug("关闭异步任务完成")
 
 
 def start_symbol():

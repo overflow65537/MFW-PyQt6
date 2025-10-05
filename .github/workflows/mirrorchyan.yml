@@ -26,7 +26,7 @@ jobs:
         if: always()
         with:
           filetype: latest-release
-          fileName: "MFW*-macos-aarch64-*.tar.gz"
+          fileName: "MFW*-macos-aarch64-*.zip"
           mirrorchyan_rid: MFW-PyQt6
 
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -40,7 +40,7 @@ jobs:
         if: always()
         with:
           filetype: latest-release
-          fileName: "MFW*-macos-x86_64-*.tar.gz"
+          fileName: "MFW*-macos-x86_64-*.zip"
           mirrorchyan_rid: MFW-PyQt6
 
           github_token: ${{ secrets.GITHUB_TOKEN }}
