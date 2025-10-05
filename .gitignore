@@ -467,3 +467,4 @@ MFW.pid
 i18n.json
 .nicegui/storage-general.json
 interface.json
+main_config.json

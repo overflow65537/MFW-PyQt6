@@ -1,4 +1,3 @@
-
 from typing import Dict, Any, List
 from PySide6.QtWidgets import QApplication, QListWidgetItem, QAbstractItemView
 from PySide6.QtCore import Qt, Signal
@@ -250,7 +249,6 @@ class ConfigDragListWidget(BaseDragListWidget):
         # 添加新配置到列表
         self._add_config_to_list(config)
 
-
     def remove_config(self, config_id: str):
         """移除配置项"""
         for i in range(self.count()):
@@ -271,3 +269,5 @@ class ConfigDragListWidget(BaseDragListWidget):
     def set_current_config(self, config_id: str):
         """设置当前配置项"""
         self.select_item(config_id)
+
+    

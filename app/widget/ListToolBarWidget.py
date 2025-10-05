@@ -34,9 +34,7 @@ from app.common import icon
 
 from .DragListWidget import TaskDragListWidget, ConfigDragListWidget
 from .AddTaskMessageBox import AddConfigDialog, AddTaskDialog
-from ..core.CoreSignalBus import core_signalBus, CoreSignalBus
-from ..core.ItemManager import TaskItem, ConfigItem, TaskManager, ConfigManager
-
+from ..core.core import  CoreSignalBus,TaskItem, ConfigItem,ServiceCoordinator
 
 class BaseListToolBarWidget(QWidget):
 
@@ -113,13 +111,9 @@ class BaseListToolBarWidget(QWidget):
 
 
 class ConfigListToolBarWidget(BaseListToolBarWidget):
-    def __init__(self, service_coordinator=None, parent=None):
+    def __init__(self, service_coordinator:ServiceCoordinator, parent=None):
         super().__init__(parent)
         self.service_coordinator = service_coordinator
-        # 选择全部按钮
-        self.select_all_button.clicked.connect(self.select_all)
-        # 取消选择全部按钮
-        self.deselect_all_button.clicked.connect(self.deselect_all)
         # 添加按钮
         self.add_button.clicked.connect(self.add_config)
 
@@ -127,45 +121,36 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
         """初始化配置列表"""
         self.task_list = ConfigDragListWidget(service_coordinator=self.service_coordinator, parent=self)
 
-    def select_all(self):
-        """选择全部"""
-        self.task_list.select_all()
-
-    def deselect_all(self):
-        """取消选择全部"""
-        self.task_list.deselect_all()
-
-    def add_config(self):
+    def add_config(self, config: ConfigItem):
         """添加配置项"""
-        if self.task_list.config_manager is None:
-            return
-        bundle_list = self.task_list.config_manager.all_config.bundle
-        dialog = AddConfigDialog(bundle_list, parent=self.window())
-        config_item = None
-        if dialog.exec():
-            config_item = dialog.get_config_item()
-            if config_item is None:
-                return
-            self.task_list.config_manager.add_config(config_item)
-            self.task_list.add_config(config_item)
+        # 添加新配置到列表
+        self.task_list.add_config(config)
+
+    def remove_config(self, config_id: str):
+        """移除配置项"""
+        # 从列表中移除配置
+        self.task_list.remove_config(config_id)
+        
 
 
 class TaskListToolBarWidget(BaseListToolBarWidget):
-    def __init__(self, parent=None):
+    def __init__(self, service_coordinator:ServiceCoordinator, parent=None):
         super().__init__(parent)
+        self.service_coordinator = service_coordinator
+        self.core_signalBus = self.service_coordinator.signal_bus
         # 选择全部按钮
         self.select_all_button.clicked.connect(self.select_all)
         # 取消选择全部按钮
         self.deselect_all_button.clicked.connect(self.deselect_all)
         # 添加按钮
         self.add_button.clicked.connect(self.add_task)
-        core_signalBus.show_option.connect(self._change_title)
+        self.core_signalBus.select_task.connect(self._change_title)
         self.__default_option = {}
         self.__curr_config_id = ""
 
     def _init_task_list(self):
         """初始化任务列表"""
-        self.task_list = TaskDragListWidget(parent=self)
+        self.task_list = TaskDragListWidget(service_coordinator=self.service_coordinator, parent=self)
 
     def select_all(self):
         """选择全部"""
@@ -175,41 +160,25 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         """取消选择全部"""
         self.task_list.deselect_all()
 
-    def add_task(self):
+    def add_task(self, task_item: TaskItem):
         """添加任务"""
+        self.task_list.add_task(task_item)
 
-        if self.task_list.task_manager is None:
-            return
-        if self.__curr_config_id != self.task_list.task_manager.config_manager.curr_config_id:
-            self.__default_option = self.task_list.task_manager.gen_default_option()
-            self.__curr_config_id = self.task_list.task_manager.config_manager.curr_config_id
-
-        dialog = AddTaskDialog( self.__default_option, parent=self.window())
-        task_item = None
-        if dialog.exec():
-            task_item = dialog.get_task_item()
-            if task_item is None:
-                return
-            self.task_list.add_task(task_item)
-
-    def _change_title(self, item: TaskItem | ConfigItem):
+    def _change_title(self, item: TaskItem ):
         """改变标题"""
-        if isinstance(item, ConfigItem):
-            self.set_title(item.name)
+        self.set_title(item.name)
 
 
 class OptionWidget(QWidget):
-    def __init__(self, service_coordinator=None, parent=None):
+    def __init__(self, service_coordinator:ServiceCoordinator, parent=None):
         super().__init__(parent)
         self.service_coordinator = service_coordinator
+        self.task = self.service_coordinator.task
+        self.config = self.service_coordinator.config
+        self.core_signalBus = self.service_coordinator.signal_bus
+        self.core_signalBus.select_task.connect(self.show_option)
         self._init_ui()
         self._toggle_description(visible=False)
-
-    # 传入外部对象
-    def _init_obj(self, task_manager: TaskManager, core_signalBus: CoreSignalBus):
-        self.task_manager = task_manager
-        self.core_signalBus = core_signalBus
-        core_signalBus.show_option.connect(self.show_option)
 
     def _init_ui(self):
         """初始化UI"""
@@ -394,7 +363,7 @@ class OptionWidget(QWidget):
                 option_tooltips[cases["name"]] = cases.get("description", "")
             return name, obj_name, options, current, icon_path, tooltip, option_tooltips
 
-        interface = self.task_manager.interface
+        interface = self.task.task_interface
         target_task = None
         for task_template in interface["task"]:
             if task_template["name"] == item.name:
