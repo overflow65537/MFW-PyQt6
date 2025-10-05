@@ -456,6 +456,14 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 self.insert_colored_text(self.tr("Agent service start"))
             case "agent_info":
                 self.insert_colored_text(msg["data"])
+            case "action_failed":
+                self.insert_colored_text(
+                    self.tr("Custom Action Failed:") + " " + msg["name"], "Tomato"
+                )
+            case "recognition_failed":
+                self.insert_colored_text(
+                    self.tr("Custom Recognition Failed:") + " " + msg["name"], "Tomato"
+                )
             case _:
                 logger.warning(f"Unknown message type: {msg}")
 
