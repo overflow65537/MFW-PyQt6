@@ -1,27 +1,3 @@
-#   This file is part of MFW-ChainFlow Assistant.
-
-#   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published
-#   by the Free Software Foundation, either version 3 of the License,
-#   or (at your option) any later version.
-
-#   MFW-ChainFlow Assistant is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty
-#   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
-#   the GNU General Public License for more details.
-
-#   You should have received a copy of the GNU General Public License
-#   along with MFW-ChainFlow Assistant. If not, see <https://www.gnu.org/licenses/>.
-
-#   Contact: err.overflow@gmail.com
-#   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
-
-"""
-MFW-ChainFlow Assistant
-MFW-ChainFlow Assistant 更新器
-作者:overflow65537
-"""
-
 import os
 import sys
 import shutil
@@ -44,15 +20,19 @@ def is_mfw_running():
         return False
 
 
-def move_files_to_temp_backup():
+def move_specific_files_to_temp_backup(update_file_path):
     """
-    将当前目录下的文件移动到临时备份目录
+    只将更新包中会覆盖的文件移动到临时备份目录
+
+    Args:
+        update_file_path: 更新包路径
 
     Returns:
         tuple: (临时目录路径, 移动成功的文件列表, 移动失败的文件列表)
     """
     current_dir = os.getcwd()
     import tempfile
+    import zipfile
 
     temp_backup_dir = tempfile.mkdtemp(prefix="mfw_backup_")
     moved_files = []
@@ -61,28 +41,31 @@ def move_files_to_temp_backup():
     print(f"创建临时备份目录: {temp_backup_dir}")
 
     try:
-        # 遍历当前目录下的所有文件和文件夹
-        for item in os.listdir(current_dir):
-            item_path = os.path.join(current_dir, item)
-            temp_item_path = os.path.join(temp_backup_dir, item)
+        # 获取更新包中的文件列表
+        with zipfile.ZipFile(update_file_path, "r") as zip_ref:
+            update_files = zip_ref.namelist()
 
-            # 跳过更新器自身和临时文件
-            if item in [
-                "MFWUpdater1.exe",
-                "MFWUpdater1",
-                "update.zip",
-                "update1.zip",
-            ]:
-                continue
-
-            try:
-                # 移动文件或目录到临时备份目录
-                shutil.move(item_path, temp_item_path)
-                moved_files.append(item)
-                print(f"已备份: {item}")
-            except Exception as e:
-                failed_files.append((item, str(e)))
-                print(f"备份失败: {item} - {e}")
+        # 只备份更新包中会覆盖的文件
+        for file_info in update_files:
+            file_path = os.path.join(current_dir, file_info)
+            
+            # 检查文件是否存在
+            if os.path.exists(file_path):
+                backup_path = os.path.join(temp_backup_dir, file_info)
+                
+                # 确保备份目录结构存在
+                backup_dir = os.path.dirname(backup_path)
+                if backup_dir and not os.path.exists(backup_dir):
+                    os.makedirs(backup_dir)
+                
+                try:
+                    # 移动文件到临时备份目录
+                    shutil.move(file_path, backup_path)
+                    moved_files.append(file_info)
+                    print(f"已备份: {file_info}")
+                except Exception as e:
+                    failed_files.append((file_info, str(e)))
+                    print(f"备份失败: {file_info} - {e}")
 
         return temp_backup_dir, moved_files, failed_files
 
@@ -103,20 +86,30 @@ def restore_files_from_backup(backup_dir):
     try:
         if os.path.exists(backup_dir):
             # 恢复备份文件
-            for item in os.listdir(backup_dir):
-                backup_path = os.path.join(backup_dir, item)
-                target_path = os.path.join(current_dir, item)
+            for root, dirs, files in os.walk(backup_dir):
+                # 计算相对路径
+                rel_path = os.path.relpath(root, backup_dir)
+                target_root = current_dir if rel_path == "." else os.path.join(current_dir, rel_path)
+                
+                # 确保目标目录存在
+                if not os.path.exists(target_root):
+                    os.makedirs(target_root)
+                
+                # 恢复文件
+                for file in files:
+                    backup_path = os.path.join(root, file)
+                    target_path = os.path.join(target_root, file)
+                    
+                    # 如果目标文件已存在，先删除
+                    if os.path.exists(target_path):
+                        if os.path.isdir(target_path):
+                            shutil.rmtree(target_path)
+                        else:
+                            os.remove(target_path)
 
-                # 如果目标文件已存在，先删除
-                if os.path.exists(target_path):
-                    if os.path.isdir(target_path):
-                        shutil.rmtree(target_path)
-                    else:
-                        os.remove(target_path)
-
-                # 移动文件回原位置
-                shutil.move(backup_path, target_path)
-                print(f"已恢复: {item}")
+                    # 移动文件回原位置
+                    shutil.move(backup_path, target_path)
+                    print(f"已恢复: {os.path.join(rel_path, file) if rel_path != '.' else file}")
 
             # 删除备份目录
             shutil.rmtree(backup_dir)
@@ -144,8 +137,8 @@ def extract_zip_file_with_validation(update_file_path):
         print(f"开始解压文件: {update_file_path}")
         print(f"解压目标目录: {current_dir}")
 
-        # 创建备份并移动当前文件
-        backup_dir, moved_files, failed_files = move_files_to_temp_backup()
+        # 创建备份并移动当前文件（只备份更新包中会覆盖的文件）
+        backup_dir, moved_files, failed_files = move_specific_files_to_temp_backup(update_file_path)
 
         # 如果有文件备份失败，记录日志并恢复
         if failed_files:
