@@ -36,6 +36,7 @@ class CoreSignalBus(QObject):
     select_task = Signal(str)  # 任务ID
     toggle_task_check = Signal(str, bool)  # 任务ID, 是否启用
 
+
 # ==================== 数据模型 ====================
 @dataclass
 class TaskItem:
@@ -186,11 +187,12 @@ class ITaskService(ABC):
     @abstractmethod
     def reorder_tasks(self, task_order: List[str]) -> bool:
         pass
-        
+
     @abstractmethod
     def toggle_task_check(self, task_id: str, is_checked: bool) -> bool:
         """切换任务的启用状态"""
         pass
+
 
 class IOptionService(ABC):
     """选项服务接口"""
@@ -433,12 +435,13 @@ class ConfigService(IConfigService):
         for config_id in self._main_config.get("config_list", []):
             config_data = self.repo.load_config(config_id)
             if config_data:
-                # 只返回概要信息，不包含任务详情
                 summary = {
                     "item_id": config_id,
                     "name": config_data.get("name", ""),
-                    "is_checked": config_data.get("is_checked", False),
                     "task_type": config_data.get("task_type", ""),
+                    "config_type": config_data.get("config_type", ""),
+                    "bundle": config_data.get("bundle", {}),
+                    "tasks": config_data.get("tasks", []),
                 }
                 configs.append(summary)
         return configs
@@ -457,6 +460,7 @@ class ConfigService(IConfigService):
             return list(map(lambda x: x["name"], self._main_config["bundle"]))
         return []
 
+
 class TaskService(ITaskService):
     """任务服务实现"""
 
@@ -471,21 +475,30 @@ class TaskService(ITaskService):
         self.signal_bus.config_changed.connect(self._on_config_changed)
         self.signal_bus.task_updated.connect(self._on_task_updated)
         self.signal_bus.task_order_updated.connect(self._on_task_order_updated)
+
     def _load_interface_config(self):
         """加载interface.json配置文件"""
         try:
             # 从配置服务获取当前激活的bundle路径
             current_config = self.config_service.get_current_config()
-            if current_config and hasattr(current_config, 'bundle') and current_config.bundle:
+            if (
+                current_config
+                and hasattr(current_config, "bundle")
+                and current_config.bundle
+            ):
                 # 构建interface.json路径
                 import os
-                interface_path = os.path.join(current_config.bundle.get('path', ''), "interface.json")
-                
+
+                interface_path = os.path.join(
+                    current_config.bundle.get("path", ""), "interface.json"
+                )
+
                 # 检查文件是否存在
                 if os.path.exists(interface_path):
                     # 读取interface.json内容
                     import json
-                    with open(interface_path, 'r', encoding='utf-8') as f:
+
+                    with open(interface_path, "r", encoding="utf-8") as f:
                         self.__interface_config = json.load(f)
                 else:
                     print(f"Warning: interface.json not found at {interface_path}")
@@ -497,7 +510,7 @@ class TaskService(ITaskService):
 
     def get_interface(self) -> Optional[Dict[str, Any]]:
         """返回当前激活的bundle内容
-        
+
         Returns:
             Optional[Dict[str, Any]]: interface.json内容，如果加载失败则为None
         """
@@ -634,7 +647,7 @@ class TaskService(ITaskService):
         # 发出任务顺序更新信号
         self.signal_bus.task_order_updated.emit(task_order)
         return True
-    
+
     def toggle_task_check(self, task_id: str, is_checked: bool) -> bool:
         """切换任务的启用状态"""
         task = self.get_task(task_id)
@@ -644,6 +657,7 @@ class TaskService(ITaskService):
             self.signal_bus.task_updated.emit(task.to_dict())
             return True
         return False
+
 
 class OptionService(IOptionService):
     """选项服务实现"""
@@ -753,10 +767,10 @@ class ServiceCoordinator:
 
         # UI请求选择任务
         self.signal_bus.select_task.connect(self._on_select_task)
-        
+
         # 连接任务启用状态切换信号
         self.signal_bus.toggle_task_check.connect(self._on_toggle_task_check)
-    
+
     def _on_need_save(self):
         """当UI请求保存时保存所有配置"""
         self.config_service.save_main_config()
@@ -771,8 +785,9 @@ class ServiceCoordinator:
             "name": config_name,
             "tasks": [
                 {
-                    "name":"controller",
-                    "item_id": "c_" + "".join(
+                    "name": "controller",
+                    "item_id": "c_"
+                    + "".join(
                         random.choices(string.ascii_letters + string.digits, k=10)
                     ),
                     "is_checked": True,
@@ -781,7 +796,8 @@ class ServiceCoordinator:
                 },
                 {
                     "name": "resource",
-                    "item_id": "r_" + "".join(
+                    "item_id": "r_"
+                    + "".join(
                         random.choices(string.ascii_letters + string.digits, k=10)
                     ),
                     "is_checked": True,
@@ -790,7 +806,8 @@ class ServiceCoordinator:
                 },
                 {
                     "name": "finish",
-                    "item_id": "f_" + "".join(
+                    "item_id": "f_"
+                    + "".join(
                         random.choices(string.ascii_letters + string.digits, k=10)
                     ),
                     "is_checked": True,
@@ -817,7 +834,9 @@ class ServiceCoordinator:
         """选择配置"""
         self.config_service.current_config_id = config_id
 
-    def _on_create_task(self, name: str, options: Dict[str, Any], task_type: str="task"):
+    def _on_create_task(
+        self, name: str, options: Dict[str, Any], task_type: str = "task"
+    ):
         """创建新任务"""
         default_task = {
             "name": name,
@@ -835,7 +854,7 @@ class ServiceCoordinator:
     def _on_select_task(self, task_id: str):
         """选择任务"""
         self.signal_bus.task_selected.emit(task_id)
-    
+
     def _on_toggle_task_check(self, task_id: str, is_checked: bool):
         """切换任务的启用状态"""
         self.task_service.toggle_task_check(task_id, is_checked)

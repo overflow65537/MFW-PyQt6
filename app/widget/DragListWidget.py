@@ -104,8 +104,6 @@ class TaskDragListWidget(BaseDragListWidget):
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         super().__init__(service_coordinator, parent)
         # 连接任务相关信号
-        self.signal_bus.task_created.connect(self.add_task)
-        self.signal_bus.task_deleted.connect(self.remove_task)
         self.signal_bus.task_updated.connect(self.update_task)
 
         # 初始化列表
@@ -222,8 +220,6 @@ class ConfigDragListWidget(BaseDragListWidget):
         super().__init__(service_coordinator, parent)
 
         # 连接配置相关信号
-        self.signal_bus.config_created.connect(self.add_config)
-        self.signal_bus.config_deleted.connect(self.remove_config)
 
         # 初始化列表
         self.update_list()
@@ -269,5 +265,3 @@ class ConfigDragListWidget(BaseDragListWidget):
     def set_current_config(self, config_id: str):
         """设置当前配置项"""
         self.select_item(config_id)
-
-    
