@@ -126,7 +126,6 @@ class MainWindow(FluentWindow):
         self.stara_finish()
 
         QTimer.singleShot(5000, lambda: cfg.set(cfg.start_complete, True))
-        maafw.change_log_path(maa_config_data.log_path)
 
         logger.info(" 主界面初始化完成。")
 

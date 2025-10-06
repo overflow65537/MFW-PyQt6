@@ -673,7 +673,8 @@ class SettingInterface(ScrollArea):
             )
         self.aboutCard.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(REPO_URL)))
         self.aboutCard.clicked2.connect(self.update_self_func)
-    def open_file_or_folder(self,path):
+
+    def open_file_or_folder(self, path):
         try:
             if sys.platform == "win32":
                 os.startfile(path)
@@ -687,6 +688,7 @@ class SettingInterface(ScrollArea):
                 logger.error(f"不支持的操作系统: {sys.platform}")
         except Exception as e:
             logger.error(f"打开 {path} 时出错: {e}")
+
     def open_debug_folder(self):
         """打开debug文件夹"""
         debug_path = os.path.join(".", "debug", maa_config_data.resource_name)
@@ -696,10 +698,8 @@ class SettingInterface(ScrollArea):
     def zip_debug_folder(self):
         """压缩debug文件夹"""
         debug_path = os.path.join(".", "debug", "maa.tem.log")
-        log_path = os.path.join(".", "debug", maa_config_data.resource_name, "maa.log")
-        log_bak_path = os.path.join(
-            ".", "debug", maa_config_data.resource_name, "maa.log.bak"
-        )
+        log_path = os.path.join(".", "debug", "maa.log")
+        log_bak_path = os.path.join(".", "debug", "maa.log.bak")
         # 读取log_path中的maa.log和maa.log.bak并拼接,maa.log在后
         maa_log = ""
         if os.path.exists(log_bak_path):
@@ -713,48 +713,31 @@ class SettingInterface(ScrollArea):
         with open(debug_path, "w", encoding="utf-8") as log_file:
             log_file.write(maa_log)
 
-        # 将maa.log和gui.log和vision文件夹和所有的png文件打包到一个zip中
-
-        zip_path = os.path.join(".", "debug", "debug" + ".zip")
-        if os.path.exists(zip_path):
-            os.remove(zip_path)
-        with zipfile.ZipFile(zip_path, "w") as zipf:
-            # 定义要添加到 zip 的文件和文件夹
-            files_to_add = ["maa.tem.log", "gui.log"]
-            folders_to_add = [os.path.join(os.getcwd(),"debug",maa_config_data.resource_name, "vision")]
-
-            # 添加单个文件
-            for file in files_to_add:
-                file_path = os.path.join(".", "debug", file)
-                if os.path.exists(file_path):
-                    # 写入文件时保留相对路径
-                    zipf.write(file_path, os.path.relpath(file_path, "."))
-
-            if os.path.exists(debug_path):
-                os.remove(debug_path)
-                
-            # 添加文件夹及其内容
-            for folder in folders_to_add:
-                folder_path = os.path.join(".", "debug", folder)
-                if os.path.exists(folder_path):
-                    for root, dirs, files in os.walk(folder_path):
-                        for file in files:
-                            file_path = os.path.join(root, file)
-                            # 写入文件时保留相对路径
-                            zipf.write(file_path, os.path.relpath(file_path, "."))
-
-            # 遍历 debug 文件夹，将所有 png 文件添加到 zip 中
-            debug_path = os.path.join(".", "debug")
+        # 压缩debug文件夹中除了maa.log和maa.log.bak外的所有文件
+        debug_path = os.path.join(".", "debug")
+        # 压缩debug文件夹中除了maa.log和maa.log.bak外的所有文件
+        debug_zip_path = os.path.join(".", "debug", "debug" + ".zip")
+        if os.path.exists(debug_zip_path):
+            os.remove(debug_zip_path)
+        with zipfile.ZipFile(debug_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
             for root, dirs, files in os.walk(debug_path):
                 for file in files:
-                    if file.endswith(".png"):
-                        file_path = os.path.join(root, file)
-                        # 写入文件时保留相对路径
-                        zipf.write(file_path, os.path.relpath(file_path, "."))
+                    if file not in ["maa.log", "maa.log.bak", "debug.zip"]:
+                        zipf.write(
+                            os.path.join(root, file),
+                            os.path.relpath(os.path.join(root, file), debug_path),
+                        )
 
-        debug_zip_path = os.path.join(".", "debug")
         if os.path.exists(debug_zip_path):
-            self.open_file_or_folder(debug_zip_path)
+            self.open_file_or_folder(debug_path)
+        else:
+            InfoBar.error(
+                self.tr("Error"),
+                self.tr("Compression failed, please check the debug folder"),
+                duration=1500,
+                parent=self,
+            )
+            self.open_file_or_folder(debug_path)
 
     def update_self_func(self):
         """更新程序。"""
