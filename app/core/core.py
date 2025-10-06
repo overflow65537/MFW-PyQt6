@@ -17,14 +17,14 @@ class CoreSignalBus(QObject):
     config_saved = Signal(bool)  # 保存结果
 
     # 任务相关信号
-    tasks_loaded = Signal(list)  # 任务列表
-    task_updated = Signal(dict)  # 任务数据
+    _tasks_loaded = Signal(list)  # 任务列表 (内部使用)
+    _task_updated = Signal(dict)  # 任务数据 (内部使用)
     task_selected = Signal(str)  # 任务ID
-    task_order_updated = Signal(list)  # 任务顺序
+    _task_order_updated = Signal(list)  # 任务顺序 (内部使用)
 
     # 选项相关信号
-    options_loaded = Signal(dict)  # 选项字典
-    option_updated = Signal(dict)  # 选项更新
+    _options_loaded = Signal(dict)  # 选项字典 (内部使用)
+    _option_updated = Signal(dict)  # 选项更新 (内部使用)
 
     # UI 操作信号
     need_save = Signal()
@@ -35,7 +35,7 @@ class CoreSignalBus(QObject):
     delete_task = Signal(str)  # 任务ID
     select_task = Signal(str)  # 任务ID
     toggle_task_check = Signal(str, bool)  # 任务ID, 是否启用
-
+    reorder_tasks = Signal(list)  # 任务ID列表，用于重新排列任务顺序
 
 # ==================== 数据模型 ====================
 @dataclass
@@ -473,8 +473,8 @@ class TaskService(ITaskService):
 
         # 连接信号
         self.signal_bus.config_changed.connect(self._on_config_changed)
-        self.signal_bus.task_updated.connect(self._on_task_updated)
-        self.signal_bus.task_order_updated.connect(self._on_task_order_updated)
+        self.signal_bus._task_updated.connect(self._on__task_updated)
+        self.signal_bus._task_order_updated.connect(self._on__task_order_updated)
 
     def _load_interface_config(self):
         """加载interface.json配置文件"""
@@ -522,12 +522,12 @@ class TaskService(ITaskService):
             config = self.config_service.get_config(config_id)
             if config:
                 self.current_tasks = config.tasks
-                self.signal_bus.tasks_loaded.emit(
+                self.signal_bus._tasks_loaded.emit(
                     [task.to_dict() for task in self.current_tasks]
                 )
                 self._load_interface_config()
 
-    def _on_task_updated(self, task_data: Dict[str, Any]):
+    def _on__task_updated(self, task_data: Dict[str, Any]):
         """当任务更新时保存到当前配置"""
         config_id = self.config_service.current_config_id
         if not config_id:
@@ -538,26 +538,26 @@ class TaskService(ITaskService):
             return
 
         # 查找并更新任务
-        task_updated = False
+        _task_updated = False
         for i, task in enumerate(config.tasks):
             if task.item_id == task_data.get("item_id"):
                 config.tasks[i] = TaskItem.from_dict(task_data)
-                task_updated = True
+                _task_updated = True
                 break
 
         # 如果是新任务，添加到列表倒数第二个，确保完成后操作在最后
-        if not task_updated:
+        if not _task_updated:
             config.tasks.insert(-1, TaskItem.from_dict(task_data))
 
         # 保存配置
         if self.config_service.update_config(config_id, config.to_dict()):
             # 更新本地任务列表
             self.current_tasks = config.tasks
-            self.signal_bus.tasks_loaded.emit(
+            self.signal_bus._tasks_loaded.emit(
                 [task.to_dict() for task in self.current_tasks]
             )
 
-    def _on_task_order_updated(self, task_order: List[str]):
+    def _on__task_order_updated(self, task_order: List[str]):
         """当任务顺序更新时重新排序任务"""
         config_id = self.config_service.current_config_id
         if not config_id:
@@ -582,7 +582,7 @@ class TaskService(ITaskService):
         if self.config_service.update_config(config_id, config.to_dict()):
             # 更新本地任务列表
             self.current_tasks = ordered_tasks
-            self.signal_bus.tasks_loaded.emit(
+            self.signal_bus._tasks_loaded.emit(
                 [task.to_dict() for task in self.current_tasks]
             )
 
@@ -609,13 +609,13 @@ class TaskService(ITaskService):
             )
 
         # 发出任务更新信号
-        self.signal_bus.task_updated.emit(task_data)
+        self.signal_bus._task_updated.emit(task_data)
         return True
 
     def update_task(self, task_data: Dict[str, Any]) -> bool:
         """更新任务"""
         # 发出任务更新信号
-        self.signal_bus.task_updated.emit(task_data)
+        self.signal_bus._task_updated.emit(task_data)
         return True
 
     def delete_task(self, task_id: str) -> bool:
@@ -635,7 +635,7 @@ class TaskService(ITaskService):
         if self.config_service.update_config(config_id, config.to_dict()):
             # 更新本地任务列表
             self.current_tasks = config.tasks
-            self.signal_bus.tasks_loaded.emit(
+            self.signal_bus._tasks_loaded.emit(
                 [task.to_dict() for task in self.current_tasks]
             )
             return True
@@ -645,7 +645,7 @@ class TaskService(ITaskService):
     def reorder_tasks(self, task_order: List[str]) -> bool:
         """重新排序任务"""
         # 发出任务顺序更新信号
-        self.signal_bus.task_order_updated.emit(task_order)
+        self.signal_bus._task_order_updated.emit(task_order)
         return True
 
     def toggle_task_check(self, task_id: str, is_checked: bool) -> bool:
@@ -654,7 +654,7 @@ class TaskService(ITaskService):
         if task:
             task.is_checked = is_checked
             # 通过任务更新信号来保存更改
-            self.signal_bus.task_updated.emit(task.to_dict())
+            self.signal_bus._task_updated.emit(task.to_dict())
             return True
         return False
 
@@ -670,7 +670,7 @@ class OptionService(IOptionService):
 
         # 连接信号
         self.signal_bus.task_selected.connect(self._on_task_selected)
-        self.signal_bus.option_updated.connect(self._on_option_updated)
+        self.signal_bus._option_updated.connect(self._on_option_updated)
 
     def _on_task_selected(self, task_id: str):
         """当任务被选中时加载选项"""
@@ -678,7 +678,7 @@ class OptionService(IOptionService):
         task = self.task_service.get_task(task_id)
         if task:
             self.current_options = task.task_option
-            self.signal_bus.options_loaded.emit(self.current_options)
+            self.signal_bus._options_loaded.emit(self.current_options)
 
     def _on_option_updated(self, option_data: Dict[str, Any]):
         """当选项更新时保存到当前任务"""
@@ -693,7 +693,7 @@ class OptionService(IOptionService):
         task.task_option.update(option_data)
 
         # 发出任务更新信号
-        self.signal_bus.task_updated.emit(task.to_dict())
+        self.signal_bus._task_updated.emit(task.to_dict())
 
     def get_options(self) -> Dict[str, Any]:
         """获取当前任务的选项"""
@@ -706,13 +706,13 @@ class OptionService(IOptionService):
     def update_option(self, option_key: str, option_value: Any) -> bool:
         """更新选项"""
         # 发出选项更新信号
-        self.signal_bus.option_updated.emit({option_key: option_value})
+        self.signal_bus._option_updated.emit({option_key: option_value})
         return True
 
     def update_options(self, options: Dict[str, Any]) -> bool:
         """批量更新选项"""
         # 发出选项更新信号
-        self.signal_bus.option_updated.emit(options)
+        self.signal_bus._option_updated.emit(options)
         return True
 
 
@@ -770,6 +770,9 @@ class ServiceCoordinator:
 
         # 连接任务启用状态切换信号
         self.signal_bus.toggle_task_check.connect(self._on_toggle_task_check)
+
+        # 连接任务重新排列信号
+        self.signal_bus.reorder_tasks.connect(self._on_reorder_tasks)
 
     def _on_need_save(self):
         """当UI请求保存时保存所有配置"""
@@ -858,6 +861,10 @@ class ServiceCoordinator:
     def _on_toggle_task_check(self, task_id: str, is_checked: bool):
         """切换任务的启用状态"""
         self.task_service.toggle_task_check(task_id, is_checked)
+
+    def _on_reorder_tasks(self, task_order: List[str]) -> None:
+        """处理任务重新排列信号"""
+        self.task_service.reorder_tasks(task_order)
 
     # 提供获取服务的属性，以便UI层访问
     @property
