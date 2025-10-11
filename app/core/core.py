@@ -1,3 +1,4 @@
+import uuid
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,14 +29,7 @@ class CoreSignalBus(QObject):
 
     # UI 操作信号
     need_save = Signal()
-    # create_config 可以传入 (name, bundle) 或直接传入 ConfigItem
-    create_config = Signal(object)
-    delete_config = Signal(str)  # 配置ID
-    select_config = Signal(str)  # 配置ID
-    # create_task 可以传入 (name, options, task_type) 或直接传入 TaskItem
-    create_task = Signal(object)
-    delete_task = Signal(str)  # 任务ID
-    select_task = Signal(str)  # 任务ID
+    # UI 操作信号（仅保留通用保存信号，具体操作通过 ServiceCoordinator 的方法调用）
 
 
 # ==================== 数据模型 ====================
@@ -59,12 +53,19 @@ class TaskItem:
             "task_type": self.task_type,
         }
 
+    @staticmethod
+    def generate_id() -> str:
+        return f"t_{uuid.uuid4().hex}"
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TaskItem":
-        """从字典创建实例"""
+        """从字典创建实例，自动生成 item_id"""
+        item_id = data.get("item_id", "")
+        if not item_id:
+            item_id = cls.generate_id()
         return cls(
             name=data.get("name", ""),
-            item_id=data.get("item_id", ""),
+            item_id=item_id,
             is_checked=data.get("is_checked", False),
             task_option=data.get("task_option", {}),
             task_type=data.get("task_type", ""),
@@ -95,12 +96,19 @@ class ConfigItem:
             "task_type": self.task_type,
         }
 
+    @staticmethod
+    def generate_id() -> str:
+        return f"c_{uuid.uuid4().hex}"
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ConfigItem":
-        """从字典创建实例"""
+        """从字典创建实例，自动生成 item_id"""
+        item_id = data.get("item_id", "")
+        if not item_id:
+            item_id = cls.generate_id()
         return cls(
             name=data.get("name", ""),
-            item_id=data.get("item_id", ""),
+            item_id=item_id,
             is_checked=data.get("is_checked", False),
             tasks=[TaskItem.from_dict(task) for task in data.get("tasks", [])],
             know_task=data.get("know_task", []),
@@ -534,7 +542,7 @@ class TaskService(ITaskService):
                     ordered_tasks.append(task)
                     break
 
-        # 更新配置中的任务顺序
+                self.signal_bus.task_selected.emit(task_id)
         config.tasks = ordered_tasks
 
         # 保存配置
@@ -697,85 +705,100 @@ class ServiceCoordinator:
             bundle_name = self.config_service.list_bundles()[0]
             bundle_data = self.config_service.get_bundle(bundle_name)
             # 没有当前配置时，创建默认配置
-            self._on_create_config("Default Config", bundle_data)
+            # 创建默认任务列表
+            default_tasks = [
+                TaskItem(name="控制器", item_id=TaskItem.generate_id(), is_checked=True, task_option={}, task_type="controller"),
+                TaskItem(name="资源", item_id=TaskItem.generate_id(), is_checked=True, task_option={}, task_type="resource"),
+                TaskItem(name="完成后操作", item_id=TaskItem.generate_id(), is_checked=True, task_option={}, task_type="finish"),
+            ]
+            default_config_item = ConfigItem(
+                name="Default Config",
+                item_id="",
+                is_checked=True,
+                tasks=default_tasks,
+                know_task=[],
+                bundle=bundle_data,
+                task_type="config",
+            )
+            new_id = self.add_config(default_config_item)
+            if new_id:
+                self.config_service.current_config_id = new_id
 
     def _connect_signals(self):
         """连接所有信号"""
         # UI请求保存配置
         self.signal_bus.need_save.connect(self._on_need_save)
+        # 其余操作由 ServiceCoordinator 的方法直接调用（不通过信号）
 
-        # UI请求创建新配置
-        self.signal_bus.create_config.connect(self._on_create_config)
+    # ----- 新的对外方法（替代原有信号驱动方式） -----
+    def add_config(self, config_item: ConfigItem) -> str:
+        """添加配置，传入 ConfigItem 对象，返回新配置ID"""
+        return self.config_service.create_config(config_item)
 
-        # UI请求删除配置
-        self.signal_bus.delete_config.connect(self._on_delete_config)
+    def delete_config(self, config_id: str) -> bool:
+        """删除配置，传入 config id"""
+        return self.config_service.delete_config(config_id)
 
-        # UI请求选择配置
-        self.signal_bus.select_config.connect(self._on_select_config)
+    def select_config(self, config_id: str) -> bool:
+        """选择配置，传入 config id"""
+        # 验证配置存在
+        config = self.config_service.get_config(config_id)
+        if not config:
+            return False
 
-        # UI请求创建新任务
-        self.signal_bus.create_task.connect(self._on_create_task)
+        # 设置并保存主配置
+        if self.config_service._main_config is None:
+            return False
 
-        # UI请求删除任务
-        self.signal_bus.delete_task.connect(self._on_delete_task)
+        self.config_service._main_config["curr_config_id"] = config_id
+        if self.config_service.save_main_config():
+            self.signal_bus.config_changed.emit(config_id)
+            return True
 
-        # UI请求选择任务
-        self.signal_bus.select_task.connect(self._on_select_task)
+        return False
+
+    def modify_task(self, task: TaskItem) -> bool:
+        """修改或添加任务：传入 TaskItem，如果列表中没有对应 id 的任务，添加到倒数第2位，否则更新对应任务"""
+        config_id = self.config_service.current_config_id
+        if not config_id:
+            return False
+
+        config = self.config_service.get_config(config_id)
+        if not config:
+            return False
+
+        # 查找并更新
+        found = False
+        for i, t in enumerate(config.tasks):
+            if t.item_id == task.item_id:
+                config.tasks[i] = task
+                found = True
+                break
+
+        if not found:
+            # 插入到倒数第二位（如果列表小于1，则放在末尾）
+            idx = max(0, len(config.tasks) - 1)
+            config.tasks.insert(idx, task)
+
+        # 保存配置
+        return self.config_service.update_config(config_id, config)
+
+    def delete_task(self, task_id: str) -> bool:
+        """删除任务，传入 task id"""
+        return self.task_service.delete_task(task_id)
+
+    def select_task(self, task_id: str):
+        """选中任务，传入 task id"""
+        self.signal_bus.task_selected.emit(task_id)
+
+    def reorder_tasks(self, new_order: List[str]) -> bool:
+        """任务顺序更改，new_order 为 task_id 列表（新顺序）"""
+        return self.task_service.reorder_tasks(new_order)
 
     def _on_need_save(self):
         """当UI请求保存时保存所有配置"""
         self.config_service.save_main_config()
         self.signal_bus.config_saved.emit(True)
-
-    def _on_create_config(self, config_name: str, bundle: dict):
-        """创建新配置"""
-        import random
-        import string
-        # 构造 ConfigItem 和 TaskItem
-        tasks = []
-        tasks.append(TaskItem(name="控制器", item_id="c_" + "".join(random.choices(string.ascii_letters + string.digits, k=10)), is_checked=True, task_option={}, task_type="controller"))
-        tasks.append(TaskItem(name="资源", item_id="r_" + "".join(random.choices(string.ascii_letters + string.digits, k=10)), is_checked=True, task_option={}, task_type="resource"))
-        tasks.append(TaskItem(name="完成后操作", item_id="f_" + "".join(random.choices(string.ascii_letters + string.digits, k=10)), is_checked=True, task_option={}, task_type="finish"))
-
-        config_item = ConfigItem(
-            name=config_name,
-            item_id="",
-            is_checked=True,
-            tasks=tasks,
-            know_task=[],
-            bundle=bundle,
-            task_type="config",
-        )
-
-        config_id = self.config_service.create_config(config_item)
-
-        if config_id:
-            # 设置为当前配置
-            self.config_service.current_config_id = config_id
-
-    def _on_delete_config(self, config_id: str):
-        """删除配置"""
-        self.config_service.delete_config(config_id)
-
-    def _on_select_config(self, config_id: str):
-        """选择配置"""
-        self.config_service.current_config_id = config_id
-
-    def _on_create_task(self, name: str, options: Dict[str, Any], task_type: str="task"):
-        """创建新任务（只接受 TaskItem）"""
-        import random, string
-
-        task_id = "t_" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
-        task = TaskItem(name=name, item_id=task_id, is_checked=True, task_option=options, task_type=task_type)
-        self.task_service.add_task(task)
-
-    def _on_delete_task(self, task_id: str):
-        """删除任务"""
-        self.task_service.delete_task(task_id)
-
-    def _on_select_task(self, task_id: str):
-        """选择任务"""
-        self.signal_bus.task_selected.emit(task_id)
 
     # 提供获取服务的属性，以便UI层访问
     @property
@@ -799,10 +822,19 @@ if __name__ == "__main__":
     print("current_tasks (objects):", service_coordinator.task.current_tasks)
 
     # 使用 dict 创建任务（旧方式）
-    service_coordinator._on_create_task("Test Task Dict", {"test": "test"}, "controller")
+    # 已废弃 _on_create_task，建议直接使用 add_task 或 modify_task
     # 使用 TaskItem 对象创建任务（新方式）
-    new_task = TaskItem(name="Test Task Obj", item_id="t_manual", is_checked=True, task_option={"a":1}, task_type="controller")
+    new_task = TaskItem(
+        name="Test Task Obj",
+        item_id="t_manual",
+        is_checked=True,
+        task_option={"a": 1},
+        task_type="controller",
+    )
     service_coordinator.task.add_task(new_task)
 
     # 打印任务为 dict 格式以便观察
-    print("current_tasks (as dicts):", [t.to_dict() for t in service_coordinator.task.current_tasks])
+    print(
+        "current_tasks (as dicts):",
+        [t.to_dict() for t in service_coordinator.task.current_tasks],
+    )
