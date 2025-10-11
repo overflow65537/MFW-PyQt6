@@ -41,16 +41,14 @@ class TaskItem:
     item_id: str
     is_checked: bool
     task_option: Dict[str, Any]
-    task_type: str
 
     def to_dict(self) -> Dict[str, Any]:
-        """转换为字典"""
+        """转换为字典（去除 task_type）"""
         return {
             "name": self.name,
             "item_id": self.item_id,
             "is_checked": self.is_checked,
             "task_option": self.task_option,
-            "task_type": self.task_type,
         }
 
     @staticmethod
@@ -59,7 +57,7 @@ class TaskItem:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TaskItem":
-        """从字典创建实例，自动生成 item_id"""
+        """从字典创建实例，自动生成 item_id（去除 task_type）"""
         item_id = data.get("item_id", "")
         if not item_id:
             item_id = cls.generate_id()
@@ -68,7 +66,6 @@ class TaskItem:
             item_id=item_id,
             is_checked=data.get("is_checked", False),
             task_option=data.get("task_option", {}),
-            task_type=data.get("task_type", ""),
         )
 
 
@@ -82,10 +79,9 @@ class ConfigItem:
     tasks: List[TaskItem]
     know_task: List[str]
     bundle: Dict[str, str]
-    task_type: str
 
     def to_dict(self) -> Dict[str, Any]:
-        """转换为字典"""
+        """转换为字典（去除 task_type）"""
         return {
             "name": self.name,
             "item_id": self.item_id,
@@ -93,7 +89,6 @@ class ConfigItem:
             "tasks": [task.to_dict() for task in self.tasks],
             "know_task": self.know_task,
             "bundle": self.bundle,
-            "task_type": self.task_type,
         }
 
     @staticmethod
@@ -102,7 +97,7 @@ class ConfigItem:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ConfigItem":
-        """从字典创建实例，自动生成 item_id"""
+        """从字典创建实例，自动生成 item_id（去除 task_type）"""
         item_id = data.get("item_id", "")
         if not item_id:
             item_id = cls.generate_id()
@@ -113,7 +108,6 @@ class ConfigItem:
             tasks=[TaskItem.from_dict(task) for task in data.get("tasks", [])],
             know_task=data.get("know_task", []),
             bundle=data.get("bundle", {}),
-            task_type=data.get("task_type", ""),
         )
 
 
@@ -707,9 +701,9 @@ class ServiceCoordinator:
             # 没有当前配置时，创建默认配置
             # 创建默认任务列表
             default_tasks = [
-                TaskItem(name="控制器", item_id=TaskItem.generate_id(), is_checked=True, task_option={}, task_type="controller"),
-                TaskItem(name="资源", item_id=TaskItem.generate_id(), is_checked=True, task_option={}, task_type="resource"),
-                TaskItem(name="完成后操作", item_id=TaskItem.generate_id(), is_checked=True, task_option={}, task_type="finish"),
+                TaskItem(name="控制器", item_id="c_" + TaskItem.generate_id()[2:], is_checked=True, task_option={}),
+                TaskItem(name="资源", item_id="r_" + TaskItem.generate_id()[2:], is_checked=True, task_option={}),
+                TaskItem(name="完成后操作", item_id="f_" + TaskItem.generate_id()[2:], is_checked=True, task_option={}),
             ]
             default_config_item = ConfigItem(
                 name="Default Config",
@@ -718,7 +712,6 @@ class ServiceCoordinator:
                 tasks=default_tasks,
                 know_task=[],
                 bundle=bundle_data,
-                task_type="config",
             )
             new_id = self.add_config(default_config_item)
             if new_id:
@@ -784,7 +777,15 @@ class ServiceCoordinator:
         return self.config_service.update_config(config_id, config)
 
     def delete_task(self, task_id: str) -> bool:
-        """删除任务，传入 task id"""
+        """删除任务，传入 task id，基础任务不可删除（通过特殊 id 区分）"""
+        config = self.config_service.get_current_config()
+        if not config:
+            return False
+        # 基础任务 id 以 c_ r_ f_ 开头
+        base_prefix = ("c_", "r_", "f_")
+        for t in config.tasks:
+            if t.item_id == task_id and t.item_id.startswith(base_prefix):
+                return False
         return self.task_service.delete_task(task_id)
 
     def select_task(self, task_id: str):
@@ -829,7 +830,6 @@ if __name__ == "__main__":
         item_id="t_manual",
         is_checked=True,
         task_option={"a": 1},
-        task_type="controller",
     )
     service_coordinator.task.add_task(new_task)
 

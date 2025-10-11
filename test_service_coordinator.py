@@ -22,7 +22,6 @@ def test_service_coordinator_basic(tmp_path):
         tasks=[],
         know_task=[],
         bundle=cfg.bundle,
-        task_type="config",
     )
     new_id = sc.add_config(new_cfg)
     assert isinstance(new_id, str) and new_id != ""
@@ -36,7 +35,7 @@ def test_service_coordinator_basic(tmp_path):
     assert curr_cfg.name == "TestConfig"
 
     # 添加任务
-    task = TaskItem(name="T1", item_id="", is_checked=True, task_option={"a": 1}, task_type="task")
+    task = TaskItem(name="T1", item_id="", is_checked=True, task_option={"a": 1})
     assert sc.task.add_task(task)
     tasks = sc.task.get_tasks()
     assert any(t.name == "T1" for t in tasks)
