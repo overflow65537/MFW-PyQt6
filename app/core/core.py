@@ -17,14 +17,14 @@ class CoreSignalBus(QObject):
     config_saved = Signal(bool)  # 保存结果
 
     # 任务相关信号
-    _tasks_loaded = Signal(list)  # 任务列表 (内部使用)
-    _task_updated = Signal(dict)  # 任务数据 (内部使用)
+    tasks_loaded = Signal(list)  # 任务列表
+    task_updated = Signal(dict)  # 任务数据
     task_selected = Signal(str)  # 任务ID
-    _task_order_updated = Signal(list)  # 任务顺序 (内部使用)
+    task_order_updated = Signal(list)  # 任务顺序
 
     # 选项相关信号
-    _options_loaded = Signal(dict)  # 选项字典 (内部使用)
-    _option_updated = Signal(dict)  # 选项更新 (内部使用)
+    options_loaded = Signal(dict)  # 选项字典
+    option_updated = Signal(dict)  # 选项更新
 
     # UI 操作信号
     need_save = Signal()
@@ -34,8 +34,7 @@ class CoreSignalBus(QObject):
     create_task = Signal(object)  # 任务类型
     delete_task = Signal(str)  # 任务ID
     select_task = Signal(str)  # 任务ID
-    toggle_task_check = Signal(str, bool)  # 任务ID, 是否启用
-    reorder_tasks = Signal(list)  # 任务ID列表，用于重新排列任务顺序
+
 
 # ==================== 数据模型 ====================
 @dataclass
@@ -186,11 +185,6 @@ class ITaskService(ABC):
 
     @abstractmethod
     def reorder_tasks(self, task_order: List[str]) -> bool:
-        pass
-
-    @abstractmethod
-    def toggle_task_check(self, task_id: str, is_checked: bool) -> bool:
-        """切换任务的启用状态"""
         pass
 
 
@@ -435,13 +429,12 @@ class ConfigService(IConfigService):
         for config_id in self._main_config.get("config_list", []):
             config_data = self.repo.load_config(config_id)
             if config_data:
+                # 只返回概要信息，不包含任务详情
                 summary = {
                     "item_id": config_id,
                     "name": config_data.get("name", ""),
+                    "is_checked": config_data.get("is_checked", False),
                     "task_type": config_data.get("task_type", ""),
-                    "config_type": config_data.get("config_type", ""),
-                    "bundle": config_data.get("bundle", {}),
-                    "tasks": config_data.get("tasks", []),
                 }
                 configs.append(summary)
         return configs
@@ -468,53 +461,12 @@ class TaskService(ITaskService):
         self.config_service = config_service
         self.signal_bus = signal_bus
         self.current_tasks = []
-        self.__interface_config = None
         self._on_config_changed(self.config_service.current_config_id)
 
         # 连接信号
         self.signal_bus.config_changed.connect(self._on_config_changed)
-        self.signal_bus._task_updated.connect(self._on__task_updated)
-        self.signal_bus._task_order_updated.connect(self._on__task_order_updated)
-
-    def _load_interface_config(self):
-        """加载interface.json配置文件"""
-        try:
-            # 从配置服务获取当前激活的bundle路径
-            current_config = self.config_service.get_current_config()
-            if (
-                current_config
-                and hasattr(current_config, "bundle")
-                and current_config.bundle
-            ):
-                # 构建interface.json路径
-                import os
-
-                interface_path = os.path.join(
-                    current_config.bundle.get("path", ""), "interface.json"
-                )
-
-                # 检查文件是否存在
-                if os.path.exists(interface_path):
-                    # 读取interface.json内容
-                    import json
-
-                    with open(interface_path, "r", encoding="utf-8") as f:
-                        self.__interface_config = json.load(f)
-                else:
-                    print(f"Warning: interface.json not found at {interface_path}")
-            else:
-                print("Warning: No active bundle configuration found")
-        except Exception as e:
-            print(f"Error loading interface.json: {e}")
-            self.__interface_config = None
-
-    def get_interface(self) -> Optional[Dict[str, Any]]:
-        """返回当前激活的bundle内容
-
-        Returns:
-            Optional[Dict[str, Any]]: interface.json内容，如果加载失败则为None
-        """
-        return self.__interface_config
+        self.signal_bus.task_updated.connect(self._on_task_updated)
+        self.signal_bus.task_order_updated.connect(self._on_task_order_updated)
 
     def _on_config_changed(self, config_id: str):
         """当配置变化时加载对应任务"""
@@ -522,12 +474,11 @@ class TaskService(ITaskService):
             config = self.config_service.get_config(config_id)
             if config:
                 self.current_tasks = config.tasks
-                self.signal_bus._tasks_loaded.emit(
+                self.signal_bus.tasks_loaded.emit(
                     [task.to_dict() for task in self.current_tasks]
                 )
-                self._load_interface_config()
 
-    def _on__task_updated(self, task_data: Dict[str, Any]):
+    def _on_task_updated(self, task_data: Dict[str, Any]):
         """当任务更新时保存到当前配置"""
         config_id = self.config_service.current_config_id
         if not config_id:
@@ -538,26 +489,26 @@ class TaskService(ITaskService):
             return
 
         # 查找并更新任务
-        _task_updated = False
+        task_updated = False
         for i, task in enumerate(config.tasks):
             if task.item_id == task_data.get("item_id"):
                 config.tasks[i] = TaskItem.from_dict(task_data)
-                _task_updated = True
+                task_updated = True
                 break
 
         # 如果是新任务，添加到列表倒数第二个，确保完成后操作在最后
-        if not _task_updated:
+        if not task_updated:
             config.tasks.insert(-1, TaskItem.from_dict(task_data))
 
         # 保存配置
         if self.config_service.update_config(config_id, config.to_dict()):
             # 更新本地任务列表
             self.current_tasks = config.tasks
-            self.signal_bus._tasks_loaded.emit(
+            self.signal_bus.tasks_loaded.emit(
                 [task.to_dict() for task in self.current_tasks]
             )
 
-    def _on__task_order_updated(self, task_order: List[str]):
+    def _on_task_order_updated(self, task_order: List[str]):
         """当任务顺序更新时重新排序任务"""
         config_id = self.config_service.current_config_id
         if not config_id:
@@ -582,7 +533,7 @@ class TaskService(ITaskService):
         if self.config_service.update_config(config_id, config.to_dict()):
             # 更新本地任务列表
             self.current_tasks = ordered_tasks
-            self.signal_bus._tasks_loaded.emit(
+            self.signal_bus.tasks_loaded.emit(
                 [task.to_dict() for task in self.current_tasks]
             )
 
@@ -609,13 +560,13 @@ class TaskService(ITaskService):
             )
 
         # 发出任务更新信号
-        self.signal_bus._task_updated.emit(task_data)
+        self.signal_bus.task_updated.emit(task_data)
         return True
 
     def update_task(self, task_data: Dict[str, Any]) -> bool:
         """更新任务"""
         # 发出任务更新信号
-        self.signal_bus._task_updated.emit(task_data)
+        self.signal_bus.task_updated.emit(task_data)
         return True
 
     def delete_task(self, task_id: str) -> bool:
@@ -635,7 +586,7 @@ class TaskService(ITaskService):
         if self.config_service.update_config(config_id, config.to_dict()):
             # 更新本地任务列表
             self.current_tasks = config.tasks
-            self.signal_bus._tasks_loaded.emit(
+            self.signal_bus.tasks_loaded.emit(
                 [task.to_dict() for task in self.current_tasks]
             )
             return True
@@ -645,18 +596,8 @@ class TaskService(ITaskService):
     def reorder_tasks(self, task_order: List[str]) -> bool:
         """重新排序任务"""
         # 发出任务顺序更新信号
-        self.signal_bus._task_order_updated.emit(task_order)
+        self.signal_bus.task_order_updated.emit(task_order)
         return True
-
-    def toggle_task_check(self, task_id: str, is_checked: bool) -> bool:
-        """切换任务的启用状态"""
-        task = self.get_task(task_id)
-        if task:
-            task.is_checked = is_checked
-            # 通过任务更新信号来保存更改
-            self.signal_bus._task_updated.emit(task.to_dict())
-            return True
-        return False
 
 
 class OptionService(IOptionService):
@@ -670,7 +611,7 @@ class OptionService(IOptionService):
 
         # 连接信号
         self.signal_bus.task_selected.connect(self._on_task_selected)
-        self.signal_bus._option_updated.connect(self._on_option_updated)
+        self.signal_bus.option_updated.connect(self._on_option_updated)
 
     def _on_task_selected(self, task_id: str):
         """当任务被选中时加载选项"""
@@ -678,7 +619,7 @@ class OptionService(IOptionService):
         task = self.task_service.get_task(task_id)
         if task:
             self.current_options = task.task_option
-            self.signal_bus._options_loaded.emit(self.current_options)
+            self.signal_bus.options_loaded.emit(self.current_options)
 
     def _on_option_updated(self, option_data: Dict[str, Any]):
         """当选项更新时保存到当前任务"""
@@ -693,7 +634,7 @@ class OptionService(IOptionService):
         task.task_option.update(option_data)
 
         # 发出任务更新信号
-        self.signal_bus._task_updated.emit(task.to_dict())
+        self.signal_bus.task_updated.emit(task.to_dict())
 
     def get_options(self) -> Dict[str, Any]:
         """获取当前任务的选项"""
@@ -706,13 +647,13 @@ class OptionService(IOptionService):
     def update_option(self, option_key: str, option_value: Any) -> bool:
         """更新选项"""
         # 发出选项更新信号
-        self.signal_bus._option_updated.emit({option_key: option_value})
+        self.signal_bus.option_updated.emit({option_key: option_value})
         return True
 
     def update_options(self, options: Dict[str, Any]) -> bool:
         """批量更新选项"""
         # 发出选项更新信号
-        self.signal_bus._option_updated.emit(options)
+        self.signal_bus.option_updated.emit(options)
         return True
 
 
@@ -768,12 +709,6 @@ class ServiceCoordinator:
         # UI请求选择任务
         self.signal_bus.select_task.connect(self._on_select_task)
 
-        # 连接任务启用状态切换信号
-        self.signal_bus.toggle_task_check.connect(self._on_toggle_task_check)
-
-        # 连接任务重新排列信号
-        self.signal_bus.reorder_tasks.connect(self._on_reorder_tasks)
-
     def _on_need_save(self):
         """当UI请求保存时保存所有配置"""
         self.config_service.save_main_config()
@@ -786,11 +721,11 @@ class ServiceCoordinator:
 
         default_config = {
             "name": config_name,
+            "is_checked": True,
             "tasks": [
                 {
-                    "name": "controller",
-                    "item_id": "c_"
-                    + "".join(
+                    "name": "控制器",
+                    "item_id": "c_" + "".join(
                         random.choices(string.ascii_letters + string.digits, k=10)
                     ),
                     "is_checked": True,
@@ -798,9 +733,8 @@ class ServiceCoordinator:
                     "task_type": "controller",
                 },
                 {
-                    "name": "resource",
-                    "item_id": "r_"
-                    + "".join(
+                    "name": "资源",
+                    "item_id": "r_" + "".join(
                         random.choices(string.ascii_letters + string.digits, k=10)
                     ),
                     "is_checked": True,
@@ -808,9 +742,8 @@ class ServiceCoordinator:
                     "task_type": "resource",
                 },
                 {
-                    "name": "finish",
-                    "item_id": "f_"
-                    + "".join(
+                    "name": "完成后操作",
+                    "item_id": "f_" + "".join(
                         random.choices(string.ascii_letters + string.digits, k=10)
                     ),
                     "is_checked": True,
@@ -819,7 +752,7 @@ class ServiceCoordinator:
                 },
             ],
             "know_task": [],
-            "bundle": bundle,
+            "bundle": [bundle],
             "task_type": "config",
         }
 
@@ -837,9 +770,7 @@ class ServiceCoordinator:
         """选择配置"""
         self.config_service.current_config_id = config_id
 
-    def _on_create_task(
-        self, name: str, options: Dict[str, Any], task_type: str = "task"
-    ):
+    def _on_create_task(self, name: str, options: Dict[str, Any], task_type: str="task"):
         """创建新任务"""
         default_task = {
             "name": name,
@@ -857,14 +788,6 @@ class ServiceCoordinator:
     def _on_select_task(self, task_id: str):
         """选择任务"""
         self.signal_bus.task_selected.emit(task_id)
-
-    def _on_toggle_task_check(self, task_id: str, is_checked: bool):
-        """切换任务的启用状态"""
-        self.task_service.toggle_task_check(task_id, is_checked)
-
-    def _on_reorder_tasks(self, task_order: List[str]) -> None:
-        """处理任务重新排列信号"""
-        self.task_service.reorder_tasks(task_order)
 
     # 提供获取服务的属性，以便UI层访问
     @property
@@ -886,6 +809,6 @@ if __name__ == "__main__":
     service_coordinator = ServiceCoordinator(main_config_path)
     print(service_coordinator.config.current_config_id)
     print(service_coordinator.task.current_tasks)
+    service_coordinator._on_create_task("Test Task", {"test": "test"}, "controller")
     print(service_coordinator.config.current_config_id)
     print(service_coordinator.task.current_tasks)
-    print(service_coordinator.task.get_interface())
