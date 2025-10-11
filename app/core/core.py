@@ -73,15 +73,15 @@ class TaskItem:
 class ConfigItem:
     """配置数据模型"""
 
-    name: str
-    item_id: str
-    is_checked: bool
-    tasks: List[TaskItem]
-    know_task: List[str]
-    bundle: Dict[str, str]
+    def __init__(self, name: str, item_id: str, is_checked: bool, tasks: List[TaskItem], know_task: List[str], bundle: Dict[str, Dict[str, Any]]):
+        self.name = name
+        self.item_id = item_id
+        self.is_checked = is_checked
+        self.tasks = tasks
+        self.know_task = know_task
+        self.bundle = bundle
 
     def to_dict(self) -> Dict[str, Any]:
-        """转换为字典（去除 task_type）"""
         return {
             "name": self.name,
             "item_id": self.item_id,
@@ -97,17 +97,17 @@ class ConfigItem:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ConfigItem":
-        """从字典创建实例，自动生成 item_id（去除 task_type）"""
         item_id = data.get("item_id", "")
         if not item_id:
             item_id = cls.generate_id()
+        bundle = data.get("bundle", {})
         return cls(
             name=data.get("name", ""),
             item_id=item_id,
             is_checked=data.get("is_checked", False),
             tasks=[TaskItem.from_dict(task) for task in data.get("tasks", [])],
             know_task=data.get("know_task", []),
-            bundle=data.get("bundle", {}),
+            bundle=bundle,
         )
 
 
@@ -225,22 +225,21 @@ class JsonConfigRepository(IConfigRepository):
             self.configs_dir.mkdir(parents=True)
 
     def load_main_config(self) -> Dict[str, Any]:
-        """加载主配置"""
+        """加载主配置（仅支持新 bundle 格式）"""
         if not self.main_config_path.exists():
-            # 如果工作目录目录下没有interfere.json
+            # 如果工作目录目录下没有interface.json
             if not (Path.cwd() / "interface.json").exists():
                 raise FileNotFoundError(f"{Path.cwd() / 'interface.json'} 无可用资源")
 
             with open(Path.cwd() / "interface.json", "r", encoding="utf-8") as f:
                 interface = json.load(f)
 
-            # 如果主配置不存在，创建默认主配置
+            # 只支持新格式 {名字: {path: 路径}}
+            bundle = {interface.get("name", "Default Bundle"): {"path": "./"}}
             default_config = {
                 "curr_config_id": "",
                 "config_list": [],
-                "bundle": [
-                    {"name": interface.get("name", "Default Bundle"), "path": "./"}
-                ],
+                "bundle": bundle,
             }
             self.save_main_config(default_config)
             return default_config
@@ -384,22 +383,11 @@ class ConfigService(IConfigService):
         return self.repo.save_config(config_id, config_data.to_dict())
 
     def create_config(self, config_data: ConfigItem) -> str:
-        """创建新配置"""
-        # 生成唯一ID
-        import random
-        import string
-
-        config_id = "c_" + "".join(
-            random.choices(string.ascii_letters + string.digits, k=10)
-        )
-
-        # 设置 ConfigItem.item_id 并保存
+        """创建新配置，统一使用 uuid 生成 id"""
+        config_id = ConfigItem.generate_id()
         config_data.item_id = config_id
-
-        # 保存配置
         if self.save_config(config_id, config_data):
             return config_id
-
         return ""
 
     def update_config(self, config_id: str, config_data: ConfigItem) -> bool:
@@ -447,17 +435,19 @@ class ConfigService(IConfigService):
         return configs
 
     def get_bundle(self, bundle_name: str) -> dict:
-        """获取bundle数据"""
-        if self._main_config:
-            for bundle in self._main_config["bundle"]:
-                if bundle["name"] == bundle_name:
-                    return bundle
+        """获取bundle数据（新格式：bundle为dict，key为名字）"""
+        if self._main_config and "bundle" in self._main_config:
+            bundle = self._main_config["bundle"]
+            if isinstance(bundle, dict) and bundle_name in bundle:
+                return bundle[bundle_name]
         raise FileNotFoundError(f"Bundle {bundle_name} not found")
 
     def list_bundles(self) -> List[str]:
-        """列出所有bundle名称"""
-        if self._main_config:
-            return list(map(lambda x: x["name"], self._main_config["bundle"]))
+        """列出所有bundle名称（新格式：bundle为dict，key为名字）"""
+        if self._main_config and "bundle" in self._main_config:
+            bundle = self._main_config["bundle"]
+            if isinstance(bundle, dict):
+                return list(bundle.keys())
         return []
 
 
@@ -557,22 +547,13 @@ class TaskService(ITaskService):
         return None
 
     def add_task(self, task_data: TaskItem) -> bool:
-        """添加新任务"""
-        # 兼容传入 TaskItem 或 dict
+        """添加新任务，统一使用 uuid 生成 id"""
         if isinstance(task_data, TaskItem):
             task = task_data
         else:
-            # 生成任务ID
-            if "item_id" not in task_data:
-                import random
-                import string
-
-                task_data["item_id"] = "t_" + "".join(
-                    random.choices(string.ascii_letters + string.digits, k=10)
-                )
+            if "item_id" not in task_data or not task_data["item_id"]:
+                task_data["item_id"] = TaskItem.generate_id()
             task = TaskItem.from_dict(task_data)
-
-        # 发出任务更新信号（对象）
         self.signal_bus.task_updated.emit(task)
         return True
 
@@ -611,8 +592,7 @@ class TaskService(ITaskService):
 
     def reorder_tasks(self, task_order: List[str]) -> bool:
         """重新排序任务"""
-        # 发出任务顺序更新信号
-        self.signal_bus.task_order_updated.emit(task_order)
+        self._on_task_order_updated(task_order)
         return True
 
 
@@ -697,9 +677,7 @@ class ServiceCoordinator:
             and not self.config_service.list_configs()
         ):
             bundle_name = self.config_service.list_bundles()[0]
-            bundle_data = self.config_service.get_bundle(bundle_name)
-            # 没有当前配置时，创建默认配置
-            # 创建默认任务列表
+            bundle = self.config_service.get_bundle(bundle_name)
             default_tasks = [
                 TaskItem(name="控制器", item_id="c_" + TaskItem.generate_id()[2:], is_checked=True, task_option={}),
                 TaskItem(name="资源", item_id="r_" + TaskItem.generate_id()[2:], is_checked=True, task_option={}),
@@ -711,7 +689,7 @@ class ServiceCoordinator:
                 is_checked=True,
                 tasks=default_tasks,
                 know_task=[],
-                bundle=bundle_data,
+                bundle=bundle,
             )
             new_id = self.add_config(default_config_item)
             if new_id:
