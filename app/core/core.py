@@ -1,3 +1,4 @@
+
 import uuid
 import json
 from dataclasses import dataclass
@@ -73,10 +74,17 @@ class TaskItem:
 class ConfigItem:
     """配置数据模型"""
 
-    def __init__(self, name: str, item_id: str, is_checked: bool, tasks: List[TaskItem], know_task: List[str], bundle: Dict[str, Dict[str, Any]]):
+    def __init__(
+        self,
+        name: str,
+        item_id: str,
+        tasks: List[TaskItem],
+        know_task: List[str],
+        bundle: Dict[str, Dict[str, Any]],
+    ):
         self.name = name
         self.item_id = item_id
-        self.is_checked = is_checked
+
         self.tasks = tasks
         self.know_task = know_task
         self.bundle = bundle
@@ -85,7 +93,6 @@ class ConfigItem:
         return {
             "name": self.name,
             "item_id": self.item_id,
-            "is_checked": self.is_checked,
             "tasks": [task.to_dict() for task in self.tasks],
             "know_task": self.know_task,
             "bundle": self.bundle,
@@ -104,7 +111,6 @@ class ConfigItem:
         return cls(
             name=data.get("name", ""),
             item_id=item_id,
-            is_checked=data.get("is_checked", False),
             tasks=[TaskItem.from_dict(task) for task in data.get("tasks", [])],
             know_task=data.get("know_task", []),
             bundle=bundle,
@@ -148,7 +154,7 @@ class IConfigService(ABC):
         pass
 
     @abstractmethod
-    def create_config(self, config_data: ConfigItem) -> str:
+    def create_config(self, config: ConfigItem) -> str:
         pass
 
     @abstractmethod
@@ -176,11 +182,7 @@ class ITaskService(ABC):
         pass
 
     @abstractmethod
-    def add_task(self, task_data: TaskItem) -> bool:
-        pass
-
-    @abstractmethod
-    def update_task(self, task_data: TaskItem) -> bool:
+    def update_task(self, task: TaskItem) -> bool:
         pass
 
     @abstractmethod
@@ -224,32 +226,32 @@ class JsonConfigRepository(IConfigRepository):
         if not self.configs_dir.exists():
             self.configs_dir.mkdir(parents=True)
 
-    def load_main_config(self) -> Dict[str, Any]:
-        """加载主配置（仅支持新 bundle 格式）"""
         if not self.main_config_path.exists():
-            # 如果工作目录目录下没有interface.json
-            if not (Path.cwd() / "interface.json").exists():
-                raise FileNotFoundError(f"{Path.cwd() / 'interface.json'} 无可用资源")
-
-            with open(Path.cwd() / "interface.json", "r", encoding="utf-8") as f:
+            interface_path = Path.cwd() / "interface.json"
+            if not interface_path.exists():
+                raise FileNotFoundError(f"无有效资源 {interface_path}")
+            with open(interface_path, "r", encoding="utf-8") as f:
                 interface = json.load(f)
 
-            # 只支持新格式 {名字: {path: 路径}}
-            bundle = {interface.get("name", "Default Bundle"): {"path": "./"}}
-            default_config = {
+            default_main_config = {
                 "curr_config_id": "",
                 "config_list": [],
-                "bundle": bundle,
+                "bundle": [
+                    {
+                        "name": interface.get("name", "Default Bundle"),
+                        "path": "./",
+                    }
+                ],
             }
-            self.save_main_config(default_config)
-            return default_config
+            self.save_main_config(default_main_config)
 
+    def load_main_config(self) -> Dict[str, Any]:
+        """加载主配置"""
         try:
             with open(self.main_config_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
-            print(f"加载主配置失败: {e}")
-            return {}
+            raise
 
     def save_main_config(self, config_data: Dict[str, Any]) -> bool:
         """保存主配置"""
@@ -258,21 +260,18 @@ class JsonConfigRepository(IConfigRepository):
                 json.dump(config_data, f, indent=4, ensure_ascii=False)
             return True
         except Exception as e:
-            print(f"保存主配置失败: {e}")
-            return False
+            raise
 
     def load_config(self, config_id: str) -> Dict[str, Any]:
         """加载子配置"""
         config_file = self.configs_dir / f"{config_id}.json"
         if not config_file.exists():
-            return {}
-
+            raise FileNotFoundError(f"配置文件 {config_file} 不存在")
         try:
             with open(config_file, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
-            print(f"加载子配置 {config_id} 失败: {e}")
-            return {}
+            raise
 
     def save_config(self, config_id: str, config_data: Dict[str, Any]) -> bool:
         """保存子配置"""
@@ -282,23 +281,25 @@ class JsonConfigRepository(IConfigRepository):
                 json.dump(config_data, f, indent=4, ensure_ascii=False)
             return True
         except Exception as e:
-            print(f"保存子配置 {config_id} 失败: {e}")
-            return False
+            raise
 
     def delete_config(self, config_id: str) -> bool:
         """删除子配置"""
         config_file = self.configs_dir / f"{config_id}.json"
-        if config_file.exists():
-            try:
-                config_file.unlink()
-                return True
-            except Exception as e:
-                print(f"删除子配置 {config_id} 失败: {e}")
-        return False
+        if not config_file.exists():
+            raise FileNotFoundError(f"配置文件 {config_file} 不存在")
+        try:
+            config_file.unlink()
+            return True
+        except Exception as e:
+            raise
 
     def list_configs(self) -> List[str]:
         """列出所有子配置ID"""
-        return [f.stem for f in self.configs_dir.glob("*.json") if f.is_file()]
+        try:
+            return [f.stem for f in self.configs_dir.glob("*.json") if f.is_file()]
+        except Exception as e:
+            raise
 
 
 class ConfigService(IConfigService):
@@ -311,6 +312,39 @@ class ConfigService(IConfigService):
 
         # 加载主配置
         self.load_main_config()
+        if self._main_config and not self._main_config.get("curr_config_id"):
+
+            bundle = self._main_config.get("bundle", [])[0]
+            default_tasks = [
+                TaskItem(
+                    name="控制器",
+                    item_id="c_" + TaskItem.generate_id()[2:],
+                    is_checked=True,
+                    task_option={},
+                ),
+                TaskItem(
+                    name="资源",
+                    item_id="r_" + TaskItem.generate_id()[2:],
+                    is_checked=True,
+                    task_option={},
+                ),
+                TaskItem(
+                    name="完成后操作",
+                    item_id="f_" + TaskItem.generate_id()[2:],
+                    is_checked=True,
+                    task_option={},
+                ),
+            ]
+            default_config_item = ConfigItem(
+                name="Default Config",
+                item_id=ConfigItem.generate_id(),
+                tasks=default_tasks,
+                know_task=[],
+                bundle=bundle,
+            )
+            self._main_config["config_list"].append(default_config_item.item_id)
+            self._main_config["curr_config_id"] = default_config_item.item_id
+            self.create_config(default_config_item)
 
     def load_main_config(self) -> bool:
         """加载主配置"""
@@ -382,12 +416,12 @@ class ConfigService(IConfigService):
         # config_data 应为 ConfigItem，直接转换为 dict 保存
         return self.repo.save_config(config_id, config_data.to_dict())
 
-    def create_config(self, config_data: ConfigItem) -> str:
+    def create_config(self, config: ConfigItem) -> str:
         """创建新配置，统一使用 uuid 生成 id"""
-        config_id = ConfigItem.generate_id()
-        config_data.item_id = config_id
-        if self.save_config(config_id, config_data):
-            return config_id
+        if not config.item_id:
+            config.item_id = ConfigItem.generate_id()
+        if self.save_config(config.item_id, config):
+            return config.item_id
         return ""
 
     def update_config(self, config_id: str, config_data: ConfigItem) -> bool:
@@ -425,12 +459,7 @@ class ConfigService(IConfigService):
             config_data = self.repo.load_config(config_id)
             if config_data:
                 # 只返回概要信息，不包含任务详情
-                summary = {
-                    "item_id": config_id,
-                    "name": config_data.get("name", ""),
-                    "is_checked": config_data.get("is_checked", False),
-                    "task_type": config_data.get("task_type", ""),
-                }
+                summary = {"item_id": config_id, "name": config_data.get("name", "")}
                 configs.append(summary)
         return configs
 
@@ -458,6 +487,9 @@ class TaskService(ITaskService):
         self.config_service = config_service
         self.signal_bus = signal_bus
         self.current_tasks = []
+        self.know_task = []
+        self.interface = {}
+        self.default_option={}
         self._on_config_changed(self.config_service.current_config_id)
 
         # 连接信号
@@ -470,10 +502,71 @@ class TaskService(ITaskService):
         if config_id:
             config = self.config_service.get_config(config_id)
             if config:
+                interface_path = Path.cwd() / "interface.json"
+                if not interface_path.exists():
+                    raise FileNotFoundError(f"无有效资源 {interface_path}")
+                with open(interface_path, "r", encoding="utf-8") as f:
+                    self.interface = json.load(f)
                 self.current_tasks = config.tasks
+                self.know_task = config.know_task
+                self.default_option=self.gen_default_option()
+               
                 # 发出 TaskItem 列表，UI 层可以选择转换为 dict 显示
                 self.signal_bus.tasks_loaded.emit(self.current_tasks)
+                self._check_know_task()
 
+    def _check_know_task(self) -> bool:
+        unknown_tasks = []
+        if not self.interface:
+            raise ValueError("Interface not loaded")
+
+        interface_tasks = [t["name"] for t in self.interface.get("task", [])]
+        for task in interface_tasks:
+            if task not in self.know_task:
+                unknown_tasks.append(task)
+        for unknown_task in unknown_tasks:
+            self.know_task.append(unknown_task)
+            self.add_task(unknown_task)
+
+        # 同步到当前配置对象并持久化
+        config = self.config_service.get_config(self.config_service.current_config_id)
+        if config:
+            config.know_task = self.know_task.copy()
+            self.config_service.update_config(config.item_id, config)
+
+        return True
+    
+    def add_task(self, task_name: str) -> bool:
+        if not self.interface:
+            raise ValueError("Interface not loaded")
+        for task in self.interface.get("task",[]):
+            if task["name"]==task_name:
+                new_task=TaskItem(
+                    name=task["name"],
+                    item_id=TaskItem.generate_id(),
+                    is_checked=True,
+                    task_option=self.default_option.get(task["name"],{})
+                )
+                self.update_task(new_task)
+                return True
+        return False
+    
+    def gen_default_option(self) -> dict[str, dict[str, dict]]:
+        """生成默认的任务选项映射"""
+        if not self.interface:
+            raise ValueError("Interface not loaded")
+        default_option = {}
+        for task in self.interface.get("task", []):
+            default_option[task["name"]]={}
+            for option in task.get("option",[]):
+                for option_name, option_template in self.interface.get("option", {}).items():
+                    if option == option_name:
+                        if option_template.get("default_case"):
+                            default_option[task["name"]].update({option_name:{"value":option_template.get("default_case"),"type":option_template.get("type","select")}})
+                        else:
+                            default_option[task["name"]].update({option_name: {"value":option_template.get("cases",[])[0]["name"],"type":option_template.get("type","select")}})
+        return default_option
+   
     def _on_task_updated(self, task_data: TaskItem):
         """当任务更新时保存到当前配置（接收 TaskItem 或 dict）"""
         config_id = self.config_service.current_config_id
@@ -546,26 +639,11 @@ class TaskService(ITaskService):
                 return task
         return None
 
-    def add_task(self, task_data: TaskItem) -> bool:
-        """添加新任务，统一使用 uuid 生成 id"""
-        if isinstance(task_data, TaskItem):
-            task = task_data
-        else:
-            if "item_id" not in task_data or not task_data["item_id"]:
-                task_data["item_id"] = TaskItem.generate_id()
-            task = TaskItem.from_dict(task_data)
-        self.signal_bus.task_updated.emit(task)
-        return True
-
-    def update_task(self, task_data: TaskItem) -> bool:
+    def update_task(self, task: TaskItem) -> bool:
         """更新任务"""
-        if isinstance(task_data, TaskItem):
-            task = task_data
-        else:
-            task = TaskItem.from_dict(task_data)
 
-        # 发出任务更新信号（对象）
-        self.signal_bus.task_updated.emit(task)
+        # 发出任务更新信号
+        self._on_task_updated(task)
         return True
 
     def delete_task(self, task_id: str) -> bool:
@@ -672,36 +750,12 @@ class ServiceCoordinator:
 
         # 连接信号
         self._connect_signals()
-        if (
-            not self.config_service.current_config_id
-            and not self.config_service.list_configs()
-        ):
-            bundle_name = self.config_service.list_bundles()[0]
-            bundle = self.config_service.get_bundle(bundle_name)
-            default_tasks = [
-                TaskItem(name="控制器", item_id="c_" + TaskItem.generate_id()[2:], is_checked=True, task_option={}),
-                TaskItem(name="资源", item_id="r_" + TaskItem.generate_id()[2:], is_checked=True, task_option={}),
-                TaskItem(name="完成后操作", item_id="f_" + TaskItem.generate_id()[2:], is_checked=True, task_option={}),
-            ]
-            default_config_item = ConfigItem(
-                name="Default Config",
-                item_id="",
-                is_checked=True,
-                tasks=default_tasks,
-                know_task=[],
-                bundle=bundle,
-            )
-            new_id = self.add_config(default_config_item)
-            if new_id:
-                self.config_service.current_config_id = new_id
-
+      
     def _connect_signals(self):
         """连接所有信号"""
         # UI请求保存配置
         self.signal_bus.need_save.connect(self._on_need_save)
-        # 其余操作由 ServiceCoordinator 的方法直接调用（不通过信号）
 
-    # ----- 新的对外方法（替代原有信号驱动方式） -----
     def add_config(self, config_item: ConfigItem) -> str:
         """添加配置，传入 ConfigItem 对象，返回新配置ID"""
         return self.config_service.create_config(config_item)
@@ -767,8 +821,10 @@ class ServiceCoordinator:
         return self.task_service.delete_task(task_id)
 
     def select_task(self, task_id: str):
-        """选中任务，传入 task id"""
+        """选中任务，传入 task id，并自动检查已知任务"""
         self.signal_bus.task_selected.emit(task_id)
+        # 自动检查并补充接口配置中的未知任务
+        self.task._check_know_task()
 
     def reorder_tasks(self, new_order: List[str]) -> bool:
         """任务顺序更改，new_order 为 task_id 列表（新顺序）"""
@@ -791,28 +847,3 @@ class ServiceCoordinator:
     @property
     def option(self) -> OptionService:
         return self.option_service
-
-
-if __name__ == "__main__":
-    # 测试代码
-    main_config_path = Path("main_config.json")
-    service_coordinator = ServiceCoordinator(main_config_path)
-    print("current_config_id:", service_coordinator.config.current_config_id)
-    print("current_tasks (objects):", service_coordinator.task.current_tasks)
-
-    # 使用 dict 创建任务（旧方式）
-    # 已废弃 _on_create_task，建议直接使用 add_task 或 modify_task
-    # 使用 TaskItem 对象创建任务（新方式）
-    new_task = TaskItem(
-        name="Test Task Obj",
-        item_id="t_manual",
-        is_checked=True,
-        task_option={"a": 1},
-    )
-    service_coordinator.task.add_task(new_task)
-
-    # 打印任务为 dict 格式以便观察
-    print(
-        "current_tasks (as dicts):",
-        [t.to_dict() for t in service_coordinator.task.current_tasks],
-    )
