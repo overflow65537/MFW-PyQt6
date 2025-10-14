@@ -88,7 +88,8 @@ class BaseListItem(QWidget):
 
     def _emit_signal_to_bus(self):
         # 子类需要重写此方法以发送特定信号
-        pass
+        # 默认不直接向 signal_bus 发出选中信号，选中行为应由包含该 item 的列表组件集中处理
+        return
 
 
 # 任务列表项组件
@@ -136,9 +137,8 @@ class TaskListItem(BaseListItem):
     # 已无 task_type 字段，无需特殊处理
 
     def _emit_signal_to_bus(self):
-        # 发送任务选择信号到新版信号总线
-        if self.signal_bus:
-            self.signal_bus.task_selected.emit(self.item_id)
+        # 由父级列表统一处理选中并调用 ServiceCoordinator.select_task
+        return
 
     def on_open_task_settings(self):
         # 打开任务设置的逻辑
@@ -164,6 +164,5 @@ class ConfigListItem(BaseListItem):
         return label
 
     def _emit_signal_to_bus(self):
-        # 发送配置选择信号到新版信号总线
-        if self.signal_bus:
-            self.signal_bus.config_changed.emit(self.item_id)
+        # 由父级列表统一处理选中并调用 ServiceCoordinator.select_config
+        return

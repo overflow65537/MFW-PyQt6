@@ -1,4 +1,3 @@
-
 import uuid
 import json
 from dataclasses import dataclass
@@ -479,6 +478,19 @@ class ConfigService(IConfigService):
                 return list(bundle.keys())
         return []
 
+    def reorder_configs(self, new_order: List[str]) -> bool:
+        """重新排序主配置中的 config_list。new_order 为 config_id 列表。"""
+        if self._main_config is None:
+            return False
+
+        existing = self._main_config.get("config_list", [])
+        if set(new_order) != set(existing):
+            # new_order 必须是现有 config_id 的重排
+            return False
+
+        self._main_config["config_list"] = new_order
+        return self.save_main_config()
+
 
 class TaskService(ITaskService):
     """任务服务实现"""
@@ -489,13 +501,14 @@ class TaskService(ITaskService):
         self.current_tasks = []
         self.know_task = []
         self.interface = {}
-        self.default_option={}
+        self.default_option = {}
         self._on_config_changed(self.config_service.current_config_id)
 
         # 连接信号
         self.signal_bus.config_changed.connect(self._on_config_changed)
         self.signal_bus.task_updated.connect(self._on_task_updated)
         self.signal_bus.task_order_updated.connect(self._on_task_order_updated)
+        # UI 的任务勾选切换事件现在通过 ServiceCoordinator.modify_task 路径处理
 
     def _on_config_changed(self, config_id: str):
         """当配置变化时加载对应任务"""
@@ -509,8 +522,8 @@ class TaskService(ITaskService):
                     self.interface = json.load(f)
                 self.current_tasks = config.tasks
                 self.know_task = config.know_task
-                self.default_option=self.gen_default_option()
-               
+                self.default_option = self.gen_default_option()
+
                 # 发出 TaskItem 列表，UI 层可以选择转换为 dict 显示
                 self.signal_bus.tasks_loaded.emit(self.current_tasks)
                 self._check_know_task()
@@ -535,38 +548,56 @@ class TaskService(ITaskService):
             self.config_service.update_config(config.item_id, config)
 
         return True
-    
+
     def add_task(self, task_name: str) -> bool:
         if not self.interface:
             raise ValueError("Interface not loaded")
-        for task in self.interface.get("task",[]):
-            if task["name"]==task_name:
-                new_task=TaskItem(
+        for task in self.interface.get("task", []):
+            if task["name"] == task_name:
+                new_task = TaskItem(
                     name=task["name"],
                     item_id=TaskItem.generate_id(),
                     is_checked=True,
-                    task_option=self.default_option.get(task["name"],{})
+                    task_option=self.default_option.get(task["name"], {}),
                 )
                 self.update_task(new_task)
                 return True
         return False
-    
+
     def gen_default_option(self) -> dict[str, dict[str, dict]]:
         """生成默认的任务选项映射"""
         if not self.interface:
             raise ValueError("Interface not loaded")
         default_option = {}
         for task in self.interface.get("task", []):
-            default_option[task["name"]]={}
-            for option in task.get("option",[]):
-                for option_name, option_template in self.interface.get("option", {}).items():
+            default_option[task["name"]] = {}
+            for option in task.get("option", []):
+                for option_name, option_template in self.interface.get(
+                    "option", {}
+                ).items():
                     if option == option_name:
                         if option_template.get("default_case"):
-                            default_option[task["name"]].update({option_name:{"value":option_template.get("default_case"),"type":option_template.get("type","select")}})
+                            default_option[task["name"]].update(
+                                {
+                                    option_name: {
+                                        "value": option_template.get("default_case"),
+                                        "type": option_template.get("type", "select"),
+                                    }
+                                }
+                            )
                         else:
-                            default_option[task["name"]].update({option_name: {"value":option_template.get("cases",[])[0]["name"],"type":option_template.get("type","select")}})
+                            default_option[task["name"]].update(
+                                {
+                                    option_name: {
+                                        "value": option_template.get("cases", [])[0][
+                                            "name"
+                                        ],
+                                        "type": option_template.get("type", "select"),
+                                    }
+                                }
+                            )
         return default_option
-   
+
     def _on_task_updated(self, task_data: TaskItem):
         """当任务更新时保存到当前配置（接收 TaskItem 或 dict）"""
         config_id = self.config_service.current_config_id
@@ -627,6 +658,8 @@ class TaskService(ITaskService):
             # 更新本地任务列表
             self.current_tasks = ordered_tasks
             self.signal_bus.tasks_loaded.emit(self.current_tasks)
+
+    
 
     def get_tasks(self) -> List[TaskItem]:
         """获取当前配置的任务列表"""
@@ -750,7 +783,7 @@ class ServiceCoordinator:
 
         # 连接信号
         self._connect_signals()
-      
+
     def _connect_signals(self):
         """连接所有信号"""
         # UI请求保存配置
