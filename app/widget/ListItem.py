@@ -96,7 +96,10 @@ class TaskListItem(BaseListItem):
     def __init__(self, task: TaskItem, signal_bus: CoreSignalBus, parent=None):
         self.task = task
         super().__init__(task.item_id, signal_bus, parent)
-        self.add_task_specific_ui()
+        # 通过 item_id 前缀判断是否为基础任务，禁用复选框
+        if self.task.item_id.startswith(("c_", "r_", "f_")):
+            self.checkbox.setChecked(True)
+            self.checkbox.setDisabled(True)
 
     def _init_ui(self):
         # 创建水平布局
@@ -130,16 +133,12 @@ class TaskListItem(BaseListItem):
         self.checkbox.stateChanged.connect(self.on_checkbox_changed)
         self.setting_button.clicked.connect(self.on_open_task_settings)
 
-    def add_task_specific_ui(self):
-        # 根据任务类型设置特殊属性
-        if self.task.task_type in ["resource", "controller"]:
-            self.checkbox.setChecked(True)
-            self.checkbox.setDisabled(True)
+    # 已无 task_type 字段，无需特殊处理
 
     def _emit_signal_to_bus(self):
-        # 发送任务选择信号到信号总线
+        # 发送任务选择信号到新版信号总线
         if self.signal_bus:
-            self.signal_bus.select_task.emit(self.item_id)
+            self.signal_bus.task_selected.emit(self.item_id)
 
     def on_open_task_settings(self):
         # 打开任务设置的逻辑
@@ -165,6 +164,6 @@ class ConfigListItem(BaseListItem):
         return label
 
     def _emit_signal_to_bus(self):
-        # 发送配置选择信号到信号总线
+        # 发送配置选择信号到新版信号总线
         if self.signal_bus:
-            self.signal_bus.select_config.emit(self.item_id)
+            self.signal_bus.config_changed.emit(self.item_id)
