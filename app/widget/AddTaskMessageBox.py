@@ -6,7 +6,7 @@ from qfluentwidgets import (
     SubtitleLabel,
     BodyLabel,
 )
-from ..core.ItemManager import ConfigItem, TaskItem, BaseItemManager
+from ..core.core import ConfigItem, TaskItem
 
 
 class BaseAddDialog(MessageBoxBase):
@@ -129,7 +129,7 @@ class AddConfigDialog(BaseAddDialog):
             self.show_error(self.tr("Cannot use 'default' as config name"))
             return
 
-        # 创建ConfigItem对象
+        # 创建 ConfigItem 对象，使用新的 core.model 数据结构
         if self.resource_bundles is None:
             raise ValueError("resource_bundles is None")
         bundle_path = ""
@@ -140,16 +140,36 @@ class AddConfigDialog(BaseAddDialog):
         if not bundle_path:
             self.show_error(self.tr("Resource bundle not found"))
             return
+
+        # 为配置创建三个基础任务，名称与 ConfigService 中默认一致
+        default_tasks = [
+            TaskItem(
+                name="控制器",
+                item_id="c_" + TaskItem.generate_id()[2:],
+                is_checked=True,
+                task_option={},
+            ),
+            TaskItem(
+                name="资源",
+                item_id="r_" + TaskItem.generate_id()[2:],
+                is_checked=True,
+                task_option={},
+            ),
+            TaskItem(
+                name="完成后操作",
+                item_id="f_" + TaskItem.generate_id()[2:],
+                is_checked=True,
+                task_option={},
+            ),
+        ]
+
+        # bundle 字段期望为 Dict[str, Dict[str, Any]]，这里使用 resource_name 作为 key
         self.item = ConfigItem(
             name=self.config_name,
-            is_checked=True,
-            task_type="config",
-            item_id=BaseItemManager.generate_id("config"),
-            task=BaseItemManager.generate_task(),
-            gpu=0,
-            finish_option=0,
+            item_id=ConfigItem.generate_id(),
+            tasks=default_tasks,
             know_task=[],
-            bundle={"name": self.resource_name, "path": bundle_path},
+            bundle={self.resource_name: {"name": self.resource_name, "path": bundle_path}},
         )
 
         # 接受对话框
@@ -205,13 +225,13 @@ class AddTaskDialog(BaseAddDialog):
             self.show_error(self.tr("Task name cannot be empty"))
             return
 
-        # 创建TaskItem对象
+        # 创建 TaskItem 对象，匹配 core.TaskItem 数据结构
+        task_option = self.task_map.get(self.task_name, {}) if isinstance(self.task_map, dict) else {}
         self.item = TaskItem(
             name=self.task_name,
-            item_id=BaseItemManager.generate_id("task"),
+            item_id=TaskItem.generate_id(),
             is_checked=True,
-            task_option=self.task_map[self.task_name],
-            task_type=self.task_type,
+            task_option=task_option,
         )
 
         # 接受对话框

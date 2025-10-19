@@ -21,6 +21,7 @@ from qfluentwidgets import (
     ToolTipFilter,
     ToolTipPosition,
 )
+from ...core.core import ServiceCoordinator
 from ...widget.DashboardCard import DashboardCard
 from ...widget.LogoutputWidget import LogoutputWidget
 from ...widget.ListToolBarWidget import TaskListToolBarWidget,ConfigListToolBarWidget,OptionWidget
@@ -28,7 +29,7 @@ from ...widget.StartBarWidget import StartBarWidget
 
 
 class UI_FastStartInterface(object):
-    def __init__(self,service_coordinator=None,parent=None):
+    def __init__(self, service_coordinator: ServiceCoordinator , parent=None):
         self.service_coordinator = service_coordinator
         self.parent = parent
 

@@ -10,7 +10,7 @@ from PySide6.QtCore import QObject, Signal
 
 # ==================== 信号总线 ====================
 class CoreSignalBus(QObject):
-    """核心信号总线，用于组件间通信"""
+    """核心信号总线，用于组件间通信。"""
 
     # 配置相关信号 (多数使用 object 以传递 dataclass 对象)
     config_changed = Signal(str)  # 配置ID
@@ -30,6 +30,17 @@ class CoreSignalBus(QObject):
     # UI 操作信号
     need_save = Signal()
     # UI 操作信号（仅保留通用保存信号，具体操作通过 ServiceCoordinator 的方法调用）
+
+
+class FromeServiceCoordinator(QObject):
+    """
+    从服务协调器发送的信号,用来通知UI层进行更新
+    """
+
+    fs_task_modified = Signal(object)  # 文件系统任务修改，载荷为 task
+    fs_task_removed = Signal(str)  # 文件系统任务移除，载荷为 task_id
+    fs_config_added = Signal(object)  # 文件系统配置新增，载荷为 config
+    fs_config_removed = Signal(str)  # 文件系统配置移除，载荷为 config_id
 
 
 # ==================== 数据模型 ====================
@@ -182,6 +193,11 @@ class ITaskService(ABC):
 
     @abstractmethod
     def update_task(self, task: TaskItem) -> bool:
+        pass
+
+    @abstractmethod
+    def update_tasks(self, tasks: List[TaskItem]) -> bool:
+        """批量更新任务（减少多次持久化开销）"""
         pass
 
     @abstractmethod
@@ -659,8 +675,6 @@ class TaskService(ITaskService):
             self.current_tasks = ordered_tasks
             self.signal_bus.tasks_loaded.emit(self.current_tasks)
 
-    
-
     def get_tasks(self) -> List[TaskItem]:
         """获取当前配置的任务列表"""
         return self.current_tasks
@@ -678,6 +692,44 @@ class TaskService(ITaskService):
         # 发出任务更新信号
         self._on_task_updated(task)
         return True
+
+    def update_tasks(self, tasks: List[TaskItem]) -> bool:
+        """批量更新任务：在当前配置中按 tasks 中的 item_id 替换或添加，最后一次性保存并发送 tasks_loaded 或逐项 task_updated。"""
+        if not tasks:
+            return True
+
+        config_id = self.config_service.current_config_id
+        if not config_id:
+            return False
+
+        config = self.config_service.get_config(config_id)
+        if not config:
+            return False
+
+        # build a map for quick replace
+        id_to_task = {t.item_id: t for t in tasks}
+
+        replaced = set()
+        for i, t in enumerate(config.tasks):
+            if t.item_id in id_to_task:
+                config.tasks[i] = id_to_task[t.item_id]
+                replaced.add(t.item_id)
+
+        # add tasks that are new (not replaced)
+        for t in tasks:
+            if t.item_id not in replaced:
+                # insert before last element to keep final action at end
+                idx = max(0, len(config.tasks) - 1)
+                config.tasks.insert(idx, t)
+
+        # 保存配置一次
+        ok = self.config_service.update_config(config_id, config)
+        if ok:
+            # 更新本地任务列表并发送整体 loaded 信号（UI 会进行 diff）
+            self.current_tasks = config.tasks
+            # 优先发送 tasks_loaded 以便视图基于完整列表做最小更新
+            self.signal_bus.tasks_loaded.emit(self.current_tasks)
+        return ok
 
     def delete_task(self, task_id: str) -> bool:
         """删除任务"""
@@ -770,6 +822,7 @@ class ServiceCoordinator:
     def __init__(self, main_config_path: Path, configs_dir: Path | None = None):
         # 初始化信号总线
         self.signal_bus = CoreSignalBus()
+        self.fs_signal_bus = FromeServiceCoordinator()
 
         # 确定配置目录
         if configs_dir is None:
@@ -791,11 +844,21 @@ class ServiceCoordinator:
 
     def add_config(self, config_item: ConfigItem) -> str:
         """添加配置，传入 ConfigItem 对象，返回新配置ID"""
-        return self.config_service.create_config(config_item)
+        new_id = self.config_service.create_config(config_item)
+        if new_id:
+            # notify UI incrementally
+            self.fs_signal_bus.fs_config_added.emit(
+                self.config_service.get_config(new_id)
+            )
+        return new_id
 
     def delete_config(self, config_id: str) -> bool:
         """删除配置，传入 config id"""
-        return self.config_service.delete_config(config_id)
+        ok = self.config_service.delete_config(config_id)
+        if ok:
+            # notify UI incremental removal
+            self.fs_signal_bus.fs_config_removed.emit(config_id)
+        return ok
 
     def select_config(self, config_id: str) -> bool:
         """选择配置，传入 config id"""
@@ -839,7 +902,26 @@ class ServiceCoordinator:
             config.tasks.insert(idx, task)
 
         # 保存配置
-        return self.config_service.update_config(config_id, config)
+        ok = self.config_service.update_config(config_id, config)
+        if ok:
+            # 无论新增或更新，统一以 fs_task_updated 通知（UI 可据 tasks_loaded 或 fs_task_updated 刷新）
+            self.fs_signal_bus.fs_task_modified.emit(task)
+        return ok
+
+    def modify_tasks(self, tasks: List[TaskItem]) -> bool:
+        """批量修改/新增任务，减少多次磁盘写入。成功后发出 fs_task_updated（逐项或 tasks_loaded 已由 service 发出）。"""
+        if not tasks:
+            return True
+
+        ok = self.task_service.update_tasks(tasks)
+        if ok:
+            # 兼容：对于希望逐项更新的监听者，仍发出逐项 task_updated 信号
+            try:
+                for t in tasks:
+                    self.fs_signal_bus.fs_task_modified.emit(t)
+            except Exception:
+                pass
+        return ok
 
     def delete_task(self, task_id: str) -> bool:
         """删除任务，传入 task id，基础任务不可删除（通过特殊 id 区分）"""
@@ -851,12 +933,14 @@ class ServiceCoordinator:
         for t in config.tasks:
             if t.item_id == task_id and t.item_id.startswith(base_prefix):
                 return False
-        return self.task_service.delete_task(task_id)
+        ok = self.task_service.delete_task(task_id)
+        if ok:
+            self.fs_signal_bus.fs_task_removed.emit(task_id)
+        return ok
 
     def select_task(self, task_id: str):
         """选中任务，传入 task id，并自动检查已知任务"""
         self.signal_bus.task_selected.emit(task_id)
-        # 自动检查并补充接口配置中的未知任务
         self.task._check_know_task()
 
     def reorder_tasks(self, new_order: List[str]) -> bool:
@@ -880,3 +964,11 @@ class ServiceCoordinator:
     @property
     def option(self) -> OptionService:
         return self.option_service
+
+    @property
+    def fs_signals(self) -> FromeServiceCoordinator:
+        return self.fs_signal_bus
+
+    @property
+    def signals(self) -> CoreSignalBus:
+        return self.signal_bus

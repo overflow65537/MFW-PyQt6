@@ -100,13 +100,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
 
-    # 全局异常钩子
+    """# 全局异常钩子
     def global_except_hook(exc_type, exc_value, exc_traceback):
         logger.exception(
             "未捕获的全局异常:", exc_info=(exc_type, exc_value, exc_traceback)
         )
 
-    sys.excepthook = global_except_hook
+    sys.excepthook = global_except_hook"""
 
     # DPI缩放配置
     if cfg.get(cfg.dpiScale) != "Auto":
@@ -144,11 +144,11 @@ if __name__ == "__main__":
     w = MainWindow()
     w.show()
 
-    # 异步异常处理
+    """# 异步异常处理
     def handle_async_exception(loop, context):
         logger.exception("异步任务异常:", exc_info=context.get("exception"))
 
-    loop.set_exception_handler(handle_async_exception)
+    loop.set_exception_handler(handle_async_exception)"""
 
     # 运行事件循环
     with loop:

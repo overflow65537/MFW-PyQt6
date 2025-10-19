@@ -3,6 +3,8 @@ import re
 import markdown
 
 from PySide6.QtCore import Qt
+import json
+from pathlib import Path
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -32,14 +34,17 @@ from qfluentwidgets import (
 from app.common import icon
 
 
-from .DragListWidget import TaskDragListWidget, ConfigDragListWidget
+from .ListWidget import TaskDragListWidget, ConfigListWidget
 from .AddTaskMessageBox import AddConfigDialog, AddTaskDialog
-from ..core.core import  CoreSignalBus,TaskItem, ConfigItem,ServiceCoordinator
+from ..core.core import CoreSignalBus, TaskItem, ConfigItem, ServiceCoordinator
+from .ListItem import TaskListItem, ConfigListItem
+
 
 class BaseListToolBarWidget(QWidget):
 
-    def __init__(self, parent=None):
+    def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         super().__init__(parent)
+        self.service_coordinator = service_coordinator
 
         self._init_title()
         self._init_selection()
@@ -50,8 +55,8 @@ class BaseListToolBarWidget(QWidget):
         self.main_layout.addWidget(self.selection_widget)
 
     def _init_title(self):
-        """初始化配置选择标题"""
-        # 配置选择标题
+        """初始化标题栏"""
+        # 标题
         self.selection_title = BodyLabel()
         self.selection_title.setStyleSheet("font-size: 20px;")
         self.selection_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -77,21 +82,25 @@ class BaseListToolBarWidget(QWidget):
         )
         self.add_button.setToolTip(self.tr("Add"))
 
+        # 删除
+        self.delete_button = ToolButton(FIF.DELETE)
+        self.delete_button.installEventFilter(
+            ToolTipFilter(self.delete_button, 0, ToolTipPosition.TOP)
+        )
+        self.delete_button.setToolTip(self.tr("Delete"))
+
         # 布局
         self.title_layout = QHBoxLayout()
         # 设置边距
         self.title_layout.addWidget(self.selection_title)
         self.title_layout.addWidget(self.select_all_button)
         self.title_layout.addWidget(self.deselect_all_button)
+        self.title_layout.addWidget(self.delete_button)
         self.title_layout.addWidget(self.add_button)
 
     def _init_task_list(self):
         """初始化任务列表"""
         self.task_list = ListWidget(parent=self)
-        self.task_list.setDragEnabled(True)
-        self.task_list.setAcceptDrops(True)
-        self.task_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
-        self.task_list.setDefaultDropAction(Qt.DropAction.MoveAction)
 
     def _init_selection(self):
         """初始化配置选择"""
@@ -101,7 +110,6 @@ class BaseListToolBarWidget(QWidget):
         self.selection_widget = SimpleCardWidget()
         self.selection_widget.setClickEnabled(False)
         self.selection_widget.setBorderRadius(8)
-
         self.selection_layout = QVBoxLayout(self.selection_widget)
         self.selection_layout.addWidget(self.task_list)
 
@@ -111,32 +119,59 @@ class BaseListToolBarWidget(QWidget):
 
 
 class ConfigListToolBarWidget(BaseListToolBarWidget):
-    def __init__(self, service_coordinator:ServiceCoordinator, parent=None):
-        super().__init__(parent)
+    def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
+        super().__init__(service_coordinator=service_coordinator, parent=parent)
+
         self.service_coordinator = service_coordinator
-        # 添加按钮
+
+        self.select_all_button.hide()
+        self.deselect_all_button.hide()
+
         self.add_button.clicked.connect(self.add_config)
+        self.delete_button.clicked.connect(self.remove_config)
 
     def _init_task_list(self):
         """初始化配置列表"""
-        self.task_list = ConfigDragListWidget(service_coordinator=self.service_coordinator, parent=self)
+        self.task_list = ConfigListWidget(
+            service_coordinator=self.service_coordinator, parent=self
+        )
 
-    def add_config(self, config: ConfigItem):
-        """添加配置项"""
-        # 添加新配置到列表
-        self.task_list.add_config(config)
+    def add_config(self):
+        """添加配置项。"""
+        # 通过对话框创建新配置
+        bundles = []
+        main_cfg = getattr(self.service_coordinator.config, "_main_config", None)
+        if main_cfg:
+            bundles = main_cfg.get("bundle", [])
 
-    def remove_config(self, config_id: str):
+        dlg = AddConfigDialog(resource_bundles=bundles, parent=self.window())
+        if dlg.exec():
+            cfg = dlg.get_config_item()
+            if cfg:
+                self.service_coordinator.add_config(cfg)
+
+    def remove_config(self):
         """移除配置项"""
-        # 从列表中移除配置
-        self.task_list.remove_config(config_id)
-        
+        cur = self.task_list.currentItem()
+        if not cur:
+            return
+        widget = self.task_list.itemWidget(cur)
+        if not widget:
+            return
+        if isinstance(widget, ConfigListItem):
+            cfg_id = widget.item.item_id
+        else:
+            cfg_id = None
+        if not cfg_id:
+            return
+        # 调用服务删除即可，视图通过信号刷新
+        self.service_coordinator.delete_config(cfg_id)
 
 
 class TaskListToolBarWidget(BaseListToolBarWidget):
-    def __init__(self, service_coordinator:ServiceCoordinator, parent=None):
-        super().__init__(parent)
-        self.service_coordinator = service_coordinator
+
+    def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
+        super().__init__(service_coordinator=service_coordinator, parent=parent)
         self.core_signalBus = self.service_coordinator.signal_bus
         # 选择全部按钮
         self.select_all_button.clicked.connect(self.select_all)
@@ -144,13 +179,20 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         self.deselect_all_button.clicked.connect(self.deselect_all)
         # 添加按钮
         self.add_button.clicked.connect(self.add_task)
-        self.core_signalBus.select_task.connect(self._change_title)
-        self.__default_option = {}
-        self.__curr_config_id = ""
+        # 删除按钮
+        self.delete_button.clicked.connect(self.remove_selected_task)
+
+        # 监听服务总线任务选中事件以更新标题/选项
+        self.core_signalBus.task_selected.connect(self._change_title)
+
+        # 初始填充任务列表
+        # 不在工具栏直接刷新列表：视图会订阅 ServiceCoordinator 的信号自行更新
 
     def _init_task_list(self):
         """初始化任务列表"""
-        self.task_list = TaskDragListWidget(service_coordinator=self.service_coordinator, parent=self)
+        self.task_list = TaskDragListWidget(
+            service_coordinator=self.service_coordinator, parent=self
+        )
 
     def select_all(self):
         """选择全部"""
@@ -160,23 +202,46 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         """取消选择全部"""
         self.task_list.deselect_all()
 
-    def add_task(self, task_item: TaskItem):
+    def add_task(self):
         """添加任务"""
-        self.task_list.add_task(task_item)
+        # 打开添加任务对话框
+        task_map = getattr(self.service_coordinator.task, "default_option", {})
+        dlg = AddTaskDialog(task_map=task_map, parent=self.window())
+        if dlg.exec():
+            new_task = dlg.get_task_item()
+            if new_task:
+                # 持久化到服务层
+                self.service_coordinator.modify_task(new_task)
 
-    def _change_title(self, item: TaskItem ):
-        """改变标题"""
-        self.set_title(item.name)
+    def _change_title(self, task_id: str):
+        """改变标题为被选中的任务名（通过 task_id 查找）"""
+        task = self.service_coordinator.task.get_task(task_id)
+        if task:
+            self.set_title(task.name)
+
+    def remove_selected_task(self):
+        cur = self.task_list.currentItem()
+        if not cur:
+            return
+        widget = self.task_list.itemWidget(cur)
+        if not widget or not isinstance(widget, TaskListItem):
+            return
+        task_id = getattr(widget.task, "item_id", None)
+        if not task_id:
+            return
+        # 删除通过服务层执行，视图会通过fs系列信号刷新
+        self.service_coordinator.delete_task(task_id)
 
 
 class OptionWidget(QWidget):
-    def __init__(self, service_coordinator:ServiceCoordinator, parent=None):
+    def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         super().__init__(parent)
         self.service_coordinator = service_coordinator
         self.task = self.service_coordinator.task
         self.config = self.service_coordinator.config
         self.core_signalBus = self.service_coordinator.signal_bus
-        self.core_signalBus.select_task.connect(self.show_option)
+        # 使用 task_selected 信号（由 ServiceCoordinator 触发）
+        self.core_signalBus.task_selected.connect(self.show_option)
         self._init_ui()
         self._toggle_description(visible=False)
 
@@ -331,20 +396,19 @@ class OptionWidget(QWidget):
         """设置标题"""
         self.title_widget.setText(title)
 
-    def show_option(self, item: TaskItem | ConfigItem):
-        """显示选项"""
+    def show_option(self, item_or_id: TaskItem | ConfigItem | str):
+        """显示选项。参数可以是 task_id(str) 或 TaskItem/ConfigItem 对象。"""
         self.reset()
+        # 如果传入的是 id，获取对象
+        item = item_or_id
+        if isinstance(item_or_id, str):
+            item = self.task.get_task(item_or_id)
+        if not item:
+            return
         if isinstance(item, TaskItem):
             self.set_title(item.name)
-            print(f"显示选项: {item.name}")
-            print(f"任务类型: {item.task_type}")
-
-            if item.task_type == "task":
-                self._show_task_option(item)
-            elif item.task_type == "resource":
-                self._show_resource_option(item)
-            elif item.task_type == "controller":
-                self._show_controller_option(item)
+            # 只展示任务选项
+            self._show_task_option(item)
 
     def _show_task_option(self, item: TaskItem):
         """显示任务选项"""
@@ -363,7 +427,15 @@ class OptionWidget(QWidget):
                 option_tooltips[cases["name"]] = cases.get("description", "")
             return name, obj_name, options, current, icon_path, tooltip, option_tooltips
 
-        interface = self.task.task_interface
+        # TaskService stores interface in attribute 'interface'
+        interface = getattr(self.task, "interface", None)
+        if not interface:
+            # fallback load from file
+            interface_path = Path.cwd() / "interface.json"
+            if not interface_path.exists():
+                return
+            with open(interface_path, "r", encoding="utf-8") as f:
+                interface = json.load(f)
         target_task = None
         for task_template in interface["task"]:
             if task_template["name"] == item.name:
