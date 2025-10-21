@@ -1094,7 +1094,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         获取截图速度
         """
         try:
-            log_path = os.path.join(maa_config_data.log_path, "maa.log")
+            log_path = os.path.join(".", "debug", "maa.log")
             # 读取文件的前部分内容以检测编码
             with open(log_path, "rb") as raw_file:
                 raw_data = raw_file.read(1024)
