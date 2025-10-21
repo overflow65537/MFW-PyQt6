@@ -121,6 +121,9 @@ class MainWindow(FluentWindow):
         elif "win32" in self.taskInterface.Control_Combox.currentText().lower():
             signalBus.setting_Visible.emit("win32")
         self.initShortcuts()
+        # 启动时记录是否存在更新失败标志，默认为 False
+        self._update_failed_flag = False
+        # 检查是否存在上一次更新失败的标志（例如 ERROR.log），如果存在将在后续跳过本次启动的 UI 更新
         self.update_failed()
         self.stara_finish()
 
@@ -129,9 +132,12 @@ class MainWindow(FluentWindow):
         logger.info(" 主界面初始化完成。")
 
     def update_failed(self):
+        # 将更新失败状态同步到实例变量和全局配置
+        self._update_failed_flag = False
         cfg.set(cfg.update_ui_failed, False)
+        # 如果存在 ERROR.log，标记为更新失败并展示信息栏
         if os.path.exists("ERROR.log"):
-            cfg.set(cfg.update_ui_failed, True)
+            self._update_failed_flag = True
             self.show_info_bar(
                 {
                     "status": "failed",
@@ -223,6 +229,11 @@ class MainWindow(FluentWindow):
 
     def check_ui_update(self):
         """检查是否需要自动更新UI"""
+        # 如果之前检测到更新失败（例如启动时有 ERROR.log），则跳过本次启动的更新流程
+        if getattr(self, "_update_failed_flag", False):
+            logger.info("检测到先前更新失败，跳过本次启动的 UI 更新检查")
+            return
+
         if cfg.get(cfg.auto_update_MFW):
             logger.info("启动GUI后自动更新UI")
             # 连接UI更新完成信号，更新完成后执行下一步
