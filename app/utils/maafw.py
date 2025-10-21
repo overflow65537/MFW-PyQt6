@@ -362,11 +362,12 @@ class MaaFW:
     def stop_task(self):
         if self.tasker:
             self.tasker.post_stop().wait()
-            print("任务停止")
             self.tasker = None
+        if self.resource:
+            self.resource.clear()
+            self.resource = None
         if self.agent:
             self.agent.disconnect()
-            print("agent断开连接")
             self.agent = None
         if self.agent_thread:
             self.agent_thread.stop()

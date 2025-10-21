@@ -31,6 +31,7 @@ MFW-ChainFlow Assistant 主界面
 
 import os
 import sys
+import asyncio
 
 from PySide6.QtCore import QSize, QTimer
 from PySide6.QtGui import QIcon, QShortcut, QKeySequence
@@ -82,8 +83,6 @@ class MainWindow(FluentWindow):
         super().__init__()
         self.initWindow()
 
-        #注册atexit
-        atexit.register(self.clear_thread)
 
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)
@@ -630,6 +629,8 @@ class MainWindow(FluentWindow):
         self.themeListener.terminate()
         self.themeListener.deleteLater()
         e.accept()
+        # 异步清理，避免阻塞 UI
+        QTimer.singleShot(0, self.clear_thread_async)
         super().closeEvent(e)
 
     def _onThemeChangedFinished(self):
@@ -655,29 +656,50 @@ class MainWindow(FluentWindow):
         else:
             self.removeInterface(self.AssistToolTaskInterface)
 
-    def clear_thread(self):
+    def clear_thread_async(self):
+        """异步清理线程和资源"""
+        try:
+
+            self._clear_maafw_sync()
+            
+            # 清理其他线程
+            if send_thread:
+                send_thread.quit()
+                if not send_thread.wait(5000):  # 5秒超时
+                    send_thread.terminate()
+                logger.debug("关闭发送线程")
+            if self.settingInterface.Updatethread:
+                self.settingInterface.Updatethread.quit()
+                if not self.settingInterface.Updatethread.wait(5000):
+                    self.settingInterface.Updatethread.terminate()
+                logger.debug("关闭更新线程")
+            if self.settingInterface.update_self:
+                self.settingInterface.update_self.quit()
+                if not self.settingInterface.update_self.wait(5000):
+                    self.settingInterface.update_self.terminate()
+                logger.debug("关闭更新自身进程")
+        except Exception as e:
+            logger.exception("异步清理失败", exc_info=e)
+
+    def _clear_maafw_sync(self):
+        """同步清理 maafw（回退逻辑）"""
         try:
             if maafw.tasker and maafw.tasker.running:
+                print("停止任务线程")
                 maafw.tasker.post_stop().wait()
                 logger.debug("停止任务线程")
+            maafw.tasker = None
+            if maafw.resource:
+                maafw.resource.clear()
+            maafw.resource = None
+            maafw.controller = None
             if maafw.agent:
                 maafw.agent.disconnect()
-                logger.debug("断开agent连接")
+            maafw.agent = None
             if maafw.agent_thread:
                 maafw.agent_thread.quit()
                 maafw.agent_thread.wait()
                 logger.debug("关闭agent线程")
-            if send_thread:
-                send_thread.quit()
-                send_thread.wait()
-                logger.debug("关闭发送线程")
-            if self.settingInterface.Updatethread:
-                self.settingInterface.Updatethread.quit()
-                self.settingInterface.Updatethread.wait()
-                logger.debug("关闭更新线程")
-            if self.settingInterface.update_self:
-                self.settingInterface.update_self.quit()
-                self.settingInterface.update_self.wait()
-                logger.debug("关闭更新自身进程")
+            maafw.agent_thread = None
         except Exception as e:
-            logger.exception("关闭agent进程失败", exc_info=e)
+            logger.exception("清理 maafw 失败", exc_info=e)

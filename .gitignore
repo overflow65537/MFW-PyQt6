@@ -465,3 +465,5 @@ k.ey
 .vscode
 MFW.pid
 i18n.json
+interface.json
+main_config.json
