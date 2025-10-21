@@ -77,6 +77,9 @@ class SettingInterface(ScrollArea):
         self.__connectSignalToSlot()
         if not cfg.get(cfg.resource_exist):
             self.enable_widgets(False)
+        # 防止重复启动更新程序的标志（用于幂等性保护）
+        self._updater_started = False
+
         self.update_exist()
 
     def update_exist(self):
@@ -768,6 +771,14 @@ class SettingInterface(ScrollArea):
 
     def update_self_start(self):
         """开始更新程序。"""
+        # 如果已经启动过更新程序，忽略重复调用（幂等保护）
+        if getattr(self, "_updater_started", False):
+            logger.info("更新程序已启动，忽略重复调用。")
+            return
+
+        # 标记为已启动，防止并发重复调用
+        self._updater_started = True
+
         # 重命名更新程序防止占用
         try:
             if sys.platform.startswith("win32"):
@@ -775,13 +786,23 @@ class SettingInterface(ScrollArea):
             elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
                 self._rename_updater("MFWUpdater", "MFWUpdater1")
         except Exception as e:
+            # 如果重命名失败，重置启动标志并报告错误
+            self._updater_started = False
             logger.error(f"重命名更新程序失败: {e}")
             signalBus.infobar_message.emit({"status": "failed", "msg": e})
             return
 
-        # 启动更新程序
-        self._start_updater()
+        # 启动更新程序（子进程）
+        try:
+            self._start_updater()
+        except Exception as e:
+            # 启动失败则重置标志并报告错误
+            self._updater_started = False
+            logger.error(f"启动更新程序失败: {e}")
+            signalBus.infobar_message.emit({"status": "failed", "msg": e})
+            return
 
+        # 启动成功后退出主程序
         QApplication.quit()
 
     def _rename_updater(self, old_name, new_name):
