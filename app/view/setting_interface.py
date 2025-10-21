@@ -697,47 +697,49 @@ class SettingInterface(ScrollArea):
 
     def zip_debug_folder(self):
         """压缩debug文件夹"""
-        debug_path = os.path.join(".", "debug", "maa.tem.log")
-        log_path = os.path.join(".", "debug", "maa.log")
-        log_bak_path = os.path.join(".", "debug", "maa.log.bak")
-        # 读取log_path中的maa.log和maa.log.bak并拼接,maa.log在后
-        maa_log = ""
-        if os.path.exists(log_bak_path):
-            with open(log_bak_path, "r", encoding="utf-8", errors="replace") as log_file:
-                maa_log += log_file.read()
-        if os.path.exists(log_path):
-            with open(log_path, "r", encoding="utf-8", errors="replace") as log_file:
-                maa_log += log_file.read()
-        if os.path.exists(debug_path):
-            os.remove(debug_path)
-        with open(debug_path, "w", encoding="utf-8") as log_file:
-            log_file.write(maa_log)
+        try:
+            debug_path = os.path.join(".", "debug", "maa.tem.log")
+            log_path = os.path.join(".", "debug", "maa.log")
+            log_bak_path = os.path.join(".", "debug", "maa.log.bak")
+            # 读取log_path中的maa.log和maa.log.bak并拼接,maa.log在后
+            maa_log = ""
+            if os.path.exists(log_bak_path):
+                with open(log_bak_path, "r", encoding="utf-8", errors="replace") as log_file:
+                    maa_log += log_file.read()
+            if os.path.exists(log_path):
+                with open(log_path, "r", encoding="utf-8", errors="replace") as log_file:
+                    maa_log += log_file.read()
+            if os.path.exists(debug_path):
+                os.remove(debug_path)
+            with open(debug_path, "w", encoding="utf-8") as log_file:
+                log_file.write(maa_log)
 
-        # 压缩debug文件夹中除了maa.log和maa.log.bak外的所有文件
-        debug_path = os.path.join(".", "debug")
-        # 压缩debug文件夹中除了maa.log和maa.log.bak外的所有文件
-        debug_zip_path = os.path.join(".", "debug", "debug" + ".zip")
-        if os.path.exists(debug_zip_path):
-            os.remove(debug_zip_path)
-        with zipfile.ZipFile(debug_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-            for root, dirs, files in os.walk(debug_path):
-                for file in files:
-                    if file not in ["maa.log", "maa.log.bak", "debug.zip"]:
-                        zipf.write(
-                            os.path.join(root, file),
-                            os.path.relpath(os.path.join(root, file), debug_path),
-                        )
-
-        if os.path.exists(debug_zip_path):
+            # 压缩debug文件夹中除了maa.log和maa.log.bak外的所有文件
+            debug_path = os.path.join(".", "debug")
+            # 压缩debug文件夹中除了maa.log和maa.log.bak外的所有文件
+            debug_zip_path = os.path.join(".", "debug", "debug" + ".zip")
+            if os.path.exists(debug_zip_path):
+                os.remove(debug_zip_path)
+            with zipfile.ZipFile(debug_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+                for root, dirs, files in os.walk(debug_path):
+                    for file in files:
+                        if file not in ["maa.log", "maa.log.bak", "debug.zip"]:
+                            zipf.write(
+                                os.path.join(root, file),
+                                os.path.relpath(os.path.join(root, file), debug_path),
+                            )
             self.open_file_or_folder(debug_path)
-        else:
+
+
+            
+        except Exception as e:
             InfoBar.error(
                 self.tr("Error"),
-                self.tr("Compression failed, please check the debug folder"),
+                self.tr("Compression failed, please check the debug folder")+f":\n{e}",
                 duration=1500,
                 parent=self,
             )
-            self.open_file_or_folder(debug_path)
+
 
     def update_self_func(self):
         """更新程序。"""
