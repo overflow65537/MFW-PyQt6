@@ -330,32 +330,33 @@ class MainWindow(FluentWindow):
 
     def show_info_bar(self, data_dict: dict):
         """显示信息栏"""
-        duration = max(len(data_dict.get("msg", "")) * 100, 2000)
+        msg = str(data_dict.get("msg", ""))
+        duration = max(len(msg) * 100, 2000)
         if data_dict["status"] in ["failed", "failed_info"]:
             InfoBar.error(
                 title=self.tr("Error"),
-                content=data_dict.get("msg", ""),
+                content=msg,
                 duration=duration,
                 parent=self,
             )
         elif data_dict["status"] == "warning":
             InfoBar.warning(
                 title=self.tr("Warning"),
-                content=data_dict.get("msg", ""),
+                content=msg,
                 duration=duration,
                 parent=self,
             )
         elif data_dict["status"] in ["success", "no_need"]:
             InfoBar.success(
                 title=self.tr("Success"),
-                content=data_dict.get("msg", ""),
+                content=msg,
                 duration=duration,
                 parent=self,
             )
         elif data_dict["status"] == "info":
             InfoBar.info(
                 title=self.tr("Info"),
-                content=data_dict.get("msg", ""),
+                content=msg,
                 duration=duration,
                 parent=self,
             )
@@ -363,11 +364,11 @@ class MainWindow(FluentWindow):
             if data_dict["type"] == "advanced":
                 error_msg = (
                     self.tr("advanced setting [")
-                    + data_dict.get("msg", [])[0]
+                    + str(data_dict.get("msg", [])[0])
                     + self.tr("] value [")
-                    + data_dict.get("msg", [])[1]
+                    + str(data_dict.get("msg", [])[1])
                     + self.tr("] not match regex [")
-                    + data_dict.get("msg", [])[2]
+                    + str(data_dict.get("msg", [])[2])
                     + "]"
                 )
                 InfoBar.error(
