@@ -53,7 +53,6 @@ from .resource_setting_interface import ResourceSettingInterface
 from .task_cooldown_interface import TaskCooldownInterface
 from .assist_tool_task_interface import AssistToolTaskInterface
 from .setting_interface import SettingInterface
-import atexit
 from ..common.config import cfg
 from ..common.signal_bus import signalBus
 from ..common import resource
@@ -82,7 +81,6 @@ class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
         self.initWindow()
-
 
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)
@@ -240,7 +238,10 @@ class MainWindow(FluentWindow):
             signalBus.download_self_finished.connect(self.on_ui_update_finished)
             signalBus.download_self_stopped.connect(self.on_ui_update_stopped)
             if not cfg.get(cfg.update_ui_failed):
-                self.settingInterface.update_self_func()
+                if os.path.exists("update.zip"):
+                    self.settingInterface.update_self_start()
+                else:
+                    self.settingInterface.update_self_func()
         else:
             # 若不需要更新UI，直接检查是否需要开始任务
             self.check_start_task()
@@ -376,6 +377,7 @@ class MainWindow(FluentWindow):
                     parent=self,
                 )
                 self.taskInterface.S2_Button.click()
+
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
         signalBus.show_download.connect(self.show_download)
@@ -519,10 +521,7 @@ class MainWindow(FluentWindow):
             title += f" {config_name}"
         if self.is_admin():
             title += " " + self.tr("admin")
-        if (
-            cfg.get(cfg.save_draw)
-            or cfg.get(cfg.recording)
-        ):
+        if cfg.get(cfg.save_draw) or cfg.get(cfg.recording):
             title += " " + self.tr("Debug")
 
         logger.info(f" 设置窗口标题：{title}")
@@ -672,7 +671,7 @@ class MainWindow(FluentWindow):
         try:
 
             self._clear_maafw_sync()
-            
+
             # 清理其他线程
             if send_thread:
                 send_thread.quit()
