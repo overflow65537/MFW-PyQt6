@@ -357,9 +357,13 @@ class ConfigService(IConfigService):
                 know_task=[],
                 bundle=bundle,
             )
+            
             self._main_config["config_list"].append(default_config_item.item_id)
             self._main_config["curr_config_id"] = default_config_item.item_id
-            self.create_config(default_config_item)
+            self.current_config_id = self.create_config(default_config_item)
+
+            
+            
 
     def load_main_config(self) -> bool:
         """加载主配置"""
@@ -494,18 +498,6 @@ class ConfigService(IConfigService):
                 return list(bundle.keys())
         return []
 
-    def reorder_configs(self, new_order: List[str]) -> bool:
-        """重新排序主配置中的 config_list。new_order 为 config_id 列表。"""
-        if self._main_config is None:
-            return False
-
-        existing = self._main_config.get("config_list", [])
-        if set(new_order) != set(existing):
-            # new_order 必须是现有 config_id 的重排
-            return False
-
-        self._main_config["config_list"] = new_order
-        return self.save_main_config()
 
 
 class TaskService(ITaskService):
