@@ -872,18 +872,24 @@ class ServiceCoordinator:
 
     def modify_task(self, task: TaskItem) -> bool:
         """修改或添加任务：传入 TaskItem，如果列表中没有对应 id 的任务，添加到倒数第2位，否则更新对应任务"""
+        print(f"服务协调器: 调用 modify_task {task.item_id}, is_checked={task.is_checked}")
         config_id = self.config_service.current_config_id
         if not config_id:
+            print("服务协调器: 没有当前配置ID")
             return False
 
         config = self.config_service.get_config(config_id)
         if not config:
+            print("服务协调器: 未找到配置")
             return False
 
         # 查找并更新
         found = False
+        old_task = None
         for i, t in enumerate(config.tasks):
             if t.item_id == task.item_id:
+                old_task = t
+                print(f"服务协调器: 更新任务 {t.item_id} is_checked 从 {t.is_checked} 到 {task.is_checked}")
                 config.tasks[i] = task
                 found = True
                 break
@@ -892,12 +898,58 @@ class ServiceCoordinator:
             # 插入到倒数第二位（如果列表小于1，则放在末尾）
             idx = max(0, len(config.tasks) - 1)
             config.tasks.insert(idx, task)
+            print(f"服务协调器: 添加新任务 {task.item_id} is_checked={task.is_checked}")
 
         # 保存配置
         ok = self.config_service.update_config(config_id, config)
+        print(f"服务协调器: update_config 返回 {ok}")
         if ok:
-            # 无论新增或更新，统一以 fs_task_updated 通知（UI 可据 tasks_loaded 或 fs_task_updated 刷新）
+            # 验证保存结果
+            saved_config = self.config_service.get_config(config_id)
+            if saved_config:
+                for t in saved_config.tasks:
+                    if t.item_id == task.item_id:
+                        print(f"服务协调器: 保存的任务 {t.item_id} is_checked={t.is_checked}")
+                        break
             self.fs_signal_bus.fs_task_modified.emit(task)
+            print("服务协调器: 发射 fs_task_modified")
+        return ok
+
+    def update_task_checked(self, task_id: str, is_checked: bool) -> bool:
+        """仅更新任务的选中状态，不发射信号"""
+        print(f"服务协调器: 调用 update_task_checked {task_id}, is_checked={is_checked}")
+        config_id = self.config_service.current_config_id
+        if not config_id:
+            print("服务协调器: 没有当前配置ID")
+            return False
+
+        config = self.config_service.get_config(config_id)
+        if not config:
+            print("服务协调器: 未找到配置")
+            return False
+
+        # 查找任务
+        for i, t in enumerate(config.tasks):
+            if t.item_id == task_id:
+                print(f"服务协调器: 更新任务 {t.item_id} is_checked 从 {t.is_checked} 到 {is_checked}")
+                config.tasks[i].is_checked = is_checked
+                break
+        else:
+            print(f"服务协调器: 未找到任务 {task_id}")
+            return False
+
+        # 保存配置
+        ok = self.config_service.update_config(config_id, config)
+        print(f"服务协调器: update_config 返回 {ok}")
+        if ok:
+            # 验证保存结果
+            saved_config = self.config_service.get_config(config_id)
+            if saved_config:
+                for t in saved_config.tasks:
+                    if t.item_id == task_id:
+                        print(f"服务协调器: 保存的任务 {t.item_id} is_checked={t.is_checked}")
+                        break
+            # 不发射信号
         return ok
 
     def modify_tasks(self, tasks: List[TaskItem]) -> bool:

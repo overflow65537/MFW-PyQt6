@@ -88,6 +88,7 @@ class TaskDragListWidget(BaseListWidget):
             ):
                 if widget.task.item_id == task.item_id:
                     # 更新已有 widget 的数据并返回
+                    print(f"任务拖拽列表组件: 更新现有任务 {task.item_id} 为 is_checked={task.is_checked}")
                     widget.task = task
                     widget.name_label.setText(task.name)
                     widget.checkbox.setChecked(task.is_checked)
@@ -97,9 +98,7 @@ class TaskDragListWidget(BaseListWidget):
         list_item = QListWidgetItem()
         task_widget = TaskListItem(task)
         # 复选框状态变更信号
-        task_widget.checkbox.stateChanged.connect(
-            lambda state, t=task: self._on_task_checkbox_changed(t, state)
-        )
+        task_widget.checkbox_changed.connect(self._on_task_checkbox_changed)
         # 基础任务禁止拖动
         if task.item_id.startswith(("c_", "r_", "f_")):
             list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
@@ -124,15 +123,12 @@ class TaskDragListWidget(BaseListWidget):
             [task.item_id for task in item_list]
         )
 
-    def _on_task_checkbox_changed(self, task: TaskItem, state):
+    def _on_task_checkbox_changed(self, task: TaskItem):
         """复选框状态变更信号转发"""
-        is_checked = state == Qt.CheckState.Checked
-        if task is None:
-            return
+        print(f"任务拖拽列表组件: 收到复选框更改 {task.item_id}, is_checked={task.is_checked}")
         if task.item_id.startswith(("c_", "r_", "f_")):
             return
-        task.is_checked = is_checked
-        self.service_coordinator.modify_task(task)
+        self.service_coordinator.update_task_checked(task.item_id, task.is_checked)
 
     def select_all(self) -> None:
         """选择全部任务"""
@@ -211,20 +207,6 @@ class ConfigListWidget(BaseListWidget):
                 self.takeItem(i)
                 widget.deleteLater()
                 break
-
-    def _on_order_changed(self, item_list: list[ConfigItem]):
-        """拖拽顺序变更时同步到服务层"""
-        # item_list 可能是 ConfigItem 对象列表或 dict 列表，统一提取 item_id
-        ids = []
-        for c in item_list:
-            if isinstance(c, str):
-                ids.append(c)
-            elif hasattr(c, "item_id"):
-                ids.append(c.item_id)
-            elif isinstance(c, dict) and c.get("item_id"):
-                ids.append(c.get("item_id"))
-        if ids:
-            self.service_coordinator.config.reorder_configs(ids)
 
     def set_current_config(self, config_id: str):
         """设置当前选中配置项"""

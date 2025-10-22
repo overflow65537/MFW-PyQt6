@@ -78,6 +78,8 @@ class BaseListItem(QWidget):
 
 # 任务列表项组件
 class TaskListItem(BaseListItem):
+    checkbox_changed = Signal(object)  # 发射 TaskItem 对象
+
     def __init__(self, task: TaskItem, parent=None):
         self.task = task
         super().__init__(task, parent)
@@ -98,6 +100,7 @@ class TaskListItem(BaseListItem):
         self.checkbox = CheckBox()
         self.checkbox.setFixedSize(34, 34)
         self.checkbox.setChecked(self.task.is_checked)
+        self.checkbox.setTristate(False)
         layout.addWidget(self.checkbox)
 
         # 添加标签
@@ -110,8 +113,12 @@ class TaskListItem(BaseListItem):
 
     def on_checkbox_changed(self, state):
         # 复选框状态变更处理
-        is_checked = state == Qt.CheckState.Checked
+        print(state)
+        is_checked = state == 2
+        print(f"任务列表项: {self.task.item_id} 复选框更改为 {is_checked}")
         self.task.is_checked = is_checked
+        # 发射信号通知父组件更新
+        self.checkbox_changed.emit(self.task)
 
 
 # 配置列表项组件
