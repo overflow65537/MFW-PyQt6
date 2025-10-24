@@ -1,6 +1,12 @@
-from PySide6.QtWidgets import QListWidgetItem, QAbstractItemView
-from PySide6.QtCore import Qt, Signal
-from qfluentwidgets import ListWidget
+from PySide6.QtWidgets import (
+    QListWidgetItem,
+    QAbstractItemView,
+    QGraphicsOpacityEffect,
+    QWidget,
+    QHBoxLayout,
+)
+from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
+from qfluentwidgets import ListWidget, IndeterminateProgressRing
 from ..core.core import TaskItem, ConfigItem, ServiceCoordinator
 from .ListItem import TaskListItem, ConfigListItem
 
@@ -46,6 +52,25 @@ class TaskDragListWidget(BaseListWidget):
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.setDefaultDropAction(Qt.DropAction.MoveAction)
 
+        self._fade_effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(self._fade_effect)
+        self._fade_effect.setOpacity(1.0)
+        self._fade_out = QPropertyAnimation(self._fade_effect, b"opacity", self)
+        self._fade_out.setDuration(80)
+        self._fade_out.setStartValue(1.0)
+        self._fade_out.setEndValue(0.0)
+        self._fade_out.setEasingCurve(QEasingCurve.Type.InQuad)
+        self._fade_in = QPropertyAnimation(self._fade_effect, b"opacity", self)
+        self._fade_in.setDuration(100)
+        self._fade_in.setStartValue(0.0)
+        self._fade_in.setEndValue(1.0)
+        self._fade_in.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._fade_out.finished.connect(self._on_fade_out_finished)
+        self._fade_in.finished.connect(self._on_fade_in_finished)
+        self._pending_refresh = False
+
+        self._init_loading_overlay()
+
         self.item_selected.connect(self._on_item_selected_to_service)
         self.service_coordinator.signal_bus.config_changed.connect(
             self._on_config_changed
@@ -72,7 +97,28 @@ class TaskDragListWidget(BaseListWidget):
 
     def _on_config_changed(self, config_id: str) -> None:
         """Reload tasks when user switches configuration."""
-        self.update_list()
+        if self._fade_out.state() == QPropertyAnimation.State.Running:
+            self._pending_refresh = True
+            return
+        if self._fade_in.state() == QPropertyAnimation.State.Running:
+            self._fade_in.stop()
+        self._pending_refresh = True
+        self._show_loading_overlay()
+        self._fade_out.start()
+
+    def _on_fade_out_finished(self) -> None:
+        if not self._pending_refresh:
+            self._fade_in.start()
+            return
+        pending = self._pending_refresh
+        self._pending_refresh = False
+
+        if pending:
+            self.update_list()
+        self._fade_in.start()
+
+    def _on_fade_in_finished(self) -> None:
+        self._hide_loading_overlay()
 
     def update_list(self):
         """刷新任务列表UI"""
@@ -178,6 +224,40 @@ class TaskDragListWidget(BaseListWidget):
             if isinstance(widget, TaskListItem) and widget.task.item_id == task_id:
                 return row
         return -1
+
+    def _init_loading_overlay(self) -> None:
+        self._loading_overlay = QWidget(self)
+        self._loading_overlay.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents
+        )
+        self._loading_overlay.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+        self._loading_overlay.setStyleSheet(
+            "background-color: rgba(0, 0, 0, 60); border-radius: 8px;"
+        )
+        layout = QHBoxLayout(self._loading_overlay)
+        layout.setContentsMargins(24, 16, 24, 16)
+        layout.setSpacing(0)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self._loading_indicator = IndeterminateProgressRing(self._loading_overlay)
+        self._loading_indicator.setFixedSize(28, 28)
+        layout.addWidget(self._loading_indicator)
+
+        self._loading_overlay.hide()
+
+    def _show_loading_overlay(self) -> None:
+        self._loading_overlay.setGeometry(self.viewport().geometry())
+        self._loading_overlay.show()
+        self._loading_indicator.start()
+
+    def _hide_loading_overlay(self) -> None:
+        self._loading_overlay.hide()
+        self._loading_indicator.stop()
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        if hasattr(self, "_loading_overlay"):
+            self._loading_overlay.setGeometry(self.viewport().geometry())
 
     def _on_task_checkbox_changed(self, task: TaskItem):
         """复选框状态变更信号转发"""
