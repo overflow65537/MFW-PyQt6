@@ -39,8 +39,6 @@ class BaseListWidget(ListWidget):
 class TaskDragListWidget(BaseListWidget):
     """任务拖拽列表组件：支持拖动排序、添加、修改、删除任务（基础任务禁止删除/拖动）"""
 
-    item_order_changed = Signal(list)  # 列表项顺序变更信号
-
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         super().__init__(service_coordinator, parent)
         self.setDragEnabled(True)
@@ -49,7 +47,6 @@ class TaskDragListWidget(BaseListWidget):
         self.setDefaultDropAction(Qt.DropAction.MoveAction)
 
         self.item_selected.connect(self._on_item_selected_to_service)
-        self.item_order_changed.connect(self._on_order_changed)
         service_coordinator.fs_signal_bus.fs_task_modified.connect(self.modify_task)
         service_coordinator.fs_signal_bus.fs_task_removed.connect(self.remove_task)
         self.update_list()
@@ -58,16 +55,17 @@ class TaskDragListWidget(BaseListWidget):
         self.service_coordinator.select_task(item_id)
 
     def dropEvent(self, event):
+        previous_tasks = self._collect_task_items()
+        protected = self._protected_positions(previous_tasks)
         super().dropEvent(event)
-        # 获取当前所有任务项的顺序
-        item_list = []
-        for i in range(self.count()):
-            item = self.item(i)
-            widget = self.itemWidget(item)
-            if isinstance(widget, TaskListItem):
-                item_list.append(widget.task)
-        # 发出顺序变更信号
-        self.item_order_changed.emit(item_list)
+        current_tasks = self._collect_task_items()
+        if not self._base_positions_intact(current_tasks, protected):
+            self._restore_order([task.item_id for task in previous_tasks])
+            event.ignore()
+            return
+        self.service_coordinator.reorder_tasks(
+            [task.item_id for task in current_tasks]
+        )
 
     def update_list(self):
         """刷新任务列表UI"""
@@ -117,11 +115,62 @@ class TaskDragListWidget(BaseListWidget):
                 widget.deleteLater()
                 break
 
-    def _on_order_changed(self, item_list: list[TaskItem]):
-        """拖拽顺序变更时同步到服务层"""
-        self.service_coordinator.task.reorder_tasks(
-            [task.item_id for task in item_list]
-        )
+    def _collect_task_items(self) -> list[TaskItem]:
+        """Collect TaskItem instances from current widgets for ordering checks."""
+        tasks: list[TaskItem] = []
+        for i in range(self.count()):
+            item = self.item(i)
+            widget = self.itemWidget(item)
+            if isinstance(widget, TaskListItem):
+                tasks.append(widget.task)
+        return tasks
+
+    def _protected_positions(self, tasks: list[TaskItem]) -> dict[int, str]:
+        """Remember base task ids that must stay in reserved slots."""
+        prefixes = ("c_", "r_", "f_")
+        if not tasks:
+            return {}
+        positions = {0, 1, len(tasks) - 1}
+        protected: dict[int, str] = {}
+        for idx in positions:
+            if 0 <= idx < len(tasks):
+                task = tasks[idx]
+                if task.item_id.startswith(prefixes):
+                    protected[idx] = task.item_id
+        return protected
+
+    def _base_positions_intact(
+        self, tasks: list[TaskItem], protected: dict[int, str]
+    ) -> bool:
+        """Verify base tasks in reserved slots keep their original ids."""
+        for idx, expected_id in protected.items():
+            if idx < 0 or idx >= len(tasks):
+                return False
+            if tasks[idx].item_id != expected_id:
+                return False
+        return True
+
+    def _restore_order(self, order: list[str]) -> None:
+        """Restore original order if a drop violates base task constraints."""
+        for target_index, task_id in enumerate(order):
+            current_index = self._find_row_by_task_id(task_id)
+            if current_index == -1 or current_index == target_index:
+                continue
+            list_item = self.item(current_index)
+            widget = self.itemWidget(list_item)
+            list_item = self.takeItem(current_index)
+            if list_item is None:
+                continue
+            self.insertItem(target_index, list_item)
+            if widget is not None:
+                self.setItemWidget(list_item, widget)
+
+    def _find_row_by_task_id(self, task_id: str) -> int:
+        for row in range(self.count()):
+            widget = self.itemWidget(self.item(row))
+            if isinstance(widget, TaskListItem) and widget.task.item_id == task_id:
+                return row
+        return -1
 
     def _on_task_checkbox_changed(self, task: TaskItem):
         """复选框状态变更信号转发"""

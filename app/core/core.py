@@ -641,7 +641,7 @@ class TaskService(ITaskService):
             self.signal_bus.tasks_loaded.emit(self.current_tasks)
 
     def _on_task_order_updated(self, task_order: List[str]):
-        """当任务顺序更新时重新排序任务"""
+        """同步最新任务顺序到当前配置并持久化，但不强制刷新UI列表。"""
         config_id = self.config_service.current_config_id
         if not config_id:
             return
@@ -650,22 +650,24 @@ class TaskService(ITaskService):
         if not config:
             return
 
-        # 根据新的顺序重新排列任务
-        ordered_tasks = []
+        tasks_by_id = {task.item_id: task for task in config.tasks}
+        ordered_tasks: list[TaskItem] = []
         for task_id in task_order:
-            for task in config.tasks:
-                if task.item_id == task_id:
-                    ordered_tasks.append(task)
-                    break
+            task = tasks_by_id.pop(task_id, None)
+            if task is not None:
+                ordered_tasks.append(task)
 
-                self.signal_bus.task_selected.emit(task_id)
+        # 追加未在拖拽序列中的任务，确保列表完整
+        if tasks_by_id:
+            ordered_tasks.extend(tasks_by_id.values())
+
+        if not ordered_tasks:
+            return
+
         config.tasks = ordered_tasks
 
-        # 保存配置
         if self.config_service.update_config(config_id, config):
-            # 更新本地任务列表
             self.current_tasks = ordered_tasks
-            self.signal_bus.tasks_loaded.emit(self.current_tasks)
 
     def get_tasks(self) -> List[TaskItem]:
         """获取当前配置的任务列表"""

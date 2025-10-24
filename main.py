@@ -53,9 +53,6 @@ from app.common.signal_bus import signalBus
 if __name__ == "__main__":
     logger.info(f"MFW 版本:{__version__}")
     # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
-
-    # TODO 使用应用支持目录,Windows存放在C:\ProgramData,linux存放在~/.local/share/和~/.config/和~/.cache/,macos存放在/Library/Application Support
-    # TODO 检查根目录下是否存在需要转移的文件,并且检查应用支持目录中是否存在配置
     #os.chdir(target_dir)  # 切换工作目录
     logger.debug(f"设置工作目录: {os.getcwd()}")
 
