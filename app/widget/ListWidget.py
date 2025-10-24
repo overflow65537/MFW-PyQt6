@@ -47,6 +47,9 @@ class TaskDragListWidget(BaseListWidget):
         self.setDefaultDropAction(Qt.DropAction.MoveAction)
 
         self.item_selected.connect(self._on_item_selected_to_service)
+        self.service_coordinator.signal_bus.config_changed.connect(
+            self._on_config_changed
+        )
         service_coordinator.fs_signal_bus.fs_task_modified.connect(self.modify_task)
         service_coordinator.fs_signal_bus.fs_task_removed.connect(self.remove_task)
         self.update_list()
@@ -66,6 +69,10 @@ class TaskDragListWidget(BaseListWidget):
         self.service_coordinator.reorder_tasks(
             [task.item_id for task in current_tasks]
         )
+
+    def _on_config_changed(self, config_id: str) -> None:
+        """Reload tasks when user switches configuration."""
+        self.update_list()
 
     def update_list(self):
         """刷新任务列表UI"""
