@@ -182,8 +182,8 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         # 删除按钮
         self.delete_button.clicked.connect(self.remove_selected_task)
 
-        # 监听服务总线任务选中事件以更新标题/选项
-        self.core_signalBus.task_selected.connect(self._change_title)
+        # 监听配置切换事件以更新标题为配置名
+        self.core_signalBus.config_changed.connect(self._on_config_changed)
 
         # 初始填充任务列表
         # 不在工具栏直接刷新列表：视图会订阅 ServiceCoordinator 的信号自行更新
@@ -213,11 +213,11 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
                 # 持久化到服务层
                 self.service_coordinator.modify_task(new_task)
 
-    def _change_title(self, task_id: str):
-        """改变标题为被选中的任务名（通过 task_id 查找）"""
-        task = self.service_coordinator.task.get_task(task_id)
-        if task:
-            self.set_title(task.name)
+    def _on_config_changed(self, config_id: str):
+        """配置切换时更新标题为配置名"""
+        config = self.service_coordinator.config.get_config(config_id)
+        if config:
+            self.set_title(config.name)
 
     def remove_selected_task(self):
         cur = self.task_list.currentItem()
@@ -242,6 +242,8 @@ class OptionWidget(QWidget):
         self.core_signalBus = self.service_coordinator.signal_bus
         # 使用 task_selected 信号（由 ServiceCoordinator 触发）
         self.core_signalBus.task_selected.connect(self.show_option)
+        # 监听配置切换以重置选项面板
+        self.core_signalBus.config_changed.connect(self._on_config_changed)
         self._init_ui()
         self._toggle_description(visible=False)
 
@@ -391,6 +393,10 @@ class OptionWidget(QWidget):
         self._clear_options()
 
         self._toggle_description(visible=False)
+
+    def _on_config_changed(self, config_id: str):
+        """配置切换时重置选项面板"""
+        self.reset()
 
     def set_title(self, title: str):
         """设置标题"""

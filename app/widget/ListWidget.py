@@ -91,9 +91,7 @@ class TaskDragListWidget(BaseListWidget):
             self._restore_order([task.item_id for task in previous_tasks])
             event.ignore()
             return
-        self.service_coordinator.reorder_tasks(
-            [task.item_id for task in current_tasks]
-        )
+        self.service_coordinator.reorder_tasks([task.item_id for task in current_tasks])
 
     def _on_config_changed(self, config_id: str) -> None:
         """Reload tasks when user switches configuration."""
@@ -123,6 +121,7 @@ class TaskDragListWidget(BaseListWidget):
     def update_list(self):
         """刷新任务列表UI"""
         self.clear()
+        self.setCurrentRow(-1) 
         task_list = self.service_coordinator.task.get_tasks()
         for task in task_list:
             self.modify_task(task)
@@ -139,7 +138,9 @@ class TaskDragListWidget(BaseListWidget):
             ):
                 if widget.task.item_id == task.item_id:
                     # 更新已有 widget 的数据并返回
-                    print(f"任务拖拽列表组件: 更新现有任务 {task.item_id} 为 is_checked={task.is_checked}")
+                    print(
+                        f"任务拖拽列表组件: 更新现有任务 {task.item_id} 为 is_checked={task.is_checked}"
+                    )
                     widget.task = task
                     widget.name_label.setText(task.name)
                     widget.checkbox.setChecked(task.is_checked)
@@ -261,7 +262,9 @@ class TaskDragListWidget(BaseListWidget):
 
     def _on_task_checkbox_changed(self, task: TaskItem):
         """复选框状态变更信号转发"""
-        print(f"任务拖拽列表组件: 收到复选框更改 {task.item_id}, is_checked={task.is_checked}")
+        print(
+            f"任务拖拽列表组件: 收到复选框更改 {task.item_id}, is_checked={task.is_checked}"
+        )
         if task.item_id.startswith(("c_", "r_", "f_")):
             return
         self.service_coordinator.update_task_checked(task.item_id, task.is_checked)

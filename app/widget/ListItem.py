@@ -109,6 +109,7 @@ class TaskListItem(BaseListItem):
 
         # 添加设置按钮
         self.setting_button = self._create_setting_button()
+        self.setting_button.clicked.connect(self._select_in_parent_list)
         layout.addWidget(self.setting_button)
 
     def on_checkbox_changed(self, state):
