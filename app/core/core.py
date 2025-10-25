@@ -728,9 +728,8 @@ class TaskService(ITaskService):
         # add tasks that are new (not replaced)
         for t in tasks:
             if t.item_id not in replaced:
-                # insert before last element to keep final action at end
-                idx = max(0, len(config.tasks) - 1)
-                config.tasks.insert(idx, t)
+                # 插入到倒数第二位,确保"完成后操作"始终在最后
+                config.tasks.insert(-1, t)
 
         # 保存配置一次
         ok = self.config_service.update_config(config_id, config)
@@ -913,9 +912,8 @@ class ServiceCoordinator:
                 break
 
         if not found:
-            # 插入到倒数第二位（如果列表小于1，则放在末尾）
-            idx = max(0, len(config.tasks) - 1)
-            config.tasks.insert(idx, task)
+            # 插入到倒数第二位,确保"完成后操作"始终在最后
+            config.tasks.insert(-1, task)
             print(f"服务协调器: 添加新任务 {task.item_id} is_checked={task.is_checked}")
 
         # 保存配置

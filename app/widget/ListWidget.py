@@ -51,6 +51,8 @@ class TaskDragListWidget(BaseListWidget):
         self.setAcceptDrops(True)
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.setDefaultDropAction(Qt.DropAction.MoveAction)
+        # 标记是否处于批量刷新阶段，用于保持服务端给出的顺序
+        self._bulk_updating: bool = False
 
         self._fade_effect = QGraphicsOpacityEffect(self)
         self.setGraphicsEffect(self._fade_effect)
@@ -123,8 +125,11 @@ class TaskDragListWidget(BaseListWidget):
         self.clear()
         self.setCurrentRow(-1) 
         task_list = self.service_coordinator.task.get_tasks()
+        # 批量刷新时保持顺序，避免基础任务顺序被打乱
+        self._bulk_updating = True
         for task in task_list:
             self.modify_task(task)
+        self._bulk_updating = False
 
     def modify_task(self, task: TaskItem):
         """添加或更新任务项到列表（如果存在同 id 的任务则更新，否则新增）。"""
@@ -154,7 +159,14 @@ class TaskDragListWidget(BaseListWidget):
         # 基础任务禁止拖动
         if task.item_id.startswith(("c_", "r_", "f_")):
             list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
-        self.addItem(list_item)
+        
+        # 批量刷新时严格按传入顺序追加；单项新增时插入到倒数第二位
+        if getattr(self, "_bulk_updating", False):
+            self.addItem(list_item)
+        else:
+            # 插入到倒数第二位,确保"完成后操作"始终在最后
+            insert_index = max(0, self.count() - 1)
+            self.insertItem(insert_index, list_item)
         self.setItemWidget(list_item, task_widget)
 
     def remove_task(self, task_id: str):
