@@ -114,9 +114,7 @@ class TaskListItem(BaseListItem):
 
     def on_checkbox_changed(self, state):
         # 复选框状态变更处理
-        print(state)
         is_checked = state == 2
-        print(f"任务列表项: {self.task.item_id} 复选框更改为 {is_checked}")
         self.task.is_checked = is_checked
         # 发射信号通知父组件更新
         self.checkbox_changed.emit(self.task)

@@ -9,6 +9,7 @@ from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
 from qfluentwidgets import ListWidget, IndeterminateProgressRing
 from ..core.core import TaskItem, ConfigItem, ServiceCoordinator
 from .ListItem import TaskListItem, ConfigListItem
+from app.utils.logger import logger
 
 
 class BaseListWidget(ListWidget):
@@ -143,9 +144,6 @@ class TaskDragListWidget(BaseListWidget):
             ):
                 if widget.task.item_id == task.item_id:
                     # 更新已有 widget 的数据并返回
-                    print(
-                        f"任务拖拽列表组件: 更新现有任务 {task.item_id} 为 is_checked={task.is_checked}"
-                    )
                     widget.task = task
                     widget.name_label.setText(task.name)
                     widget.checkbox.setChecked(task.is_checked)
@@ -274,9 +272,6 @@ class TaskDragListWidget(BaseListWidget):
 
     def _on_task_checkbox_changed(self, task: TaskItem):
         """复选框状态变更信号转发"""
-        print(
-            f"任务拖拽列表组件: 收到复选框更改 {task.item_id}, is_checked={task.is_checked}"
-        )
         if task.item_id.startswith(("c_", "r_", "f_")):
             return
         self.service_coordinator.update_task_checked(task.item_id, task.is_checked)

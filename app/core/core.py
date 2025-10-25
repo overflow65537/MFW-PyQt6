@@ -1,11 +1,56 @@
 import uuid
 import json
+import logging
+import os
+from logging.handlers import TimedRotatingFileHandler
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from abc import ABC, abstractmethod
 
 from PySide6.QtCore import QObject, Signal
+
+
+# ==================== Core Logger ====================
+def _create_core_logger():
+    """创建 core 模块专用的 logger"""
+    logger = logging.getLogger("MFW.Core")
+    
+    # 避免重复添加 handler
+    if logger.handlers:
+        return logger
+    
+    logger.setLevel(logging.DEBUG)
+    
+    # 创建日志目录
+    log_dir = "debug"
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # 文件处理器
+    log_file = os.path.join(log_dir, "core.log")
+    file_handler = TimedRotatingFileHandler(
+        log_file,
+        when="midnight",
+        backupCount=3,
+        encoding="utf-8",
+    )
+    
+    # 控制台处理器
+    stream_handler = logging.StreamHandler()
+    
+    # 设置格式
+    formatter = logging.Formatter(
+        "[%(asctime)s][%(levelname)s][%(filename)s][L%(lineno)d][%(funcName)s] | %(message)s"
+    )
+    file_handler.setFormatter(formatter)
+    stream_handler.setFormatter(formatter)
+    
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
+    
+    return logger
+
+core_logger = _create_core_logger()
 
 
 # ==================== 信号总线 ====================
@@ -889,15 +934,12 @@ class ServiceCoordinator:
 
     def modify_task(self, task: TaskItem) -> bool:
         """修改或添加任务：传入 TaskItem，如果列表中没有对应 id 的任务，添加到倒数第2位，否则更新对应任务"""
-        print(f"服务协调器: 调用 modify_task {task.item_id}, is_checked={task.is_checked}")
         config_id = self.config_service.current_config_id
         if not config_id:
-            print("服务协调器: 没有当前配置ID")
             return False
 
         config = self.config_service.get_config(config_id)
         if not config:
-            print("服务协调器: 未找到配置")
             return False
 
         # 查找并更新
@@ -906,7 +948,6 @@ class ServiceCoordinator:
         for i, t in enumerate(config.tasks):
             if t.item_id == task.item_id:
                 old_task = t
-                print(f"服务协调器: 更新任务 {t.item_id} is_checked 从 {t.is_checked} 到 {task.is_checked}")
                 config.tasks[i] = task
                 found = True
                 break
@@ -914,21 +955,11 @@ class ServiceCoordinator:
         if not found:
             # 插入到倒数第二位,确保"完成后操作"始终在最后
             config.tasks.insert(-1, task)
-            print(f"服务协调器: 添加新任务 {task.item_id} is_checked={task.is_checked}")
 
         # 保存配置
         ok = self.config_service.update_config(config_id, config)
-        print(f"服务协调器: update_config 返回 {ok}")
         if ok:
-            # 验证保存结果
-            saved_config = self.config_service.get_config(config_id)
-            if saved_config:
-                for t in saved_config.tasks:
-                    if t.item_id == task.item_id:
-                        print(f"服务协调器: 保存的任务 {t.item_id} is_checked={t.is_checked}")
-                        break
             self.fs_signal_bus.fs_task_modified.emit(task)
-            print("服务协调器: 发射 fs_task_modified")
         return ok
 
     def update_task_checked(self, task_id: str, is_checked: bool) -> bool:
@@ -937,51 +968,35 @@ class ServiceCoordinator:
         特殊任务互斥规则:
         - 如果选中的是特殊任务,则自动取消其他特殊任务的选中
         """
-        print(f"服务协调器: 调用 update_task_checked {task_id}, is_checked={is_checked}")
         config_id = self.config_service.current_config_id
         if not config_id:
-            print("服务协调器: 没有当前配置ID")
             return False
 
         config = self.config_service.get_config(config_id)
         if not config:
-            print("服务协调器: 未找到配置")
             return False
 
         # 查找目标任务
         target_task = None
         for i, t in enumerate(config.tasks):
             if t.item_id == task_id:
-                print(f"服务协调器: 更新任务 {t.item_id} is_checked 从 {t.is_checked} 到 {is_checked}")
                 config.tasks[i].is_checked = is_checked
                 target_task = config.tasks[i]
                 break
         else:
-            print(f"服务协调器: 未找到任务 {task_id}")
             return False
 
         # 特殊任务互斥逻辑:如果选中的是特殊任务,取消其他特殊任务
         unchecked_tasks = []
         if target_task and target_task.is_special and is_checked:
-            print("服务协调器: 检测到特殊任务被选中,取消其他特殊任务")
             for i, t in enumerate(config.tasks):
                 if t.item_id != task_id and t.is_special and t.is_checked:
-                    print(f"服务协调器: 取消特殊任务 {t.item_id} 的选中")
                     config.tasks[i].is_checked = False
                     unchecked_tasks.append(config.tasks[i])
 
         # 保存配置
         ok = self.config_service.update_config(config_id, config)
-        print(f"服务协调器: update_config 返回 {ok}")
         if ok:
-            # 验证保存结果
-            saved_config = self.config_service.get_config(config_id)
-            if saved_config:
-                for t in saved_config.tasks:
-                    if t.item_id == task_id:
-                        print(f"服务协调器: 保存的任务 {t.item_id} is_checked={t.is_checked}")
-                        break
-            
             # 如果有其他特殊任务被取消选中,发射信号通知UI更新
             for task in unchecked_tasks:
                 self.fs_signal_bus.fs_task_modified.emit(task)
