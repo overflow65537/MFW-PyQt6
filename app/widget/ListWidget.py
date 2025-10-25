@@ -270,28 +270,31 @@ class TaskDragListWidget(BaseListWidget):
         self.service_coordinator.update_task_checked(task.item_id, task.is_checked)
 
     def select_all(self) -> None:
-        """选择全部任务"""
+        """选择全部任务(排除基础任务和特殊任务)"""
         task_list = []
         for i in range(self.count()):
             item = self.item(i)
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem):
-                widget.checkbox.setChecked(True)
-                widget.task.is_checked = True
-                task_list.append(widget.task)
+                # 排除基础任务和特殊任务
+                if not widget.task.item_id.startswith(("c_", "r_", "f_", "s_")) and not widget.task.is_special:
+                    widget.checkbox.setChecked(True)
+                    widget.task.is_checked = True
+                    task_list.append(widget.task)
         self.service_coordinator.modify_tasks(task_list)
 
     def deselect_all(self) -> None:
-        """取消选择全部任务"""
+        """取消选择全部任务(排除基础任务,但包含特殊任务)"""
         task_list = []
         for i in range(self.count()):
             item = self.item(i)
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem):
+                # 只排除基础任务
                 if not widget.task.item_id.startswith(("c_", "r_", "f_")):
                     widget.checkbox.setChecked(False)
                     widget.task.is_checked = False
-                task_list.append(widget.task)
+                    task_list.append(widget.task)
         self.service_coordinator.modify_tasks(task_list)
 
 
@@ -325,6 +328,11 @@ class ConfigListWidget(BaseListWidget):
                 cfg = self.service_coordinator.config.get_config(config_id)
                 if cfg:
                     self._add_config_to_list(cfg)
+        
+        # 选中当前配置
+        current_config_id = self.service_coordinator.config.current_config_id
+        if current_config_id:
+            self._select_config_by_id(current_config_id)
 
     def _add_config_to_list(self, config: ConfigItem):
         """添加单个配置项到列表"""
@@ -332,6 +340,17 @@ class ConfigListWidget(BaseListWidget):
         config_widget = ConfigListItem(config)
         self.addItem(list_item)
         self.setItemWidget(list_item, config_widget)
+
+    def _select_config_by_id(self, config_id: str):
+        """根据配置ID选中对应的列表项"""
+        for i in range(self.count()):
+            item = self.item(i)
+            widget = self.itemWidget(item)
+            if isinstance(widget, ConfigListItem) and widget.item.item_id == config_id:
+                self.setCurrentRow(i)
+                # 直接触发 config_changed 信号以更新任务列表标题
+                self.service_coordinator.signal_bus.config_changed.emit(config_id)
+                break
 
     def add_config(self, config: ConfigItem):
         """添加配置项到列表"""

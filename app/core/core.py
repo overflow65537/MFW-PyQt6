@@ -52,31 +52,37 @@ class TaskItem:
     item_id: str
     is_checked: bool
     task_option: Dict[str, Any]
+    is_special: bool = False  # 标记是否为特殊任务
 
     def to_dict(self) -> Dict[str, Any]:
-        """转换为字典（去除 task_type）"""
+        """转换为字典"""
         return {
             "name": self.name,
             "item_id": self.item_id,
             "is_checked": self.is_checked,
             "task_option": self.task_option,
+            "is_special": self.is_special,
         }
 
     @staticmethod
-    def generate_id() -> str:
-        return f"t_{uuid.uuid4().hex}"
+    def generate_id(is_special: bool = False) -> str:
+        """生成任务ID,特殊任务使用 s_ 前缀,普通任务使用 t_ 前缀"""
+        prefix = "s_" if is_special else "t_"
+        return f"{prefix}{uuid.uuid4().hex}"
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TaskItem":
-        """从字典创建实例，自动生成 item_id（去除 task_type）"""
+        """从字典创建实例，自动生成 item_id"""
         item_id = data.get("item_id", "")
+        is_special = data.get("is_special", False)
         if not item_id:
-            item_id = cls.generate_id()
+            item_id = cls.generate_id(is_special)
         return cls(
             name=data.get("name", ""),
             item_id=item_id,
             is_checked=data.get("is_checked", False),
             task_option=data.get("task_option", {}),
+            is_special=is_special,
         )
 
 
@@ -557,16 +563,26 @@ class TaskService(ITaskService):
 
         return True
 
-    def add_task(self, task_name: str) -> bool:
+    def add_task(self, task_name: str, is_special: bool = False) -> bool:
+        """添加任务
+        
+        Args:
+            task_name: 任务名称
+            is_special: 是否为特殊任务,默认为 False
+        """
         if not self.interface:
             raise ValueError("Interface not loaded")
         for task in self.interface.get("task", []):
             if task["name"] == task_name:
+                # 检查 interface.json 中是否标记为特殊任务(spt字段)
+                task_is_special = task.get("spt", is_special)
+                
                 new_task = TaskItem(
                     name=task["name"],
-                    item_id=TaskItem.generate_id(),
-                    is_checked=True,
+                    item_id=TaskItem.generate_id(is_special=task_is_special),
+                    is_checked=not task_is_special,  # 特殊任务默认不选中
                     task_option=self.default_option.get(task["name"], {}),
+                    is_special=task_is_special,
                 )
                 self.update_task(new_task)
                 return True
@@ -918,7 +934,11 @@ class ServiceCoordinator:
         return ok
 
     def update_task_checked(self, task_id: str, is_checked: bool) -> bool:
-        """仅更新任务的选中状态，不发射信号"""
+        """仅更新任务的选中状态，不发射信号
+        
+        特殊任务互斥规则:
+        - 如果选中的是特殊任务,则自动取消其他特殊任务的选中
+        """
         print(f"服务协调器: 调用 update_task_checked {task_id}, is_checked={is_checked}")
         config_id = self.config_service.current_config_id
         if not config_id:
@@ -930,15 +950,27 @@ class ServiceCoordinator:
             print("服务协调器: 未找到配置")
             return False
 
-        # 查找任务
+        # 查找目标任务
+        target_task = None
         for i, t in enumerate(config.tasks):
             if t.item_id == task_id:
                 print(f"服务协调器: 更新任务 {t.item_id} is_checked 从 {t.is_checked} 到 {is_checked}")
                 config.tasks[i].is_checked = is_checked
+                target_task = config.tasks[i]
                 break
         else:
             print(f"服务协调器: 未找到任务 {task_id}")
             return False
+
+        # 特殊任务互斥逻辑:如果选中的是特殊任务,取消其他特殊任务
+        unchecked_tasks = []
+        if target_task and target_task.is_special and is_checked:
+            print("服务协调器: 检测到特殊任务被选中,取消其他特殊任务")
+            for i, t in enumerate(config.tasks):
+                if t.item_id != task_id and t.is_special and t.is_checked:
+                    print(f"服务协调器: 取消特殊任务 {t.item_id} 的选中")
+                    config.tasks[i].is_checked = False
+                    unchecked_tasks.append(config.tasks[i])
 
         # 保存配置
         ok = self.config_service.update_config(config_id, config)
@@ -951,7 +983,11 @@ class ServiceCoordinator:
                     if t.item_id == task_id:
                         print(f"服务协调器: 保存的任务 {t.item_id} is_checked={t.is_checked}")
                         break
-            # 不发射信号
+            
+            # 如果有其他特殊任务被取消选中,发射信号通知UI更新
+            for task in unchecked_tasks:
+                self.fs_signal_bus.fs_task_modified.emit(task)
+                
         return ok
 
     def modify_tasks(self, tasks: List[TaskItem]) -> bool:

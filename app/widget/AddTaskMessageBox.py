@@ -184,6 +184,7 @@ class AddTaskDialog(BaseAddDialog):
     def __init__(
         self,
         task_map: dict[str, dict[str, dict]],
+        interface: dict | None = None,
         parent=None,
     ):
         # 调用基类构造函数，设置标题
@@ -197,6 +198,7 @@ class AddTaskDialog(BaseAddDialog):
         # 加载可用的任务名
         self.task_names = list(task_map.keys())
         self.task_map = task_map
+        self.interface = interface or {}
         self.load_task_names(self.task_names)
 
         self.task_layout.addWidget(self.task_label)
@@ -225,13 +227,22 @@ class AddTaskDialog(BaseAddDialog):
             self.show_error(self.tr("Task name cannot be empty"))
             return
 
+        # 检查任务是否为特殊任务
+        is_special = False
+        if self.interface:
+            for task in self.interface.get("task", []):
+                if task["name"] == self.task_name:
+                    is_special = task.get("spt", False)
+                    break
+
         # 创建 TaskItem 对象，匹配 core.TaskItem 数据结构
         task_option = self.task_map.get(self.task_name, {}) if isinstance(self.task_map, dict) else {}
         self.item = TaskItem(
             name=self.task_name,
-            item_id=TaskItem.generate_id(),
-            is_checked=True,
+            item_id=TaskItem.generate_id(is_special=is_special),
+            is_checked=not is_special,  # 特殊任务默认不选中
             task_option=task_option,
+            is_special=is_special,
         )
 
         # 接受对话框

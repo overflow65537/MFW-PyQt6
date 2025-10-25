@@ -129,6 +129,9 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
 
         self.add_button.clicked.connect(self.add_config)
         self.delete_button.clicked.connect(self.remove_config)
+        
+        # 设置配置列表标题
+        self.set_title(self.tr("Configurations"))
 
     def _init_task_list(self):
         """初始化配置列表"""
@@ -164,7 +167,7 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
             cfg_id = None
         if not cfg_id:
             return
-        # 调用服务删除即可，视图通过信号刷新
+        # 调用服务删除即可,视图通过信号刷新
         self.service_coordinator.delete_config(cfg_id)
 
 
@@ -181,9 +184,9 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         self.add_button.clicked.connect(self.add_task)
         # 删除按钮
         self.delete_button.clicked.connect(self.remove_selected_task)
-
-        # 监听配置切换事件以更新标题为配置名
-        self.core_signalBus.config_changed.connect(self._on_config_changed)
+        
+        # 设置任务列表标题
+        self.set_title(self.tr("Tasks"))
 
         # 初始填充任务列表
         # 不在工具栏直接刷新列表：视图会订阅 ServiceCoordinator 的信号自行更新
@@ -206,18 +209,13 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         """添加任务"""
         # 打开添加任务对话框
         task_map = getattr(self.service_coordinator.task, "default_option", {})
-        dlg = AddTaskDialog(task_map=task_map, parent=self.window())
+        interface = getattr(self.service_coordinator.task, "interface", {})
+        dlg = AddTaskDialog(task_map=task_map, interface=interface, parent=self.window())
         if dlg.exec():
             new_task = dlg.get_task_item()
             if new_task:
                 # 持久化到服务层
                 self.service_coordinator.modify_task(new_task)
-
-    def _on_config_changed(self, config_id: str):
-        """配置切换时更新标题为配置名"""
-        config = self.service_coordinator.config.get_config(config_id)
-        if config:
-            self.set_title(config.name)
 
     def remove_selected_task(self):
         cur = self.task_list.currentItem()
@@ -246,6 +244,9 @@ class OptionWidget(QWidget):
         self.core_signalBus.config_changed.connect(self._on_config_changed)
         self._init_ui()
         self._toggle_description(visible=False)
+        
+        # 设置选项面板标题
+        self.set_title(self.tr("Options"))
 
     def _init_ui(self):
         """初始化UI"""
@@ -389,7 +390,6 @@ class OptionWidget(QWidget):
 
     def reset(self):
         """重置选项区域和描述区域"""
-        self.set_title(self.tr("Options"))
         self._clear_options()
 
         self._toggle_description(visible=False)
@@ -412,7 +412,6 @@ class OptionWidget(QWidget):
         if not item:
             return
         if isinstance(item, TaskItem):
-            self.set_title(item.name)
             # 只展示任务选项
             self._show_task_option(item)
 
@@ -454,7 +453,7 @@ class OptionWidget(QWidget):
         if task_description:
             self._toggle_description(True)
             self.set_description(task_description)
-        for option in target_task["option"]:
+        for option in target_task.get("option", []):
             name, obj_name, options, current, icon_path, tooltip, option_tooltips = (
                 _get_task_info(interface, option, item)
             )
