@@ -515,10 +515,29 @@ class OptionWidget(QWidget):
         if target_task is None:
             logger.warning(f"未找到任务模板: {item.name}")
             return
+        
+        # 收集描述内容
+        descriptions = []
+        
+        # 添加任务描述
         task_description = target_task.get("description")
         if task_description:
+            descriptions.append(task_description)
+        
+        # 添加文档说明
+        task_doc = target_task.get("doc")
+        if task_doc:
+            descriptions.append(f"**文档说明：**\n\n{task_doc}")
+        
+        # 根据是否有描述内容决定是否显示描述区域
+        if descriptions:
             self._toggle_description(True)
-            self.set_description(task_description)
+            combined_description = "\n\n---\n\n".join(descriptions)
+            self.set_description(combined_description)
+        else:
+            # 没有任何描述内容时才关闭描述区域
+            self._toggle_description(False)
+        
         for option in target_task.get("option", []):
             name, obj_name, options, current, icon_path, tooltip, option_tooltips = (
                 _get_task_info(interface, option, item)
