@@ -645,7 +645,29 @@ class TaskService(ITaskService):
                     "option", {}
                 ).items():
                     if option == option_name:
-                        if option_template.get("default_case"):
+                        # 检查是否有 inputs 数组（多输入项类型，如自定义关卡）
+                        if "inputs" in option_template and isinstance(option_template.get("inputs"), list):
+                            # 为每个 input 生成默认值
+                            nested_values = {}
+                            for input_config in option_template["inputs"]:
+                                input_name = input_config.get("name")
+                                default_value = input_config.get("default", "")
+                                pipeline_type = input_config.get("pipeline_type", "string")
+                                
+                                # 根据 pipeline_type 转换默认值类型
+                                if pipeline_type == "int":
+                                    try:
+                                        default_value = int(default_value) if default_value else 0
+                                    except (ValueError, TypeError):
+                                        core_logger.warning(f"无法将默认值 '{default_value}' 转换为整数,保持原值")
+                                
+                                nested_values[input_name] = {
+                                    "value": default_value,
+                                    "type": "input"
+                                }
+                            default_option[task["name"]].update({option_name: nested_values})
+                        # 检查是否有 default_case
+                        elif option_template.get("default_case"):
                             default_option[task["name"]].update(
                                 {
                                     option_name: {
@@ -654,7 +676,8 @@ class TaskService(ITaskService):
                                     }
                                 }
                             )
-                        else:
+                        # 检查是否有 cases 且不为空
+                        elif option_template.get("cases") and len(option_template.get("cases", [])) > 0:
                             default_option[task["name"]].update(
                                 {
                                     option_name: {
