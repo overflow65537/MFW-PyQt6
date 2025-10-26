@@ -134,6 +134,9 @@ class TaskDragListWidget(BaseListWidget):
 
     def modify_task(self, task: TaskItem):
         """添加或更新任务项到列表（如果存在同 id 的任务则更新，否则新增）。"""
+        # 获取 interface 配置
+        interface = getattr(self.service_coordinator.task, "interface", None)
+        
         # 先尝试查找是否已有同 id 的项，若有则进行更新
         for i in range(self.count()):
             item = self.item(i)
@@ -143,15 +146,17 @@ class TaskDragListWidget(BaseListWidget):
                 and getattr(widget, "task", None) is not None
             ):
                 if widget.task.item_id == task.item_id:
-                    # 更新已有 widget 的数据并返回
+                    # 更新已有 widget 的数据
                     widget.task = task
-                    widget.name_label.setText(task.name)
+                    widget.interface = interface or {}
+                    # 使用 _get_display_name 获取显示名称
+                    widget.name_label.setText(widget._get_display_name())
                     widget.checkbox.setChecked(task.is_checked)
                     return
 
         # 否则按原有逻辑新增项
         list_item = QListWidgetItem()
-        task_widget = TaskListItem(task)
+        task_widget = TaskListItem(task, interface=interface)
         # 复选框状态变更信号
         task_widget.checkbox_changed.connect(self._on_task_checkbox_changed)
         # 基础任务禁止拖动

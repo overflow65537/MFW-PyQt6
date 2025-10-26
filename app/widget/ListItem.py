@@ -54,6 +54,13 @@ class BaseListItem(QWidget):
         label.setFixedHeight(34)
         label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         return label
+    
+    def _get_display_name(self):
+        """获取显示名称（优先使用 label，否则使用 name）
+        
+        仅在 TaskListItem 中重写，用于从 interface 获取 label
+        """
+        return self.item.name
 
     def _create_setting_button(self):
         # 子类可以重写此方法来自定义设置按钮
@@ -80,8 +87,9 @@ class BaseListItem(QWidget):
 class TaskListItem(BaseListItem):
     checkbox_changed = Signal(object)  # 发射 TaskItem 对象
 
-    def __init__(self, task: TaskItem, parent=None):
+    def __init__(self, task: TaskItem, interface: dict | None = None, parent=None):
         self.task = task
+        self.interface = interface or {}
         super().__init__(task, parent)
         
         # 通过 item_id 前缀判断是否为基础任务，禁用复选框
@@ -111,6 +119,30 @@ class TaskListItem(BaseListItem):
         self.setting_button = self._create_setting_button()
         self.setting_button.clicked.connect(self._select_in_parent_list)
         layout.addWidget(self.setting_button)
+
+    def _get_display_name(self):
+        """获取显示名称（从 interface 获取 label，否则使用 name）
+        
+        注意：保留 $ 前缀，它用于国际化标记
+        """
+        from app.utils.logger import logger
+        
+        if self.interface:
+            for task in self.interface.get("task", []):
+                if task["name"] == self.task.name:
+                    display_label = task.get("label", task.get("name", self.task.name))
+                    logger.info(f"任务显示: {self.task.name} -> {display_label}")
+                    return display_label
+        # 如果没有找到对应的 label，返回 name
+        logger.warning(f"任务未找到 label，使用 name: {self.task.name} (interface={bool(self.interface)})")
+        return self.task.name
+    
+    def _create_name_label(self):
+        """创建名称标签（使用 label 而不是 name）"""
+        label = ClickableLabel(self._get_display_name())
+        label.setFixedHeight(34)
+        label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        return label
 
     def on_checkbox_changed(self, state):
         # 复选框状态变更处理

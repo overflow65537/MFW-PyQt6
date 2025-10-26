@@ -212,15 +212,39 @@ class AddTaskDialog(BaseAddDialog):
         self.task_type = "task"
 
     def load_task_names(self, task_names):
-        """加载可用的任务名到下拉框"""
+        """加载可用的任务名到下拉框（显示label，存储name）
+        
+        注意：保留 $ 前缀，它用于国际化标记
+        """
         if task_names:
             # 清空下拉框
             self.task_combo.clear()
-            self.task_combo.addItems(task_names)
+            
+            # 构建显示文本（label）到任务名（name）的映射
+            self.display_to_name = {}
+            display_labels = []
+            
+            for task_name in task_names:
+                # 在 interface 中查找对应的 label
+                display_label = task_name  # 默认使用 name
+                if self.interface:
+                    for task in self.interface.get("task", []):
+                        if task["name"] == task_name:
+                            display_label = task.get("label", task.get("name", task_name))
+                            break
+                
+                display_labels.append(display_label)
+                self.display_to_name[display_label] = task_name
+            
+            self.task_combo.addItems(display_labels)
 
     def on_confirm(self):
         """确认添加任务"""
-        self.task_name = self.task_combo.currentText().strip()
+        # 获取选中的显示文本
+        selected_label = self.task_combo.currentText().strip()
+        
+        # 通过映射获取真实的任务名称（name）
+        self.task_name = self.display_to_name.get(selected_label, selected_label)
 
         # 验证输入
         if not self.task_name:
