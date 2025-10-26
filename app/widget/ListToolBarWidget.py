@@ -130,7 +130,7 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
 
         self.add_button.clicked.connect(self.add_config)
         self.delete_button.clicked.connect(self.remove_config)
-        
+
         # 设置配置列表标题
         self.set_title(self.tr("Configurations"))
 
@@ -185,7 +185,7 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         self.add_button.clicked.connect(self.add_task)
         # 删除按钮
         self.delete_button.clicked.connect(self.remove_selected_task)
-        
+
         # 设置任务列表标题
         self.set_title(self.tr("Tasks"))
 
@@ -211,7 +211,9 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         # 打开添加任务对话框
         task_map = getattr(self.service_coordinator.task, "default_option", {})
         interface = getattr(self.service_coordinator.task, "interface", {})
-        dlg = AddTaskDialog(task_map=task_map, interface=interface, parent=self.window())
+        dlg = AddTaskDialog(
+            task_map=task_map, interface=interface, parent=self.window()
+        )
         if dlg.exec():
             new_task = dlg.get_task_item()
             if new_task:
@@ -245,10 +247,10 @@ class OptionWidget(QWidget):
         self.core_signalBus.config_changed.connect(self._on_config_changed)
         self._init_ui()
         self._toggle_description(visible=False)
-        
+
         # 设置选项面板标题
         self.set_title(self.tr("Options"))
-        
+
         # 当前正在编辑的任务
         self.current_task: TaskItem | None = None
 
@@ -283,7 +285,7 @@ class OptionWidget(QWidget):
         # ==================== 描述区域 ==================== #
         # 创建描述标题（直接放在主布局中）
         self.description_title = BodyLabel("功能描述")
-        self.description_title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.description_title.setStyleSheet("font-size: 20px;")
         self.description_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         # 创建描述卡片
@@ -326,6 +328,13 @@ class OptionWidget(QWidget):
         # ==================== 分割器 ==================== #
         # 创建垂直分割器，实现可调整比例功能
         self.splitter = QSplitter(Qt.Orientation.Vertical)
+        self.splitter.setStyleSheet(
+            """
+            QSplitter::handle:vertical {
+                background: transparent;   
+            }
+            """
+        )
 
         # 创建选项区域容器（仅用于分割器）
         self.option_splitter_widget = QWidget()
@@ -406,7 +415,7 @@ class OptionWidget(QWidget):
         """收集当前所有选项控件的值并保存到配置"""
         if not self.current_task:
             return
-        
+
         # 递归查找所有控件的辅助函数
         def find_widgets_recursive(layout, widgets_list):
             """递归查找布局中的所有控件"""
@@ -414,18 +423,18 @@ class OptionWidget(QWidget):
                 item = layout.itemAt(i)
                 if not item:
                     continue
-                    
+
                 widget = item.widget()
                 if widget:
                     widgets_list.append(widget)
                 elif item.layout():
                     # 递归查找子布局
                     find_widgets_recursive(item.layout(), widgets_list)
-        
+
         # 收集所有控件
         all_widgets = []
         find_widgets_recursive(self.option_area_layout, all_widgets)
-        
+
         # 遍历所有控件，收集有 objectName 的选项控件
         updated_options = {}
         for widget in all_widgets:
@@ -433,28 +442,24 @@ class OptionWidget(QWidget):
             obj_name = widget.objectName()
             if not obj_name:
                 continue
-            
+
             # 根据控件类型获取值
             if isinstance(widget, (ComboBox, EditableComboBox)):
                 value = widget.currentText()
                 # 获取选项类型
-                option_type = "input" if isinstance(widget, EditableComboBox) else "select"
-                
-                updated_options[obj_name] = {
-                    "value": value,
-                    "type": option_type
-                }
+                option_type = (
+                    "input" if isinstance(widget, EditableComboBox) else "select"
+                )
+
+                updated_options[obj_name] = {"value": value, "type": option_type}
             elif isinstance(widget, LineEdit):
-                updated_options[obj_name] = {
-                    "value": widget.text(),
-                    "type": "input"
-                }
+                updated_options[obj_name] = {"value": widget.text(), "type": "input"}
             elif isinstance(widget, SwitchButton):
                 updated_options[obj_name] = {
                     "value": widget.isChecked(),
-                    "type": "switch"
+                    "type": "switch",
                 }
-        
+
         # 更新任务的 task_option
         if updated_options:
             self.current_task.task_option.update(updated_options)
@@ -515,20 +520,20 @@ class OptionWidget(QWidget):
         if target_task is None:
             logger.warning(f"未找到任务模板: {item.name}")
             return
-        
+
         # 收集描述内容
         descriptions = []
-        
+
         # 添加任务描述
         task_description = target_task.get("description")
         if task_description:
             descriptions.append(task_description)
-        
+
         # 添加文档说明
         task_doc = target_task.get("doc")
         if task_doc:
-            descriptions.append(f"**文档说明：**\n\n{task_doc}")
-        
+            descriptions.append(task_doc)
+
         # 根据是否有描述内容决定是否显示描述区域
         if descriptions:
             self._toggle_description(True)
@@ -537,7 +542,7 @@ class OptionWidget(QWidget):
         else:
             # 没有任何描述内容时才关闭描述区域
             self._toggle_description(False)
-        
+
         for option in target_task.get("option", []):
             name, obj_name, options, current, icon_path, tooltip, option_tooltips = (
                 _get_task_info(interface, option, item)
@@ -636,10 +641,10 @@ class OptionWidget(QWidget):
             combo_box = EditableComboBox()
         else:
             combo_box = ComboBox()
-        
+
         combo_box.setObjectName(obj_name)
         v_layout.setObjectName(f"{obj_name}_layout")
-        
+
         combo_box.addItems(options)
         if current:
             combo_box.setCurrentText(current)
@@ -702,10 +707,10 @@ class OptionWidget(QWidget):
             line_edit.installEventFilter(
                 ToolTipFilter(line_edit, 0, ToolTipPosition.TOP)
             )
-        
+
         # 连接值变化信号，自动保存选项
         line_edit.textChanged.connect(lambda: self._save_current_options())
-        
+
         self.option_area_layout.addLayout(v_layout)
 
     def _add_switch_option(
@@ -726,10 +731,10 @@ class OptionWidget(QWidget):
             label.installEventFilter(ToolTipFilter(label, 0, ToolTipPosition.TOP))
             switch.setToolTip(tooltip)
             switch.installEventFilter(ToolTipFilter(switch, 0, ToolTipPosition.TOP))
-        
+
         # 连接值变化信号，自动保存选项
         switch.checkedChanged.connect(lambda: self._save_current_options())
-        
+
         self.option_area_layout.addLayout(v_layout)
 
     def _clear_options(self):
