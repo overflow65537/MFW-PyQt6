@@ -1,6 +1,7 @@
 import json
 import re
 from pathlib import Path
+from typing import List
 
 import markdown
 from PySide6.QtCore import Qt
@@ -24,6 +25,8 @@ from qfluentwidgets import (
     EditableComboBox,
     LineEdit,
     SwitchButton,
+    PushButton,
+    PrimaryPushButton,
     FluentIcon as FIF,
 )
 
@@ -234,6 +237,16 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
 
 
 class OptionWidget(QWidget):
+    """选项面板控件
+    
+    负责显示任务的配置选项，支持：
+    - 普通任务选项（通过 interface.json 配置）
+    - 基础任务选项（控制器、资源、完成后设置）
+    - 嵌套选项、多输入项等复杂配置
+    """
+    
+    # ==================== 初始化 ==================== #
+    
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         super().__init__(parent)
         self.service_coordinator = service_coordinator
@@ -256,6 +269,8 @@ class OptionWidget(QWidget):
 
         # 当前正在编辑的任务
         self.current_task: TaskItem | None = None
+
+    # ==================== UI 初始化 ==================== #
 
     def _init_ui(self):
         """初始化UI"""
@@ -379,6 +394,8 @@ class OptionWidget(QWidget):
         self.main_layout.setContentsMargins(10, 10, 10, 10)
         self.main_layout.setSpacing(10)
 
+    # ==================== UI 辅助方法 ==================== #
+
     def _toggle_description(self, visible=None):
         """切换描述区域的显示/隐藏
         visible: True显示，False隐藏，None切换当前状态
@@ -414,6 +431,8 @@ class OptionWidget(QWidget):
 
         self.description_content.setText(html)
 
+    # ==================== 公共方法 ==================== #
+
     def reset(self):
         """重置选项区域和描述区域"""
         self._clear_options()
@@ -423,6 +442,12 @@ class OptionWidget(QWidget):
     def _on_config_changed(self, config_id: str):
         """配置切换时重置选项面板"""
         self.reset()
+
+    def set_title(self, title: str):
+        """设置标题"""
+        self.title_widget.setText(title)
+
+    # ==================== 选项数据管理 ==================== #
 
     def _save_current_options(self):
         """收集当前所有选项控件的值并保存到配置"""
@@ -532,9 +557,7 @@ class OptionWidget(QWidget):
             # 通过服务层保存
             self.service_coordinator.modify_task(self.current_task)
 
-    def set_title(self, title: str):
-        """设置标题"""
-        self.title_widget.setText(title)
+    # ==================== 任务选项显示 - 主入口 ==================== #
 
     def show_option(self, item_or_id: TaskItem | ConfigItem | str):
         """显示选项。参数可以是 task_id(str) 或 TaskItem/ConfigItem 对象。"""
@@ -548,8 +571,23 @@ class OptionWidget(QWidget):
         if isinstance(item, TaskItem):
             # 保存当前任务引用
             self.current_task = item
-            # 只展示任务选项
-            self._show_task_option(item)
+            
+            # 通过 item_id 前缀判断是否是基础任务
+            # 基础任务 ID 前缀: c_ (控制器), r_ (资源), f_ (完成后操作)
+            if item.item_id.startswith("c_"):
+                # 控制器基础任务
+                self._show_controller_option(item)
+            elif item.item_id.startswith("r_"):
+                # 资源基础任务
+                self._show_resource_option(item)
+            elif item.item_id.startswith("f_"):
+                # 完成后操作基础任务
+                self._show_post_task_setting_option(item)
+            else:
+                # 普通任务，使用默认显示
+                self._show_task_option(item)
+
+    # ==================== 普通任务选项显示 ==================== #
 
     def _show_task_option(self, item: TaskItem):
         """显示任务选项"""
@@ -775,8 +813,6 @@ class OptionWidget(QWidget):
         for option in target_task.get("option", []):
             _add_option_recursive(option)
 
-    from typing import List
-
     def Get_Task_List(self, interface: dict, target: str) -> List[str]:
         """根据选项名称获取所有case的name列表。
 
@@ -797,12 +833,216 @@ class OptionWidget(QWidget):
         lists.reverse()
         return lists
 
+    # ==================== 基础任务选项显示 ==================== #
+
     def _show_resource_option(self, item: TaskItem):
-        """显示资源选项"""
+        """显示资源选项 - 6个下拉框"""
         self._clear_options()
+        
+        # 设置标题
+        self.set_title(self.tr("Resource Settings"))
+        
+        # 获取 interface 配置
+        interface = getattr(self.task, "interface", None)
+        if not interface:
+            interface_path = Path.cwd() / "interface.json"
+            if not interface_path.exists():
+                logger.warning("未找到 interface.json 文件")
+                return
+            with open(interface_path, "r", encoding="utf-8") as f:
+                interface = json.load(f)
+        
+        # 获取资源列表
+        resources = interface.get("resource", [])
+        resource_options = [r.get("name", "") for r in resources if r.get("name")]
+        
+        # 如果没有资源配置，显示提示
+        if not resource_options:
+            label = BodyLabel(self.tr("No resource configuration found"))
+            self.option_area_layout.addWidget(label)
+            return
+        
+        # 获取当前保存的资源选项
+        saved_options = item.task_option
+        
+        # 创建6个资源下拉框
+        resource_fields = [
+            ("resource_1", self.tr("Resource Slot 1")),
+            ("resource_2", self.tr("Resource Slot 2")),
+            ("resource_3", self.tr("Resource Slot 3")),
+            ("resource_4", self.tr("Resource Slot 4")),
+            ("resource_5", self.tr("Resource Slot 5")),
+            ("resource_6", self.tr("Resource Slot 6")),
+        ]
+        
+        for field_name, field_label in resource_fields:
+            current_value = saved_options.get(field_name, {}).get("value", "")
+            
+            # 创建垂直布局
+            v_layout = QVBoxLayout()
+            v_layout.setObjectName(f"{field_name}_layout")
+            
+            # 标签
+            label = BodyLabel(field_label)
+            label.setStyleSheet("font-weight: bold;")
+            v_layout.addWidget(label)
+            
+            # 下拉框
+            combo = ComboBox()
+            combo.setObjectName(field_name)
+            combo.addItems([""] + resource_options)  # 添加空选项
+            if current_value:
+                combo.setCurrentText(current_value)
+            
+            # 连接信号
+            combo.currentTextChanged.connect(lambda: self._save_current_options())
+            
+            v_layout.addWidget(combo)
+            self.option_area_layout.addLayout(v_layout)
 
     def _show_controller_option(self, item: TaskItem):
+        """显示控制器选项 - 1个下拉框 + 1个按钮"""
         self._clear_options()
+        
+        # 设置标题
+        self.set_title(self.tr("Controller Settings"))
+        
+        # 获取 interface 配置
+        interface = getattr(self.task, "interface", None)
+        if not interface:
+            interface_path = Path.cwd() / "interface.json"
+            if not interface_path.exists():
+                logger.warning("未找到 interface.json 文件")
+                return
+            with open(interface_path, "r", encoding="utf-8") as f:
+                interface = json.load(f)
+        
+        # 获取控制器列表
+        controllers = interface.get("controller", [])
+        controller_options = [c.get("name", "") for c in controllers if c.get("name")]
+        
+        # 如果没有控制器配置，显示提示
+        if not controller_options:
+            label = BodyLabel(self.tr("No controller configuration found"))
+            self.option_area_layout.addWidget(label)
+            return
+        
+        # 获取当前保存的控制器选项
+        saved_options = item.task_option
+        current_controller = saved_options.get("controller", {}).get("value", "")
+        
+        # 控制器下拉框
+        v_layout = QVBoxLayout()
+        v_layout.setObjectName("controller_layout")
+        
+        label = BodyLabel(self.tr("Select Controller"))
+        label.setStyleSheet("font-weight: bold;")
+        v_layout.addWidget(label)
+        
+        combo = ComboBox()
+        combo.setObjectName("controller")
+        combo.addItems(controller_options)
+        if current_controller:
+            combo.setCurrentText(current_controller)
+        
+        # 连接信号
+        combo.currentTextChanged.connect(lambda: self._save_current_options())
+        
+        v_layout.addWidget(combo)
+        self.option_area_layout.addLayout(v_layout)
+        
+        # 添加连接/启动按钮
+        button_layout = QVBoxLayout()
+        button_layout.setObjectName("controller_button_layout")
+        
+        button_label = BodyLabel(self.tr("Actions"))
+        button_label.setStyleSheet("font-weight: bold;")
+        button_layout.addWidget(button_label)
+        
+        connect_button = PrimaryPushButton(self.tr("Connect Controller"))
+        connect_button.setObjectName("connect_controller_button")
+        connect_button.clicked.connect(lambda: self._on_controller_connect_clicked(combo.currentText()))
+        
+        button_layout.addWidget(connect_button)
+        self.option_area_layout.addLayout(button_layout)
+    
+    def _on_controller_connect_clicked(self, controller_name: str):
+        """控制器连接按钮点击事件"""
+        if not controller_name:
+            logger.warning("未选择控制器")
+            return
+        
+        logger.info(f"尝试连接控制器: {controller_name}")
+        # TODO: 实现实际的控制器连接逻辑
+        # 这里可以通过 service_coordinator 调用实际的连接方法
+
+    def _show_post_task_setting_option(self, item: TaskItem):
+        """显示完成后设置选项 - 2个下拉框"""
+        self._clear_options()
+        
+        # 设置标题
+        self.set_title(self.tr("Post-Task Settings"))
+        
+        # 获取当前保存的选项
+        saved_options = item.task_option
+        
+        # 第一个下拉框：完成后操作
+        post_action_layout = QVBoxLayout()
+        post_action_layout.setObjectName("post_action_layout")
+        
+        post_action_label = BodyLabel(self.tr("Action After Completion"))
+        post_action_label.setStyleSheet("font-weight: bold;")
+        post_action_layout.addWidget(post_action_label)
+        
+        post_action_combo = ComboBox()
+        post_action_combo.setObjectName("post_action")
+        post_action_options = [
+            self.tr("None"),
+            self.tr("Exit Program"),
+            self.tr("Shutdown Computer"),
+            self.tr("Hibernate Computer"),
+            self.tr("Sleep Computer"),
+        ]
+        post_action_combo.addItems(post_action_options)
+        
+        current_action = saved_options.get("post_action", {}).get("value", "")
+        if current_action:
+            post_action_combo.setCurrentText(current_action)
+        
+        post_action_combo.currentTextChanged.connect(lambda: self._save_current_options())
+        
+        post_action_layout.addWidget(post_action_combo)
+        self.option_area_layout.addLayout(post_action_layout)
+        
+        # 第二个下拉框：通知方式
+        notification_layout = QVBoxLayout()
+        notification_layout.setObjectName("notification_layout")
+        
+        notification_label = BodyLabel(self.tr("Notification Method"))
+        notification_label.setStyleSheet("font-weight: bold;")
+        notification_layout.addWidget(notification_label)
+        
+        notification_combo = ComboBox()
+        notification_combo.setObjectName("notification")
+        notification_options = [
+            self.tr("None"),
+            self.tr("System Notification"),
+            self.tr("Sound Alert"),
+            self.tr("Email Notification"),
+            self.tr("Webhook"),
+        ]
+        notification_combo.addItems(notification_options)
+        
+        current_notification = saved_options.get("notification", {}).get("value", "")
+        if current_notification:
+            notification_combo.setCurrentText(current_notification)
+        
+        notification_combo.currentTextChanged.connect(lambda: self._save_current_options())
+        
+        notification_layout.addWidget(notification_combo)
+        self.option_area_layout.addLayout(notification_layout)
+
+    # ==================== 选项控件创建 - 复杂控件 ==================== #
 
     def _add_multi_input_option(
         self,
@@ -945,6 +1185,8 @@ class OptionWidget(QWidget):
         else:
             self.option_area_layout.addLayout(main_layout)
 
+    # ==================== 选项控件创建 - 基础控件 ==================== #
+
     def _add_combox_option(
         self,
         name: str,
@@ -1066,6 +1308,8 @@ class OptionWidget(QWidget):
         # 如果需要返回控件，返回创建的ComboBox
         if return_widget:
             return combo_box
+
+    # ==================== 嵌套选项处理 ==================== #
 
     def _on_combox_changed(self, combo_box: ComboBox | EditableComboBox, text: str):
         """ComboBox值改变时的回调
@@ -1359,6 +1603,8 @@ class OptionWidget(QWidget):
 
         return v_layout
 
+    # ==================== 布局清理方法 ==================== #
+
     def _remove_nested_options(self, parent_option_name: str):
         """递归移除指定父级选项的所有嵌套选项（包括多层嵌套）
 
@@ -1405,6 +1651,8 @@ class OptionWidget(QWidget):
             elif item.layout():
                 self._clear_layout(item.layout())
 
+    # ==================== 选项控件创建 - 文本输入控件 ==================== #
+
     def _add_lineedit_option(
         self, name: str, current: str, tooltip: str = "", obj_name: str = ""
     ):
@@ -1430,6 +1678,8 @@ class OptionWidget(QWidget):
         line_edit.textChanged.connect(lambda: self._save_current_options())
 
         self.option_area_layout.addLayout(v_layout)
+
+    # ==================== 选项控件创建 - 开关控件 ==================== #
 
     def _add_switch_option(
         self, name: str, current: bool, tooltip: str = "", obj_name: str = ""
