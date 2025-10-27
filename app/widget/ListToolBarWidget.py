@@ -4,7 +4,6 @@ from pathlib import Path
 
 import markdown
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -29,6 +28,7 @@ from qfluentwidgets import (
 )
 
 from app.utils.logger import logger
+from app.utils.gui_helper import IconLoader
 
 
 from .ListWidget import TaskDragListWidget, ConfigListWidget
@@ -42,6 +42,9 @@ class BaseListToolBarWidget(QWidget):
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         super().__init__(parent)
         self.service_coordinator = service_coordinator
+        
+        # 创建图标加载器（仅 GUI 使用）
+        self.icon_loader = IconLoader(service_coordinator)
 
         self._init_title()
         self._init_selection()
@@ -237,6 +240,10 @@ class OptionWidget(QWidget):
         self.task = self.service_coordinator.task
         self.config = self.service_coordinator.config
         self.core_signalBus = self.service_coordinator.signal_bus
+        
+        # 创建图标加载器（仅 GUI 使用）
+        self.icon_loader = IconLoader(service_coordinator)
+        
         # 使用 task_selected 信号（由 ServiceCoordinator 触发）
         self.core_signalBus.task_selected.connect(self.show_option)
         # 监听配置切换以重置选项面板
@@ -834,7 +841,7 @@ class OptionWidget(QWidget):
         title_layout.setSpacing(5)
 
         # 添加图标（如果存在）
-        icon = QIcon(icon_path)
+        icon = self.icon_loader.load_icon(icon_path, size=16)
         if not icon.isNull():
             icon_label = BodyLabel()
             icon_label.setPixmap(icon.pixmap(16, 16))
@@ -969,7 +976,7 @@ class OptionWidget(QWidget):
         h_layout.setSpacing(5)
 
         # 创建图标标签（只在有图标时添加）
-        icon = QIcon(icon_path)
+        icon = self.icon_loader.load_icon(icon_path, size=16)
         if not icon.isNull():
             icon_label = BodyLabel()
             icon_label.setPixmap(icon.pixmap(16, 16))
@@ -1283,7 +1290,7 @@ class OptionWidget(QWidget):
         h_layout.setSpacing(5)
 
         # 创建图标标签（只在有图标时添加）
-        icon = QIcon(icon_path)
+        icon = self.icon_loader.load_icon(icon_path, size=16)
         if not icon.isNull():
             icon_label = BodyLabel()
             icon_label.setPixmap(icon.pixmap(16, 16))
