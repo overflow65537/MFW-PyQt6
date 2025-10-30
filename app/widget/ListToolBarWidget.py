@@ -39,6 +39,24 @@ from .AddTaskMessageBox import AddConfigDialog, AddTaskDialog
 from ..core.core import TaskItem, ConfigItem, ServiceCoordinator
 from .ListItem import TaskListItem, ConfigListItem
 
+# 导入任务选项模块的 Mixin
+from .task_management.task_options.utils.config_helper import ConfigHelperMixin
+from .task_management.task_options.utils.device_helper import DeviceHelperMixin
+from .task_management.task_options.utils.layout_helper import LayoutHelperMixin
+from .task_management.task_options.controller.adb import AdbControllerMixin
+from .task_management.task_options.controller.win32 import Win32ControllerMixin
+from .task_management.task_options.controller.common import ControllerCommonMixin
+from .task_management.task_options.resource_setting import ResourceSettingMixin
+from .task_management.task_options.task_options import TaskOptionsMixin
+from .task_management.task_options.widget_creators import WidgetCreatorsMixin
+from .task_management.task_options.nested_options import NestedOptionsMixin
+from .task_management.task_options.resource_option import ResourceOptionMixin
+from .task_management.task_options.post_task_option import PostTaskOptionMixin
+from .task_management.task_options.multi_input_option import MultiInputOptionMixin
+from .task_management.task_options.base import OptionWidgetBaseMixin
+
+
+
 
 class BaseListToolBarWidget(QWidget):
 
@@ -236,14 +254,47 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         self.service_coordinator.delete_task(task_id)
 
 
-class OptionWidget(QWidget):
+class OptionWidget(
+    QWidget,
+    ConfigHelperMixin,
+    DeviceHelperMixin,
+    LayoutHelperMixin,
+    AdbControllerMixin,
+    Win32ControllerMixin,
+    ControllerCommonMixin,
+    ResourceSettingMixin,
+    TaskOptionsMixin,
+    WidgetCreatorsMixin,
+    NestedOptionsMixin,
+    ResourceOptionMixin,
+    PostTaskOptionMixin,
+    MultiInputOptionMixin,
+    OptionWidgetBaseMixin,
+):
     """选项面板控件
     
     负责显示任务的配置选项，支持：
     - 普通任务选项（通过 interface.json 配置）
     - 基础任务选项（控制器、资源、完成后设置）
     - 嵌套选项、多输入项等复杂配置
+    
+    通过多重继承组合各个功能模块：
+    - ConfigHelperMixin: 配置保存和处理
+    - DeviceHelperMixin: 设备获取和填充
+    - LayoutHelperMixin: 布局清理工具
+    - AdbControllerMixin: ADB 控制器选项
+    - Win32ControllerMixin: Win32 控制器选项
+    - ControllerCommonMixin: 控制器通用选项
+    - ResourceSettingMixin: 资源设置页面
+    - TaskOptionsMixin: 任务选项显示
+    - WidgetCreatorsMixin: 控件创建器
+    - NestedOptionsMixin: 嵌套选项处理
+    - ResourceOptionMixin: 资源槽位选项
+    - PostTaskOptionMixin: 完成后设置选项
+    - MultiInputOptionMixin: 多输入项选项
+    - OptionWidgetBaseMixin: UI初始化和主入口
     """
+
     
     # ==================== 初始化 ==================== #
     
@@ -270,184 +321,18 @@ class OptionWidget(QWidget):
         # 当前正在编辑的任务
         self.current_task: TaskItem | None = None
 
-    # ==================== UI 初始化 ==================== #
+    # ==================== UI 初始化 (已迁移至 base.py) ==================== #
+    # _init_ui() 方法已迁移至 OptionWidgetBaseMixin
 
-    def _init_ui(self):
-        """初始化UI"""
-        self.main_layout = QVBoxLayout(self)
+    # ==================== UI 辅助方法 (已迁移至 base.py) ==================== #
+    # _toggle_description() 方法已迁移至 OptionWidgetBaseMixin
+    # set_description() 方法已迁移至 OptionWidgetBaseMixin
 
-        self.title_widget = BodyLabel()
-        self.title_widget.setStyleSheet("font-size: 20px;")
-        self.title_widget.setAlignment(Qt.AlignmentFlag.AlignLeft)
+    # ==================== 公共方法 (已迁移至 base.py) ==================== #
+    # reset() 方法已迁移至 OptionWidgetBaseMixin
+    # _on_config_changed() 方法已迁移至 OptionWidgetBaseMixin
+    # set_title() 方法已迁移至 OptionWidgetBaseMixin
 
-        # ==================== 选项区域 ==================== #
-        # 创建选项卡片
-        self.option_area_card = SimpleCardWidget()
-        self.option_area_card.setClickEnabled(False)
-        self.option_area_card.setBorderRadius(8)
-
-        # 创建滚动区域
-        self.option_area_widget = ScrollArea()
-        self.option_area_widget.setWidgetResizable(
-            True
-        )  # 重要:允许内部widget自动调整大小
-        # 禁用横向滚动
-        self.option_area_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        # 设置透明无边框
-        self.option_area_widget.setStyleSheet(
-            "background-color: transparent; border: none;"
-        )
-
-        # 创建一个容器widget来承载布局
-        option_container = QWidget()
-        self.option_area_layout = QVBoxLayout(option_container)  # 将布局关联到容器
-        self.option_area_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.option_area_layout.setContentsMargins(10, 10, 10, 10)  # 添加内边距
-
-        # 将容器widget设置到滚动区域
-        self.option_area_widget.setWidget(option_container)
-
-        # 创建一个垂直布局给卡片,然后将滚动区域添加到这个布局中
-        card_layout = QVBoxLayout()
-        card_layout.addWidget(self.option_area_widget)
-        card_layout.setContentsMargins(0, 0, 0, 0)
-        self.option_area_card.setLayout(card_layout)
-        # ==================== 描述区域 ==================== #
-        # 创建描述标题（直接放在主布局中）
-        self.description_title = BodyLabel("功能描述")
-        self.description_title.setStyleSheet("font-size: 20px;")
-        self.description_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
-
-        # 创建描述卡片
-        self.description_area_card = SimpleCardWidget()
-        self.description_area_card.setClickEnabled(False)
-        self.description_area_card.setBorderRadius(8)
-
-        # 正确的布局层次结构
-        self.description_area_widget = (
-            QWidget()
-        )  # 使用普通Widget作为容器，而不是ScrollArea
-        self.description_layout = QVBoxLayout(
-            self.description_area_widget
-        )  # 这个布局只属于widget
-        self.description_layout.setContentsMargins(10, 10, 10, 10)  # 设置适当的边距
-
-        # 描述内容区域
-        self.description_content = BodyLabel()
-        self.description_content.setWordWrap(True)
-        self.description_layout.addWidget(self.description_content)
-
-        self.description_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        # 创建滚动区域来包裹内容
-        self.description_scroll_area = ScrollArea()
-        self.description_scroll_area.setWidget(self.description_area_widget)
-        self.description_scroll_area.setWidgetResizable(True)
-        self.description_scroll_area.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
-        self.description_scroll_area.setStyleSheet(
-            "background-color: transparent; border: none;"
-        )
-
-        # 将滚动区域添加到卡片
-        card_layout = QVBoxLayout(self.description_area_card)
-        card_layout.setContentsMargins(0, 0, 0, 0)
-        card_layout.addWidget(self.description_scroll_area)
-
-        # ==================== 分割器 ==================== #
-        # 创建垂直分割器，实现可调整比例功能
-        self.splitter = QSplitter(Qt.Orientation.Vertical)
-        self.splitter.setStyleSheet(
-            """
-            QSplitter::handle:vertical {
-                background: transparent;   
-            }
-            """
-        )
-
-        # 创建选项区域容器（仅用于分割器）
-        self.option_splitter_widget = QWidget()
-        self.option_splitter_layout = QVBoxLayout(self.option_splitter_widget)
-        self.option_splitter_layout.addWidget(self.option_area_card)
-        self.option_splitter_layout.setContentsMargins(0, 0, 0, 0)
-
-        # 创建描述区域容器（仅用于分割器）
-        self.description_splitter_widget = QWidget()
-        self.description_splitter_layout = QVBoxLayout(self.description_splitter_widget)
-        self.description_splitter_layout.addWidget(self.description_title)
-        self.description_splitter_layout.addWidget(self.description_area_card)
-        # 设置占用比例
-        self.description_splitter_layout.setStretch(0, 1)  # 标题占用1单位
-        self.description_splitter_layout.setStretch(1, 99)  # 内容占用99单位
-        self.description_splitter_layout.setContentsMargins(0, 0, 0, 0)
-
-        # 添加到分割器
-        self.splitter.addWidget(self.option_splitter_widget)  # 上方：选项区域
-        self.splitter.addWidget(self.description_splitter_widget)  # 下方：描述区域
-
-        # 设置初始比例
-        self.splitter.setSizes([90, 10])  # 90% 和 10% 的初始比例
-
-        # 添加到主布局
-        self.main_layout.addWidget(self.title_widget)  # 直接添加标题
-        self.main_layout.addWidget(self.splitter)  # 添加分割器
-        # 添加主布局间距
-        self.main_layout.setContentsMargins(10, 10, 10, 10)
-        self.main_layout.setSpacing(10)
-
-    # ==================== UI 辅助方法 ==================== #
-
-    def _toggle_description(self, visible=None):
-        """切换描述区域的显示/隐藏
-        visible: True显示，False隐藏，None切换当前状态
-        """
-        if visible is None:
-            # 切换当前状态
-            visible = not self.description_splitter_widget.isVisible()
-
-        if visible:
-            self.description_splitter_widget.show()
-            # 恢复初始比例
-            self.splitter.setSizes([90, 10])
-        else:
-            self.description_splitter_widget.hide()
-            # 让选项区域占据全部空间
-            self.splitter.setSizes([100, 0])
-
-    def set_description(self, description: str):
-        """设置描述内容"""
-        self.description_content.setText("")
-
-        html = markdown.markdown(description).replace("\n", "")
-        html = re.sub(
-            r"<code>(.*?)</code>",
-            r"<span style='color: #009faa;'>\1</span>",
-            html,
-        )
-        html = re.sub(
-            r'(<a\s+[^>]*href="[^"]+"[^>]*)>', r'\1 style="color: #009faa;">', html
-        )
-        html = re.sub(r"<li><p>(.*?)</p></li>", r"<p><strong>◆ </strong>\1</p>", html)
-        html = re.sub(r"<ul>(.*?)</ul>", r"\1", html)
-
-        self.description_content.setText(html)
-
-    # ==================== 公共方法 ==================== #
-
-    def reset(self):
-        """重置选项区域和描述区域"""
-        self._clear_options()
-        self._toggle_description(visible=False)
-        self.current_task = None
-
-    def _on_config_changed(self, config_id: str):
-        """配置切换时重置选项面板"""
-        self.reset()
-
-    def set_title(self, title: str):
-        """设置标题"""
-        self.title_widget.setText(title)
 
     # ==================== 选项数据管理 ==================== #
 
@@ -785,287 +670,20 @@ class OptionWidget(QWidget):
         
         return result
 
-    # ==================== 任务选项显示 - 主入口 ==================== #
+    # ==================== 任务选项显示 - 主入口 (已迁移至 base.py 和 task_options.py) ==================== #
+    # show_option() 方法已迁移至 OptionWidgetBaseMixin
+    # _show_task_option() 方法已迁移至 TaskOptionsMixin
+    # _add_options_with_order() 方法已迁移至 TaskOptionsMixin
 
-    def show_option(self, item_or_id: TaskItem | ConfigItem | str):
-        """显示选项。参数可以是 task_id(str) 或 TaskItem/ConfigItem 对象。"""
-        self.reset()
-        # 如果传入的是 id，获取对象
-        item = item_or_id
-        if isinstance(item_or_id, str):
-            item = self.task.get_task(item_or_id)
-        if not item:
-            return
-        if isinstance(item, TaskItem):
-            # 保存当前任务引用
-            self.current_task = item
-            
-            # 通过 item_id 前缀判断是否是基础任务
-            # 基础任务 ID 前缀: r_ (资源设置), f_ (完成后操作)
-            if item.item_id.startswith("r_"):
-                # 资源设置基础任务（包含控制器和资源配置）
-                self._show_resource_setting_option(item)
-            elif item.item_id.startswith("f_"):
-                # 完成后操作基础任务
-                self._show_post_task_setting_option(item)
-            else:
-                # 普通任务，使用默认显示
-                self._show_task_option(item)
+    # ==================== 任务选项工具方法 (已迁移至 task_options.py) ==================== #
+    # Get_Task_List() 方法已迁移至 TaskOptionsMixin
 
-    # ==================== 普通任务选项显示 ==================== #
+    # ==================== 基础任务选项显示 (已迁移) ==================== #
+    # _show_resource_option() 方法已迁移至 ResourceOptionMixin
+    # _show_resource_setting_option() 方法已迁移至 ResourceSettingMixin
+    
+    # ==================== 资源设置回调方法 (已迁移至 resource_setting.py) ==================== #
 
-    def _show_task_option(self, item: TaskItem):
-        """显示任务选项"""
-
-        def _get_task_info(interface: dict, option: str, item: TaskItem):
-            name = interface["option"][option].get(
-                "label", interface["option"][option].get("name", option)
-            )
-            # option 本身就是键名，不需要再获取 name 字段
-            obj_name = option
-            options = self.Get_Task_List(interface, option)
-            current = self._get_option_value(item.task_option, option, None)
-            icon_path = interface["option"][option].get("icon", "")
-            tooltip = interface["option"][option].get("description", "")
-            option_tooltips = {}
-            for cases in interface["option"][option]["cases"]:
-                option_tooltips[cases["name"]] = cases.get("description", "")
-            return name, obj_name, options, current, icon_path, tooltip, option_tooltips
-
-        # TaskService stores interface in attribute 'interface'
-        interface = getattr(self.task, "interface", None)
-        if not interface:
-            # fallback load from file
-            interface_path = Path.cwd() / "interface.json"
-            if not interface_path.exists():
-                return
-            with open(interface_path, "r", encoding="utf-8") as f:
-                interface = json.load(f)
-        target_task = None
-        for task_template in interface["task"]:
-            if task_template["name"] == item.name:
-                target_task = task_template
-                break
-        if target_task is None:
-            logger.warning(f"未找到任务模板: {item.name}")
-            return
-
-        # 收集描述内容
-        descriptions = []
-
-        # 添加任务描述
-        task_description = target_task.get("description")
-        if task_description:
-            descriptions.append(task_description)
-
-        # 添加文档说明
-        task_doc = target_task.get("doc")
-        if task_doc:
-            descriptions.append(task_doc)
-
-        # 根据是否有描述内容决定是否显示描述区域
-        if descriptions:
-            self._toggle_description(True)
-            combined_description = "\n\n---\n\n".join(descriptions)
-            self.set_description(combined_description)
-        else:
-            # 没有任何描述内容时才关闭描述区域
-            self._toggle_description(False)
-
-        # 使用智能排序逻辑添加选项
-        # 主选项按照 task 的 option 数组顺序，嵌套选项紧随其父选项之后
-        self._add_options_with_order(target_task, interface, item)
-
-    def _add_options_with_order(
-        self, target_task: dict, interface: dict, item: TaskItem
-    ):
-        """按照智能顺序添加选项
-
-        主选项按 task.option 顺序添加，嵌套选项紧随其父选项
-
-        Args:
-            target_task: 任务模板配置
-            interface: 完整的 interface 配置
-            item: 当前任务项
-        """
-        added_options = set()  # 跟踪已添加的选项，避免重复
-
-        def _get_task_info(option: str):
-            """获取选项的显示信息和配置"""
-            option_config = interface["option"][option]
-            display_name = option_config.get("label", option_config.get("name", option))
-            obj_name = option
-            options = self.Get_Task_List(interface, option)
-            current = item.task_option.get(option, {}).get("value")
-            icon_path = option_config.get("icon", "")
-            tooltip = option_config.get("description", "")
-
-            # 收集选项提示信息
-            option_tooltips = {}
-            for case in option_config.get("cases", []):
-                option_tooltips[case["name"]] = case.get("description", "")
-
-            return (
-                display_name,
-                obj_name,
-                options,
-                current,
-                icon_path,
-                tooltip,
-                option_tooltips,
-                option_config,
-            )
-
-        def _get_current_case_config(option_name: str):
-            """获取选项当前选中的 case 配置
-
-            如果没有选中或找不到，返回第一个 case
-            """
-            option_config = interface["option"].get(option_name)
-            if not option_config:
-                return None
-
-            cases = option_config.get("cases", [])
-            if not cases:
-                return None
-
-            # 尝试获取当前值对应的 case
-            current_value = item.task_option.get(option_name, {}).get("value")
-            if current_value:
-                for case in cases:
-                    if case.get("name") == current_value:
-                        return case
-
-            # 默认返回第一个 case
-            return cases[0]
-
-        def _add_option_recursive(option_name: str, depth: int = 0):
-            """递归添加选项及其嵌套选项
-
-            Args:
-                option_name: 选项名称
-                depth: 递归深度，防止无限递归
-            """
-            # 防止重复添加和无限递归
-            if option_name in added_options or depth > 10:
-                return
-
-            added_options.add(option_name)
-
-            # 获取选项配置
-            option_config = interface["option"].get(option_name)
-            if not option_config:
-                logger.warning(f"未找到选项配置: {option_name}")
-                return
-
-            option_type = option_config.get("type", "select")
-            created_combo = None
-
-            # 根据选项类型创建对应的控件
-            if "inputs" in option_config and isinstance(
-                option_config.get("inputs"), list
-            ):
-                # 多输入项类型（如"自定义关卡"）
-                self._add_multi_input_option(option_name, option_config, item)
-            elif option_type == "input":
-                # 可编辑下拉框
-                (
-                    display_name,
-                    obj_name,
-                    options,
-                    current,
-                    icon_path,
-                    tooltip,
-                    option_tooltips,
-                    opt_cfg,
-                ) = _get_task_info(option_name)
-                created_combo = self._add_combox_option(
-                    display_name,
-                    obj_name,
-                    options,
-                    current,
-                    icon_path,
-                    editable=True,
-                    tooltip=tooltip,
-                    option_tooltips=option_tooltips,
-                    option_config=opt_cfg,
-                    skip_initial_nested=True,
-                    block_signals=True,
-                    return_widget=True,
-                )
-            else:
-                # 普通下拉框
-                (
-                    display_name,
-                    obj_name,
-                    options,
-                    current,
-                    icon_path,
-                    tooltip,
-                    option_tooltips,
-                    opt_cfg,
-                ) = _get_task_info(option_name)
-                created_combo = self._add_combox_option(
-                    display_name,
-                    obj_name,
-                    options,
-                    current,
-                    icon_path,
-                    editable=False,
-                    tooltip=tooltip,
-                    option_tooltips=option_tooltips,
-                    option_config=opt_cfg,
-                    skip_initial_nested=True,
-                    block_signals=True,
-                    return_widget=True,
-                )
-
-            # 处理嵌套选项
-            if (
-                created_combo
-                and option_type in ["select", "input"]
-                and option_config.get("cases")
-            ):
-                current_case = _get_current_case_config(option_name)
-                if current_case and "option" in current_case:
-                    current_value = item.task_option.get(option_name, {}).get("value")
-                    if current_value:
-                        self._update_nested_options(
-                            created_combo, current_value, recursive=True
-                        )
-
-        # 按照 task 的 option 数组顺序添加选项
-        for option in target_task.get("option", []):
-            _add_option_recursive(option)
-
-    def Get_Task_List(self, interface: dict, target: str) -> List[str]:
-        """根据选项名称获取所有case的name列表。
-
-        Args:
-            path (str): 配置文件路径。
-            target (str): 选项名称。
-
-        Returns:
-            list: 包含所有case的name列表。
-        """
-        lists = []
-        Task_Config = interface["option"][target]["cases"]
-        if not Task_Config:
-            return []
-        Lens = len(Task_Config) - 1
-        for i in range(Lens, -1, -1):
-            lists.append(Task_Config[i]["name"])
-        lists.reverse()
-        return lists
-
-    # ==================== 基础任务选项显示 ==================== #
-
-    def _show_resource_option(self, item: TaskItem):
-        """显示资源选项 - 6个下拉框"""
-        self._clear_options()
-        
-        # 获取 interface 配置
-        interface = getattr(self.task, "interface", None)
         if not interface:
             interface_path = Path.cwd() / "interface.json"
             if not interface_path.exists():
@@ -1098,7 +716,7 @@ class OptionWidget(QWidget):
         ]
         
         for field_name, field_label in resource_fields:
-            current_value = saved_options.get(field_name, {}).get("value", "")
+            current_value = saved_options.get(field_name, "")
             
             # 创建垂直布局
             v_layout = QVBoxLayout()
@@ -2376,7 +1994,7 @@ class OptionWidget(QWidget):
         ]
         post_action_combo.addItems(post_action_options)
         
-        current_action = saved_options.get("post_action", {}).get("value", "")
+        current_action = saved_options.get("post_action", "")
         if current_action:
             post_action_combo.setCurrentText(current_action)
         
@@ -2405,7 +2023,7 @@ class OptionWidget(QWidget):
         ]
         notification_combo.addItems(notification_options)
         
-        current_notification = saved_options.get("notification", {}).get("value", "")
+        current_notification = saved_options.get("notification", "")
         if current_notification:
             notification_combo.setCurrentText(current_notification)
         
@@ -2436,6 +2054,11 @@ class OptionWidget(QWidget):
             insert_index: 插入位置索引（作为嵌套选项时使用）
         """
         saved_data = item.task_option.get(option_name, {})
+        # multi_input 选项的值应该是字典，如果不是则重置为空字典
+        if not isinstance(saved_data, dict):
+            saved_data = {}
+            logger.warning(f"选项 '{option_name}' 的值不是字典，已重置为空字典")
+        
         main_description = option_config.get("description", "")
         main_label = option_config.get("label", option_name)
         icon_path = option_config.get("icon", "")
@@ -2483,13 +2106,15 @@ class OptionWidget(QWidget):
             verify_pattern = input_config.get("verify", "")
             pipeline_type = input_config.get("pipeline_type", "string")
 
-            # 获取当前值并进行类型转换
-            current_value = saved_data.get(input_name, {}).get("value", default_value)
+            # 获取当前值
+            current_value = saved_data.get(input_name, default_value)
+            
+            # 如果需要转换为整数
             if pipeline_type == "int" and isinstance(current_value, str):
                 try:
                     current_value = int(current_value) if current_value else 0
                     if input_name in saved_data:
-                        saved_data[input_name]["value"] = current_value
+                        saved_data[input_name] = current_value
                         need_save = True
                 except ValueError:
                     logger.warning(f"无法将 '{current_value}' 转换为整数，保持原值")
@@ -2773,9 +2398,7 @@ class OptionWidget(QWidget):
             # 获取当前任务的保存值
             current_value = None
             if self.current_task:
-                current_value = self.current_task.task_option.get(
-                    nested_option, {}
-                ).get("value")
+                current_value = self.current_task.task_option.get(nested_option, None)
 
             # 根据选项类型添加控件
             option_type = nested_option_config.get("type", "select")
@@ -2815,8 +2438,8 @@ class OptionWidget(QWidget):
                     option_tooltips,
                     nested_option_config,
                     depth=current_depth + 1,  # 子嵌套深度+1
+                    insert_index=insert_index,
                 )
-                self.option_area_layout.insertLayout(insert_index, v_layout)
                 insert_index += 1
 
                 # 仅在递归模式下加载子嵌套（初始加载时）
@@ -2855,8 +2478,8 @@ class OptionWidget(QWidget):
                     option_tooltips,
                     nested_option_config,
                     depth=current_depth + 1,  # 子嵌套深度+1
+                    insert_index=insert_index,
                 )
-                self.option_area_layout.insertLayout(insert_index, v_layout)
                 insert_index += 1
 
                 # 仅在递归模式下加载子嵌套（初始加载时）
@@ -2886,11 +2509,13 @@ class OptionWidget(QWidget):
         option_tooltips: dict,
         option_config: dict,
         depth: int = 1,
+        insert_index: int | None = None,
     ) -> QVBoxLayout:
         """创建嵌套选项的布局
 
         Args:
             depth: 嵌套深度（保留参数以保持接口兼容，但不再用于UI显示）
+            insert_index: 插入位置索引（作为嵌套选项时使用）
 
         Returns:
             创建的垂直布局
@@ -2965,6 +2590,11 @@ class OptionWidget(QWidget):
         combo_box.currentTextChanged.connect(
             lambda text: self._on_combox_changed(combo_box, text)
         )
+
+        # 添加到选项区域（支持指定插入位置）
+        if insert_index is not None:
+            self.option_area_layout.insertLayout(insert_index, v_layout)
+        # else: 不在这里添加，由调用者决定如何添加
 
         # 注意：不在这里自动加载子嵌套选项
         # 子嵌套的加载由以下两种情况触发：

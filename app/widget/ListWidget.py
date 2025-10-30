@@ -159,8 +159,8 @@ class TaskDragListWidget(BaseListWidget):
         task_widget = TaskListItem(task, interface=interface)
         # 复选框状态变更信号
         task_widget.checkbox_changed.connect(self._on_task_checkbox_changed)
-        # 基础任务禁止拖动
-        if task.item_id.startswith(("c_", "r_", "f_")):
+        # 基础任务禁止拖动（资源和完成后操作）
+        if task.item_id.startswith(("r_", "f_")):
             list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
         
         # 批量刷新时严格按传入顺序追加；单项新增时插入到倒数第二位
@@ -173,8 +173,8 @@ class TaskDragListWidget(BaseListWidget):
         self.setItemWidget(list_item, task_widget)
 
     def remove_task(self, task_id: str):
-        """移除任务项，基础任务不可移除"""
-        if task_id.startswith(("c_", "r_", "f_")):
+        """移除任务项，基础任务不可移除（资源和完成后操作）"""
+        if task_id.startswith(("r_", "f_")):
             return
         for i in range(self.count()):
             item = self.item(i)
@@ -196,10 +196,10 @@ class TaskDragListWidget(BaseListWidget):
 
     def _protected_positions(self, tasks: list[TaskItem]) -> dict[int, str]:
         """Remember base task ids that must stay in reserved slots."""
-        prefixes = ("c_", "r_", "f_")
+        prefixes = ("r_", "f_")  # 只保护资源和完成后操作
         if not tasks:
             return {}
-        positions = {0, 1, len(tasks) - 1}
+        positions = {0, len(tasks) - 1}  # 资源在第一位，完成后操作在最后
         protected: dict[int, str] = {}
         for idx in positions:
             if 0 <= idx < len(tasks):
@@ -277,7 +277,7 @@ class TaskDragListWidget(BaseListWidget):
 
     def _on_task_checkbox_changed(self, task: TaskItem):
         """复选框状态变更信号转发"""
-        if task.item_id.startswith(("c_", "r_", "f_")):
+        if task.item_id.startswith(("r_", "f_")):
             return
         self.service_coordinator.update_task_checked(task.item_id, task.is_checked)
 
@@ -289,7 +289,7 @@ class TaskDragListWidget(BaseListWidget):
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem):
                 # 排除基础任务和特殊任务
-                if not widget.task.item_id.startswith(("c_", "r_", "f_", "s_")) and not widget.task.is_special:
+                if not widget.task.item_id.startswith(("r_", "f_", "s_")) and not widget.task.is_special:
                     widget.checkbox.setChecked(True)
                     widget.task.is_checked = True
                     task_list.append(widget.task)
@@ -302,8 +302,8 @@ class TaskDragListWidget(BaseListWidget):
             item = self.item(i)
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem):
-                # 只排除基础任务
-                if not widget.task.item_id.startswith(("c_", "r_", "f_")):
+                # 只排除基础任务（资源和完成后操作）
+                if not widget.task.item_id.startswith(("r_", "f_")):
                     widget.checkbox.setChecked(False)
                     widget.task.is_checked = False
                     task_list.append(widget.task)

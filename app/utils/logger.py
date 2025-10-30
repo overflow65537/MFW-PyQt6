@@ -32,12 +32,12 @@ from logging.handlers import TimedRotatingFileHandler
 LOG_FORMAT = "[%(asctime)s][%(levelname)s][%(filename)s][L%(lineno)d][%(funcName)s] | %(message)s"
 
 class LoggerManager:
-    def __init__(self, log_file_path="debug/gui.log"):
+    def __init__(self, log_file_path="debug/cfa.log"):
         """
         初始化日志管理器。
 
         Args:
-            log_file_path (str): 日志文件的路径，默认为 "debug/gui.log"。
+            log_file_path (str): 日志文件的路径，默认为 "debug/cfa.log"。
         """
         self.logger = self._create_logger(log_file_path)
         # 关闭requests模块的日志输出

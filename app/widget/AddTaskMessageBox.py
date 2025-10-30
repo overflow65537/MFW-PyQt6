@@ -141,14 +141,8 @@ class AddConfigDialog(BaseAddDialog):
             self.show_error(self.tr("Resource bundle not found"))
             return
 
-        # 为配置创建三个基础任务，名称与 ConfigService 中默认一致
+        # 为配置创建基础任务（资源和完成后操作）
         default_tasks = [
-            TaskItem(
-                name="控制器",
-                item_id="c_" + TaskItem.generate_id()[2:],
-                is_checked=True,
-                task_option={},
-            ),
             TaskItem(
                 name="资源",
                 item_id="r_" + TaskItem.generate_id()[2:],

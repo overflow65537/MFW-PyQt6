@@ -1,56 +1,13 @@
 import uuid
 import json
-import logging
 import os
-from logging.handlers import TimedRotatingFileHandler
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from abc import ABC, abstractmethod
 
 from PySide6.QtCore import QObject, Signal
-
-
-# ==================== Core Logger ====================
-def _create_core_logger():
-    """创建 core 模块专用的 logger"""
-    logger = logging.getLogger("MFW.Core")
-    
-    # 避免重复添加 handler
-    if logger.handlers:
-        return logger
-    
-    logger.setLevel(logging.DEBUG)
-    
-    # 创建日志目录
-    log_dir = "debug"
-    os.makedirs(log_dir, exist_ok=True)
-    
-    # 文件处理器
-    log_file = os.path.join(log_dir, "core.log")
-    file_handler = TimedRotatingFileHandler(
-        log_file,
-        when="midnight",
-        backupCount=3,
-        encoding="utf-8",
-    )
-    
-    # 控制台处理器
-    stream_handler = logging.StreamHandler()
-    
-    # 设置格式
-    formatter = logging.Formatter(
-        "[%(asctime)s][%(levelname)s][%(filename)s][L%(lineno)d][%(funcName)s] | %(message)s"
-    )
-    file_handler.setFormatter(formatter)
-    stream_handler.setFormatter(formatter)
-    
-    logger.addHandler(file_handler)
-    logger.addHandler(stream_handler)
-    
-    return logger
-
-core_logger = _create_core_logger()
+from ..utils.logger import logger
 
 
 # ==================== 信号总线 ====================
@@ -383,12 +340,6 @@ class ConfigService(IConfigService):
             bundle = self._main_config.get("bundle", [])[0]
             default_tasks = [
                 TaskItem(
-                    name="控制器",
-                    item_id="c_" + TaskItem.generate_id()[2:],
-                    is_checked=True,
-                    task_option={},
-                ),
-                TaskItem(
                     name="资源",
                     item_id="r_" + TaskItem.generate_id()[2:],
                     is_checked=True,
@@ -647,7 +598,7 @@ class TaskService(ITaskService):
                     if option == option_name:
                         # 检查是否有 inputs 数组（多输入项类型，如自定义关卡）
                         if "inputs" in option_template and isinstance(option_template.get("inputs"), list):
-                            # 为每个 input 生成默认值
+                            # 为每个 input 生成默认值（直接值格式）
                             nested_values = {}
                             for input_config in option_template["inputs"]:
                                 input_name = input_config.get("name")
@@ -659,33 +610,23 @@ class TaskService(ITaskService):
                                     try:
                                         default_value = int(default_value) if default_value else 0
                                     except (ValueError, TypeError):
-                                        core_logger.warning(f"无法将默认值 '{default_value}' 转换为整数,保持原值")
+                                        logger.warning(f"无法将默认值 '{default_value}' 转换为整数,保持原值")
                                 
-                                nested_values[input_name] = {
-                                    "value": default_value,
-                                    "type": "input"
-                                }
+                                # 直接保存值，不包装在字典中
+                                nested_values[input_name] = default_value
                             default_option[task["name"]].update({option_name: nested_values})
-                        # 检查是否有 default_case
+                        # 检查是否有 default_case（直接保存值）
                         elif option_template.get("default_case"):
                             default_option[task["name"]].update(
                                 {
-                                    option_name: {
-                                        "value": option_template.get("default_case"),
-                                        "type": option_template.get("type", "select"),
-                                    }
+                                    option_name: option_template.get("default_case")
                                 }
                             )
-                        # 检查是否有 cases 且不为空
+                        # 检查是否有 cases 且不为空（直接保存值）
                         elif option_template.get("cases") and len(option_template.get("cases", [])) > 0:
                             default_option[task["name"]].update(
                                 {
-                                    option_name: {
-                                        "value": option_template.get("cases", [])[0][
-                                            "name"
-                                        ],
-                                        "type": option_template.get("type", "select"),
-                                    }
+                                    option_name: option_template.get("cases", [])[0]["name"]
                                 }
                             )
         return default_option
@@ -1046,8 +987,8 @@ class ServiceCoordinator:
         config = self.config_service.get_current_config()
         if not config:
             return False
-        # 基础任务 id 以 c_ r_ f_ 开头
-        base_prefix = ("c_", "r_", "f_")
+        # 基础任务 id 以 r_ f_ 开头（资源和完成后操作）
+        base_prefix = ("r_", "f_")
         for t in config.tasks:
             if t.item_id == task_id and t.item_id.startswith(base_prefix):
                 return False
