@@ -45,7 +45,8 @@ class OptionWidgetBaseMixin(MixinBase):
     
     def _init_ui(self):
         """初始化UI"""
-        self.main_layout = QVBoxLayout(self)
+        # type: ignore - Mixin 模式：运行时 self 是 OptionWidget(QWidget) 实例
+        self.main_layout = QVBoxLayout(self)  # type: ignore[arg-type]
 
         self.title_widget = BodyLabel()
         self.title_widget.setStyleSheet("font-size: 20px;")
@@ -148,8 +149,8 @@ class OptionWidgetBaseMixin(MixinBase):
         # 设置初始比例 (选项区域:描述区域 = 90:10)
         self.splitter.setSizes([90, 10])
 
-        # 设置最小尺寸，确保用户可以调整
-        self.splitter.setChildrenCollapsible(False)
+        # 允许子 widget 完全折叠，这样动画才能平滑收缩到 0
+        self.splitter.setChildrenCollapsible(True)
 
         # 将分割器添加到主布局
         self.main_layout.addWidget(self.splitter)
@@ -179,13 +180,13 @@ class OptionWidgetBaseMixin(MixinBase):
             # 基础任务 ID 前缀: r_ (资源设置), f_ (完成后操作)
             if item.item_id.startswith("r_"):
                 # 资源设置基础任务（包含控制器和资源配置）
-                self._show_resource_setting_option(item)
+                self._show_resource_setting_option(item)  # type: ignore[attr-defined]
             elif item.item_id.startswith("f_"):
                 # 完成后操作基础任务
-                self._show_post_task_setting_option(item)
+                self._show_post_task_setting_option(item)  # type: ignore[attr-defined]
             else:
                 # 普通任务，使用默认显示
-                self._show_task_option(item)
+                self._show_task_option(item)  # type: ignore[attr-defined]
 
     def reset(self):
         """重置选项区域和描述区域"""
@@ -208,25 +209,6 @@ class OptionWidgetBaseMixin(MixinBase):
             title: 标题文本
         """
         self.title_widget.setText(title)
-
-    def _toggle_description(self, visible=None):
-        """切换描述区域的显示/隐藏
-        
-        Args:
-            visible: True显示，False隐藏，None切换当前状态
-        """
-        if visible is None:
-            # 切换当前状态
-            visible = not self.description_splitter_widget.isVisible()
-
-        if visible:
-            self.description_splitter_widget.show()
-            # 恢复初始比例
-            self.splitter.setSizes([90, 10])
-        else:
-            self.description_splitter_widget.hide()
-            # 让选项区域占据全部空间
-            self.splitter.setSizes([100, 0])
 
     def set_description(self, description: str):
         """设置描述内容（支持 Markdown 格式）

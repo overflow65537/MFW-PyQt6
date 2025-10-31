@@ -53,6 +53,7 @@ from .task_management.task_options.nested_options import NestedOptionsMixin
 from .task_management.task_options.resource_option import ResourceOptionMixin
 from .task_management.task_options.post_task_option import PostTaskOptionMixin
 from .task_management.task_options.multi_input_option import MultiInputOptionMixin
+from .task_management.task_options.animation_mixin import AnimationMixin
 from .task_management.task_options.base import OptionWidgetBaseMixin
 
 
@@ -269,6 +270,7 @@ class OptionWidget(
     ResourceOptionMixin,
     PostTaskOptionMixin,
     MultiInputOptionMixin,
+    AnimationMixin,
     OptionWidgetBaseMixin,
 ):
     """选项面板控件
@@ -292,6 +294,7 @@ class OptionWidget(
     - ResourceOptionMixin: 资源槽位选项
     - PostTaskOptionMixin: 完成后设置选项
     - MultiInputOptionMixin: 多输入项选项
+    - AnimationMixin: 描述区域动画效果
     - OptionWidgetBaseMixin: UI初始化和主入口
     """
 
