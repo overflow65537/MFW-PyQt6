@@ -468,3 +468,5 @@ i18n.json
 .nicegui/storage-general.json
 interface.json
 main_config.json
+interface_en.json
+interface_zh.json

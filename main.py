@@ -47,6 +47,8 @@ from app.common.config import Language
 from app.common.__version__ import __version__
 from app.utils.tool import Save_Config
 from app.common.signal_bus import signalBus
+from app.utils.i18n_manager import init_interface_i18n, update_interface_language
+from pathlib import Path
 
 
 
@@ -132,6 +134,18 @@ if __name__ == "__main__":
         logger.info("加载英文翻译")
     app.installTranslator(translator)
     app.installTranslator(galleryTranslator)
+
+    # 初始化 interface.json 国际化管理器
+    interface_json_path = Path.cwd() / "interface.json"
+    if interface_json_path.exists():
+        try:
+            init_interface_i18n(interface_json_path)
+            update_interface_language()
+            logger.info("Interface.json 国际化系统初始化成功")
+        except Exception as e:
+            logger.error(f"Interface.json 国际化系统初始化失败: {e}")
+    else:
+        logger.warning("未找到 interface.json 文件，跳过国际化初始化")
 
     # 异步事件循环初始化
     loop = QEventLoop(app)

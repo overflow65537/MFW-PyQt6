@@ -38,6 +38,9 @@ class SignalBus(QObject):
     agent_info = Signal(dict) # 智能体信息
     infobar_message = Signal(dict) # 信息栏消息
     title_changed = Signal(str) # 窗口标题改变
+    
+    # 语言变化信号
+    language_changed = Signal()  # 语言改变信号
 
 
 

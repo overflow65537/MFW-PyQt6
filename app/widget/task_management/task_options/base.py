@@ -10,9 +10,10 @@ import markdown
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout
 from qfluentwidgets import (
-    SimpleCardWidget,
     BodyLabel,
     ScrollArea,
+    SimpleCardWidget,
+    StrongBodyLabel,
 )
 from app.utils.logger import logger
 from ._mixin_base import MixinBase
@@ -22,11 +23,10 @@ class OptionWidgetBaseMixin(MixinBase):
     """选项面板基础 Mixin
     
     提供选项面板的核心功能：
-    - UI 初始化（标题、选项区域、描述区域）
+    - UI 初始化（标题、选项区域）
     - 主入口方法（show_option）
     - 重置方法
-    - 描述区域的显示/隐藏切换
-    - 描述内容设置（Markdown 支持）
+    - 描述内容设置（在选项区域末尾显示，Markdown 支持）
     
     继承自 MixinBase，获得通用的类型提示，避免 Pylance 报错。
     运行时 `self` 指向 OptionWidget 实例，可访问其所有属性/方法。
@@ -84,76 +84,10 @@ class OptionWidgetBaseMixin(MixinBase):
         card_layout.addWidget(self.option_area_widget)
         card_layout.setContentsMargins(0, 0, 0, 0)
         self.option_area_card.setLayout(card_layout)
-        
-        # ==================== 描述区域 ==================== #
-        # 创建描述标题（直接放在主布局中）
-        self.description_title = BodyLabel(self.tr("Function Description"))
-        self.description_title.setStyleSheet("font-size: 20px;")
-        self.description_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
-        # 创建描述卡片
-        self.description_area_card = SimpleCardWidget()
-        self.description_area_card.setClickEnabled(False)
-        self.description_area_card.setBorderRadius(8)
-
-        # 正确的布局层次结构
-        self.description_area_widget = QWidget()  # 使用普通Widget作为容器
-        self.description_layout = QVBoxLayout(self.description_area_widget)
-        self.description_layout.setContentsMargins(10, 10, 10, 10)
-
-        # 描述内容区域
-        self.description_content = BodyLabel()
-        self.description_content.setWordWrap(True)
-        self.description_layout.addWidget(self.description_content)
-        self.description_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        # 创建滚动区域来包裹内容
-        self.description_scroll_area = ScrollArea()
-        self.description_scroll_area.setWidget(self.description_area_widget)
-        self.description_scroll_area.setWidgetResizable(True)
-        self.description_scroll_area.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
-        self.description_scroll_area.setStyleSheet(
-            "background-color: transparent; border: none;"
-        )
-
-        # 将滚动区域添加到描述卡片
-        description_card_layout = QVBoxLayout()
-        description_card_layout.addWidget(self.description_scroll_area)
-        description_card_layout.setContentsMargins(0, 0, 0, 0)
-        self.description_area_card.setLayout(description_card_layout)
-
-        # ==================== 使用 QSplitter 实现可调整大小的分割 ==================== #
-        from PySide6.QtWidgets import QSplitter, QVBoxLayout as QVBox
-        
-        # 创建上半部分的容器（包含标题和选项卡片）
-        self.option_splitter_widget = QWidget()
-        option_splitter_layout = QVBox(self.option_splitter_widget)
-        option_splitter_layout.addWidget(self.title_widget)
-        option_splitter_layout.addWidget(self.option_area_card)
-        option_splitter_layout.setContentsMargins(0, 0, 0, 0)
-
-        # 创建下半部分的容器（包含描述标题和描述卡片）
-        self.description_splitter_widget = QWidget()
-        description_splitter_layout = QVBox(self.description_splitter_widget)
-        description_splitter_layout.addWidget(self.description_title)
-        description_splitter_layout.addWidget(self.description_area_card)
-        description_splitter_layout.setContentsMargins(0, 0, 0, 0)
-
-        # 创建分割器并添加两个部分
-        self.splitter = QSplitter(Qt.Orientation.Vertical)
-        self.splitter.addWidget(self.option_splitter_widget)
-        self.splitter.addWidget(self.description_splitter_widget)
-
-        # 设置初始比例 (选项区域:描述区域 = 90:10)
-        self.splitter.setSizes([90, 10])
-
-        # 允许子 widget 完全折叠，这样动画才能平滑收缩到 0
-        self.splitter.setChildrenCollapsible(True)
-
-        # 将分割器添加到主布局
-        self.main_layout.addWidget(self.splitter)
+        # 添加标题和选项卡片到主布局
+        self.main_layout.addWidget(self.title_widget)
+        self.main_layout.addWidget(self.option_area_card)
 
     def show_option(self, item_or_id):
         """显示选项。参数可以是 task_id(str) 或 TaskItem/ConfigItem 对象。
@@ -189,9 +123,8 @@ class OptionWidgetBaseMixin(MixinBase):
                 self._show_task_option(item)  # type: ignore[attr-defined]
 
     def reset(self):
-        """重置选项区域和描述区域"""
+        """重置选项区域"""
         self._clear_options()
-        self._toggle_description(visible=False)
         self.current_task = None
 
     def _on_config_changed(self, config_id: str):
@@ -211,13 +144,23 @@ class OptionWidgetBaseMixin(MixinBase):
         self.title_widget.setText(title)
 
     def set_description(self, description: str):
-        """设置描述内容（支持 Markdown 格式）
+        """在选项区域最后添加描述内容（支持 Markdown 格式）
         
         Args:
             description: Markdown 格式的描述文本
         """
-        self.description_content.setText("")
-
+        if not description:
+            return
+        
+        # 添加分隔线和描述标题
+        self.option_area_layout.addSpacing(20)  # 添加间距
+        
+        description_title = StrongBodyLabel()
+        description_title.setText(self.tr("Description"))
+        self.option_area_layout.addWidget(description_title)
+        
+        self.option_area_layout.addSpacing(10)  # 标题和内容之间的间距
+        
         # 将 Markdown 转换为 HTML
         html = markdown.markdown(description).replace("\n", "")
         
@@ -232,5 +175,11 @@ class OptionWidgetBaseMixin(MixinBase):
         )
         html = re.sub(r"<li><p>(.*?)</p></li>", r"<p><strong>◆ </strong>\1</p>", html)
         html = re.sub(r"<ul>(.*?)</ul>", r"\1", html)
-
-        self.description_content.setText(html)
+        
+        # 直接创建描述内容标签
+        description_label = BodyLabel()
+        description_label.setWordWrap(True)
+        description_label.setText(html)
+        
+        # 添加到选项区域最后
+        self.option_area_layout.addWidget(description_label)

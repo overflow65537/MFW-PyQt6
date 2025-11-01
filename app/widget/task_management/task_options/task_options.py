@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import List
 from app.utils.logger import logger
+from app.utils.i18n_manager import get_interface_i18n
 from ._mixin_base import MixinBase
 
 
@@ -25,8 +26,7 @@ class TaskOptionsMixin(MixinBase):
     依赖的宿主类方法/属性：
     - self.task
     - self._get_option_value
-    - self._toggle_description
-    - self.set_description
+    - self.set_description (在选项区域末尾添加描述)
     - self._add_combox_option (在 WidgetCreatorsMixin 中)
     - self._add_multi_input_option (在 WidgetCreatorsMixin 中)
     """
@@ -37,15 +37,20 @@ class TaskOptionsMixin(MixinBase):
         Args:
             item: TaskItem 对象
         """
-        # 获取 interface 配置
+        # 获取 interface 配置（使用翻译后的数据）
         interface = getattr(self.task, "interface", None)
         if not interface:
-            # fallback 从文件加载
-            interface_path = Path.cwd() / "interface.json"
-            if not interface_path.exists():
-                return
-            with open(interface_path, "r", encoding="utf-8") as f:
-                interface = json.load(f)
+            try:
+                i18n = get_interface_i18n()
+                interface = i18n.get_translated_interface()
+            except Exception as e:
+                logger.error(f"获取翻译后的 interface.json 失败: {e}")
+                # 降级方案：直接加载原始 interface.json
+                interface_path = Path.cwd() / "interface.json"
+                if not interface_path.exists():
+                    return
+                with open(interface_path, "r", encoding="utf-8") as f:
+                    interface = json.load(f)
         
         # 查找任务模板
         target_task = None
@@ -68,16 +73,13 @@ class TaskOptionsMixin(MixinBase):
         if task_doc:
             descriptions.append(task_doc)
         
-        # 显示描述
+        # 先添加选项
+        self._add_options_with_order(target_task, interface, item)
+        
+        # 最后添加描述（如果有）
         if descriptions:
-            self._toggle_description(True)
             combined_description = "\n\n---\n\n".join(descriptions)
             self.set_description(combined_description)
-        else:
-            self._toggle_description(False)
-        
-        # 添加选项
-        self._add_options_with_order(target_task, interface, item)
     
     def _add_options_with_order(self, target_task, interface, item):
         """按照智能顺序添加选项

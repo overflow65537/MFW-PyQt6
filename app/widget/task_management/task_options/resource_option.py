@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QVBoxLayout
 from pathlib import Path
 import json
 from app.utils.logger import logger
+from app.utils.i18n_manager import get_interface_i18n
 from ._mixin_base import MixinBase
 
 
@@ -38,15 +39,21 @@ class ResourceOptionMixin(MixinBase):
         """
         self._clear_options()
         
-        # 获取 interface 配置
+        # 获取 interface 配置（使用翻译后的数据）
         interface = getattr(self.task, "interface", None)
         if not interface:
-            interface_path = Path.cwd() / "interface.json"
-            if not interface_path.exists():
-                logger.warning("未找到 interface.json 文件")
-                return
-            with open(interface_path, "r", encoding="utf-8") as f:
-                interface = json.load(f)
+            try:
+                i18n = get_interface_i18n()
+                interface = i18n.get_translated_interface()
+            except Exception as e:
+                logger.error(f"获取翻译后的 interface.json 失败: {e}")
+                # 降级方案：直接加载原始 interface.json
+                interface_path = Path.cwd() / "interface.json"
+                if not interface_path.exists():
+                    logger.warning("未找到 interface.json 文件")
+                    return
+                with open(interface_path, "r", encoding="utf-8") as f:
+                    interface = json.load(f)
         
         # 获取资源列表
         resources = interface.get("resource", [])

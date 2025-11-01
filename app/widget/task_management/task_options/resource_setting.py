@@ -9,6 +9,7 @@ from qfluentwidgets import (
 )
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout
 from app.utils.logger import logger
+from app.utils.i18n_manager import get_interface_i18n
 from ._mixin_base import MixinBase
 
 

@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 
 from PySide6.QtCore import QObject, Signal
 from ..utils.logger import logger
+from ..utils.i18n_manager import get_interface_i18n
 
 
 # ==================== 信号总线 ====================
@@ -250,11 +251,18 @@ class JsonConfigRepository(IConfigRepository):
             self.configs_dir.mkdir(parents=True)
 
         if not self.main_config_path.exists():
-            interface_path = Path.cwd() / "interface.json"
-            if not interface_path.exists():
-                raise FileNotFoundError(f"无有效资源 {interface_path}")
-            with open(interface_path, "r", encoding="utf-8") as f:
-                interface = json.load(f)
+            # 优先使用翻译后的 interface.json
+            try:
+                i18n = get_interface_i18n()
+                interface = i18n.get_translated_interface()
+                logger.debug("使用翻译后的 interface.json 创建默认配置")
+            except Exception as e:
+                logger.warning(f"获取翻译后的 interface.json 失败，使用原始文件: {e}")
+                interface_path = Path.cwd() / "interface.json"
+                if not interface_path.exists():
+                    raise FileNotFoundError(f"无有效资源 {interface_path}")
+                with open(interface_path, "r", encoding="utf-8") as f:
+                    interface = json.load(f)
 
             default_main_config = {
                 "curr_config_id": "",
@@ -525,11 +533,19 @@ class TaskService(ITaskService):
         if config_id:
             config = self.config_service.get_config(config_id)
             if config:
-                interface_path = Path.cwd() / "interface.json"
-                if not interface_path.exists():
-                    raise FileNotFoundError(f"无有效资源 {interface_path}")
-                with open(interface_path, "r", encoding="utf-8") as f:
-                    self.interface = json.load(f)
+                # 优先使用翻译后的 interface.json
+                try:
+                    i18n = get_interface_i18n()
+                    self.interface = i18n.get_translated_interface()
+                    logger.debug("使用翻译后的 interface.json")
+                except Exception as e:
+                    logger.warning(f"获取翻译后的 interface.json 失败，使用原始文件: {e}")
+                    # 降级方案：加载原始 interface.json
+                    interface_path = Path.cwd() / "interface.json"
+                    if not interface_path.exists():
+                        raise FileNotFoundError(f"无有效资源 {interface_path}")
+                    with open(interface_path, "r", encoding="utf-8") as f:
+                        self.interface = json.load(f)
                 self.current_tasks = config.tasks
                 self.know_task = config.know_task
                 self.default_option = self.gen_default_option()

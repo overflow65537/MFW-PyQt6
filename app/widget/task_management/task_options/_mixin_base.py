@@ -86,16 +86,6 @@ class OptionWidgetProtocol(Protocol):
         """QObject 的翻译方法（国际化）"""
         ...
     
-    # 动画相关方法（在 AnimationMixin 中）
-    def _toggle_description(self, visible: bool) -> None:
-        """切换描述显示（带动画）"""
-        ...
-    
-    def _animate_splitter(self, from_option: int, to_option: int, from_desc: int, 
-                          to_desc: int, duration: int = 300, on_finished: Any = None) -> None:
-        """动画调整 QSplitter 尺寸"""
-        ...
-    
     def set_description(self, description: str) -> None:
         """设置描述文本"""
         ...
@@ -214,16 +204,6 @@ class MixinBase:
         
         def tr(self, sourceText: str, /, disambiguation: str | None = None, n: int = -1) -> str:
             """QObject 的翻译方法（由宿主类 QObject 提供）"""
-            ...
-        
-        # 动画相关方法（在 AnimationMixin 中提供）
-        def _toggle_description(self, visible: bool) -> None:
-            """切换描述显示（带动画）（在 AnimationMixin 中提供）"""
-            ...
-        
-        def _animate_splitter(self, from_option: int, to_option: int, from_desc: int, 
-                              to_desc: int, duration: int = 300, on_finished: Any = None) -> None:
-            """动画调整 QSplitter 尺寸（在 AnimationMixin 中提供）"""
             ...
         
         def set_description(self, description: str) -> None:

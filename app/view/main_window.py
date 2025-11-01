@@ -57,6 +57,7 @@ from ..common.signal_bus import signalBus
 from ..utils.logger import logger
 from ..common.__version__ import __version__
 from ..core.core import ServiceCoordinator
+from ..utils.i18n_manager import update_interface_language
 
 class CustomSystemThemeListener(SystemThemeListener):
     def run(self):
@@ -89,6 +90,9 @@ class MainWindow(MSFluentWindow):
 
         # 启动主题监听器
         self.themeListener.start()
+        
+        # 连接信号
+        self.connectSignalToSlot()
 
         logger.info(" 主界面初始化完成。")
 
@@ -117,6 +121,19 @@ class MainWindow(MSFluentWindow):
         """连接信号到槽函数。"""
         signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
         signalBus.title_changed.connect(self.set_title)
+        
+        # 监听配置变化，处理语言切换
+        cfg.language.valueChanged.connect(self.onLanguageChanged)
+    
+    def onLanguageChanged(self, language):
+        """语言变化处理"""
+        logger.info(f"检测到语言变化: {language}")
+        try:
+            update_interface_language()
+            signalBus.language_changed.emit()
+            logger.info("Interface.json 语言已更新")
+        except Exception as e:
+            logger.error(f"更新 interface.json 语言失败: {e}")
 
     def is_admin(self):
         """判断是否为管理员权限"""
