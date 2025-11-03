@@ -1567,16 +1567,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         计算刷新时间
         """
-        last_run: QDateTime = QDateTime.fromString(last_run_str, "yyyy-MM-dd HH:mm:ss")
+        current_time = QDateTime.currentDateTime()  # 使用当前时间
         if schedule_mode == "daily":
             refresh_hour = refresh_time_cfg.get("H", 0)
-            if last_run.time().hour() >= refresh_time_cfg.get(
-                "H", 0
-            ):  # 如果当前时间已经过了刷新时间
-                refresh_time = last_run.addDays(1)
-            else:
-                refresh_time = last_run
-            refresh_time.setTime(QTime(refresh_hour, 0))
+            # 设置今天的刷新时间
+            refresh_time = QDateTime(current_time.date(), QTime(refresh_hour, 0))
+            
+            # 如果当前时间已经过了今天的刷新时间，则使用明天的刷新时间
+            if current_time >= refresh_time:
+                refresh_time = refresh_time.addDays(1)
+            
             return refresh_time
         elif schedule_mode == "weekly":
             return self.get_date_time_for_week_day_and_hour(
@@ -1585,21 +1585,39 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         elif schedule_mode == "monthly":
             refresh_day = refresh_time_cfg.get("d", 1)
             refresh_hour = refresh_time_cfg.get("H", 0)
-            if (
-                last_run.date().day() >= refresh_day
-                and last_run.time().hour() >= refresh_hour
-            ):
-                refresh_time = last_run.addMonths(1)
-            else:
-                refresh_time = last_run
-            refresh_time.setTime(QTime(refresh_hour, 0))
-            refresh_time.setDate(
-                QDate(
-                    refresh_time.date().year(), refresh_time.date().month(), refresh_day
-                )
+            
+            # 获取本月的刷新日期
+            year = current_time.date().year()
+            month = current_time.date().month()
+            
+            # 获取当月的最大天数
+            max_day = QDate(year, month, 1).daysInMonth()
+            # 如果设置的日期大于当月天数，使用当月最后一天
+            actual_day = min(refresh_day, max_day)
+            
+            # 设置本月的刷新时间
+            refresh_time = QDateTime(
+                QDate(year, month, actual_day),
+                QTime(refresh_hour, 0)
             )
+            
+            # 如果当前时间已经过了本月的刷新时间，则使用下月的刷新时间
+            if current_time >= refresh_time:
+                refresh_time = refresh_time.addMonths(1)
+                # 重新检查下个月的天数
+                next_max_day = refresh_time.date().daysInMonth()
+                if refresh_time.date().day() != min(refresh_day, next_max_day):
+                    # 调整到正确的日期
+                    refresh_time.setDate(
+                        QDate(
+                            refresh_time.date().year(),
+                            refresh_time.date().month(),
+                            min(refresh_day, next_max_day)
+                        )
+                    )
+            
             return refresh_time
-        return last_run
+        return current_time
 
     def update_speedrun_state(self, speedrun_cfg: SpeedrunConfig, remaining_loops: int):
         """
@@ -1647,6 +1665,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
 
         # 设置时间为指定的小时数
         target_date_time.setTime(QTime(target_hour, 0))
+
+        # 如果计算出的时间已经过去（同一天但时间已过），则推到下周
+        if target_date_time <= current_date_time:
+            target_date_time = target_date_time.addDays(7)
 
         return target_date_time
 
