@@ -267,8 +267,25 @@ def standard_update():
 
             # 重命名更新文件为备份文件
             if os.path.exists(update_file):
-                os.rename(update_file, update1_zip_name)
-                print(f"更新文件已重命名为: {update1_zip_name}")
+                # 如果目标备份文件已存在，先删除以避免重命名失败
+                if os.path.exists(update1_zip_name):
+                    try:
+                        os.remove(update1_zip_name)
+                        print(f"已删除旧的备份文件: {update1_zip_name}")
+                    except Exception as e:
+                        error_message = f"删除旧备份文件失败: {e}"
+                        log_error(error_message)
+                        print(error_message)
+                        # 删除失败则中止更新
+                        sys.exit(error_message)
+                
+                try:
+                    os.rename(update_file, update1_zip_name)
+                    print(f"更新文件已重命名为: {update1_zip_name}")
+                except Exception as e:
+                    error_message = f"重命名更新文件失败: {e}"
+                    log_error(error_message)
+                    sys.exit(error_message)
         else:
             error_message = "更新文件解压失败，更新已中止"
             log_error(error_message)
@@ -278,14 +295,22 @@ def standard_update():
 
     # 重启程序
     print("重启MFW程序...")
-    if sys.platform.startswith("win32"):
-        subprocess.Popen(".\\MFW.exe")
-    elif sys.platform.startswith("darwin"):
-        subprocess.Popen("./MFW")
-    elif sys.platform.startswith("linux"):
-        subprocess.Popen("./MFW")
-    else:
-        sys.exit("不支持的操作系统")
+    try:
+        if sys.platform.startswith("win32"):
+            subprocess.Popen(".\\MFW.exe")
+        elif sys.platform.startswith("darwin"):
+            subprocess.Popen("./MFW")
+        elif sys.platform.startswith("linux"):
+            subprocess.Popen("./MFW")
+        else:
+            error_message = "不支持的操作系统"
+            log_error(error_message)
+            sys.exit(error_message)
+    except Exception as e:
+        error_message = f"启动MFW程序失败: {e}"
+        log_error(error_message)
+        print(error_message)
+        sys.exit(error_message)
 
 
 def recovery_mode():
@@ -314,28 +339,51 @@ def recovery_mode():
         print("未找到恢复更新文件")
 
     # 重启程序
-    if sys.platform.startswith("win32"):
-        subprocess.Popen(".\\MFW.exe")
-    elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
-        subprocess.Popen("./MFW")
-    else:
-        sys.exit("不支持的操作系统")
-    print("程序已重启")
+    try:
+        if sys.platform.startswith("win32"):
+            subprocess.Popen(".\\MFW.exe")
+        elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
+            subprocess.Popen("./MFW")
+        else:
+            error_message = "不支持的操作系统"
+            log_error(error_message)
+            sys.exit(error_message)
+        print("程序已重启")
+    except Exception as e:
+        error_message = f"启动MFW程序失败: {e}"
+        log_error(error_message)
+        print(error_message)
+        sys.exit(error_message)
 
 
 if __name__ == "__main__":
-    # 清理错误日志
-    if os.path.exists("UPDATE_ERROR.log"):
-        os.remove("UPDATE_ERROR.log")
+    # 不再启动时删除旧日志，而是追加写入（便于排查历史错误）
+    # 在日志中记录本次更新开始
+    import time
+    log_entry = f"\n{'='*60}\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] 更新程序启动\n{'='*60}\n"
+    try:
+        with open("UPDATE_ERROR.log", "a", encoding="utf-8") as log_file:
+            log_file.write(log_entry)
+    except Exception:
+        pass  # 如果无法写入日志文件，继续执行
 
-    if len(sys.argv) > 1 and sys.argv[1] == "-update":
-        standard_update()
-    else:
-        mode = input("1. 更新模式 / Standard update\n2. 恢复模式 / Recovery update\n")
-        if mode == "1":
+    try:
+        if len(sys.argv) > 1 and sys.argv[1] == "-update":
             standard_update()
-        elif mode == "2":
-            recovery_mode()
         else:
-            print("无效输入 / Invalid input")
-            input("按回车键继续... / Press Enter to continue...")
+            mode = input("1. 更新模式 / Standard update\n2. 恢复模式 / Recovery update\n")
+            if mode == "1":
+                standard_update()
+            elif mode == "2":
+                recovery_mode()
+            else:
+                print("无效输入 / Invalid input")
+                input("按回车键继续... / Press Enter to continue...")
+    except Exception as e:
+        # 捕获所有未处理的异常并记录
+        error_message = f"更新程序发生未捕获的异常: {type(e).__name__}: {e}"
+        log_error(error_message)
+        print(f"\n{error_message}")
+        print("\n更新失败，请查看 UPDATE_ERROR.log 了解详情")
+        input("按回车键退出... / Press Enter to exit...")
+        sys.exit(1)
