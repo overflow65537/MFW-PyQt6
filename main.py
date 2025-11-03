@@ -151,6 +151,10 @@ if __name__ == "__main__":
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
+    # 初始化 GPU 信息缓存（在主窗口创建前）
+    from app.utils.gpu_cache import gpu_cache
+    gpu_cache.initialize()
+
     # 创建主窗口
     w = MainWindow()
     w.show()

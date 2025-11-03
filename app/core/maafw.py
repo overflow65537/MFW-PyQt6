@@ -51,6 +51,7 @@ import os
 import importlib.util
 from typing import List, Dict
 import subprocess
+from enum import Enum
 
 from asyncify import asyncify
 from maa.controller import AdbController, Win32Controller
@@ -59,16 +60,93 @@ from maa.agent_client import AgentClient
 from maa.resource import Resource
 from maa.toolkit import Toolkit, AdbDevice, DesktopWindow
 from maa.define import MaaAdbScreencapMethodEnum, MaaAdbInputMethodEnum
+from PySide6.QtCore import Signal, QObject
 
-from ..common.signal_bus import signalBus
 from ..utils.logger import logger
-from ..common.resource_config import res_cfg
 from ..common.config import cfg
 from ..utils.tool import Read_Config, path_to_list
 from ..utils.tool import ProcessThread
 
 
+class MaaFWMessageType(Enum):
+    """MaaFW 消息类型枚举"""
+
+    INFO = "info"
+    SUCCESS = "success"
+    FAIL = "fail"
+    WARNING = "warning"
+
+
+class MaaFWMessageCode(Enum):
+    """MaaFW 消息代码枚举
+
+    用于标识特定的消息类型，UI 层可以根据代码进行国际化翻译
+    """
+
+    # 自定义加载相关
+    CUSTOM_ACTION_LOAD_FAILED = "custom_action_load_failed"
+    CUSTOM_RECOGNIZER_LOAD_FAILED = "custom_recognizer_load_failed"
+    CUSTOM_LOAD_ERROR = "custom_load_error"
+
+    # 初始化相关
+    RESOURCE_NOT_INITIALIZED = "resource_not_initialized"
+    TASKER_NOT_INITIALIZED = "tasker_not_initialized"
+
+    # Agent 相关
+    AGENT_STARTING = "agent_starting"
+    AGENT_START_FAILED = "agent_start_failed"
+    AGENT_CONNECT_FAILED = "agent_connect_failed"
+    AGENT_CONNECTED = "agent_connected"
+
+
 # 以下代码引用自 MaaDebugger 项目的 ./src/MaaDebugger/maafw/__init__.py 文件，用于生成maafw实例
+class MaaFWSignal(QObject):
+    """MaaFW 信号发送辅助类
+
+    内部定义信号，用于向 UI 层发送消息。
+    使用枚举来标识消息类型和代码，UI 层可以根据枚举进行国际化处理。
+
+    信号格式：
+    {
+        "type": MaaFWMessageType,  # 消息类型枚举
+        "code": MaaFWMessageCode,  # 消息代码枚举
+        "args": list               # 消息参数（用于格式化翻译文本）
+    }
+    """
+
+    # 定义信号
+    message = Signal(dict)
+
+    def __init__(self):
+        super().__init__()
+
+    def emit_message(self, msg_type: MaaFWMessageType, code: MaaFWMessageCode, *args):
+        """发送消息
+
+        Args:
+            msg_type: 消息类型
+            code: 消息代码
+            *args: 消息参数（用于格式化翻译文本）
+        """
+        self.message.emit({"type": msg_type, "code": code, "args": list(args)})
+
+    def info(self, code: MaaFWMessageCode, *args):
+        """发送信息消息"""
+        self.emit_message(MaaFWMessageType.INFO, code, *args)
+
+    def success(self, code: MaaFWMessageCode, *args):
+        """发送成功消息"""
+        self.emit_message(MaaFWMessageType.SUCCESS, code, *args)
+
+    def fail(self, code: MaaFWMessageCode, *args):
+        """发送失败消息"""
+        self.emit_message(MaaFWMessageType.FAIL, code, *args)
+
+    def warning(self, code: MaaFWMessageCode, *args):
+        """发送警告消息"""
+        self.emit_message(MaaFWMessageType.WARNING, code, *args)
+
+
 class MaaFW:
 
     resource: Resource | None
@@ -80,14 +158,13 @@ class MaaFW:
     def __init__(self):
 
         Toolkit.init_option("./")
-        self.activate_resource = ""
-        self.need_register_report = True
         self.resource = None
         self.controller = None
         self.tasker = None
         self.notification_handler = None
         self.agent = None
         self.agent_thread = None
+        self.signal = MaaFWSignal()  # 信号发送器
 
     def change_log_path(self, new_path: str):
         """
@@ -102,70 +179,105 @@ class MaaFW:
         if new_path:
             self.tasker.set_log_dir(new_path)
 
-    def load_custom_objects(self, custom_dir):
+    def _load_custom_module(self, custom_file_path: str, custom_class_name: str):
+        """加载自定义模块并返回实例
+
+        Args:
+            custom_name: 自定义对象名称
+            custom_file_path: 模块文件路径
+            custom_class_name: 类名
+
+        Returns:
+            实例对象，加载失败返回 None
+        """
+        module_name = os.path.splitext(os.path.basename(custom_file_path))[0]
+
+        # 动态导入模块
+        spec = importlib.util.spec_from_file_location(module_name, custom_file_path)
+        if spec is None or spec.loader is None:
+            logger.error(f"无法加载模块 {module_name}")
+            return None
+
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        # 获取类对象并实例化
+        class_obj = getattr(module, custom_class_name)
+        return class_obj()
+
+    def _register_custom_object(self, custom_type: str, custom_name: str, instance):
+        """注册自定义对象
+
+        Args:
+            custom_type: 对象类型 ("action" 或 "recognition")
+            custom_name: 对象名称
+            instance: 对象实例
+        """
+        assert self.resource is not None, "self.resource 不应为 None"
+
+        if custom_type == "action":
+            success = self.resource.register_custom_action(custom_name, instance)
+            type_name = "动作"
+            code = MaaFWMessageCode.CUSTOM_ACTION_LOAD_FAILED
+        else:  # recognition
+            success = self.resource.register_custom_recognition(custom_name, instance)
+            type_name = "识别器"
+            code = MaaFWMessageCode.CUSTOM_RECOGNIZER_LOAD_FAILED
+
+        if success:
+            logger.info(f"加载自定义{type_name}: {custom_name}")
+        else:
+            logger.error(f"注册自定义{type_name}失败: {custom_name}")
+            self.signal.fail(code, custom_name)
+
+    def load_custom_objects(self, custom_dir: str):
+        """加载自定义对象
+
+        Args:
+            custom_dir: 自定义对象目录路径
+        """
+        # 检查目录
         if not os.path.exists(custom_dir):
             logger.warning(f"自定义文件夹 {custom_dir} 不存在")
             return
         if not os.listdir(custom_dir):
             logger.warning(f"自定义文件夹 {custom_dir} 为空")
             return
-        if os.path.exists(os.path.join(custom_dir, "custom.json")):
-            logger.info("配置文件方案")
-            custom_config: Dict[str, Dict] = Read_Config(
-                os.path.join(custom_dir, "custom.json")
-            )
-            for custom_name, custom in custom_config.items():
-                custom_type: str = custom.get("type", "")
-                custom_class_name: str = custom.get("class", "")
-                custom_file_path: str = custom.get("file_path", "")
-                if "{custom_path}" in custom_file_path:
-                    custom_file_path = custom_file_path.replace(
-                        "{custom_path}", custom_dir
-                    )
-                    custom_file_path = os.path.join(*path_to_list(custom_file_path))
 
-                if not all(
-                    [custom_type, custom_name, custom_class_name, custom_file_path]
-                ):
-                    logger.warning(f"配置项 {custom} 缺少必要信息，跳过")
-                    continue
-                module_name = os.path.splitext(os.path.basename(custom_file_path))[0]
-                # 动态导入模块
-                spec = importlib.util.spec_from_file_location(
-                    module_name, custom_file_path
-                )
-                if spec is None:
-                    logger.error(f"无法获取模块 {module_name} 的 spec，跳过加载")
-                    continue
-                module = importlib.util.module_from_spec(spec)
+        # 检查配置文件
+        config_path = os.path.join(custom_dir, "custom.json")
+        if not os.path.exists(config_path):
+            return
 
-                if spec.loader is None:
-                    logger.error(f"模块 {module_name} 的 loader 为 None，跳过加载")
-                    continue
-                spec.loader.exec_module(module)
+        logger.info("加载自定义配置文件")
+        custom_config: Dict[str, Dict] = Read_Config(config_path)
 
-                # 获取类对象
-                class_obj = getattr(module, custom_class_name)
+        for custom_name, custom in custom_config.items():
+            # 获取配置项
+            custom_type = custom.get("type", "")
+            custom_class_name = custom.get("class", "")
+            custom_file_path = custom.get("file_path", "")
 
-                # 实例化类
-                instance = class_obj()
+            # 处理路径占位符
+            if "{custom_path}" in custom_file_path:
+                custom_file_path = custom_file_path.replace("{custom_path}", custom_dir)
+                custom_file_path = os.path.join(*path_to_list(custom_file_path))
 
-                if custom_type == "action":
-                    assert self.resource is not None, "self.resource 不应为 None"
-                    if self.resource.register_custom_action(custom_name, instance):
-                        logger.info(f"加载自定义动作{custom_name}")
-                        if self.need_register_report:
-                            signalBus.custom_info.emit(
-                                {"type": "action", "name": custom_name}
-                            )
-                elif custom_type == "recognition":
-                    assert self.resource is not None, "self.resource 不应为 None"
-                    if self.resource.register_custom_recognition(custom_name, instance):
-                        logger.info(f"加载自定义识别器{custom_name}")
-                        if self.need_register_report:
-                            signalBus.custom_info.emit(
-                                {"type": "recognition", "name": custom_name}
-                            )
+            # 验证必要信息
+            if not all([custom_type, custom_name, custom_class_name, custom_file_path]):
+                logger.warning(f"配置项 {custom_name} 缺少必要信息，跳过")
+                continue
+
+            # 加载模块
+            instance = self._load_custom_module(custom_file_path, custom_class_name)
+            if instance is None:
+                continue
+
+            # 注册对象
+            if custom_type in ("action", "recognition"):
+                self._register_custom_object(custom_type, custom_name, instance)
+            else:
+                logger.warning(f"未知的自定义类型: {custom_type}")
 
     @staticmethod
     @asyncify
@@ -230,10 +342,9 @@ class MaaFW:
         return True
 
     @asyncify
-    def load_resource(self, dir: str) -> bool:
+    def load_resource(self, dir: str, gpu_index: int = -1) -> bool:
         if not self.resource:
             self.resource = Resource()
-        gpu_index = res_cfg.config.get("gpu", -1)
         if not isinstance(gpu_index, int):
             logger.warning("gpu_index 不是 int 类型，使用默认值 -1")
             gpu_index = -1
@@ -248,120 +359,113 @@ class MaaFW:
             self.resource.use_directml(gpu_index)
         return self.resource.post_bundle(dir).wait().succeeded
 
+    def start_agent(
+        self, child_exec: str, child_args: list[str], resource_path
+    ) -> bool:
+        """启动 Agent
+
+        Args:
+            child_exec: Agent 可执行文件路径
+            child_args: Agent 启动参数列表
+
+        Returns:
+            bool: 启动并连接成功返回 True，否则返回 False
+        """
+        if self.agent:
+            logger.warning("Agent 已经启动")
+            return True
+
+        assert self.resource is not None, "Resource 未初始化"
+
+        # 创建并绑定 Agent
+        self.agent = AgentClient()
+        self.agent.bind(self.resource)
+
+        # 获取 socket ID
+        socket_id = self.agent.identifier
+        if callable(socket_id):
+            socket_id = socket_id() or "maafw_socket_id"
+        elif socket_id is None:
+            socket_id = "maafw_socket_id"
+        socket_id = str(socket_id)
+
+        self.signal.info(MaaFWMessageCode.AGENT_STARTING)
+        logger.info(f"Agent 启动中: {child_exec}")
+
+        try:
+            # 获取 MAA 库路径
+            maa_bin = os.getenv("MAAFW_BINARY_PATH") or os.getcwd()
+
+            # 替换路径占位符
+            child_exec = child_exec.replace("{PROJECT_DIR}", resource_path)
+            child_args = [
+                arg.replace("{PROJECT_DIR}", resource_path) for arg in child_args
+            ]
+
+            logger.debug(
+                f"Agent 启动参数: {child_exec} {child_args} {maa_bin} {socket_id}"
+            )
+
+            # 启动 Agent 进程
+            if cfg.get(cfg.show_agent_cmd):
+                subprocess.Popen([child_exec, *child_args, maa_bin, socket_id])
+            else:
+                self.agent_thread = ProcessThread(
+                    child_exec, [*child_args, maa_bin, socket_id]
+                )
+                self.agent_thread.setObjectName("AgentThread")
+                self.agent_thread.start()
+
+            cfg.set(cfg.agent_path, child_exec)
+
+        except Exception as e:
+            logger.error(f"Agent 启动失败: {e}")
+            self.signal.fail(MaaFWMessageCode.AGENT_START_FAILED, str(e))
+            self.agent = None
+            return False
+
+        # 连接 Agent
+        if not self.agent.connect():
+            logger.error("Agent 连接失败")
+            self.signal.fail(MaaFWMessageCode.AGENT_CONNECT_FAILED)
+            self.agent = None
+            return False
+
+        logger.info("Agent 连接成功")
+        self.signal.success(MaaFWMessageCode.AGENT_CONNECTED)
+        return True
+
     @asyncify
     def run_task(self, entry: str, pipeline_override: dict = {}) -> bool:
         if not self.tasker:
             self.tasker = Tasker(notification_handler=self.notification_handler)
 
         if not self.resource or not self.controller:
-            signalBus.custom_info.emit({"type": "error_r"})
+            self.signal.fail(MaaFWMessageCode.RESOURCE_NOT_INITIALIZED)
             return False
 
         self.tasker.bind(self.resource, self.controller)
 
-        # 动态加载.py
-        if self.activate_resource != res_cfg.resource_name:
-            self.need_register_report = True
-        self.resource.clear_custom_recognition()
-        self.resource.clear_custom_action()
-        custom_dir = os.path.join(
-            res_cfg.resource_path,
-            "custom",
-        )
-        try:
-            self.load_custom_objects(custom_dir)
-        except Exception as e:
-            logger.error(f"加载自定义内容时发生错误: {e}")
-        self.activate_resource = res_cfg.resource_name
-        self.need_register_report = False
-
-        # agent加载
-        agent_data_raw = res_cfg.interface_config.get("agent", {})
-        if isinstance(agent_data_raw, list):
-            if agent_data_raw:
-                agent_data: dict = agent_data_raw[0]
-            else:
-                agent_data = {}
-                logger.warning("agent 配置为一个空列表，使用空字典作为默认值")
-        elif isinstance(agent_data_raw, dict):
-            agent_data = agent_data_raw
-        else:
-            agent_data = {}
-            logger.warning("agent 配置既不是字典也不是列表，使用空字典作为默认值")
-
-        if agent_data and agent_data.get("child_exec") and not self.agent:
-            self.agent = AgentClient()
-            self.agent.bind(self.resource)
-            socket_id = self.agent.identifier
-            if callable(socket_id):
-                socket_id = socket_id() or "maafw_socket_id"
-            elif socket_id is None:
-                socket_id = "maafw_socket_id"
-            socket_id = str(socket_id)
-            signalBus.custom_info.emit({"type": "agent_start"})
-            print("agent启动")
-            try:
-                maa_bin = os.getenv("MAAFW_BINARY_PATH")
-                if not maa_bin:
-                    maa_bin = os.getcwd()
-
-                child_exec = agent_data.get("child_exec", "").replace(
-                    "{PROJECT_DIR}", res_cfg.resource_path
-                )
-                child_args = agent_data.get("child_args", [])
-
-                for i in range(len(child_args)):
-                    if "{PROJECT_DIR}" in child_args[i]:
-                        child_args[i] = child_args[i].replace(
-                            "{PROJECT_DIR}", res_cfg.resource_path
-                        )
-                print(
-                    f"agent启动: {child_exec}\n参数{child_args}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
-                )
-
-                if cfg.get(cfg.show_agent_cmd):
-                    subprocess.Popen(
-                        [
-                            child_exec,
-                            *child_args,
-                            maa_bin,
-                            socket_id,
-                        ],
-                    )
-                else:
-                    self.agent_thread = ProcessThread(
-                        child_exec, [*child_args, maa_bin, socket_id]
-                    )
-                    self.agent_thread.setObjectName("AgentThread")
-                    self.agent_thread.start()
-                logger.debug(
-                    f"agent启动: {agent_data.get('child_exec', '').replace('{PROJECT_DIR}', res_cfg.resource_path)}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
-                )
-                cfg.set(cfg.agent_path, agent_data.get("child_exec"))
-
-            except Exception as e:
-                logger.error(f"agent启动失败: {e}")
-                signalBus.custom_info.emit({"type": "error_a"})
-            if not self.agent.connect():
-                logger.error(f"agent连接失败")
-                signalBus.custom_info.emit({"type": "error_c"})
-            print("cusotm加载完毕 ")
         if not self.tasker.inited:
-            signalBus.custom_info.emit({"type": "error_t"})
+            self.signal.fail(MaaFWMessageCode.TASKER_NOT_INITIALIZED)
             return False
-        self.tasker.set_save_draw(cfg.get(cfg.save_draw))
-        self.tasker.set_recording(cfg.get(cfg.recording))
         return self.tasker.post_task(entry, pipeline_override).wait().succeeded
+
+    def set_save_draw(self, save_draw: bool):
+        if self.tasker:
+            self.tasker.set_save_draw(save_draw)
+
+    def set_recording(self, recording: bool):
+        if self.tasker:
+            self.tasker.set_recording(recording)
 
     @asyncify
     def stop_task(self):
         if self.tasker:
             self.tasker.post_stop().wait()
-            print("任务停止")
             self.tasker = None
         if self.agent:
             self.agent.disconnect()
-            print("agent断开连接")
             self.agent = None
         if self.agent_thread:
             self.agent_thread.stop()

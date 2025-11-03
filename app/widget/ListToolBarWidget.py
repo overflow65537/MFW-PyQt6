@@ -51,7 +51,6 @@ from .task_management.task_options.resource_setting import ResourceSettingMixin
 from .task_management.task_options.task_options import TaskOptionsMixin
 from .task_management.task_options.widget_creators import WidgetCreatorsMixin
 from .task_management.task_options.nested_options import NestedOptionsMixin
-from .task_management.task_options.resource_option import ResourceOptionMixin
 from .task_management.task_options.post_task_option import PostTaskOptionMixin
 from .task_management.task_options.multi_input_option import MultiInputOptionMixin
 from .task_management.task_options.base import OptionWidgetBaseMixin
@@ -265,7 +264,6 @@ class OptionWidget(
     TaskOptionsMixin,
     WidgetCreatorsMixin,
     NestedOptionsMixin,
-    ResourceOptionMixin,
     PostTaskOptionMixin,
     MultiInputOptionMixin,
     OptionWidgetBaseMixin,
@@ -288,7 +286,6 @@ class OptionWidget(
     - TaskOptionsMixin: 任务选项显示
     - WidgetCreatorsMixin: 控件创建器
     - NestedOptionsMixin: 嵌套选项处理
-    - ResourceOptionMixin: 资源槽位选项
     - PostTaskOptionMixin: 完成后设置选项
     - MultiInputOptionMixin: 多输入项选项
     - OptionWidgetBaseMixin: UI初始化和主入口
@@ -415,6 +412,19 @@ class OptionWidget(
                         # 如果没有 userData（旧数据或手动输入），使用文本
                         if value is None:
                             value = widget.currentText()
+                    # 对于 GPU 选择下拉框，使用 userData 并保存为整数
+                    elif obj_name == "gpu":
+                        value = widget.currentData()
+                        # 确保是整数类型
+                        if value is not None:
+                            try:
+                                value = int(value)
+                            except (ValueError, TypeError):
+                                # 转换失败，使用默认值 -1
+                                value = -1
+                        else:
+                            # 没有 userData，使用默认值 -1
+                            value = -1
                     # 对于输入/截图方法下拉框，使用 userData 并保存为整数
                     elif obj_name in (
                         "adb_screenshot_method",
@@ -527,6 +537,11 @@ class OptionWidget(
         common_fields = [
             "controller_type",
             "resource",
+            "gpu",
+            "pre_launch_program",
+            "pre_launch_program_args",
+            "post_launch_program",
+            "post_launch_program_args",
         ]
 
         result = {}
@@ -686,7 +701,6 @@ class OptionWidget(
         # Get_Task_List() 方法已迁移至 TaskOptionsMixin
 
         # ==================== 基础任务选项显示 (已迁移) ==================== #
-        # _show_resource_option() 方法已迁移至 ResourceOptionMixin
         # _show_resource_setting_option() 方法已迁移至 ResourceSettingMixin
 
         # ==================== 资源设置回调方法 (已迁移至 resource_setting.py) ==================== #
@@ -1739,13 +1753,11 @@ class OptionWidget(
 
     def _show_controller_common_options(self, saved_options: dict):
         """显示控制器通用选项"""
+        # 先显示 GPU 选择下拉框
+        self._show_gpu_selection(saved_options)
+        
+        # 其他选项使用 LineEdit
         options = [
-            (
-                "gpu_selection",
-                self.tr("GPU Selection"),
-                "",
-                self.tr("GPU device to use"),
-            ),
             (
                 "pre_launch_program",
                 self.tr("Pre-Launch Program"),
@@ -1797,6 +1809,68 @@ class OptionWidget(
             v_layout.addWidget(line_edit)
 
             self.controller_common_options_layout.addLayout(v_layout)
+    
+    def _show_gpu_selection(self, saved_options: dict):
+        """显示 GPU 选择下拉框
+        
+        Args:
+            saved_options: 保存的选项字典（已展平）
+        """
+        from app.utils.gpu_cache import gpu_cache
+        
+        v_layout = QVBoxLayout()
+        v_layout.setObjectName("gpu_selection_layout")
+        
+        label = BodyLabel(self.tr("GPU Selection"))
+        combo = ComboBox()
+        combo.setObjectName("gpu")
+        combo.setMaximumWidth(400)
+        
+        # 添加基础选项（CPU 和 Auto），确保即使出现错误也有可用选项
+        combo.addItem("CPU")
+        combo.setItemData(combo.count() - 1, -2)
+        
+        combo.addItem(self.tr("Auto"))
+        combo.setItemData(combo.count() - 1, -1)
+        
+        # 从缓存获取 GPU 信息（已在启动时初始化，不会卡顿）
+        try:
+            gpu_info = gpu_cache.get_gpu_info()
+            if gpu_info:
+                logger.debug(f"从缓存获取 GPU 设备: {gpu_info}")
+                for gpu_id, gpu_name in sorted(gpu_info.items()):
+                    combo.addItem(f"GPU {gpu_id}: {gpu_name}")
+                    combo.setItemData(combo.count() - 1, gpu_id)
+        except Exception as e:
+            logger.warning(f"获取 GPU 信息时出现异常: {e}")
+        
+        # 设置当前值，默认为 -1 (Auto)
+        saved_gpu = self._get_option_value(saved_options, "gpu", -1)
+        
+        # 确保是整数类型
+        if isinstance(saved_gpu, str):
+            try:
+                saved_gpu = int(saved_gpu)
+            except (ValueError, TypeError):
+                saved_gpu = -1
+        
+        combo.blockSignals(True)
+        for i in range(combo.count()):
+            if combo.itemData(i) == saved_gpu:
+                combo.setCurrentIndex(i)
+                break
+        combo.blockSignals(False)
+        
+        combo.setToolTip(self.tr("GPU device to use for inference acceleration"))
+        label.setToolTip(self.tr("GPU device to use for inference acceleration"))
+        
+        # 连接信号
+        combo.currentIndexChanged.connect(lambda: self._save_current_options())
+        
+        v_layout.addWidget(label)
+        v_layout.addWidget(combo)
+        
+        self.controller_common_options_layout.addLayout(v_layout)
 
     def _populate_saved_device(self, saved_options: dict, controller_name: str):
         """从保存的配置中填充设备信息到下拉框

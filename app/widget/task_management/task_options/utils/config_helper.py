@@ -215,7 +215,13 @@ class ConfigHelperMixin(MixinBase):
         
         # 通用字段（不属于 adb 或 win32）
         common_fields = [
-            "controller_type", "resource",
+            "controller_type",
+            "resource",
+            "gpu",
+            "pre_launch_program",
+            "pre_launch_program_args",
+            "post_launch_program",
+            "post_launch_program_args",
         ]
         
         result = {}
