@@ -34,6 +34,7 @@ import asyncio
 import traceback
 import shutil
 import uuid
+from pathlib import Path
 from typing import Literal, Optional, List, Dict, Any
 from cryptography.fernet import Fernet
 import base64
@@ -51,40 +52,7 @@ from app.utils.logger import logger
 from ..common.signal_bus import signalBus
 
 
-def replace_ocr(path):
-    """替换OCR模型"""
-    bundle_dir1 = os.path.join(path, "resource", "base", "model", "ocr")
-    bundle_dir2 = os.path.join(path, "resource", "model", "ocr")
-    main_ocr_path = os.path.join(os.getcwd(), "MFW_resource", "model", "ocr")
-    if os.path.exists(os.path.dirname(bundle_dir1)):
-        if not os.path.exists(bundle_dir1):
-            logger.info("正在替换OCR模型旧模板...")
-            shutil.copytree(main_ocr_path, bundle_dir1, dirs_exist_ok=True)
-    elif os.path.exists(os.path.dirname(bundle_dir2)):
-        if not os.path.exists(bundle_dir2):
-            logger.info("正在替换OCR模型新模板...")
-            shutil.copytree(main_ocr_path, bundle_dir2, dirs_exist_ok=True)
-
-
-def show_error_message():
-    """显示错误信息的弹窗。将错误堆栈信息分页显示，并提供复制功能。"""
-    traceback_info = traceback.format_exc()
-    def copy_traceback():
-        """复制错误堆栈信息"""
-        import pyperclip
-        pyperclip.copy(traceback_info)
-
-    # 创建自定义对话框
-    dialog = Dialog("traceback info",traceback_info)
-    dialog.yesButton.clicked.connect(copy_traceback)
-    dialog.yesButton.setText(dialog.tr("copy traceback"))
-    dialog.cancelButton.hide()
-    dialog.setWindowIcon(QIcon("./MFW_resource/icon/ERROR.png"))
-    dialog.setMinimumSize(800, 600)
-    dialog.exec()
-
-
-def Read_Config(paths: str) -> Dict:
+def Read_Config(paths: Path|str) -> Dict:
     """读取指定路径的JSON配置文件。
 
     Args:
@@ -100,7 +68,8 @@ def Read_Config(paths: str) -> Dict:
             MAA_data = json.load(MAA_Config)
             return MAA_data
     else:
-        return {}
+        raise FileNotFoundError(f"配置文件 {paths} 不存在")
+
 
 
 def Save_Config(paths: str, data):
@@ -116,6 +85,20 @@ def Save_Config(paths: str, data):
     os.makedirs(directory, exist_ok=True)
     with open(paths, "w", encoding="utf-8") as MAA_Config:
         json.dump(data, MAA_Config, indent=4, ensure_ascii=False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def gui_init(
@@ -1209,52 +1192,7 @@ def get_override(origin_task_obj,interface_config):
         "entry":entry,
         "pipeline_override":override_options
     }
-class MyNotificationHandler(NotificationHandler):
 
-    def __init__(self, parent=None):
-        self.callbackSignal = signalBus
-
-    def on_controller_action(
-        self,
-        noti_type: NotificationType,
-        detail: NotificationHandler.ControllerActionDetail,
-    ):
-        self.callbackSignal.callback.emit(
-            {"name": "on_controller_action", "status": noti_type.value}
-        )
-
-    def on_tasker_task(
-        self, noti_type: NotificationType, detail: NotificationHandler.TaskerTaskDetail
-    ):
-
-        self.callbackSignal.callback.emit(
-            {"name": "on_tasker_task", "task": detail.entry, "status": noti_type.value}
-        )
-
-    def on_node_recognition(
-        self,
-        noti_type: NotificationType,
-        detail: NotificationHandler.NodeRecognitionDetail,
-    ):
-        focus_mapping = {
-            1: "start",
-            2: "succeeded",
-            3: "failed",
-        }
-        send_msg = {
-            "name": "on_task_recognition",
-            "task": detail.name,
-            "status": noti_type.value,
-            "focus": detail.focus.get(focus_mapping[noti_type.value], ""),
-        }
-        if (
-            detail.focus.get("aborted")
-            and not detail.focus.get(focus_mapping[1])
-            and not detail.focus.get(focus_mapping[2])
-            and not detail.focus.get(focus_mapping[3])
-        ):
-            send_msg["aborted"] = True
-        self.callbackSignal.callback.emit(send_msg)
 
 
 class ProcessThread(QThread):

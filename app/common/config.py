@@ -128,7 +128,7 @@ class Config(QConfig):
     auto_update_resource = ConfigItem(
         "Maa", "auto_update_resource", True, BoolValidator()
     )
-    auto_update_MFW = ConfigItem("Maa", "auto_update_MFW", False, BoolValidator())
+    auto_update_MFW = ConfigItem("Maa", "auto_update_MFW", True, BoolValidator())
     # 更新UI失败
     update_ui_failed = ConfigItem("Maa", "update_ui_failed", False, BoolValidator())
 
