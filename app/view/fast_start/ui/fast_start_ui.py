@@ -24,7 +24,8 @@ from qfluentwidgets import (
 from ....core.core import ServiceCoordinator
 from ....widget.DashboardCard import DashboardCard
 from .components.LogoutputWidget import LogoutputWidget
-from .components.ListToolBarWidget import TaskListToolBarWidget,ConfigListToolBarWidget,OptionWidget
+from .components.ListToolBarWidget import TaskListToolBarWidget,ConfigListToolBarWidget
+from .components.OptionWidget import OptionWidget
 from .components.StartBarWidget import StartBarWidget
 
 
