@@ -52,7 +52,7 @@ from ..utils.widget import (
 from ..utils.update import Update, UpdateSelf
 from ..utils.tool import Save_Config, for_config_get_url, decrypt, encrypt
 from ..utils.logger import logger
-from ..common.maa_config_data import maa_config_data
+from ..common.resource_config import maa_config_data
 from ..common.__version__ import __version__
 
 import subprocess
@@ -77,9 +77,6 @@ class SettingInterface(ScrollArea):
         self.__connectSignalToSlot()
         if not cfg.get(cfg.resource_exist):
             self.enable_widgets(False)
-        # 防止重复启动更新程序的标志（用于幂等性保护）
-        self._updater_started = False
-
         self.update_exist()
 
     def update_exist(self):
@@ -676,8 +673,7 @@ class SettingInterface(ScrollArea):
             )
         self.aboutCard.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(REPO_URL)))
         self.aboutCard.clicked2.connect(self.update_self_func)
-
-    def open_file_or_folder(self, path):
+    def open_file_or_folder(self,path):
         try:
             if sys.platform == "win32":
                 os.startfile(path)
@@ -691,7 +687,6 @@ class SettingInterface(ScrollArea):
                 logger.error(f"不支持的操作系统: {sys.platform}")
         except Exception as e:
             logger.error(f"打开 {path} 时出错: {e}")
-
     def open_debug_folder(self):
         """打开debug文件夹"""
         debug_path = os.path.join(".", "debug", maa_config_data.resource_name)
@@ -700,49 +695,66 @@ class SettingInterface(ScrollArea):
 
     def zip_debug_folder(self):
         """压缩debug文件夹"""
-        try:
-            debug_path = os.path.join(".", "debug", "maa.tem.log")
-            log_path = os.path.join(".", "debug", "maa.log")
-            log_bak_path = os.path.join(".", "debug", "maa.log.bak")
-            # 读取log_path中的maa.log和maa.log.bak并拼接,maa.log在后
-            maa_log = ""
-            if os.path.exists(log_bak_path):
-                with open(log_bak_path, "r", encoding="utf-8", errors="replace") as log_file:
-                    maa_log += log_file.read()
-            if os.path.exists(log_path):
-                with open(log_path, "r", encoding="utf-8", errors="replace") as log_file:
-                    maa_log += log_file.read()
+        debug_path = os.path.join(".", "debug", "maa.tem.log")
+        log_path = os.path.join(".", "debug", maa_config_data.resource_name, "maa.log")
+        log_bak_path = os.path.join(
+            ".", "debug", maa_config_data.resource_name, "maa.log.bak"
+        )
+        # 读取log_path中的maa.log和maa.log.bak并拼接,maa.log在后
+        maa_log = ""
+        if os.path.exists(log_bak_path):
+            with open(log_bak_path, "r", encoding="utf-8") as log_file:
+                maa_log += log_file.read()
+        if os.path.exists(log_path):
+            with open(log_path, "r", encoding="utf-8") as log_file:
+                maa_log += log_file.read()
+        if os.path.exists(debug_path):
+            os.remove(debug_path)
+        with open(debug_path, "w", encoding="utf-8") as log_file:
+            log_file.write(maa_log)
+
+        # 将maa.log和gui.log和vision文件夹和所有的png文件打包到一个zip中
+
+        zip_path = os.path.join(".", "debug", "debug" + ".zip")
+        if os.path.exists(zip_path):
+            os.remove(zip_path)
+        with zipfile.ZipFile(zip_path, "w") as zipf:
+            # 定义要添加到 zip 的文件和文件夹
+            files_to_add = ["maa.tem.log", "gui.log"]
+            folders_to_add = [os.path.join(os.getcwd(),"debug",maa_config_data.resource_name, "vision")]
+
+            # 添加单个文件
+            for file in files_to_add:
+                file_path = os.path.join(".", "debug", file)
+                if os.path.exists(file_path):
+                    # 写入文件时保留相对路径
+                    zipf.write(file_path, os.path.relpath(file_path, "."))
+
             if os.path.exists(debug_path):
                 os.remove(debug_path)
-            with open(debug_path, "w", encoding="utf-8") as log_file:
-                log_file.write(maa_log)
+                
+            # 添加文件夹及其内容
+            for folder in folders_to_add:
+                folder_path = os.path.join(".", "debug", folder)
+                if os.path.exists(folder_path):
+                    for root, dirs, files in os.walk(folder_path):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            # 写入文件时保留相对路径
+                            zipf.write(file_path, os.path.relpath(file_path, "."))
 
-            # 压缩debug文件夹中除了maa.log和maa.log.bak外的所有文件
+            # 遍历 debug 文件夹，将所有 png 文件添加到 zip 中
             debug_path = os.path.join(".", "debug")
-            # 压缩debug文件夹中除了maa.log和maa.log.bak外的所有文件
-            debug_zip_path = os.path.join(".", "debug", "debug" + ".zip")
-            if os.path.exists(debug_zip_path):
-                os.remove(debug_zip_path)
-            with zipfile.ZipFile(debug_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-                for root, dirs, files in os.walk(debug_path):
-                    for file in files:
-                        if file not in ["maa.log", "maa.log.bak", "debug.zip"]:
-                            zipf.write(
-                                os.path.join(root, file),
-                                os.path.relpath(os.path.join(root, file), debug_path),
-                            )
-            self.open_file_or_folder(debug_path)
+            for root, dirs, files in os.walk(debug_path):
+                for file in files:
+                    if file.endswith(".png"):
+                        file_path = os.path.join(root, file)
+                        # 写入文件时保留相对路径
+                        zipf.write(file_path, os.path.relpath(file_path, "."))
 
-
-            
-        except Exception as e:
-            InfoBar.error(
-                self.tr("Error"),
-                self.tr("Compression failed, please check the debug folder")+f":\n{e}",
-                duration=1500,
-                parent=self,
-            )
-
+        debug_zip_path = os.path.join(".", "debug")
+        if os.path.exists(debug_zip_path):
+            self.open_file_or_folder(debug_zip_path)
 
     def update_self_func(self):
         """更新程序。"""
@@ -771,14 +783,6 @@ class SettingInterface(ScrollArea):
 
     def update_self_start(self):
         """开始更新程序。"""
-        # 如果已经启动过更新程序，忽略重复调用（幂等保护）
-        if getattr(self, "_updater_started", False):
-            logger.info("更新程序已启动，忽略重复调用。")
-            return
-
-        # 标记为已启动，防止并发重复调用
-        self._updater_started = True
-
         # 重命名更新程序防止占用
         try:
             if sys.platform.startswith("win32"):
@@ -786,23 +790,13 @@ class SettingInterface(ScrollArea):
             elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
                 self._rename_updater("MFWUpdater", "MFWUpdater1")
         except Exception as e:
-            # 如果重命名失败，重置启动标志并报告错误
-            self._updater_started = False
             logger.error(f"重命名更新程序失败: {e}")
             signalBus.infobar_message.emit({"status": "failed", "msg": e})
             return
 
-        # 启动更新程序（子进程）
-        try:
-            self._start_updater()
-        except Exception as e:
-            # 启动失败则重置标志并报告错误
-            self._updater_started = False
-            logger.error(f"启动更新程序失败: {e}")
-            signalBus.infobar_message.emit({"status": "failed", "msg": e})
-            return
+        # 启动更新程序
+        self._start_updater()
 
-        # 启动成功后退出主程序
         QApplication.quit()
 
     def _rename_updater(self, old_name, new_name):
