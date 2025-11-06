@@ -190,6 +190,8 @@ class Config(QConfig):
         LanguageSerializer(),
         restart=True,
     )
+    
+    # Interface language (for i18n)
 
     # Material
     blurRadius = RangeConfigItem(

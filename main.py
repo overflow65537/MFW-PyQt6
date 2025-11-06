@@ -47,6 +47,7 @@ from app.common.config import Language
 from app.common.__version__ import __version__
 from app.utils.tool import Save_Config
 from app.common.signal_bus import signalBus
+from app.utils.i18n_manager import get_interface_i18n
 
 
 
@@ -118,24 +119,44 @@ if __name__ == "__main__":
     locale: ConfigItem = cfg.get(cfg.language)
     translator = FluentTranslator(locale.value)
     galleryTranslator = QTranslator()
+    
+    # 确定语言代码
+    language_code = "zh_cn"  # 默认中文
     if locale == Language.CHINESE_SIMPLIFIED:
         galleryTranslator.load(
             os.path.join(".", "MFW_resource", "i18n", "i18n.zh_CN.qm")
         )
+        language_code = "zh_cn"
         logger.info("加载简体中文翻译")
     elif locale == Language.CHINESE_TRADITIONAL:
         galleryTranslator.load(
             os.path.join(".", "MFW_resource", "i18n", "i18n.zh_HK.qm")
         )
+        language_code = "zh_hk"
         logger.info("加载繁体中文翻译")
     elif locale == Language.ENGLISH:
+        language_code = "en_us"
         logger.info("加载英文翻译")
     app.installTranslator(translator)
     app.installTranslator(galleryTranslator)
 
+    # 初始化 interface i18n（在应用启动时加载）
+    try:
+        interface_i18n = get_interface_i18n(language=language_code)
+        logger.info(f"Interface i18n 初始化完成，语言: {language_code}")
+    except Exception as e:
+        logger.warning(f"Interface i18n 初始化失败: {e}")
+
     # 异步事件循环初始化
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
+
+    # 初始化 GPU 信息缓存（在主窗口创建前）
+    try:
+        from app.utils.gpu_cache import gpu_cache
+        gpu_cache.initialize()
+    except Exception as e:
+        logger.warning(f"GPU 信息缓存初始化失败，忽略: {e}")
 
     # 创建主窗口
     w = MainWindow()

@@ -534,6 +534,13 @@ class OptionWidget(QWidget):
                         # 如果没有 userData（旧数据或手动输入），使用文本
                         if value is None:
                             value = widget.currentText()
+                    # 对于 GPU 选择下拉框，使用 userData 并保存为整数
+                    elif obj_name == "gpu":
+                        value = widget.currentData()
+                        # userData 应该已经是整数（-1, -2, 0, 1, ...）
+                        if value is None:
+                            # 如果没有 userData，默认使用 -1 (Auto)
+                            value = -1
                     # 对于输入/截图方法下拉框，使用 userData 并保存为整数
                     elif obj_name in ("adb_screenshot_method", "adb_input_method", 
                                      "win32_screenshot_method", "win32_input_method"):
@@ -640,7 +647,9 @@ class OptionWidget(QWidget):
         
         # 通用字段（不属于 adb 或 win32）
         common_fields = [
-            "controller_type", "resource",
+            "controller_type", "resource", "gpu",
+            "pre_launch_program", "pre_launch_program_args",
+            "post_launch_program", "post_launch_program_args",
         ]
         
         result = {}
@@ -2013,15 +2022,18 @@ class OptionWidget(QWidget):
     
     def _show_controller_common_options(self, saved_options: dict):
         """显示控制器通用选项"""
-        options = [
-            ("gpu_selection", self.tr("GPU Selection"), "", self.tr("GPU device to use")),
+        # GPU 选择下拉框（单独处理）
+        self._add_gpu_selection_option(saved_options)
+        
+        # 其他文本输入选项
+        text_options = [
             ("pre_launch_program", self.tr("Pre-Launch Program"), "", self.tr("Program to run before starting")),
             ("pre_launch_program_args", self.tr("Pre-Launch Program Args"), "", self.tr("Arguments for pre-launch program")),
             ("post_launch_program", self.tr("Post-Launch Program"), "", self.tr("Program to run after starting")),
             ("post_launch_program_args", self.tr("Post-Launch Program Args"), "", self.tr("Arguments for post-launch program")),
         ]
         
-        for obj_name, label_text, default_value, tooltip_text in options:
+        for obj_name, label_text, default_value, tooltip_text in text_options:
             v_layout = QVBoxLayout()
             v_layout.setObjectName(f"{obj_name}_layout")
             
@@ -2044,6 +2056,54 @@ class OptionWidget(QWidget):
             v_layout.addWidget(line_edit)
             
             self.controller_common_options_layout.addLayout(v_layout)
+    
+    def _add_gpu_selection_option(self, saved_options: dict):
+        """添加 GPU 选择下拉框
+        
+        Args:
+            saved_options: 保存的选项
+        """
+        from app.utils.gpu_cache import gpu_cache
+        
+        v_layout = QVBoxLayout()
+        v_layout.setObjectName("gpu_selection_layout")
+        
+        label = BodyLabel(self.tr("GPU Selection"))
+        label.setToolTip(self.tr("Select GPU device to use for inference"))
+        
+        combo = ComboBox()
+        combo.setObjectName("gpu")  # 保存到 "gpu" 字段
+        combo.setMaximumWidth(400)
+        
+        # 添加特殊选项
+        combo.addItem("Auto")
+        combo.setItemData(combo.count() - 1, -1)
+        combo.addItem("CPU Only")
+        combo.setItemData(combo.count() - 1, -2)
+        
+        # 添加 GPU 设备
+        gpu_info = gpu_cache.get_gpu_info()
+        if gpu_info:
+            for gpu_id, gpu_name in sorted(gpu_info.items()):
+                display_text = f"GPU {gpu_id}: {gpu_name}"
+                combo.addItem(display_text)
+                combo.setItemData(combo.count() - 1, gpu_id)
+        
+        # 设置当前值
+        current_gpu = saved_options.get("gpu", -1)
+        if current_gpu is not None:
+            # 查找对应的索引
+            for i in range(combo.count()):
+                if combo.itemData(i) == current_gpu:
+                    combo.setCurrentIndex(i)
+                    break
+        
+        # 连接信号
+        combo.currentIndexChanged.connect(lambda: self._save_current_options())
+        
+        v_layout.addWidget(label)
+        v_layout.addWidget(combo)
+        self.controller_common_options_layout.addLayout(v_layout)
     
     def _populate_saved_device(self, saved_options: dict, controller_name: str):
         """从保存的配置中填充设备信息到下拉框
