@@ -24,6 +24,7 @@ MFW-ChainFlow Assistant 工具
 
 import os
 import json
+import jsonc
 import re
 import subprocess
 import sys
@@ -97,7 +98,7 @@ def Read_Config(paths: str) -> Dict:
 
     if os.path.exists(paths):
         with open(paths, "r", encoding="utf-8") as MAA_Config:
-            MAA_data = json.load(MAA_Config)
+            MAA_data = jsonc.load(MAA_Config)
             return MAA_data
     else:
         return {}
@@ -694,7 +695,7 @@ def get_controller_type(select_value: str, interface_path: str) -> str | None:
     if not data:
         return None
     for i in data["controller"]:
-        if i["name"] == select_value or i["name"] == select_value[:-4]:
+        if i["name"] == select_value or f"{i['name']}_{i['type']}" == select_value:
             return i["type"]
     return None
 

@@ -10,3 +10,4 @@ cryptography
 markdown
 chardet
 pyperclip
+json-with-comments
