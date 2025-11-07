@@ -1486,49 +1486,46 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             if speedrun_cfg.get("enabled", False):
                 logger.info(f"{self.entry}速通启用")
 
-                # 通用配置提取
                 schedule_mode = speedrun_cfg.get("schedule_mode")
                 interval_cfg = speedrun_cfg.get("interval", {})
                 refresh_time_cfg = speedrun_cfg.get("refresh_time", {})
                 last_run_str = speedrun_cfg.get("last_run", "1970-01-01 00:00:00")
 
-                # 下次运行时间
+                # 周期边界
+                cycle_start, next_cycle_start = self.compute_cycle_bounds(schedule_mode, refresh_time_cfg)
+                # 下次运行时间（基于间隔）
                 next_run = self.calculate_next_run_time(last_run_str, interval_cfg)
-                # 刷新时间
-                refresh_time = self.calculate_refresh_time(
-                    schedule_mode, refresh_time_cfg, last_run_str
-                )
 
                 logger.info(f"任务[{self.entry}]上次运行时间: {last_run_str}")
-                logger.info(
-                    f"任务[{self.entry}]下次运行时间: {next_run.toString('yyyy-MM-dd HH:mm:ss')}"
-                )
-                logger.info(
-                    f"任务[{self.entry}]刷新时间: {refresh_time.toString('yyyy-MM-dd HH:mm:ss')}"
-                )
+                logger.info(f"任务[{self.entry}]下次运行时间: {next_run.toString('yyyy-MM-dd HH:mm:ss')}")
+                logger.info(f"任务[{self.entry}]本周期开始时间: {cycle_start.toString('yyyy-MM-dd HH:mm:ss')}")
+                logger.info(f"任务[{self.entry}]下次刷新时间: {next_cycle_start.toString('yyyy-MM-dd HH:mm:ss')}")
 
-                # 重置循环次数逻辑
-                if QDateTime.currentDateTime() > refresh_time:
+                # 判断是否进入新周期（last_run 早于本周期开始）
+                last_run_dt = QDateTime.fromString(last_run_str, "yyyy-MM-dd HH:mm:ss")
+                if not last_run_dt.isValid():
+                    last_run_dt = QDateTime.fromString("1970-01-01 00:00:00", "yyyy-MM-dd HH:mm:ss")
+                if last_run_dt < cycle_start:
                     interval_cfg["current_loop"] = interval_cfg.get("loop_item", 1)
-                    logger.info(
-                        f"任务[{self.entry}]重置循环次数: {interval_cfg['current_loop']}"
-                    )
+                    logger.info(f"任务[{self.entry}]进入新周期，重置循环次数: {interval_cfg['current_loop']}")
+                    Save_Config(maa_config_data.config_path, maa_config_data.config)
 
-                # 处理循环次数（封装状态更新）
                 remaining_loops = interval_cfg.get("current_loop", 0)
                 if remaining_loops > 0 and self.entry:
+                    # 若未到间隔时间则跳过
+                    if QDateTime.currentDateTime() < next_run:
+                        logger.info(f"任务[{self.entry}]未到间隔时间，下次可运行: {next_run.toString('yyyy-MM-dd HH:mm:ss')}")
+                        continue
                     if cfg.get(cfg.when_post_task):
                         self.send_notice("info", self.tr("Post Task :") + self.entry)
-                    await maafw.run_task(self.entry,task_dict.get("pipeline_override", {}))
+                    await maafw.run_task(self.entry, task_dict.get("pipeline_override", {}))
                     if self.task_failed:
                         if cfg.get(cfg.when_task_failed):
-                            self.send_notice(
-                                "failed", str(self.task_failed) + self.tr("Failed")
-                            )
+                            self.send_notice("failed", str(self.task_failed) + self.tr("Failed"))
                     else:
                         self.update_speedrun_state(speedrun_cfg, remaining_loops)
                 else:
-                    self.handle_exhausted_loops(refresh_time)
+                    self.handle_exhausted_loops(next_cycle_start)
                     continue
             elif self.entry:
                 logger.info(f"{self.entry}速通未启用")
@@ -1548,8 +1545,16 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         计算下次运行时间
         """
         last_run = QDateTime.fromString(last_run_str, "yyyy-MM-dd HH:mm:ss")
-        unit = interval_cfg.get("unit", 2)  # 默认每天
-        item = interval_cfg.get("item", 1)  # 默认间隔1个单位
+        if not last_run.isValid():
+            # 无有效历史时，允许立即执行
+            last_run = QDateTime.currentDateTime().addSecs(-5)
+        unit = interval_cfg.get("unit", 2)  # 0:分钟 1:小时 2:天
+        try:
+            item = int(interval_cfg.get("item", 1))
+        except Exception:
+            item = 1
+        if item < 0:
+            item = 0  # 允许0表示“无间隔/立即”
 
         if unit == 0:  # 每分
             return last_run.addSecs(item * 60)
@@ -1618,6 +1623,65 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             
             return refresh_time
         return current_time
+
+    def compute_cycle_bounds(self, schedule_mode: str | None, refresh_time_cfg: RefreshTime):
+        """
+        计算当前周期开始与下周期开始时间。
+        返回 (cycle_start, next_cycle_start)
+        """
+        now = QDateTime.currentDateTime()
+        hour = int(refresh_time_cfg.get("H", 0))
+
+        if schedule_mode == "daily":
+            today_reset = QDateTime(now.date(), QTime(hour, 0))
+            if now < today_reset:
+                cycle_start = today_reset.addDays(-1)
+                next_cycle_start = today_reset
+            else:
+                cycle_start = today_reset
+                next_cycle_start = today_reset.addDays(1)
+            return cycle_start, next_cycle_start
+
+        if schedule_mode == "weekly":
+            target_week_day = int(refresh_time_cfg.get("w", 0))  # 0=周一
+            current_week_day = now.date().dayOfWeek() - 1  # 0=周一
+            offset = (target_week_day - current_week_day) % 7
+            candidate = QDateTime(now.date().addDays(offset), QTime(hour, 0))
+            if now < candidate:
+                cycle_start = candidate.addDays(-7)
+                next_cycle_start = candidate
+            else:
+                cycle_start = candidate
+                next_cycle_start = candidate.addDays(7)
+            return cycle_start, next_cycle_start
+
+        if schedule_mode == "monthly":
+            day = int(refresh_time_cfg.get("d", 1))
+            year = now.date().year()
+            month = now.date().month()
+            max_day = QDate(year, month, 1).daysInMonth()
+            actual_day = min(day, max_day)
+            candidate = QDateTime(QDate(year, month, actual_day), QTime(hour, 0))
+            if now < candidate:
+                prev_month = candidate.addMonths(-1)
+                prev_year = prev_month.date().year()
+                prev_mon = prev_month.date().month()
+                prev_max_day = QDate(prev_year, prev_mon, 1).daysInMonth()
+                prev_actual_day = min(day, prev_max_day)
+                cycle_start = QDateTime(QDate(prev_year, prev_mon, prev_actual_day), QTime(hour, 0))
+                next_cycle_start = candidate
+            else:
+                cycle_start = candidate
+                next_month = candidate.addMonths(1)
+                next_year = next_month.date().year()
+                next_mon = next_month.date().month()
+                next_max_day = QDate(next_year, next_mon, 1).daysInMonth()
+                next_actual_day = min(day, next_max_day)
+                next_cycle_start = QDateTime(QDate(next_year, next_mon, next_actual_day), QTime(hour, 0))
+            return cycle_start, next_cycle_start
+
+        # 默认退化处理
+        return now, now.addSecs(60)
 
     def update_speedrun_state(self, speedrun_cfg: SpeedrunConfig, remaining_loops: int):
         """
