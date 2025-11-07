@@ -36,7 +36,7 @@ import shlex
 import chardet
 
 
-from PySide6.QtCore import Qt, QMimeData, QDateTime, QTime, QDate, QTimer
+from PySide6.QtCore import Qt, QMimeData, QDateTime, QTime, QDate, QTimer, QSignalBlocker, QObject, QEvent
 from PySide6.QtGui import QDrag, QDropEvent, QColor, QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -714,8 +714,31 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         logger.info("配置文件存在")
         return_init = gui_init(resource_Path, maa_pi_config_Path, interface_Path)
         self.update_task_list()
-        self.Resource_Combox.addItems(Get_Values_list(interface_Path, key1="resource"))
-        self.Control_Combox.addItems(Get_Values_list(interface_Path, key1="controller"))
+        # 初始化下拉框时阻断信号，避免误触发保存逻辑
+        with QSignalBlocker(self.Resource_Combox):
+            self.Resource_Combox.clear()
+            self.Resource_Combox.addItems(
+                Get_Values_list(interface_Path, key1="resource")
+            )
+            # 恢复上次选择的资源
+            saved_res = maa_config_data.config.get("resource", "")
+            if saved_res:
+                idx = self.Resource_Combox.findText(saved_res)
+                if idx >= 0:
+                    self.Resource_Combox.setCurrentIndex(idx)
+
+        with QSignalBlocker(self.Control_Combox):
+            self.Control_Combox.clear()
+            controller_items = Get_Values_list(interface_Path, key1="controller")
+            self.Control_Combox.addItems(controller_items)
+            # 恢复上次选择的控制器
+            saved_ctrl = (
+                maa_config_data.config.get("controller", {}).get("name", "")
+            )
+            if saved_ctrl:
+                idx = self.Control_Combox.findText(saved_ctrl)
+                if idx >= 0:
+                    self.Control_Combox.setCurrentIndex(idx)
         self.SelectTask_Combox_1.addItems(
             Get_Values_list(interface_Path, key1="task", sp=True)
         )
@@ -727,15 +750,36 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             self.Control_Combox.setCurrentIndex(
                 return_init.get("init_Controller_Type", 0)
             )
+        # 根据当前控制器类型刷新自动识别下拉框
         self.add_Controller_combox()
 
     def load_interface_options(self, interface_Path):
         """
         加载interface接口选项
         """
-        self.Resource_Combox.addItems(Get_Values_list(interface_Path, key1="resource"))
-        self.Resource_Combox.setCurrentIndex(0)
-        self.Control_Combox.addItems(Get_Values_list(interface_Path, key1="controller"))
+        with QSignalBlocker(self.Resource_Combox):
+            self.Resource_Combox.clear()
+            self.Resource_Combox.addItems(
+                Get_Values_list(interface_Path, key1="resource")
+            )
+            saved_res = maa_config_data.config.get("resource", "")
+            if saved_res:
+                idx = self.Resource_Combox.findText(saved_res)
+                if idx >= 0:
+                    self.Resource_Combox.setCurrentIndex(idx)
+
+        with QSignalBlocker(self.Control_Combox):
+            self.Control_Combox.clear()
+            self.Control_Combox.addItems(
+                Get_Values_list(interface_Path, key1="controller")
+            )
+            saved_ctrl = (
+                maa_config_data.config.get("controller", {}).get("name", "")
+            )
+            if saved_ctrl:
+                idx = self.Control_Combox.findText(saved_ctrl)
+                if idx >= 0:
+                    self.Control_Combox.setCurrentIndex(idx)
         self.SelectTask_Combox_1.addItems(
             Get_Values_list(interface_Path, key1="task", sp=True)
         )
@@ -2141,19 +2185,31 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         保存控制器配置
         """
         Controller_Type_Select = self.Control_Combox.currentText()
+        # 通过配置解析出真实类型
         controller_type = get_controller_type(
             Controller_Type_Select, maa_config_data.interface_config_path
         )
+        # 若未找到类型，不保存，避免写入错误值
+        if controller_type is None:
+            logger.warning(f"未能识别控制器类型: {Controller_Type_Select}")
+            return
         if controller_type == "Adb":
-            self.add_Controller_combox()
+            # 阻断自动识别下拉框填充过程中的信号，避免误保存
+            with QSignalBlocker(self.Autodetect_combox):
+                self.add_Controller_combox()
             signalBus.setting_Visible.emit("adb")
 
         elif controller_type == "Win32":
-            asyncio.create_task(self.Start_Detection())
+            try:
+                import asyncio
+                asyncio.ensure_future(self.Start_Detection())
+            except Exception as e:
+                logger.warning(f"启动检测协程失败: {e}")
             signalBus.setting_Visible.emit("win32")
+            self.Autodetect_combox.clear()
         logger.info(f"保存控制器配置: {Controller_Type_Select}")
         # 更新配置并保存
-        maa_config_data.config["controller"]["name"] = Controller_Type_Select
+        maa_config_data.config.setdefault("controller", {})["name"] = Controller_Type_Select
         Save_Config(maa_config_data.config_path, maa_config_data.config)  # 刷新保存
 
     def add_Controller_combox(self):
@@ -2165,13 +2221,13 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         )
         self.Autodetect_combox.clear()
         if controller_type == "Adb":
-
             emulators_name = check_path_for_keyword(
-                maa_config_data.config.get("adb", {})["adb_path"]
-            )
-            self.Autodetect_combox.clear()
+                maa_config_data.config.get("adb", {}).get("adb_path", "")
+            ) or "Unknown"
+            adb_address = maa_config_data.config.get("adb", {}).get("address", "")
+            port = adb_address.split(":")[-1] if adb_address else ""
             self.Autodetect_combox.addItem(
-                f"{emulators_name} ({maa_config_data.config.get("adb",{})['address'].split(':')[-1]})"
+                f"{emulators_name} ({port})" if port else emulators_name
             )
 
     def update_config_value(self, key, value):
@@ -2345,60 +2401,174 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         option_layout.addLayout(advanced_layout)
 
                 # 处理 doc 字段
+                bundle_path = maa_config_data.config.get("bundle_path", "")
                 doc = task.get("doc")
                 if doc:
                     if isinstance(doc, list):
                         doc = "\n".join(doc)
+                    raw_doc = doc  # 用于后续下载完成后重渲染
+                    # 支持图片：语法 [img:url] 或 [img:url width=300]
+                    # 下载图片到临时目录（.cache/doc_img）缓存并替换为 <img src="..."> 标签
+                    img_cache_dir = os.path.join(os.getcwd(), ".cache", "doc_img")
+                    os.makedirs(img_cache_dir, exist_ok=True)
+                    pending: set[str] = set()
+
+                    def _download_image(url: str) -> str | None:
+                        """同步下载图片；若首次渲染还未完成，先显示占位，后续用信号更新。"""
+                        try:
+                            import requests, hashlib
+                            key = hashlib.md5(url.encode("utf-8")).hexdigest()
+                            ext = os.path.splitext(url.split("?")[0])[1].lower()
+                            if ext not in [".png", ".jpg", ".jpeg", ".gif", ".webp"]:
+                                ext = ".png"
+                            local_path = os.path.join(img_cache_dir, key + ext)
+                            if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
+                                return local_path  # 已缓存
+                            # 下载
+                            resp = requests.get(url, timeout=8)
+                            if resp.status_code == 200 and resp.content:
+                                with open(local_path, "wb") as f:
+                                    f.write(resp.content)
+                                return local_path
+                            logger.warning(f"图片响应异常: {url} {resp.status_code}")
+                            return None
+                        except Exception as e:
+                            logger.warning(f"图片下载失败: {url} {e}")
+                            return None
+
+                    def _render_and_set():
+                        # 下载完成后基于当前宽度重渲染
+                        width = max(doc_label.width() - 20, 50)
+                        _render_for_width(width, sync_only=True)
+
+                    def _start_async_download(url: str):
+                        if url in pending:
+                            return
+                        pending.add(url)
+                        import threading
+                        def _job():
+                            path = _download_image(url)
+                            pending.discard(url)
+                            if path:
+                                _render_and_set()
+                        threading.Thread(target=_job, daemon=True).start()
+
+                    def _replace_img_tag(match: re.Match) -> str:
+                        raw = match.group(1).strip()
+                        parts = raw.split()
+                        url = parts[0]
+                        width_attr = ""
+                        for p in parts[1:]:
+                            if p.startswith("width="):
+                                try:
+                                    w = int(p.split("=", 1)[1])
+                                    width_attr = f" width=\"{w}\""
+                                except ValueError:
+                                    pass
+                        local = _download_image(url)
+                        if local:
+                            return f"<img src=\"{local}\"{width_attr} />"
+                        _start_async_download(url)
+                        return f"<span style='color:gray'>[图片加载中]{url}</span>"
+
+                    def _replace_img_tag_sync(match: re.Match) -> str:
+                        # 仅使用缓存，不触发异步
+                        raw = match.group(1).strip()
+                        parts = raw.split()
+                        url = parts[0]
+                        width_attr = ""
+                        for p in parts[1:]:
+                            if p.startswith("width="):
+                                try:
+                                    w = int(p.split("=", 1)[1])
+                                    width_attr = f" width=\"{w}\""
+                                except ValueError:
+                                    pass
+                        local = _download_image(url)
+                        if local:
+                            return f"<img src=\"{local}\"{width_attr} />"
+                        return f"<span style='color:gray'>[图片加载中]{url}</span>"
+
                     doc_label = ClickableLabel(self)
                     doc_label.setWordWrap(True)
 
-                    # 初始化 HTML 文本
-                    html_text = doc
+                    def _to_html(txt: str) -> str:
+                        h = txt
+                        h = re.sub(r"\[color:(.*?)\]", r'<span style="color:\1">', h)
+                        h = re.sub(r"\[/color\]", "</span>", h)
+                        h = re.sub(r"\[size:(.*?)\]", r'<span style="font-size:\1px">', h)
+                        h = re.sub(r"\[/size]", "</span>", h)
+                        h = h.replace("[b]", "<b>").replace("[/b]", "</b>")
+                        h = h.replace("[i]", "<i>").replace("[/i]", "</i>")
+                        h = h.replace("[u]", "<u>").replace("[/u]", "</u>")
+                        h = h.replace("[s]", "<s>").replace("[/s]", "</s>")
+                        h = re.sub(r"\[align:left\]", '<div style="text-align: left;">', h)
+                        h = re.sub(r"\[align:center\]", '<div style="text-align: center;">', h)
+                        h = re.sub(r"\[align:right\]", '<div style="text-align: right;">', h)
+                        h = re.sub(r"\[/align\]", "</div>", h)
+                        h = h.replace("\n", "<br>")
+                        return h
 
-                    # 解析颜色
-                    html_text = re.sub(
-                        r"\[color:(.*?)\]", r'<span style="color:\1">', html_text
-                    )
-                    html_text = re.sub(r"\[/color\]", "</span>", html_text)
+                    def _render_for_width(max_width: int, sync_only: bool = False):
+                        # 基于给定宽度渲染，图片等比缩放到不超过 max_width
+                        def _img_tag_for(url: str, specified_w: int | None = None) -> str:
+                            local = _download_image(url)
+                            if local:
+                                w = specified_w if specified_w else max_width
+                                w = max(1, min(w, max_width))
+                                return f"<img src=\"{local}\" width=\"{w}\" />"
+                            if not sync_only:
+                                _start_async_download(url)
+                            return f"<span style='color:gray'>[图片加载中]{url}</span>"
 
-                    # 解析字号
-                    html_text = re.sub(
-                        r"\[size:(.*?)\]", r'<span style="font-size:\1px">', html_text
-                    )
-                    html_text = re.sub(r"\[/size]", "</span>", html_text)
+                        def _replace_img_dynamic(match: re.Match) -> str:
+                            raw = match.group(1).strip()
+                            parts = raw.split()
+                            url = parts[0]
+                            specified = None
+                            for p in parts[1:]:
+                                if p.startswith("width="):
+                                    try:
+                                        specified = int(p.split("=", 1)[1])
+                                    except ValueError:
+                                        pass
+                            return _img_tag_for(url, specified)
 
-                    # 解析粗体
-                    html_text = html_text.replace("[b]", "<b>").replace("[/b]", "</b>")
+                        def _md_img_dynamic(match: re.Match) -> str:
+                            url = match.group(1)
+                            return _img_tag_for(url)
 
-                    # 解析斜体
-                    html_text = html_text.replace("[i]", "<i>").replace("[/i]", "</i>")
+                        _doc = raw_doc
+                        _doc = re.sub(r"\[img:(.*?)\]", _replace_img_dynamic, _doc)
+                        _doc = re.sub(r"!\[[^\]]*\]\(([^)\s]+)\)", _md_img_dynamic, _doc)
+                        html_text = _to_html(_doc)
+                        QTimer.singleShot(0, lambda: doc_label.setText(html_text))
 
-                    # 解析下划线
-                    html_text = html_text.replace("[u]", "<u>").replace("[/u]", "</u>")
+                    # 初次渲染（允许异步下载）
+                    init_w = max(self.scroll_area.width() - 20, 50)
+                    _render_for_width(init_w, sync_only=False)
 
-                    # 解析删除线
-                    html_text = html_text.replace("[s]", "<s>").replace("[/s]", "</s>")
+                    # 跟随尺寸变化自适应
+                    class _ResizeFilter(QObject):
+                        def __init__(self, label, render):
+                            super().__init__(label)
+                            self.label = label
+                            self.render = render
+                            self.last_w = -1
 
-                    # 解析对齐方式
-                    html_text = re.sub(
-                        r"\[align:left\]", '<div style="text-align: left;">', html_text
-                    )
-                    html_text = re.sub(
-                        r"\[align:center\]",
-                        '<div style="text-align: center;">',
-                        html_text,
-                    )
-                    html_text = re.sub(
-                        r"\[align:right\]",
-                        '<div style="text-align: right;">',
-                        html_text,
-                    )
-                    html_text = re.sub(r"\[/align\]", "</div>", html_text)
+                        def eventFilter(self, obj, event):
+                            if obj is self.label and event.type() == QEvent.Type.Resize:
+                                w = max(self.label.width() - 20, 50)
+                                if w != self.last_w:
+                                    self.last_w = w
+                                    self.render(w, sync_only=True)
+                            return False
 
-                    # 将换行符替换为 <br>
-                    html_text = html_text.replace("\n", "<br>")
-
-                    doc_label.setText(html_text)
+                    rf = _ResizeFilter(doc_label, _render_for_width)
+                    doc_label.installEventFilter(rf)
+                    if not hasattr(self, "_doc_filters"):
+                        self._doc_filters = []
+                    self._doc_filters.append(rf)  # 保持引用，防止被回收
                     doc_layout.addWidget(doc_label)
 
                 spacer = QSpacerItem(
