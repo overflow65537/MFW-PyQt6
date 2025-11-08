@@ -97,7 +97,7 @@ class MainWindow(MSFluentWindow):
         self.resize(1170, 760)
         self.setMinimumWidth(1170)
         self.setMinimumHeight(760)
-        self.setWindowIcon(QIcon("./MFW_resource/icon/logo.png"))
+        self.setWindowIcon(QIcon("./app/icons/logo.png"))
         self.set_title()
         self.setMicaEffectEnabled(cfg.get(cfg.micaEnabled))
 

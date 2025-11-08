@@ -77,7 +77,6 @@ base_command = [
     f"--add-data={maa_path}{os.pathsep}maa",
     f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
     f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
-    f"--add-data={os.path.join(os.getcwd(), 'MFW_resource')}{os.pathsep}TEM_files{os.sep}MFW_resource",
     # 自动收集包数据
     "--collect-data=darkdetect",
     "--collect-data=maa",
@@ -109,7 +108,7 @@ if sys.platform == "darwin":
 
 elif sys.platform == "win32":
     base_command += [
-        "--icon=MFW_resource/icon/logo.ico",
+        "--icon=./app/icons/logo.ico",
         "--distpath",
         os.path.join("dist"),
     ]

@@ -185,10 +185,15 @@ class Config(QConfig):
     language = OptionsConfigItem(
         "MainWindow",
         "Language",
-        Language.CHINESE_SIMPLIFIED,
+        Language.CHINESE_SIMPLIFIED,  # 默认值（后续会被自动检测覆盖）
         OptionsValidator(Language),
         LanguageSerializer(),
         restart=True,
+    )
+    
+    # 是否已自动检测过系统语言（避免重复检测）
+    language_auto_detected = ConfigItem(
+        "MainWindow", "LanguageAutoDetected", False, BoolValidator()
     )
     
     # Interface language (for i18n)
@@ -209,3 +214,45 @@ REPO_URL = "https://github.com/overflow65537/MFW-PyQt6/"
 cfg = Config()
 cfg.themeMode.value = Theme.AUTO
 qconfig.load("config/config.json", cfg)
+
+
+def detect_system_language() -> Language:
+    """检测系统语言并返回对应的 Language 枚举
+    
+    Returns:
+        Language: 根据系统语言返回对应枚举，默认简体中文
+    """
+    system_locale = QLocale.system()
+    language = system_locale.language()
+    country = system_locale.country()
+    
+    # 中文判断
+    if language == QLocale.Language.Chinese:
+        # 繁体
+        if country in (
+            QLocale.Country.HongKong,
+        ):
+            return Language.CHINESE_TRADITIONAL
+        # 简体
+        return Language.CHINESE_SIMPLIFIED
+    
+    # 其他语言默认英文
+    else:
+        return Language.ENGLISH
+
+
+def init_language_on_first_run():
+    """初次运行时自动检测并设置系统语言
+    
+    仅在未设置过语言时执行（通过 language_auto_detected 标记判断）
+    """
+    if not cfg.get(cfg.language_auto_detected):
+        detected_lang = detect_system_language()
+        cfg.set(cfg.language, detected_lang)
+        cfg.set(cfg.language_auto_detected, True)
+        from app.utils.logger import logger
+        logger.info(f"首次启动，自动检测系统语言: {detected_lang}")
+    else:
+        from app.utils.logger import logger
+        logger.debug("已设置语言偏好，跳过自动检测")
+

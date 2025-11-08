@@ -106,6 +106,10 @@ if __name__ == "__main__":
         os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
         os.environ["QT_SCALE_FACTOR"] = str(cfg.get(cfg.dpiScale))
 
+    # 首次启动时自动检测系统语言
+    from app.common.config import init_language_on_first_run
+    init_language_on_first_run()
+
     # 创建Qt应用实例
     app = QApplication(sys.argv)
     app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
