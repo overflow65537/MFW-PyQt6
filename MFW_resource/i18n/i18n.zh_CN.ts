@@ -1299,7 +1299,7 @@
     <message>
         <location filename="../../app/view/setting_interface.py" line="229"/>
         <source>never show notice</source>
-        <translation>不在显示公告</translation>
+        <translation>不再显示公告</translation>
     </message>
     <message>
         <location filename="../../app/view/setting_interface.py" line="230"/>
