@@ -10,7 +10,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QSplitter,
-    QLineEdit as LineEdit,
 )
 
 from qfluentwidgets import (
@@ -23,10 +22,12 @@ from qfluentwidgets import (
     EditableComboBox,
     SwitchButton,
     PrimaryPushButton,
+    LineEdit,
 )
 
 from app.utils.logger import logger
 from app.utils.gui_helper import IconLoader
+from app.widget.PathLineEdit import PathLineEdit
 
 from ....core.core import TaskItem, ConfigItem, ServiceCoordinator
 
@@ -837,7 +838,8 @@ class OptionWidget(QWidget):
             adb_path_str = str(adb_path) if adb_path else ""
             logger.info(f"尝试填充 adb_path: {adb_path_str}")
 
-            adb_path_widget = self.findChild(LineEdit, "adb_path")
+            # 尝试查找 PathLineEdit 或 LineEdit
+            adb_path_widget = self.findChild(PathLineEdit, "adb_path") or self.findChild(LineEdit, "adb_path")
             if adb_path_widget:
                 adb_path_widget.setText(adb_path_str)
                 logger.info(f"✓ 成功填充 adb_path: {adb_path_str}")
@@ -1227,41 +1229,52 @@ class OptionWidget(QWidget):
 
     def _show_adb_options(self, saved_options: dict):
         """显示 ADB 特定选项"""
-        # 文本输入框选项
+        # 文本输入框选项 - 区分路径和普通输入
+        # (obj_name, label_text, default_value, tooltip_text, is_path)
         text_options = [
-            ("adb_path", self.tr("ADB Path"), None, self.tr("Path to adb executable")),
+            ("adb_path", self.tr("ADB Path"), None, self.tr("Path to adb executable"), True),
             (
                 "adb_port",
                 self.tr("ADB Connection Address"),
                 None,
                 self.tr("Device connection address (IP:Port or device ID)"),
+                False,
             ),
             (
                 "emulator_address",
                 self.tr("Emulator Launch Path"),
                 None,
                 self.tr("Path to emulator executable for launching"),
+                True,
             ),
             (
                 "emulator_launch_args",
                 self.tr("Emulator Launch Args"),
                 "",
                 self.tr("Arguments for launching emulator"),
+                False,
             ),
             (
                 "emulator_launch_timeout",
                 self.tr("Emulator Launch Timeout (ms)"),
                 "60000",
                 self.tr("Time to wait for emulator startup"),
+                False,
             ),
         ]
 
-        for obj_name, label_text, default_value, tooltip_text in text_options:
+        for obj_name, label_text, default_value, tooltip_text, is_path in text_options:
             v_layout = QVBoxLayout()
             v_layout.setObjectName(f"{obj_name}_layout")
 
             label = BodyLabel(label_text)
-            line_edit = LineEdit()
+            
+            # 根据是否为路径类型创建不同的输入控件
+            if is_path:
+                line_edit = PathLineEdit()
+            else:
+                line_edit = LineEdit()
+                
             line_edit.setObjectName(obj_name)
             # 如果 default_value 是 None，则使用空字符串
             actual_default = "" if default_value is None else default_value
@@ -1417,39 +1430,50 @@ class OptionWidget(QWidget):
 
     def _show_win32_options(self, saved_options: dict):
         """显示 Win32 特定选项"""
+        # (obj_name, label_text, default_value, tooltip_text, is_path)
         text_options = [
             (
                 "hwnd",
                 self.tr("Window Handle (HWND)"),
                 "",
                 self.tr("Window handle identifier"),
+                False,
             ),
             (
                 "app_path",
                 self.tr("Application Path"),
                 "",
                 self.tr("Path to application executable"),
+                True,
             ),
             (
                 "app_launch_args",
                 self.tr("Application Launch Args"),
                 "",
                 self.tr("Arguments for launching application"),
+                False,
             ),
             (
                 "app_launch_timeout",
                 self.tr("Application Launch Timeout (ms)"),
                 "10000",
                 self.tr("Time to wait for application startup"),
+                False,
             ),
         ]
 
-        for obj_name, label_text, default_value, tooltip_text in text_options:
+        for obj_name, label_text, default_value, tooltip_text, is_path in text_options:
             v_layout = QVBoxLayout()
             v_layout.setObjectName(f"{obj_name}_layout")
 
             label = BodyLabel(label_text)
-            line_edit = LineEdit()
+            
+            # 根据是否为路径类型创建不同的输入控件
+            if is_path:
+                line_edit = PathLineEdit()
+            else:
+                line_edit = LineEdit()
+                
             line_edit.setObjectName(obj_name)
 
             # 阻止信号，避免初始化时触发保存
@@ -1554,40 +1578,51 @@ class OptionWidget(QWidget):
         # GPU 选择下拉框（单独处理）
         self._add_gpu_selection_option(saved_options)
 
-        # 其他文本输入选项
+        # 其他文本输入选项 - 区分路径和普通输入
+        # (obj_name, label_text, default_value, tooltip_text, is_path)
         text_options = [
             (
                 "pre_launch_program",
                 self.tr("Pre-Launch Program"),
                 "",
                 self.tr("Program to run before starting"),
+                True,
             ),
             (
                 "pre_launch_program_args",
                 self.tr("Pre-Launch Program Args"),
                 "",
                 self.tr("Arguments for pre-launch program"),
+                False,
             ),
             (
                 "post_launch_program",
                 self.tr("Post-Launch Program"),
                 "",
                 self.tr("Program to run after starting"),
+                True,
             ),
             (
                 "post_launch_program_args",
                 self.tr("Post-Launch Program Args"),
                 "",
                 self.tr("Arguments for post-launch program"),
+                False,
             ),
         ]
 
-        for obj_name, label_text, default_value, tooltip_text in text_options:
+        for obj_name, label_text, default_value, tooltip_text, is_path in text_options:
             v_layout = QVBoxLayout()
             v_layout.setObjectName(f"{obj_name}_layout")
 
             label = BodyLabel(label_text)
-            line_edit = LineEdit()
+            
+            # 根据是否为路径类型创建不同的输入控件
+            if is_path:
+                line_edit = PathLineEdit()
+            else:
+                line_edit = LineEdit()
+                
             line_edit.setObjectName(obj_name)
 
             # 阻止信号，避免初始化时触发保存

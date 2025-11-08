@@ -10,7 +10,6 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
-    QLineEdit as LineEdit,
 )
 from qfluentwidgets import (
     ComboBox,
@@ -19,6 +18,7 @@ from qfluentwidgets import (
     SwitchButton,
     ToolTipFilter,
     ToolTipPosition,
+    LineEdit,
 )
 
 from app.utils.logger import logger

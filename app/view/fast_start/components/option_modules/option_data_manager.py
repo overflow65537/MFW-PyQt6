@@ -6,6 +6,8 @@
 import json
 from typing import TYPE_CHECKING
 
+from qfluentwidgets import LineEdit, ComboBox, EditableComboBox, SwitchButton
+
 from app.utils.logger import logger
 
 if TYPE_CHECKING:
@@ -32,9 +34,6 @@ class OptionDataManager:
             layout: 选项布局
             is_resource_setting: 是否是资源设置任务
         """
-        from PySide6.QtWidgets import QLineEdit as LineEdit
-        from qfluentwidgets import ComboBox, EditableComboBox, SwitchButton
-
         # 递归查找所有控件的辅助函数
         def find_widgets_recursive(layout, widgets_list):
             """递归查找布局中的所有控件"""
