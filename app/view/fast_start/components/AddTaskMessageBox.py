@@ -6,7 +6,7 @@ from qfluentwidgets import (
     SubtitleLabel,
     BodyLabel,
 )
-from .....core.core import ConfigItem, TaskItem
+from ....core.core import ConfigItem, TaskItem
 
 
 class BaseAddDialog(MessageBoxBase):

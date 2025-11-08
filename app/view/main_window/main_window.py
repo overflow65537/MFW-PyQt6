@@ -50,7 +50,7 @@ from qfluentwidgets import FluentIcon as FIF
 
 
 
-from ..fast_start.logic.fast_start_logic import FastStartInterface
+from ..fast_start.fast_start_logic import FastStartInterface
 
 from ...common.config import cfg
 from ...common.signal_bus import signalBus

@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
 from qfluentwidgets import CheckBox, TransparentToolButton, FluentIcon as FIF
 
 
-from ..ui.fast_start_ui import UI_FastStartInterface
+from .fast_start_ui import UI_FastStartInterface
 
 
 

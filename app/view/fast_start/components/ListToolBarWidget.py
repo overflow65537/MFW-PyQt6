@@ -21,7 +21,7 @@ from app.utils.gui_helper import IconLoader
 
 from .ListWidget import TaskDragListWidget, ConfigListWidget
 from .AddTaskMessageBox import AddConfigDialog, AddTaskDialog
-from .....core.core import ServiceCoordinator
+from ....core.core import ServiceCoordinator
 from .ListItem import TaskListItem, ConfigListItem
 
 

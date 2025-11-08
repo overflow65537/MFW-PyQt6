@@ -10,7 +10,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QSplitter,
-    QFrame,
 )
 
 
@@ -31,7 +30,7 @@ from app.utils.logger import logger
 from app.utils.gui_helper import IconLoader
 
 
-from .....core.core import TaskItem, ConfigItem, ServiceCoordinator
+from ....core.core import TaskItem, ConfigItem, ServiceCoordinator
 
 
 class OptionWidget(QWidget):
@@ -1966,16 +1965,11 @@ class OptionWidget(QWidget):
             # 检查是否有 ADB 相关配置（adb_path 或 adb_port）
             adb_path = str(flattened_options.get("adb_path", ""))
             adb_address = str(flattened_options.get("adb_port", ""))
-            # 优先使用新的独立字段，如果没有则回退到旧的共享字段（兼容旧配置）
-            adb_device_name_new = str(flattened_options.get("adb_device_name", ""))
-            device_name_old = str(flattened_options.get("device_name", ""))
-            device_name = adb_device_name_new or device_name_old
+            device_name = str(flattened_options.get("adb_device_name", ""))
 
             logger.info(f"保存的 adb_path: {adb_path}")
             logger.info(f"保存的 adb_port (address): {adb_address}")
-            logger.info(f"保存的 adb_device_name (新字段): {adb_device_name_new}")
-            logger.info(f"保存的 device_name (旧字段): {device_name_old}")
-            logger.info(f"最终使用的 device_name: {device_name}")
+            logger.info(f"保存的 adb_device_name: {device_name}")
 
             # 如果没有任何 ADB 配置，跳过
             if not adb_path and not adb_address:
@@ -2027,10 +2021,7 @@ class OptionWidget(QWidget):
         elif controller_type == "win32":
             # 从 hwnd 字段读取窗口句柄
             hwnd_str = str(flattened_options.get("hwnd", ""))
-            # 优先使用新的独立字段，如果没有则回退到旧的共享字段（兼容旧配置）
-            device_name = str(flattened_options.get("win32_device_name", "")) or str(
-                flattened_options.get("device_name", "")
-            )
+            device_name = str(flattened_options.get("win32_device_name", ""))
 
             if not hwnd_str:
                 logger.debug("未找到保存的 Win32 窗口信息")
