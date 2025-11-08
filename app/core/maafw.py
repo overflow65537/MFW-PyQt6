@@ -52,6 +52,7 @@ import importlib.util
 from typing import List, Dict
 import subprocess
 from enum import Enum
+from pathlib import Path
 
 from asyncify import asyncify
 from maa.controller import AdbController, Win32Controller
@@ -342,7 +343,7 @@ class MaaFW:
         return True
 
     @asyncify
-    def load_resource(self, dir: str, gpu_index: int = -1) -> bool:
+    def load_resource(self, dir: str | Path, gpu_index: int = -1) -> bool:
         if not self.resource:
             self.resource = Resource()
         if not isinstance(gpu_index, int):

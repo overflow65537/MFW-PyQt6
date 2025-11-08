@@ -169,6 +169,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         return [
             case["name"] for case in cases if isinstance(case, dict) and "name" in case
         ]
+
     def check_task_consistency(self):
         """
         检查配置任务与接口模板的一致性（任务存在性+选项匹配）
@@ -482,8 +483,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         拖动释放事件
         """
         if event.mimeData().hasFormat("application/x-listwidgetrow"):
-            rows_data = event.mimeData().data("application/x-listwidgetrow").data().decode() # type: ignore
-            selected_rows = sorted([int(row) for row in rows_data.split(",")], reverse=True)
+            rows_data = event.mimeData().data("application/x-listwidgetrow").data().decode()  # type: ignore
+            selected_rows = sorted(
+                [int(row) for row in rows_data.split(",")], reverse=True
+            )
 
             Task_List = maa_config_data.config.get("task", [])
             for row in selected_rows:
@@ -530,7 +533,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             elif message["status"] == 4:
                 self.insert_colored_text(self.tr("Unknown Error"), "red")
         elif message["name"] == "on_tasker_task":
-            if not self.need_runing or  "MaaNS::Tasker::post_stop" in message["task"]:
+            if not self.need_runing or "MaaNS::Tasker::post_stop" in message["task"]:
                 return
             elif message["status"] == 1:
                 self.insert_colored_text(message["task"] + " " + self.tr("Started"))
@@ -1057,7 +1060,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         self.all_task_list = []
         self.task_idx = -1
 
-        for key in maa_config_data.config.get("task", []):# 创建任务列表
+        for key in maa_config_data.config.get("task", []):  # 创建任务列表
             self.all_task_list.append({"name": key.get("name"), "status": 0})
 
         if task:
@@ -1465,18 +1468,20 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         """
         运行任务
         """
-        for idx, task_obj in enumerate(maa_config_data.config.get("task", [])):#开始循环
+        for idx, task_obj in enumerate(
+            maa_config_data.config.get("task", [])
+        ):  # 开始循环
             # 当前任务序号
             if not self.need_runing:
                 break
             elif task_obj.get("task_invalidation", False):
                 continue
             self.task_idx = idx
-            task_dict = get_override(task_obj,maa_config_data.interface_config)
+            task_dict = get_override(task_obj, maa_config_data.interface_config)
             if not task_dict:
                 logger.error(f"任务{task_obj.get('name','')}配置错误")
                 continue
-            self.entry = task_dict.get("entry","")
+            self.entry = task_dict.get("entry", "")
             logger.info(
                 f"运行任务:{self.entry}\n任务选项:\n{json.dumps(task_dict.get("option"), indent=4,ensure_ascii=False)}"
             )
@@ -1519,7 +1524,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 if remaining_loops > 0 and self.entry:
                     if cfg.get(cfg.when_post_task):
                         self.send_notice("info", self.tr("Post Task :") + self.entry)
-                    await maafw.run_task(self.entry,task_dict.get("pipeline_override", {}))
+                    await maafw.run_task(
+                        self.entry, task_dict.get("pipeline_override", {})
+                    )
                     if self.task_failed:
                         if cfg.get(cfg.when_task_failed):
                             self.send_notice(
@@ -1535,7 +1542,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 if cfg.get(cfg.when_post_task):
                     self.send_notice("info", self.tr("Post Task :") + self.entry)
                 await maafw.run_task(self.entry, task_dict.get("pipeline_override", {}))
-
 
         logger.info("任务完成")
         if cfg.get(cfg.when_task_finished) and self.need_runing:
@@ -1572,11 +1578,11 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             refresh_hour = refresh_time_cfg.get("H", 0)
             # 设置今天的刷新时间
             refresh_time = QDateTime(current_time.date(), QTime(refresh_hour, 0))
-            
+
             # 如果当前时间已经过了今天的刷新时间，则使用明天的刷新时间
             if current_time >= refresh_time:
                 refresh_time = refresh_time.addDays(1)
-            
+
             return refresh_time
         elif schedule_mode == "weekly":
             return self.get_date_time_for_week_day_and_hour(
@@ -1585,22 +1591,21 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         elif schedule_mode == "monthly":
             refresh_day = refresh_time_cfg.get("d", 1)
             refresh_hour = refresh_time_cfg.get("H", 0)
-            
+
             # 获取本月的刷新日期
             year = current_time.date().year()
             month = current_time.date().month()
-            
+
             # 获取当月的最大天数
             max_day = QDate(year, month, 1).daysInMonth()
             # 如果设置的日期大于当月天数，使用当月最后一天
             actual_day = min(refresh_day, max_day)
-            
+
             # 设置本月的刷新时间
             refresh_time = QDateTime(
-                QDate(year, month, actual_day),
-                QTime(refresh_hour, 0)
+                QDate(year, month, actual_day), QTime(refresh_hour, 0)
             )
-            
+
             # 如果当前时间已经过了本月的刷新时间，则使用下月的刷新时间
             if current_time >= refresh_time:
                 refresh_time = refresh_time.addMonths(1)
@@ -1612,10 +1617,10 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                         QDate(
                             refresh_time.date().year(),
                             refresh_time.date().month(),
-                            min(refresh_day, next_max_day)
+                            min(refresh_day, next_max_day),
                         )
                     )
-            
+
             return refresh_time
         return current_time
 
@@ -1691,6 +1696,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
             except FileNotFoundError as e:
                 self.show_error(self.tr("File not found"))
                 logger.error(f'运行后脚本"{e}"')
+
     def execute_finish_action(self):
         """
         执行完成后的动作
@@ -2027,7 +2033,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                 maa_config_data.config["task"][Select_Target].get("option", [])
             )
             if maa_config_data.config["task"][Select_Target].get("task_invalidation"):
-                maa_config_data.config["task"][Select_Target]["task_invalidation"] = False
+                maa_config_data.config["task"][Select_Target][
+                    "task_invalidation"
+                ] = False
         except IndexError:
             pass
 
@@ -2194,13 +2202,17 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                     advanced_dict.get("field")
                                 )
                                 if advanced_dict.get("doc"):
-                                    advanced_label.setToolTip(advanced_dict.get("doc")[0])
+                                    advanced_label.setToolTip(
+                                        advanced_dict.get("doc")[0]
+                                    )
                                     advanced_label.installEventFilter(
                                         ToolTipFilter(
                                             advanced_label, 0, ToolTipPosition.TOP
                                         )
                                     )
-                                    advanced_select_box.setToolTip(advanced_dict.get("doc"))
+                                    advanced_select_box.setToolTip(
+                                        advanced_dict.get("doc")
+                                    )
                                     advanced_select_box.installEventFilter(
                                         ToolTipFilter(
                                             advanced_select_box, 0, ToolTipPosition.TOP
@@ -2213,7 +2225,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                     advanced_dict.get("field")[0]
                                 )
                                 if advanced_dict.get("doc"):
-                                    advanced_select_box.setToolTip(advanced_dict.get("doc")[0])
+                                    advanced_select_box.setToolTip(
+                                        advanced_dict.get("doc")[0]
+                                    )
                                     advanced_label.installEventFilter(
                                         ToolTipFilter(
                                             advanced_label, 0, ToolTipPosition.TOP
@@ -2250,7 +2264,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
                                 advanced_select_box = EditableComboBox(self)
                                 advanced_select_box.setObjectName(field)
                                 if advanced_dict.get("doc"):
-                                    advanced_label.setToolTip(advanced_dict.get("doc")[idx])
+                                    advanced_label.setToolTip(
+                                        advanced_dict.get("doc")[idx]
+                                    )
                                     advanced_label.installEventFilter(
                                         ToolTipFilter(
                                             advanced_label, 0, ToolTipPosition.TOP

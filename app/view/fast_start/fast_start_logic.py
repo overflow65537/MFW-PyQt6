@@ -28,3 +28,7 @@ class FastStartInterface(UI_FastStartInterface, QWidget):
             self.tr("配置选择")
         )
         self.option_panel.set_title(self.tr("选项"))
+
+
+
+    

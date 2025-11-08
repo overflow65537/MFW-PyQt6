@@ -165,13 +165,27 @@ for i in bin_files:
 
 shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin"))
 
-# 复制README和许可证并在开头加上MFW_前缀
-for file in ["README.md", "README-en.md", "LICENSE"]:
-    shutil.copy(
-        os.path.join(os.getcwd(), file),
-        os.path.join(os.getcwd(), "dist", "MFW", f"MFW_{file}"),
-    )
+# 复制README和许可证
+shutil.copy(
+    os.path.join(os.getcwd(), "README.md"),
+    os.path.join(os.getcwd(), "dist", "MFW", "README.md"),
+)
+shutil.copy(
+    os.path.join(os.getcwd(), "README-en.md"),
+    os.path.join(os.getcwd(), "dist", "MFW", "README-en.md"),
+)
+shutil.copy(
+    os.path.join(os.getcwd(), "LICENSE"),
+    os.path.join(os.getcwd(), "dist", "MFW", "LICENSE"),
+)
 
+os.mkdir(os.path.join(os.getcwd(), "dist", "MFW", "app", "i18n"))
+# 复制i18n文件
+for qm_file in ["i18n.zh_CN.qm", "i18n.zh_HK.qm"]:
+    shutil.copy(
+        os.path.join(os.getcwd(), "app", "i18n", qm_file),
+        os.path.join(os.getcwd(), "dist", "MFW", "app", "i18n", qm_file),
+    )
 
 # === 构建updater ===
 updater_command = [

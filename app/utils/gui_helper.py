@@ -11,11 +11,11 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QPixmap
-
+from app.utils.logger import logger
 if TYPE_CHECKING:
     from app.core.core import ServiceCoordinator
 
-logger = logging.getLogger("MFW.GUI.Helper")
+
 
 
 class IconLoader:

@@ -45,16 +45,13 @@ from app.common.config import cfg
 from app.view.main_window.main_window import MainWindow
 from app.common.config import Language
 from app.common.__version__ import __version__
-from app.utils.tool import Save_Config
-from app.common.signal_bus import signalBus
 from app.utils.i18n_manager import get_interface_i18n
-
 
 
 if __name__ == "__main__":
     logger.info(f"MFW 版本:{__version__}")
     # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
-    #os.chdir(target_dir)  # 切换工作目录
+    # os.chdir(target_dir)  # 切换工作目录
     logger.debug(f"设置工作目录: {os.getcwd()}")
 
     # 检查是否存在密钥文件
@@ -62,32 +59,31 @@ if __name__ == "__main__":
         logger.debug("生成密钥文件")
         key = Fernet.generate_key()
         with open("k.ey", "wb") as key_file:
-            key_file.write(key)#TODO 密钥应该放在应用支持目录中
+            key_file.write(key)  # TODO 密钥应该放在应用支持目录中
 
-    # macOS 单实例检查
-    if sys.platform.startswith("darwin"):
-        PID_FILE = os.path.join(os.getcwd(), "MFW.pid")
+    # 单实例检查
+    """PID_FILE = os.path.join(os.getcwd(), "MFW.pid")
 
-        def cleanup_pid():
-            if os.path.exists(PID_FILE):
-                os.remove(PID_FILE)
-                logger.debug("已清理PID文件")
-
+    def cleanup_pid():
         if os.path.exists(PID_FILE):
-            try:
-                with open(PID_FILE, "r") as f:
-                    existing_pid = int(f.read().strip())
-                os.kill(existing_pid, 0)  # 检测进程是否存活
-                logger.error(f"检测到已有实例运行（PID: {existing_pid}），当前实例退出")
-                sys.exit(0)
-            except (ValueError, ProcessLookupError):
-                cleanup_pid()
-                logger.debug("检测到残留PID文件，已清理")
+            os.remove(PID_FILE)
+            logger.debug("已清理PID文件")
 
-        with open(PID_FILE, "w") as f:
-            f.write(str(os.getpid()))
-        atexit.register(cleanup_pid)
-        logger.debug(f"创建PID文件（当前PID: {os.getpid()}）")
+    if os.path.exists(PID_FILE):
+        try:
+            with open(PID_FILE, "r") as f:
+                existing_pid = int(f.read().strip())
+            os.kill(existing_pid, 0)  # 检测进程是否存活
+            logger.error(f"检测到已有实例运行（PID: {existing_pid}），当前实例退出")
+            sys.exit(0)
+        except (ValueError, ProcessLookupError):
+            cleanup_pid()
+            logger.debug("检测到残留PID文件，已清理")
+
+    with open(PID_FILE, "w") as f:
+        f.write(str(os.getpid()))
+    atexit.register(cleanup_pid)
+    logger.debug(f"创建PID文件（当前PID: {os.getpid()}）")"""
 
     # 参数解析与配置检查
     parser = argparse.ArgumentParser()
@@ -96,7 +92,6 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--directly", action="store_true")
     parser.add_argument("-DEV", "--DEV", action="store_true")
     args = parser.parse_args()
-
 
     """# 全局异常钩子
     def global_except_hook(exc_type, exc_value, exc_traceback):
@@ -119,18 +114,18 @@ if __name__ == "__main__":
     locale: ConfigItem = cfg.get(cfg.language)
     translator = FluentTranslator(locale.value)
     galleryTranslator = QTranslator()
-    
+
     # 确定语言代码
     language_code = "zh_cn"  # 默认中文
     if locale == Language.CHINESE_SIMPLIFIED:
         galleryTranslator.load(
-            os.path.join(".", "MFW_resource", "i18n", "i18n.zh_CN.qm")
+            os.path.join(".", "app", "i18n", "i18n.zh_CN.qm")
         )
         language_code = "zh_cn"
         logger.info("加载简体中文翻译")
     elif locale == Language.CHINESE_TRADITIONAL:
         galleryTranslator.load(
-            os.path.join(".", "MFW_resource", "i18n", "i18n.zh_HK.qm")
+            os.path.join(".", "app", "i18n", "i18n.zh_HK.qm")
         )
         language_code = "zh_hk"
         logger.info("加载繁体中文翻译")
@@ -151,9 +146,10 @@ if __name__ == "__main__":
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
-    # 初始化 GPU 信息缓存（在主窗口创建前）
+    # 初始化 GPU 信息缓存
     try:
         from app.utils.gpu_cache import gpu_cache
+
         gpu_cache.initialize()
     except Exception as e:
         logger.warning(f"GPU 信息缓存初始化失败，忽略: {e}")

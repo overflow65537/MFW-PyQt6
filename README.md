@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD033 MD041 -->
 <p align="center">
-  <img alt="LOGO" src="MFW_resource\icon\logo.png" width="256" height="256" />
+  <img alt="LOGO" src="app\assets\icons\logo.png" width="256" height="256" />
 </p>
 <div align="center">
 
@@ -257,12 +257,3 @@
 <a href="https://github.com/overflow65537/PYQT-MAA/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=overflow65537/PYQT-MAA&max=1000" alt="Contributors to MFW-PyQt6"/>
 </a>
-
-## 界面预览
-
-<div align="center" style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
-  <img alt="task_interface" src="picture\task_interface.png" style="max-width: 25%; height: auto;" />
-  <img alt="bundle_interface" src="picture\bundle_interface.png" style="max-width: 25%; height: auto;" />
-  <img alt="task_cooldown" src="picture\task_cooldown.png" style="max-width: 25%; height: auto;" />
-  <img alt="sp_task" src="picture\sp_task.png" style="max-width: 25%; height: auto;" />
-</div>

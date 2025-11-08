@@ -43,7 +43,7 @@ from PySide6.QtWidgets import QWidget, QLabel, QApplication
 
 from ..common.config import cfg, REPO_URL, isWin11
 from ..common.signal_bus import signalBus
-from ..common.style_sheet import StyleSheet
+
 from ..utils.widget import (
     LineEditCard,
     DoubleButtonSettingCard,
@@ -52,7 +52,7 @@ from ..utils.widget import (
 from ..utils.update import Update, UpdateSelf
 from ..utils.tool import Save_Config, for_config_get_url, decrypt, encrypt
 from ..utils.logger import logger
-from ..common.resource_config import maa_config_data
+
 from ..common.__version__ import __version__
 
 import subprocess

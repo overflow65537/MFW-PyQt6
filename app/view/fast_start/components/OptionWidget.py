@@ -782,7 +782,6 @@ class OptionWidget(QWidget):
         self._show_controller_common_options(flattened_options)
 
         # 如果设备下拉框有内容，触发自动填充
-        # 这样切换控制器类型时，如果有已选设备，会自动填充字段
         if self.device_combo.count() > 0 and self.device_combo.currentIndex() >= 0:
             if hasattr(self, "_current_task_item"):
                 logger.debug("控制器类型改变，触发设备自动填充")
