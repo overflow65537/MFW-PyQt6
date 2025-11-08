@@ -23,6 +23,7 @@ from qfluentwidgets import (
     SwitchButton,
     PrimaryPushButton,
     LineEdit,
+    SpinBox,
 )
 
 from app.utils.logger import logger
@@ -782,6 +783,10 @@ class OptionWidget(QWidget):
         self._clear_layout(self.controller_common_options_layout)
         self._show_controller_common_options(flattened_options)
 
+        # 【新增】根据控制器类型显示对应的高级选项
+        # 默认隐藏，可通过此方法显示
+        # self._toggle_advanced_options(controller_type=controller_type, show=True)
+
         # 如果设备下拉框有内容，触发自动填充
         if self.device_combo.count() > 0 and self.device_combo.currentIndex() >= 0:
             if hasattr(self, "_current_task_item"):
@@ -1254,13 +1259,6 @@ class OptionWidget(QWidget):
                 self.tr("Arguments for launching emulator"),
                 False,
             ),
-            (
-                "emulator_launch_timeout",
-                self.tr("Emulator Launch Timeout (ms)"),
-                "60000",
-                self.tr("Time to wait for emulator startup"),
-                False,
-            ),
         ]
 
         for obj_name, label_text, default_value, tooltip_text, is_path in text_options:
@@ -1295,6 +1293,31 @@ class OptionWidget(QWidget):
 
             self.controller_specific_options_layout.addLayout(v_layout)
 
+        # 添加启动超时时间 SpinBox
+        timeout_layout = QVBoxLayout()
+        timeout_layout.setObjectName("emulator_launch_timeout_layout")
+        
+        timeout_label = BodyLabel(self.tr("Emulator Launch Timeout (s)"))
+        timeout_spinbox = SpinBox()
+        timeout_spinbox.setObjectName("emulator_launch_timeout")
+        timeout_spinbox.setRange(1, 3600)
+        timeout_spinbox.setSuffix(" s")
+        
+        timeout_spinbox.blockSignals(True)
+        timeout_spinbox.setValue(int(saved_options.get("emulator_launch_timeout", 30)))
+        timeout_spinbox.blockSignals(False)
+        
+        timeout_tooltip = self.tr("Time to wait for emulator startup (seconds)")
+        timeout_spinbox.setToolTip(timeout_tooltip)
+        timeout_label.setToolTip(timeout_tooltip)
+        
+        timeout_spinbox.valueChanged.connect(lambda: self._save_current_options())
+        
+        timeout_layout.addWidget(timeout_label)
+        timeout_layout.addWidget(timeout_spinbox)
+        
+        self.controller_specific_options_layout.addLayout(timeout_layout)
+
         # ADB 截图方法下拉框
         self._add_adb_screenshot_method_option(saved_options)
 
@@ -1317,8 +1340,13 @@ class OptionWidget(QWidget):
         config_line_edit.textChanged.connect(lambda: self._save_current_options())
         self.controller_specific_options_layout.addWidget(config_line_edit)
 
-    def _add_adb_screenshot_method_option(self, saved_options: dict):
-        """添加 ADB 截图方法下拉框"""
+    def _add_adb_screenshot_method_option(self, saved_options: dict, visible: bool = False):
+        """添加 ADB 截图方法下拉框
+        
+        Args:
+            saved_options: 保存的选项
+            visible: 是否默认显示（资源设置中默认隐藏）
+        """
         v_layout = QVBoxLayout()
         v_layout.setObjectName("adb_screenshot_method_layout")
 
@@ -1372,10 +1400,21 @@ class OptionWidget(QWidget):
 
         v_layout.addWidget(label)
         v_layout.addWidget(combo)
+        
+        # 设置初始可见性
+        if not visible:
+            label.setVisible(False)
+            combo.setVisible(False)
+        
         self.controller_specific_options_layout.addLayout(v_layout)
 
-    def _add_adb_input_method_option(self, saved_options: dict):
-        """添加 ADB 输入方法下拉框"""
+    def _add_adb_input_method_option(self, saved_options: dict, visible: bool = False):
+        """添加 ADB 输入方法下拉框
+        
+        Args:
+            saved_options: 保存的选项
+            visible: 是否默认显示（资源设置中默认隐藏）
+        """
         v_layout = QVBoxLayout()
         v_layout.setObjectName("adb_input_method_layout")
 
@@ -1426,6 +1465,12 @@ class OptionWidget(QWidget):
 
         v_layout.addWidget(label)
         v_layout.addWidget(combo)
+        
+        # 设置初始可见性
+        if not visible:
+            label.setVisible(False)
+            combo.setVisible(False)
+        
         self.controller_specific_options_layout.addLayout(v_layout)
 
     def _show_win32_options(self, saved_options: dict):
@@ -1451,13 +1496,6 @@ class OptionWidget(QWidget):
                 self.tr("Application Launch Args"),
                 "",
                 self.tr("Arguments for launching application"),
-                False,
-            ),
-            (
-                "app_launch_timeout",
-                self.tr("Application Launch Timeout (ms)"),
-                "10000",
-                self.tr("Time to wait for application startup"),
                 False,
             ),
         ]
@@ -1492,14 +1530,44 @@ class OptionWidget(QWidget):
 
             self.controller_specific_options_layout.addLayout(v_layout)
 
+        # 添加应用启动超时时间 SpinBox
+        timeout_layout = QVBoxLayout()
+        timeout_layout.setObjectName("app_launch_timeout_layout")
+        
+        timeout_label = BodyLabel(self.tr("Application Launch Timeout (s)"))
+        timeout_spinbox = SpinBox()
+        timeout_spinbox.setObjectName("app_launch_timeout")
+        timeout_spinbox.setRange(1, 3600)
+        timeout_spinbox.setSuffix(" s")
+        
+        timeout_spinbox.blockSignals(True)
+        timeout_spinbox.setValue(int(saved_options.get("app_launch_timeout", 30)))
+        timeout_spinbox.blockSignals(False)
+        
+        timeout_tooltip = self.tr("Time to wait for application startup (seconds)")
+        timeout_spinbox.setToolTip(timeout_tooltip)
+        timeout_label.setToolTip(timeout_tooltip)
+        
+        timeout_spinbox.valueChanged.connect(lambda: self._save_current_options())
+        
+        timeout_layout.addWidget(timeout_label)
+        timeout_layout.addWidget(timeout_spinbox)
+        
+        self.controller_specific_options_layout.addLayout(timeout_layout)
+
         # Win32 截图方法下拉框
         self._add_win32_screenshot_method_option(saved_options)
 
         # Win32 输入方法下拉框
         self._add_win32_input_method_option(saved_options)
 
-    def _add_win32_screenshot_method_option(self, saved_options: dict):
-        """添加 Win32 截图方法下拉框"""
+    def _add_win32_screenshot_method_option(self, saved_options: dict, visible: bool = False):
+        """添加 Win32 截图方法下拉框
+        
+        Args:
+            saved_options: 保存的选项
+            visible: 是否默认显示（资源设置中默认隐藏）
+        """
         v_layout = QVBoxLayout()
         v_layout.setObjectName("win32_screenshot_method_layout")
 
@@ -1534,10 +1602,21 @@ class OptionWidget(QWidget):
 
         v_layout.addWidget(label)
         v_layout.addWidget(combo)
+        
+        # 设置初始可见性
+        if not visible:
+            label.setVisible(False)
+            combo.setVisible(False)
+        
         self.controller_specific_options_layout.addLayout(v_layout)
 
-    def _add_win32_input_method_option(self, saved_options: dict):
-        """添加 Win32 输入方法下拉框"""
+    def _add_win32_input_method_option(self, saved_options: dict, visible: bool = False):
+        """添加 Win32 输入方法下拉框
+        
+        Args:
+            saved_options: 保存的选项
+            visible: 是否默认显示（资源设置中默认隐藏）
+        """
         v_layout = QVBoxLayout()
         v_layout.setObjectName("win32_input_method_layout")
 
@@ -1571,6 +1650,12 @@ class OptionWidget(QWidget):
 
         v_layout.addWidget(label)
         v_layout.addWidget(combo)
+        
+        # 设置初始可见性
+        if not visible:
+            label.setVisible(False)
+            combo.setVisible(False)
+        
         self.controller_specific_options_layout.addLayout(v_layout)
 
     def _show_controller_common_options(self, saved_options: dict):
@@ -1641,11 +1726,12 @@ class OptionWidget(QWidget):
 
             self.controller_common_options_layout.addLayout(v_layout)
 
-    def _add_gpu_selection_option(self, saved_options: dict):
+    def _add_gpu_selection_option(self, saved_options: dict, visible: bool = False):
         """添加 GPU 选择下拉框
 
         Args:
             saved_options: 保存的选项
+            visible: 是否默认显示（资源设置中默认隐藏）
         """
         from app.utils.gpu_cache import gpu_cache
 
@@ -1687,7 +1773,62 @@ class OptionWidget(QWidget):
 
         v_layout.addWidget(label)
         v_layout.addWidget(combo)
+        
+        # 设置初始可见性
+        if not visible:
+            label.setVisible(False)
+            combo.setVisible(False)
+        
         self.controller_common_options_layout.addLayout(v_layout)
+
+    def _toggle_advanced_options(self, controller_type: str | None = None, show: bool = True):
+        """切换高级选项的显示状态（GPU、截图方法、输入方法）
+        
+        Args:
+            controller_type: 控制器类型 ('adb' 或 'win32')，None 表示隐藏所有
+            show: 是否显示
+        """
+        # GPU 选项（通用，总是根据 show 参数显示/隐藏）
+        gpu_layout = self.findChild(QVBoxLayout, "gpu_selection_layout")
+        if gpu_layout:
+            for i in range(gpu_layout.count()):
+                widget = gpu_layout.itemAt(i).widget()
+                if widget:
+                    widget.setVisible(show)
+        
+        # ADB 截图和输入方法
+        adb_screenshot_layout = self.findChild(QVBoxLayout, "adb_screenshot_method_layout")
+        adb_input_layout = self.findChild(QVBoxLayout, "adb_input_method_layout")
+        
+        show_adb = show and controller_type == "adb"
+        if adb_screenshot_layout:
+            for i in range(adb_screenshot_layout.count()):
+                widget = adb_screenshot_layout.itemAt(i).widget()
+                if widget:
+                    widget.setVisible(show_adb)
+        
+        if adb_input_layout:
+            for i in range(adb_input_layout.count()):
+                widget = adb_input_layout.itemAt(i).widget()
+                if widget:
+                    widget.setVisible(show_adb)
+        
+        # Win32 截图和输入方法
+        win32_screenshot_layout = self.findChild(QVBoxLayout, "win32_screenshot_method_layout")
+        win32_input_layout = self.findChild(QVBoxLayout, "win32_input_method_layout")
+        
+        show_win32 = show and controller_type == "win32"
+        if win32_screenshot_layout:
+            for i in range(win32_screenshot_layout.count()):
+                widget = win32_screenshot_layout.itemAt(i).widget()
+                if widget:
+                    widget.setVisible(show_win32)
+        
+        if win32_input_layout:
+            for i in range(win32_input_layout.count()):
+                widget = win32_input_layout.itemAt(i).widget()
+                if widget:
+                    widget.setVisible(show_win32)
 
     def _populate_saved_device(self, saved_options: dict, controller_name: str):
         """从保存的配置中填充设备信息到下拉框

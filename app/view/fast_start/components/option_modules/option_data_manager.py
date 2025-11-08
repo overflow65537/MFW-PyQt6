@@ -6,7 +6,7 @@
 import json
 from typing import TYPE_CHECKING
 
-from qfluentwidgets import LineEdit, ComboBox, EditableComboBox, SwitchButton
+from qfluentwidgets import LineEdit, ComboBox, EditableComboBox, SwitchButton, SpinBox
 
 from app.utils.logger import logger
 
@@ -156,6 +156,8 @@ class OptionDataManager:
                     updated_options[obj_name] = widget.text()
                 elif isinstance(widget, SwitchButton):
                     updated_options[obj_name] = widget.isChecked()
+                elif isinstance(widget, SpinBox):
+                    updated_options[obj_name] = widget.value()
 
         # 更新任务的 task_option
         if updated_options:
