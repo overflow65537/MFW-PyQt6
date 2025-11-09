@@ -9,7 +9,8 @@ from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
 from qfluentwidgets import ListWidget, IndeterminateProgressRing
 from ....core.core import TaskItem, ConfigItem, ServiceCoordinator
 from .ListItem import TaskListItem, ConfigListItem
-from app.utils.logger import logger, log_with_ui
+from app.utils.logger import logger
+from app.common.signal_bus import signalBus
 
 
 class BaseListWidget(ListWidget):
@@ -191,12 +192,7 @@ class TaskDragListWidget(BaseListWidget):
             if isinstance(widget, TaskListItem) and widget.task.item_id == task_id:
                 if widget.task.is_base_task():
                     # 基础任务不可删除，记录日志并显示提示
-                    log_with_ui(
-                        "基础任务（资源、完成后操作）不可删除",
-                        level="WARNING",
-                        infobar=True,
-                        infobar_type="warning"
-                    )
+                    signalBus.infobar_signal.emit("基础任务（资源、完成后操作）不可删除", "warning")
                     return
                 self.takeItem(i)
                 widget.deleteLater()

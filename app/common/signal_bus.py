@@ -37,6 +37,7 @@ class SignalBus(QObject):
     show_option = Signal(dict) # 显示选项
     agent_info = Signal(dict) # 智能体信息
     infobar_message = Signal(dict) # 信息栏消息
+    infobar_signal = Signal(str, str) # InfoBar信号：正文, 类型(info/succeed/warning/error)
     title_changed = Signal(str) # 窗口标题改变
 
     # 日志/信息输出相关信号

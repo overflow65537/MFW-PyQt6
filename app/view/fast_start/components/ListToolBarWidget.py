@@ -145,14 +145,9 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
         """移除配置项"""
         config_list = self.service_coordinator.config.list_configs()
         if len(config_list) <= 1:
-            from app.utils.logger import log_with_ui
+            from app.common.signal_bus import signalBus
 
-            log_with_ui(
-                self.tr("Cannot delete the last configuration!"),
-                level="WARNING",
-                infobar=True,
-                infobar_type="warning",
-            )
+            signalBus.infobar_signal.emit(self.tr("Cannot delete the last configuration!"), "warning")
             return False
         cur = self.task_list.currentItem()
         if not cur:
@@ -229,14 +224,9 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         if not task_id:
             return
         elif widget.task.is_base_task():
-            from app.utils.logger import log_with_ui
+            from app.common.signal_bus import signalBus
 
-            log_with_ui(
-                self.tr("Base tasks (Resource, Post-Task) cannot be deleted (ID: {id})").format(id=task_id),
-                level="WARNING",
-                infobar=True,
-                infobar_type="warning"
-            )
+            signalBus.infobar_signal.emit(self.tr("Base tasks (Resource, Post-Task) cannot be deleted (ID: {id})").format(id=task_id), "warning")
             return False
         # 删除通过服务层执行，视图会通过fs系列信号刷新
         self.service_coordinator.delete_task(task_id)

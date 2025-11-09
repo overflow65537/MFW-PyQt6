@@ -28,7 +28,8 @@ from qfluentwidgets import (
 )
 from app.view.fast_start.animations.option_transition import OptionTransitionAnimator
 
-from app.utils.logger import logger, log_with_ui
+from app.utils.logger import logger
+from app.common.signal_bus import signalBus
 from app.common.constants import RESOURCE_TASK_ID, POST_TASK_ID
 from app.utils.gui_helper import IconLoader
 from app.widget.PathLineEdit import PathLineEdit
@@ -2022,13 +2023,7 @@ class OptionWidget(QWidget):
 
         # 如果获取失败（为空），保持原有列表与选中项，不清除
         if not devices:
-            log_with_ui(
-                self.tr("No devices found"),
-                "WARNING",
-                output=False,
-                infobar=True,
-                infobar_type="error"
-            )
+            signalBus.infobar_signal.emit(self.tr("No devices found"), "error")
         else:
             # 仅在成功获取设备时清空并重新填充
             self.device_combo.clear()
@@ -2087,13 +2082,7 @@ class OptionWidget(QWidget):
             devices: 设备列表（AdbDevice 或 DesktopWindow 对象）
         """
         if not devices:
-            log_with_ui(
-                self.tr("No devices found"),
-                "WARNING",
-                output=False,
-                infobar=True,
-                infobar_type="error"
-            )
+            signalBus.infobar_signal.emit(self.tr("No devices found"), "error")
             return
 
         import re
@@ -2192,13 +2181,7 @@ class OptionWidget(QWidget):
         
         # 显示成功通知
         if added_count > 0:
-            log_with_ui(
-                self.tr("Found {count} device(s)").format(count=added_count),
-                "INFO",
-                output=False,
-                infobar=True,
-                infobar_type="succeed"
-            )
+            signalBus.infobar_signal.emit(self.tr("Found {count} device(s)").format(count=added_count), "succeed")
 
     def _show_post_task_setting_option(self, item: TaskItem):
         """显示完成后设置选项 - 使用多选框实现互斥逻辑"""
