@@ -24,9 +24,11 @@ from qfluentwidgets import (
     PrimaryPushButton,
     LineEdit,
     SpinBox,
+    CheckBox,
 )
+from app.view.fast_start.animations.option_transition import OptionTransitionAnimator
 
-from app.utils.logger import logger
+from app.utils.logger import logger, log_with_ui
 from app.utils.gui_helper import IconLoader
 from app.widget.PathLineEdit import PathLineEdit
 
@@ -143,6 +145,8 @@ class OptionWidget(QWidget):
 
         # 将容器widget设置到滚动区域
         self.option_area_widget.setWidget(option_container)
+        # 初始化过渡动画器
+        self._option_animator = OptionTransitionAnimator(option_container)
 
         # 创建一个垂直布局给卡片,然后将滚动区域添加到这个布局中
         card_layout = QVBoxLayout()
@@ -295,12 +299,42 @@ class OptionWidget(QWidget):
         if not self.current_task:
             return
         
+        # 特殊处理：完成后设置任务
+        if self.current_task.item_id.startswith("f_"):
+            self._save_post_task_options()
+            return
+        
         is_resource_setting = self.current_task.item_id.startswith("r_")
         self.data_manager.save_options(
             self.current_task,
             self.option_area_layout,
             is_resource_setting
         )
+    
+    def _save_post_task_options(self):
+        """保存完成后设置选项"""
+        if not self.current_task:
+            return
+        
+        # 收集所有复选框状态
+        options: dict = {
+            "no_action": self.checkbox_no_action.isChecked(),
+            "close_emulator": self.checkbox_close_emulator.isChecked(),
+            "close_software": self.checkbox_close_software.isChecked(),
+            "run_other_config": self.checkbox_run_other_config.isChecked(),
+        }
+        
+        # 如果选择了运行其他配置,保存配置信息
+        if self.checkbox_run_other_config.isChecked():
+            options["other_config_name"] = self.post_task_config_combo.currentText()
+            options["other_config_id"] = self.post_task_config_combo.currentData()
+        
+        # 保存到任务选项
+        self.current_task.task_option.update(options)
+        
+        # 通知任务服务保存
+        if self.service_coordinator and hasattr(self.service_coordinator, 'task_service'):
+            self.service_coordinator.task_service.update_task(self.current_task)
 
     def _organize_controller_options(self, options: dict) -> dict:
         """委托给数据管理器"""
@@ -313,29 +347,34 @@ class OptionWidget(QWidget):
     # ==================== 任务选项显示 - 主入口 ==================== #
 
     def show_option(self, item_or_id: TaskItem | ConfigItem | str):
-        """显示选项。参数可以是 task_id(str) 或 TaskItem/ConfigItem 对象。"""
-        self.reset()
-        # 如果传入的是 id，获取对象
+        """显示选项。参数可以是 task_id(str) 或 TaskItem/ConfigItem 对象。
+
+        使用过渡动画：淡出 -> 清空 -> 构建新内容 -> 淡入。
+        """
+        # 获取对象
         item = item_or_id
         if isinstance(item_or_id, str):
             item = self.task.get_task(item_or_id)
         if not item:
             return
-        if isinstance(item, TaskItem):
-            # 保存当前任务引用
-            self.current_task = item
 
-            # 通过 item_id 前缀判断是否是基础任务
-            # 基础任务 ID 前缀: r_ (资源设置), f_ (完成后操作)
-            if item.item_id.startswith("r_"):
-                # 资源设置基础任务（包含控制器和资源配置）
-                self._show_resource_setting_option(item)
-            elif item.item_id.startswith("f_"):
-                # 完成后操作基础任务
-                self._show_post_task_setting_option(item)
+        def build():
+            # 初始隐藏描述（构建方法内部会决定是否显示）
+            self._toggle_description(False)
+            self.current_task = None
+            if isinstance(item, TaskItem):
+                self.current_task = item
+                if item.item_id.startswith("r_"):
+                    self._show_resource_setting_option(item)
+                elif item.item_id.startswith("f_"):
+                    self._show_post_task_setting_option(item)
+                else:
+                    self._show_task_option(item)
             else:
-                # 普通任务，使用默认显示
-                self._show_task_option(item)
+                # ConfigItem 等其它类型暂不显示具体内容
+                pass
+
+        self._play_option_transition(build)
 
     # ==================== 普通任务选项显示 ==================== #
 
@@ -1960,20 +1999,62 @@ class OptionWidget(QWidget):
         except TypeError:
             # 信号可能没有连接，忽略错误
             pass
+        # 记录当前选中设备数据，以便成功刷新后尝试恢复选择
+        previous_index = self.device_combo.currentIndex()
+        previous_data = (
+            self.device_combo.itemData(previous_index)
+            if previous_index >= 0
+            else None
+        )
 
-        # 清空当前设备列表
-        self.device_combo.clear()
+        devices = []
 
         if controller_type == "adb":
             # 调用 ADB 设备获取方法
             devices = self._get_adb_devices()
-            self._populate_device_list(devices)
         elif controller_type == "win32":
             # 调用 Win32 设备获取方法
             devices = self._get_win32_devices()
-            self._populate_device_list(devices)
         else:
             logger.warning(f"未知的控制器类型: {controller_type}")
+            devices = []
+
+        # 如果获取失败（为空），保持原有列表与选中项，不清除
+        if not devices:
+            log_with_ui(
+                self.tr("No devices found"),
+                "WARNING",
+                output=False,
+                infobar=True,
+                infobar_type="error"
+            )
+        else:
+            # 仅在成功获取设备时清空并重新填充
+            self.device_combo.clear()
+            self._populate_device_list(devices)
+
+            # 恢复之前的选中项（如果仍然存在）
+            if previous_data:
+                restored = False
+                for i in range(self.device_combo.count()):
+                    data = self.device_combo.itemData(i)
+                    if not isinstance(data, dict):
+                        continue
+                    # 匹配逻辑：类型相同 + 关键字段一致
+                    if data.get("type") == previous_data.get("type"):
+                        if data.get("type") == "adb" and data.get("address") == previous_data.get("address"):
+                            self.device_combo.setCurrentIndex(i)
+                            restored = True
+                            break
+                        if data.get("type") == "win32" and data.get("hwnd") == previous_data.get("hwnd"):
+                            self.device_combo.setCurrentIndex(i)
+                            restored = True
+                            break
+                # 若未恢复旧选中，保持当前自动选中项（_populate_device_list 内已处理）
+                if restored:
+                    logger.info("刷新成功，已恢复之前选中的设备")
+                else:
+                    logger.info("刷新成功，未找到与之前选中设备匹配的项")
 
         # 填充完设备后重新连接信号
         if hasattr(self, "_current_task_item"):
@@ -2005,8 +2086,13 @@ class OptionWidget(QWidget):
             devices: 设备列表（AdbDevice 或 DesktopWindow 对象）
         """
         if not devices:
-            self.device_combo.addItem(self.tr("No devices found"))
-            logger.warning("未找到设备")
+            log_with_ui(
+                self.tr("No devices found"),
+                "WARNING",
+                output=False,
+                infobar=True,
+                infobar_type="error"
+            )
             return
 
         import re
@@ -2093,7 +2179,7 @@ class OptionWidget(QWidget):
 
                 current_index += 1
 
-        # 如果找到匹配项，自动选中第一个
+        # 如果找到匹配项,自动选中第一个
         if first_match_index >= 0:
             self.device_combo.setCurrentIndex(first_match_index)
             logger.info(f"自动选中第一个匹配的设备（索引: {first_match_index}）")
@@ -2102,75 +2188,194 @@ class OptionWidget(QWidget):
         logger.info(
             f"已添加 {added_count} 个设备到列表（总共检测到 {len(devices)} 个）"
         )
+        
+        # 显示成功通知
+        if added_count > 0:
+            log_with_ui(
+                self.tr("Found {count} device(s)").format(count=added_count),
+                "INFO",
+                output=False,
+                infobar=True,
+                infobar_type="succeed"
+            )
 
     def _show_post_task_setting_option(self, item: TaskItem):
-        """显示完成后设置选项 - 2个下拉框"""
+        """显示完成后设置选项 - 使用多选框实现互斥逻辑"""
         self._clear_options()
 
         # 获取当前保存的选项
         saved_options = item.task_option
-
-        # 第一个下拉框：完成后操作
-        post_action_layout = QVBoxLayout()
-        post_action_layout.setObjectName("post_action_layout")
-
-        post_action_label = BodyLabel(self.tr("Action After Completion"))
-        post_action_label.setStyleSheet("font-weight: bold;")
-        post_action_layout.addWidget(post_action_label)
-
-        post_action_combo = ComboBox()
-        post_action_combo.setObjectName("post_action")
-        post_action_combo.setMaximumWidth(400)  # 限制最大宽度
-        post_action_options = [
-            self.tr("None"),
-            self.tr("Exit Program"),
-            self.tr("Shutdown Computer"),
-            self.tr("Hibernate Computer"),
-            self.tr("Sleep Computer"),
-        ]
-        post_action_combo.addItems(post_action_options)
-
-        current_action = saved_options.get("post_action", "")
-        if current_action:
-            post_action_combo.setCurrentText(current_action)
-
-        post_action_combo.currentTextChanged.connect(
-            lambda: self._save_current_options()
+        
+        # 主布局
+        main_layout = QVBoxLayout()
+        main_layout.setObjectName("post_task_main_layout")
+        
+        # 标题
+        title_label = BodyLabel(self.tr("Action After Completion"))
+        title_label.setStyleSheet("font-weight: bold;")
+        main_layout.addWidget(title_label)
+        
+        # 选项1: 无动作
+        self.checkbox_no_action = CheckBox(self.tr("No Action"))
+        self.checkbox_no_action.setObjectName("checkbox_no_action")
+        main_layout.addWidget(self.checkbox_no_action)
+        
+        # 选项2: 关闭模拟器
+        self.checkbox_close_emulator = CheckBox(self.tr("Close Emulator"))
+        self.checkbox_close_emulator.setObjectName("checkbox_close_emulator")
+        main_layout.addWidget(self.checkbox_close_emulator)
+        
+        # 选项3: 关闭软件
+        self.checkbox_close_software = CheckBox(self.tr("Close Software"))
+        self.checkbox_close_software.setObjectName("checkbox_close_software")
+        main_layout.addWidget(self.checkbox_close_software)
+        
+        # 选项4: 运行其他配置
+        self.checkbox_run_other_config = CheckBox(self.tr("Run Other Configuration"))
+        self.checkbox_run_other_config.setObjectName("checkbox_run_other_config")
+        main_layout.addWidget(self.checkbox_run_other_config)
+        
+        # 配置选择下拉框 - 缩进显示
+        config_container = QWidget()
+        config_layout = QVBoxLayout(config_container)
+        config_layout.setContentsMargins(30, 0, 0, 0)  # 左侧缩进
+        
+        self.post_task_config_combo = ComboBox()
+        self.post_task_config_combo.setObjectName("post_task_config_combo")
+        self.post_task_config_combo.setMaximumWidth(370)
+        self._populate_config_list()  # 填充配置列表
+        config_layout.addWidget(self.post_task_config_combo)
+        
+        main_layout.addWidget(config_container)
+        
+        # 添加到主选项区域
+        self.option_area_layout.addLayout(main_layout)
+        
+        # 从保存的选项中恢复状态
+        self._restore_post_task_options(saved_options)
+        
+        # 连接信号 - 实现互斥逻辑和启用/禁用控制
+        self.checkbox_no_action.stateChanged.connect(
+            lambda state: self._on_checkbox_changed('no_action', state)
         )
-
-        post_action_layout.addWidget(post_action_combo)
-        self.option_area_layout.addLayout(post_action_layout)
-
-        # 第二个下拉框：通知方式
-        notification_layout = QVBoxLayout()
-        notification_layout.setObjectName("notification_layout")
-
-        notification_label = BodyLabel(self.tr("Notification Method"))
-        notification_label.setStyleSheet("font-weight: bold;")
-        notification_layout.addWidget(notification_label)
-
-        notification_combo = ComboBox()
-        notification_combo.setObjectName("notification")
-        notification_combo.setMaximumWidth(400)  # 限制最大宽度
-        notification_options = [
-            self.tr("None"),
-            self.tr("System Notification"),
-            self.tr("Sound Alert"),
-            self.tr("Email Notification"),
-            self.tr("Webhook"),
-        ]
-        notification_combo.addItems(notification_options)
-
-        current_notification = saved_options.get("notification", "")
-        if current_notification:
-            notification_combo.setCurrentText(current_notification)
-
-        notification_combo.currentTextChanged.connect(
-            lambda: self._save_current_options()
+        self.checkbox_close_emulator.stateChanged.connect(
+            lambda state: self._on_checkbox_changed('close_emulator', state)
         )
-
-        notification_layout.addWidget(notification_combo)
-        self.option_area_layout.addLayout(notification_layout)
+        self.checkbox_close_software.stateChanged.connect(
+            lambda state: self._on_checkbox_changed('close_software', state)
+        )
+        self.checkbox_run_other_config.stateChanged.connect(
+            lambda state: self._on_checkbox_changed('run_other_config', state)
+        )
+        
+        # 连接保存信号
+        self.post_task_config_combo.currentTextChanged.connect(lambda: self._save_current_options())
+        
+        # 初始化启用/禁用状态
+        self._update_post_action_states()
+        
+    def _populate_config_list(self):
+        """填充配置列表到下拉框"""
+        self.post_task_config_combo.clear()
+        
+        # 从 service_coordinator 获取所有配置
+        if self.service_coordinator and hasattr(self.service_coordinator, 'config_service'):
+            configs = self.service_coordinator.config_service.list_configs()
+            
+            for config in configs:
+                if isinstance(config, dict):
+                    config_name = config.get("name", "")
+                    config_id = config.get("item_id", "")
+                    if config_name:
+                        self.post_task_config_combo.addItem(config_name, config_id)
+    
+    def _restore_post_task_options(self, saved_options: dict):
+        """从保存的选项中恢复完成后设置"""
+        # 直接设置状态,不触发信号(因为信号还未连接)
+        no_action = saved_options.get("no_action", False)
+        close_emulator = saved_options.get("close_emulator", False)
+        close_software = saved_options.get("close_software", False)
+        run_other_config = saved_options.get("run_other_config", False)
+        
+        self.checkbox_no_action.setChecked(no_action)
+        self.checkbox_close_emulator.setChecked(close_emulator)
+        self.checkbox_close_software.setChecked(close_software)
+        self.checkbox_run_other_config.setChecked(run_other_config)
+        
+        # 恢复配置选择
+        if run_other_config:
+            config_name = saved_options.get("other_config_name", "")
+            if config_name:
+                index = self.post_task_config_combo.findText(config_name)
+                if index >= 0:
+                    self.post_task_config_combo.setCurrentIndex(index)
+    
+    def _on_checkbox_changed(self, checkbox_name: str, state: int):
+        """复选框状态改变时的回调 - 根据具体复选框实现互斥逻辑
+        
+        Args:
+            checkbox_name: 改变状态的复选框名称
+            state: 新状态 (Qt.CheckState.Checked = 2, Qt.CheckState.Unchecked = 0)
+        """
+        from PySide6.QtCore import Qt
+        
+        # 只在选中时处理互斥逻辑
+        if state != Qt.CheckState.Checked.value:
+            self._update_post_action_states()
+            self._save_current_options()
+            return
+        
+        # 暂时断开所有信号,避免递归触发
+        self.checkbox_no_action.stateChanged.disconnect()
+        self.checkbox_close_emulator.stateChanged.disconnect()
+        self.checkbox_close_software.stateChanged.disconnect()
+        self.checkbox_run_other_config.stateChanged.disconnect()
+        
+        # 互斥逻辑:根据被选中的复选框取消冲突项
+        if checkbox_name == 'no_action':
+            # "无动作" 选中时,取消其他所有选项
+            self.checkbox_close_emulator.setChecked(False)
+            self.checkbox_close_software.setChecked(False)
+            self.checkbox_run_other_config.setChecked(False)
+        
+        elif checkbox_name == 'run_other_config':
+            # "运行其他配置" 选中时,取消其他所有选项
+            self.checkbox_no_action.setChecked(False)
+            self.checkbox_close_emulator.setChecked(False)
+            self.checkbox_close_software.setChecked(False)
+        
+        elif checkbox_name in ('close_emulator', 'close_software'):
+            # "关闭模拟器" 或 "关闭软件" 选中时,取消 "无动作" 和 "运行其他配置"
+            self.checkbox_no_action.setChecked(False)
+            self.checkbox_run_other_config.setChecked(False)
+            # close_emulator 和 close_software 可以共存,不互斥
+        
+        # 重新连接信号
+        self.checkbox_no_action.stateChanged.connect(
+            lambda state: self._on_checkbox_changed('no_action', state)
+        )
+        self.checkbox_close_emulator.stateChanged.connect(
+            lambda state: self._on_checkbox_changed('close_emulator', state)
+        )
+        self.checkbox_close_software.stateChanged.connect(
+            lambda state: self._on_checkbox_changed('close_software', state)
+        )
+        self.checkbox_run_other_config.stateChanged.connect(
+            lambda state: self._on_checkbox_changed('run_other_config', state)
+        )
+        
+        # 更新控件状态
+        self._update_post_action_states()
+        
+        # 保存当前选项
+        self._save_current_options()
+    
+    
+    def _update_post_action_states(self):
+        """更新完成后操作控件的启用/禁用状态"""
+        # 配置下拉框只在选择"运行其他配置"时启用
+        is_run_other = self.checkbox_run_other_config.isChecked()
+        self.post_task_config_combo.setEnabled(is_run_other)
 
     # ==================== 选项控件创建 - 复杂控件 ==================== #
 
@@ -2833,10 +3038,8 @@ class OptionWidget(QWidget):
         self.option_area_layout.addLayout(v_layout)
 
     def _clear_options(self):
-        """清除所有选项"""
-
+        """同步清除所有选项 (不做动画)。"""
         def recursive_clear_layout(layout):
-            """递归清理布局中的所有项目"""
             while layout.count():
                 item = layout.takeAt(0)
                 widget = item.widget()
@@ -2850,5 +3053,19 @@ class OptionWidget(QWidget):
                         del nested_layout
                 elif item.spacerItem():
                     layout.removeItem(item)
-
         recursive_clear_layout(self.option_area_layout)
+
+    def _play_option_transition(self, build_callable):
+        """使用过渡动画执行 清空 + 构建。
+
+        Args:
+            build_callable: 构建新选项内容的函数。
+        """
+        if not callable(build_callable):
+            return
+
+        def update():
+            self._clear_options()
+            build_callable()
+
+        self._option_animator.play(update)

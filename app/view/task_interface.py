@@ -2690,3 +2690,345 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         monday = today + timedelta(days=days_until_monday)
         monday_5am = datetime(monday.year, monday.month, monday.day, 5, 0)
         return QDateTime.fromSecsSinceEpoch(int(monday_5am.timestamp()))
+self, "_doc_filters"):
+                        self._doc_filters = []
+                    self._doc_filters.append(rf)  # 保持引用，防止被回收
+                    doc_layout.addWidget(doc_label)
+
+                spacer = QSpacerItem(
+                    0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+                )
+                self.main_scroll_layout.addItem(spacer)
+
+                break
+
+    def get_selected_options(self):
+        """
+        获取选中任务的所有选项
+        """
+        selected_options = []
+        layout = self.option_layout
+        name = None
+        selected_value = None
+        advanced_glabal = False
+
+        for i in range(layout.count()):
+            advanced = False
+            item = layout.itemAt(i)
+            if not isinstance(item, QVBoxLayout):
+                continue  # 如果item不是QVBoxLayout，跳过本次循环
+            widget_name = item.objectName()
+            for j in range(item.count()):
+                widget = item.itemAt(j).widget()
+                if isinstance(widget, BodyLabel):
+                    name = widget.text()
+                elif isinstance(widget, ComboBox):
+                    selected_value = widget.currentText()
+                elif isinstance(widget, EditableComboBox):
+                    selected_value = widget.currentText()
+                    advanced = True
+                    advanced_glabal = True
+
+                if name and selected_value:
+                    if advanced:
+                        selected_options.append(
+                            {
+                                "name": name,
+                                "value": selected_value,
+                                "advanced": widget_name,
+                            }
+                        )
+
+                    else:
+                        selected_options.append({"name": name, "value": selected_value})
+
+                    # 重置变量
+                    name = None
+                    selected_value = None
+                    advanced = False
+
+        return advanced_glabal, selected_options
+
+    def clear_extra_widgets(self):
+        """
+        清除额外的控件
+        """
+        for layout in [self.option_layout, self.doc_layout]:
+            if not layout:
+                continue
+
+            def recursive_clear(layout: QVBoxLayout):
+                while layout.count():
+                    item = layout.takeAt(0)
+                    widget = item.widget()
+                    if widget:  # 处理普通控件
+                        widget.deleteLater()
+                    elif item.layout():  # 处理嵌套布局
+                        nested_layout = item.layout()
+                        if isinstance(nested_layout, QVBoxLayout):
+                            recursive_clear(nested_layout)
+                    elif item.spacerItem():  # 处理间隔项
+                        layout.removeItem(item)
+
+            recursive_clear(layout)
+            # 清空self.main_scroll_layout中的spacerItem
+            for i in reversed(range(self.main_scroll_layout.count())):
+                item = self.main_scroll_layout.itemAt(i)
+                if isinstance(item, QSpacerItem):
+                    self.main_scroll_layout.removeItem(item)
+
+    @asyncSlot()
+    async def Start_Detection(self):
+        """
+        启动检测adb或者win32窗口
+        """
+        if not cfg.get(cfg.resource_exist):
+            return
+        logger.info("开始检测")
+        self.AutoDetect_Button.setEnabled(False)
+        self.S2_Button.setEnabled(False)
+
+        controller_type = get_controller_type(
+            self.Control_Combox.currentText(), maa_config_data.interface_config_path
+        )
+
+        if controller_type == "Win32":
+            content = self.tr("Detecting game...")
+            error_message = self.tr("No game detected")
+            success_message = self.tr("Game detected")
+        elif controller_type == "Adb":
+            content = self.tr("Detecting emulator...")
+            error_message = self.tr("No emulator detected")
+            success_message = self.tr("Emulator detected")
+        else:
+            return
+
+        InfoBar.info(
+            title=self.tr("Tip"),
+            content=content,
+            orient=Qt.Orientation.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.BOTTOM_RIGHT,
+            duration=2000,
+            parent=self,
+        )
+
+        # 调用相应的检测函数
+        processed_list = []  # 初始化处理列表
+        if controller_type == "Win32":
+            for i in maa_config_data.interface_config.get("controller", {}):
+                if i["type"] == "Win32":
+                    self.win32_hwnd = await maafw.detect_win32hwnd(
+                        i.get("win32", {})["window_regex"]
+                    )
+            processed_list = (
+                [hwnd.window_name for hwnd in self.win32_hwnd]
+                if self.win32_hwnd
+                else []
+            )
+        elif controller_type == "Adb":
+            self.devices = await maafw.detect_adb()
+            if not self.devices:
+                logger.info("备用 ADB 检测")
+                self.devices = await self.Adb_detect_backup()
+            processed_list = [
+                f"{device.name} ({device.address.split(':')[-1]})"
+                for device in (self.devices or [])
+            ]
+
+        # 处理结果
+        if not processed_list:
+            logger.error("未检测到设备")
+            self.show_error(error_message)
+        else:
+            signalBus.infobar_message.emit(
+                {"status": "success", "msg": success_message}
+            )
+            self.Autodetect_combox.clear()
+            processed_list = list(set(processed_list))
+            self.Autodetect_combox.addItems(processed_list)
+
+        # 重新启用按钮
+        self.AutoDetect_Button.setEnabled(True)
+        self.S2_Button.setEnabled(True)
+
+    async def Adb_detect_backup(self):
+        """备用adb识别"""
+        emulator_list = Read_Config(
+            os.path.join(os.getcwd(), "config", "emulator.json")
+        )
+        emulator_results = []
+
+        for app in emulator_list:
+            process_path = find_process_by_name(app["exe_name"])
+
+            if process_path:
+                # 判断程序是否正在运行, 是进行下一步, 否则放弃
+                may_path = [os.path.join(*i) for i in app["may_path"]]
+                info_dict = {"exe_path": process_path, "may_path": may_path}
+                ADB_path = find_existing_file(info_dict)
+
+                if ADB_path:
+                    # 判断 ADB 地址是否存在, 是进行下一步, 否则放弃
+                    port_data = await check_port(
+                        app["port"]
+                    )  # 使用 await 调用 check_port
+
+                    if port_data:
+                        # 判断端口是否存在, 是则组合字典, 否则放弃
+                        for i in port_data:
+                            emulator_result = AdbDevice(
+                                name=app["name"],
+                                adb_path=Path(ADB_path),
+                                address=i,
+                                screencap_methods=0,
+                                input_methods=0,
+                                config={},
+                            )
+                            emulator_results.append(
+                                emulator_result
+                            )  # 将对象添加到列表中
+
+        return emulator_results  # 返回包含所有 AdbDevice 对象的列表
+
+    def send_notice(self, msg_type: str = "", filed_task: str = "") -> None:
+        """
+        发送通知
+                参数:
+                msg_type (str): 消息的类型，用于区分通知的内容或来源。
+                filed_task (str): 发送失败的任务名。
+
+        """
+        status_mapping = {
+            -1: self.tr("Failed"),
+            0: self.tr("Not Run"),
+            1: self.tr("Success"),
+        }
+        result_lines = []
+        for task in self.all_task_list:
+            name = task.get("name", "Unknown Task")
+            status_code = task.get("status", 0)
+            status = status_mapping.get(status_code, self.tr("Unknown Status"))
+            result_lines.append(f"{name}: {status}")
+
+        if msg_type == "completed":
+            result_lines = []
+            for task in self.all_task_list:
+                name = task.get("name", "Unknown Task")
+                status_code = task.get("status", 0)
+                status = status_mapping.get(status_code, self.tr("Unknown Status"))
+                result_lines.append(f"{name}: {status}")
+
+            msg = {
+                "title": self.tr("task completed"),
+                "text": maa_config_data.resource_name
+                + " "
+                + maa_config_data.config_name
+                + " "
+                + self.tr("task completed")
+                + "\n"
+                + "\n".join(result_lines),
+            }
+        elif msg_type == "info":
+            msg = {
+                "title": self.tr("task info"),
+                "text": maa_config_data.resource_name
+                + " "
+                + maa_config_data.config_name
+                + " "
+                + filed_task,
+            }
+        elif msg_type == "failed":
+            msg = {
+                "title": self.tr("task failed"),
+                "text": maa_config_data.resource_name
+                + " "
+                + maa_config_data.config_name
+                + " "
+                + filed_task
+                + " "
+                + self.tr("task failed"),
+            }
+        else:
+            return
+
+        # 动态创建并启动线程
+        for sender, status_key in [
+            ("dingtalk", cfg.Notice_DingTalk_status),
+            ("lark", cfg.Notice_Lark_status),
+            ("smtp", cfg.Notice_SMTP_status),
+            ("wxpusher", cfg.Notice_WxPusher_status),
+            ("qywx", cfg.Notice_QYWX_status),
+        ]:
+            if cfg.get(status_key):  # 仅启用状态为 True 时发送
+                logger.info(f"发送通知: {sender}, 状态: {status_key}")
+                send_thread.add_task(sender, msg, True)
+
+    def show_error(self, error_message):
+        signalBus.infobar_message.emit({"status": "failed", "msg": error_message})
+
+    def Save_device_Config(self):
+        """
+        保存设备连接信息
+        """
+        controller_type = get_controller_type(
+            self.Control_Combox.currentText(), maa_config_data.interface_config_path
+        )
+        target = self.Autodetect_combox.currentText()
+        result = None
+        if controller_type == "Adb":
+            for i in self.devices:
+                if f"{i.name} ({i.address.split(':')[-1]})" == target:
+                    result = i
+                    break
+            if result:
+                maa_config_data.config.get("adb", {})["adb_path"] = str(result.adb_path)
+                maa_config_data.config.get("adb", {})["address"] = result.address
+                maa_config_data.config.get("adb", {})["config"] = result.config
+                Save_Config(maa_config_data.config_path, maa_config_data.config)
+                signalBus.update_adb.emit()
+        elif controller_type == "Win32":
+            for i in self.win32_hwnd:
+                if i.window_name == target:
+                    result = i
+                    break
+            if result:
+                hwid = int(result.hwnd)
+                maa_config_data.config["win32"]["hwnd"] = hwid
+                Save_Config(maa_config_data.config_path, maa_config_data.config)
+
+    def _format_hour(self, hour: int) -> str:
+        """
+        将小时数格式化为中文时间
+        """
+        return f"{hour:02d}:00"
+
+    def _format_weekday(self, weekday: int) -> str:
+        """
+        将数字转换为中文星期
+        """
+        weekdays = [
+            self.tr("Sunday"),
+            self.tr("Monday"),
+            self.tr("Tuesday"),
+            self.tr("Wednesday"),
+            self.tr("Thursday"),
+            self.tr("Friday"),
+            self.tr("Saturday"),
+        ]
+        return weekdays[weekday % 7]
+
+    def get_this_monday_5am(self):
+        """
+        获取本周一上午5点的时间
+
+                Returns:
+                    QDateTime: 本周一上午5点的QDateTime对象
+
+        """
+        today = datetime.now()
+        # 计算到本周一的天数差 (周一的weekday()是0)
+        days_until_monday = (0 - today.weekday()) % 7
+        monday = today + timedelta(days=days_until_monday)
+        monday_5am = datetime(monday.year, monday.month, monday.day, 5, 0)
+        return QDateTime.fromSecsSinceEpoch(int(monday_5am.timestamp()))

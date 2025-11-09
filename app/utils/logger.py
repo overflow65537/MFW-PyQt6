@@ -27,6 +27,9 @@ import logging
 import os
 
 from logging.handlers import TimedRotatingFileHandler
+from datetime import datetime
+
+from app.common.signal_bus import signalBus
 
 # 提取日志格式为常量
 LOG_FORMAT = "[%(asctime)s][%(levelname)s][%(filename)s][L%(lineno)d][%(funcName)s] | %(message)s"
@@ -92,6 +95,79 @@ class LoggerManager:
             new_log_path (str): 新的日志文件路径。
         """
         self.logger = self._create_logger(new_log_path)
+
+
+class QtSignalHandler(logging.Handler):
+    """(预留) 自定义 Handler，可扩展把所有日志转发到 UI。
+
+    当前未自动转发，以避免日志量过大造成 UI 卡顿。
+    若需要全量同步，可在 LoggerManager._create_logger 中添加本 Handler。"""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        # 暂不启用自动转发，仅作为占位
+        pass
+
+
+def log_with_ui(
+    text: str,
+    level: str = "INFO",
+    *,
+    color: str | None = None,
+    output: bool = True,
+    infobar: bool = False,
+    infobar_type: str | None = None,  # info/succeed/warning/error
+    logger_name: str | None = None,
+):
+    """统一的日志入口：先写入 logger，再根据参数路由到 UI。
+
+    参数说明：
+    - text: 正文
+    - level: 日志等级（DEBUG/INFO/WARNING/ERROR/CRITICAL）
+    - color: 文本颜色名或 #RRGGBB，可为空
+    - output: 是否输出到任务日志区域（LogBodyLabelWidget）
+    - infobar: 是否显示 InfoBar（只展示正文）
+    - logger_name: 指定 logger 名称，默认使用 root
+    """
+
+    lvl = (level or "INFO").upper()
+    logger_obj = logging.getLogger(logger_name) if logger_name else logging.getLogger()
+
+    # 1) 先记录到日志文件/控制台（不可取消）
+    if lvl == "DEBUG":
+        logger_obj.debug(text)
+    elif lvl == "INFO":
+        logger_obj.info(text)
+    elif lvl == "WARNING":
+        logger_obj.warning(text)
+    elif lvl == "ERROR":
+        logger_obj.error(text)
+    elif lvl == "CRITICAL":
+        logger_obj.critical(text)
+    else:
+        logger_obj.info(text)
+
+    # 2) 转发到 UI（结构化方式）
+    payload = {
+        "text": text,
+        "level": lvl,
+        "color": color,
+        "output": bool(output),
+        "infobar": bool(infobar),
+        "infobar_type": (infobar_type or _map_level_to_infobar(lvl)),
+    }
+    signalBus.log_event.emit(payload)
+
+
+def _map_level_to_infobar(level: str) -> str:
+    """将日志等级映射到 InfoBar 类型。"""
+    lvl = (level or "INFO").upper()
+    if lvl in ("ERROR", "CRITICAL"):
+        return "error"
+    if lvl == "WARNING":
+        return "warning"
+    if lvl == "INFO":
+        return "info"
+    return "info"
 
 # 创建日志管理器实例
 logger_manager = LoggerManager()

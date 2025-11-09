@@ -7,10 +7,17 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QSizePolicy,
 )
-from qfluentwidgets import CheckBox, TransparentToolButton, FluentIcon as FIF
+from qfluentwidgets import (
+    CheckBox,
+    TransparentToolButton,
+    FluentIcon as FIF,
+    InfoBar,
+    InfoBarPosition,
+)
 
 
 from .fast_start_ui import UI_FastStartInterface
+from app.common.signal_bus import signalBus
 
 
 
@@ -28,6 +35,70 @@ class FastStartInterface(UI_FastStartInterface, QWidget):
             self.tr("配置选择")
         )
         self.option_panel.set_title(self.tr("选项"))
+        
+        # 连接日志事件信号以显示 InfoBar
+        signalBus.log_event.connect(self._on_log_event)
+    
+    def _on_log_event(self, payload: dict):
+        """处理日志事件,显示 InfoBar 通知
+        
+        Args:
+            payload: 日志事件载荷,包含 {text, level, color, output, infobar, infobar_type}
+        """
+        if not isinstance(payload, dict):
+            return
+        
+        # 只处理需要显示 InfoBar 的事件
+        if not payload.get("infobar", False):
+            return
+        
+        text = str(payload.get("text", ""))
+        infobar_type = str(payload.get("infobar_type", "info")).lower()
+        
+        # 计算停留时间:根据文字数量,最少3秒,最多10秒
+        duration = max(3, min(10, len(text) // 20 + 3)) * 1000  # 转换为毫秒
+        
+        # 根据类型显示不同的 InfoBar
+        if infobar_type == "succeed":
+            InfoBar.success(
+                title="",
+                content=text,
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=duration,
+                parent=self
+            )
+        elif infobar_type == "warning":
+            InfoBar.warning(
+                title="",
+                content=text,
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=duration,
+                parent=self
+            )
+        elif infobar_type == "error":
+            InfoBar.error(
+                title="",
+                content=text,
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=duration,
+                parent=self
+            )
+        else:  # info
+            InfoBar.info(
+                title="",
+                content=text,
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=duration,
+                parent=self
+            )
 
 
     

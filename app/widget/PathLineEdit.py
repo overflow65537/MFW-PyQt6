@@ -1,7 +1,7 @@
 """带浏览按钮的路径输入控件"""
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QFileDialog
-from qfluentwidgets import LineEdit, PushButton
+from qfluentwidgets import LineEdit, ToolButton,FluentIcon as FIF
 
 
 class PathLineEdit(QWidget):
@@ -30,12 +30,10 @@ class PathLineEdit(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(5)
 
-        # 输入框 - 使用 qfluentwidgets 的 LineEdit
         self.line_edit = LineEdit()
         layout.addWidget(self.line_edit, stretch=1)
 
-        # 浏览按钮 - 使用 qfluentwidgets 的 PushButton
-        self.browse_button = PushButton("...")
+        self.browse_button =ToolButton(FIF.FOLDER)
         self.browse_button.setFixedWidth(35)
         self.browse_button.clicked.connect(self._on_browse_clicked)
         layout.addWidget(self.browse_button)
