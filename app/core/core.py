@@ -35,7 +35,7 @@ class ServiceCoordinator:
         self.option_service = OptionService(self.task_service, self.signal_bus)
 
         # 初始化 MaaFW 运行器
-        self.maafw = MaaFW(self.config_service, self.task_service)
+        self.maafw = MaaFW()
 
         # 连接信号
         self._connect_signals()
