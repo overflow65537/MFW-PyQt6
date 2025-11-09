@@ -86,8 +86,18 @@ class TaskDragListWidget(BaseListWidget):
         self.service_coordinator.select_task(item_id)
 
     def dropEvent(self, event):
+        # 拖动前收集任务和保护位置
         previous_tasks = self._collect_task_items()
         protected = self._protected_positions(previous_tasks)
+
+        # 获取拖动目标位置
+        pos = event.pos()
+        target_row = self.indexAt(pos).row()
+        # 如果拖动目标是基础任务位置（如0/1/最后），直接放弃操作
+        if target_row in protected:
+            event.ignore()
+            return
+
         super().dropEvent(event)
         current_tasks = self._collect_task_items()
         if not self._base_positions_intact(current_tasks, protected):
