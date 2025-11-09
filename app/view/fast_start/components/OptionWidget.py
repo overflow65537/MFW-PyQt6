@@ -29,6 +29,7 @@ from qfluentwidgets import (
 from app.view.fast_start.animations.option_transition import OptionTransitionAnimator
 
 from app.utils.logger import logger, log_with_ui
+from app.common.constants import RESOURCE_TASK_ID, POST_TASK_ID
 from app.utils.gui_helper import IconLoader
 from app.widget.PathLineEdit import PathLineEdit
 
@@ -300,11 +301,11 @@ class OptionWidget(QWidget):
             return
         
         # 特殊处理：完成后设置任务
-        if self.current_task.item_id.startswith("f_"):
+        if self.current_task.item_id == POST_TASK_ID:
             self._save_post_task_options()
             return
         
-        is_resource_setting = self.current_task.item_id.startswith("r_")
+        is_resource_setting = self.current_task.item_id == RESOURCE_TASK_ID
         self.data_manager.save_options(
             self.current_task,
             self.option_area_layout,
@@ -364,9 +365,9 @@ class OptionWidget(QWidget):
             self.current_task = None
             if isinstance(item, TaskItem):
                 self.current_task = item
-                if item.item_id.startswith("r_"):
+                if item.item_id == RESOURCE_TASK_ID:
                     self._show_resource_setting_option(item)
-                elif item.item_id.startswith("f_"):
+                elif item.item_id == POST_TASK_ID:
                     self._show_post_task_setting_option(item)
                 else:
                     self._show_task_option(item)

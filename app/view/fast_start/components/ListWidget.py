@@ -9,7 +9,7 @@ from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
 from qfluentwidgets import ListWidget, IndeterminateProgressRing
 from ....core.core import TaskItem, ConfigItem, ServiceCoordinator
 from .ListItem import TaskListItem, ConfigListItem
-from app.utils.logger import logger
+from app.utils.logger import logger, log_with_ui
 
 
 class BaseListWidget(ListWidget):
@@ -160,7 +160,7 @@ class TaskDragListWidget(BaseListWidget):
         # 复选框状态变更信号
         task_widget.checkbox_changed.connect(self._on_task_checkbox_changed)
         # 基础任务禁止拖动
-        if task.item_id.startswith(("c_", "r_", "f_")):
+        if task.is_base_task():
             list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
         
         # 批量刷新时严格按传入顺序追加；单项新增时插入到倒数第二位
@@ -174,12 +174,20 @@ class TaskDragListWidget(BaseListWidget):
 
     def remove_task(self, task_id: str):
         """移除任务项，基础任务不可移除"""
-        if task_id.startswith(("c_", "r_", "f_")):
-            return
+        # 检查是否为基础任务
         for i in range(self.count()):
             item = self.item(i)
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem) and widget.task.item_id == task_id:
+                if widget.task.is_base_task():
+                    # 基础任务不可删除，记录日志并显示提示
+                    log_with_ui(
+                        "基础任务（资源、完成后操作）不可删除",
+                        level="WARNING",
+                        infobar=True,
+                        infobar_type="warning"
+                    )
+                    return
                 self.takeItem(i)
                 widget.deleteLater()
                 break
@@ -196,7 +204,6 @@ class TaskDragListWidget(BaseListWidget):
 
     def _protected_positions(self, tasks: list[TaskItem]) -> dict[int, str]:
         """Remember base task ids that must stay in reserved slots."""
-        prefixes = ("c_", "r_", "f_")
         if not tasks:
             return {}
         positions = {0, 1, len(tasks) - 1}
@@ -204,7 +211,7 @@ class TaskDragListWidget(BaseListWidget):
         for idx in positions:
             if 0 <= idx < len(tasks):
                 task = tasks[idx]
-                if task.item_id.startswith(prefixes):
+                if task.is_base_task():
                     protected[idx] = task.item_id
         return protected
 
@@ -277,7 +284,7 @@ class TaskDragListWidget(BaseListWidget):
 
     def _on_task_checkbox_changed(self, task: TaskItem):
         """复选框状态变更信号转发"""
-        if task.item_id.startswith(("c_", "r_", "f_")):
+        if task.is_base_task():
             return
         self.service_coordinator.update_task_checked(task.item_id, task.is_checked)
 
@@ -289,7 +296,7 @@ class TaskDragListWidget(BaseListWidget):
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem):
                 # 排除基础任务和特殊任务
-                if not widget.task.item_id.startswith(("c_", "r_", "f_", "s_")) and not widget.task.is_special:
+                if not widget.task.is_base_task() and not widget.task.is_special:
                     widget.checkbox.setChecked(True)
                     widget.task.is_checked = True
                     task_list.append(widget.task)
@@ -303,7 +310,7 @@ class TaskDragListWidget(BaseListWidget):
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem):
                 # 只排除基础任务
-                if not widget.task.item_id.startswith(("c_", "r_", "f_")):
+                if not widget.task.is_base_task():
                     widget.checkbox.setChecked(False)
                     widget.task.is_checked = False
                     task_list.append(widget.task)

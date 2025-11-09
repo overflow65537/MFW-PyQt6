@@ -92,8 +92,8 @@ class TaskListItem(BaseListItem):
         self.interface = interface or {}
         super().__init__(task, parent)
         
-        # 通过 item_id 前缀判断是否为基础任务，禁用复选框
-        if self.task.item_id.startswith(("c_", "r_", "f_")):
+        # 基础任务（资源、完成后操作）的复选框始终勾选且禁用
+        if self.task.is_base_task():
             self.checkbox.setChecked(True)
             self.checkbox.setDisabled(True)
 

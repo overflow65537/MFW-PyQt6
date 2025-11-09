@@ -6,7 +6,9 @@ from qfluentwidgets import (
     SubtitleLabel,
     BodyLabel,
 )
-from ....core.core import ConfigItem, TaskItem
+from app.core.service import TaskService, TaskItem, ConfigItem
+from app.utils.logger import logger
+from app.common.constants import RESOURCE_TASK_ID, POST_TASK_ID
 
 
 class BaseAddDialog(MessageBoxBase):
@@ -141,19 +143,21 @@ class AddConfigDialog(BaseAddDialog):
             self.show_error(self.tr("Resource bundle not found"))
             return
 
-        # 仅为配置创建所需的基础任务：资源 与 完成后操作
+        # 仅为配置创建所需的基础任务:资源 与 完成后操作
         default_tasks = [
             TaskItem(
                 name="资源",
-                item_id="r_" + TaskItem.generate_id()[2:],
+                item_id=RESOURCE_TASK_ID,
                 is_checked=True,
                 task_option={},
+                is_special=False,  # 基础任务，不是特殊任务
             ),
             TaskItem(
                 name="完成后操作",
-                item_id="f_" + TaskItem.generate_id()[2:],
+                item_id=POST_TASK_ID,
                 is_checked=True,
                 task_option={},
+                is_special=False,  # 基础任务，不是特殊任务
             ),
         ]
 

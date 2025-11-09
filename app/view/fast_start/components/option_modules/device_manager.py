@@ -8,8 +8,7 @@ from typing import TYPE_CHECKING
 
 from qfluentwidgets import ComboBox
 
-from app.utils.logger import logger, log_with_ui
-
+from app.utils.logger import logger
 if TYPE_CHECKING:
     from .....core.core import ServiceCoordinator
 
@@ -79,15 +78,6 @@ class DeviceManager:
             tr_func: 翻译函数
         """
         if not devices:
-            # 不再填充"未找到设备"到下拉框，改用全局通知
-            logger.warning("未找到设备")
-            log_with_ui(
-                tr_func("No devices found"),
-                "WARNING",
-                output=False,
-                infobar=True,
-                infobar_type="error"
-            )
             return
 
         from maa.toolkit import AdbDevice, DesktopWindow
@@ -175,16 +165,6 @@ class DeviceManager:
             logger.info(f"自动选中第一个匹配的设备（索引: {first_match_index}）")
 
         added_count = device_combo.count()
-        
-        # 添加成功通知
-        if added_count > 0:
-            log_with_ui(
-                tr_func("Found {count} device(s)").format(count=added_count),
-                "INFO",
-                output=False,
-                infobar=True,
-                infobar_type="succeed"
-            )
         
         logger.info(
             f"已添加 {added_count} 个设备到列表（总共检测到 {len(devices)} 个）"

@@ -67,6 +67,7 @@ from ..utils.logger import logger
 from ..common.config import cfg
 from ..utils.tool import Read_Config, path_to_list
 from ..utils.tool import ProcessThread
+from .service import ConfigService, TaskService
 
 
 class MaaFWMessageType(Enum):
@@ -156,8 +157,7 @@ class MaaFW:
     notification_handler: NotificationHandler | None
     agent: AgentClient | None
 
-    def __init__(self):
-
+    def __init__(self, config: ConfigService, task: TaskService):
         Toolkit.init_option("./")
         self.resource = None
         self.controller = None
@@ -166,19 +166,8 @@ class MaaFW:
         self.agent = None
         self.agent_thread = None
         self.signal = MaaFWSignal()  # 信号发送器
-
-    def change_log_path(self, new_path: str):
-        """
-        在运行时更改用户目录。
-
-        Args:
-            new_path (str): 新的用户目录路径。
-        """
-        if not self.tasker:
-            self.tasker = Tasker(notification_handler=self.notification_handler)
-        logger.info(f"更改日志路径为{new_path}")
-        if new_path:
-            self.tasker.set_log_dir(new_path)
+        self.config = config
+        self.task = task
 
     def _load_custom_module(self, custom_file_path: str, custom_class_name: str):
         """加载自定义模块并返回实例
@@ -300,13 +289,10 @@ class MaaFW:
 
     @asyncify
     def connect_adb(
-        self,
-        adb_path: str,
-        address: str,
-        screencap_method: int,
-        input_method: int,
-        config: Dict,
+        self
     ) -> bool:
+        adb_data = self.task.get_task("r_resource_base_task")
+
         if screencap_method == 0:
             screencap_method = MaaAdbScreencapMethodEnum.Default
         if input_method == 0:
@@ -472,5 +458,3 @@ class MaaFW:
             self.agent_thread.stop()
             self.agent_thread = None
 
-
-maafw = MaaFW()

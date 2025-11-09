@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 from PySide6.QtCore import QObject, Signal
 from ..utils.logger import logger
 from ..utils.i18n_manager import get_interface_i18n
+from ..common.constants import RESOURCE_TASK_ID, POST_TASK_ID
 
 
 # ==================== 信号总线 ====================
@@ -54,6 +55,10 @@ class TaskItem:
     is_checked: bool
     task_option: Dict[str, Any]
     is_special: bool = False  # 标记是否为特殊任务
+
+    def is_base_task(self) -> bool:
+        """判断是否为基础任务（资源或完成后操作）"""
+        return self.item_id in (RESOURCE_TASK_ID, POST_TASK_ID)
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
@@ -245,15 +250,17 @@ class ConfigService:
             default_tasks = [
                 TaskItem(
                     name="资源",
-                    item_id="r_" + TaskItem.generate_id()[2:],
+                    item_id=RESOURCE_TASK_ID,
                     is_checked=True,
                     task_option={},
+                    is_special=False,  # 基础任务，不是特殊任务
                 ),
                 TaskItem(
                     name="完成后操作",
-                    item_id="f_" + TaskItem.generate_id()[2:],
+                    item_id=POST_TASK_ID,
                     is_checked=True,
                     task_option={},
+                    is_special=False,  # 基础任务，不是特殊任务
                 ),
             ]
             default_config_item = ConfigItem(
@@ -351,7 +358,7 @@ class ConfigService:
         return self.save_config(config_id, config_data)
 
     def delete_config(self, config_id: str) -> bool:
-        """删除配置"""
+        """删除配置（禁止删除最后一个配置）"""
         if self._main_config is None:
             return False
 
@@ -434,7 +441,6 @@ class TaskService:
                     logger.warning(
                         f"获取翻译后的 interface.json 失败，使用原始文件: {e}"
                     )
-                    # 降级方案：加载原始 interface.json
                     interface_path = Path.cwd() / "interface.json"
                     if not interface_path.exists():
                         raise FileNotFoundError(f"无有效资源 {interface_path}")
@@ -673,7 +679,7 @@ class TaskService:
         return ok
 
     def delete_task(self, task_id: str) -> bool:
-        """删除任务"""
+        """删除任务（基础任务不可删除）"""
         config_id = self.config_service.current_config_id
         if not config_id:
             return False
@@ -682,7 +688,16 @@ class TaskService:
         if not config:
             return False
 
-        # 从配置中移除任务
+        # 查找目标任务
+        target_task = None
+        for task in config.tasks:
+            if task.item_id == task_id:
+                target_task = task
+                break
+        if target_task and hasattr(target_task, 'is_base_task') and target_task.is_base_task():
+            return False
+
+        # 从配置中移除任务（非基础任务）
         config.tasks = [task for task in config.tasks if task.item_id != task_id]
 
         # 保存配置

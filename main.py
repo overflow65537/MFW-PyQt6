@@ -139,7 +139,7 @@ if __name__ == "__main__":
     app.installTranslator(translator)
     app.installTranslator(galleryTranslator)
 
-    # 初始化 interface i18n（在应用启动时加载）
+    # 初始化 interface i18n
     try:
         interface_i18n = get_interface_i18n(language=language_code)
         logger.info(f"Interface i18n 初始化完成，语言: {language_code}")

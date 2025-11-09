@@ -35,7 +35,7 @@ class ServiceCoordinator:
         self.option_service = OptionService(self.task_service, self.signal_bus)
 
         # 初始化 MaaFW 运行器
-        self.maafw = MaaFW()
+        self.maafw = MaaFW(self.config_service, self.task_service)
 
         # 连接信号
         self._connect_signals()
@@ -196,6 +196,8 @@ class ServiceCoordinator:
         self.config_service.save_main_config()
         self.signal_bus.config_saved.emit(True)
 
+
+
     # 提供获取服务的属性，以便UI层访问
     @property
     def config(self) -> ConfigService:
@@ -216,6 +218,10 @@ class ServiceCoordinator:
     @property
     def signals(self) -> CoreSignalBus:
         return self.signal_bus
+
+    @property
+    def maafw_runner(self) -> MaaFW:
+        return self.maafw
 
     @property
     def runner_signals(self) -> MaaFWSignal:
