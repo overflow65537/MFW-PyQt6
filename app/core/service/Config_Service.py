@@ -1,0 +1,278 @@
+import json
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+
+from ...utils.logger import logger
+from ...utils.i18n_manager import get_interface_i18n
+from ...common.constants import RESOURCE_TASK_ID, POST_TASK_ID
+from app.core.Item import ConfigItem, TaskItem, CoreSignalBus
+
+
+class JsonConfigRepository:
+    """JSON配置存储库实现"""
+
+    def __init__(self, main_config_path: Path, configs_dir: Path):
+        self.main_config_path = main_config_path
+        self.configs_dir = configs_dir
+
+        # 确保目录存在
+        if not self.configs_dir.exists():
+            self.configs_dir.mkdir(parents=True)
+
+        if not self.main_config_path.exists():
+            # 优先使用翻译后的 interface.json
+            try:
+                i18n = get_interface_i18n()
+                interface = i18n.get_translated_interface()
+                logger.debug("使用翻译后的 interface.json 创建默认配置")
+            except Exception as e:
+                logger.warning(f"获取翻译后的 interface.json 失败，使用原始文件: {e}")
+                interface_path = Path.cwd() / "interface.json"
+                if not interface_path.exists():
+                    raise FileNotFoundError(f"无有效资源 {interface_path}")
+                with open(interface_path, "r", encoding="utf-8") as f:
+                    interface = json.load(f)
+
+            default_main_config = {
+                "curr_config_id": "",
+                "config_list": [],
+                "bundle": [
+                    {
+                        "name": interface.get("name", "Default Bundle"),
+                        "path": "./",
+                    }
+                ],
+            }
+            self.save_main_config(default_main_config)
+
+    def load_main_config(self) -> Dict[str, Any]:
+        """加载主配置"""
+        try:
+            with open(self.main_config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            raise
+
+    def save_main_config(self, config_data: Dict[str, Any]) -> bool:
+        """保存主配置"""
+        try:
+            with open(self.main_config_path, "w", encoding="utf-8") as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            return True
+        except Exception as e:
+            raise
+
+    def load_config(self, config_id: str) -> Dict[str, Any]:
+        """加载子配置"""
+        config_file = self.configs_dir / f"{config_id}.json"
+        if not config_file.exists():
+            raise FileNotFoundError(f"配置文件 {config_file} 不存在")
+        try:
+            with open(config_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            raise
+
+    def save_config(self, config_id: str, config_data: Dict[str, Any]) -> bool:
+        """保存子配置"""
+        try:
+            config_file = self.configs_dir / f"{config_id}.json"
+            with open(config_file, "w", encoding="utf-8") as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            return True
+        except Exception as e:
+            raise
+
+    def delete_config(self, config_id: str) -> bool:
+        """删除子配置"""
+        config_file = self.configs_dir / f"{config_id}.json"
+        if not config_file.exists():
+            raise FileNotFoundError(f"配置文件 {config_file} 不存在")
+        try:
+            config_file.unlink()
+            return True
+        except Exception as e:
+            raise
+
+    def list_configs(self) -> List[str]:
+        """列出所有子配置ID"""
+        try:
+            return [f.stem for f in self.configs_dir.glob("*.json") if f.is_file()]
+        except Exception as e:
+            raise
+
+
+class ConfigService:
+    """配置服务实现"""
+
+    def __init__(self, config_repo: JsonConfigRepository, signal_bus: CoreSignalBus):
+        self.repo = config_repo
+        self.signal_bus = signal_bus
+        self._main_config: Optional[Dict[str, Any]] = None
+
+        # 加载主配置
+        self.load_main_config()
+        if self._main_config and not self._main_config.get("curr_config_id"):
+
+            bundle = self._main_config.get("bundle", [])[0]
+            default_tasks = [
+                TaskItem(
+                    name="资源",
+                    item_id=RESOURCE_TASK_ID,
+                    is_checked=True,
+                    task_option={},
+                    is_special=False,  # 基础任务，不是特殊任务
+                ),
+                TaskItem(
+                    name="完成后操作",
+                    item_id=POST_TASK_ID,
+                    is_checked=True,
+                    task_option={},
+                    is_special=False,  # 基础任务，不是特殊任务
+                ),
+            ]
+            default_config_item = ConfigItem(
+                name="Default Config",
+                item_id=ConfigItem.generate_id(),
+                tasks=default_tasks,
+                know_task=[],
+                bundle=bundle,
+            )
+
+            self._main_config["config_list"].append(default_config_item.item_id)
+            self._main_config["curr_config_id"] = default_config_item.item_id
+            self.current_config_id = self.create_config(default_config_item)
+
+    def load_main_config(self) -> bool:
+        """加载主配置"""
+        try:
+            self._main_config = self.repo.load_main_config()
+            return True
+        except Exception as e:
+            print(f"加载主配置失败: {e}")
+            return False
+
+    def save_main_config(self) -> bool:
+        """保存主配置"""
+        if self._main_config is None:
+            print("没有主配置可保存")
+            return False
+
+        return self.repo.save_main_config(self._main_config)
+
+    @property
+    def current_config_id(self) -> str:
+        """获取当前配置ID"""
+        return self._main_config.get("curr_config_id", "") if self._main_config else ""
+
+    @current_config_id.setter
+    def current_config_id(self, value: str) -> bool:
+        """设置当前配置ID"""
+        if self._main_config is None:
+            return False
+
+        # 验证配置ID是否存在
+        if value and value not in self._main_config.get("config_list", []):
+            print(f"配置ID {value} 不存在")
+            return False
+
+        self._main_config["curr_config_id"] = value
+
+        # 保存主配置并发出信号
+        if self.save_main_config():
+            self.signal_bus.config_changed.emit(value)
+            return True
+
+        return False
+
+    def get_config(self, config_id: str) -> Optional[ConfigItem]:
+        """获取指定配置"""
+        config_data = self.repo.load_config(config_id)
+        if not config_data:
+            return None
+
+        return ConfigItem.from_dict(config_data)
+
+    def get_current_config(self) -> Optional[ConfigItem]:
+        """获取当前配置"""
+        if not self.current_config_id:
+            return None
+
+        return self.get_config(self.current_config_id)
+
+    def save_config(self, config_id: str, config_data: ConfigItem) -> bool:
+        """保存指定配置"""
+        if self._main_config is None:
+            return False
+
+        # 如果配置ID不在主配置列表中，添加到主配置
+        if config_id not in self._main_config.get("config_list", []):
+            self._main_config["config_list"].append(config_id)
+            self.save_main_config()
+
+        # config_data 应为 ConfigItem，直接转换为 dict 保存
+        return self.repo.save_config(config_id, config_data.to_dict())
+
+    def create_config(self, config: ConfigItem) -> str:
+        """创建新配置，统一使用 uuid 生成 id"""
+        if not config.item_id:
+            config.item_id = ConfigItem.generate_id()
+        if self.save_config(config.item_id, config):
+            return config.item_id
+        return ""
+
+    def update_config(self, config_id: str, config_data: ConfigItem) -> bool:
+        """更新配置"""
+        return self.save_config(config_id, config_data)
+
+    def delete_config(self, config_id: str) -> bool:
+        """删除配置（禁止删除最后一个配置）"""
+        if self._main_config is None:
+            return False
+
+        # 从主配置列表中移除
+        if config_id in self._main_config.get("config_list", []):
+            self._main_config["config_list"].remove(config_id)
+
+            # 如果删除的是当前配置，需要更新当前配置
+            if self.current_config_id == config_id:
+                if self._main_config["config_list"]:
+                    self.current_config_id = self._main_config["config_list"][0]
+                else:
+                    self.current_config_id = ""
+
+            # 保存主配置
+            self.save_main_config()
+
+        # 删除子配置文件
+        return self.repo.delete_config(config_id)
+
+    def list_configs(self) -> List[Dict[str, Any]]:
+        """列出所有配置的概要信息"""
+        if self._main_config is None:
+            return []
+        configs = []
+        for config_id in self._main_config.get("config_list", []):
+            config_data = self.repo.load_config(config_id)
+            if config_data:
+                # 只返回概要信息，不包含任务详情
+                summary = {"item_id": config_id, "name": config_data.get("name", "")}
+                configs.append(summary)
+        return configs
+
+    def get_bundle(self, bundle_name: str) -> dict:
+        """获取bundle数据（新格式：bundle为dict，key为名字）"""
+        if self._main_config and "bundle" in self._main_config:
+            bundle = self._main_config["bundle"]
+            if isinstance(bundle, dict) and bundle_name in bundle:
+                return bundle[bundle_name]
+        raise FileNotFoundError(f"Bundle {bundle_name} not found")
+
+    def list_bundles(self) -> List[str]:
+        """列出所有bundle名称（新格式：bundle为dict，key为名字）"""
+        if self._main_config and "bundle" in self._main_config:
+            bundle = self._main_config["bundle"]
+            if isinstance(bundle, dict):
+                return list(bundle.keys())
+        return []

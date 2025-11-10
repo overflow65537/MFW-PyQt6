@@ -1,19 +1,15 @@
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List
 
-from ..utils.logger import logger
-from ..core.service import (
-    JsonConfigRepository,
-    ConfigService,
-    TaskService,
-    OptionService,
+from .Item import (
     CoreSignalBus,
     FromeServiceCoordinator,
     ConfigItem,
     TaskItem,
 )
-
-from ..core.maafw import MaaFW, MaaFWSignal
+from .service.config_service import ConfigService, JsonConfigRepository
+from .service.task_service import TaskService
+from .service.option_service import OptionService
 
 
 class ServiceCoordinator:
@@ -33,9 +29,6 @@ class ServiceCoordinator:
         self.config_service = ConfigService(self.config_repo, self.signal_bus)
         self.task_service = TaskService(self.config_service, self.signal_bus)
         self.option_service = OptionService(self.task_service, self.signal_bus)
-
-        # 初始化 MaaFW 运行器
-        self.maafw = MaaFW()
 
         # 连接信号
         self._connect_signals()
@@ -196,8 +189,6 @@ class ServiceCoordinator:
         self.config_service.save_main_config()
         self.signal_bus.config_saved.emit(True)
 
-
-
     # 提供获取服务的属性，以便UI层访问
     @property
     def config(self) -> ConfigService:
@@ -218,11 +209,3 @@ class ServiceCoordinator:
     @property
     def signals(self) -> CoreSignalBus:
         return self.signal_bus
-
-    @property
-    def maafw_runner(self) -> MaaFW:
-        return self.maafw
-
-    @property
-    def runner_signals(self) -> MaaFWSignal:
-        return self.maafw.signal

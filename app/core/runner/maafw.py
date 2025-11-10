@@ -63,10 +63,10 @@ from maa.toolkit import Toolkit, AdbDevice, DesktopWindow
 from maa.define import MaaAdbScreencapMethodEnum, MaaAdbInputMethodEnum
 from PySide6.QtCore import Signal, QObject
 
-from ..utils.logger import logger
-from ..common.config import cfg
-from ..utils.tool import Read_Config, path_to_list
-from ..utils.tool import ProcessThread
+from ...utils.logger import logger
+from ...common.config import cfg
+from ...utils.tool import Read_Config, path_to_list
+from ...utils.tool import ProcessThread
 
 
 class MaaFWMessageType(Enum):
@@ -167,18 +167,6 @@ class MaaFW:
         self.agent_thread = None
         self.signal = MaaFWSignal()  # 信号发送器
 
-    def change_log_path(self, new_path: str):
-        """
-        在运行时更改用户目录。
-
-        Args:
-            new_path (str): 新的用户目录路径。
-        """
-        if not self.tasker:
-            self.tasker = Tasker(notification_handler=self.notification_handler)
-        logger.info(f"更改日志路径为{new_path}")
-        if new_path:
-            self.tasker.set_log_dir(new_path)
 
     def _load_custom_module(self, custom_file_path: str, custom_class_name: str):
         """加载自定义模块并返回实例
@@ -472,5 +460,7 @@ class MaaFW:
             self.agent_thread.stop()
             self.agent_thread = None
 
+class Runner:
 
-maafw = MaaFW()
+    def __init__(self,service_po):
+        self.maafw = MaaFW()
