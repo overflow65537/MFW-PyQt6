@@ -57,6 +57,8 @@ from qfluentwidgets import (
     ToolTipFilter,
     ToolTipPosition,
 )
+from datetime import datetime, timedelta
+from maa.toolkit import AdbDevice
 
 from ..view.UI_task_interface import Ui_Task_Interface
 
@@ -78,11 +80,10 @@ from ..utils.tool import (
     get_console_path,
     find_executable_path_by_port,
     get_override,
-    MyNotificationHandler,
 )
 from ..utils.maafw import maafw
 from ..common.config import cfg
-from maa.toolkit import AdbDevice
+
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 from ..common.typeddict import (
@@ -93,7 +94,8 @@ from ..common.typeddict import (
     InterfaceData,
 )
 from ..utils.notice import send_thread
-from datetime import datetime, timedelta
+from ..utils.maa_sink import MaaSink
+
 
 
 class TaskInterface(Ui_Task_Interface, QWidget):
@@ -108,7 +110,7 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         super().__init__(parent=parent)
         self.setupUi(self)
 
-        maafw.notification_handler = MyNotificationHandler()
+        maafw.maa_sink = MaaSink()
         self.bind_signals()
         self.init_widget_text()
         if cfg.get(cfg.resource_exist):

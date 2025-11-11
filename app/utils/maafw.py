@@ -54,14 +54,14 @@ import subprocess
 
 from asyncify import asyncify
 import maa
-from maa.context import Context
+from maa.context import Context, ContextEventSink
 from maa.custom_action import CustomAction
 from maa.custom_recognition import CustomRecognition
 
-from maa.controller import AdbController, Win32Controller
-from maa.tasker import Tasker, NotificationHandler
+from maa.controller import AdbController, Win32Controller, ControllerEventSink
+from maa.tasker import Tasker, TaskerEventSink
 from maa.agent_client import AgentClient
-from maa.resource import Resource
+from maa.resource import Resource, ResourceEventSink
 from maa.toolkit import Toolkit, AdbDevice, DesktopWindow
 from maa.define import MaaAdbScreencapMethodEnum, MaaAdbInputMethodEnum
 
@@ -71,6 +71,7 @@ from ..common.maa_config_data import maa_config_data
 from ..common.config import cfg
 from ..utils.tool import Read_Config, path_to_list
 from ..utils.tool import ProcessThread
+from ..utils.maa_sink import MaaSink
 
 
 # 以下代码引用自 MaaDebugger 项目的 ./src/MaaDebugger/maafw/__init__.py 文件，用于生成maafw实例
@@ -79,8 +80,8 @@ class MaaFW:
     resource: Resource | None
     controller: AdbController | Win32Controller | None
     tasker: Tasker | None
-    notification_handler: NotificationHandler | None
     agent: AgentClient | None
+    maa_sink : MaaSink|None
 
     def __init__(self):
 
@@ -90,7 +91,8 @@ class MaaFW:
         self.resource = None
         self.controller = None
         self.tasker = None
-        self.notification_handler = None
+        self.maa_sink = None
+
         self.agent = None
         self.agent_thread = None
 
@@ -101,8 +103,11 @@ class MaaFW:
         Args:
             new_path (str): 新的用户目录路径。
         """
-        if not self.tasker:
-            self.tasker = Tasker(notification_handler=self.notification_handler)
+        if self.tasker is None:
+            self.tasker = Tasker()
+        if self.maa_sink is not None:
+            self.tasker.add_context_sink(self.maa_sink)
+            self.tasker.add_sink(self.maa_sink)
         logger.info(f"更改日志路径为{new_path}")
         if new_path:
             self.tasker.set_log_dir(new_path)
@@ -206,6 +211,8 @@ class MaaFW:
         self.controller = AdbController(
             adb_path, address, screencap_method, input_method, config
         )
+        if self.maa_sink is not None:
+            self.controller.add_sink(self.maa_sink)
         connected = self.controller.post_connection().wait().succeeded
         if not connected:
             print(f"Failed to connect {adb_path} {address}")
@@ -227,6 +234,9 @@ class MaaFW:
         self.controller = Win32Controller(
             hwnd, screencap_method=screencap_method, input_method=input_method  # type: ignore
         )
+        if self.maa_sink is not None:
+            self.controller.add_sink(self.maa_sink)
+
         connected = self.controller.post_connection().wait().succeeded
         if not connected:
             print(f"Failed to connect {hwnd}")
@@ -238,6 +248,8 @@ class MaaFW:
     def load_resource(self, dir: str) -> bool:
         if not self.resource:
             self.resource = Resource()
+        if self.maa_sink is not None:
+            self.resource.add_sink(self.maa_sink)
         gpu_index = maa_config_data.config.get("gpu", -1)
         if not isinstance(gpu_index, int):
             logger.warning("gpu_index 不是 int 类型，使用默认值 -1")
@@ -256,7 +268,10 @@ class MaaFW:
     @asyncify
     def run_task(self, entry: str, pipeline_override: dict = {}) -> bool:
         if not self.tasker:
-            self.tasker = Tasker(notification_handler=self.notification_handler)
+            self.tasker = Tasker()
+        if self.maa_sink is not None:
+            self.tasker.add_context_sink(self.maa_sink)
+            self.tasker.add_sink(self.maa_sink)
 
         if not self.resource or not self.controller:
             signalBus.custom_info.emit({"type": "error_r"})
