@@ -73,12 +73,6 @@ def init_maa_config_data(status: bool):
                 maa_config_data.resource_data.keys()
             )
             logger.debug("配置文件初始化")
-            logger.debug(
-                f"interface_config:\n{json.dumps(maa_config_data.interface_config, indent=4,ensure_ascii=False)}"
-            )
-            logger.debug(
-                f"config:\n{json.dumps(maa_config_data.config, indent=4,ensure_ascii=False)}"
-            )
             logger.debug(f"config_name: {maa_config_data.config_name}")
             logger.debug(f"config_path: {maa_config_data.config_path}")
             logger.debug(f"config_data: {maa_config_data.config_data}")

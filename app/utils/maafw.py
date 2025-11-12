@@ -71,7 +71,7 @@ from ..common.maa_config_data import maa_config_data
 from ..common.config import cfg
 from ..utils.tool import Read_Config, path_to_list
 from ..utils.tool import ProcessThread
-from ..utils.maa_sink import MaaSink
+from ..utils.maa_sink import MaaContextSink, MaaControllerEventSink,MaaResourceEventSink, MaaTaskerEventSink
 
 
 # 以下代码引用自 MaaDebugger 项目的 ./src/MaaDebugger/maafw/__init__.py 文件，用于生成maafw实例
@@ -81,9 +81,12 @@ class MaaFW:
     controller: AdbController | Win32Controller | None
     tasker: Tasker | None
     agent: AgentClient | None
-    maa_sink : MaaSink|None
+    maa_controller_sink: MaaControllerEventSink
+    maa_context_sink: MaaContextSink
+    maa_resource_sink: MaaResourceEventSink
+    maa_tasker_sink: MaaTaskerEventSink
 
-    def __init__(self):
+    def __init__(self,maa_controller_sink, maa_context_sink, maa_resource_sink, maa_tasker_sink):
 
         Toolkit.init_option("./")
         self.activate_resource = ""
@@ -91,26 +94,13 @@ class MaaFW:
         self.resource = None
         self.controller = None
         self.tasker = None
-        self.maa_sink = None
-
+        self.maa_controller_sink = maa_controller_sink
+        self.maa_context_sink = maa_context_sink
+        self.maa_resource_sink = maa_resource_sink
+        self.maa_tasker_sink = maa_tasker_sink
         self.agent = None
         self.agent_thread = None
 
-    def change_log_path(self, new_path: str):
-        """
-        在运行时更改用户目录。
-
-        Args:
-            new_path (str): 新的用户目录路径。
-        """
-        if self.tasker is None:
-            self.tasker = Tasker()
-        if self.maa_sink is not None:
-            self.tasker.add_context_sink(self.maa_sink)
-            self.tasker.add_sink(self.maa_sink)
-        logger.info(f"更改日志路径为{new_path}")
-        if new_path:
-            self.tasker.set_log_dir(new_path)
 
     def load_custom_objects(self, custom_dir):
         if not os.path.exists(custom_dir):
@@ -211,8 +201,8 @@ class MaaFW:
         self.controller = AdbController(
             adb_path, address, screencap_method, input_method, config
         )
-        if self.maa_sink is not None:
-            self.controller.add_sink(self.maa_sink)
+
+        self.controller.add_sink(self.maa_controller_sink)
         connected = self.controller.post_connection().wait().succeeded
         if not connected:
             print(f"Failed to connect {adb_path} {address}")
@@ -234,8 +224,8 @@ class MaaFW:
         self.controller = Win32Controller(
             hwnd, screencap_method=screencap_method, input_method=input_method  # type: ignore
         )
-        if self.maa_sink is not None:
-            self.controller.add_sink(self.maa_sink)
+
+        self.controller.add_sink(self.maa_controller_sink)
 
         connected = self.controller.post_connection().wait().succeeded
         if not connected:
@@ -248,8 +238,7 @@ class MaaFW:
     def load_resource(self, dir: str) -> bool:
         if not self.resource:
             self.resource = Resource()
-        if self.maa_sink is not None:
-            self.resource.add_sink(self.maa_sink)
+            self.resource.add_sink(self.maa_resource_sink)
         gpu_index = maa_config_data.config.get("gpu", -1)
         if not isinstance(gpu_index, int):
             logger.warning("gpu_index 不是 int 类型，使用默认值 -1")
@@ -269,9 +258,8 @@ class MaaFW:
     def run_task(self, entry: str, pipeline_override: dict = {}) -> bool:
         if not self.tasker:
             self.tasker = Tasker()
-        if self.maa_sink is not None:
-            self.tasker.add_context_sink(self.maa_sink)
-            self.tasker.add_sink(self.maa_sink)
+            self.tasker.add_context_sink(self.maa_context_sink)
+            self.tasker.add_sink(self.maa_tasker_sink)
 
         if not self.resource or not self.controller:
             signalBus.custom_info.emit({"type": "error_r"})
@@ -389,4 +377,4 @@ class MaaFW:
             self.agent_thread = None
 
 
-maafw = MaaFW()
+maafw = MaaFW(maa_controller_sink=MaaControllerEventSink(), maa_context_sink=MaaContextSink(), maa_resource_sink=MaaResourceEventSink(), maa_tasker_sink=MaaTaskerEventSink())

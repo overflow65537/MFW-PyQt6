@@ -94,7 +94,7 @@ from ..common.typeddict import (
     InterfaceData,
 )
 from ..utils.notice import send_thread
-from ..utils.maa_sink import MaaSink
+from ..utils.maa_sink import MaaContextSink, MaaControllerEventSink, ContextEventSink, ControllerEventSink, NotificationType
 
 
 
@@ -110,7 +110,6 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         super().__init__(parent=parent)
         self.setupUi(self)
 
-        maafw.maa_sink = MaaSink()
         self.bind_signals()
         self.init_widget_text()
         if cfg.get(cfg.resource_exist):

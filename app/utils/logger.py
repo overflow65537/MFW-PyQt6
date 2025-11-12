@@ -42,7 +42,7 @@ class LoggerManager:
         self.logger = self._create_logger(log_file_path)
         # 关闭requests模块的日志输出
         requests_logger = logging.getLogger("urllib3")
-        requests_logger.setLevel(logging.CRITICAL)
+        requests_logger.setLevel(logging.INFO)
 
     def _create_logger(self, log_file_path):
         """
@@ -83,15 +83,6 @@ class LoggerManager:
         root_logger.addHandler(stream_handler)
 
         return root_logger
-
-    def change_log_path(self, new_log_path):
-        """
-        在运行时更改日志的存放位置。
-
-        Args:
-            new_log_path (str): 新的日志文件路径。
-        """
-        self.logger = self._create_logger(new_log_path)
 
 # 创建日志管理器实例
 logger_manager = LoggerManager()

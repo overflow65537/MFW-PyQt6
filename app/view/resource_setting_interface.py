@@ -489,9 +489,6 @@ class ResourceSettingInterface(ScrollArea):
             signalBus.auto_update.emit()
         signalBus.task_output_sync.emit({"type": "reinit"})
         self.lock_cfg()
-        maafw.change_log_path(maa_config_data.log_path)
-        #logger_manager.change_log_path(os.path.join(".",maa_config_data.resource_name))
-
 
     def res_delete(self):
         """删除当前选定的资源"""

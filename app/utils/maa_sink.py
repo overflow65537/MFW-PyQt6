@@ -6,48 +6,7 @@ from maa.context import ContextEventSink, Context
 from app.common.signal_bus import signalBus
 
 
-class MaaSink(
-    ControllerEventSink, ResourceEventSink, TaskerEventSink, ContextEventSink
-):
-
-    def on_raw_notification(self, *args, **kwargs):
-        print(f"[MaaSink] 原始数据: {type(args)}, kwargs: {kwargs}")
-
-    def on_controller_action(
-        self,
-        controller: Controller,
-        noti_type: NotificationType,
-        detail: ControllerEventSink.ControllerActionDetail,
-    ):
-        signalBus.callback.emit(
-            {"name": "on_controller_action", "status": noti_type.value}
-        )
-
-    def on_resource_loading(
-        self,
-        resource: Resource,
-        noti_type: NotificationType,
-        detail: ResourceEventSink.ResourceLoadingDetail,
-    ):
-        pass
-
-    def on_tasker_task(
-        self,
-        tasker: Tasker,
-        noti_type: NotificationType,
-        detail: TaskerEventSink.TaskerTaskDetail,
-    ):
-        signalBus.callback.emit(
-            {"name": "on_tasker_task", "task": detail.entry, "status": noti_type.value}
-        )
-
-    def on_node_next_list(
-        self,
-        context: Context,
-        noti_type: NotificationType,
-        detail: ContextEventSink.NodeNextListDetail,
-    ):
-        pass
+class MaaContextSink(ContextEventSink):
 
     def on_node_recognition(
         self,
@@ -75,12 +34,38 @@ class MaaSink(
             send_msg["aborted"] = True
         signalBus.callback.emit(send_msg)
 
-    def on_node_action(
+
+class MaaControllerEventSink(ControllerEventSink):
+    def on_controller_action(
         self,
-        context: Context,
+        controller: Controller,
         noti_type: NotificationType,
-        detail: ContextEventSink.NodeActionDetail,
+        detail: ControllerEventSink.ControllerActionDetail,
     ):
-        print(
-            f"[MaaSink] Node Action - Context: {context}, Type: {noti_type}, Detail: {detail}"
+        signalBus.callback.emit(
+            {"name": "on_controller_action", "status": noti_type.value}
+        )
+
+
+class MaaResourceEventSink(ResourceEventSink):
+
+    def on_resource_loading(
+        self,
+        resource: Resource,
+        noti_type: NotificationType,
+        detail: ResourceEventSink.ResourceLoadingDetail,
+    ):
+        pass
+
+
+class MaaTaskerEventSink(TaskerEventSink):
+
+    def on_tasker_task(
+        self,
+        tasker: Tasker,
+        noti_type: NotificationType,
+        detail: TaskerEventSink.TaskerTaskDetail,
+    ):
+        signalBus.callback.emit(
+            {"name": "on_tasker_task", "task": detail.entry, "status": noti_type.value}
         )
