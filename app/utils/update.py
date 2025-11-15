@@ -757,7 +757,7 @@ class Update(BaseUpdate):
                             except Exception as e:
                                 logger.error(f"删除失败 [{file_path}]: {str(e)}")
                 except Exception as e:
-                    logger.exception("清理旧文件时发生错误")
+                    logger.exception(f"清理旧文件时发生错误{e}")
                     signalBus.update_download_finished.emit(
                         {
                             "status": "failed_info",
@@ -949,31 +949,53 @@ class Update(BaseUpdate):
             target_path = maa_config_data.resource_path
             if os.path.exists(target_path):
                 logger.info("开始清理旧资源")
-                try:
-                    if os.path.exists(os.path.join(target_path, "python")):
-                        shutil.rmtree(os.path.join(target_path, "python"))
-                        logger.debug("成功删除 python 目录")
+                failed_files = []
+                def try_remove(path, is_dir=False):
+                    try:
+                        if is_dir:
+                            if os.path.isdir(path):
+                                # 递归删除所有内容
+                                for root, dirs, files in os.walk(path, topdown=False):
+                                    for name in files:
+                                        file_path = os.path.join(root, name)
+                                        try:
+                                            os.remove(file_path)
+                                            logger.debug(f"成功删除文件 {file_path}")
+                                        except Exception as e:
+                                            logger.error(f"删除文件失败 [{file_path}]: {str(e)}")
+                                            failed_files.append(file_path)
+                                    for name in dirs:
+                                        dir_path = os.path.join(root, name)
+                                        try:
+                                            # 递归删除子目录
+                                            shutil.rmtree(dir_path)
+                                            logger.debug(f"成功递归删除文件夹 {dir_path}")
+                                        except Exception as e:
+                                            logger.error(f"递归删除文件夹失败 [{dir_path}]: {str(e)}")
+                                            failed_files.append(dir_path)
+                                try:
+                                    os.rmdir(path)
+                                    logger.debug(f"成功删除主文件夹 {path}")
+                                except Exception as e:
+                                    logger.error(f"删除主文件夹失败 [{path}]: {str(e)}")
+                                    failed_files.append(path)
+                        else:
+                            os.remove(path)
+                            logger.debug(f"成功删除 {path}")
+                    except Exception as e:
+                        logger.error(f"删除失败 [{path}]: {str(e)}")
+                        failed_files.append(path)
 
-                    if os.path.exists(os.path.join(target_path, "custom")):
-                        shutil.rmtree(os.path.join(target_path, "custom"))
-                        logger.debug("成功删除 custom 目录")
+                # 依次尝试删除各目录和文件
+                try_remove(os.path.join(target_path, "python"), is_dir=True)
+                try_remove(os.path.join(target_path, "custom"), is_dir=True)
+                try_remove(os.path.join(target_path, "agent"), is_dir=True)
+                try_remove(os.path.join(target_path, "resource"), is_dir=True)
+                try_remove(os.path.join(target_path, "interface.json"), is_dir=False)
 
-                    if os.path.exists(os.path.join(target_path, "agent")):
-                        shutil.rmtree(os.path.join(target_path, "agent"))
-                        logger.debug("成功删除 agent 目录")
-
-                    shutil.rmtree(os.path.join(target_path, "resource"))
-                    logger.debug("成功删除 resource 目录")
-
-                    os.remove(os.path.join(target_path, "interface.json"))
-                    logger.debug("成功删除 interface.json")
-
-                except Exception as e:
-                    logger.error(f"清理旧资源失败: {str(e)}")
-                    signalBus.update_download_finished.emit(
-                        {"status": "failed", "msg": self.tr("Clean up failed")}
-                    )
-                    return
+                if failed_files:
+                    logger.warning(f"部分文件/目录未能删除: {failed_files}")
+                # 不因单个文件失败而中断流程
 
             changelog = update_dict.get("body", "")
             if changelog:

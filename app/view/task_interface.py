@@ -1475,8 +1475,9 @@ class TaskInterface(Ui_Task_Interface, QWidget):
         if (
             not await maafw.connect_win32hwnd(
                 maa_config_data.config.get("win32", {}).get("hwnd", 0),
-                maa_config_data.config.get("win32", {}).get("input_method", 0),
                 maa_config_data.config.get("win32", {}).get("screen_method", 0),
+                maa_config_data.config.get("win32", {}).get("mouse_method", 0),
+                maa_config_data.config.get("win32", {}).get("keyboard_method_method", 0),
             )
             and self.need_runing
         ):

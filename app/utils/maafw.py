@@ -63,15 +63,24 @@ from maa.tasker import Tasker, TaskerEventSink
 from maa.agent_client import AgentClient
 from maa.resource import Resource, ResourceEventSink
 from maa.toolkit import Toolkit, AdbDevice, DesktopWindow
-from maa.define import MaaAdbScreencapMethodEnum, MaaAdbInputMethodEnum
-
+from maa.define import (
+    MaaAdbScreencapMethodEnum,
+    MaaAdbInputMethodEnum,
+    MaaWin32InputMethodEnum,
+    MaaWin32ScreencapMethodEnum,
+)
 from ..common.signal_bus import signalBus
 from ..utils.logger import logger
 from ..common.maa_config_data import maa_config_data
 from ..common.config import cfg
 from ..utils.tool import Read_Config, path_to_list
 from ..utils.tool import ProcessThread
-from ..utils.maa_sink import MaaContextSink, MaaControllerEventSink,MaaResourceEventSink, MaaTaskerEventSink
+from ..utils.maa_sink import (
+    MaaContextSink,
+    MaaControllerEventSink,
+    MaaResourceEventSink,
+    MaaTaskerEventSink,
+)
 
 
 # 以下代码引用自 MaaDebugger 项目的 ./src/MaaDebugger/maafw/__init__.py 文件，用于生成maafw实例
@@ -86,7 +95,9 @@ class MaaFW:
     maa_resource_sink: MaaResourceEventSink
     maa_tasker_sink: MaaTaskerEventSink
 
-    def __init__(self,maa_controller_sink, maa_context_sink, maa_resource_sink, maa_tasker_sink):
+    def __init__(
+        self, maa_controller_sink, maa_context_sink, maa_resource_sink, maa_tasker_sink
+    ):
 
         Toolkit.init_option("./")
         self.activate_resource = ""
@@ -100,7 +111,6 @@ class MaaFW:
         self.maa_tasker_sink = maa_tasker_sink
         self.agent = None
         self.agent_thread = None
-
 
     def load_custom_objects(self, custom_dir):
         if not os.path.exists(custom_dir):
@@ -190,9 +200,9 @@ class MaaFW:
         self,
         adb_path: str,
         address: str,
-        screencap_method: int,
-        input_method: int,
-        config: Dict,
+        screencap_method: int = MaaAdbScreencapMethodEnum.Default,
+        input_method: int = MaaAdbInputMethodEnum.Default,
+        config: Dict = {},
     ) -> bool:
         if screencap_method == 0:
             screencap_method = MaaAdbScreencapMethodEnum.Default
@@ -212,20 +222,29 @@ class MaaFW:
 
     @asyncify
     def connect_win32hwnd(
-        self, hwnd: int | str, screencap_method: int, input_method: int
+        self,
+        hwnd: int | str,
+        screencap_method: int = MaaWin32ScreencapMethodEnum.DXGI_DesktopDup,
+        mouse_method: int = MaaWin32InputMethodEnum.Seize,
+        keyboard_method: int = MaaWin32InputMethodEnum.Seize,
     ) -> bool:
         if isinstance(hwnd, str):
             hwnd = int(hwnd, 16)
         if screencap_method == 0:
             screencap_method = 4  # DXGI_DesktopDup
-        if input_method == 0:
-            input_method = 1  # Seize
+        if mouse_method == 0:
+            mouse_method = 1  # Seize
+        if keyboard_method == 0:
+            keyboard_method = 1  # Seize
 
         self.controller = Win32Controller(
-            hwnd, screencap_method=screencap_method, input_method=input_method  # type: ignore
+            hwnd,
+            screencap_method=screencap_method,
+            mouse_method=mouse_method,
+            keyboard_method=keyboard_method,
         )
 
-        self.controller.add_sink(self.maa_controller_sink)
+        # self.controller.add_sink(self.maa_controller_sink)
 
         connected = self.controller.post_connection().wait().succeeded
         if not connected:
@@ -238,7 +257,7 @@ class MaaFW:
     def load_resource(self, dir: str) -> bool:
         if not self.resource:
             self.resource = Resource()
-            self.resource.add_sink(self.maa_resource_sink)
+            # self.resource.add_sink(self.maa_resource_sink)
         gpu_index = maa_config_data.config.get("gpu", -1)
         if not isinstance(gpu_index, int):
             logger.warning("gpu_index 不是 int 类型，使用默认值 -1")
@@ -299,6 +318,7 @@ class MaaFW:
 
         if agent_data and agent_data.get("child_exec") and not self.agent:
             self.agent = AgentClient()
+            self.agent.register_sink(self.resource,self.controller,self.tasker)
             self.agent.bind(self.resource)
             socket_id = self.agent.identifier
             if callable(socket_id):
@@ -377,4 +397,9 @@ class MaaFW:
             self.agent_thread = None
 
 
-maafw = MaaFW(maa_controller_sink=MaaControllerEventSink(), maa_context_sink=MaaContextSink(), maa_resource_sink=MaaResourceEventSink(), maa_tasker_sink=MaaTaskerEventSink())
+maafw = MaaFW(
+    maa_controller_sink=MaaControllerEventSink(),
+    maa_context_sink=MaaContextSink(),
+    maa_resource_sink=MaaResourceEventSink(),
+    maa_tasker_sink=MaaTaskerEventSink(),
+)

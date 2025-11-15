@@ -23,7 +23,7 @@ MFW-ChainFlow Assistant 类型标记
 作者:overflow65537
 """
 
-from typing import Dict, List,  TypedDict,Optional,Any
+from typing import Dict, List, TypedDict, Optional, Any
 
 
 # 定义模拟器extra的类型
@@ -46,8 +46,9 @@ class AdbConfig(TypedDict, total=True):
 # 定义 Win32 配置的类型
 class Win32Config(TypedDict, total=False):
     hwnd: int
-    input_method: int
     screen_method: int
+    mouse_method: int
+    keyboard_method: int
 
 
 # 定义 Controller 配置的类型
@@ -84,9 +85,8 @@ class TaskItem(TypedDict, total=False):
     name: str
     option: List[Dict]
     speedrun: SpeedrunConfig
-    task_invalidation : bool
-    advanced : bool
-
+    task_invalidation: bool
+    advanced: bool
 
 
 # 定义完整的配置类型
@@ -110,16 +110,18 @@ class MainConfig(TypedDict, total=True):
     exe_path: str
     exe_args: str
     exe_wait_time: str
-    know_task:list
+    know_task: list
 
 
 InnerConfig = Dict[str, str]
 
 MaaConfigList = Dict[str, InnerConfig]
 
+
 class ControllerItem(TypedDict):
     name: str
     type: str
+
 
 class ResourcePath(TypedDict):
     name: str
@@ -134,7 +136,8 @@ class TaskItem_interface(TypedDict, total=False):
     pipeline_override: dict
     doc: Optional[str]
 
-class InterfaceData(TypedDict,total=False):
+
+class InterfaceData(TypedDict, total=False):
     url: str
     name: str
     MFW_min_req_version: str
@@ -145,6 +148,7 @@ class InterfaceData(TypedDict,total=False):
     option: Dict[str, Any]
     version: str
     show_notice: bool
+
 
 def get_initial_main_config() -> MainConfig:
     return {
@@ -157,8 +161,9 @@ def get_initial_main_config() -> MainConfig:
         },
         "win32": {
             "hwnd": 0,
-            "input_method": 0,
             "screen_method": 0,
+            "mouse_method": 0,
+            "keyboard_method": 0,
         },
         "controller": {"name": ""},
         "gpu": -1,
@@ -176,9 +181,10 @@ def get_initial_main_config() -> MainConfig:
         "emu_wait_time": "10",
         "exe_path": "",
         "exe_args": "",
-        "exe_wait_time": "10", 
+        "exe_wait_time": "10",
         "know_task": [],
     }
+
 
 class MaaConfigData:
     interface_config: InterfaceData = {}
@@ -198,5 +204,3 @@ class MaaConfigData:
     resource_name_list: List[str] = []
 
     log_path: str = ""
-
-

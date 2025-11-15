@@ -42,9 +42,7 @@ class MaaControllerEventSink(ControllerEventSink):
         noti_type: NotificationType,
         detail: ControllerEventSink.ControllerActionDetail,
     ):
-        signalBus.callback.emit(
-            {"name": "on_controller_action", "status": noti_type.value}
-        )
+        pass
 
 
 class MaaResourceEventSink(ResourceEventSink):

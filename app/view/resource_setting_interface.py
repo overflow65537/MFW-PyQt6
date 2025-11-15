@@ -46,7 +46,7 @@ from ..utils.widget import (
     ComboBoxSettingCardCustom,
 )
 from ..utils.tool import Save_Config, get_gpu_info
-from ..utils.logger import logger,logger_manager
+from ..utils.logger import logger, logger_manager
 from ..common.maa_config_data import maa_config_data
 from ..utils.maafw import maafw
 
@@ -72,11 +72,17 @@ class ResourceSettingInterface(ScrollArea):
             0: self.tr("default"),
             1: "seize",
             2: "SendMessage",
+            4: "PostMessage",
+            8: "LegacyEvent",
+            16: "PostThreadMessage",
         }
         self.win32_input_combox_list = [
             self.tr("default"),
             "seize",
             "SendMessage",
+            "PostMessage",
+            "LegacyEvent",
+            "PostThreadMessage",
         ]
 
         self.win32_screencap_mapping = {
@@ -84,6 +90,9 @@ class ResourceSettingInterface(ScrollArea):
             1: "GDI",
             2: "FramePool",
             4: "DXGI_DesktopDup",
+            8: "DXGI_DesktopDup_Window",
+            16: "PrintWindow",
+            32: "ScreenDC",
         }
 
         self.ADB_input_mapping = {
@@ -179,17 +188,23 @@ class ResourceSettingInterface(ScrollArea):
             maa_config_data.config.get("run_after_finish_args", "")
         )
         self.use_GPU.path = maa_config_data.config_path
-        self.win32_input_mode.path = maa_config_data.config_path
+        self.win32_keyboard_input_mode.path = maa_config_data.config_path
+        self.win32_mouse_input_mode.path = maa_config_data.config_path
         self.win32_screencap_mode.path = maa_config_data.config_path
         self.ADB_input_mode.path = maa_config_data.config_path
         self.ADB_screencap_mode.path = maa_config_data.config_path
 
         choose_gpu_text = self.gpu_mapping[maa_config_data.config.get("gpu", -1)]
         self.use_GPU.comboBox.setCurrentText(choose_gpu_text)
-        win32_input = self.win32_input_mapping[
-            maa_config_data.config.get("win32", {}).get("input_method", 0)
+        win32_keyboard_input = self.win32_input_mapping[
+            maa_config_data.config.get("win32", {}).get("keyboard_method", 0)
         ]
-        self.win32_input_mode.comboBox.setCurrentText(win32_input)
+        win32_mouse_input = self.win32_input_mapping[
+            maa_config_data.config.get("win32", {}).get("mouse_method", 0)
+        ]
+        self.win32_keyboard_input_mode.comboBox.setCurrentText(win32_keyboard_input)
+        self.win32_mouse_input_mode.comboBox.setCurrentText(win32_mouse_input)
+
         win32_screen = self.win32_screencap_mapping[
             maa_config_data.config.get("win32", {}).get("screen_method", 0)
         ]
@@ -335,7 +350,10 @@ class ResourceSettingInterface(ScrollArea):
             if config_name in ["default", "default".lower()]:
                 logger.warning(" 不能添加主配置文件")
                 signalBus.infobar_message.emit(
-                    {"status":"warning","msg":self.tr("default config can't be added.")}
+                    {
+                        "status": "warning",
+                        "msg": self.tr("default config can't be added."),
+                    }
                 )
                 cfg.set(cfg.maa_config_name, "default")
                 maa_config_data.config_path = os.path.join(
@@ -351,13 +369,16 @@ class ResourceSettingInterface(ScrollArea):
             elif config_name in maa_config_data.config_name_list:
                 logger.warning(f" {config_name} 已存在")
                 signalBus.infobar_message.emit(
-                    {"status":"warning","msg":config_name+self.tr(" already exists.")}
+                    {
+                        "status": "warning",
+                        "msg": config_name + self.tr(" already exists."),
+                    }
                 )
                 self.update_config_path(config_name)
             else:
                 logger.debug(f" 创建 {config_name} 配置")
                 signalBus.infobar_message.emit(
-                    {"status":"info","msg":self.tr("Creating config ")+config_name}
+                    {"status": "info", "msg": self.tr("Creating config ") + config_name}
                 )
                 self.create_new_config(config_name)
 
@@ -365,9 +386,8 @@ class ResourceSettingInterface(ScrollArea):
             self.lock_cfg()
         else:
             signalBus.infobar_message.emit(
-                {"status":"failed","msg":self.tr("Please add resources first.")}
+                {"status": "failed", "msg": self.tr("Please add resources first.")}
             )
-
 
     def create_new_config(self, config_name):
         """创建新的配置文件"""
@@ -494,7 +514,7 @@ class ResourceSettingInterface(ScrollArea):
         """删除当前选定的资源"""
         if not cfg.get(cfg.resource_exist):
             signalBus.infobar_message.emit(
-                {"status":"failed","msg":self.tr("Please add resources first.")}
+                {"status": "failed", "msg": self.tr("Please add resources first.")}
             )
             return
         resource_name = self.res_setting.combox.currentText()
@@ -532,7 +552,7 @@ class ResourceSettingInterface(ScrollArea):
         """删除当前选定的配置"""
         if not cfg.get(cfg.resource_exist):
             signalBus.infobar_message.emit(
-                {"status":"failed","msg":self.tr("Please add resources first.")}
+                {"status": "failed", "msg": self.tr("Please add resources first.")}
             )
             return
 
@@ -583,7 +603,6 @@ class ResourceSettingInterface(ScrollArea):
         self.cfg_setting.combox.clear()
         self.cfg_setting.combox.currentIndexChanged.connect(self.cfg_changed)
         self.cfg_setting.combox.addItems(maa_config_data.config_name_list)
-        
 
     def initialize_res_cfg_setting(self):
         """资源配置设置"""
@@ -770,11 +789,21 @@ class ResourceSettingInterface(ScrollArea):
             mapping=self.gpu_mapping,
         )
 
-        self.win32_input_mode = ComboBoxSettingCardCustom(
+        self.win32_keyboard_input_mode = ComboBoxSettingCardCustom(
             icon=FIF.SAVE_AS,
-            title=self.tr("Select Win32 Input Mode"),
-            texts=[self.tr("default"), "seize", "SendMessage"],
-            target=["win32", "input_method"],
+            title=self.tr("Select Win32 Keyboard Input Mode"),
+            texts=[self.tr("default"), "seize", "SendMessage", "PostMessage", "LegacyEvent", "PostThreadMessage"],
+            target=["win32", "keyboard_method"],
+            path=maa_config_data.config_path,
+            parent=self.VisionAndInputGroup,
+            mode="setting",
+            mapping=self.win32_input_mapping,
+        )
+        self.win32_mouse_input_mode = ComboBoxSettingCardCustom(
+            icon=FIF.SAVE_AS,
+            title=self.tr("Select Win32 Mouse Input Mode"),
+            texts=[self.tr("default"), "seize", "SendMessage", "PostMessage", "LegacyEvent", "PostThreadMessage"],
+            target=["win32", "mouse_method"],
             path=maa_config_data.config_path,
             parent=self.VisionAndInputGroup,
             mode="setting",
@@ -784,7 +813,7 @@ class ResourceSettingInterface(ScrollArea):
         self.win32_screencap_mode = ComboBoxSettingCardCustom(
             icon=FIF.SAVE_AS,
             title=self.tr("Select Win32 Screencap Mode"),
-            texts=[self.tr("default"), "GDI", "FramePool", "DXGI_DesktopDup"],
+            texts=[self.tr("default"), "GDI", "FramePool", "DXGI_DesktopDup", "DXGI_DesktopDup_Window", "PrintWindow", "ScreenDC"],
             target=["win32", "screen_method"],
             path=maa_config_data.config_path,
             parent=self.VisionAndInputGroup,
@@ -830,7 +859,8 @@ class ResourceSettingInterface(ScrollArea):
         )
 
         self.VisionAndInputGroup.addSettingCard(self.use_GPU)
-        self.VisionAndInputGroup.addSettingCard(self.win32_input_mode)
+        self.VisionAndInputGroup.addSettingCard(self.win32_keyboard_input_mode)
+        self.VisionAndInputGroup.addSettingCard(self.win32_mouse_input_mode)
         self.VisionAndInputGroup.addSettingCard(self.win32_screencap_mode)
         self.VisionAndInputGroup.addSettingCard(self.ADB_input_mode)
         self.VisionAndInputGroup.addSettingCard(self.ADB_screencap_mode)
