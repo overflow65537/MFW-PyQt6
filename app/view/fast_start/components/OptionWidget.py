@@ -34,7 +34,7 @@ from app.common.constants import RESOURCE_TASK_ID, POST_TASK_ID
 from app.utils.gui_helper import IconLoader
 from app.widget.PathLineEdit import PathLineEdit
 
-from ....core.core import TaskItem, ConfigItem, ServiceCoordinator
+from ....core.Core import TaskItem, ConfigItem, ServiceCoordinator
 
 # 导入重构后的模块
 from .option_modules import (

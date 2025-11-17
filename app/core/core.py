@@ -7,9 +7,9 @@ from .Item import (
     ConfigItem,
     TaskItem,
 )
-from .service.config_service import ConfigService, JsonConfigRepository
-from .service.task_service import TaskService
-from .service.option_service import OptionService
+from .service.Config_Service import ConfigService, JsonConfigRepository
+from .service.Task_Service import TaskService
+from .service.Option_Service import OptionService
 
 
 class ServiceCoordinator:

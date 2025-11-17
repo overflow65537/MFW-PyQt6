@@ -7,7 +7,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
 from qfluentwidgets import ListWidget, IndeterminateProgressRing
-from ....core.core import TaskItem, ConfigItem, ServiceCoordinator
+from app.core.Core import  ServiceCoordinator
+from app.core.Item import TaskItem, ConfigItem
 from .ListItem import TaskListItem, ConfigListItem
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus

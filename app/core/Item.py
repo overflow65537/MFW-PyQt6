@@ -137,5 +137,3 @@ class ConfigItem:
             know_task=data.get("know_task", []),
             bundle=bundle,
         )
-
-

@@ -13,7 +13,7 @@ from qfluentwidgets import (
     ListWidget,
     FluentIcon as FIF,
 )
-from ....core.core import TaskItem, ConfigItem, CoreSignalBus
+from app.core.Item import TaskItem, ConfigItem
 
 
 class ClickableLabel(BodyLabel):

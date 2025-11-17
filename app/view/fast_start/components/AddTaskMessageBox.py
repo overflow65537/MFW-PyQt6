@@ -7,7 +7,6 @@ from qfluentwidgets import (
     BodyLabel,
 )
 from app.core.Item import TaskItem, ConfigItem
-from app.core.service.task_service import TaskService
 from app.utils.logger import logger
 from app.common.constants import RESOURCE_TASK_ID, POST_TASK_ID
 

@@ -11,7 +11,7 @@ from qfluentwidgets import LineEdit, ComboBox, EditableComboBox, SwitchButton, S
 from app.utils.logger import logger
 
 if TYPE_CHECKING:
-    from .....core.core import TaskItem, ServiceCoordinator
+    from .....core.Core import TaskItem, ServiceCoordinator
 
 
 class OptionDataManager:

@@ -14,7 +14,7 @@ from qfluentwidgets import SimpleCardWidget, BodyLabel, ScrollArea
 
 from app.utils.logger import logger
 from app.utils.gui_helper import IconLoader
-from .....core.core import TaskItem, ConfigItem, ServiceCoordinator
+from .....core.Core import TaskItem, ConfigItem, ServiceCoordinator
 
 # 导入各个功能模块
 from .option_data_manager import OptionDataManager

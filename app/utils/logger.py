@@ -34,6 +34,7 @@ from app.common.signal_bus import signalBus
 # 提取日志格式为常量
 LOG_FORMAT = "[%(asctime)s][%(levelname)s][%(filename)s][L%(lineno)d][%(funcName)s] | %(message)s"
 
+
 class LoggerManager:
     def __init__(self, log_file_path="debug/gui.log"):
         """
@@ -106,7 +107,6 @@ class QtSignalHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
         # 暂不启用自动转发，仅作为占位
         pass
-
 
 
 # 创建日志管理器实例

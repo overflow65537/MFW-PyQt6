@@ -17,7 +17,7 @@ from qfluentwidgets import (
 from app.utils.logger import logger
 
 if TYPE_CHECKING:
-    from .....core.core import ServiceCoordinator
+    from .....core.Core import ServiceCoordinator
 
 
 class NestedOptionHandler:

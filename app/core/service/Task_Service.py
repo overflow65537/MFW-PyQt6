@@ -1,4 +1,3 @@
-
 import json
 
 from pathlib import Path
@@ -7,9 +6,8 @@ from typing import Any, Dict, List, Optional
 
 from ...utils.logger import logger
 from ...utils.i18n_manager import get_interface_i18n
-from .config_service import ConfigService
-from app.core.Item import TaskItem,  CoreSignalBus
-
+from .Config_Service import ConfigService
+from app.core.Item import TaskItem, CoreSignalBus
 
 
 class TaskService:
@@ -297,7 +295,11 @@ class TaskService:
             if task.item_id == task_id:
                 target_task = task
                 break
-        if target_task and hasattr(target_task, 'is_base_task') and target_task.is_base_task():
+        if (
+            target_task
+            and hasattr(target_task, "is_base_task")
+            and target_task.is_base_task()
+        ):
             return False
 
         # 从配置中移除任务（非基础任务）
@@ -316,83 +318,3 @@ class TaskService:
         """重新排序任务"""
         self._on_task_order_updated(task_order)
         return True
-
-    def get_task_execution_info(self, task_id: str) -> Optional[Dict[str, Any]]:
-        """获取任务的执行信息（entry 和 pipeline_override）
-        
-        Args:
-            task_id: 任务ID
-            
-        Returns:
-            Dict: 包含 entry 和 pipeline_override，格式为：
-                {
-                    "entry": "任务入口名称",
-                    "pipeline_override": {...}
-                }
-            如果任务不存在或 interface 未加载，返回 None
-        """
-        # 获取任务
-        task = self.get_task(task_id)
-        if not task:
-            logger.warning(f"任务 {task_id} 不存在")
-            return None
-        
-        if not self.interface:
-            logger.error("Interface 未加载")
-            return None
-        
-        # 从 interface 中查找任务的 entry
-        entry = None
-        task_pipeline_override = {}
-        
-        for interface_task in self.interface.get("task", []):
-            if interface_task.get("name") == task.name:
-                entry = interface_task.get("entry", "")
-                # 获取任务级别的 pipeline_override
-                task_pipeline_override = interface_task.get("pipeline_override", {})
-                break
-        
-        if not entry:
-            logger.warning(f"任务 '{task.name}' 在 interface 中未找到 entry")
-            return None
-        
-        # 从 task_option 中提取 pipeline_override
-        from ...utils.pipeline_helper import get_pipeline_override_from_task_option
-        
-        option_pipeline_override = get_pipeline_override_from_task_option(
-            self.interface,
-            task.task_option
-        )
-        
-        # 深度合并：任务级 pipeline_override + 选项级 pipeline_override
-        merged_override = {}
-        
-        # 先添加任务级的
-        self._deep_merge_dict(merged_override, task_pipeline_override)
-        
-        # 再添加选项级的（选项级优先级更高）
-        self._deep_merge_dict(merged_override, option_pipeline_override)
-        
-        return {
-            "entry": entry,
-            "pipeline_override": merged_override
-        }
-    
-    def _deep_merge_dict(self, target: Dict, source: Dict) -> None:
-        """深度合并两个字典
-        
-        Args:
-            target: 目标字典（会被修改）
-            source: 源字典
-        """
-        for key, value in source.items():
-            if (
-                key in target
-                and isinstance(target[key], dict)
-                and isinstance(value, dict)
-            ):
-                # 递归合并
-                self._deep_merge_dict(target[key], value)
-            else:
-                # 直接覆盖
-                target[key] = value
