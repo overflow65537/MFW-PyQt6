@@ -103,57 +103,44 @@ class OptionDataManager:
                 if isinstance(widget, (ComboBox, EditableComboBox)):
                     # 对于设备选择下拉框，不保存（它只用于触发自动填充）
                     if obj_name == "device":
-                        # 设备选择框的值会通过自动填充逻辑保存到对应的字段
-                        # (ADB: adb_path, adb_port, adb_device_name; Win32: hwnd, win32_device_name)
                         continue
-                    # 对于资源选择和控制器类型下拉框，使用 userData
                     elif obj_name in ("controller_type", "resource"):
                         value = widget.currentData()
-                        # 如果没有 userData（旧数据或手动输入），使用文本
                         if value is None:
                             value = widget.currentText()
-                    # 对于 GPU 选择下拉框，使用 userData 并保存为整数
                     elif obj_name == "gpu":
                         value = widget.currentData()
-                        # userData 应该已经是整数（-1, -2, 0, 1, ...）
                         if value is None:
-                            # 如果没有 userData，默认使用 -1 (Auto)
                             value = -1
-                    # 对于输入/截图方法下拉框，使用 userData 并保存为整数
                     elif obj_name in (
                         "adb_screenshot_method",
                         "adb_input_method",
                         "win32_screenshot_method",
                         "win32_input_method",
                     ):
-                        # 检查是否有存储的原始值（用于不在映射表中的值）
                         original_value = widget.property("original_value")
                         if original_value is not None:
-                            # 如果用户改变了选择，清除原始值，使用新选择的值
-                            # 否则保持原始值
                             if widget.property("user_changed"):
                                 value = widget.currentData()
                             else:
                                 value = original_value
                         else:
                             value = widget.currentData()
-
-                        # 如果有 userData，转换为整数
                         if value is not None:
                             try:
                                 value = int(value)
                             except (ValueError, TypeError):
-                                # 转换失败，使用文本
                                 value = widget.currentText()
                         else:
-                            # 没有 userData，使用文本
                             value = widget.currentText()
                     else:
                         value = widget.currentText()
-
                     updated_options[obj_name] = value
                 elif isinstance(widget, LineEdit):
-                    updated_options[obj_name] = widget.text()
+                    if obj_name in ("pre_launch_program", "pre_launch_program_args", "post_launch_program", "post_launch_program_args"):
+                        updated_options[obj_name] = widget.text()
+                    else:
+                        updated_options[obj_name] = widget.text()
                 elif isinstance(widget, SwitchButton):
                     updated_options[obj_name] = widget.isChecked()
                 elif isinstance(widget, SpinBox):

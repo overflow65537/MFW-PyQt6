@@ -40,7 +40,7 @@ from cryptography.fernet import Fernet
 import base64
 import logging
 from datetime import datetime, timedelta
-from maa.notification_handler import NotificationHandler, NotificationType
+
 
 from PySide6.QtCore import QThread
 from PySide6.QtGui import QIcon

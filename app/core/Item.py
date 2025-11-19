@@ -43,6 +43,9 @@ class FromeServiceCoordinator(QObject):
     fs_task_removed = Signal(str)  # 文件系统任务移除，载荷为 task_id
     fs_config_added = Signal(object)  # 文件系统配置新增，载荷为 config
     fs_config_removed = Signal(str)  # 文件系统配置移除，载荷为 config_id
+    fs_start_button_status = Signal(
+        dict
+    )  # 控制开始按钮状态和文本，载荷如 {"text": "开始", "status": "enabled"}
 
 
 # ==================== 数据模型 ====================
