@@ -294,8 +294,6 @@ class OptionWidget(QWidget):
 
     # ==================== 选项数据管理 ==================== #
 
-    # ==================== 选项数据管理 ==================== #
-
     def _save_current_options(self):
         """收集当前所有选项控件的值并保存到配置 - 委托给数据管理器"""
         if not self.current_task:
@@ -382,22 +380,6 @@ class OptionWidget(QWidget):
 
     def _show_task_option(self, item: TaskItem):
         """显示任务选项"""
-
-        def _get_task_info(interface: dict, option: str, item: TaskItem):
-            name = interface["option"][option].get(
-                "label", interface["option"][option].get("name", option)
-            )
-            # option 本身就是键名，不需要再获取 name 字段
-            obj_name = option
-            options = self.Get_Task_List(interface, option)
-            current = item.task_option.get(option, None)
-            icon_path = interface["option"][option].get("icon", "")
-            tooltip = interface["option"][option].get("description", "")
-            option_tooltips = {}
-            for cases in interface["option"][option]["cases"]:
-                option_tooltips[cases["name"]] = cases.get("description", "")
-            return name, obj_name, options, current, icon_path, tooltip, option_tooltips
-
         # TaskService stores interface in attribute 'interface'
         interface = getattr(self.task, "interface", None)
         if not interface:
