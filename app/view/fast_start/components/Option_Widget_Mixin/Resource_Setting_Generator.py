@@ -22,9 +22,21 @@ def create_resource_setting_form_structure(
 
     # 1. 设备类型选择
     controller_options = []
+    controller_types = {}
+    
     for controller in interface.get("controller", []):
-        controller_options.append(f"{controller.get("name", "")}_{controller.get("type", "").lower()}")
+        controller_name = controller.get("name", "")
+        controller_type = controller.get("type", [])
+        # 处理type可能是列表的情况
+        if isinstance(controller_type, list):
+            # 如果是列表，使用第一个元素作为类型
+            controller_type = controller_type[0] if controller_type else ""
+        controller_type = str(controller_type).lower()
+        option_key = f"{controller_name}_{controller_type}"
+        controller_options.append(option_key)
+        controller_types[option_key] = controller_type
 
+    # 创建controller_type结构，为每个选项创建对应的子选项
     form_structure["controller_type"] = {
         "label": "设备类型",
         "type": "combobox",
@@ -79,34 +91,49 @@ def create_resource_setting_form_structure(
         "default": "",
     }
 
-    # 6. 安卓端特有配置（作为控制器的子配置）
-    form_structure["controller_type"]["children"]["adb_path"] = {
+    # 定义子选项配置模板
+    adb_path_config = {
         "label": "ADB路径",
         "type": "lineedit",
         "default": "",
-        "visible": True,  # 初始设为可见，将在_on_controller_type_changed中动态控制
+        "visible": True
     }
-
-    form_structure["controller_type"]["children"]["device_address"] = {
+    
+    device_address_config = {
         "label": "设备链接地址",
         "type": "lineedit",
         "default": "",
-        "visible": True,  # 初始设为可见，将在_on_controller_type_changed中动态控制
+        "visible": True
     }
-
-    # 7. 桌面端特有配置（作为控制器的子配置）
-    form_structure["controller_type"]["children"]["hwnd"] = {
+    
+    hwnd_config = {
         "label": "窗口句柄",
         "type": "lineedit",
         "default": "",
-        "visible": True,  # 初始设为可见，将在_on_controller_type_changed中动态控制
+        "visible": True
     }
-
-    form_structure["controller_type"]["children"]["program_path"] = {
+    
+    program_path_config = {
         "label": "程序启动路径",
         "type": "lineedit",
         "default": "",
-        "visible": True,  # 初始设为可见，将在_on_controller_type_changed中动态控制
+        "visible": True
     }
+    
+    # controller_type选项的子选项配置 - 直接提供子选项配置，不使用form_group嵌套
+    controller_children_types = {
+        "adb": {"adb_path": adb_path_config, "device_address": device_address_config},
+        "win32": {"hwnd": hwnd_config, "program_path": program_path_config}
+    }
+    
+    # 为每个controller选项创建对应的子配置
+    for option_key, controller_type in controller_types.items():
+        # 确定当前控制器类型对应的子配置
+        for key, config in controller_children_types.items():
+            # 使用精确匹配，确保每个设备类型都能正确关联对应的子选项
+            if controller_type == key:
+                # 确保子选项配置有正确的结构，每个子选项都包含必要的键
+                form_structure["controller_type"]["children"][option_key] = config
+                break
 
     return form_structure

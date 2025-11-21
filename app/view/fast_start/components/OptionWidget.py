@@ -259,20 +259,7 @@ class OptionWidget(QWidget, DynamicFormMixin):
         """
         # 使用DynamicFormMixin的update_form方法更新表单
         self.update_form(form_structure, config)
-        
-        # 检查是否有控制器类型下拉框，如果有则连接信号
-        if "controller_type" in self.widgets:
-            controller_combo = self.widgets["controller_type"]
-            # 先断开可能存在的连接，避免重复连接
-            try:
-                controller_combo.currentTextChanged.disconnect(self._on_controller_type_changed)
-            except Exception as e:
-                # 静默处理断开连接失败的情况
-                pass
-            # 连接信号
-            controller_combo.currentTextChanged.connect(self._on_controller_type_changed)
-            # 初始化时调用一次，确保初始状态正确
-            self._on_controller_type_changed(controller_combo.currentText())
+        # 控制器类型切换的逻辑已由DynamicFormMixin的_on_combobox_changed方法处理
 
     def get_current_form_config(self):
         """
@@ -306,45 +293,7 @@ class OptionWidget(QWidget, DynamicFormMixin):
             self.child_layouts = {}
             logger.info("没有提供form_structure，已清除界面")
     
-    def _on_controller_type_changed(self, controller_type: str):
-        """
-        当控制器类型改变时，动态显示/隐藏相应的配置项
-        :param controller_type: 当前选择的控制器类型
-        """
-        logger.info(f"控制器类型变更为: {controller_type}")
-        
-        # 安卓和桌面端的判断条件
-        is_android = "adb" in controller_type
-        is_win32 = "win32" in controller_type
-        
-        # 遍历所有控件，根据类型显示/隐藏相应的配置项
-        for field_name, widget in self.widgets.items():
-            # 获取控件的容器（可能是标签+输入框的组合容器）
-            container = widget.parent()
-            if not container:
-                continue
-                
-            # 根据字段名确定是哪种类型的配置
-            is_adb_field = field_name in ["adb_path", "device_address"]
-            is_win32_field = field_name in ["hwnd", "program_path"]
-            
-            # 设置可见性
-            visible = True
-            if is_adb_field:
-                # 安卓端（ADB）特有字段
-                visible = is_android
-                logger.debug(f"设置 {field_name} 可见性为: {visible}")
-            elif is_win32_field:
-                # 桌面端（Win32）特有字段
-                visible = is_win32
-                logger.debug(f"设置 {field_name} 可见性为: {visible}")
-            else:
-                # 非特定字段保持可见
-                continue
-            
-            # 为整个容器（包括标签和输入框）设置可见性
-            if hasattr(container, 'setVisible'):
-                container.setVisible(visible)
+
     
     def _set_layout_visibility(self, layout, visible):
         """

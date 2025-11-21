@@ -209,14 +209,30 @@ class DynamicFormMixin:
             # 为子控件创建唯一键
             child_key = f"{key}_child"
 
-            if child_config["type"] == "combobox":
-                self._create_combobox(
-                    child_key, child_config, child_layout, parent_config["children"]
-                )
-            elif child_config["type"] == "lineedit":
-                self._create_lineedit(
-                    child_key, child_config, child_layout, parent_config["children"]
-                )
+            # 检查child_config是否是一个包含多个配置项的字典
+            if isinstance(child_config, dict):
+                # 方式1：如果child_config有type键，处理为单个控件
+                if "type" in child_config:
+                    if child_config["type"] == "combobox":
+                        self._create_combobox(
+                            child_key, child_config, child_layout, parent_config["children"]
+                        )
+                    elif child_config["type"] == "lineedit":
+                        self._create_lineedit(
+                            child_key, child_config, child_layout, parent_config["children"]
+                        )
+                # 方式2：如果child_config不包含type键，但包含多个配置项，处理为多个控件
+                elif len(child_config) > 0:
+                    # 为每个子配置项创建控件
+                    for sub_key, sub_config in child_config.items():
+                        if sub_config.get("type") == "combobox":
+                            self._create_combobox(
+                                sub_key, sub_config, child_layout, parent_config["children"]
+                            )
+                        elif sub_config.get("type") == "lineedit":
+                            self._create_lineedit(
+                                sub_key, sub_config, child_layout, parent_config["children"]
+                            )
 
         # 自动保存选项（在子控件创建完成后）
         self._auto_save_options()
