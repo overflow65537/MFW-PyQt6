@@ -126,13 +126,14 @@ class TaskListItem(BaseListItem):
         注意：保留 $ 前缀，它用于国际化标记
         """
         from app.utils.logger import logger
-        if self.task.item_id  in [
+
+        if self.task.item_id in [
             "resource_base_task",
             "post_process_task",
         ]:
             return self.task.name
 
-        elif self.interface  :
+        elif self.interface:
             for task in self.interface.get("task", []):
                 if task["name"] == self.task.name:
                     display_label = task.get("label", task.get("name", self.task.name))
