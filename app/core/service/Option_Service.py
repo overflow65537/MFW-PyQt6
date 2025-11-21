@@ -24,6 +24,17 @@ class OptionService:
         task = self.task_service.get_task(task_id)
         if task:
             self.current_options = task.task_option
+
+            if task.item_id == "resource_base_task":
+                from ...view.fast_start.components.Option_Widget_Mixin.Resource_Setting_Generator import (
+                    create_resource_setting_form_structure,
+                )
+                self.signal_bus.options_loaded.emit(
+                {"options": self.current_options, "form_structure": create_resource_setting_form_structure(self.task_service.interface)}
+            )
+
+                return 
+
             # 获取表单结构
             form_structure = self.get_form_structure_by_task_name(task.name)
             # 发送选项和表单结构
@@ -66,9 +77,12 @@ class OptionService:
         # 发出选项更新信号
         self.signal_bus.option_updated.emit(options)
         return True
-    
+
     def process_option_def(
-        self, option_def: Dict[str, Any], all_options: Dict[str, Dict[str, Any]], option_key: str = ""
+        self,
+        option_def: Dict[str, Any],
+        all_options: Dict[str, Dict[str, Any]],
+        option_key: str = "",
     ) -> Dict[str, Any]:
         """
         递归处理选项定义，处理select类型中cases的子选项(option参数)
@@ -184,7 +198,9 @@ class OptionService:
                     if option_name in all_options:
                         option_def = all_options[option_name]
                         # 使用process_option_def方法递归处理选项定义，传入option_name作为键名
-                        field_config = self.process_option_def(option_def, all_options, option_name)
+                        field_config = self.process_option_def(
+                            option_def, all_options, option_name
+                        )
                         form_structure[option_name] = field_config
                 break
 

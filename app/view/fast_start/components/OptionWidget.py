@@ -48,6 +48,8 @@ class OptionWidget(QWidget, DynamicFormMixin):
         DynamicFormMixin.__init__(self)
 
         self.service_coordinator = service_coordinator
+        # 设置parent_layout为option_area_layout，供DynamicFormMixin使用
+        self.parent_layout = None  # 将在_setup_ui中设置
         self._init_ui()
         self._toggle_description(visible=False)
 
@@ -257,6 +259,19 @@ class OptionWidget(QWidget, DynamicFormMixin):
         """
         # 使用DynamicFormMixin的update_form方法更新表单
         self.update_form(form_structure, config)
+        
+        # 检查是否有控制器类型下拉框，如果有则连接信号
+        if "controller_type" in self.widgets:
+            controller_combo = self.widgets["controller_type"]
+            # 先断开可能存在的连接，避免重复连接
+            try:
+                controller_combo.currentTextChanged.disconnect(self._on_controller_type_changed)
+            except:
+                pass
+            # 连接信号
+            controller_combo.currentTextChanged.connect(self._on_controller_type_changed)
+            # 初始化时调用一次，确保初始状态正确
+            self._on_controller_type_changed(controller_combo.currentText())
 
     def get_current_form_config(self):
         """
@@ -289,3 +304,58 @@ class OptionWidget(QWidget, DynamicFormMixin):
             self.widgets = {}
             self.child_layouts = {}
             logger.info("没有提供form_structure，已清除界面")
+    
+    def _on_controller_type_changed(self, controller_type: str):
+        """
+        当控制器类型改变时，动态显示/隐藏相应的配置项
+        :param controller_type: 当前选择的控制器类型
+        """
+        logger.info(f"控制器类型变更为: {controller_type}")
+        
+        # 遍历所有控件，根据类型显示/隐藏相应的配置项
+        for field_name, widget in self.widgets.items():
+            # 跳过控制器类型本身
+            if field_name == "controller_type":
+                continue
+                
+            # 获取控件所在的容器布局
+            container_layout = widget.parent()
+            if not container_layout:
+                continue
+                
+            # 根据字段名确定是哪种类型的配置
+            is_adb_field = field_name in ["adb_path", "device_address"]
+            is_win32_field = field_name in ["hwnd", "program_path"]
+            
+            # 设置可见性
+            visible = True
+            if is_adb_field:
+                # 安卓端（ADB）特有字段
+                visible = "安卓" in controller_type or "Android" in controller_type or "ADB" in controller_type
+                logger.debug(f"设置 {field_name} 可见性为: {visible}")
+            elif is_win32_field:
+                # 桌面端（Win32）特有字段
+                visible = "桌面" in controller_type or "Desktop" in controller_type or "Win32" in controller_type
+                logger.debug(f"设置 {field_name} 可见性为: {visible}")
+            
+            # 设置容器布局中所有控件的可见性
+            for i in range(container_layout.count()):
+                item = container_layout.itemAt(i)
+                if item.widget():
+                    item.widget().setVisible(visible)
+                elif item.layout():
+                    # 递归设置子布局中所有控件的可见性
+                    self._set_layout_visibility(item.layout(), visible)
+    
+    def _set_layout_visibility(self, layout, visible):
+        """
+        递归设置布局中所有控件的可见性
+        :param layout: 要设置的布局
+        :param visible: 是否可见
+        """
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            if item.widget():
+                item.widget().setVisible(visible)
+            elif item.layout():
+                self._set_layout_visibility(item.layout(), visible)
