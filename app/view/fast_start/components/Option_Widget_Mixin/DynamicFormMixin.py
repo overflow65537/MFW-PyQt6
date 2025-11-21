@@ -123,7 +123,7 @@ class DynamicFormMixin:
         # 处理标签，移除可能的$符号
         label_text = config["label"]
         if label_text.startswith("$"):
-            label_text = label_text[1:]
+            pass
         label = BodyLabel(label_text)
         # 移除固定宽度，让标签自然显示
         container_layout.addWidget(label)
@@ -142,7 +142,7 @@ class DynamicFormMixin:
                 # 处理input项的标签
                 input_label_text = input_item.get("label", input_item.get("name", ""))
                 if input_label_text.startswith("$"):
-                    input_label_text = input_label_text[1:]
+                    pass
                 input_label = BodyLabel(input_label_text)
                 input_container.addWidget(input_label)
 

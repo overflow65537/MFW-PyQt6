@@ -247,21 +247,7 @@ class OptionWidget(QWidget, DynamicFormMixin):
 
     def _clear_options(self):
         """清空选项区域"""
-        # 使用DynamicFormMixin的_clear_layout方法
-        if hasattr(self, "option_area_layout"):
-            self._clear_layout(self.option_area_layout)
-
-    def update_form_from_task(self, task_item, config=None):
-        """
-        从任务项更新表单
-        :param task_item: 任务项对象，包含表单结构
-        :param config: 可选的配置对象，用于设置表单的当前选择
-        """
-        if not task_item or not hasattr(task_item, "config_structure"):
-            return
-
-        # 使用DynamicFormMixin的update_form方法更新表单
-        self.update_form(task_item.config_structure, config)
+        self._clear_layout(self.option_area_layout)
 
     def update_form_from_structure(self, form_structure, config=None):
         """
@@ -303,4 +289,3 @@ class OptionWidget(QWidget, DynamicFormMixin):
             self.widgets = {}
             self.child_layouts = {}
             logger.info("没有提供form_structure，已清除界面")
-
