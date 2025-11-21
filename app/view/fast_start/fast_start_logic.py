@@ -34,7 +34,6 @@ class FastStartInterface(UI_FastStartInterface, QWidget):
         self.config_selection.set_title(
             self.tr("配置选择")
         )
-        self.option_panel.set_title(self.tr("选项"))
         
         # 连接日志事件信号以显示 InfoBar
         signalBus.log_event.connect(self._on_log_event)
