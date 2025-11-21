@@ -27,7 +27,9 @@ from qfluentwidgets import (
     CheckBox,
 )
 from app.view.fast_start.animations.option_transition import OptionTransitionAnimator
-from app.view.fast_start.components.Option_Widget_Mixin.DynamicFormMixin import DynamicFormMixin
+from app.view.fast_start.components.Option_Widget_Mixin.DynamicFormMixin import (
+    DynamicFormMixin,
+)
 
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
@@ -39,16 +41,16 @@ from ....core.Core import TaskItem, ConfigItem, ServiceCoordinator
 
 
 class OptionWidget(QWidget, DynamicFormMixin):
-    def __init__(self, service_coordinator:ServiceCoordinator, parent=None):
+    def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         # 先调用QWidget的初始化
         QWidget.__init__(self, parent)
         # 再调用DynamicFormMixin的初始化
         DynamicFormMixin.__init__(self)
-        
+
         self.service_coordinator = service_coordinator
         self._init_ui()
         self._toggle_description(visible=False)
-        
+
         # 连接CoreSignalBus的options_loaded信号
         service_coordinator.signal_bus.options_loaded.connect(self._on_options_loaded)
 
@@ -85,7 +87,7 @@ class OptionWidget(QWidget, DynamicFormMixin):
         self.option_area_layout = QVBoxLayout(option_container)  # 将布局关联到容器
         self.option_area_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.option_area_layout.setContentsMargins(10, 10, 10, 10)  # 添加内边距
-        
+
         # 设置DynamicFormMixin的parent_layout为option_area_layout
         self.parent_layout = self.option_area_layout
 
@@ -181,7 +183,7 @@ class OptionWidget(QWidget, DynamicFormMixin):
         self.main_layout.addWidget(self.splitter)  # 添加分割器
         # 添加主布局间距
         self.main_layout.setContentsMargins(10, 10, 10, 10)
-        self.main_layout.setSpacing(10)
+        self.main_layout.setSpacing(5)
 
     # ==================== UI 辅助方法 ==================== #
 
@@ -228,11 +230,11 @@ class OptionWidget(QWidget, DynamicFormMixin):
         self._toggle_description(visible=False)
         self.current_task = None
         # 重置DynamicFormMixin的状态
-        if hasattr(self, 'current_config'):
+        if hasattr(self, "current_config"):
             self.current_config = {}
-        if hasattr(self, 'widgets'):
+        if hasattr(self, "widgets"):
             self.widgets = {}
-        if hasattr(self, 'child_layouts'):
+        if hasattr(self, "child_layouts"):
             self.child_layouts = {}
 
     def _on_config_changed(self, config_id: str):
@@ -246,21 +248,21 @@ class OptionWidget(QWidget, DynamicFormMixin):
     def _clear_options(self):
         """清空选项区域"""
         # 使用DynamicFormMixin的_clear_layout方法
-        if hasattr(self, 'option_area_layout'):
+        if hasattr(self, "option_area_layout"):
             self._clear_layout(self.option_area_layout)
-    
+
     def update_form_from_task(self, task_item, config=None):
         """
         从任务项更新表单
         :param task_item: 任务项对象，包含表单结构
         :param config: 可选的配置对象，用于设置表单的当前选择
         """
-        if not task_item or not hasattr(task_item, 'config_structure'):
+        if not task_item or not hasattr(task_item, "config_structure"):
             return
-        
+
         # 使用DynamicFormMixin的update_form方法更新表单
         self.update_form(task_item.config_structure, config)
-    
+
     def update_form_from_structure(self, form_structure, config=None):
         """
         直接从表单结构更新表单
@@ -269,7 +271,7 @@ class OptionWidget(QWidget, DynamicFormMixin):
         """
         # 使用DynamicFormMixin的update_form方法更新表单
         self.update_form(form_structure, config)
-    
+
     def get_current_form_config(self):
         """
         获取当前表单的配置
@@ -277,66 +279,28 @@ class OptionWidget(QWidget, DynamicFormMixin):
         """
         # 使用DynamicFormMixin的get_config方法
         return self.get_config()
-    
+
     def _on_options_loaded(self, data):
         """
         当选项被加载时触发
         :param data: 包含options和form_structure的字典
         """
-        # 兼容旧格式的数据
-        if isinstance(data, dict):
-            options = data.get('options', {})
-            form_structure = data.get('form_structure', None)
-            
-            # 记录日志
-            logger.info(f"选项加载完成，共 {len(options)} 个选项")
-            
-            # 使用form_structure更新表单
-            if form_structure:
-                self.update_form_from_structure(form_structure, options)
-                logger.info(f"表单已使用form_structure更新")
-            else:
-                # 兼容处理：如果没有form_structure，尝试使用旧的方式
-                if hasattr(self, 'service_coordinator') and hasattr(self.service_coordinator, 'task_service'):
-                    task_id = self.service_coordinator.option_service.current_task_id if hasattr(self.service_coordinator, 'option_service') else None
-                    if task_id:
-                        task = self.service_coordinator.task_service.get_task(task_id)
-                        if task and hasattr(task, 'config_structure'):
-                            self.update_form_from_structure(task.config_structure, options)
-                            logger.info(f"表单已使用任务 {task_id} 的config_structure更新")
+        # 只处理form_structure格式
+        options = data.get("options", {})
+        form_structure = data.get("form_structure", None)
+
+        # 记录日志
+        logger.info(f"选项加载完成，共 {len(options)} 个选项")
+
+        # 只使用form_structure更新表单
+        if form_structure:
+            self.update_form_from_structure(form_structure, options)
+            logger.info(f"表单已使用form_structure更新")
         else:
-            # 完全兼容旧格式
-            options = data
-            logger.info(f"选项加载完成(旧格式)，共 {len(options)} 个选项")
-            # 尝试使用旧的方式更新表单
-            if options and hasattr(self, 'service_coordinator') and hasattr(self.service_coordinator, 'task_service'):
-                task_id = self.service_coordinator.option_service.current_task_id if hasattr(self.service_coordinator, 'option_service') else None
-                if task_id:
-                    task = self.service_coordinator.task_service.get_task(task_id)
-                    if task and hasattr(task, 'config_structure'):
-                        self.update_form_from_structure(task.config_structure, options)
-                        logger.info(f"表单已使用任务 {task_id} 的配置结构和选项更新")
-    
-    def on_task_selected(self, task_id):
-        """
-        当任务被选中时直接调用的方法
-        可以被外部组件直接调用，而不仅限于信号触发
-        :param task_id: 选中的任务ID
-        """
-        if hasattr(self, 'service_coordinator') and hasattr(self.service_coordinator, 'task_service'):
-            task = self.service_coordinator.task_service.get_task(task_id)
-            if task:
-                # 设置标题
-                self.set_title(task.name)
-                # 如果任务有描述，则显示描述
-                if hasattr(task, 'description') and task.description:
-                    self.set_description(task.description)
-                    self._toggle_description(visible=True)
-                else:
-                    self._toggle_description(visible=False)
-                
-                # 更新表单
-                if hasattr(task, 'config_structure'):
-                    # 获取任务的选项
-                    options = task.task_option if hasattr(task, 'task_option') else {}
-                    self.update_form_from_structure(task.config_structure, options)
+            # 没有表单时清除界面
+            self._clear_layout(self.option_area_layout)
+            self.current_config = {}
+            self.widgets = {}
+            self.child_layouts = {}
+            logger.info("没有提供form_structure，已清除界面")
+

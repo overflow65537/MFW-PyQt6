@@ -66,9 +66,9 @@ class OptionService:
         # 发出选项更新信号
         self.signal_bus.option_updated.emit(options)
         return True
-
+    
     def process_option_def(
-        self, option_def: Dict[str, Any], all_options: Dict[str, Dict[str, Any]]
+        self, option_def: Dict[str, Any], all_options: Dict[str, Dict[str, Any]], option_key: str = ""
     ) -> Dict[str, Any]:
         """
         递归处理选项定义，处理select类型中cases的子选项(option参数)
@@ -76,6 +76,7 @@ class OptionService:
         Args:
             option_def: 选项定义字典
             all_options: 所有选项定义的字典
+            option_key: 选项的键名，当没有name和label时使用
 
         Returns:
             Dict: 处理后的字段配置，可能包含children属性存储子选项
@@ -84,9 +85,8 @@ class OptionService:
         option_type = option_def.get("type")
 
         # 设置字段标签，处理$前缀
-        label = option_def.get("label")
-        if not label:
-            label = option_def.get("name", "")
+        # 优先使用label，其次是name，如果都没有则使用option_key
+        label = option_def.get("label", option_def.get("name", option_key))
         if label.startswith("$"):
             pass
 
@@ -103,8 +103,6 @@ class OptionService:
             for case in option_def.get("cases", []):
                 # 优先使用label，如果没有则使用name
                 display_label = case.get("label", case.get("name", ""))
-                if display_label.startswith("$"):
-                    display_label = display_label[1:]
                 options.append(display_label)
 
                 # 递归处理cases中的子选项(option参数)
@@ -114,7 +112,7 @@ class OptionService:
                     if isinstance(option_value, str) and option_value in all_options:
                         sub_option_def = all_options[option_value]
                         child_field = self.process_option_def(
-                            sub_option_def, all_options
+                            sub_option_def, all_options, option_value
                         )
                         children[display_label] = child_field
                     elif isinstance(option_value, list):
@@ -123,7 +121,7 @@ class OptionService:
                             if isinstance(opt, str) and opt in all_options:
                                 sub_option_def = all_options[opt]
                                 child_field = self.process_option_def(
-                                    sub_option_def, all_options
+                                    sub_option_def, all_options, opt
                                 )
                                 children[display_label] = child_field
                                 break
@@ -133,9 +131,14 @@ class OptionService:
             if children:
                 field_config["children"] = children
 
-        # 对于input类型的选项，创建lineedit
+        # 对于input类型的选项，处理多个输入框
         elif option_type == "input" and "inputs" in option_def:
+            # 对于input类型，我们将其视为一个组合类型
+            # 每个input项将作为一个独立的lineedit字段
+            # 但为了简化实现，这里创建一个lineedit作为主字段，实际使用时需要特殊处理
             field_config["type"] = "lineedit"
+            # 保存inputs数组，供后续处理
+            field_config["inputs"] = option_def["inputs"]
             # 如果有默认值，使用第一个input的默认值
             if option_def["inputs"] and "default" in option_def["inputs"][0]:
                 field_config["default"] = option_def["inputs"][0]["default"]
@@ -180,8 +183,8 @@ class OptionService:
                 for option_name in task_option_names:
                     if option_name in all_options:
                         option_def = all_options[option_name]
-                        # 使用process_option_def方法递归处理选项定义
-                        field_config = self.process_option_def(option_def, all_options)
+                        # 使用process_option_def方法递归处理选项定义，传入option_name作为键名
+                        field_config = self.process_option_def(option_def, all_options, option_name)
                         form_structure[option_name] = field_config
                 break
 

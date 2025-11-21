@@ -71,27 +71,21 @@ class DynamicFormMixin:
         """创建下拉框"""
         # 创建控件容器布局
         container_layout = QVBoxLayout()
-        container_layout.setContentsMargins(10, 10, 10, 10)
-        container_layout.setSpacing(10)
+        container_layout.setContentsMargins(5, 5, 5, 5)
+        container_layout.setSpacing(5)
         parent_layout.addLayout(container_layout)
 
-        # 创建下拉框
-        h_layout = QHBoxLayout()
-        h_layout.setSpacing(15)
-        # 处理标签，移除可能的$符号
-        label_text = config['label']
-        if label_text.startswith('$'):
-            label_text = label_text[1:]
-        label = BodyLabel(f"{label_text}:")
-        label.setFixedWidth(100)
+        # 创建下拉框 - 使用垂直布局
+        label_text = config["label"]
+        if label_text.startswith("$"):
+            pass
+        label = BodyLabel(label_text)
+        # 移除固定宽度，让标签自然显示
+        container_layout.addWidget(label)
+
         combo = ComboBox()
         combo.addItems(config["options"])
-        combo.setFixedWidth(200)
-
-        h_layout.addWidget(label)
-        h_layout.addWidget(combo)
-        h_layout.addStretch()
-        container_layout.addLayout(h_layout)
+        container_layout.addWidget(combo)
 
         # 创建子控件容器布局
         child_layout = QVBoxLayout()
@@ -120,37 +114,86 @@ class DynamicFormMixin:
 
     def _create_lineedit(self, key, config, parent_layout, parent_config):
         """创建输入框"""
-        h_layout = QHBoxLayout()
-        h_layout.setContentsMargins(10, 10, 10, 10)
-        h_layout.setSpacing(15)
+        # 创建控件容器布局
+        container_layout = QVBoxLayout()
+        container_layout.setContentsMargins(5, 5, 5, 5)
+        container_layout.setSpacing(5)
+        parent_layout.addLayout(container_layout)
+
         # 处理标签，移除可能的$符号
-        label_text = config['label']
-        if label_text.startswith('$'):
+        label_text = config["label"]
+        if label_text.startswith("$"):
             label_text = label_text[1:]
-        label = BodyLabel(f"{label_text}:")
-        label.setFixedWidth(100)
-        line_edit = LineEdit()
-        line_edit.setFixedWidth(200)
-        if "default" in config:
-            line_edit.setText(config["default"])
+        label = BodyLabel(label_text)
+        # 移除固定宽度，让标签自然显示
+        container_layout.addWidget(label)
 
-        h_layout.addWidget(label)
-        h_layout.addWidget(line_edit)
-        h_layout.addStretch()
-        parent_layout.addLayout(h_layout)
+        # 检查是否有inputs数组（input类型的选项）
+        if "inputs" in config:
+            # 对于input类型，为每个input项创建独立的输入框
+            parent_config[key] = {}
 
-        # 保存引用
-        self.widgets[key] = line_edit
+            for input_item in config["inputs"]:
+                # 创建子容器
+                input_container = QVBoxLayout()
+                input_container.setContentsMargins(10, 5, 10, 5)
+                container_layout.addLayout(input_container)
 
-        # 初始化配置
-        parent_config[key] = line_edit.text()
+                # 处理input项的标签
+                input_label_text = input_item.get("label", input_item.get("name", ""))
+                if input_label_text.startswith("$"):
+                    input_label_text = input_label_text[1:]
+                input_label = BodyLabel(input_label_text)
+                input_container.addWidget(input_label)
 
-        # 连接信号
-        line_edit.textChanged.connect(
-            lambda text, k=key, p_conf=parent_config: self._on_lineedit_changed(
-                k, text, p_conf
+                # 创建输入框
+                input_line_edit = LineEdit()
+                if "default" in input_item:
+                    input_line_edit.setText(str(input_item["default"]))
+                input_container.addWidget(input_line_edit)
+
+                # 保存引用，使用input的name作为键
+                input_name = input_item.get("name", "input")
+                if key not in self.widgets:
+                    self.widgets[key] = {}
+                self.widgets[key][input_name] = input_line_edit
+
+                # 初始化配置
+                parent_config[key][input_name] = input_line_edit.text()
+
+                # 连接信号
+                input_line_edit.textChanged.connect(
+                    lambda text, k=key, input_name=input_name, p_conf=parent_config: self._on_input_item_changed(
+                        k, input_name, text, p_conf
+                    )
+                )
+        else:
+            # 普通的单行输入框
+            line_edit = LineEdit()
+            if "default" in config:
+                line_edit.setText(config["default"])
+
+            container_layout.addWidget(line_edit)
+
+            # 保存引用
+            self.widgets[key] = line_edit
+
+            # 初始化配置
+            parent_config[key] = line_edit.text()
+
+            # 连接信号
+            line_edit.textChanged.connect(
+                lambda text, k=key, p_conf=parent_config: self._on_lineedit_changed(
+                    k, text, p_conf
+                )
             )
-        )
+
+    def _on_input_item_changed(self, key, input_name, text, parent_config):
+        """处理input类型中单个输入项的变化"""
+        if key in parent_config and isinstance(parent_config[key], dict):
+            parent_config[key][input_name] = text
+            # 自动保存选项
+            self._auto_save_options()
 
     def _on_combobox_changed(self, key, value, config, parent_config, child_layout):
         """下拉框值改变处理"""
@@ -160,25 +203,29 @@ class DynamicFormMixin:
         # 清空子控件
         self._clear_layout(child_layout)
 
-        # 检查是否需要加载子控件
-        if "conditional" in config and value in config["conditional"]:
-            child_configs = config["conditional"][value]
-            for child_key, child_conf in child_configs.items():
-                # 为子控件创建唯一键
-                child_full_key = f"{key}_{child_key}"
+        # 检查是否需要加载子控件 - 优先使用children属性（新方式）
+        if "children" in config and value in config["children"]:
+            child_config = config["children"][value]
+            # 为子控件创建唯一键
+            child_key = f"{key}_child"
 
-                if child_conf["type"] == "combobox":
-                    self._create_combobox(
-                        child_key, child_conf, child_layout, parent_config["children"]
-                    )
-                elif child_conf["type"] == "lineedit":
-                    self._create_lineedit(
-                        child_key, child_conf, child_layout, parent_config["children"]
-                    )
+            if child_config["type"] == "combobox":
+                self._create_combobox(
+                    child_key, child_config, child_layout, parent_config["children"]
+                )
+            elif child_config["type"] == "lineedit":
+                self._create_lineedit(
+                    child_key, child_config, child_layout, parent_config["children"]
+                )
+
+        # 自动保存选项（在子控件创建完成后）
+        self._auto_save_options()
 
     def _on_lineedit_changed(self, key, text, parent_config):
         """输入框值改变处理"""
         parent_config[key] = text
+        # 自动保存选项
+        self._auto_save_options()
 
     def _clear_layout(self, layout):
         """清空布局中的所有控件"""
@@ -191,6 +238,21 @@ class DynamicFormMixin:
                 child_layout = item.layout()
                 if child_layout:
                     self._clear_layout(child_layout)
+
+    def _auto_save_options(self):
+        """自动保存当前选项"""
+        # 检查是否有service_coordinator和option_service
+        if hasattr(self, "service_coordinator") and hasattr(self.service_coordinator, "option_service"):  # type: ignore
+            try:
+                # 获取当前所有配置
+                all_config = self.get_config()
+                # 调用OptionService的update_options方法保存选项
+                self.service_coordinator.option_service.update_options(all_config)  # type: ignore
+            except Exception as e:
+                # 如果保存失败，记录错误但不影响用户操作
+                from app.utils.logger import logger
+
+                logger.error(f"自动保存选项失败: {e}")
 
     def _apply_config(self, config, form_structure, current_config):
         """
@@ -214,19 +276,37 @@ class DynamicFormMixin:
                             if index >= 0:
                                 combo.setCurrentIndex(index)
 
-                        # 递归应用子配置
-                        if "children" in value and "conditional" in field_config:
-                            if combo_value in field_config["conditional"]:
-                                child_structure = field_config["conditional"][
-                                    combo_value
-                                ]
+                                # 递归应用子配置
+                        if "children" in value:
+                            # 优先使用children属性
+                            if (
+                                "children" in field_config
+                                and combo_value in field_config["children"]
+                            ):
+                                child_structure = {
+                                    f"{key}_child": field_config["children"][
+                                        combo_value
+                                    ]
+                                }
+                                # 使用get方法安全地获取children，不存在时提供默认空字典
                                 self._apply_config(
                                     value["children"],
                                     child_structure,
-                                    current_config["children"],
+                                    current_config.get("children", {}),
                                 )
 
                 elif field_config["type"] == "lineedit":
                     # 处理输入框配置
                     if key in self.widgets:
-                        self.widgets[key].setText(str(value))
+                        # 检查是否是input类型（有inputs数组）
+                        if "inputs" in field_config and isinstance(value, dict):
+                            # 处理input类型的多个输入项
+                            if isinstance(self.widgets[key], dict):
+                                for input_name, input_value in value.items():
+                                    if input_name in self.widgets[key]:
+                                        self.widgets[key][input_name].setText(
+                                            str(input_value)
+                                        )
+                        else:
+                            # 普通的单行输入框
+                            self.widgets[key].setText(str(value))
