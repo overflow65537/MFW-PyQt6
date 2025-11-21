@@ -266,7 +266,8 @@ class OptionWidget(QWidget, DynamicFormMixin):
             # 先断开可能存在的连接，避免重复连接
             try:
                 controller_combo.currentTextChanged.disconnect(self._on_controller_type_changed)
-            except:
+            except Exception as e:
+                # 静默处理断开连接失败的情况
                 pass
             # 连接信号
             controller_combo.currentTextChanged.connect(self._on_controller_type_changed)
@@ -312,15 +313,15 @@ class OptionWidget(QWidget, DynamicFormMixin):
         """
         logger.info(f"控制器类型变更为: {controller_type}")
         
+        # 安卓和桌面端的判断条件
+        is_android = "adb" in controller_type
+        is_win32 = "win32" in controller_type
+        
         # 遍历所有控件，根据类型显示/隐藏相应的配置项
         for field_name, widget in self.widgets.items():
-            # 跳过控制器类型本身
-            if field_name == "controller_type":
-                continue
-                
-            # 获取控件所在的容器布局
-            container_layout = widget.parent()
-            if not container_layout:
+            # 获取控件的容器（可能是标签+输入框的组合容器）
+            container = widget.parent()
+            if not container:
                 continue
                 
             # 根据字段名确定是哪种类型的配置
@@ -331,21 +332,19 @@ class OptionWidget(QWidget, DynamicFormMixin):
             visible = True
             if is_adb_field:
                 # 安卓端（ADB）特有字段
-                visible = "安卓" in controller_type or "Android" in controller_type or "ADB" in controller_type
+                visible = is_android
                 logger.debug(f"设置 {field_name} 可见性为: {visible}")
             elif is_win32_field:
                 # 桌面端（Win32）特有字段
-                visible = "桌面" in controller_type or "Desktop" in controller_type or "Win32" in controller_type
+                visible = is_win32
                 logger.debug(f"设置 {field_name} 可见性为: {visible}")
+            else:
+                # 非特定字段保持可见
+                continue
             
-            # 设置容器布局中所有控件的可见性
-            for i in range(container_layout.count()):
-                item = container_layout.itemAt(i)
-                if item.widget():
-                    item.widget().setVisible(visible)
-                elif item.layout():
-                    # 递归设置子布局中所有控件的可见性
-                    self._set_layout_visibility(item.layout(), visible)
+            # 为整个容器（包括标签和输入框）设置可见性
+            if hasattr(container, 'setVisible'):
+                container.setVisible(visible)
     
     def _set_layout_visibility(self, layout, visible):
         """

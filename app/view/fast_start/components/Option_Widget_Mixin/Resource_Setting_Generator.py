@@ -23,13 +23,14 @@ def create_resource_setting_form_structure(
     # 1. 设备类型选择
     controller_options = []
     for controller in interface.get("controller", []):
-        controller_options.append(controller.get("name", ""))
+        controller_options.append(f"{controller.get("name", "")}_{controller.get("type", "").lower()}")
 
     form_structure["controller_type"] = {
         "label": "设备类型",
         "type": "combobox",
         "options": controller_options,
         "default": controller_options[0] if controller_options else "",
+        "children": {}
     }
 
     # 2. 资源选择
@@ -78,34 +79,34 @@ def create_resource_setting_form_structure(
         "default": "",
     }
 
-    # 6. 安卓端特有配置
-    form_structure["adb_path"] = {
+    # 6. 安卓端特有配置（作为控制器的子配置）
+    form_structure["controller_type"]["children"]["adb_path"] = {
         "label": "ADB路径",
         "type": "lineedit",
         "default": "",
-        "visible": False,  # 初始隐藏，根据controller_type动态显示
+        "visible": True,  # 初始设为可见，将在_on_controller_type_changed中动态控制
     }
 
-    form_structure["device_address"] = {
+    form_structure["controller_type"]["children"]["device_address"] = {
         "label": "设备链接地址",
         "type": "lineedit",
         "default": "",
-        "visible": False,  # 初始隐藏，根据controller_type动态显示
+        "visible": True,  # 初始设为可见，将在_on_controller_type_changed中动态控制
     }
 
-    # 7. 桌面端特有配置
-    form_structure["hwnd"] = {
+    # 7. 桌面端特有配置（作为控制器的子配置）
+    form_structure["controller_type"]["children"]["hwnd"] = {
         "label": "窗口句柄",
         "type": "lineedit",
         "default": "",
-        "visible": False,  # 初始隐藏，根据controller_type动态显示
+        "visible": True,  # 初始设为可见，将在_on_controller_type_changed中动态控制
     }
 
-    form_structure["program_path"] = {
+    form_structure["controller_type"]["children"]["program_path"] = {
         "label": "程序启动路径",
         "type": "lineedit",
         "default": "",
-        "visible": False,  # 初始隐藏，根据controller_type动态显示
+        "visible": True,  # 初始设为可见，将在_on_controller_type_changed中动态控制
     }
 
     return form_structure
