@@ -120,10 +120,49 @@ def create_resource_setting_form_structure(
         "visible": True
     }
     
+    # 创建新的配置模板
+    emulator_path_config = {
+        "label": "模拟器路径",
+        "type": "lineedit",
+        "default": "",
+        "visible": True
+    }
+    
+    emulator_args_config = {
+        "label": "模拟器参数",
+        "type": "lineedit",
+        "default": "",
+        "visible": True
+    }
+    
+    emulator_wait_time_config = {
+        "label": "模拟器启动等待时间",
+        "type": "lineedit",
+        "default": "",
+        "visible": True
+    }
+    
+    program_args_config = {
+        "label": "程序参数",
+        "type": "lineedit",
+        "default": "",
+        "visible": True
+    }
+    
+    program_wait_time_config = {
+        "label": "程序启动时间",
+        "type": "lineedit",
+        "default": "",
+        "visible": True
+    }
+    
     # controller_type选项的子选项配置 - 直接提供子选项配置，不使用form_group嵌套
     controller_children_types = {
-        "adb": {"adb_path": adb_path_config, "device_address": device_address_config},
-        "win32": {"hwnd": hwnd_config, "program_path": program_path_config}
+        "adb": {"adb_path": adb_path_config, "device_address": device_address_config, 
+                "emulator_path": emulator_path_config, "emulator_args": emulator_args_config,
+                "emulator_wait_time": emulator_wait_time_config},
+        "win32": {"hwnd": hwnd_config, "program_path": program_path_config,
+                 "program_args": program_args_config, "program_wait_time": program_wait_time_config}
     }
     
     # 为每个controller选项创建对应的子配置
