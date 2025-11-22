@@ -140,10 +140,25 @@ class DynamicFormMixin:
             )
         )
 
-        # 触发初始加载，但设置save_config=False避免保存默认值
-        self._on_combobox_changed(
-            key, combo.currentText(), config, parent_config[key], child_layout, save_config=False
-        )
+        # 触发初始加载，但使用blockSignals和save_config=False确保不会触发不必要的信号和配置覆盖
+        try:
+            # 临时禁用自动保存
+            old_disable_auto_save = getattr(self, '_disable_auto_save', False)
+            self._disable_auto_save = True
+            
+            # 阻断下拉框信号，防止触发不必要的回调
+            combo.blockSignals(True)
+            try:
+                # 触发初始加载，但设置save_config=False避免保存默认值
+                self._on_combobox_changed(
+                    key, combo.currentText(), config, parent_config[key], child_layout, save_config=False
+                )
+            finally:
+                # 恢复信号连接
+                combo.blockSignals(False)
+        finally:
+            # 恢复自动保存状态
+            self._disable_auto_save = old_disable_auto_save
 
     def _create_lineedit(self, key, config, parent_layout, parent_config):
         """创建输入框"""
@@ -233,80 +248,107 @@ class DynamicFormMixin:
         
         :param save_config: 是否保存配置，默认为True。初始化时可以设置为False避免保存默认值
         """
-        # 保存当前子配置到缓存（如果有）
-        current_value = parent_config.get('value')
-        if current_value and key in self.all_child_containers and current_value in self.all_child_containers[key]:
-            # 获取当前子容器的配置
-            current_container = self.all_child_containers[key][current_value]
-            if current_container['config']:
-                # 为当前主选项值创建缓存键
-                cache_key = f"{key}_{current_value}"
-                # 深拷贝子配置以保存完整状态
-                import copy
-                self.option_subconfig_cache[cache_key] = copy.deepcopy(current_container['config'])
-
-        # 更新配置
-        parent_config["value"] = value
+        # 获取下拉框控件
+        combo_widget = self.widgets.get(key)
         
-        # 隐藏所有子选项容器
-        if key in self.all_child_containers:
-            for option_value, container_info in self.all_child_containers[key].items():
-                container_info['container'].setVisible(False)
-
-        # 处理当前选择的子选项
-        if "children" in config and value in config["children"] and key in self.all_child_containers and value in self.all_child_containers[key]:
-            child_config = config["children"][value]
-            current_container = self.all_child_containers[key][value]
+        # 临时阻断下拉框信号，防止在设置值时触发循环信号
+        if combo_widget and hasattr(combo_widget, 'blockSignals'):
+            combo_widget.blockSignals(True)
             
-            # 如果子容器中还没有创建控件，则创建它们
-            if current_container['layout'].count() == 0:
-                # 检查child_config是否是一个包含多个配置项的字典
-                if isinstance(child_config, dict):
-                    # 方式1：如果child_config有type键，处理为单个控件
-                    if "type" in child_config:
-                        if child_config["type"] == "combobox":
-                            self._create_combobox(
-                                f"{key}_child", child_config, current_container['layout'], current_container['config']
-                            )
-                        elif child_config["type"] == "lineedit":
-                            self._create_lineedit(
-                                f"{key}_child", child_config, current_container['layout'], current_container['config']
-                            )
-                    # 方式2：如果child_config不包含type键，但包含多个配置项，处理为多个控件
-                    elif len(child_config) > 0:
-                        # 为每个子配置项创建控件
-                        for sub_key, sub_config in child_config.items():
-                            if sub_config.get("type") == "combobox":
+        try:
+            # 保存所有子选项配置到缓存（不仅仅是当前显示的选项）
+            if key in self.all_child_containers:
+                for option_value, container_info in self.all_child_containers[key].items():
+                    if container_info['config']:
+                        # 为每个子选项创建缓存键并保存配置
+                        cache_key = f"{key}_{option_value}"
+                        # 深拷贝子配置以保存完整状态
+                        import copy
+                        self.option_subconfig_cache[cache_key] = copy.deepcopy(container_info['config'])
+
+            # 更新配置
+            parent_config["value"] = value
+            
+            # 隐藏所有子选项容器
+            if key in self.all_child_containers:
+                for option_value, container_info in self.all_child_containers[key].items():
+                    container_info['container'].setVisible(False)
+
+            # 处理当前选择的子选项
+            if "children" in config and value in config["children"] and key in self.all_child_containers and value in self.all_child_containers[key]:
+                child_config = config["children"][value]
+                current_container = self.all_child_containers[key][value]
+                
+                # 如果子容器中还没有创建控件，则创建它们
+                if current_container['layout'].count() == 0:
+                    # 检查child_config是否是一个包含多个配置项的字典
+                    if isinstance(child_config, dict):
+                        # 方式1：如果child_config有type键，处理为单个控件
+                        if "type" in child_config:
+                            if child_config["type"] == "combobox":
                                 self._create_combobox(
-                                    sub_key, sub_config, current_container['layout'], current_container['config']
+                                    f"{key}_child", child_config, current_container['layout'], current_container['config']
                                 )
-                            elif sub_config.get("type") == "lineedit":
+                            elif child_config["type"] == "lineedit":
                                 self._create_lineedit(
-                                    sub_key, sub_config, current_container['layout'], current_container['config']
+                                    f"{key}_child", child_config, current_container['layout'], current_container['config']
                                 )
-            
-            # 尝试从缓存中恢复之前的子配置
-            cache_key = f"{key}_{value}"
-            if cache_key in self.option_subconfig_cache:
-                # 临时禁用自动保存，避免恢复配置时触发保存
-                old_disable_auto_save = getattr(self, '_disable_auto_save', False)
-                self._disable_auto_save = True
-                try:
-                    # 应用缓存的子配置
-                    self._apply_subconfigs(child_config, current_container['config'], self.option_subconfig_cache[cache_key])
-                finally:
-                    # 恢复自动保存状态
-                    self._disable_auto_save = old_disable_auto_save
-            
-            # 设置当前子容器为可见
-            current_container['container'].setVisible(True)
-            
-            # 更新parent_config中的children引用，指向当前容器的配置
-            parent_config["children"] = current_container['config']
+                        # 方式2：如果child_config不包含type键，但包含多个配置项，处理为多个控件
+                        elif len(child_config) > 0:
+                            # 为每个子配置项创建控件
+                            for sub_key, sub_config in child_config.items():
+                                if sub_config.get("type") == "combobox":
+                                    self._create_combobox(
+                                        sub_key, sub_config, current_container['layout'], current_container['config']
+                                    )
+                                elif sub_config.get("type") == "lineedit":
+                                    self._create_lineedit(
+                                        sub_key, sub_config, current_container['layout'], current_container['config']
+                                    )
+                
+                # 尝试从缓存中恢复之前的子配置
+                cache_key = f"{key}_{value}"
+                if cache_key in self.option_subconfig_cache:
+                    # 临时禁用自动保存，避免恢复配置时触发保存
+                    old_disable_auto_save = getattr(self, '_disable_auto_save', False)
+                    self._disable_auto_save = True
+                    try:
+                        # 应用缓存的子配置
+                        self._apply_subconfigs(child_config, current_container['config'], self.option_subconfig_cache[cache_key])
+                    finally:
+                        # 恢复自动保存状态
+                        self._disable_auto_save = old_disable_auto_save
+                
+                # 设置当前子容器为可见
+                current_container['container'].setVisible(True)
+                
+                # 创建一个包含所有子选项配置的字典
+                all_children_config = {}
+                
+                # 首先将当前容器的配置添加到字典中
+                all_children_config[value] = current_container['config']
+                
+                # 然后从缓存中获取并添加所有其他子选项的配置
+                if key in self.all_child_containers:
+                    for option_value, container_info in self.all_child_containers[key].items():
+                        if option_value != value:  # 已经添加了当前选项，跳过
+                            cache_key = f"{key}_{option_value}"
+                            if cache_key in self.option_subconfig_cache:
+                                # 从缓存中获取配置
+                                all_children_config[option_value] = copy.deepcopy(self.option_subconfig_cache[cache_key])
+                            elif container_info['config']:  # 如果缓存中没有但容器中有配置
+                                all_children_config[option_value] = copy.deepcopy(container_info['config'])
+                
+                # 更新parent_config中的children，包含所有子选项配置
+                parent_config["children"] = all_children_config
 
-        # 自动保存选项，只有当save_config为True且未禁用自动保存时才保存
-        if save_config and (not hasattr(self, "_disable_auto_save") or not self._disable_auto_save):
-            self._auto_save_options()
+            # 自动保存选项，只有当save_config为True且未禁用自动保存时才保存
+            if save_config and (not hasattr(self, "_disable_auto_save") or not self._disable_auto_save):
+                self._auto_save_options()
+        finally:
+            # 恢复信号连接
+            if combo_widget and hasattr(combo_widget, 'blockSignals'):
+                combo_widget.blockSignals(False)
 
     def _on_lineedit_changed(self, key, text, parent_config, save_config=True):
         """输入框值改变处理
@@ -337,19 +379,33 @@ class DynamicFormMixin:
         :param target_config: 目标配置字典
         :param cached_config: 缓存的配置字典
         """
-        # 首先合并缓存配置到目标配置
+        # 确保cached_config是一个字典
+        if not isinstance(cached_config, dict):
+            return
+            
+        # 深度合并缓存配置到目标配置，保留未在缓存中但存在于目标配置中的键
+        import copy
+        
         # 如果子结构是单个控件
         if isinstance(child_structure, dict):
             if "type" in child_structure:
                 # 单个控件情况
-                # 直接复制缓存配置到目标配置
+                # 深度合并缓存配置到目标配置
                 for sub_key, sub_value in cached_config.items():
-                    target_config[sub_key] = sub_value
+                    # 确保在更新时深度复制，避免引用问题
+                    target_config[sub_key] = copy.deepcopy(sub_value)
             else:
                 # 多个控件情况
                 for sub_key, sub_config in child_structure.items():
                     if sub_key in cached_config:
-                        target_config[sub_key] = cached_config[sub_key]
+                        # 如果缓存配置是字典，进行深度合并
+                        if isinstance(cached_config[sub_key], dict) and isinstance(target_config.get(sub_key), dict):
+                            # 合并两个字典，保留目标配置中不在缓存中的键
+                            for k, v in cached_config[sub_key].items():
+                                target_config[sub_key][k] = copy.deepcopy(v)
+                        else:
+                            # 否则直接复制
+                            target_config[sub_key] = copy.deepcopy(cached_config[sub_key])
         
         # 应用配置到UI控件
         # 遍历目标配置中的所有键
@@ -357,25 +413,39 @@ class DynamicFormMixin:
             # 检查子键是否在widgets字典中
             if sub_key in self.widgets:
                 sub_widget = self.widgets[sub_key]
-                # 处理嵌套的widgets字典（如inputs类型）
-                if isinstance(sub_widget, dict):
-                    for input_name, input_widget in sub_widget.items():
-                        if isinstance(sub_value, dict) and input_name in sub_value:
-                            input_widget.blockSignals(True)
-                            input_widget.setText(str(sub_value[input_name]))
-                            input_widget.blockSignals(False)
-                # 处理普通控件
-                else:
-                    if hasattr(sub_widget, 'setText'):
+                try:
+                    # 处理嵌套的widgets字典（如inputs类型）
+                    if isinstance(sub_widget, dict):
+                        for input_name, input_widget in sub_widget.items():
+                            if isinstance(sub_value, dict) and input_name in sub_value:
+                                # 临时阻断信号
+                                input_widget.blockSignals(True)
+                                try:
+                                    input_widget.setText(str(sub_value[input_name]))
+                                finally:
+                                    # 确保恢复信号
+                                    input_widget.blockSignals(False)
+                    # 处理普通控件
+                    else:
+                        # 临时阻断信号
                         sub_widget.blockSignals(True)
-                        sub_widget.setText(str(sub_value))
-                        sub_widget.blockSignals(False)
-                    elif hasattr(sub_widget, 'setCurrentText'):
-                        sub_widget.blockSignals(True)
-                        index = sub_widget.findText(str(sub_value))
-                        if index >= 0:
-                            sub_widget.setCurrentIndex(index)
-                        sub_widget.blockSignals(False)
+                        try:
+                            if hasattr(sub_widget, 'setText'):
+                                sub_widget.setText(str(sub_value))
+                            elif hasattr(sub_widget, 'setCurrentText'):
+                                index = sub_widget.findText(str(sub_value))
+                                if index >= 0:
+                                    sub_widget.setCurrentIndex(index)
+                            # 处理其他可能的控件类型
+                            elif hasattr(sub_widget, 'setChecked') and isinstance(sub_value, bool):
+                                sub_widget.setChecked(sub_value)
+                        finally:
+                            # 确保恢复信号
+                            sub_widget.blockSignals(False)
+                except Exception as e:
+                    # 记录错误但不影响其他控件的更新
+                    from app.utils.logger import logger
+                    logger.error(f"应用子配置到控件失败 (key: {sub_key}, value: {sub_value}): {e}")
 
     def _auto_save_options(self):
         """自动保存当前选项"""
@@ -403,7 +473,8 @@ class DynamicFormMixin:
         :param form_structure: 表单结构定义
         :param current_config: 当前配置字典
         """
-        # 创建一个标志来临时禁用自动保存
+        # 保存旧的_disable_auto_save值，确保正确恢复
+        old_disable_auto_save = getattr(self, '_disable_auto_save', False)
         self._disable_auto_save = True
         
         try:
@@ -418,73 +489,96 @@ class DynamicFormMixin:
                             # 查找并设置下拉框的值
                             if key in self.widgets:
                                 combo = self.widgets[key]
-                                # 临时断开信号连接
+                                # 临时断开信号连接，防止触发_on_combobox_changed
                                 combo.blockSignals(True)
-                                index = combo.findText(combo_value)
-                                if index >= 0:
-                                    combo.setCurrentIndex(index)
-                                # 重新连接信号
-                                combo.blockSignals(False)
-                                
-                                # 手动更新当前配置
-                                if key not in current_config:
-                                    current_config[key] = {}
-                                current_config[key]["value"] = combo_value
-                                
-                                # 递归应用子配置
-                                if "children" in value:
-                                    # 优先使用children属性
-                                    if (
-                                        "children" in field_config
-                                        and combo_value in field_config["children"]
-                                    ):
-                                        # 确保子选项容器存在
-                                        if key in self.all_child_containers and combo_value in self.all_child_containers[key]:
-                                            # 获取对应的子选项容器
-                                            child_container = self.all_child_containers[key][combo_value]
-                                            
-                                            # 确保子容器中的控件已创建
-                                            if child_container['layout'].count() == 0:
-                                                child_config = field_config["children"][combo_value]
-                                                # 创建子控件
-                                                if isinstance(child_config, dict):
-                                                    if "type" in child_config:
-                                                        # 单个控件情况
-                                                        if child_config["type"] == "combobox":
-                                                            self._create_combobox(
-                                                                f"{key}_child", child_config, child_container['layout'], child_container['config']
-                                                            )
-                                                        elif child_config["type"] == "lineedit":
-                                                            self._create_lineedit(
-                                                                f"{key}_child", child_config, child_container['layout'], child_container['config']
-                                                            )
+                                try:
+                                    index = combo.findText(combo_value)
+                                    if index >= 0:
+                                        combo.setCurrentIndex(index)
+                                        
+                                        # 手动更新当前配置，确保保留原始值
+                                        if key not in current_config:
+                                            current_config[key] = {}
+                                        current_config[key]["value"] = combo_value
+                                         
+                                        # 递归应用子配置
+                                        if "children" in value:
+                                            # 优先使用children属性
+                                            if (
+                                                "children" in field_config
+                                                and combo_value in field_config["children"]
+                                            ):
+                                                # 确保子选项容器存在
+                                                if key in self.all_child_containers and combo_value in self.all_child_containers[key]:
+                                                    # 获取对应的子选项容器
+                                                    child_container = self.all_child_containers[key][combo_value]
+                                                     
+                                                    # 确保子容器中的控件已创建
+                                                    if child_container['layout'].count() == 0:
+                                                        child_config = field_config["children"][combo_value]
+                                                        # 创建子控件
+                                                        if isinstance(child_config, dict):
+                                                            if "type" in child_config:
+                                                                # 单个控件情况
+                                                                if child_config["type"] == "combobox":
+                                                                    self._create_combobox(
+                                                                        f"{key}_child", child_config, child_container['layout'], child_container['config']
+                                                                    )
+                                                                elif child_config["type"] == "lineedit":
+                                                                    self._create_lineedit(
+                                                                        f"{key}_child", child_config, child_container['layout'], child_container['config']
+                                                                    )
+                                                            else:
+                                                                # 多个控件情况
+                                                                for sub_key, sub_config in child_config.items():
+                                                                    if sub_config.get("type") == "combobox":
+                                                                        self._create_combobox(
+                                                                            sub_key, sub_config, child_container['layout'], child_container['config']
+                                                                        )
+                                                                    elif sub_config.get("type") == "lineedit":
+                                                                        self._create_lineedit(
+                                                                            sub_key, sub_config, child_container['layout'], child_container['config']
+                                                                        )
+                                                     
+                                                    # 检查是否有缓存的子配置
+                                                    cache_key = f"{key}_{combo_value}"
+                                                    if cache_key in self.option_subconfig_cache:
+                                                        # 优先使用缓存的子配置
+                                                        self._apply_subconfigs(field_config["children"][combo_value], child_container['config'], self.option_subconfig_cache[cache_key])
                                                     else:
-                                                        # 多个控件情况
-                                                        for sub_key, sub_config in child_config.items():
-                                                            if sub_config.get("type") == "combobox":
-                                                                self._create_combobox(
-                                                                    sub_key, sub_config, child_container['layout'], child_container['config']
-                                                                )
-                                                            elif sub_config.get("type") == "lineedit":
-                                                                self._create_lineedit(
-                                                                    sub_key, sub_config, child_container['layout'], child_container['config']
-                                                                )
-                                            
-                                            # 应用子配置到子容器
-                                            child_config = field_config["children"][combo_value]
-                                            # 使用_apply_subconfigs方法应用子配置
-                                            self._apply_subconfigs(child_config, child_container['config'], value["children"])
-                                            
-                                            # 更新parent_config中的children引用，指向子容器的配置
-                                            current_config[key]["children"] = child_container['config']
-                                            
-                                            # 设置当前子容器为可见
-                                            child_container['container'].setVisible(True)
-                                            
-                                            # 隐藏其他所有子选项容器
-                                            for option_value, container_info in self.all_child_containers[key].items():
-                                                if option_value != combo_value:
-                                                    container_info['container'].setVisible(False)
+                                                        # 应用子配置到子容器
+                                                        self._apply_subconfigs(field_config["children"][combo_value], child_container['config'], value["children"])
+                                                     
+                                                    # 创建一个包含所有子选项配置的字典
+                                                    all_children_config = {}
+                                                    
+                                                    # 首先将当前容器的配置添加到字典中
+                                                    all_children_config[combo_value] = child_container['config']
+                                                    
+                                                    # 然后从缓存中获取并添加所有其他子选项的配置
+                                                    if key in self.all_child_containers:
+                                                        for option_value, container_info in self.all_child_containers[key].items():
+                                                            if option_value != combo_value:  # 已经添加了当前选项，跳过
+                                                                cache_key = f"{key}_{option_value}"
+                                                                if cache_key in self.option_subconfig_cache:
+                                                                    # 从缓存中获取配置
+                                                                    all_children_config[option_value] = copy.deepcopy(self.option_subconfig_cache[cache_key])
+                                                                elif container_info['config']:  # 如果缓存中没有但容器中有配置
+                                                                    all_children_config[option_value] = copy.deepcopy(container_info['config'])
+                                                    
+                                                    # 更新current_config中的children，包含所有子选项配置
+                                                    current_config[key]["children"] = all_children_config
+                                                     
+                                                    # 设置当前子容器为可见
+                                                    child_container['container'].setVisible(True)
+                                                     
+                                                    # 隐藏其他所有子选项容器
+                                                    for option_value, container_info in self.all_child_containers[key].items():
+                                                        if option_value != combo_value:
+                                                            container_info['container'].setVisible(False)
+                                finally:
+                                    # 确保在任何情况下都恢复信号
+                                    combo.blockSignals(False)
 
                     elif field_config["type"] == "lineedit":
                         # 处理输入框配置
@@ -496,25 +590,31 @@ class DynamicFormMixin:
                                     # 确保current_config[key]是一个字典
                                     if key not in current_config:
                                         current_config[key] = {}
-                                    
+                                     
                                     for input_name, input_value in value.items():
                                         if input_name in self.widgets[key]:
                                             # 临时断开信号连接
-                                            self.widgets[key][input_name].blockSignals(True)
-                                            self.widgets[key][input_name].setText(str(input_value))
-                                            # 重新连接信号
-                                            self.widgets[key][input_name].blockSignals(False)
-                                            # 手动更新current_config
-                                            current_config[key][input_name] = input_value
+                                            widget = self.widgets[key][input_name]
+                                            widget.blockSignals(True)
+                                            try:
+                                                widget.setText(str(input_value))
+                                                # 手动更新current_config，确保保留原始值
+                                                current_config[key][input_name] = input_value
+                                            finally:
+                                                # 确保在任何情况下都恢复信号
+                                                widget.blockSignals(False)
                             else:
                                 # 普通的单行输入框
+                                widget = self.widgets[key]
                                 # 临时断开信号连接
-                                self.widgets[key].blockSignals(True)
-                                self.widgets[key].setText(str(value))
-                                # 重新连接信号
-                                self.widgets[key].blockSignals(False)
-                                # 手动更新current_config
-                                current_config[key] = value
+                                widget.blockSignals(True)
+                                try:
+                                    widget.setText(str(value))
+                                    # 手动更新current_config，确保保留原始值
+                                    current_config[key] = value
+                                finally:
+                                    # 确保在任何情况下都恢复信号
+                                    widget.blockSignals(False)
         finally:
-            # 恢复自动保存
-            self._disable_auto_save = False
+            # 恢复自动保存状态
+            self._disable_auto_save = old_disable_auto_save
