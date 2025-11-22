@@ -39,6 +39,7 @@ def create_resource_setting_form_structure(
     # 创建controller_type结构，为每个选项创建对应的子选项
     form_structure["controller_type"] = {
         "label": "设备类型",
+        "description": "选择您的设备类型，支持ADB和Win32两种类型",
         "type": "combobox",
         "options": controller_options,
         "default": controller_options[0] if controller_options else "",
@@ -52,6 +53,7 @@ def create_resource_setting_form_structure(
 
     form_structure["resource"] = {
         "label": "资源选择",
+        "description": "选择您要使用的资源",
         "type": "combobox",
         "options": resource_options,
         "default": resource_options[0] if resource_options else "",
@@ -60,6 +62,7 @@ def create_resource_setting_form_structure(
     # 3. GPU选择（默认隐藏）
     form_structure["gpu"] = {
         "label": "GPU选择",
+        "description": "选择您要使用的GPU设备",
         "type": "lineedit",
         "default": "",
         "visible": False,
@@ -68,12 +71,14 @@ def create_resource_setting_form_structure(
     # 4. 启动前执行程序
     form_structure["pre_launch_program"] = {
         "label": "启动前执行程序路径",
+        "description": "在程序启动前执行的程序路径",
         "type": "lineedit",
         "default": "",
     }
 
     form_structure["pre_launch_args"] = {
         "label": "启动前执行程序参数",
+        "description": "启动前执行程序的参数",
         "type": "lineedit",
         "default": "",
     }
@@ -81,12 +86,14 @@ def create_resource_setting_form_structure(
     # 5. 启动后执行程序
     form_structure["post_launch_program"] = {
         "label": "启动后执行程序路径",
+        "description": "在程序启动后执行的程序路径",
         "type": "lineedit",
         "default": "",
     }
 
     form_structure["post_launch_args"] = {
         "label": "启动后执行程序参数",
+        "description": "启动后执行程序的参数",
         "type": "lineedit",
         "default": "",
     }
@@ -94,6 +101,7 @@ def create_resource_setting_form_structure(
     # 定义子选项配置模板
     adb_path_config = {
         "label": "ADB路径",
+        "description": "ADB工具的路径",
         "type": "lineedit",
         "default": "",
         "visible": True
@@ -101,6 +109,7 @@ def create_resource_setting_form_structure(
     
     device_address_config = {
         "label": "设备链接地址",
+        "description": "设备的ADB链接地址",
         "type": "lineedit",
         "default": "",
         "visible": True
@@ -108,6 +117,7 @@ def create_resource_setting_form_structure(
     
     hwnd_config = {
         "label": "窗口句柄",
+        "description": "程序窗口的句柄",
         "type": "lineedit",
         "default": "",
         "visible": True

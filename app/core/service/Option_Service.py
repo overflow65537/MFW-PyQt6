@@ -103,10 +103,14 @@ class OptionService:
         label = option_def.get("label", option_def.get("name", option_key))
         if label.startswith("$"):
             pass
-
         field_config["label"] = label
+        
+        # 处理description字段
+        if "description" in option_def:
+            field_config["description"] = option_def["description"]
 
         # 处理不同类型的选项
+
         if option_type == "select" or "cases" in option_def:
             # 默认类型为combobox
             field_config["type"] = "combobox"
@@ -190,6 +194,9 @@ class OptionService:
             if task.get("name") == task_name:
                 # 获取任务的option字段（字符串数组）
                 task_option_names = task.get("option", [])
+                # 检查任务是否有description字段
+                if "description" in task:
+                    form_structure["description"] = task["description"]
                 # 获取顶层的option定义
                 all_options = interface.get("option", {})
 

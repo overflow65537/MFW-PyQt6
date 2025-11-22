@@ -1,8 +1,7 @@
 import json
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from PySide6.QtCore import Qt
-from qfluentwidgets import ComboBox, LineEdit, BodyLabel
-
+from qfluentwidgets import ComboBox, LineEdit, BodyLabel, ToolTipFilter
 
 class DynamicFormMixin:
     """
@@ -42,6 +41,16 @@ class DynamicFormMixin:
         """
         # 保存新的表单结构
         self.config_structure = form_structure
+        
+        # 处理任务层级的description
+        try:
+            if hasattr(self, 'set_description') and 'description' in form_structure:
+                self.set_description(form_structure['description'])
+                if hasattr(self, '_toggle_description'):
+                    self._toggle_description(visible=True)
+        except Exception:
+            # 如果设置description失败，忽略此错误
+            pass
 
         # 清空当前配置
         self.current_config = {}
@@ -56,6 +65,10 @@ class DynamicFormMixin:
 
         # 生成新表单
         for key, config_item in form_structure.items():
+            # 跳过任务层级的description字段
+            if key == "description":
+                continue
+                
             if config_item["type"] == "combobox":
                 self._create_combobox(
                     key, config_item, self.parent_layout, self.current_config
@@ -91,10 +104,22 @@ class DynamicFormMixin:
         label = BodyLabel(label_text)
         # 移除固定宽度，让标签自然显示
         container_layout.addWidget(label)
+        
+        # 为选项标题添加tooltip（选项层级）
+        if "description" in config:
+            filter = ToolTipFilter(label)
+            label.installEventFilter(filter)
+            label.setToolTip(config["description"])
 
         combo = ComboBox()
         combo.addItems(config["options"])
         container_layout.addWidget(combo)
+        
+        # 为下拉框控件添加tooltip（选项内部层级）
+        if "description" in config:
+            filter = ToolTipFilter(combo)
+            combo.installEventFilter(filter)
+            combo.setToolTip(config["description"])
 
         # 创建子控件容器布局
         child_layout = QVBoxLayout()
@@ -175,6 +200,12 @@ class DynamicFormMixin:
         label = BodyLabel(label_text)
         # 移除固定宽度，让标签自然显示
         container_layout.addWidget(label)
+        
+        # 为选项标题添加tooltip（选项层级）
+        if "description" in config:
+            filter = ToolTipFilter(label)
+            label.installEventFilter(filter)
+            label.setToolTip(config["description"])
 
         # 检查是否有inputs数组（input类型的选项）
         if "inputs" in config:
@@ -199,6 +230,17 @@ class DynamicFormMixin:
                 if "default" in input_item:
                     input_line_edit.setText(str(input_item["default"]))
                 input_container.addWidget(input_line_edit)
+                
+                # 为输入框控件添加tooltip（选项内部层级）
+                if "description" in input_item:
+                    filter = ToolTipFilter(input_line_edit)
+                    input_line_edit.installEventFilter(filter)
+                    input_line_edit.setToolTip(input_item["description"])
+                elif "description" in config:
+                    # 如果input_item没有自己的description，继承父级的
+                    filter = ToolTipFilter(input_line_edit)
+                    input_line_edit.installEventFilter(filter)
+                    input_line_edit.setToolTip(config["description"])
 
                 # 保存引用，使用input的name作为键
                 input_name = input_item.get("name", "input")
@@ -222,6 +264,12 @@ class DynamicFormMixin:
                 line_edit.setText(config["default"])
 
             container_layout.addWidget(line_edit)
+            
+            # 为输入框控件添加tooltip（选项内部层级）
+            if "description" in config:
+                filter = ToolTipFilter(line_edit)
+                line_edit.installEventFilter(filter)
+                line_edit.setToolTip(config["description"])
 
             # 保存引用
             self.widgets[key] = line_edit
@@ -500,7 +548,7 @@ class DynamicFormMixin:
                                         if key not in current_config:
                                             current_config[key] = {}
                                         current_config[key]["value"] = combo_value
-                                         
+                                        
                                         # 递归应用子配置
                                         if "children" in value:
                                             # 优先使用children属性
@@ -512,7 +560,7 @@ class DynamicFormMixin:
                                                 if key in self.all_child_containers and combo_value in self.all_child_containers[key]:
                                                     # 获取对应的子选项容器
                                                     child_container = self.all_child_containers[key][combo_value]
-                                                     
+                                                    
                                                     # 确保子容器中的控件已创建
                                                     if child_container['layout'].count() == 0:
                                                         child_config = field_config["children"][combo_value]
@@ -539,16 +587,18 @@ class DynamicFormMixin:
                                                                         self._create_lineedit(
                                                                             sub_key, sub_config, child_container['layout'], child_container['config']
                                                                         )
-                                                     
+                                                    
                                                     # 检查是否有缓存的子配置
                                                     cache_key = f"{key}_{combo_value}"
                                                     if cache_key in self.option_subconfig_cache:
                                                         # 优先使用缓存的子配置
+                                                        import copy
                                                         self._apply_subconfigs(field_config["children"][combo_value], child_container['config'], self.option_subconfig_cache[cache_key])
                                                     else:
                                                         # 应用子配置到子容器
+                                                        import copy
                                                         self._apply_subconfigs(field_config["children"][combo_value], child_container['config'], value["children"])
-                                                     
+                                                    
                                                     # 创建一个包含所有子选项配置的字典
                                                     all_children_config = {}
                                                     
@@ -568,10 +618,10 @@ class DynamicFormMixin:
                                                     
                                                     # 更新current_config中的children，包含所有子选项配置
                                                     current_config[key]["children"] = all_children_config
-                                                     
+                                                    
                                                     # 设置当前子容器为可见
                                                     child_container['container'].setVisible(True)
-                                                     
+                                                    
                                                     # 隐藏其他所有子选项容器
                                                     for option_value, container_info in self.all_child_containers[key].items():
                                                         if option_value != combo_value:
@@ -590,7 +640,7 @@ class DynamicFormMixin:
                                     # 确保current_config[key]是一个字典
                                     if key not in current_config:
                                         current_config[key] = {}
-                                     
+                                    
                                     for input_name, input_value in value.items():
                                         if input_name in self.widgets[key]:
                                             # 临时断开信号连接

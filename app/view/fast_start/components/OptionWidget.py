@@ -209,7 +209,12 @@ class OptionWidget(QWidget, DynamicFormMixin):
     def set_description(self, description: str):
         """设置描述内容"""
         self.description_content.setText("")
-
+        
+        # 如果description为空，隐藏描述区域
+        if not description.strip():
+            self._toggle_description(visible=False)
+            return
+            
         html = markdown.markdown(description).replace("\n", "")
         html = re.sub(
             r"<code>(.*?)</code>",
@@ -230,6 +235,9 @@ class OptionWidget(QWidget, DynamicFormMixin):
         """重置选项区域和描述区域"""
         self._clear_options()
         self._toggle_description(visible=False)
+        # 显示选项区域，因为已经专门的方法清除选项
+        self.option_splitter_widget.show()
+        
         self.current_task = None
         # 重置DynamicFormMixin的状态
         if hasattr(self, "current_config"):
@@ -257,6 +265,9 @@ class OptionWidget(QWidget, DynamicFormMixin):
         :param form_structure: 表单结构定义
         :param config: 可选的配置对象，用于设置表单的当前选择
         """
+        # 显示选项区域
+        self.option_splitter_widget.show()
+        
         # 使用DynamicFormMixin的update_form方法更新表单
         self.update_form(form_structure, config)
         # 控制器类型切换的逻辑已由DynamicFormMixin的_on_combobox_changed方法处理
@@ -287,14 +298,17 @@ class OptionWidget(QWidget, DynamicFormMixin):
             logger.info(f"表单已使用form_structure更新")
         else:
             # 没有表单时清除界面
-            self._clear_layout(self.option_area_layout)
+            self._clear_options()  # 使用专门的方法清除选项
             self.current_config = {}
             self.widgets = {}
             self.child_layouts = {}
+            # 显示选项区域，因为已经用专门的方法清除选项
+            self.option_splitter_widget.show()
+            # 隐藏描述区域
+            self._toggle_description(visible=False)
             logger.info("没有提供form_structure，已清除界面")
-    
+            
 
-    
     def _set_layout_visibility(self, layout, visible):
         """
         递归设置布局中所有控件的可见性
