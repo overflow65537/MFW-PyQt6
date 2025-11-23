@@ -105,6 +105,16 @@ class PathLineEditGenerator:
 
         container_layout.addWidget(path_line_edit)
         
+        # 检查是否需要隐藏整个路径输入框行
+        if "visible" in config and not config["visible"]:
+            # 隐藏标签和路径输入框
+            label.setVisible(False)
+            path_line_edit.setVisible(False)
+            
+            # 如果有图标也隐藏
+            if icon_label:
+                icon_label.setVisible(False)
+        
         # 为输入框控件添加tooltip（选项内部层级）
         if "description" in config:
             filter = ToolTipFilter(path_line_edit)

@@ -1,26 +1,28 @@
 import json
 import copy
+import re
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtCore import Qt
 from qfluentwidgets import ComboBox, BodyLabel, ToolTipFilter
 from app.utils.logger import logger
 
-class ComboBoxGenerator:
+class GPUComboBoxGenerator:
     """
-    下拉框生成器
-    负责下拉框的创建、配置和信号处理
+    GPU下拉框生成器
+    负责GPU下拉框的创建、配置和信号处理
+    特点：显示GPU名称但保存GPU ID
     """
 
     def __init__(self, host):
         """
-        初始化下拉框生成器
+        初始化GPU下拉框生成器
         :param host: 宿主组件，需要包含widgets、child_layouts、all_child_containers等属性
         """
         self.host = host
 
-    def create_combobox(self, key, config, parent_layout, parent_config):
-        """创建下拉框"""
+    def create_gpu_combobox(self, key, config, parent_layout, parent_config):
+        """创建GPU下拉框"""
         # 创建控件容器布局
         container_layout = QVBoxLayout()
         container_layout.setContentsMargins(5, 5, 5, 5)
@@ -80,8 +82,7 @@ class ComboBoxGenerator:
         if label_text.startswith("$"):
             pass
         label = BodyLabel(label_text)
-        # 移除固定宽度，让标签自然显示
-        
+
         # 添加标签到容器
         label_container.addWidget(label)
         
@@ -98,7 +99,7 @@ class ComboBoxGenerator:
         combo.addItems(config["options"])
         container_layout.addWidget(combo)
         
-        # 检查是否需要隐藏整个下拉框行
+        # 检查是否需要隐藏整个GPU配置行
         if "visible" in config and not config["visible"]:
             # 隐藏标签和下拉框
             label.setVisible(False)
@@ -122,9 +123,10 @@ class ComboBoxGenerator:
         self.host.widgets[key] = combo
         self.host.child_layouts[key] = child_layout
 
-        # 初始化配置
+        # 初始化配置 - 提取GPU ID
         init_value = combo.currentText()
-        parent_config[key] = {"value": init_value, "children": {}}
+        gpu_id = self._extract_gpu_id(init_value)
+        parent_config[key] = {"value": gpu_id, "children": {}}
         
         # 初始化所有子选项容器字典
         self.host.all_child_containers[key] = {}
@@ -154,7 +156,7 @@ class ComboBoxGenerator:
         combo.currentTextChanged.connect(
             lambda value, current_key=key, current_config=config, current_parent_config=parent_config[
                 key
-            ]: self._on_combobox_changed(
+            ]: self._on_gpu_combobox_changed(
                 current_key, value, current_config, current_parent_config, child_layout, save_config=True
             )
         )
@@ -173,7 +175,7 @@ class ComboBoxGenerator:
             combo.blockSignals(True)
             try:
                 # 触发初始加载，但设置save_config=False避免保存默认值
-                self._on_combobox_changed(
+                self._on_gpu_combobox_changed(
                     key, combo.currentText(), config, parent_config[key], child_layout, save_config=False
                 )
             finally:
@@ -183,8 +185,8 @@ class ComboBoxGenerator:
             # 恢复自动保存状态
             self.host._disable_auto_save = old_disable_auto_save
 
-    def _on_combobox_changed(self, key, value, config, parent_config, child_layout, save_config=True):
-        """下拉框值改变处理
+    def _on_gpu_combobox_changed(self, key, value, config, parent_config, child_layout, save_config=True):
+        """GPU下拉框值改变处理
         
         :param save_config: 是否保存配置，默认为True。初始化时可以设置为False避免保存默认值
         """
@@ -205,8 +207,9 @@ class ComboBoxGenerator:
                         # 深拷贝子配置以保存完整状态
                         self.host.option_subconfig_cache[cache_key] = copy.deepcopy(container_info['config'])
 
-            # 更新配置
-            parent_config["value"] = value
+            # 更新配置 - 提取GPU ID
+            gpu_id = self._extract_gpu_id(value)
+            parent_config["value"] = gpu_id
             
             # 隐藏所有子选项容器
             if key in self.host.all_child_containers:
@@ -225,7 +228,9 @@ class ComboBoxGenerator:
                         # 方式1：如果child_config有type键，处理为单个控件
                         if "type" in child_config:
                             if child_config["type"] == "combobox":
-                                self.create_combobox(
+                                from .ComboBoxGenerator import ComboBoxGenerator
+                                combo_generator = ComboBoxGenerator(self.host)
+                                combo_generator.create_combobox(
                                     f"{key}_child", child_config, current_container['layout'], current_container['config']
                                 )
                             elif child_config["type"] == "lineedit":
@@ -247,7 +252,9 @@ class ComboBoxGenerator:
                             # 为每个子配置项创建控件
                             for sub_key, sub_config in child_config.items():
                                 if sub_config.get("type") == "combobox":
-                                    self.create_combobox(
+                                    from .ComboBoxGenerator import ComboBoxGenerator
+                                    combo_generator = ComboBoxGenerator(self.host)
+                                    combo_generator.create_combobox(
                                         sub_key, sub_config, current_container['layout'], current_container['config']
                                     )
                                 elif sub_config.get("type") == "lineedit":
@@ -295,6 +302,19 @@ class ComboBoxGenerator:
             if combo_widget and hasattr(combo_widget, 'blockSignals'):
                 combo_widget.blockSignals(False)
 
+    def _extract_gpu_id(self, option_text):
+        """从GPU选项文本中提取GPU ID
+        
+        输入格式: "NVIDIA GeForce RTX 4090 (ID: 0)"
+        输出: "0"
+        """
+        # 修改正则表达式以支持负数ID
+        match = re.search(r'\(ID: (-?\d+)\)', option_text)
+        if match:
+            return match.group(1)
+        # 如果提取失败，返回原始文本
+        return option_text
+
     def _set_child_container_visibility(self, key, visible_option_value):
         """设置子选项容器的可见性"""
         if key in self.host.all_child_containers:
@@ -329,8 +349,7 @@ class ComboBoxGenerator:
             return
             
         # 深度合并缓存配置到目标配置，保留未在缓存中但存在于目标配置中的键
-        # import copy is now at the top of the file
-        
+
         # 如果子结构是单个控件
         if isinstance(child_structure, dict):
             if "type" in child_structure:
@@ -351,7 +370,7 @@ class ComboBoxGenerator:
                         else:
                             # 否则直接复制
                             target_config[sub_key] = copy.deepcopy(cached_config[sub_key])
-        
+
         # 应用配置到UI控件
         # 遍历目标配置中的所有键
         for sub_key, sub_value in target_config.items():
@@ -378,9 +397,22 @@ class ComboBoxGenerator:
                             if hasattr(sub_widget, 'setText'):
                                 sub_widget.setText(str(sub_value))
                             elif hasattr(sub_widget, 'setCurrentText'):
-                                index = sub_widget.findText(str(sub_value))
-                                if index >= 0:
-                                    sub_widget.setCurrentIndex(index)
+                                # 对于ComboBox，如果是GPU选择的情况，需要将id转换为显示文本
+                                if sub_widget == self.host.widgets.get("gpu"):
+                                    # 查找包含该id的选项
+                                    id_to_find = str(sub_value)
+                                    options = sub_widget.items()  # 获取所有选项
+                                    found_index = -1
+                                    for index, option in enumerate(options):
+                                        if f"(ID: {id_to_find})" in option:
+                                            found_index = index
+                                            break
+                                    if found_index >= 0:
+                                        sub_widget.setCurrentIndex(found_index)
+                                else:
+                                    index = sub_widget.findText(str(sub_value))
+                                    if index >= 0:
+                                        sub_widget.setCurrentIndex(index)
                             # 处理其他可能的控件类型
                             elif hasattr(sub_widget, 'setChecked') and isinstance(sub_value, bool):
                                 sub_widget.setChecked(sub_value)

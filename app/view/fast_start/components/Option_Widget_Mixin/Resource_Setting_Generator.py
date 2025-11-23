@@ -72,12 +72,44 @@ def create_resource_setting_form_structure(
     }
 
     # 3. GPU选择（默认隐藏）
+    # 导入GPU缓存模块
+    from app.utils.gpu_cache import gpu_cache
+    
+    # 初始化GPU信息缓存
+    gpu_cache.initialize()
+    
+    # 构建选项列表，将GPU id和名称组合
+    # 格式: [{ "display": "GPU名称", "value": "gpu_id" }, ...]
+    gpu_options = []
+    
+    gpu_info = gpu_cache.get_gpu_info()
+    
+    # 直接将GPU名称作为选项值，后面会处理保存
+    # gpu_info是{id: name}格式的字典
+    
+    # 构建选项列表，将GPU id和名称组合成一个字符串
+    # 格式: "{name} (ID: {id})"
+    # 保存时我们可以通过正则表达式提取实际的id
+    gpu_options = []
+    
+    # 添加自动和CPU选项
+    gpu_options.append("自动 (ID: -1)")  # 键值-1
+    gpu_options.append("CPU (ID: -2)")   # 键值-2
+    
+    # 添加检测到的GPU设备
+    for gpu_id, gpu_name in sorted(gpu_info.items()):
+        # 创建包含id的显示字符串
+        option_text = f"{gpu_name} (ID: {gpu_id})"
+        gpu_options.append(option_text)
+    
+    # 保存GPU信息到form_structure中，以便ComboBoxGenerator使用
     form_structure["gpu"] = {
         "label": "GPU选择",
         "description": "选择您要使用的GPU设备",
-        "type": "lineedit",
-        "default": "",
-        "visible": False,
+        "type": "gpu_combobox",  # 使用专门的GPU下拉框类型
+        "options": gpu_options,  # 显示的名称列表，包含id信息
+        "default": "自动 (ID: -1)",  # 默认值为-1
+        "visible": False,  # 默认隐藏
     }
 
     # 4. 启动前执行程序
