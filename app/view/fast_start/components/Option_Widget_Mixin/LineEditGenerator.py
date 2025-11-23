@@ -196,8 +196,8 @@ class LineEditGenerator:
 
                 # 连接信号
                 input_line_edit.textChanged.connect(
-                    lambda text, k=key, input_name=input_name, p_conf=parent_config: self._on_input_item_changed(
-                        k, input_name, text, p_conf
+                    lambda text, k=key, input_name=input_name, p_conf=parent_config, widget=input_line_edit: self._on_input_item_changed(
+                        k, input_name, text, p_conf, widget=widget
                     )
                 )
         else:
@@ -256,22 +256,31 @@ class LineEditGenerator:
             # 连接信号（用户交互时保存配置）
             line_edit.textChanged.connect(
                 lambda text, k=key, p_conf=parent_config: self._on_lineedit_changed(
-                    k, text, p_conf, save_config=True
+                    k, text, p_conf, save_config=True, widget=line_edit
                 )
             )
 
-    def _on_input_item_changed(self, key, input_name, text, parent_config):
+    def _on_input_item_changed(self, key, input_name, text, parent_config, widget=None):
         """处理input类型中单个输入项的变化"""
+        # 检查验证状态，如果验证失败则拒绝更新
+        if widget and hasattr(widget, 'isError') and widget.isError():
+            return
+            
         if key in parent_config and isinstance(parent_config[key], dict):
             parent_config[key][input_name] = text
             # 自动保存选项
             self._auto_save_options()
 
-    def _on_lineedit_changed(self, key, text, parent_config, save_config=True):
+    def _on_lineedit_changed(self, key, text, parent_config, save_config=True, widget=None):
         """输入框值改变处理
         
         :param save_config: 是否保存配置，默认为True。初始化时可以设置为False避免保存默认值
+        :param widget: 输入框控件，用于检查验证状态
         """
+        # 检查验证状态，如果验证失败则拒绝更新
+        if widget and hasattr(widget, 'isError') and widget.isError():
+            return
+            
         parent_config[key] = text
         # 自动保存选项，只有当save_config为True且未禁用自动保存时才保存
         if save_config and (not hasattr(self.host, "_disable_auto_save") or not self.host._disable_auto_save):
