@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt
 from qfluentwidgets import BodyLabel, ToolTipFilter
 from .LineEditGenerator import LineEditGenerator
 from .ComboBoxGenerator import ComboBoxGenerator
+from .PathLineEditGenerator import PathLineEditGenerator
 from app.utils.logger import logger
 
 class DynamicFormMixin:
@@ -82,6 +83,10 @@ class DynamicFormMixin:
                 self._create_lineedit(
                     key, config_item, self.parent_layout, self.current_config
                 )
+            elif config_item["type"] == "pathlineedit":
+                self._create_pathlineedit(
+                    key, config_item, self.parent_layout, self.current_config
+                )
 
         # 如果提供了配置，则应用它
         if config:
@@ -102,6 +107,11 @@ class DynamicFormMixin:
         """创建输入框"""
         line_edit_generator = LineEditGenerator(self)
         line_edit_generator.create_lineedit(key, config, parent_layout, parent_config)
+        
+    def _create_pathlineedit(self, key, config, parent_layout, parent_config):
+        """创建带按钮的路径输入框"""
+        path_line_edit_generator = PathLineEditGenerator(self)
+        path_line_edit_generator.create_pathlineedit(key, config, parent_layout, parent_config)
 
 
 
@@ -348,8 +358,8 @@ class DynamicFormMixin:
                                     # 确保在任何情况下都恢复信号
                                     combo.blockSignals(False)
 
-                    elif field_config["type"] == "lineedit":
-                        # 处理输入框配置
+                    elif field_config["type"] in ("lineedit", "pathlineedit"):
+                        # 处理输入框配置，包括带按钮的路径输入框
                         if key in self.widgets:
                             # 检查是否是input类型（有inputs数组）
                             if "inputs" in field_config and isinstance(value, dict):

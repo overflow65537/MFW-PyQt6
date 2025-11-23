@@ -31,7 +31,19 @@ def create_resource_setting_form_structure(
         if isinstance(controller_type, list):
             # 如果是列表，使用第一个元素作为类型
             controller_type = controller_type[0] if controller_type else ""
-        controller_type = str(controller_type).lower()
+        # 将controller_type转换为小写
+        controller_type_lower = str(controller_type).lower()
+        # 处理Windows和Android的类型转换
+        if controller_type_lower == 'win32':
+            controller_type_lower = 'win32'  # 保持win32
+        elif controller_type_lower == 'adb':
+            controller_type_lower = 'adb'  # 保持adb
+        else:
+            # 其他类型尝试转换
+            controller_type_lower = str(controller_type).lower()
+            
+        # 使用转换后的类型
+        controller_type = controller_type_lower
         option_key = f"{controller_name}_{controller_type}"
         controller_options.append(option_key)
         controller_types[option_key] = controller_type
@@ -72,7 +84,7 @@ def create_resource_setting_form_structure(
     form_structure["pre_launch_program"] = {
         "label": "启动前执行程序路径",
         "description": "在程序启动前执行的程序路径",
-        "type": "lineedit",
+        "type": "pathlineedit",
         "default": "",
     }
 
@@ -87,7 +99,7 @@ def create_resource_setting_form_structure(
     form_structure["post_launch_program"] = {
         "label": "启动后执行程序路径",
         "description": "在程序启动后执行的程序路径",
-        "type": "lineedit",
+        "type": "pathlineedit",
         "default": "",
     }
 
@@ -102,7 +114,7 @@ def create_resource_setting_form_structure(
     adb_path_config = {
         "label": "ADB路径",
         "description": "ADB工具的路径",
-        "type": "lineedit",
+        "type": "pathlineedit",
         "default": "",
         "visible": True
     }
@@ -125,7 +137,7 @@ def create_resource_setting_form_structure(
     
     program_path_config = {
         "label": "程序启动路径",
-        "type": "lineedit",
+        "type": "pathlineedit",
         "default": "",
         "visible": True
     }
@@ -133,7 +145,7 @@ def create_resource_setting_form_structure(
     # 创建新的配置模板
     emulator_path_config = {
         "label": "模拟器路径",
-        "type": "lineedit",
+        "type": "pathlineedit",
         "default": "",
         "visible": True
     }

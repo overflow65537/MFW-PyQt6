@@ -151,7 +151,11 @@ class ComboBoxGenerator:
         # 触发初始加载，但使用blockSignals和save_config=False确保不会触发不必要的信号和配置覆盖
         try:
             # 临时禁用自动保存
+            # 使用getattr获取_disable_auto_save属性，如果不存在则默认为False
             old_disable_auto_save = getattr(self.host, '_disable_auto_save', False)
+            # 显式初始化_disable_auto_save属性，如果不存在的话
+            if not hasattr(self.host, '_disable_auto_save'):
+                self.host._disable_auto_save = old_disable_auto_save
             self.host._disable_auto_save = True
             
             # 阻断下拉框信号，防止触发不必要的回调
@@ -220,6 +224,13 @@ class ComboBoxGenerator:
                                 line_edit_generator.create_lineedit(
                                     f"{key}_child", child_config, current_container['layout'], current_container['config']
                                 )
+                            elif child_config["type"] == "pathlineedit":
+                                # 需要使用PathLineEditGenerator来创建带按钮的路径输入框
+                                from .PathLineEditGenerator import PathLineEditGenerator
+                                path_line_edit_generator = PathLineEditGenerator(self.host)
+                                path_line_edit_generator.create_pathlineedit(
+                                    f"{key}_child", child_config, current_container['layout'], current_container['config']
+                                )
                         # 方式2：如果child_config不包含type键，但包含多个配置项，处理为多个控件
                         elif len(child_config) > 0:
                             # 为每个子配置项创建控件
@@ -233,6 +244,13 @@ class ComboBoxGenerator:
                                     from .LineEditGenerator import LineEditGenerator
                                     line_edit_generator = LineEditGenerator(self.host)
                                     line_edit_generator.create_lineedit(
+                                        sub_key, sub_config, current_container['layout'], current_container['config']
+                                    )
+                                elif sub_config.get("type") == "pathlineedit":
+                                    # 需要使用PathLineEditGenerator来创建带按钮的路径输入框
+                                    from .PathLineEditGenerator import PathLineEditGenerator
+                                    path_line_edit_generator = PathLineEditGenerator(self.host)
+                                    path_line_edit_generator.create_pathlineedit(
                                         sub_key, sub_config, current_container['layout'], current_container['config']
                                     )
                 
