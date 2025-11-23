@@ -3,7 +3,9 @@ import copy
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtCore import Qt
-from qfluentwidgets import ComboBox, LineEdit, BodyLabel, ToolTipFilter
+from qfluentwidgets import BodyLabel, ToolTipFilter
+from .LineEditGenerator import LineEditGenerator
+from .ComboBoxGenerator import ComboBoxGenerator
 from app.utils.logger import logger
 
 class DynamicFormMixin:
@@ -94,444 +96,14 @@ class DynamicFormMixin:
 
     def _create_combobox(self, key, config, parent_layout, parent_config):
         """创建下拉框"""
-        # 创建控件容器布局
-        container_layout = QVBoxLayout()
-        container_layout.setContentsMargins(5, 5, 5, 5)
-        container_layout.setSpacing(5)
-        parent_layout.addLayout(container_layout)
-
-        # 创建标签和图标容器
-        label_container = QHBoxLayout()
-        label_container.setSpacing(5)
-        
-        # 检查是否有图标配置
-        icon_label = None
-        if "icon" in config:
-            try:
-                from app.utils.gui_helper import IconLoader
-                
-                # 检查是否有icon_loader，如果没有则创建
-                if not hasattr(self, '_icon_loader'):
-                    if hasattr(self, 'service_coordinator'):
-                        self._icon_loader = IconLoader(self.service_coordinator)
-                
-                # 使用IconLoader加载图标
-                if hasattr(self, '_icon_loader'):
-                    icon = self._icon_loader.load_icon(config["icon"], size=24)
-                    if not icon.isNull():
-                        icon_label = QLabel()
-                        icon_label.setPixmap(icon.pixmap(24, 24))
-                        icon_label.setFixedSize(24, 24)
-                        
-                        # 添加图标到容器
-                        label_container.addWidget(icon_label)
-            except Exception as e:
-                # 尝试直接加载作为备选方案
-                try:
-                    icon_path = config["icon"]
-                    icon_pixmap = QPixmap(icon_path)
-                
-                    # 检查图标是否加载成功
-                    if not icon_pixmap.isNull():
-                        # 缩放图标到合适大小
-                        icon_pixmap = icon_pixmap.scaled(
-                            24, 24, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
-                        )
-                        icon_label = QLabel()
-                        icon_label.setPixmap(icon_pixmap)
-                        icon_label.setFixedSize(24, 24)
-                        
-                        # 添加图标到容器
-                        label_container.addWidget(icon_label)
-                except Exception as direct_load_e:
-                    # 加载图标失败时忽略
-                    logger.error(f"加载图标失败: {config['icon']}, 错误: {direct_load_e}")
-                    
-
-        # 创建下拉框 - 使用垂直布局
-        label_text = config["label"]
-        if label_text.startswith("$"):
-            pass
-        label = BodyLabel(label_text)
-        # 移除固定宽度，让标签自然显示
-        
-        # 添加标签到容器
-        label_container.addWidget(label)
-        
-        # 将整个标签容器添加到主布局
-        container_layout.addLayout(label_container)
-        
-        # 为选项标题添加tooltip（选项层级）
-        if "description" in config:
-            filter = ToolTipFilter(label)
-            label.installEventFilter(filter)
-            label.setToolTip(config["description"])
-
-        combo = ComboBox()
-        combo.addItems(config["options"])
-        container_layout.addWidget(combo)
-        
-        # 为下拉框控件添加tooltip（选项内部层级）
-        if "description" in config:
-            filter = ToolTipFilter(combo)
-            combo.installEventFilter(filter)
-            combo.setToolTip(config["description"])
-
-        # 创建子控件容器布局
-        child_layout = QVBoxLayout()
-        container_layout.addLayout(child_layout)
-
-        # 保存引用
-        self.widgets[key] = combo
-        self.child_layouts[key] = child_layout
-
-        # 初始化配置
-        parent_config[key] = {"value": combo.currentText(), "children": {}}
-        
-        # 初始化所有子选项容器字典
-        self.all_child_containers[key] = {}
-        
-        # 预先生成所有子选项并设置为不可见
-        if "children" in config:
-            for option_value, child_config in config["children"].items():
-                # 创建子选项容器
-                option_container = QWidget()
-                option_container_layout = QVBoxLayout(option_container)
-                option_container_layout.setContentsMargins(0, 0, 0, 0)
-                option_container_layout.setSpacing(0)
-                child_layout.addWidget(option_container)
-                
-                # 默认设置为不可见
-                option_container.setVisible(False)
-                
-                # 保存子选项容器的引用和相关信息
-                self.all_child_containers[key][option_value] = {
-                    'container': option_container,
-                    'layout': option_container_layout,
-                    'widgets': {},
-                    'config': {}
-                }
-        
-        # 连接信号，默认save_config=True
-        combo.currentTextChanged.connect(
-            lambda value, current_key=key, current_config=config, current_parent_config=parent_config[
-                key
-            ]: self._on_combobox_changed(
-                current_key, value, current_config, current_parent_config, child_layout, save_config=True
-            )
-        )
-
-        # 触发初始加载，但使用blockSignals和save_config=False确保不会触发不必要的信号和配置覆盖
-        try:
-            # 临时禁用自动保存
-            old_disable_auto_save = getattr(self, '_disable_auto_save', False)
-            self._disable_auto_save = True
-            
-            # 阻断下拉框信号，防止触发不必要的回调
-            combo.blockSignals(True)
-            try:
-                # 触发初始加载，但设置save_config=False避免保存默认值
-                self._on_combobox_changed(
-                    key, combo.currentText(), config, parent_config[key], child_layout, save_config=False
-                )
-            finally:
-                # 恢复信号连接
-                combo.blockSignals(False)
-        finally:
-            # 恢复自动保存状态
-            self._disable_auto_save = old_disable_auto_save
-
+        combo_generator = ComboBoxGenerator(self)
+        combo_generator.create_combobox(key, config, parent_layout, parent_config)
     def _create_lineedit(self, key, config, parent_layout, parent_config):
         """创建输入框"""
-        # 创建控件容器布局
-        container_layout = QVBoxLayout()
-        container_layout.setContentsMargins(5, 5, 5, 5)
-        container_layout.setSpacing(5)
-        parent_layout.addLayout(container_layout)
+        line_edit_generator = LineEditGenerator(self)
+        line_edit_generator.create_lineedit(key, config, parent_layout, parent_config)
 
-        # 创建标签和图标容器
-        label_container = QHBoxLayout()
-        label_container.setSpacing(5)
-        
-        # 检查是否有图标配置
-        icon_label = None
-        if "icon" in config:
-            try:
-                from app.utils.gui_helper import IconLoader
-                
-                # 检查是否有icon_loader，如果没有则创建
-                if not hasattr(self, '_icon_loader'):
-                    if hasattr(self, 'service_coordinator'):
-                        self._icon_loader = IconLoader(self.service_coordinator)
-                
-                # 使用IconLoader加载图标
-                if hasattr(self, '_icon_loader'):
-                    icon = self._icon_loader.load_icon(config["icon"], size=24)
-                    if not icon.isNull():
-                        icon_label = QLabel()
-                        icon_label.setPixmap(icon.pixmap(24, 24))
-                        icon_label.setFixedSize(24, 24)
-                        
-                        # 添加图标到容器
-                        label_container.addWidget(icon_label)
-            except Exception as e:
-                # 尝试直接加载作为备选方案
-                try:
-                    icon_path = config["icon"]
-                    icon_pixmap = QPixmap(icon_path)
-                
-                    # 检查图标是否加载成功
-                    if not icon_pixmap.isNull():
-                        # 缩放图标到合适大小
-                        icon_pixmap = icon_pixmap.scaled(
-                            24, 24, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
-                        )
-                        icon_label = QLabel()
-                        icon_label.setPixmap(icon_pixmap)
-                        icon_label.setFixedSize(24, 24)
-                        
-                        # 添加图标到容器
-                        label_container.addWidget(icon_label)
-                except Exception as fallback_e:
-                    # 加载图标失败时忽略
-                    logger.error(f"加载图标失败: {config['icon']}, 错误: {fallback_e}")
 
-        # 处理标签，移除可能的$符号
-        label_text = config["label"]
-        if label_text.startswith("$"):
-            pass
-        label = BodyLabel(label_text)
-        # 移除固定宽度，让标签自然显示
-        
-        # 添加标签到容器
-        label_container.addWidget(label)
-        
-        # 将整个标签容器添加到主布局
-        container_layout.addLayout(label_container)
-        
-        # 为选项标题添加tooltip（选项层级）
-        if "description" in config:
-            filter = ToolTipFilter(label)
-            label.installEventFilter(filter)
-            label.setToolTip(config["description"])
-
-        # 检查是否有inputs数组（input类型的选项）
-        if "inputs" in config:
-            # 对于input类型，为每个input项创建独立的输入框
-            parent_config[key] = {}
-
-            for input_item in config["inputs"]:
-                # 创建子容器
-                input_container = QVBoxLayout()
-                input_container.setContentsMargins(10, 5, 10, 5)
-                container_layout.addLayout(input_container)
-
-                # 处理input项的标签
-                input_label_text = input_item.get("label", input_item.get("name", ""))
-                if input_label_text.startswith("$"):
-                    pass
-                # 创建input项的标签
-                input_label = BodyLabel(input_label_text)
-                # 检查是否有图标配置
-                input_icon_label = None
-                if "icon" in input_item:
-                    try:
-                        input_icon_path = input_item["icon"]
-                        input_icon_pixmap = QPixmap(input_icon_path)
-                        
-                        # 检查图标是否加载成功
-                        if not input_icon_pixmap.isNull():
-                            # 缩放图标到合适大小
-                            input_icon_pixmap = input_icon_pixmap.scaled(
-                                24, 24, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
-                            )
-                            input_icon_label = QLabel()
-                            input_icon_label.setPixmap(input_icon_pixmap)
-                            input_icon_label.setFixedSize(24, 24)
-                            
-                            # 创建input项的标签和图标容器
-                            input_label_container = QHBoxLayout()
-                            input_label_container.setSpacing(5)
-                            input_label_container.addWidget(input_icon_label)
-                            input_label_container.addWidget(input_label)
-                            
-                            # 添加到容器
-                            input_container.addLayout(input_label_container)
-                        else:
-                            input_container.addWidget(input_label)
-                    except Exception as e:
-                        # 加载图标失败时忽略，仅显示标签
-                        input_container.addWidget(input_label)
-                else:
-                    input_container.addWidget(input_label)
-
-                # 创建输入框
-                input_line_edit = LineEdit()
-                if "default" in input_item:
-                    input_line_edit.setText(str(input_item["default"]))
-                input_container.addWidget(input_line_edit)
-                
-                # 为输入框控件添加tooltip（选项内部层级）
-                if "description" in input_item:
-                    filter = ToolTipFilter(input_line_edit)
-                    input_line_edit.installEventFilter(filter)
-                    input_line_edit.setToolTip(input_item["description"])
-                elif "description" in config:
-                    # 如果input_item没有自己的description，继承父级的
-                    filter = ToolTipFilter(input_line_edit)
-                    input_line_edit.installEventFilter(filter)
-                    input_line_edit.setToolTip(config["description"])
-
-                # 保存引用，使用input的name作为键
-                input_name = input_item.get("name", "input")
-                if key not in self.widgets:
-                    self.widgets[key] = {}
-                self.widgets[key][input_name] = input_line_edit
-
-                # 初始化配置
-                parent_config[key][input_name] = input_line_edit.text()
-
-                # 连接信号
-                input_line_edit.textChanged.connect(
-                    lambda text, k=key, input_name=input_name, p_conf=parent_config: self._on_input_item_changed(
-                        k, input_name, text, p_conf
-                    )
-                )
-        else:
-            # 普通的单行输入框
-            line_edit = LineEdit()
-            if "default" in config:
-                line_edit.setText(config["default"])
-
-            container_layout.addWidget(line_edit)
-            
-            # 为输入框控件添加tooltip（选项内部层级）
-            if "description" in config:
-                filter = ToolTipFilter(line_edit)
-                line_edit.installEventFilter(filter)
-                line_edit.setToolTip(config["description"])
-
-            # 保存引用
-            self.widgets[key] = line_edit
-
-            # 初始化配置
-            parent_config[key] = line_edit.text()
-
-            # 连接信号（用户交互时保存配置）
-            line_edit.textChanged.connect(
-                lambda text, k=key, p_conf=parent_config: self._on_lineedit_changed(
-                    k, text, p_conf, save_config=True
-                )
-            )
-
-    def _on_input_item_changed(self, key, input_name, text, parent_config):
-        """处理input类型中单个输入项的变化"""
-        if key in parent_config and isinstance(parent_config[key], dict):
-            parent_config[key][input_name] = text
-            # 自动保存选项
-            self._auto_save_options()
-
-    def _on_combobox_changed(self, key, value, config, parent_config, child_layout, save_config=True):
-        """下拉框值改变处理
-        
-        :param save_config: 是否保存配置，默认为True。初始化时可以设置为False避免保存默认值
-        """
-        # 获取下拉框控件
-        combo_widget = self.widgets.get(key)
-        
-        # 临时阻断下拉框信号，防止在设置值时触发循环信号
-        if combo_widget and hasattr(combo_widget, 'blockSignals'):
-            combo_widget.blockSignals(True)
-            
-        try:
-            # 保存所有子选项配置到缓存（不仅仅是当前显示的选项）
-            if key in self.all_child_containers:
-                for option_value, container_info in self.all_child_containers[key].items():
-                    if container_info['config']:
-                        # 为每个子选项创建缓存键并保存配置
-                        cache_key = f"{key}_{option_value}"
-                        # 深拷贝子配置以保存完整状态
-                        self.option_subconfig_cache[cache_key] = copy.deepcopy(container_info['config'])
-
-            # 更新配置
-            parent_config["value"] = value
-            
-            # 隐藏所有子选项容器
-            if key in self.all_child_containers:
-                for option_value, container_info in self.all_child_containers[key].items():
-                    container_info['container'].setVisible(False)
-
-            # 处理当前选择的子选项
-            if "children" in config and value in config["children"] and key in self.all_child_containers and value in self.all_child_containers[key]:
-                child_config = config["children"][value]
-                current_container = self.all_child_containers[key][value]
-                
-                # 如果子容器中还没有创建控件，则创建它们
-                if current_container['layout'].count() == 0:
-                    # 检查child_config是否是一个包含多个配置项的字典
-                    if isinstance(child_config, dict):
-                        # 方式1：如果child_config有type键，处理为单个控件
-                        if "type" in child_config:
-                            if child_config["type"] == "combobox":
-                                self._create_combobox(
-                                    f"{key}_child", child_config, current_container['layout'], current_container['config']
-                                )
-                            elif child_config["type"] == "lineedit":
-                                self._create_lineedit(
-                                    f"{key}_child", child_config, current_container['layout'], current_container['config']
-                                )
-                        # 方式2：如果child_config不包含type键，但包含多个配置项，处理为多个控件
-                        elif len(child_config) > 0:
-                            # 为每个子配置项创建控件
-                            for sub_key, sub_config in child_config.items():
-                                if sub_config.get("type") == "combobox":
-                                    self._create_combobox(
-                                        sub_key, sub_config, current_container['layout'], current_container['config']
-                                    )
-                                elif sub_config.get("type") == "lineedit":
-                                    self._create_lineedit(
-                                        sub_key, sub_config, current_container['layout'], current_container['config']
-                                    )
-                
-                # 尝试从缓存中恢复之前的子配置
-                cache_key = f"{key}_{value}"
-                if cache_key in self.option_subconfig_cache:
-                    # 临时禁用自动保存，避免恢复配置时触发保存
-                    old_disable_auto_save = getattr(self, '_disable_auto_save', False)
-                    self._disable_auto_save = True
-                    try:
-                        # 应用缓存的子配置
-                        self._apply_subconfigs(child_config, current_container['config'], self.option_subconfig_cache[cache_key])
-                    finally:
-                        # 恢复自动保存状态
-                        self._disable_auto_save = old_disable_auto_save
-                
-                # 设置当前子容器为可见并隐藏其他容器
-                self._set_child_container_visibility(key, value)
-                
-                # 创建一个包含所有子选项配置的字典
-                all_children_config = self._build_all_children_config(key, value, current_container['config'])
-                
-                # 更新parent_config中的children，包含所有子选项配置
-                parent_config["children"] = all_children_config
-
-            # 自动保存选项，只有当save_config为True且未禁用自动保存时才保存
-            if save_config and (not hasattr(self, "_disable_auto_save") or not self._disable_auto_save):
-                self._auto_save_options()
-        finally:
-            # 恢复信号连接
-            if combo_widget and hasattr(combo_widget, 'blockSignals'):
-                combo_widget.blockSignals(False)
-
-    def _on_lineedit_changed(self, key, text, parent_config, save_config=True):
-        """输入框值改变处理
-        
-        :param save_config: 是否保存配置，默认为True。初始化时可以设置为False避免保存默认值
-        """
-        parent_config[key] = text
-        # 自动保存选项，只有当save_config为True且未禁用自动保存时才保存
-        if save_config and (not hasattr(self, "_disable_auto_save") or not self._disable_auto_save):
-            self._auto_save_options()
 
     def _clear_layout(self, layout):
         """清空布局中的所有控件"""
@@ -544,7 +116,7 @@ class DynamicFormMixin:
                 child_layout = item.layout()
                 if child_layout:
                     self._clear_layout(child_layout)
-
+    
     def _apply_subconfigs(self, child_structure, target_config, cached_config):
         """应用缓存的子配置到目标配置
         
@@ -618,6 +190,39 @@ class DynamicFormMixin:
                 except Exception as e:
                     # 记录错误但不影响其他控件的更新
                     logger.error(f"应用子配置到控件失败 (key: {sub_key}, value: {sub_value}): {e}")
+
+    def _set_child_container_visibility(self, key, visible_option_value):
+        """设置子选项容器的可见性"""
+        if key in self.all_child_containers:
+            for option_value, container_info in self.all_child_containers[key].items():
+                container_info['container'].setVisible(option_value == visible_option_value)
+    
+    def _build_all_children_config(self, key, current_value, current_config):
+        """构建包含所有子选项配置的字典"""
+        all_children_config = {current_value: current_config}
+        
+        if key in self.all_child_containers:
+            for option_value, container_info in self.all_child_containers[key].items():
+                if option_value != current_value:  # 已经添加了当前选项，跳过
+                    cache_key = f"{key}_{option_value}"
+                    if cache_key in self.option_subconfig_cache:
+                        # 从缓存中获取配置
+                        all_children_config[option_value] = copy.deepcopy(self.option_subconfig_cache[cache_key])
+                    elif container_info['config']:  # 如果缓存中没有但容器中有配置
+                        all_children_config[option_value] = copy.deepcopy(container_info['config'])
+        
+        return all_children_config
+        """清空布局中的所有控件"""
+        while layout.count() > 0:
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+            else:
+                child_layout = item.layout()
+                if child_layout:
+                    self._clear_layout(child_layout)
+
 
     def _auto_save_options(self):
         """自动保存当前选项"""
@@ -781,25 +386,3 @@ class DynamicFormMixin:
         finally:
             # 恢复自动保存状态
             self._disable_auto_save = old_disable_auto_save
-
-    def _set_child_container_visibility(self, key, visible_option_value):
-        """设置子选项容器的可见性"""
-        if key in self.all_child_containers:
-            for option_value, container_info in self.all_child_containers[key].items():
-                container_info['container'].setVisible(option_value == visible_option_value)
-    
-    def _build_all_children_config(self, key, current_value, current_config):
-        """构建包含所有子选项配置的字典"""
-        all_children_config = {current_value: current_config}
-        
-        if key in self.all_child_containers:
-            for option_value, container_info in self.all_child_containers[key].items():
-                if option_value != current_value:  # 已经添加了当前选项，跳过
-                    cache_key = f"{key}_{option_value}"
-                    if cache_key in self.option_subconfig_cache:
-                        # 从缓存中获取配置
-                        all_children_config[option_value] = copy.deepcopy(self.option_subconfig_cache[cache_key])
-                    elif container_info['config']:  # 如果缓存中没有但容器中有配置
-                        all_children_config[option_value] = copy.deepcopy(container_info['config'])
-        
-        return all_children_config
