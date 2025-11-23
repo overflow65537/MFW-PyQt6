@@ -1,7 +1,9 @@
 import json
+import re
 import copy
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
 from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtCore import Qt
 from PySide6.QtCore import Qt
 from qfluentwidgets import LineEdit, BodyLabel, ToolTipFilter
 from app.utils.logger import logger
@@ -145,6 +147,29 @@ class LineEditGenerator:
 
                 # 创建输入框
                 input_line_edit = LineEdit()
+                
+                # 检查是否有验证规则配置
+                if "verify" in input_item:
+                    verify_pattern = input_item["verify"]
+                    try:
+                        # 创建验证器函数
+                        def create_validator(pattern):
+                            def validate():
+                                text = input_line_edit.text()
+                                if text and not re.match(pattern, text):
+                                    # 验证失败，设置错误状态
+                                    input_line_edit.setError(True)
+                                else:
+                                    # 验证成功，清除错误状态
+                                    input_line_edit.setError(False)
+                            
+                            return validate
+
+                        # 连接文本变化信号到验证器
+                        input_line_edit.textChanged.connect(create_validator(verify_pattern))
+                    except Exception as e:
+                        # 如果验证规则设置失败，记录错误但不影响输入框的创建
+                        logger.error(f"设置输入验证规则失败: {verify_pattern}, 错误: {e}")
                 if "default" in input_item:
                     input_line_edit.setText(str(input_item["default"]))
                 input_container.addWidget(input_line_edit)
@@ -178,6 +203,29 @@ class LineEditGenerator:
         else:
             # 普通的单行输入框
             line_edit = LineEdit()
+            
+            # 检查是否有验证规则配置
+            if "verify" in config:
+                verify_pattern = config["verify"]
+                try:
+                    # 创建验证器函数
+                    def create_validator(pattern):
+                        def validate():
+                            text = line_edit.text()
+                            if text and not re.match(pattern, text):
+                                # 验证失败，设置错误状态
+                                line_edit.setError(True)
+                            else:
+                                # 验证成功，清除错误状态
+                                line_edit.setError(False)
+                        
+                        return validate
+
+                    # 连接文本变化信号到验证器
+                    line_edit.textChanged.connect(create_validator(verify_pattern))
+                except Exception as e:
+                    # 如果验证规则设置失败，记录错误但不影响输入框的创建
+                    logger.error(f"设置输入验证规则失败: {verify_pattern}, 错误: {e}")
             if "default" in config:
                 line_edit.setText(config["default"])
 

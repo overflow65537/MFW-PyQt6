@@ -157,9 +157,19 @@ class OptionService:
             field_config["type"] = "lineedit"
             # 保存inputs数组，供后续处理
             field_config["inputs"] = option_def["inputs"]
+            
+            # 传递verify字段到表单结构中
+            if "verify" in option_def:
+                field_config["verify"] = option_def["verify"]
             # 如果有默认值，使用第一个input的默认值
             if option_def["inputs"] and "default" in option_def["inputs"][0]:
                 field_config["default"] = option_def["inputs"][0]["default"]
+                
+            # 为每个input项传递verify字段
+            for input_item in field_config["inputs"]:
+                # 如果input项没有自己的verify字段，使用父级的verify字段
+                if "verify" not in input_item and "verify" in option_def:
+                    input_item["verify"] = option_def["verify"]
 
         # 默认类型
         else:
