@@ -1,7 +1,10 @@
 import json
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+import copy
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
+from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtCore import Qt
 from qfluentwidgets import ComboBox, LineEdit, BodyLabel, ToolTipFilter
+from app.utils.logger import logger
 
 class DynamicFormMixin:
     """
@@ -97,13 +100,66 @@ class DynamicFormMixin:
         container_layout.setSpacing(5)
         parent_layout.addLayout(container_layout)
 
+        # 创建标签和图标容器
+        label_container = QHBoxLayout()
+        label_container.setSpacing(5)
+        
+        # 检查是否有图标配置
+        icon_label = None
+        if "icon" in config:
+            try:
+                from app.utils.gui_helper import IconLoader
+                
+                # 检查是否有icon_loader，如果没有则创建
+                if not hasattr(self, '_icon_loader'):
+                    if hasattr(self, 'service_coordinator'):
+                        self._icon_loader = IconLoader(self.service_coordinator)
+                
+                # 使用IconLoader加载图标
+                if hasattr(self, '_icon_loader'):
+                    icon = self._icon_loader.load_icon(config["icon"], size=24)
+                    if not icon.isNull():
+                        icon_label = QLabel()
+                        icon_label.setPixmap(icon.pixmap(24, 24))
+                        icon_label.setFixedSize(24, 24)
+                        
+                        # 添加图标到容器
+                        label_container.addWidget(icon_label)
+            except Exception as e:
+                # 尝试直接加载作为备选方案
+                try:
+                    icon_path = config["icon"]
+                    icon_pixmap = QPixmap(icon_path)
+                
+                    # 检查图标是否加载成功
+                    if not icon_pixmap.isNull():
+                        # 缩放图标到合适大小
+                        icon_pixmap = icon_pixmap.scaled(
+                            24, 24, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+                        )
+                        icon_label = QLabel()
+                        icon_label.setPixmap(icon_pixmap)
+                        icon_label.setFixedSize(24, 24)
+                        
+                        # 添加图标到容器
+                        label_container.addWidget(icon_label)
+                except Exception as direct_load_e:
+                    # 加载图标失败时忽略
+                    logger.error(f"加载图标失败: {config['icon']}, 错误: {direct_load_e}")
+                    
+
         # 创建下拉框 - 使用垂直布局
         label_text = config["label"]
         if label_text.startswith("$"):
             pass
         label = BodyLabel(label_text)
         # 移除固定宽度，让标签自然显示
-        container_layout.addWidget(label)
+        
+        # 添加标签到容器
+        label_container.addWidget(label)
+        
+        # 将整个标签容器添加到主布局
+        container_layout.addLayout(label_container)
         
         # 为选项标题添加tooltip（选项层级）
         if "description" in config:
@@ -193,13 +249,65 @@ class DynamicFormMixin:
         container_layout.setSpacing(5)
         parent_layout.addLayout(container_layout)
 
+        # 创建标签和图标容器
+        label_container = QHBoxLayout()
+        label_container.setSpacing(5)
+        
+        # 检查是否有图标配置
+        icon_label = None
+        if "icon" in config:
+            try:
+                from app.utils.gui_helper import IconLoader
+                
+                # 检查是否有icon_loader，如果没有则创建
+                if not hasattr(self, '_icon_loader'):
+                    if hasattr(self, 'service_coordinator'):
+                        self._icon_loader = IconLoader(self.service_coordinator)
+                
+                # 使用IconLoader加载图标
+                if hasattr(self, '_icon_loader'):
+                    icon = self._icon_loader.load_icon(config["icon"], size=24)
+                    if not icon.isNull():
+                        icon_label = QLabel()
+                        icon_label.setPixmap(icon.pixmap(24, 24))
+                        icon_label.setFixedSize(24, 24)
+                        
+                        # 添加图标到容器
+                        label_container.addWidget(icon_label)
+            except Exception as e:
+                # 尝试直接加载作为备选方案
+                try:
+                    icon_path = config["icon"]
+                    icon_pixmap = QPixmap(icon_path)
+                
+                    # 检查图标是否加载成功
+                    if not icon_pixmap.isNull():
+                        # 缩放图标到合适大小
+                        icon_pixmap = icon_pixmap.scaled(
+                            24, 24, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+                        )
+                        icon_label = QLabel()
+                        icon_label.setPixmap(icon_pixmap)
+                        icon_label.setFixedSize(24, 24)
+                        
+                        # 添加图标到容器
+                        label_container.addWidget(icon_label)
+                except Exception as fallback_e:
+                    # 加载图标失败时忽略
+                    logger.error(f"加载图标失败: {config['icon']}, 错误: {fallback_e}")
+
         # 处理标签，移除可能的$符号
         label_text = config["label"]
         if label_text.startswith("$"):
             pass
         label = BodyLabel(label_text)
         # 移除固定宽度，让标签自然显示
-        container_layout.addWidget(label)
+        
+        # 添加标签到容器
+        label_container.addWidget(label)
+        
+        # 将整个标签容器添加到主布局
+        container_layout.addLayout(label_container)
         
         # 为选项标题添加tooltip（选项层级）
         if "description" in config:
@@ -222,8 +330,40 @@ class DynamicFormMixin:
                 input_label_text = input_item.get("label", input_item.get("name", ""))
                 if input_label_text.startswith("$"):
                     pass
+                # 创建input项的标签
                 input_label = BodyLabel(input_label_text)
-                input_container.addWidget(input_label)
+                # 检查是否有图标配置
+                input_icon_label = None
+                if "icon" in input_item:
+                    try:
+                        input_icon_path = input_item["icon"]
+                        input_icon_pixmap = QPixmap(input_icon_path)
+                        
+                        # 检查图标是否加载成功
+                        if not input_icon_pixmap.isNull():
+                            # 缩放图标到合适大小
+                            input_icon_pixmap = input_icon_pixmap.scaled(
+                                24, 24, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+                            )
+                            input_icon_label = QLabel()
+                            input_icon_label.setPixmap(input_icon_pixmap)
+                            input_icon_label.setFixedSize(24, 24)
+                            
+                            # 创建input项的标签和图标容器
+                            input_label_container = QHBoxLayout()
+                            input_label_container.setSpacing(5)
+                            input_label_container.addWidget(input_icon_label)
+                            input_label_container.addWidget(input_label)
+                            
+                            # 添加到容器
+                            input_container.addLayout(input_label_container)
+                        else:
+                            input_container.addWidget(input_label)
+                    except Exception as e:
+                        # 加载图标失败时忽略，仅显示标签
+                        input_container.addWidget(input_label)
+                else:
+                    input_container.addWidget(input_label)
 
                 # 创建输入框
                 input_line_edit = LineEdit()
@@ -311,7 +451,6 @@ class DynamicFormMixin:
                         # 为每个子选项创建缓存键并保存配置
                         cache_key = f"{key}_{option_value}"
                         # 深拷贝子配置以保存完整状态
-                        import copy
                         self.option_subconfig_cache[cache_key] = copy.deepcopy(container_info['config'])
 
             # 更新配置
@@ -367,25 +506,11 @@ class DynamicFormMixin:
                         # 恢复自动保存状态
                         self._disable_auto_save = old_disable_auto_save
                 
-                # 设置当前子容器为可见
-                current_container['container'].setVisible(True)
+                # 设置当前子容器为可见并隐藏其他容器
+                self._set_child_container_visibility(key, value)
                 
                 # 创建一个包含所有子选项配置的字典
-                all_children_config = {}
-                
-                # 首先将当前容器的配置添加到字典中
-                all_children_config[value] = current_container['config']
-                
-                # 然后从缓存中获取并添加所有其他子选项的配置
-                if key in self.all_child_containers:
-                    for option_value, container_info in self.all_child_containers[key].items():
-                        if option_value != value:  # 已经添加了当前选项，跳过
-                            cache_key = f"{key}_{option_value}"
-                            if cache_key in self.option_subconfig_cache:
-                                # 从缓存中获取配置
-                                all_children_config[option_value] = copy.deepcopy(self.option_subconfig_cache[cache_key])
-                            elif container_info['config']:  # 如果缓存中没有但容器中有配置
-                                all_children_config[option_value] = copy.deepcopy(container_info['config'])
+                all_children_config = self._build_all_children_config(key, value, current_container['config'])
                 
                 # 更新parent_config中的children，包含所有子选项配置
                 parent_config["children"] = all_children_config
@@ -432,7 +557,7 @@ class DynamicFormMixin:
             return
             
         # 深度合并缓存配置到目标配置，保留未在缓存中但存在于目标配置中的键
-        import copy
+        # import copy is now at the top of the file
         
         # 如果子结构是单个控件
         if isinstance(child_structure, dict):
@@ -492,7 +617,6 @@ class DynamicFormMixin:
                             sub_widget.blockSignals(False)
                 except Exception as e:
                     # 记录错误但不影响其他控件的更新
-                    from app.utils.logger import logger
                     logger.error(f"应用子配置到控件失败 (key: {sub_key}, value: {sub_value}): {e}")
 
     def _auto_save_options(self):
@@ -510,8 +634,6 @@ class DynamicFormMixin:
                 self.service_coordinator.option_service.update_options(all_config)  # type: ignore
             except Exception as e:
                 # 如果保存失败，记录错误但不影响用户操作
-                from app.utils.logger import logger
-
                 logger.error(f"自动保存选项失败: {e}")
 
     def _apply_config(self, config, form_structure, current_config):
@@ -588,44 +710,35 @@ class DynamicFormMixin:
                                                                             sub_key, sub_config, child_container['layout'], child_container['config']
                                                                         )
                                                     
+                                                    # 设置当前子容器为可见并隐藏其他容器
+                                                    self._set_child_container_visibility(key, combo_value)
+            
                                                     # 检查是否有缓存的子配置
                                                     cache_key = f"{key}_{combo_value}"
                                                     if cache_key in self.option_subconfig_cache:
                                                         # 优先使用缓存的子配置
-                                                        import copy
                                                         self._apply_subconfigs(field_config["children"][combo_value], child_container['config'], self.option_subconfig_cache[cache_key])
                                                     else:
                                                         # 应用子配置到子容器
-                                                        import copy
-                                                        self._apply_subconfigs(field_config["children"][combo_value], child_container['config'], value["children"])
-                                                    
-                                                    # 创建一个包含所有子选项配置的字典
-                                                    all_children_config = {}
-                                                    
-                                                    # 首先将当前容器的配置添加到字典中
-                                                    all_children_config[combo_value] = child_container['config']
-                                                    
-                                                    # 然后从缓存中获取并添加所有其他子选项的配置
-                                                    if key in self.all_child_containers:
-                                                        for option_value, container_info in self.all_child_containers[key].items():
-                                                            if option_value != combo_value:  # 已经添加了当前选项，跳过
-                                                                cache_key = f"{key}_{option_value}"
-                                                                if cache_key in self.option_subconfig_cache:
-                                                                    # 从缓存中获取配置
-                                                                    all_children_config[option_value] = copy.deepcopy(self.option_subconfig_cache[cache_key])
-                                                                elif container_info['config']:  # 如果缓存中没有但容器中有配置
-                                                                    all_children_config[option_value] = copy.deepcopy(container_info['config'])
-                                                    
-                                                    # 更新current_config中的children，包含所有子选项配置
-                                                    current_config[key]["children"] = all_children_config
-                                                    
-                                                    # 设置当前子容器为可见
-                                                    child_container['container'].setVisible(True)
-                                                    
-                                                    # 隐藏其他所有子选项容器
-                                                    for option_value, container_info in self.all_child_containers[key].items():
-                                                        if option_value != combo_value:
-                                                            container_info['container'].setVisible(False)
+                                                        # value["children"] 可能包含所有子选项配置，因此我们需要获取当前选项的配置
+                                                        child_value_config = value["children"].get(combo_value, value["children"])
+                                                         
+                                                        # 根据child_config的类型选择不同的处理方式
+                                                        if "type" in field_config["children"][combo_value]:
+                                                            # 单个控件情况，将整个配置传递进去
+                                                            self._apply_subconfigs(field_config["children"][combo_value], child_container['config'], child_value_config)
+                                                        else:
+                                                            # 多个控件情况，可能有不同的结构
+                                                            self._apply_subconfigs(field_config["children"][combo_value], child_container['config'], child_value_config)
+                                                         
+                                                        # 处理子选项配置
+                                                        all_children_config = self._build_all_children_config(key, combo_value, child_container['config'])
+                                                         
+                                                        # 更新current_config中的children，包含所有子选项配置
+                                                        current_config[key]["children"] = all_children_config
+                                                         
+                                                        # 设置当前子容器为可见并隐藏其他容器
+                                                        self._set_child_container_visibility(key, combo_value)
                                 finally:
                                     # 确保在任何情况下都恢复信号
                                     combo.blockSignals(False)
@@ -668,3 +781,25 @@ class DynamicFormMixin:
         finally:
             # 恢复自动保存状态
             self._disable_auto_save = old_disable_auto_save
+
+    def _set_child_container_visibility(self, key, visible_option_value):
+        """设置子选项容器的可见性"""
+        if key in self.all_child_containers:
+            for option_value, container_info in self.all_child_containers[key].items():
+                container_info['container'].setVisible(option_value == visible_option_value)
+    
+    def _build_all_children_config(self, key, current_value, current_config):
+        """构建包含所有子选项配置的字典"""
+        all_children_config = {current_value: current_config}
+        
+        if key in self.all_child_containers:
+            for option_value, container_info in self.all_child_containers[key].items():
+                if option_value != current_value:  # 已经添加了当前选项，跳过
+                    cache_key = f"{key}_{option_value}"
+                    if cache_key in self.option_subconfig_cache:
+                        # 从缓存中获取配置
+                        all_children_config[option_value] = copy.deepcopy(self.option_subconfig_cache[cache_key])
+                    elif container_info['config']:  # 如果缓存中没有但容器中有配置
+                        all_children_config[option_value] = copy.deepcopy(container_info['config'])
+        
+        return all_children_config
