@@ -46,10 +46,14 @@ class DynamicFormMixin:
         
         # 处理任务层级的description
         try:
-            if hasattr(self, 'set_description') and 'description' in form_structure:
-                self.set_description(form_structure['description']) # type: ignore
-                if hasattr(self, '_toggle_description'):
-                    self._toggle_description(visible=True) # type: ignore
+            if hasattr(self, 'set_description'):
+                if 'description' in form_structure:
+                    self.set_description(form_structure['description']) # type: ignore
+                    if hasattr(self, '_toggle_description'):
+                        self._toggle_description(visible=True) # type: ignore
+                else:
+                    # 如果form_structure中没有description字段，隐藏描述区域
+                    self.set_description('') # type: ignore
         except Exception:
             # 如果设置description失败，忽略此错误
             pass
