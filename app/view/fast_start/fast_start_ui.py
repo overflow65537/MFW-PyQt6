@@ -21,16 +21,16 @@ from qfluentwidgets import (
     ToolTipFilter,
     ToolTipPosition,
 )
-from ...core.Core import ServiceCoordinator
+from ...core.core import ServiceCoordinator
 from ...widget.DashboardCard import DashboardCard
 from .components.LogoutputWidget import LogoutputWidget
-from .components.ListToolBarWidget import TaskListToolBarWidget,ConfigListToolBarWidget
+from .components.ListToolBarWidget import TaskListToolBarWidget, ConfigListToolBarWidget
 from .components.OptionWidget import OptionWidget
 from .components.StartBarWidget import StartBarWidget
 
 
 class UI_FastStartInterface(object):
-    def __init__(self, service_coordinator: ServiceCoordinator , parent=None):
+    def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         self.service_coordinator = service_coordinator
         self.parent = parent
 
@@ -64,7 +64,9 @@ class UI_FastStartInterface(object):
 
     def _init_control_panel(self):
         """初始化控制面板"""
-        self.config_selection = ConfigListToolBarWidget(service_coordinator=self.service_coordinator)
+        self.config_selection = ConfigListToolBarWidget(
+            service_coordinator=self.service_coordinator
+        )
         self.config_selection.setFixedWidth(344)
         self.config_selection.setFixedHeight(195)
 
@@ -75,7 +77,9 @@ class UI_FastStartInterface(object):
         self.control_panel = QWidget()
         self.control_panel_layout = QVBoxLayout(self.control_panel)
         # 控制面板总体布局
-        self.task_info = TaskListToolBarWidget(service_coordinator=self.service_coordinator)
+        self.task_info = TaskListToolBarWidget(
+            service_coordinator=self.service_coordinator
+        )
         self.task_info.setFixedWidth(344)
 
         self.control_panel_layout.addWidget(self.config_selection)

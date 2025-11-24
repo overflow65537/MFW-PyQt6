@@ -1,4 +1,4 @@
-import json
+import jsonc
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -42,11 +42,13 @@ class TaskService:
                     logger.warning(
                         f"获取翻译后的 interface.json 失败，使用原始文件: {e}"
                     )
-                    interface_path = Path.cwd() / "interface.json"
+                    interface_path = Path.cwd() / "interface.jsonc"
+                    if not interface_path.exists():
+                        interface_path = Path.cwd() / "interface.json"
                     if not interface_path.exists():
                         raise FileNotFoundError(f"无有效资源 {interface_path}")
                     with open(interface_path, "r", encoding="utf-8") as f:
-                        self.interface = json.load(f)
+                        self.interface = jsonc.load(f)
                 self.current_tasks = config.tasks
                 self.know_task = config.know_task
                 self.default_option = self.gen_default_option()

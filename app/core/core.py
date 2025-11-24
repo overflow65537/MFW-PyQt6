@@ -12,8 +12,8 @@ from .Item import (
 from .service.Config_Service import ConfigService, JsonConfigRepository
 from .service.Task_Service import TaskService
 from .service.Option_Service import OptionService
-from .runner.MaaFW import MaaFW
-from .runner.MaaSink import (
+from .runner.maafw import MaaFW
+from .runner.maasink import (
     MaaContextSink,
     MaaControllerEventSink,
     MaaResourceEventSink,

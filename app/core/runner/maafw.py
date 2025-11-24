@@ -33,8 +33,7 @@ from maa.define import (
 from PySide6.QtCore import QObject, Signal
 
 from ...utils.logger import logger
-from ...utils.tool import Read_Config
-from .MaaSink import (
+from .maasink import (
     MaaContextSink,
     MaaControllerEventSink,
     MaaResourceEventSink,
@@ -79,7 +78,9 @@ class MaaFW(QObject):
             logger.error(f"custom.json 路径不存在: {custom_json_path}")
             return
         logger.info(f"开始加载自定义配置: {custom_json_path}")
-        custom_config: Dict[str, Dict] = Read_Config(custom_json_path)
+        import jsonc
+        with open(custom_json_path, "r", encoding="utf-8") as f:
+            custom_config: Dict[str, Dict] = jsonc.load(f)
         success = 0
         failed = []
         for custom_name, custom in custom_config.items():

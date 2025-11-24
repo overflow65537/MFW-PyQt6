@@ -2,7 +2,7 @@
 Interface i18n 管理器
 用于将 interface.json 中的所有 $ 开头的文本翻译为目标语言
 """
-import json
+import jsonc
 from pathlib import Path
 from typing import Dict, Any, Optional
 from copy import deepcopy
@@ -42,18 +42,22 @@ class InterfaceI18n:
         
         # 确定 interface.json 路径
         if interface_path is None:
-            interface_path = Path.cwd() / "interface.json"
+            # 优先尝试读取 interface.jsonc
+            interface_path = Path.cwd() / "interface.jsonc"
+            if not interface_path.exists():
+                # 如果 interface.jsonc 不存在，再尝试 interface.json
+                interface_path = Path.cwd() / "interface.json"
         
         # 加载原始 interface.json
         try:
             with open(interface_path, "r", encoding="utf-8") as f:
-                self._original_interface = json.load(f)
+                self._original_interface = jsonc.load(f)
             logger.debug(f"加载 interface.json: {interface_path}")
         except FileNotFoundError:
             logger.error(f"未找到 interface.json: {interface_path}")
             self._original_interface = {}
             return
-        except json.JSONDecodeError as e:
+        except jsonc.JSONDecodeError as e:
             logger.error(f"interface.json 格式错误: {e}")
             self._original_interface = {}
             return

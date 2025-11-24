@@ -1,4 +1,4 @@
-import json
+
 import re
 from pathlib import Path
 from typing import List
@@ -37,7 +37,7 @@ from app.common.constants import RESOURCE_TASK_ID, POST_TASK_ID
 from app.utils.gui_helper import IconLoader
 from app.widget.PathLineEdit import PathLineEdit
 
-from ....core.Core import TaskItem, ConfigItem, ServiceCoordinator
+from ....core.core import TaskItem, ConfigItem, ServiceCoordinator
 
 
 class OptionWidget(QWidget, DynamicFormMixin):

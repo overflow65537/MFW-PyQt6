@@ -1231,13 +1231,19 @@ class CustomMessageBox(MessageBoxBase):
         if not message["status"] == "failed":
             self.folder = message["target_path"]
             if os.path.basename(self.folder) == "resource":
-                interface_path = os.path.join(
-                    os.path.dirname(self.folder), "interface.json"
-                )
+                # 优先尝试读取 interface.jsonc
+                interface_path = os.path.join(os.path.dirname(self.folder), "interface.jsonc")
+                if not os.path.exists(interface_path):
+                    # 如果 interface.jsonc 不存在，再尝试 interface.json
+                    interface_path = os.path.join(os.path.dirname(self.folder), "interface.json")
                 resource_path = self.folder
                 self.status = 0  # 0 直接选择resource目录，1选择resource目录的上级目录
             else:
-                interface_path = os.path.join(self.folder, "interface.json")
+                # 优先尝试读取 interface.jsonc
+                interface_path = os.path.join(self.folder, "interface.jsonc")
+                if not os.path.exists(interface_path):
+                    # 如果 interface.jsonc 不存在，再尝试 interface.json
+                    interface_path = os.path.join(self.folder, "interface.json")
                 resource_path = os.path.join(self.folder, "resource")
                 self.status = 1  # 0 直接选择resource目录，1选择resource目录的上级目录
 
@@ -1266,13 +1272,19 @@ class CustomMessageBox(MessageBoxBase):
             self, self.tr("Choose folder"), "./"
         )
         if os.path.basename(self.folder) == "resource":
-            interface_path = os.path.join(
-                os.path.dirname(self.folder), "interface.json"
-            )
+            # 优先尝试读取 interface.jsonc
+            interface_path = os.path.join(os.path.dirname(self.folder), "interface.jsonc")
+            if not os.path.exists(interface_path):
+                # 如果 interface.jsonc 不存在，再尝试 interface.json
+                interface_path = os.path.join(os.path.dirname(self.folder), "interface.json")
             resource_path = self.folder
             self.status = 0  # 0 直接选择resource目录，1选择resource目录的上级目录
         else:
-            interface_path = os.path.join(self.folder, "interface.json")
+            # 优先尝试读取 interface.jsonc
+            interface_path = os.path.join(self.folder, "interface.jsonc")
+            if not os.path.exists(interface_path):
+                # 如果 interface.jsonc 不存在，再尝试 interface.json
+                interface_path = os.path.join(self.folder, "interface.json")
             resource_path = os.path.join(self.folder, "resource")
             self.status = 1  # 0 直接选择resource目录，1选择resource目录的上级目录
 

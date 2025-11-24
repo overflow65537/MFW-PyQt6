@@ -1,4 +1,4 @@
-import json
+
 import copy
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
 from PySide6.QtGui import QIcon, QPixmap

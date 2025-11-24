@@ -1,4 +1,4 @@
-import json
+import jsonc
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -28,11 +28,13 @@ class JsonConfigRepository:
                 logger.debug("使用翻译后的 interface.json 创建默认配置")
             except Exception as e:
                 logger.warning(f"获取翻译后的 interface.json 失败，使用原始文件: {e}")
-                interface_path = Path.cwd() / "interface.json"
+                interface_path = Path.cwd() / "interface.jsonc"
+                if not interface_path.exists():
+                    interface_path = Path.cwd() / "interface.json"
                 if not interface_path.exists():
                     raise FileNotFoundError(f"无有效资源 {interface_path}")
                 with open(interface_path, "r", encoding="utf-8") as f:
-                    interface = json.load(f)
+                    interface = jsonc.load(f)
 
             default_main_config = {
                 "curr_config_id": "",
@@ -50,7 +52,7 @@ class JsonConfigRepository:
         """加载主配置"""
         try:
             with open(self.main_config_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                return jsonc.load(f)
         except Exception as e:
             raise
 
@@ -58,7 +60,7 @@ class JsonConfigRepository:
         """保存主配置"""
         try:
             with open(self.main_config_path, "w", encoding="utf-8") as f:
-                json.dump(config_data, f, indent=4, ensure_ascii=False)
+                jsonc.dump(config_data, f, indent=4, ensure_ascii=False)
             return True
         except Exception as e:
             raise
@@ -70,7 +72,7 @@ class JsonConfigRepository:
             raise FileNotFoundError(f"配置文件 {config_file} 不存在")
         try:
             with open(config_file, "r", encoding="utf-8") as f:
-                return json.load(f)
+                return jsonc.load(f)
         except Exception as e:
             raise
 
@@ -79,7 +81,7 @@ class JsonConfigRepository:
         try:
             config_file = self.configs_dir / f"{config_id}.json"
             with open(config_file, "w", encoding="utf-8") as f:
-                json.dump(config_data, f, indent=4, ensure_ascii=False)
+                jsonc.dump(config_data, f, indent=4, ensure_ascii=False)
             return True
         except Exception as e:
             raise
