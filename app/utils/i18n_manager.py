@@ -110,7 +110,7 @@ class InterfaceI18n:
             logger.error(f"翻译文件格式错误: {e}")
             self._translations = {}
     
-    def _translate_text(self, text: str) -> str:
+    def translate_text(self, text: str) -> str:
         """
         翻译单个文本
         
@@ -161,7 +161,7 @@ class InterfaceI18n:
             for key, value in data.items():
                 # 特殊处理 label, description, title 等字段
                 if key in ('label', 'description', 'title', 'welcome') and isinstance(value, str):
-                    data[key] = self._translate_text(value)
+                    data[key] = self.translate_text(value)
                 else:
                     data[key] = self._translate_dict(value)
         
@@ -172,7 +172,7 @@ class InterfaceI18n:
         
         elif isinstance(data, str):
             # 直接翻译字符串（如果以 $ 开头）
-            return self._translate_text(data)
+            return self.translate_text(data)
         
         return data
     

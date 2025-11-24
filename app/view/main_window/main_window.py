@@ -56,7 +56,7 @@ from ...common.config import cfg
 from ...common.signal_bus import signalBus
 from ...utils.logger import logger
 from ...common.__version__ import __version__
-from ...core.Core import ServiceCoordinator
+from ...core.core import ServiceCoordinator
 
 class CustomSystemThemeListener(SystemThemeListener):
     def run(self):

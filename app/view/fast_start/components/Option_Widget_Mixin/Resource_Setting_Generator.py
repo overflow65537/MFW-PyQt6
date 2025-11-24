@@ -4,11 +4,14 @@
 """
 
 from typing import Dict, Any, Optional
+from app.utils.i18n_manager import get_interface_i18n
 
 
 def create_resource_setting_form_structure(
     interface: Dict[str, Any],
 ) -> Dict[str, Dict[str, Any]]:
+    # 获取i18n实例
+    i18n = get_interface_i18n()
     """
     为资源设置任务创建动态表单结构
 
@@ -50,8 +53,8 @@ def create_resource_setting_form_structure(
 
     # 创建controller_type结构，为每个选项创建对应的子选项
     form_structure["controller_type"] = {
-        "label": "设备类型",
-        "description": "选择您的设备类型，支持ADB和Win32两种类型",
+        "label": i18n.translate_text("$设备类型"),
+        "description": i18n.translate_text("$选择您的设备类型，支持ADB和Win32两种类型"),
         "type": "combobox",
         "options": controller_options,
         "default": controller_options[0] if controller_options else "",
@@ -64,8 +67,8 @@ def create_resource_setting_form_structure(
         resource_options.append(resource.get("name", ""))
 
     form_structure["resource"] = {
-        "label": "资源选择",
-        "description": "选择您要使用的资源",
+        "label": i18n.translate_text("$资源选择"),
+        "description": i18n.translate_text("$选择您要使用的资源"),
         "type": "combobox",
         "options": resource_options,
         "default": resource_options[0] if resource_options else "",
@@ -104,8 +107,8 @@ def create_resource_setting_form_structure(
     
     # 保存GPU信息到form_structure中，以便ComboBoxGenerator使用
     form_structure["gpu"] = {
-        "label": "GPU选择",
-        "description": "选择您要使用的GPU设备",
+        "label": i18n.translate_text("$GPU选择"),
+        "description": i18n.translate_text("$选择您要使用的GPU设备"),
         "type": "gpu_combobox",  # 使用专门的GPU下拉框类型
         "options": gpu_options,  # 显示的名称列表，包含id信息
         "default": "自动 (ID: -1)",  # 默认值为-1
@@ -114,97 +117,93 @@ def create_resource_setting_form_structure(
 
     # 4. 启动前执行程序
     form_structure["pre_launch_program"] = {
-        "label": "启动前执行程序路径",
-        "description": "在程序启动前执行的程序路径",
+        "label": i18n.translate_text("$启动前执行程序路径"),
+        "description": i18n.translate_text("$在程序启动前执行的程序路径"),
         "type": "pathlineedit",
         "default": "",
     }
 
     form_structure["pre_launch_args"] = {
-        "label": "启动前执行程序参数",
-        "description": "启动前执行程序的参数",
+        "label": i18n.translate_text("$启动前执行程序参数"),
+        "description": i18n.translate_text("$启动前执行程序的参数"),
         "type": "lineedit",
         "default": "",
     }
 
     # 5. 启动后执行程序
     form_structure["post_launch_program"] = {
-        "label": "启动后执行程序路径",
-        "description": "在程序启动后执行的程序路径",
+        "label": i18n.translate_text("$启动后执行程序路径"),
+        "description": i18n.translate_text("$在程序启动后执行的程序路径"),
         "type": "pathlineedit",
         "default": "",
     }
 
     form_structure["post_launch_args"] = {
-        "label": "启动后执行程序参数",
-        "description": "启动后执行程序的参数",
+        "label": i18n.translate_text("$启动后执行程序参数"),
+        "description": i18n.translate_text("$启动后执行程序的参数"),
         "type": "lineedit",
         "default": "",
     }
-
     # 定义子选项配置模板
     adb_path_config = {
-        "label": "ADB路径",
-        "description": "ADB工具的路径",
+        "label": i18n.translate_text("$ADB路径"),
+        "description": i18n.translate_text("$ADB工具的路径"),
         "type": "pathlineedit",
         "default": "",
         "visible": True
     }
     
     device_address_config = {
-        "label": "设备链接地址",
-        "description": "设备的ADB链接地址",
+        "label": i18n.translate_text("$设备链接地址"),
+        "description": i18n.translate_text("$设备的ADB链接地址"),
         "type": "lineedit",
         "default": "",
         "visible": True
     }
-    
     hwnd_config = {
-        "label": "窗口句柄",
-        "description": "程序窗口的句柄",
+        "label": i18n.translate_text("$窗口句柄"),
+        "description": i18n.translate_text("$程序窗口的句柄"),
         "type": "lineedit",
         "default": "",
         "visible": True
     }
-    
     program_path_config = {
-        "label": "程序启动路径",
+        "label": i18n.translate_text("$程序启动路径"),
         "type": "pathlineedit",
         "default": "",
         "visible": True
     }
-    
     # 创建新的配置模板
     emulator_path_config = {
-        "label": "模拟器路径",
+        "label": i18n.translate_text("$模拟器路径"),
         "type": "pathlineedit",
         "default": "",
         "visible": True
+
     }
-    
     emulator_args_config = {
-        "label": "模拟器参数",
+        "label": i18n.translate_text("$模拟器参数"),
         "type": "lineedit",
         "default": "",
         "visible": True
+
     }
-    
     emulator_wait_time_config = {
-        "label": "模拟器启动等待时间",
+        "label": i18n.translate_text("$模拟器启动等待时间"),
         "type": "lineedit",
         "default": "",
         "visible": True
+
     }
-    
     program_args_config = {
-        "label": "程序参数",
+        "label": i18n.translate_text("$程序参数"),
         "type": "lineedit",
         "default": "",
+
         "visible": True
     }
-    
     program_wait_time_config = {
-        "label": "程序启动时间",
+        "label": i18n.translate_text("$程序启动时间"),
         "type": "lineedit",
         "default": "",
         "visible": True

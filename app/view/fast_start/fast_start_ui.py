@@ -21,7 +21,7 @@ from qfluentwidgets import (
     ToolTipFilter,
     ToolTipPosition,
 )
-from ...core.Core import ServiceCoordinator
+from ...core.core import ServiceCoordinator
 from ...widget.DashboardCard import DashboardCard
 from .components.LogoutputWidget import LogoutputWidget
 from .components.ListToolBarWidget import TaskListToolBarWidget,ConfigListToolBarWidget

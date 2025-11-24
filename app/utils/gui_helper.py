@@ -13,7 +13,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QPixmap
 from app.utils.logger import logger
 if TYPE_CHECKING:
-    from app.core.Core import ServiceCoordinator
+    from app.core.core import ServiceCoordinator
 
 
 
