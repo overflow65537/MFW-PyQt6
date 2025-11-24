@@ -61,7 +61,13 @@ class ServiceCoordinator:
         """添加配置，传入 ConfigItem 对象，返回新配置ID"""
         new_id = self.config_service.create_config(config_item)
         if new_id:
-            # notify UI incrementally
+            # Select the new config
+            self.config_service.current_config_id = new_id
+            
+            # Initialize the new config with tasks from interface
+            self.task.init_new_config()
+            
+            # Notify UI incrementally
             self.fs_signal_bus.fs_config_added.emit(
                 self.config_service.get_config(new_id)
             )

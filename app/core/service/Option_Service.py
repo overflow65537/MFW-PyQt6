@@ -29,11 +29,16 @@ class OptionService:
                 from ...view.fast_start.components.Option_Widget_Mixin.Resource_Setting_Generator import (
                     create_resource_setting_form_structure,
                 )
-                self.signal_bus.options_loaded.emit(
-                {"options": self.current_options, "form_structure": create_resource_setting_form_structure(self.task_service.interface)}
-            )
 
-                return 
+                self.signal_bus.options_loaded.emit(
+                    {
+                        "options": self.current_options,
+                        "form_structure": create_resource_setting_form_structure(
+                            self.task_service.interface
+                        ),
+                    }
+                )
+                return
 
             # 获取表单结构
             form_structure = self.get_form_structure_by_task_name(task.name)
@@ -104,7 +109,7 @@ class OptionService:
         if label.startswith("$"):
             pass
         field_config["label"] = label
-        
+
         # 处理description字段
         if "description" in option_def:
             field_config["description"] = option_def["description"]
@@ -122,7 +127,7 @@ class OptionService:
                 # 优先使用label，如果没有则使用name
                 display_label = case.get("label", case.get("name", ""))
                 option_name = case.get("name", display_label)
-                
+
                 # 以字典形式保存name和label，用于i18n支持
                 options.append({"name": option_name, "label": display_label})
 
@@ -135,7 +140,9 @@ class OptionService:
                         child_field = self.process_option_def(
                             sub_option_def, all_options, option_value
                         )
-                        children[option_name] = child_field  # 使用name而不是label作为key
+                        children[option_name] = (
+                            child_field  # 使用name而不是label作为key
+                        )
                     elif isinstance(option_value, list):
                         # 处理option是列表的情况，这里简化处理，只取第一个有效的选项
                         for opt in option_value:
@@ -144,7 +151,9 @@ class OptionService:
                                 child_field = self.process_option_def(
                                     sub_option_def, all_options, opt
                                 )
-                                children[option_name] = child_field  # 使用name而不是label作为key
+                                children[option_name] = (
+                                    child_field  # 使用name而不是label作为key
+                                )
                                 break
 
             field_config["options"] = options
@@ -160,14 +169,14 @@ class OptionService:
             field_config["type"] = "lineedit"
             # 保存inputs数组，供后续处理
             field_config["inputs"] = option_def["inputs"]
-            
+
             # 传递verify字段到表单结构中
             if "verify" in option_def:
                 field_config["verify"] = option_def["verify"]
             # 如果有默认值，使用第一个input的默认值
             if option_def["inputs"] and "default" in option_def["inputs"][0]:
                 field_config["default"] = option_def["inputs"][0]["default"]
-                
+
             # 为每个input项传递verify字段
             for input_item in field_config["inputs"]:
                 # 如果input项没有自己的verify字段，使用父级的verify字段

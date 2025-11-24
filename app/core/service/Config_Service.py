@@ -39,12 +39,11 @@ class JsonConfigRepository:
             default_main_config = {
                 "curr_config_id": "",
                 "config_list": [],
-                "bundle": [
-                    {
-                        "name": interface.get("name", "Default Bundle"),
+                "bundle": {
+                    interface.get("name", "Default Bundle"): {
                         "path": "./",
                     }
-                ],
+                },
             }
             self.save_main_config(default_main_config)
 
@@ -117,7 +116,12 @@ class ConfigService:
         self.load_main_config()
         if self._main_config and not self._main_config.get("curr_config_id"):
 
-            bundle = self._main_config.get("bundle", [])[0]
+            # Get the first bundle from the bundle dictionary
+            bundle_dict = self._main_config.get("bundle", {})
+            # Use the first bundle in the dictionary
+            first_bundle_name = next(iter(bundle_dict.keys()), "Default Bundle")
+            bundle = bundle_dict.get(first_bundle_name, {"path": "./"})
+            
             default_tasks = [
                 TaskItem(
                     name="资源",
@@ -220,6 +224,28 @@ class ConfigService:
         """创建新配置，统一使用 uuid 生成 id"""
         if not config.item_id:
             config.item_id = ConfigItem.generate_id()
+        
+        # If no tasks provided, add base tasks only.
+        # Task generation from interface should be handled by TaskService
+        if not config.tasks:
+            default_tasks = [
+                TaskItem(
+                    name="资源",
+                    item_id=RESOURCE_TASK_ID,
+                    is_checked=True,
+                    task_option={},
+                    is_special=False,  # 基础任务，不是特殊任务
+                ),
+                TaskItem(
+                    name="完成后操作",
+                    item_id=POST_TASK_ID,
+                    is_checked=True,
+                    task_option={},
+                    is_special=False,  # 基础任务，不是特殊任务
+                ),
+            ]
+            config.tasks = default_tasks
+        
         if self.save_config(config.item_id, config):
             return config.item_id
         return ""
