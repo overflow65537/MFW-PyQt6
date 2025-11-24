@@ -154,6 +154,9 @@ class InterfaceManager:
         self._translate_dict(self._translated_interface)
         
         logger.debug(f"interface 配置翻译完成，当前语言: {self._current_language}")
+        
+        # 自动补全label字段：如果label不存在或为空，用name填充
+        self._auto_fill_label(self._translated_interface)
     
     def _translate_dict(self, data: Any) -> Any:
         """
@@ -185,6 +188,27 @@ class InterfaceManager:
         
         return data
     
+    def _auto_fill_label(self, data: Any):
+        """
+        递归自动补全label字段：如果label不存在或为空，用name字段的值填充
+        
+        Args:
+            data: 要处理的数据
+        """
+        if isinstance(data, dict):
+            # 如果有name字段但没有label字段，用name填充
+            if "name" in data and ("label" not in data or not data["label"]):
+                data["label"] = data["name"]
+            
+            # 递归处理字典中的每个值
+            for key, value in data.items():
+                self._auto_fill_label(value)
+        
+        elif isinstance(data, list):
+            # 递归处理列表中的每个元素
+            for i, item in enumerate(data):
+                self._auto_fill_label(item)
+    
     def get_interface(self) -> Dict[str, Any]:
         """
         获取翻译后的 interface 配置
@@ -206,6 +230,15 @@ class InterfaceManager:
         """
         return self._original_interface
     
+    def get_language(self) -> str:
+        """
+        获取当前语言代码
+        
+        Returns:
+            当前语言代码，如 "zh_cn", "en_us"
+        """
+        return self._current_language
+        
     def set_language(self, language: str):
         """
         设置当前语言

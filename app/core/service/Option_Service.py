@@ -121,7 +121,10 @@ class OptionService:
             for case in option_def.get("cases", []):
                 # 优先使用label，如果没有则使用name
                 display_label = case.get("label", case.get("name", ""))
-                options.append(display_label)
+                option_name = case.get("name", display_label)
+                
+                # 以字典形式保存name和label，用于i18n支持
+                options.append({"name": option_name, "label": display_label})
 
                 # 递归处理cases中的子选项(option参数)
                 if "option" in case:
@@ -132,7 +135,7 @@ class OptionService:
                         child_field = self.process_option_def(
                             sub_option_def, all_options, option_value
                         )
-                        children[display_label] = child_field
+                        children[option_name] = child_field  # 使用name而不是label作为key
                     elif isinstance(option_value, list):
                         # 处理option是列表的情况，这里简化处理，只取第一个有效的选项
                         for opt in option_value:
@@ -141,7 +144,7 @@ class OptionService:
                                 child_field = self.process_option_def(
                                     sub_option_def, all_options, opt
                                 )
-                                children[display_label] = child_field
+                                children[option_name] = child_field  # 使用name而不是label作为key
                                 break
 
             field_config["options"] = options

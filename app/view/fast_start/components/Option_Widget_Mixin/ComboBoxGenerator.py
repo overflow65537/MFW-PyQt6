@@ -95,7 +95,22 @@ class ComboBoxGenerator:
             label.setToolTip(config["description"])
 
         combo = ComboBox()
-        combo.addItems(config["options"])
+        
+        # 保存选项映射关系 (label -> name 和 name -> label)
+        self.host._option_maps = getattr(self.host, '_option_maps', {})
+        self.host._option_maps[key] = {}
+        self.host._option_reverse_maps = getattr(self.host, '_option_reverse_maps', {})
+        self.host._option_reverse_maps[key] = {}
+        
+        # 只支持新格式：字典列表，包含name和label
+        options = config["options"]
+        for option in options:
+            label = option["label"]
+            name = option["name"]
+            combo.addItem(label)
+            self.host._option_maps[key][label] = name
+            self.host._option_reverse_maps[key][name] = label
+                
         container_layout.addWidget(combo)
         
         # 检查是否需要隐藏整个下拉框行
@@ -123,7 +138,8 @@ class ComboBoxGenerator:
         self.host.child_layouts[key] = child_layout
 
         # 初始化配置
-        init_value = combo.currentText()
+        init_label = combo.currentText()
+        init_value = self.host._option_maps[key].get(init_label, init_label)
         parent_config[key] = {"value": init_value, "children": {}}
         
         # 初始化所有子选项容器字典
@@ -205,8 +221,9 @@ class ComboBoxGenerator:
                         # 深拷贝子配置以保存完整状态
                         self.host.option_subconfig_cache[cache_key] = copy.deepcopy(container_info['config'])
 
-            # 更新配置
-            parent_config["value"] = value
+            # 更新配置 - 使用映射获取实际值
+            actual_value = self.host._option_maps[key].get(value, value)
+            parent_config["value"] = actual_value
             
             # 隐藏所有子选项容器
             if key in self.host.all_child_containers:
@@ -214,9 +231,33 @@ class ComboBoxGenerator:
                     container_info['container'].setVisible(False)
 
             # 处理当前选择的子选项
-            if "children" in config and value in config["children"] and key in self.host.all_child_containers and value in self.host.all_child_containers[key]:
-                child_config = config["children"][value]
-                current_container = self.host.all_child_containers[key][value]
+            # 检查当前选择的是label还是name
+            actual_key = self.host._option_maps[key].get(value, value)
+            
+            # 先尝试用实际值（name）查找，再尝试用显示值（label）查找
+            has_children = False
+            child_config = None
+            current_container = None
+            container_key = value  # 默认使用value作为container_key
+            
+            
+            # 检查是否存在用实际值作为key的子配置
+            if "children" in config:
+                if actual_key in config["children"]:
+                    has_children = True
+                    child_config = config["children"][actual_key]
+                    container_key = actual_key  # 用实际值作为container_key
+                    if container_key in self.host.all_child_containers.get(key, {}):
+                        current_container = self.host.all_child_containers[key][container_key]
+                elif value in config["children"]:
+                    # 兼容旧格式，直接用label作为key
+                    has_children = True
+                    child_config = config["children"][value]
+                    container_key = value
+                    if container_key in self.host.all_child_containers.get(key, {}):
+                        current_container = self.host.all_child_containers[key][container_key]
+            
+            if has_children and child_config and current_container and key in self.host.all_child_containers:
                 
                 # 如果子容器中还没有创建控件，则创建它们
                 if current_container['layout'].count() == 0:
@@ -224,23 +265,44 @@ class ComboBoxGenerator:
                     if isinstance(child_config, dict):
                         # 方式1：如果child_config有type键，处理为单个控件
                         if "type" in child_config:
+                            # 查找当前子选项的键名，而不是硬编码为f"{key}_child"
+                            # 遍历config["children"]找到对应的键名
+                            child_key = ""
+                             
+                            # 直接使用子配置的名称或标签作为child_key
+                            if "name" in child_config:
+                                child_key = child_config["name"]
+                            elif "label" in child_config:
+                                child_key = child_config["label"]
+                            
+                            # 确保不使用$开头的名称
+                            if child_key.startswith("$"):
+                                child_key = child_key[1:]
+                            
+                            # 如果还是没有找到，使用默认的键名
+                            if not child_key:
+                                child_key = f"{key}_child"
+                            
+                            # 记录child_key的值
+                            logger.info(f"Generated child_key: {child_key} for config: {child_config}")
+                                
                             if child_config["type"] == "combobox":
                                 self.create_combobox(
-                                    f"{key}_child", child_config, current_container['layout'], current_container['config']
+                                    child_key, child_config, current_container['layout'], current_container['config']
                                 )
                             elif child_config["type"] == "lineedit":
                                 # 需要使用LineEditGenerator来创建输入框
                                 from .LineEditGenerator import LineEditGenerator
                                 line_edit_generator = LineEditGenerator(self.host)
                                 line_edit_generator.create_lineedit(
-                                    f"{key}_child", child_config, current_container['layout'], current_container['config']
+                                    child_key, child_config, current_container['layout'], current_container['config']
                                 )
                             elif child_config["type"] == "pathlineedit":
                                 # 需要使用PathLineEditGenerator来创建带按钮的路径输入框
                                 from .PathLineEditGenerator import PathLineEditGenerator
                                 path_line_edit_generator = PathLineEditGenerator(self.host)
                                 path_line_edit_generator.create_pathlineedit(
-                                    f"{key}_child", child_config, current_container['layout'], current_container['config']
+                                    child_key, child_config, current_container['layout'], current_container['config']
                                 )
                         # 方式2：如果child_config不包含type键，但包含多个配置项，处理为多个控件
                         elif len(child_config) > 0:
@@ -266,7 +328,7 @@ class ComboBoxGenerator:
                                     )
                 
                 # 尝试从缓存中恢复之前的子配置
-                cache_key = f"{key}_{value}"
+                cache_key = f"{key}_{container_key}"
                 if cache_key in self.host.option_subconfig_cache:
                     # 临时禁用自动保存，避免恢复配置时触发保存
                     old_disable_auto_save = getattr(self.host, '_disable_auto_save', False)
@@ -279,10 +341,12 @@ class ComboBoxGenerator:
                         self.host._disable_auto_save = old_disable_auto_save
                 
                 # 设置当前子容器为可见并隐藏其他容器
-                self._set_child_container_visibility(key, value)
+                self._set_child_container_visibility(key, container_key)
                 
                 # 创建一个包含所有子选项配置的字典
-                all_children_config = self._build_all_children_config(key, value, current_container['config'])
+                # 使用实际值（name）而不是显示值（label）作为key
+                actual_value = self.host._option_maps[key].get(value, value)
+                all_children_config = self._build_all_children_config(key, actual_value, current_container['config'])
                 
                 # 更新parent_config中的children，包含所有子选项配置
                 parent_config["children"] = all_children_config
@@ -378,7 +442,17 @@ class ComboBoxGenerator:
                             if hasattr(sub_widget, 'setText'):
                                 sub_widget.setText(str(sub_value))
                             elif hasattr(sub_widget, 'setCurrentText'):
-                                index = sub_widget.findText(str(sub_value))
+                                # 查找对应的label（考虑映射关系）
+                                display_value = str(sub_value)
+                                
+                                # 遍历所有反向映射，找到对应的label
+                                if hasattr(self.host, '_option_reverse_maps'):
+                                    for widget_key, reverse_map in self.host._option_reverse_maps.items():
+                                        if self.host.widgets.get(widget_key) == sub_widget:
+                                            display_value = reverse_map.get(str(sub_value), str(sub_value))
+                                            break
+                                
+                                index = sub_widget.findText(display_value)
                                 if index >= 0:
                                     sub_widget.setCurrentIndex(index)
                             # 处理其他可能的控件类型

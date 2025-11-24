@@ -274,6 +274,8 @@ class GPUComboBoxGenerator:
                 
                 # 尝试从缓存中恢复之前的子配置
                 cache_key = f"{key}_{value}"
+                # 初始化变量以避免未绑定错误
+                old_disable_auto_save = getattr(self.host, '_disable_auto_save', False)
                 if cache_key in self.host.option_subconfig_cache:
                     # 临时禁用自动保存，避免恢复配置时触发保存
                     old_disable_auto_save = getattr(self.host, '_disable_auto_save', False)
