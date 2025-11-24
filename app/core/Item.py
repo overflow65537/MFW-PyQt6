@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QObject, Signal
 from ..utils.logger import logger
-from ..utils.i18n_manager import get_interface_i18n
 from ..common.constants import RESOURCE_TASK_ID, POST_TASK_ID
 
 

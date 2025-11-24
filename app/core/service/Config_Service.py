@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 
 
 from ...utils.logger import logger
-from ...utils.i18n_manager import get_interface_i18n
+from .interface_manager import get_interface_manager
 from ...common.constants import RESOURCE_TASK_ID, POST_TASK_ID
 from app.core.Item import ConfigItem, TaskItem, CoreSignalBus
 
@@ -21,20 +21,20 @@ class JsonConfigRepository:
             self.configs_dir.mkdir(parents=True)
 
         if not self.main_config_path.exists():
-            # 优先使用翻译后的 interface.json
-            try:
-                i18n = get_interface_i18n()
-                interface = i18n.get_translated_interface()
-                logger.debug("使用翻译后的 interface.json 创建默认配置")
-            except Exception as e:
-                logger.warning(f"获取翻译后的 interface.json 失败，使用原始文件: {e}")
-                interface_path = Path.cwd() / "interface.jsonc"
-                if not interface_path.exists():
-                    interface_path = Path.cwd() / "interface.json"
-                if not interface_path.exists():
-                    raise FileNotFoundError(f"无有效资源 {interface_path}")
-                with open(interface_path, "r", encoding="utf-8") as f:
-                    interface = jsonc.load(f)
+            # 直接使用 interface manager 获取配置
+            interface_manager = get_interface_manager()
+            interface = interface_manager.get_interface()
+            
+            # 如果 interface 为空，说明加载失败
+            if not interface:
+                interface_path_jsonc = Path.cwd() / "interface.jsonc"
+                interface_path_json = Path.cwd() / "interface.json"
+                
+                # 检查配置文件是否存在
+                if not interface_path_jsonc.exists() and not interface_path_json.exists():
+                    raise FileNotFoundError(f"无有效资源配置文件: {interface_path_jsonc} 或 {interface_path_json}")
+            
+            logger.debug("使用 interface 配置创建默认配置")
 
             default_main_config = {
                 "curr_config_id": "",

@@ -1,6 +1,6 @@
 """
-Interface i18n 管理器
-用于将 interface.json 中的所有 $ 开头的文本翻译为目标语言
+Interface 管理器
+用于加载和管理 interface 配置文件，并提供国际化支持
 """
 import jsonc
 from pathlib import Path
@@ -11,8 +11,8 @@ from app.common.config import cfg
 from app.utils.logger import logger
 
 
-class InterfaceI18n:
-    """Interface 翻译管理器（单例模式）"""
+class InterfaceManager:
+    """Interface 管理器（单例模式）"""
     
     _instance = None
     _translated_interface: Dict[str, Any] = {}
@@ -31,16 +31,16 @@ class InterfaceI18n:
     
     def initialize(self, interface_path: Optional[Path] = None, language: Optional[str] = None):
         """
-        初始化 Interface i18n
+        初始化 Interface 管理器
         
         Args:
-            interface_path: interface.json 文件路径，默认为项目根目录
+            interface_path: interface 配置文件路径，默认为项目根目录下的 interface.jsonc 或 interface.json
             language: 语言代码（如 "zh_cn", "en_us", "zh_hk"），默认从配置读取
         """
         if self._initialized:
             return
         
-        # 确定 interface.json 路径
+        # 确定 interface 配置文件路径
         if interface_path is None:
             # 优先尝试读取 interface.jsonc
             interface_path_jsonc = Path.cwd() / "interface.jsonc"
@@ -53,7 +53,7 @@ class InterfaceI18n:
                 logger.debug(f"尝试加载: {interface_path_json}")
                 interface_path = interface_path_json
         
-        # 加载原始 interface.json
+        # 加载原始 interface 配置
         try:
             with open(interface_path, "r", encoding="utf-8") as f:
                 self._original_interface = jsonc.load(f)
@@ -63,7 +63,7 @@ class InterfaceI18n:
             self._original_interface = {}
             return
         except jsonc.JSONDecodeError as e:
-            logger.error(f"interface.json 格式错误: {e}")
+            logger.error(f"配置文件格式错误: {e}")
             self._original_interface = {}
             return
         
@@ -98,7 +98,7 @@ class InterfaceI18n:
         if not self._original_interface:
             return
         
-        # 从 interface.json 获取语言文件映射
+        # 从 interface 配置获取语言文件映射
         languages = self._original_interface.get("languages", {})
         translation_file = languages.get(self._current_language)
         
@@ -135,15 +135,15 @@ class InterfaceI18n:
         # 如果文本以 $ 开头，进行翻译
         if text.startswith("$"):
             key = text[1:]  # 去掉 $ 前缀
-            return self._translations.get(key, key)  # 找不到翻译时返回 key
+            return self._translations.get(key, text)  # 找不到翻译时返回原始文本（保留 $）
         
         # 不以 $ 开头的文本直接返回
         return text
     
     def _translate_interface(self):
-        """翻译整个 interface.json"""
+        """翻译整个 interface 配置"""
         if not self._original_interface:
-            logger.warning("原始 interface.json 为空，无法翻译")
+            logger.warning("原始 interface 配置为空，无法翻译")
             self._translated_interface = {}
             return
         
@@ -153,7 +153,7 @@ class InterfaceI18n:
         # 翻译顶层字段
         self._translate_dict(self._translated_interface)
         
-        logger.debug(f"interface.json 翻译完成，当前语言: {self._current_language}")
+        logger.debug(f"interface 配置翻译完成，当前语言: {self._current_language}")
     
     def _translate_dict(self, data: Any) -> Any:
         """
@@ -168,8 +168,8 @@ class InterfaceI18n:
         if isinstance(data, dict):
             # 递归翻译字典中的每个值
             for key, value in data.items():
-                # 特殊处理 label, description, title 等字段
-                if key in ('label', 'description', 'title', 'welcome') and isinstance(value, str):
+                # 特殊处理 label, icon, description, title, welcome, contact 等需要翻译的字段
+                if key in ('label', 'icon', 'description', 'title', 'welcome', 'contact') and isinstance(value, str):
                     data[key] = self._translate_text(value)
                 else:
                     data[key] = self._translate_dict(value)
@@ -185,9 +185,9 @@ class InterfaceI18n:
         
         return data
     
-    def get_translated_interface(self) -> Dict[str, Any]:
+    def get_interface(self) -> Dict[str, Any]:
         """
-        获取翻译后的 interface.json
+        获取翻译后的 interface 配置
         
         Returns:
             翻译后的 interface 字典
@@ -199,7 +199,7 @@ class InterfaceI18n:
     
     def get_original_interface(self) -> Dict[str, Any]:
         """
-        获取原始的 interface.json
+        获取原始的 interface 配置
         
         Returns:
             原始 interface 字典
@@ -225,48 +225,48 @@ class InterfaceI18n:
     def refresh(self):
         """刷新翻译（当语言切换时调用）"""
         if not self._original_interface:
-            logger.warning("原始 interface.json 为空，无法刷新翻译")
+            logger.warning("原始 interface 配置为空，无法刷新翻译")
             return
         
         # 重新翻译
         self._translate_interface()
-        logger.info(f"interface.json 翻译已刷新，当前语言: {self._current_language}")
+        logger.info(f"interface 配置翻译已刷新，当前语言: {self._current_language}")
 
 
 # 全局单例实例
-_interface_i18n = InterfaceI18n()
+_interface_manager = InterfaceManager()
 
 
-def get_interface_i18n(language: Optional[str] = None) -> InterfaceI18n:
+def get_interface_manager(language: Optional[str] = None) -> InterfaceManager:
     """
-    获取 Interface i18n 单例实例
+    获取 Interface 管理器单例实例
     
     Args:
         language: 语言代码（如 "zh_cn", "en_us", "zh_hk"），默认从配置读取
     
     Returns:
-        InterfaceI18n 实例
+        InterfaceManager 实例
     
     Example:
-        >>> interface_i18n = get_interface_i18n("en_us")
-        >>> translated = interface_i18n.get_translated_interface()
-        >>> print(translated["task"][0]["label"])  # 已翻译的任务标签
+        >>> interface_manager = get_interface_manager("en_us")
+        >>> interface = interface_manager.get_interface()
+        >>> print(interface["task"][0]["label"])  # 已翻译的任务标签
     """
-    if not _interface_i18n._initialized:
-        _interface_i18n.initialize(language=language)
-    return _interface_i18n
+    if not _interface_manager._initialized:
+        _interface_manager.initialize(language=language)
+    return _interface_manager
 
 
 def refresh_interface_translation():
     """
     刷新 interface 翻译
     
-    在语言切换后调用此函数，重新翻译 interface.json
+    在语言切换后调用此函数，重新翻译 interface 配置
     
     Example:
-        >>> from app.utils.i18n_manager import get_interface_i18n
-        >>> interface_i18n = get_interface_i18n()
-        >>> interface_i18n.set_language("en_us")
+        >>> from app.utils.interface_manager import get_interface_manager
+        >>> interface_manager = get_interface_manager()
+        >>> interface_manager.set_language("en_us")
         >>> refresh_interface_translation()
     """
-    _interface_i18n.refresh()
+    _interface_manager.refresh()

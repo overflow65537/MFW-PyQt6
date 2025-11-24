@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 
 from ...utils.logger import logger
-from ...utils.i18n_manager import get_interface_i18n
+from .interface_manager import get_interface_manager
 from .Config_Service import ConfigService
 from app.core.Item import TaskItem, CoreSignalBus
 
@@ -33,22 +33,20 @@ class TaskService:
         if config_id:
             config = self.config_service.get_config(config_id)
             if config:
-                # 优先使用翻译后的 interface.json
-                try:
-                    i18n = get_interface_i18n()
-                    self.interface = i18n.get_translated_interface()
-                    logger.debug("使用翻译后的 interface.json")
-                except Exception as e:
-                    logger.warning(
-                        f"获取翻译后的 interface.json 失败，使用原始文件: {e}"
-                    )
-                    interface_path = Path.cwd() / "interface.jsonc"
-                    if not interface_path.exists():
-                        interface_path = Path.cwd() / "interface.json"
-                    if not interface_path.exists():
-                        raise FileNotFoundError(f"无有效资源 {interface_path}")
-                    with open(interface_path, "r", encoding="utf-8") as f:
-                        self.interface = jsonc.load(f)
+                # 直接使用 interface manager 获取配置
+                interface_manager = get_interface_manager()
+                self.interface = interface_manager.get_interface()
+                
+                # 如果 interface 为空，说明加载失败
+                if not self.interface:
+                    interface_path_jsonc = Path.cwd() / "interface.jsonc"
+                    interface_path_json = Path.cwd() / "interface.json"
+                    
+                    # 检查配置文件是否存在
+                    if not interface_path_jsonc.exists() and not interface_path_json.exists():
+                        raise FileNotFoundError(f"无有效资源配置文件: {interface_path_jsonc} 或 {interface_path_json}")
+                
+                logger.debug("使用 interface 配置")
                 self.current_tasks = config.tasks
                 self.know_task = config.know_task
                 self.default_option = self.gen_default_option()
