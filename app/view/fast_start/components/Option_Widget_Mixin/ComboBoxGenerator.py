@@ -326,6 +326,13 @@ class ComboBoxGenerator:
                                     path_line_edit_generator.create_pathlineedit(
                                         sub_key, sub_config, current_container['layout'], current_container['config']
                                     )
+                                elif sub_config.get("type") == "search_device":
+                                    # 需要使用SearchDeviceGenerator来创建搜索设备组件
+                                    from .SearchDeviceGenerator import SearchDeviceGenerator
+                                    search_device_generator = SearchDeviceGenerator(self.host)
+                                    search_device_generator.create_search_device(
+                                        sub_key, sub_config, current_container['layout'], current_container['config']
+                                    )
                 
                 # 尝试从缓存中恢复之前的子配置
                 cache_key = f"{key}_{container_key}"

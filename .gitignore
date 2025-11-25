@@ -471,3 +471,5 @@ interface.json
 ./interface_en.json
 ./resource/*
 interface.jsonc
+interface_en.json
+interface_zh.json

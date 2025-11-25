@@ -240,9 +240,16 @@ class ResourceSettingGenerator(QObject):
             "visible": True,
         }
 
+        # 创建搜索设备配置 - 只需指定类型和位置，内容已硬编码
+        search_device_config = {
+            "type": "search_device",
+            "visible": True,
+        }
+
         # controller_type选项的子选项配置 - 直接提供子选项配置，不使用form_group嵌套
         controller_children_types = {
             "adb": {
+                "search_device": search_device_config,
                 "adb_path": adb_path_config,
                 "device_address": device_address_config,
                 "emulator_path": emulator_path_config,
@@ -250,6 +257,7 @@ class ResourceSettingGenerator(QObject):
                 "emulator_wait_time": emulator_wait_time_config,
             },
             "win32": {
+                "search_device": search_device_config,
                 "hwnd": hwnd_config,
                 "program_path": program_path_config,
                 "program_args": program_args_config,

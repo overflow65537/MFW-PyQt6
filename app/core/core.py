@@ -63,10 +63,10 @@ class ServiceCoordinator:
         if new_id:
             # Select the new config
             self.config_service.current_config_id = new_id
-            
+
             # Initialize the new config with tasks from interface
-            self.task.init_new_config()
-            
+            self.task_service.init_new_config()
+
             # Notify UI incrementally
             self.fs_signal_bus.fs_config_added.emit(
                 self.config_service.get_config(new_id)
@@ -205,7 +205,7 @@ class ServiceCoordinator:
     def select_task(self, task_id: str):
         """选中任务，传入 task id，并自动检查已知任务"""
         self.signal_bus.task_selected.emit(task_id)
-        self.task._check_know_task()
+        self.task_service._check_know_task()
 
     def reorder_tasks(self, new_order: List[str]) -> bool:
         """任务顺序更改，new_order 为 task_id 列表（新顺序）"""
@@ -225,81 +225,33 @@ class ServiceCoordinator:
         """
         need_stop = False
 
-        self.fs_signal_bus.fs_start_button_status.emit({"text": "STOP", "status": "disabled"})
+        self.fs_signal_bus.fs_start_button_status.emit(
+            {"text": "STOP", "status": "disabled"}
+        )
 
-        resource_base_task_option = self.task_service.get_task("resource_base_task")
-
-        if resource_base_task_option:#检查启动前任务
-            pass
-
-
-
-
-        if self._has_child_process_path():
-            pass
+        resource_base_task = self.task_service.get_task("resource_base_task")
+        if not resource_base_task:
+            raise ValueError("未找到基础资源任务")
 
         # 2. 加载资源
-        if not await self.load_resources(self._get_resource_raw()):
+        if not await self.load_resources(resource_base_task.task_option):
             logger.error("资源加载失败，流程终止")
             return
 
         # 3. 连接设备
-        controller_raw = self._get_controller_raw()
-        connected = await self.connect_device(controller_raw)
+        controller_base_task = self.task_service.get_task("controller_base_task")
+        if not controller_base_task:
+            raise ValueError("未找到基础控制器任务")
+        connected = await self.connect_device(controller_base_task.task_option)
         if not connected:
-            # 4. 启动模拟器（如果路径存在）
-            if self._has_emulator_path():
-                await self._start_emulator()
-                # 再次尝试连接设备
-                connected = await self.connect_device(controller_raw)
-                if not connected:
-                    logger.error("连接设备失败，流程终止")
-                    return
-            else:
-                logger.error("连接设备失败且无模拟器路径，流程终止")
-                return
-
-
-
-    # 以下为占位方法，需自行实现
-    def _has_child_process_path(self) -> bool:
-        """判断子进程路径是否存在"""
-        # TODO: 实现实际逻辑
-        return False
-
-    def _start_child_process(self, command):
-        """启动子进程"""
-        import subprocess
-        logger.debug(f"启动程序: {command}")
-        return subprocess.Popen(command)
-
-
-    def _get_resource_raw(self) -> Dict[str, Any]:
-        """获取资源参数"""
-        # TODO: 实现实际逻辑
-        return {}
-
-    def _get_controller_raw(self) -> Dict[str, Any]:
-        """获取控制器参数"""
-        # TODO: 实现实际逻辑
-        return {}
-
-    def _has_emulator_path(self) -> bool:
-        """判断模拟器路径是否存在"""
-        # TODO: 实现实际逻辑
-        return False
-
-    async def _start_emulator(self):
-        """启动模拟器"""
-        # TODO: 实现实际逻辑
-        pass
+            pass
 
     async def connect_device(self, controller_raw: Dict[str, Any]):
         """连接 MaaFW"""
-        if self._get_contrller_type(controller_raw) == "adb":
+        if self._get_controller_type(controller_raw) == "adb":
             return await self._connect_adb_controller(controller_raw)
 
-        elif self._get_contrller_type(controller_raw) == "win":
+        elif self._get_controller_type(controller_raw) == "win":
             return await self._connect_win32_controller(controller_raw)
         else:
             raise ValueError("不支持的控制器类型")
@@ -309,7 +261,7 @@ class ServiceCoordinator:
         if self.maafw.resource:
             self.maafw.resource.clear()  # 清除资源
         resource_path = ""
-        resource_target = resource_raw.get("resource", "")
+        resource_target = resource_raw.get("resource", {}).get("value")
 
         for i in self.task_service.interface.get("resource", []):
             if i["name"] == resource_target:
@@ -362,11 +314,37 @@ class ServiceCoordinator:
         连接 ADB 控制器
         """
         # 从 controller_raw 中提取 ADB 配置
-        adb_path = controller_raw.get("adb_path", "")
-        address = controller_raw.get("address", "")
-        input_method = controller_raw.get("input_method", "")
-        screen_method = controller_raw.get("screen_method", "")
-        config = controller_raw.get("config", {})
+        activate_controller = controller_raw.get("controller_type", {}).get("value", "")
+        adb_path = (
+            controller_raw.get("controller_type", {})
+            .get("children", {})
+            .get(activate_controller, {})
+            .get("adb_path", "")
+        )
+        address = (
+            controller_raw.get("controller_type", {})
+            .get("children", {})
+            .get(activate_controller, {})
+            .get("device_address", "")
+        )
+        input_method = (
+            controller_raw.get("controller_type", {})
+            .get("children", {})
+            .get(activate_controller, {})
+            .get("input_method", "")
+        )
+        screen_method = (
+            controller_raw.get("controller_type", {})
+            .get("children", {})
+            .get(activate_controller, {})
+            .get("screen_method", "")
+        )
+        config = (
+            controller_raw.get("controller_type", {})
+            .get("children", {})
+            .get(activate_controller, {})
+            .get("config", {})
+        )
 
         # 尝试连接 ADB
         if (
@@ -404,7 +382,7 @@ class ServiceCoordinator:
             return False
         return True
 
-    def _get_contrller_type(self, controller_raw: Dict[str, Any]) -> str:
+    def _get_controller_type(self, controller_raw: Dict[str, Any]) -> str:
         """获取控制器类型"""
         controller_name = controller_raw.get("controller_type", "").lower()
         for controller in self.task_service.interface.get("controller", []):
