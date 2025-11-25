@@ -4,7 +4,7 @@
 """
 
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel
-from PySide6.QtCore import Qt, QObject
+from PySide6.QtCore import Qt, QObject, QRunnable, QThreadPool, Signal
 from qfluentwidgets import ComboBox, PushButton, BodyLabel, ToolTipFilter, ToolButton
 from qfluentwidgets import FluentIcon as FIF
 from app.utils.logger import logger
@@ -52,20 +52,17 @@ class BaseDeviceSearcher(QObject):
 
         # 创建下拉框和按钮的水平布局
         search_container = QHBoxLayout()
-        search_container.setSpacing(10)
+        search_container.setSpacing(5)  # 与PathLineEdit一致
         container_layout.addLayout(search_container)
-
         # 创建结果下拉框（初始为空）
         self.result_combo = ComboBox()
         self.result_combo.setPlaceholderText(self.tr("No devices found"))
-
         # 创建搜索按钮 - 硬编码文本
         search_button = ToolButton(FIF.SEARCH)
 
-        # 将下拉框和按钮添加到水平布局
         # 让下拉框占据大部分空间，按钮使用最小尺寸
-        self.result_combo.setFixedHeight(36)  # 设置固定高度与其他控件一致
-        search_button.setFixedHeight(36)  # 设置固定高度与其他控件一致
+        self.result_combo.setFixedWidth(242)  # 设置固定宽度
+        search_button.setFixedWidth(35)  # 与PathLineEdit的按钮宽度一致
 
         # 设置下拉框的拉伸因子为1，按钮为0
         search_container.addWidget(self.result_combo, 1)  # 1表示拉伸
@@ -94,7 +91,7 @@ class BaseDeviceSearcher(QObject):
         # 遍历所有子容器，找到与parent_layout匹配的容器
         self._container = None
         self._config = parent_config
-        
+
         for main_key, container_dict in self.host.all_child_containers.items():
             for option_key, container in container_dict.items():
                 if container["layout"] == parent_layout:
@@ -120,7 +117,7 @@ class BaseDeviceSearcher(QObject):
 
         # 初始化配置
         self._config[key] = ""
-        
+
         # 连接信号，使用闭包来确保参数正确传递
         def on_click():
             logger.info(f"Button clicked with key: {key}, type: {type(key)}")
@@ -147,10 +144,47 @@ class BaseDeviceSearcher(QObject):
     def _on_result_selected(self, key, value, config):
         """选择搜索结果处理 - 需要在子类中实现"""
         # 默认保存当前选中的设备/窗口到配置
-        if hasattr(self, '_config') and self._config is not None:
+        logger.debug(
+            f"_on_result_selected called with key: {key}, value: {value}, _config: {self._config}"
+        )
+
+        # 打印下拉框更改内容
+        print(f"设备下拉框已更改：{value}")
+
+        # 更新所有可能的配置位置
+        if hasattr(self, "_config") and self._config is not None:
             self._config[key] = value
-        elif key in self.host.current_config:
+
+        # Also update the host's current_config for consistency
+        if key in self.host.current_config:
             self.host.current_config[key] = value
+
+        # Directly ensure the widget displays the correct value
+        if hasattr(self, "result_combo"):
+            logger.debug(f"Setting result_combo currentText to: {value}")
+
+            combo = self.result_combo
+
+            # 检查值是否实际存在于下拉框中
+            index = combo.findText(value)
+            if index != -1:
+                # 如果值存在，使用索引设置（更可靠）
+                combo.setCurrentIndex(index)
+
+                # 再次确认文本正确显示
+                combo.setCurrentText(value)
+
+                # 仅使用update()，避免repaint()可能导致的递归问题
+                combo.update()
+
+                logger.debug(f"Successfully set dropdown to: {value} at index: {index}")
+
+            else:
+                # 如果值不存在，记录日志并暂时不设置
+                logger.debug(
+                    f"Value '{value}' not found in dropdown, skipping selection"
+                )
+
         # 子类可以覆盖此方法进行其他处理，但必须调用super()或保存值
 
     def _write_result_to_input(self, input_key, data):
@@ -193,59 +227,91 @@ class AdbDeviceSearcher(BaseDeviceSearcher):
         self._device_map = {}  # 保存设备名称到设备结构体的映射
 
     def _on_search_clicked(self, key, config):
-        """搜索ADB设备"""
-        try:
-            # 清空现有选项
-            self.result_combo.clear()
+        """搜索ADB设备 - 启动异步任务"""
+        # 清空现有选项
+        self.result_combo.clear()
+        self.result_combo.setPlaceholderText(self.tr("Searching..."))
 
-            # 搜索ADB设备
-            devices = self.Toolkit.find_adb_devices()
-            # 将结果添加到下拉框
-            if devices and isinstance(devices, list):
-                # 清空设备映射
-                self._device_map = {}
+        # 创建并启动异步搜索任务
+        class AdbSearchTask(QRunnable):
+            def __init__(self, toolkit, callback):
+                super().__init__()
+                self.toolkit = toolkit
+                self.callback = callback
 
-                for device in devices:
-                    try:
-                        # 从结构体中提取设备名称、adb路径和连接地址
-                        device_name = getattr(device, "name", "")
-                        if not device_name:
-                            continue
+            def run(self):
+                try:
+                    devices = self.toolkit.find_adb_devices()
+                    print(f"所有设备:\n{devices}")
+                    self.callback(devices)
+                except Exception as e:
+                    self.callback(None, e)
 
-                        # 保存设备映射
-                        self._device_map[device_name] = device
-                        self.result_combo.addItem(device_name)
+        # 定义搜索结果处理函数
+        def handle_search_result(devices, error=None):
+            try:
+                if error:
+                    raise error
 
-                        # 调试：输出设备结构体信息
-                        logger.info(
-                            f"Found ADB device: {device_name}, struct: {device.__dict__}"
-                        )
-                    except Exception as e:
-                        logger.error(f"Failed to process ADB device: {e}")
+                # 将结果添加到下拉框
+                if devices and isinstance(devices, list):
+                    # 清空设备映射
+                    self._device_map = {}
+                    device_list = []
 
-            # 更新占位符
-            if self.result_combo and self.result_combo.count() == 0:
-                self.result_combo.setPlaceholderText(self.tr("No ADB devices found"))
-            elif self.result_combo:
-                self.result_combo.setPlaceholderText("")
-                
-                # 自动选择第一个设备，如果没有设备被选中且存在设备列表的话
-                if self.result_combo.currentIndex() == -1 and self.result_combo.count() > 0:
-                    first_device = self.result_combo.itemText(0)
-                    self.result_combo.setCurrentText(first_device)
-                    # 触发选择事件
-                    self._on_result_selected(key, first_device, config)
-                
-                # 尝试恢复上次保存的设备，如果存在的话
-                elif key in self.host.current_config and self.host.current_config[key]:
-                    saved_device = self.host.current_config[key]
-                    index = self.result_combo.findText(saved_device)
-                    if index != -1:
-                        self.result_combo.setCurrentIndex(index)
-        except Exception as e:
-            logger.error(f"搜索ADB设备失败: {e}")
-            if self.result_combo:
-                self.result_combo.setPlaceholderText(self.tr("Search failed"))
+                    for device in devices:
+                        try:
+                            # 从结构体中提取设备名称、adb路径和连接地址
+                            device_name = (
+                                getattr(device, "name", "") or "Unknown Device"
+                            )
+                            adb_address = getattr(device, "address", "") or getattr(
+                                device, "device_address", ""
+                            )
+
+                            # 创建组合显示名称
+                            if adb_address:
+                                display_name = f"{device_name} ({adb_address})"
+                            else:
+                                display_name = device_name
+
+                            # 保存设备映射
+                            self._device_map[display_name] = device
+                            device_list.append(display_name)
+
+                            # 调试：输出设备结构体信息
+                            logger.info(
+                                f"Found ADB device: {device_name}, struct: {device.__dict__}"
+                            )
+                        except Exception as e:
+                            logger.error(f"Failed to process ADB device: {e}")
+
+                    # 使用addItems一次性添加所有设备
+                    self.result_combo.addItems(device_list)
+                    
+                    # 设置没有选中任何项
+                    self.result_combo.setCurrentIndex(-1)
+                    
+                    # 更新UI
+                    self.result_combo.update()
+
+                # 更新占位符
+                if self.result_combo and self.result_combo.count() == 0:
+                    self.result_combo.setPlaceholderText(
+                        self.tr("No ADB devices found")
+                    )
+                elif self.result_combo:
+                    self.result_combo.setPlaceholderText("")
+
+            except Exception as e:
+                logger.error(f"搜索ADB设备失败: {e}")
+
+                if self.result_combo:
+                    self.result_combo.setPlaceholderText(self.tr("Search failed"))
+
+        # 启动任务
+        task = AdbSearchTask(self.Toolkit, handle_search_result)
+        QThreadPool.globalInstance().start(task)
 
     def _on_result_selected(self, key, value, config):
         """选择ADB设备处理"""
@@ -271,6 +337,7 @@ class AdbDeviceSearcher(BaseDeviceSearcher):
                 self._write_result_to_input("adb_path", adb_path)
 
         # 保存当前选中的设备名称到配置 - 使用在create_search_device中保存的正确配置对象
+
         super()._on_result_selected(key, value, config)
 
 
@@ -286,41 +353,72 @@ class Win32WindowSearcher(BaseDeviceSearcher):
         self.re = re
 
     def _on_search_clicked(self, key, config):
-        """搜索Win32窗口"""
-        try:
-            # 清空现有选项
-            self.result_combo.clear()
-            self.result_combo.setPlaceholderText(self.tr("Searching..."))
+        """搜索Win32窗口 - 启动异步任务"""
+        # 清空现有选项
+        self.result_combo.clear()
+        self.result_combo.setPlaceholderText(self.tr("Searching..."))
 
-            # 搜索Win32窗口
-            windows = self.Toolkit.find_desktop_windows()
-            # 将结果添加到下拉框
-            if windows and isinstance(windows, list):
-                for window in windows:
-                    try:
-                        # DesktopWindow是对象类型，使用getattr安全访问属性
-                        hwnd = getattr(window, "hwnd", "")
-                        # 尝试不同的标题属性名
-                        title = getattr(window, "title", "") or getattr(
-                            window, "name", ""
-                        )
-                        if hwnd:
-                            item_text = f"{title} (HWND: {hwnd})"
-                            self.result_combo.addItem(item_text)
-                    except Exception as window_e:
-                        # 忽略解析窗口信息时的错误
-                        logger.error(f"解析窗口信息失败: {window_e}")
+        # 创建并启动异步搜索任务
+        class Win32SearchTask(QRunnable):
+            def __init__(self, toolkit, callback):
+                super().__init__()
+                self.toolkit = toolkit
+                self.callback = callback
 
-            # 更新占位符
-            if self.result_combo and self.result_combo.count() == 0:
-                self.result_combo.setPlaceholderText(self.tr("No windows found"))
-            elif self.result_combo:
-                self.result_combo.setPlaceholderText("")
+            def run(self):
+                try:
+                    windows = self.toolkit.find_desktop_windows()
+                    self.callback(windows)
+                except Exception as e:
+                    self.callback(None, e)
 
-        except Exception as e:
-            logger.error(f"搜索Win32窗口失败: {e}")
-            if self.result_combo:
-                self.result_combo.setPlaceholderText(self.tr("Search failed"))
+        # 定义搜索结果处理函数
+        def handle_search_result(windows, error=None):
+            try:
+                if error:
+                    raise error
+
+                # 将结果添加到下拉框
+                if windows and isinstance(windows, list):
+                    window_list = []
+                    for window in windows:
+                        try:
+                            # DesktopWindow是对象类型，使用getattr安全访问属性
+                            hwnd = getattr(window, "hwnd", "")
+                            # 尝试不同的标题属性名
+                            title = getattr(window, "title", "") or getattr(
+                                window, "name", ""
+                            )
+                            if hwnd:
+                                item_text = f"{title} (HWND: {hwnd})"
+                                window_list.append(item_text)
+                        except Exception as window_e:
+                            # 忽略解析窗口信息时的错误
+                            logger.error(f"解析窗口信息失败: {window_e}")
+
+                    # 使用addItems一次性添加所有窗口
+                    self.result_combo.addItems(window_list)
+                    
+                    # 设置没有选中任何项
+                    self.result_combo.setCurrentIndex(-1)
+                    
+                    # 更新UI
+                    self.result_combo.update()
+
+                # 更新占位符
+                if self.result_combo and self.result_combo.count() == 0:
+                    self.result_combo.setPlaceholderText(self.tr("No windows found"))
+                elif self.result_combo:
+                    self.result_combo.setPlaceholderText("")
+
+            except Exception as e:
+                logger.error(f"搜索Win32窗口失败: {e}")
+                if self.result_combo:
+                    self.result_combo.setPlaceholderText(self.tr("Search failed"))
+
+        # 启动任务
+        task = Win32SearchTask(self.Toolkit, handle_search_result)
+        QThreadPool.globalInstance().start(task)
 
     def _on_result_selected(self, key, value, config):
         """选择Win32窗口处理"""
@@ -341,10 +439,10 @@ class Win32WindowSearcher(BaseDeviceSearcher):
 # 提供一个工厂函数来根据控制器类型创建相应的搜索器
 def create_device_searcher(host, controller_type):
     """
-    根据控制器类型创建相应的设备搜索器
+    根据控制器类型创建相应的搜索器
     :param host: 宿主组件
     :param controller_type: 控制器类型 (adb/win32)
-    :return: 设备搜索器实例
+    :return: 搜索器实例
     """
     if controller_type == "adb":
         return AdbDeviceSearcher(host)
