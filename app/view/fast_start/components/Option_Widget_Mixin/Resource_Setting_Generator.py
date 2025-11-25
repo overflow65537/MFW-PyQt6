@@ -245,7 +245,7 @@ class ResourceSettingGenerator(QObject):
             "type": "adb_search_device",
             "visible": True,
         }
-        
+
         win32_search_device_config = {
             "type": "win32_search_device",
             "visible": True,

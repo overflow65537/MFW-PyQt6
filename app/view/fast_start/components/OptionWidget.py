@@ -1,4 +1,3 @@
-
 import re
 from pathlib import Path
 from typing import List
@@ -43,11 +42,13 @@ from ....core.core import TaskItem, ConfigItem, ServiceCoordinator
 class OptionWidget(QWidget, DynamicFormMixin):
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         # 先调用QWidget的初始化
+        self.service_coordinator = service_coordinator
         QWidget.__init__(self, parent)
         # 再调用DynamicFormMixin的初始化
         DynamicFormMixin.__init__(self)
+        self.current_config = self.service_coordinator.option.current_options
 
-        self.service_coordinator = service_coordinator
+        
         # 设置parent_layout为option_area_layout，供DynamicFormMixin使用
         self.parent_layout = None  # 将在_setup_ui中设置
         self._init_ui()
@@ -209,12 +210,12 @@ class OptionWidget(QWidget, DynamicFormMixin):
     def set_description(self, description: str):
         """设置描述内容"""
         self.description_content.setText("")
-        
+
         # 如果description为空，隐藏描述区域
         if not description.strip():
             self._toggle_description(visible=False)
             return
-            
+
         html = markdown.markdown(description).replace("\n", "")
         html = re.sub(
             r"<code>(.*?)</code>",
@@ -237,7 +238,7 @@ class OptionWidget(QWidget, DynamicFormMixin):
         self._toggle_description(visible=False)
         # 显示选项区域，因为已经专门的方法清除选项
         self.option_splitter_widget.show()
-        
+
         self.current_task = None
         # 重置DynamicFormMixin的状态
         if hasattr(self, "current_config"):
@@ -267,7 +268,7 @@ class OptionWidget(QWidget, DynamicFormMixin):
         """
         # 显示选项区域
         self.option_splitter_widget.show()
-        
+
         # 使用DynamicFormMixin的update_form方法更新表单
         self.update_form(form_structure, config)
         # 控制器类型切换的逻辑已由DynamicFormMixin的_on_combobox_changed方法处理
@@ -280,14 +281,13 @@ class OptionWidget(QWidget, DynamicFormMixin):
         # 使用DynamicFormMixin的get_config方法
         return self.get_config()
 
-    def _on_options_loaded(self, data):
+    def _on_options_loaded(self):
         """
         当选项被加载时触发
-        :param data: 包含options和form_structure的字典
         """
-        # 只处理form_structure格式
-        options = data.get("options", {})
-        form_structure = data.get("form_structure", None)
+        # 直接从OptionService获取options和form_structure
+        options = self.service_coordinator.option.get_options()
+        form_structure = self.service_coordinator.option.get_form_structure()
 
         # 记录日志
         logger.info(f"选项加载完成，共 {len(options)} 个选项")
@@ -299,15 +299,8 @@ class OptionWidget(QWidget, DynamicFormMixin):
         else:
             # 没有表单时清除界面
             self._clear_options()  # 使用专门的方法清除选项
-            self.current_config = {}
-            self.widgets = {}
-            self.child_layouts = {}
-            # 显示选项区域，因为已经用专门的方法清除选项
-            self.option_splitter_widget.show()
-            # 隐藏描述区域
-            self._toggle_description(visible=False)
+            self.reset()
             logger.info("没有提供form_structure，已清除界面")
-            
 
     def _set_layout_visibility(self, layout, visible):
         """

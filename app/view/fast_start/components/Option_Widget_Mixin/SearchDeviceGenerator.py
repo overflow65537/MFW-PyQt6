@@ -194,7 +194,7 @@ class BaseDeviceSearcher(QObject):
         # 检查是否禁用了自动保存
         if hasattr(self.host, "_disable_auto_save") and self.host._disable_auto_save:
             return
-            
+
         # 检查是否有service_coordinator和option_service
         if hasattr(self.host, "service_coordinator") and hasattr(self.host.service_coordinator, "option_service"):  # type: ignore
             try:
@@ -233,7 +233,7 @@ class BaseDeviceSearcher(QObject):
 
         if input_widget and hasattr(input_widget, "setText"):
             input_widget.setText(str(data))
-            
+
             # 更新配置并保存
             # 查找对应的配置位置并更新
             found = False
@@ -246,12 +246,12 @@ class BaseDeviceSearcher(QObject):
                         break
                 if found:
                     break
-            
+
             if not found:
                 # 更新host的current_config
                 if input_key in self.host.current_config:
                     self.host.current_config[input_key] = str(data)
-            
+
             # 自动保存选项
             self._auto_save_options()
 

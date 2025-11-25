@@ -25,7 +25,7 @@ class CoreSignalBus(QObject):
     task_order_updated = Signal(object)  # List[str]
 
     # 选项相关信号
-    options_loaded = Signal(object)  # 选项字典
+    options_loaded = Signal()  # 选项加载完成信号，不携带数据
     option_updated = Signal(object)  # 选项更新(dict)
 
     # UI 操作信号
