@@ -379,6 +379,19 @@ class DynamicFormMixin:
                                                                     self._create_lineedit(
                                                                         child_key, child_config, child_container['layout'], child_container['config']
                                                                     )
+                                                                elif child_config["type"] in ["search_device", "adb_search_device", "win32_search_device"]:
+                                                                    # 查找当前子选项的实际键名，而不是硬编码为f"{key}_child"
+                                                                    # 直接使用child_config的name或label字段
+                                                                    # 移除可能的$前缀
+                                                                    if child_key.startswith("$"):
+                                                                        child_key = child_key[1:]
+                                                                    child_key = child_config.get("name", child_config.get("label", f"{key}_child"))
+                                                                    # 移除可能的$前缀
+                                                                    if child_key.startswith("$"):
+                                                                        child_key = child_key[1:]
+                                                                    self._create_search_device(
+                                                                        child_key, child_config, child_container['layout'], child_container['config']
+                                                                    )
                                                             else:
                                                                 # 多个控件情况
                                                                 for sub_key, sub_config in child_config.items():
@@ -388,6 +401,10 @@ class DynamicFormMixin:
                                                                         )
                                                                     elif sub_config.get("type") == "lineedit":
                                                                         self._create_lineedit(
+                                                                            sub_key, sub_config, child_container['layout'], child_container['config']
+                                                                        )
+                                                                    elif sub_config.get("type") in ["search_device", "adb_search_device", "win32_search_device"]:
+                                                                        self._create_search_device(
                                                                             sub_key, sub_config, child_container['layout'], child_container['config']
                                                                         )
                                                     
