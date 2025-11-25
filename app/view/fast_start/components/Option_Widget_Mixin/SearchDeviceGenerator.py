@@ -3,18 +3,17 @@
 负责生成搜索ADB设备和Win32窗口的组件
 """
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel
 from PySide6.QtCore import Qt, QObject
-from qfluentwidgets import ComboBox, PushButton, BodyLabel, ToolTipFilter
+from qfluentwidgets import ComboBox, PushButton, BodyLabel, ToolTipFilter, ToolButton
+from qfluentwidgets import FluentIcon as FIF
 from app.utils.logger import logger
-from maa.toolkit import Toolkit
 
 
-class SearchDeviceGenerator(QObject):
+class BaseDeviceSearcher(QObject):
     """
-    搜索设备/窗口生成器
-    负责搜索ADB设备和Win32窗口的创建、配置和信号处理
+    设备搜索器基类
+    负责搜索设备/窗口的创建、配置和信号处理
     """
 
     def __init__(self, host):
@@ -36,7 +35,7 @@ class SearchDeviceGenerator(QObject):
         label_container = QHBoxLayout()
         label_container.setSpacing(5)
 
-        # 创建标题标签 - 硬编码文本，不使用配置中的值
+        # 创建标题标签 - 硬编码文本
         title_text = self.tr("Device Search")
         title_label = BodyLabel(title_text)
 
@@ -46,7 +45,7 @@ class SearchDeviceGenerator(QObject):
         # 将整个标签容器添加到主布局
         container_layout.addLayout(label_container)
 
-        # 为标题添加tooltip - 硬编码文本，不使用配置中的值
+        # 为标题添加tooltip - 硬编码文本
         filter = ToolTipFilter(title_label)
         title_label.installEventFilter(filter)
         title_label.setToolTip(self.tr("Search for ADB devices or Win32 windows"))
@@ -57,170 +56,300 @@ class SearchDeviceGenerator(QObject):
         container_layout.addLayout(search_container)
 
         # 创建结果下拉框（初始为空）
-        result_combo = ComboBox()
-        result_combo.setPlaceholderText(self.tr("No devices found"))
+        self.result_combo = ComboBox()
+        self.result_combo.setPlaceholderText(self.tr("No devices found"))
 
-        # 创建搜索按钮 - 硬编码文本，不使用配置中的值
-        search_button = PushButton(self.tr("Search"))
+        # 创建搜索按钮 - 硬编码文本
+        search_button = ToolButton(FIF.SEARCH)
 
         # 将下拉框和按钮添加到水平布局
-        search_container.addWidget(result_combo)
-        search_container.addWidget(search_button)
+        # 让下拉框占据大部分空间，按钮使用最小尺寸
+        self.result_combo.setFixedHeight(36)  # 设置固定高度与其他控件一致
+        search_button.setFixedHeight(36)  # 设置固定高度与其他控件一致
+
+        # 设置下拉框的拉伸因子为1，按钮为0
+        search_container.addWidget(self.result_combo, 1)  # 1表示拉伸
+        search_container.addWidget(search_button, 0)  # 0表示不拉伸
 
         # 检查是否需要隐藏整个组件
         if "visible" in config and not config["visible"]:
             # 隐藏所有控件
             title_label.setVisible(False)
-            result_combo.setVisible(False)
+            self.result_combo.setVisible(False)
             search_button.setVisible(False)
 
         # 为控件添加tooltip
         if "description" in config:
-            filter = ToolTipFilter(result_combo)
-            result_combo.installEventFilter(filter)
-            result_combo.setToolTip(config["description"])
+            filter = ToolTipFilter(self.result_combo)
+            self.result_combo.installEventFilter(filter)
+            self.result_combo.setToolTip(config["description"])
 
             filter = ToolTipFilter(search_button)
             search_button.installEventFilter(filter)
             search_button.setToolTip(self.tr("Click to search devices/windows"))
 
-        # 保存引用
-        self.host.widgets[key] = result_combo
-        self.host.widgets[f"{key}_button"] = search_button
+        # 保存引用到正确的容器
+        widget_saved = False
+
+        # 遍历所有子容器，找到与parent_layout匹配的容器
+        self._container = None
+        self._config = parent_config
+        
+        for main_key, container_dict in self.host.all_child_containers.items():
+            for option_key, container in container_dict.items():
+                if container["layout"] == parent_layout:
+                    # 保存到子容器的widgets字典
+                    container["widgets"][key] = self.result_combo
+                    container["widgets"][f"{key}_button"] = search_button
+                    self._container = container
+                    self._config = container["config"]
+                    widget_saved = True
+                    logger.debug(
+                        f"Search device widget saved to child container: {main_key} -> {option_key} -> {key}"
+                    )
+                    break
+            if widget_saved:
+                break
+
+        # 如果没有找到子容器，保存到host的widgets字典
+        if not widget_saved:
+            self.host.widgets[key] = self.result_combo
+            self.host.widgets[f"{key}_button"] = search_button
+            self._config = self.host.current_config
+            logger.debug(f"Search device widget saved to host widgets: {key}")
 
         # 初始化配置
-        parent_config[key] = ""
+        self._config[key] = ""
+        
+        # 连接信号，使用闭包来确保参数正确传递
+        def on_click():
+            logger.info(f"Button clicked with key: {key}, type: {type(key)}")
+            self._on_search_clicked(key, config)
 
-        # 连接信号
-        search_button.clicked.connect(
-            lambda current_key=key, current_config=config: self._on_search_clicked(
-                current_key, current_config
-            )
-        )
+        search_button.clicked.connect(on_click)
 
         # 连接下拉框选择信号
-        result_combo.currentTextChanged.connect(
+        self.result_combo.currentTextChanged.connect(
             lambda value, current_key=key, current_config=config: self._on_result_selected(
                 current_key, value, current_config
             )
         )
 
+        # 恢复上次选择的设备名称（如果有）
+        if key in self.host.current_config and self.host.current_config[key]:
+            saved_device_name = self.host.current_config[key]
+            self.result_combo.setCurrentText(saved_device_name)
+
     def _on_search_clicked(self, key, config):
-        """搜索按钮点击处理"""
-        # 获取当前控制器类型（从controller_type中获取）
-        controller_type = ""
-
-        # 调试：检查host对象是否有current_config
-        logger.info(f"Current config: {self.host.current_config}")
-
-        # 方式1：从current_config中获取（更可靠）
-        if "controller_type" in self.host.current_config:
-            controller_data = self.host.current_config["controller_type"]
-            if isinstance(controller_data, dict) and "value" in controller_data:
-                controller_type = controller_data["value"]
-
-        # 方式2：从控制器下拉框中直接获取（备选）
-        if not controller_type and "controller_type" in self.host.widgets:
-            controller_combo = self.host.widgets["controller_type"]
-            if controller_combo:
-                # 从选项映射中获取实际值
-                if "controller_type" in self.host._option_maps:
-                    selected_text = controller_combo.currentText()
-                    controller_type = self.host._option_maps["controller_type"].get(
-                        selected_text, selected_text
-                    )
-
-        logger.info(f"Detected controller type: {controller_type}")
-
-        result_combo = self.host.widgets.get(key)
-
-        if not result_combo:
-            logger.error("Result combo box not found")
-            return
-
-        try:
-            result_combo = self.host.widgets.get(key)
-            if not result_combo:
-                return
-
-            # 清空现有选项
-            result_combo.clear()
-            result_combo.setPlaceholderText(self.tr("Searching..."))
-
-            # 根据控制器类型搜索
-            if controller_type == "adb":
-                # 搜索ADB设备
-                devices = Toolkit.find_adb_devices()
-                # 将结果添加到下拉框
-                if devices and isinstance(devices, list):
-                    for device in devices:
-                        result_combo.addItem(device)
-            elif controller_type == "win32":
-                # 搜索Win32窗口
-                windows = Toolkit.find_desktop_windows()
-                # 将结果添加到下拉框
-                if windows and isinstance(windows, list):
-                    for window in windows:
-                        try:
-                            # DesktopWindow是对象类型，使用getattr安全访问属性
-                            hwnd = getattr(window, "hwnd", "")
-                            # 尝试不同的标题属性名
-                            title = getattr(window, "title", "") or getattr(
-                                window, "name", ""
-                            )
-                            if hwnd:
-                                item_text = f"{title} (HWND: {hwnd})"
-                                result_combo.addItem(item_text)
-                        except Exception as window_e:
-                            # 忽略解析窗口信息时的错误
-                            logger.error(f"解析窗口信息失败: {window_e}")
-
-            # 更新占位符
-            if result_combo and result_combo.count() == 0:
-                result_combo.setPlaceholderText(self.tr("No devices/windows found"))
-            elif result_combo:
-                result_combo.setPlaceholderText("")
-
-        except Exception as e:
-            logger.error(f"搜索设备/窗口失败: {e}")
-            if result_combo:
-                result_combo.setPlaceholderText(self.tr("Search failed"))
+        """搜索按钮点击处理 - 需要在子类中实现"""
+        raise NotImplementedError("Subclasses must implement _on_search_clicked method")
 
     def _on_result_selected(self, key, value, config):
-        """选择搜索结果处理"""
-        # 解析选择的结果
-        if not value:
-            return
-
-        # 根据控制器类型写入不同的输入框
-        controller_type = ""
-        if "controller_type" in self.host.widgets:
-            controller_combo = self.host.widgets["controller_type"]
-            if hasattr(controller_combo, "_value"):
-                controller_type = controller_combo._value
-            else:
-                if "controller_type" in self.host._option_maps:
-                    selected_text = controller_combo.currentText()
-                    controller_type = self.host._option_maps["controller_type"].get(
-                        selected_text, selected_text
-                    )
-
-        if controller_type == "adb":
-            # ADB设备直接写入device_address
-            self._write_result_to_input("device_address", value)
-        elif controller_type == "win32":
-            # Win32窗口需要提取hwnd
-            import re
-
-            match = re.search(r"HWND: (\d+)", value)
-            if match:
-                hwnd = match.group(1)
-                self._write_result_to_input("hwnd", hwnd)
+        """选择搜索结果处理 - 需要在子类中实现"""
+        # 默认保存当前选中的设备/窗口到配置
+        if hasattr(self, '_config') and self._config is not None:
+            self._config[key] = value
+        elif key in self.host.current_config:
+            self.host.current_config[key] = value
+        # 子类可以覆盖此方法进行其他处理，但必须调用super()或保存值
 
     def _write_result_to_input(self, input_key, data):
         """将搜索结果写入对应的输入框"""
         # 查找对应的输入框控件
+        input_widget = None
+
+        # 首先检查直接存储的widgets
         if input_key in self.host.widgets:
             input_widget = self.host.widgets[input_key]
-            if hasattr(input_widget, "setText"):
-                input_widget.setText(str(data))
+        else:
+            # 检查是否存储在all_child_containers中
+            logger.debug(
+                f"Looking for input widget in all_child_containers: {input_key}"
+            )
+
+            for main_key, container_dict in self.host.all_child_containers.items():
+                for option_key, container in container_dict.items():
+                    if input_key in container["widgets"]:
+                        input_widget = container["widgets"][input_key]
+                        logger.debug(
+                            f"Found input widget in child container: {input_key}"
+                        )
+                        break
+                if input_widget:
+                    break
+
+        if input_widget and hasattr(input_widget, "setText"):
+            input_widget.setText(str(data))
+
+
+class AdbDeviceSearcher(BaseDeviceSearcher):
+    """ADB设备搜索器"""
+
+    def __init__(self, host):
+        super().__init__(host)
+        from maa.toolkit import Toolkit
+
+        self.Toolkit = Toolkit
+        self._device_map = {}  # 保存设备名称到设备结构体的映射
+
+    def _on_search_clicked(self, key, config):
+        """搜索ADB设备"""
+        try:
+            # 清空现有选项
+            self.result_combo.clear()
+
+            # 搜索ADB设备
+            devices = self.Toolkit.find_adb_devices()
+            # 将结果添加到下拉框
+            if devices and isinstance(devices, list):
+                # 清空设备映射
+                self._device_map = {}
+
+                for device in devices:
+                    try:
+                        # 从结构体中提取设备名称、adb路径和连接地址
+                        device_name = getattr(device, "name", "")
+                        if not device_name:
+                            continue
+
+                        # 保存设备映射
+                        self._device_map[device_name] = device
+                        self.result_combo.addItem(device_name)
+
+                        # 调试：输出设备结构体信息
+                        logger.info(
+                            f"Found ADB device: {device_name}, struct: {device.__dict__}"
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to process ADB device: {e}")
+
+            # 更新占位符
+            if self.result_combo and self.result_combo.count() == 0:
+                self.result_combo.setPlaceholderText(self.tr("No ADB devices found"))
+            elif self.result_combo:
+                self.result_combo.setPlaceholderText("")
+                
+                # 自动选择第一个设备，如果没有设备被选中且存在设备列表的话
+                if self.result_combo.currentIndex() == -1 and self.result_combo.count() > 0:
+                    first_device = self.result_combo.itemText(0)
+                    self.result_combo.setCurrentText(first_device)
+                    # 触发选择事件
+                    self._on_result_selected(key, first_device, config)
+                
+                # 尝试恢复上次保存的设备，如果存在的话
+                elif key in self.host.current_config and self.host.current_config[key]:
+                    saved_device = self.host.current_config[key]
+                    index = self.result_combo.findText(saved_device)
+                    if index != -1:
+                        self.result_combo.setCurrentIndex(index)
+        except Exception as e:
+            logger.error(f"搜索ADB设备失败: {e}")
+            if self.result_combo:
+                self.result_combo.setPlaceholderText(self.tr("Search failed"))
+
+    def _on_result_selected(self, key, value, config):
+        """选择ADB设备处理"""
+        # 解析选择的结果
+        if not value:
+            return
+
+        # 获取选中的设备结构体
+        device = self._device_map.get(value)
+
+        # 确保device存在且具有必要的属性
+        if device:
+            # 写入ADB连接地址
+            adb_address = getattr(device, "address", "") or getattr(
+                device, "device_address", ""
+            )
+            if adb_address:
+                self._write_result_to_input("device_address", adb_address)
+
+            # 写入ADB路径
+            adb_path = getattr(device, "adb_path", "") or getattr(device, "path", "")
+            if adb_path:
+                self._write_result_to_input("adb_path", adb_path)
+
+        # 保存当前选中的设备名称到配置 - 使用在create_search_device中保存的正确配置对象
+        super()._on_result_selected(key, value, config)
+
+
+class Win32WindowSearcher(BaseDeviceSearcher):
+    """Win32窗口搜索器"""
+
+    def __init__(self, host):
+        super().__init__(host)
+        from maa.toolkit import Toolkit
+        import re
+
+        self.Toolkit = Toolkit
+        self.re = re
+
+    def _on_search_clicked(self, key, config):
+        """搜索Win32窗口"""
+        try:
+            # 清空现有选项
+            self.result_combo.clear()
+            self.result_combo.setPlaceholderText(self.tr("Searching..."))
+
+            # 搜索Win32窗口
+            windows = self.Toolkit.find_desktop_windows()
+            # 将结果添加到下拉框
+            if windows and isinstance(windows, list):
+                for window in windows:
+                    try:
+                        # DesktopWindow是对象类型，使用getattr安全访问属性
+                        hwnd = getattr(window, "hwnd", "")
+                        # 尝试不同的标题属性名
+                        title = getattr(window, "title", "") or getattr(
+                            window, "name", ""
+                        )
+                        if hwnd:
+                            item_text = f"{title} (HWND: {hwnd})"
+                            self.result_combo.addItem(item_text)
+                    except Exception as window_e:
+                        # 忽略解析窗口信息时的错误
+                        logger.error(f"解析窗口信息失败: {window_e}")
+
+            # 更新占位符
+            if self.result_combo and self.result_combo.count() == 0:
+                self.result_combo.setPlaceholderText(self.tr("No windows found"))
+            elif self.result_combo:
+                self.result_combo.setPlaceholderText("")
+
+        except Exception as e:
+            logger.error(f"搜索Win32窗口失败: {e}")
+            if self.result_combo:
+                self.result_combo.setPlaceholderText(self.tr("Search failed"))
+
+    def _on_result_selected(self, key, value, config):
+        """选择Win32窗口处理"""
+        # 解析选择的结果
+        if not value:
+            return
+
+        # Win32窗口需要提取hwnd
+        match = self.re.search(r"HWND: (\d+)", value)
+        if match is not None:
+            hwnd = match.group(1)
+            self._write_result_to_input("hwnd", hwnd)
+
+        # 保存当前选中的窗口到配置
+        super()._on_result_selected(key, value, config)
+
+
+# 提供一个工厂函数来根据控制器类型创建相应的搜索器
+def create_device_searcher(host, controller_type):
+    """
+    根据控制器类型创建相应的设备搜索器
+    :param host: 宿主组件
+    :param controller_type: 控制器类型 (adb/win32)
+    :return: 设备搜索器实例
+    """
+    if controller_type == "adb":
+        return AdbDeviceSearcher(host)
+    elif controller_type == "win32":
+        return Win32WindowSearcher(host)
+    else:
+        logger.error(f"Unsupported controller type: {controller_type}")
+        return None

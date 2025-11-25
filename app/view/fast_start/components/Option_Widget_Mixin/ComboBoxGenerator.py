@@ -326,13 +326,30 @@ class ComboBoxGenerator:
                                     path_line_edit_generator.create_pathlineedit(
                                         sub_key, sub_config, current_container['layout'], current_container['config']
                                     )
-                                elif sub_config.get("type") == "search_device":
+                                elif sub_config.get("type") in ["search_device", "adb_search_device", "win32_search_device"]:
                                     # 需要使用SearchDeviceGenerator来创建搜索设备组件
-                                    from .SearchDeviceGenerator import SearchDeviceGenerator
-                                    search_device_generator = SearchDeviceGenerator(self.host)
-                                    search_device_generator.create_search_device(
-                                        sub_key, sub_config, current_container['layout'], current_container['config']
-                                    )
+                                    from .SearchDeviceGenerator import AdbDeviceSearcher, Win32WindowSearcher
+                                    
+                                    # 根据配置类型创建不同的搜索器
+                                    searcher = None
+                                    if sub_config.get("type") == "adb_search_device":
+                                        searcher = AdbDeviceSearcher(self.host)
+                                    elif sub_config.get("type") == "win32_search_device":
+                                        searcher = Win32WindowSearcher(self.host)
+                                    else:
+                                        # 我们在ComboBoxGenerator中已经知道容器类型，container_key就是控制器类型
+                                        if container_key == "adb":
+                                            searcher = AdbDeviceSearcher(self.host)
+                                        elif container_key == "win32":
+                                            searcher = Win32WindowSearcher(self.host)
+                                        else:
+                                            return  # 不支持的类型
+                                    
+                                    # 调用搜索设备创建方法
+                                    if searcher:
+                                        searcher.create_search_device(
+                                            sub_key, sub_config, current_container['layout'], current_container['config']
+                                        )
                 
                 # 尝试从缓存中恢复之前的子配置
                 cache_key = f"{key}_{container_key}"

@@ -3,7 +3,6 @@ from .LineEditGenerator import LineEditGenerator
 from .ComboBoxGenerator import ComboBoxGenerator
 from .PathLineEditGenerator import PathLineEditGenerator
 from .GPUComboBoxGenerator import GPUComboBoxGenerator
-from .SearchDeviceGenerator import SearchDeviceGenerator
 
 from app.utils.logger import logger
 
@@ -93,7 +92,7 @@ class DynamicFormMixin:
                 self._create_gpu_combobox(
                     key, config_item, self.parent_layout, self.current_config
                 )
-            elif config_item["type"] == "search_device":
+            elif config_item["type"] in ["search_device", "adb_search_device", "win32_search_device"]:
                 self._create_search_device(
                     key, config_item, self.parent_layout, self.current_config
                 )
@@ -131,8 +130,22 @@ class DynamicFormMixin:
 
     def _create_search_device(self, key, config, parent_layout, parent_config):
         """创建搜索设备组件"""
-        search_device_generator = SearchDeviceGenerator(self)
-        search_device_generator.create_search_device(key, config, parent_layout, parent_config)
+        from .SearchDeviceGenerator import AdbDeviceSearcher, Win32WindowSearcher
+        
+        # 根据配置类型创建不同的搜索器
+        searcher = None
+        
+        if config["type"] == "adb_search_device":
+            searcher = AdbDeviceSearcher(self)
+        elif config["type"] == "win32_search_device":
+            searcher = Win32WindowSearcher(self)
+        elif config["type"] == "search_device":
+            # 兼容旧的搜索设备类型
+            # 尝试从配置中确定控制器类型或默认使用ADB
+            searcher = AdbDeviceSearcher(self)
+        
+        if searcher:
+            searcher.create_search_device(key, config, parent_layout, parent_config)
 
 
     def _clear_layout(self, layout):
