@@ -386,11 +386,12 @@ class Win32WindowSearcher(BaseDeviceSearcher):
                             # DesktopWindow是对象类型，使用getattr安全访问属性
                             hwnd = getattr(window, "hwnd", "")
                             # 尝试不同的标题属性名
-                            title = getattr(window, "title", "") or getattr(
-                                window, "name", ""
-                            )
+                            window_name = getattr(window, "window_name", "")
+                            # 如果标题为空，使用"Unknown Window"
+                            if not window_name:
+                                window_name = "Unknown Window"
                             if hwnd:
-                                item_text = f"{title} (HWND: {hwnd})"
+                                item_text = f"{window_name} (HWND: {hwnd})"
                                 window_list.append(item_text)
                         except Exception as window_e:
                             # 忽略解析窗口信息时的错误
