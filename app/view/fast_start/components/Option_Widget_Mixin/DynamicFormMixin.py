@@ -430,15 +430,24 @@ class DynamicFormMixin:
                                                         else:
                                                             # 多个控件情况，可能有不同的结构
                                                             self._apply_subconfigs(field_config["children"][actual_name], child_container['config'], child_value_config)
-                                                         
-                                                        # 处理子选项配置
-                                                        all_children_config = self._build_all_children_config(key, actual_name, child_container['config'])
-                                                         
-                                                        # 更新current_config中的children，包含所有子选项配置
-                                                        current_config[key]["children"] = all_children_config
-                                                         
-                                                        # 设置当前子容器为可见并隐藏其他容器
-                                                        self._set_child_container_visibility(key, actual_name)
+                                                         # 处理子选项配置
+                                                            all_children_config = self._build_all_children_config(key, actual_name, child_container['config'])
+                                                            # 更新current_config中的children，包含所有子选项配置
+                                                            current_config[key]["children"] = all_children_config
+                                                            
+                                                            # 设置当前子容器为可见并隐藏其他容器
+                                                            self._set_child_container_visibility(key, actual_name)
+                                                            
+                                                            # 遍历所有其他选项，确保它们的配置也被加载到缓存中
+                                                            for other_option_name in field_config["children"]:
+                                                                if other_option_name != actual_name:
+                                                                    # 检查是否有保存的配置
+                                                                    if "children" in value and other_option_name in value["children"]:
+                                                                        # 创建缓存键
+                                                                        cache_key = f"{key}_{other_option_name}"
+                                                                        # 将保存的配置添加到缓存中
+                                                                        self.option_subconfig_cache[cache_key] = copy.deepcopy(value["children"][other_option_name])
+
                                 finally:
                                     # 确保在任何情况下都恢复信号
                                     combo.blockSignals(False)

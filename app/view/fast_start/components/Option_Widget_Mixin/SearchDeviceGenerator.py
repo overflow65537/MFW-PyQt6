@@ -186,6 +186,25 @@ class BaseDeviceSearcher(QObject):
                 )
 
         # 子类可以覆盖此方法进行其他处理，但必须调用super()或保存值
+        # 自动保存选项
+        self._auto_save_options()
+
+    def _auto_save_options(self):
+        """自动保存当前选项"""
+        # 检查是否禁用了自动保存
+        if hasattr(self.host, "_disable_auto_save") and self.host._disable_auto_save:
+            return
+            
+        # 检查是否有service_coordinator和option_service
+        if hasattr(self.host, "service_coordinator") and hasattr(self.host.service_coordinator, "option_service"):  # type: ignore
+            try:
+                # 获取当前所有配置
+                all_config = self.host.get_config()
+                # 调用OptionService的update_options方法保存选项
+                self.host.service_coordinator.option_service.update_options(all_config)  # type: ignore
+            except Exception as e:
+                # 如果保存失败，记录错误但不影响用户操作
+                logger.error(f"自动保存选项失败: {e}")
 
     def _write_result_to_input(self, input_key, data):
         """将搜索结果写入对应的输入框"""
@@ -214,6 +233,27 @@ class BaseDeviceSearcher(QObject):
 
         if input_widget and hasattr(input_widget, "setText"):
             input_widget.setText(str(data))
+            
+            # 更新配置并保存
+            # 查找对应的配置位置并更新
+            found = False
+            for main_key, container_dict in self.host.all_child_containers.items():
+                for option_key, container in container_dict.items():
+                    # 直接使用input_key作为配置键更新
+                    if input_key in container["config"]:
+                        container["config"][input_key] = str(data)
+                        found = True
+                        break
+                if found:
+                    break
+            
+            if not found:
+                # 更新host的current_config
+                if input_key in self.host.current_config:
+                    self.host.current_config[input_key] = str(data)
+            
+            # 自动保存选项
+            self._auto_save_options()
 
 
 class AdbDeviceSearcher(BaseDeviceSearcher):
@@ -288,10 +328,10 @@ class AdbDeviceSearcher(BaseDeviceSearcher):
 
                     # 使用addItems一次性添加所有设备
                     self.result_combo.addItems(device_list)
-                    
+
                     # 设置没有选中任何项
                     self.result_combo.setCurrentIndex(-1)
-                    
+
                     # 更新UI
                     self.result_combo.update()
 
@@ -335,6 +375,10 @@ class AdbDeviceSearcher(BaseDeviceSearcher):
             adb_path = getattr(device, "adb_path", "") or getattr(device, "path", "")
             if adb_path:
                 self._write_result_to_input("adb_path", adb_path)
+
+        # 然后在一个地方写入正确的设备名称
+        if hasattr(self, "_config") and self._config is not None:
+            self._config[key] = value
 
         # 保存当前选中的设备名称到配置 - 使用在create_search_device中保存的正确配置对象
 
@@ -399,10 +443,10 @@ class Win32WindowSearcher(BaseDeviceSearcher):
 
                     # 使用addItems一次性添加所有窗口
                     self.result_combo.addItems(window_list)
-                    
+
                     # 设置没有选中任何项
                     self.result_combo.setCurrentIndex(-1)
-                    
+
                     # 更新UI
                     self.result_combo.update()
 
@@ -433,7 +477,12 @@ class Win32WindowSearcher(BaseDeviceSearcher):
             hwnd = match.group(1)
             self._write_result_to_input("hwnd", hwnd)
 
-        # 保存当前选中的窗口到配置
+        # 然后在一个地方写入正确的窗口名称
+        if hasattr(self, "_config") and self._config is not None:
+            self._config[key] = value
+
+        # 保存当前选中的设备名称到配置 - 使用在create_search_device中保存的正确配置对象
+
         super()._on_result_selected(key, value, config)
 
 
