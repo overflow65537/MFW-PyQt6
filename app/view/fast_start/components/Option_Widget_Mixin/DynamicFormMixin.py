@@ -81,14 +81,6 @@ class DynamicFormMixin:
                 self._create_lineedit(
                     key, config_item, self.parent_layout, self.current_config
                 )
-            elif config_item["type"] == "pathlineedit":
-                self._create_pathlineedit(
-                    key, config_item, self.parent_layout, self.current_config
-                )
-            elif config_item["type"] == "gpu_combobox":
-                self._create_gpu_combobox(
-                    key, config_item, self.parent_layout, self.current_config
-                )
 
         # 如果提供了配置，则应用它
         if config:
@@ -110,17 +102,6 @@ class DynamicFormMixin:
         line_edit_generator = LineEditGenerator(self)
         line_edit_generator.create_lineedit(key, config, parent_layout, parent_config)
         
-    def _create_pathlineedit(self, key, config, parent_layout, parent_config):
-        """创建带按钮的路径输入框"""
-        path_line_edit_generator = PathLineEditGenerator(self)
-        path_line_edit_generator.create_pathlineedit(key, config, parent_layout, parent_config)
-
-    def _create_gpu_combobox(self, key, config, parent_layout, parent_config):
-        """创建GPU下拉框"""
-        gpu_combo_generator = GPUComboBoxGenerator(self)
-        gpu_combo_generator.create_gpu_combobox(key, config, parent_layout, parent_config)
-
-
     def _clear_layout(self, layout):
         """清空布局中的所有控件"""
         while layout.count() > 0:
