@@ -21,11 +21,12 @@ class ComboBoxGenerator:
 
     def create_combobox(self, key, config, parent_layout, parent_config):
         """创建下拉框"""
-        # 创建控件容器布局
-        container_layout = QVBoxLayout()
+        # 创建控件容器
+        container_widget = QWidget()
+        container_layout = QVBoxLayout(container_widget)
         container_layout.setContentsMargins(5, 5, 5, 5)
         container_layout.setSpacing(5)
-        parent_layout.addLayout(container_layout)
+        parent_layout.addWidget(container_widget)
 
         # 创建标签和图标容器
         label_container = QHBoxLayout()
@@ -121,13 +122,8 @@ class ComboBoxGenerator:
 
         # 检查是否需要隐藏整个下拉框行
         if "visible" in config and not config["visible"]:
-            # 隐藏标签和下拉框
-            label.setVisible(False)
-            combo.setVisible(False)
-
-            # 如果有图标也隐藏
-            if icon_label:
-                icon_label.setVisible(False)
+            # 隐藏整个容器
+            container_widget.setVisible(False)
 
         # 为下拉框控件添加tooltip（选项内部层级）
         if "description" in config:

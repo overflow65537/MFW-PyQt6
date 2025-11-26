@@ -106,6 +106,7 @@ if __name__ == "__main__":
 
     # 首次启动时自动检测系统语言
     from app.common.config import init_language_on_first_run
+
     init_language_on_first_run()
 
     # 创建Qt应用实例
@@ -120,15 +121,11 @@ if __name__ == "__main__":
     # 确定语言代码
     language_code = "zh_cn"  # 默认中文
     if locale == Language.CHINESE_SIMPLIFIED:
-        galleryTranslator.load(
-            os.path.join(".", "app", "i18n", "i18n.zh_CN.qm")
-        )
+        galleryTranslator.load(os.path.join(".", "app", "i18n", "i18n.zh_CN.qm"))
         language_code = "zh_cn"
         logger.info("加载简体中文翻译")
     elif locale == Language.CHINESE_TRADITIONAL:
-        galleryTranslator.load(
-            os.path.join(".", "app", "i18n", "i18n.zh_HK.qm")
-        )
+        galleryTranslator.load(os.path.join(".", "app", "i18n", "i18n.zh_HK.qm"))
         language_code = "zh_hk"
         logger.info("加载繁体中文翻译")
     elif locale == Language.ENGLISH:

@@ -1,11 +1,7 @@
 import copy
 from .LineEditGenerator import LineEditGenerator
 from .ComboBoxGenerator import ComboBoxGenerator
-from .PathLineEditGenerator import PathLineEditGenerator
-from .GPUComboBoxGenerator import GPUComboBoxGenerator
-
 from app.utils.logger import logger
-
 
 class DynamicFormMixin:
     """
@@ -17,18 +13,25 @@ class DynamicFormMixin:
     def __init__(self):
         """初始化动态表单Mixin"""
         # 确保这些属性被初始化
-
-        self.widgets = {}
-        self.child_layouts = {}
-        self.current_config = {}
-        self.config_structure = {}
-        self.parent_layout = None
+        if not hasattr(self, "widgets"):
+            self.widgets = {}
+        if not hasattr(self, "child_layouts"):
+            self.child_layouts = {}
+        if not hasattr(self, "current_config"):
+            self.current_config = {}
+        if not hasattr(self, "config_structure"):
+            self.config_structure = {}
+        if not hasattr(self, "parent_layout"):
+            self.parent_layout = None
         # 添加子配置缓存，用于保存不同主选项对应的子配置
-        self.child_config_cache = {}
+        if not hasattr(self, "child_config_cache"):
+            self.child_config_cache = {}
         # 子选项配置缓存，按主选项键和主选项值组织
-        self.option_subconfig_cache = {}
+        if not hasattr(self, "option_subconfig_cache"):
+            self.option_subconfig_cache = {}
         # 存储所有子选项容器的字典，格式：{main_key: {option_value: {layout: QVBoxLayout, widgets: {}, config: {}}}}}
-        self.all_child_containers = {}
+        if not hasattr(self, "all_child_containers"):
+            self.all_child_containers = {}
 
     def update_form(self, form_structure, config=None):
         """
@@ -38,17 +41,17 @@ class DynamicFormMixin:
         """
         # 保存新的表单结构
         self.config_structure = form_structure
-
+        
         # 处理任务层级的description
         try:
-            if hasattr(self, "set_description"):
-                if "description" in form_structure:
-                    self.set_description(form_structure["description"])  # type: ignore
-                    if hasattr(self, "_toggle_description"):
-                        self._toggle_description(visible=True)  # type: ignore
+            if hasattr(self, 'set_description'):
+                if 'description' in form_structure:
+                    self.set_description(form_structure['description']) # type: ignore
+                    if hasattr(self, '_toggle_description'):
+                        self._toggle_description(visible=True) # type: ignore
                 else:
                     # 如果form_structure中没有description字段，隐藏描述区域
-                    self.set_description("")  # type: ignore
+                    self.set_description('') # type: ignore
         except Exception:
             # 如果设置description失败，忽略此错误
             pass
@@ -69,7 +72,7 @@ class DynamicFormMixin:
             # 跳过任务层级的description字段
             if key == "description":
                 continue
-
+                
             if config_item["type"] == "combobox":
                 self._create_combobox(
                     key, config_item, self.parent_layout, self.current_config
@@ -84,14 +87,6 @@ class DynamicFormMixin:
                 )
             elif config_item["type"] == "gpu_combobox":
                 self._create_gpu_combobox(
-                    key, config_item, self.parent_layout, self.current_config
-                )
-            elif config_item["type"] in [
-                "search_device",
-                "adb_search_device",
-                "win32_search_device",
-            ]:
-                self._create_search_device(
                     key, config_item, self.parent_layout, self.current_config
                 )
 
@@ -110,44 +105,21 @@ class DynamicFormMixin:
         """创建下拉框"""
         combo_generator = ComboBoxGenerator(self)
         combo_generator.create_combobox(key, config, parent_layout, parent_config)
-
     def _create_lineedit(self, key, config, parent_layout, parent_config):
         """创建输入框"""
         line_edit_generator = LineEditGenerator(self)
         line_edit_generator.create_lineedit(key, config, parent_layout, parent_config)
-
+        
     def _create_pathlineedit(self, key, config, parent_layout, parent_config):
         """创建带按钮的路径输入框"""
         path_line_edit_generator = PathLineEditGenerator(self)
-        path_line_edit_generator.create_pathlineedit(
-            key, config, parent_layout, parent_config
-        )
+        path_line_edit_generator.create_pathlineedit(key, config, parent_layout, parent_config)
 
     def _create_gpu_combobox(self, key, config, parent_layout, parent_config):
         """创建GPU下拉框"""
         gpu_combo_generator = GPUComboBoxGenerator(self)
-        gpu_combo_generator.create_gpu_combobox(
-            key, config, parent_layout, parent_config
-        )
+        gpu_combo_generator.create_gpu_combobox(key, config, parent_layout, parent_config)
 
-    def _create_search_device(self, key, config, parent_layout, parent_config):
-        """创建搜索设备组件"""
-        from .SearchDeviceGenerator import AdbDeviceSearcher, Win32WindowSearcher
-
-        # 根据配置类型创建不同的搜索器
-        searcher = None
-
-        if config["type"] == "adb_search_device":
-            searcher = AdbDeviceSearcher(self)
-        elif config["type"] == "win32_search_device":
-            searcher = Win32WindowSearcher(self)
-        elif config["type"] == "search_device":
-            # 兼容旧的搜索设备类型
-            # 尝试从配置中确定控制器类型或默认使用ADB
-            searcher = AdbDeviceSearcher(self)
-
-        if searcher:
-            searcher.create_search_device(key, config, parent_layout, parent_config)
 
     def _clear_layout(self, layout):
         """清空布局中的所有控件"""
@@ -160,10 +132,10 @@ class DynamicFormMixin:
                 child_layout = item.layout()
                 if child_layout:
                     self._clear_layout(child_layout)
-
+    
     def _apply_subconfigs(self, child_structure, target_config, cached_config):
         """应用缓存的子配置到目标配置
-
+        
         :param child_structure: 子控件结构定义
         :param target_config: 目标配置字典
         :param cached_config: 缓存的配置字典
@@ -171,10 +143,10 @@ class DynamicFormMixin:
         # 确保cached_config是一个字典
         if not isinstance(cached_config, dict):
             return
-
+            
         # 深度合并缓存配置到目标配置，保留未在缓存中但存在于目标配置中的键
         # import copy is now at the top of the file
-
+        
         # 如果子结构是单个控件
         if isinstance(child_structure, dict):
             if "type" in child_structure:
@@ -188,18 +160,14 @@ class DynamicFormMixin:
                 for sub_key, sub_config in child_structure.items():
                     if sub_key in cached_config:
                         # 如果缓存配置是字典，进行深度合并
-                        if isinstance(cached_config[sub_key], dict) and isinstance(
-                            target_config.get(sub_key), dict
-                        ):
+                        if isinstance(cached_config[sub_key], dict) and isinstance(target_config.get(sub_key), dict):
                             # 合并两个字典，保留目标配置中不在缓存中的键
                             for k, v in cached_config[sub_key].items():
                                 target_config[sub_key][k] = copy.deepcopy(v)
                         else:
                             # 否则直接复制
-                            target_config[sub_key] = copy.deepcopy(
-                                cached_config[sub_key]
-                            )
-
+                            target_config[sub_key] = copy.deepcopy(cached_config[sub_key])
+        
         # 应用配置到UI控件
         # 遍历目标配置中的所有键
         for sub_key, sub_value in target_config.items():
@@ -223,52 +191,42 @@ class DynamicFormMixin:
                         # 临时阻断信号
                         sub_widget.blockSignals(True)
                         try:
-                            if hasattr(sub_widget, "setText"):
+                            if hasattr(sub_widget, 'setText'):
                                 sub_widget.setText(str(sub_value))
-                            elif hasattr(sub_widget, "setCurrentText"):
+                            elif hasattr(sub_widget, 'setCurrentText'):
                                 index = sub_widget.findText(str(sub_value))
                                 if index >= 0:
                                     sub_widget.setCurrentIndex(index)
                             # 处理其他可能的控件类型
-                            elif hasattr(sub_widget, "setChecked") and isinstance(
-                                sub_value, bool
-                            ):
+                            elif hasattr(sub_widget, 'setChecked') and isinstance(sub_value, bool):
                                 sub_widget.setChecked(sub_value)
                         finally:
                             # 确保恢复信号
                             sub_widget.blockSignals(False)
                 except Exception as e:
                     # 记录错误但不影响其他控件的更新
-                    logger.error(
-                        f"应用子配置到控件失败 (key: {sub_key}, value: {sub_value}): {e}"
-                    )
+                    logger.error(f"应用子配置到控件失败 (key: {sub_key}, value: {sub_value}): {e}")
 
     def _set_child_container_visibility(self, key, visible_option_value):
         """设置子选项容器的可见性"""
         if key in self.all_child_containers:
             for option_value, container_info in self.all_child_containers[key].items():
-                container_info["container"].setVisible(
-                    option_value == visible_option_value
-                )
-
+                container_info['container'].setVisible(option_value == visible_option_value)
+    
     def _build_all_children_config(self, key, current_value, current_config):
         """构建包含所有子选项配置的字典"""
         all_children_config = {current_value: current_config}
-
+        
         if key in self.all_child_containers:
             for option_value, container_info in self.all_child_containers[key].items():
                 if option_value != current_value:  # 已经添加了当前选项，跳过
                     cache_key = f"{key}_{option_value}"
                     if cache_key in self.option_subconfig_cache:
                         # 从缓存中获取配置
-                        all_children_config[option_value] = copy.deepcopy(
-                            self.option_subconfig_cache[cache_key]
-                        )
-                    elif container_info["config"]:  # 如果缓存中没有但容器中有配置
-                        all_children_config[option_value] = copy.deepcopy(
-                            container_info["config"]
-                        )
-
+                        all_children_config[option_value] = copy.deepcopy(self.option_subconfig_cache[cache_key])
+                    elif container_info['config']:  # 如果缓存中没有但容器中有配置
+                        all_children_config[option_value] = copy.deepcopy(container_info['config'])
+        
         return all_children_config
         """清空布局中的所有控件"""
         while layout.count() > 0:
@@ -281,34 +239,13 @@ class DynamicFormMixin:
                 if child_layout:
                     self._clear_layout(child_layout)
 
+
     def _auto_save_options(self):
         """自动保存当前选项"""
-
-        # 检查配置是否为空或仅包含空值
-        def is_config_empty(config):
-            if not isinstance(config, dict):
-                return True
-            for key, value in config.items():
-                if isinstance(value, dict):
-                    if not is_config_empty(value):
-                        return False
-                elif isinstance(value, str):
-                    if value.strip():
-                        return False
-                elif value:  # 处理其他非空值类型
-                    return False
-            return True
-
-        # 如果配置为空，则不保存
-        current_config = self.get_config()
-        if is_config_empty(current_config):
-            logger.info("配置为空或仅包含空值，跳过自动保存")
-            return
-
         # 检查是否禁用了自动保存
         if hasattr(self, "_disable_auto_save") and self._disable_auto_save:
             return
-
+            
         # 检查是否有service_coordinator和option_service
         if hasattr(self, "service_coordinator") and hasattr(self.service_coordinator, "option_service"):  # type: ignore
             try:
@@ -328,31 +265,18 @@ class DynamicFormMixin:
         :param current_config: 当前配置字典
         """
         # 保存旧的_disable_auto_save值，确保正确恢复
-        old_disable_auto_save = getattr(self, "_disable_auto_save", False)
+        old_disable_auto_save = getattr(self, '_disable_auto_save', False)
         self._disable_auto_save = True
-
+        
         try:
             for key, value in config.items():
                 if key in form_structure:
                     field_config = form_structure[key]
-                    
+
                     if field_config["type"] == "combobox":
                         # 处理下拉框配置
                         if isinstance(value, dict):
-                            # 配置文件中的value是实际的name值，而不是label
-                            saved_name = value.get("value", "")
-                            combo_value = ""
-
-                            # 查找对应的label值
-                            for option in field_config["options"]:
-                                if option["name"] == saved_name:
-                                    combo_value = option["label"]
-                                    break
-
-                            # 如果没有找到label，直接使用name
-                            if not combo_value:
-                                combo_value = saved_name
-
+                            combo_value = value.get("value", "")
                             # 查找并设置下拉框的值
                             if key in self.widgets:
                                 combo = self.widgets[key]
@@ -362,260 +286,80 @@ class DynamicFormMixin:
                                     index = combo.findText(combo_value)
                                     if index >= 0:
                                         combo.setCurrentIndex(index)
-
+                                        
                                         # 手动更新当前配置，确保保留原始值
                                         if key not in current_config:
                                             current_config[key] = {}
-                                        # 保存实际的name值，而不是label
-                                        current_config[key]["value"] = saved_name
-
+                                        current_config[key]["value"] = combo_value
+                                        
                                         # 递归应用子配置
                                         if "children" in value:
-                                            # 检查field_config是否有children属性
-                                            if "children" in field_config:
-                                                # 遍历所有子选项，将它们的配置加载到缓存中
-                                                for option_name in field_config["children"]:  # 使用field_config["children"]而不是value["children"]来遍历所有子选项
-                                                    # 检查是否有保存的配置
-                                                    cache_key = f"{key}_{option_name}"
-                                                    if (
-                                                        "children" in value
-                                                        and option_name
-                                                        in value["children"]
-                                                    ):
-                                                        # 将保存的配置添加到缓存中
-                                                        self.option_subconfig_cache[cache_key] = copy.deepcopy(
-                                                            value["children"][option_name]
-                                                        )
-                                                    elif cache_key not in self.option_subconfig_cache:
-                                                        # 如果缓存中没有该配置，且value中也没有，则初始化一个空配置
-                                                        self.option_subconfig_cache[cache_key] = {}
-
                                             # 优先使用children属性
-                                            # 查找实际的name值，而不是label
-                                            actual_name = None
-                                            for option in field_config["options"]:
-                                                if option["label"] == combo_value:
-                                                    actual_name = option["name"]
-                                                    break
-
                                             if (
                                                 "children" in field_config
-                                                and actual_name
-                                                in field_config["children"]
+                                                and combo_value in field_config["children"]
                                             ):
                                                 # 确保子选项容器存在
-                                                if (
-                                                    key in self.all_child_containers
-                                                    and actual_name
-                                                    in self.all_child_containers[key]
-                                                ):
+                                                if key in self.all_child_containers and combo_value in self.all_child_containers[key]:
                                                     # 获取对应的子选项容器
-                                                    child_container = (
-                                                        self.all_child_containers[key][
-                                                            actual_name
-                                                        ]
-                                                    )
-
+                                                    child_container = self.all_child_containers[key][combo_value]
+                                                    
                                                     # 确保子容器中的控件已创建
-                                                    if child_container["layout"].count() == 0:
-                                                        child_config = field_config[
-                                                            "children"
-                                                        ][actual_name]
+                                                    if child_container['layout'].count() == 0:
+                                                        child_config = field_config["children"][combo_value]
                                                         # 创建子控件
-                                                        if isinstance(
-                                                            child_config, dict
-                                                        ):
+                                                        if isinstance(child_config, dict):
                                                             if "type" in child_config:
                                                                 # 单个控件情况
-                                                                if (
-                                                                    child_config["type"]
-                                                                    == "combobox"
-                                                                ):
-                                                                    # 查找当前子选项的实际键名，而不是硬编码为f"{key}_child"
-                                                                    # 直接使用child_config的name或label字段
-                                                                    child_key = child_config.get(
-                                                                        "name",
-                                                                        child_config.get(
-                                                                            "label",
-                                                                            f"{key}_child",
-                                                                        ),
-                                                                    )
-                                                                    # 移除可能的$前缀
-                                                                    if child_key.startswith(
-                                                                        "$"
-                                                                    ):
-                                                                        child_key = (
-                                                                            child_key[
-                                                                                1:
-                                                                            ]
-                                                                        )
+                                                                if child_config["type"] == "combobox":
                                                                     self._create_combobox(
-                                                                        child_key,
-                                                                        child_config,
-                                                                        child_container[
-                                                                            "layout"
-                                                                        ],
-                                                                        child_container[
-                                                                            "config"
-                                                                        ],
+                                                                        f"{key}_child", child_config, child_container['layout'], child_container['config']
                                                                     )
-                                                                elif (
-                                                                    child_config["type"]
-                                                                    == "lineedit"
-                                                                ):
-                                                                    # 查找当前子选项的实际键名，而不是硬编码为f"{key}_child"
-                                                                    # 直接使用child_config的name或label字段
-                                                                    child_key = child_config.get(
-                                                                        "name",
-                                                                        child_config.get(
-                                                                            "label",
-                                                                            f"{key}_child",
-                                                                        ),
-                                                                    )
-                                                                    # 移除可能的$前缀
-                                                                    if child_key.startswith(
-                                                                        "$"
-                                                                    ):
-                                                                        child_key = (
-                                                                            child_key[
-                                                                                1:
-                                                                            ]
-                                                                        )
+                                                                elif child_config["type"] == "lineedit":
                                                                     self._create_lineedit(
-                                                                        child_key,
-                                                                        child_config,
-                                                                        child_container[
-                                                                            "layout"
-                                                                        ],
-                                                                        child_container[
-                                                                            "config"
-                                                                        ],
-                                                                    )
-                                                                elif child_config[
-                                                                    "type"
-                                                                ] in [
-                                                                    "search_device",
-                                                                    "adb_search_device",
-                                                                    "win32_search_device",
-                                                                ]:
-                                                                    # 查找当前子选项的实际键名，而不是硬编码为f"{key}_child"
-                                                                    # 直接使用child_config的name或label字段
-                                                                    child_key = child_config.get(
-                                                                        "name",
-                                                                        child_config.get(
-                                                                            "label",
-                                                                            f"{key}_child",
-                                                                        ),
-                                                                    )
-                                                                    # 移除可能的$前缀
-                                                                    if child_key.startswith(
-                                                                        "$"
-                                                                    ):
-                                                                        child_key = (
-                                                                            child_key[
-                                                                                1:
-                                                                            ]
-                                                                        )
-                                                                    self._create_search_device(
-                                                                        child_key,
-                                                                        child_config,
-                                                                        child_container[
-                                                                            "layout"
-                                                                        ],
-                                                                        child_container[
-                                                                            "config"
-                                                                        ],
+                                                                        f"{key}_child", child_config, child_container['layout'], child_container['config']
                                                                     )
                                                             else:
                                                                 # 多个控件情况
-                                                                for (
-                                                                    sub_key,
-                                                                    sub_config,
-                                                                ) in (
-                                                                    child_config.items()
-                                                                ):
-                                                                    if (
-                                                                        sub_config.get(
-                                                                            "type"
-                                                                        )
-                                                                        == "combobox"
-                                                                    ):
+                                                                for sub_key, sub_config in child_config.items():
+                                                                    if sub_config.get("type") == "combobox":
                                                                         self._create_combobox(
-                                                                            sub_key,
-                                                                            sub_config,
-                                                                            child_container[
-                                                                                "layout"
-                                                                            ],
-                                                                            child_container[
-                                                                                "config"
-                                                                            ],
+                                                                            sub_key, sub_config, child_container['layout'], child_container['config']
                                                                         )
-                                                                    elif (
-                                                                        sub_config.get(
-                                                                            "type"
-                                                                        )
-                                                                        == "lineedit"
-                                                                    ):
+                                                                    elif sub_config.get("type") == "lineedit":
                                                                         self._create_lineedit(
-                                                                            sub_key,
-                                                                            sub_config,
-                                                                            child_container[
-                                                                                "layout"
-                                                                            ],
-                                                                            child_container[
-                                                                                "config"
-                                                                            ],
+                                                                            sub_key, sub_config, child_container['layout'], child_container['config']
                                                                         )
-                                                                    elif sub_config.get(
-                                                                        "type"
-                                                                    ) in [
-                                                                        "search_device",
-                                                                        "adb_search_device",
-                                                                        "win32_search_device",
-                                                                    ]:
-                                                                        self._create_search_device(
-                                                                            sub_key,
-                                                                            sub_config,
-                                                                            child_container[
-                                                                                "layout"
-                                                                            ],
-                                                                            child_container[
-                                                                                "config"
-                                                                            ],
-                                                                        )
-
+                                                    
                                                     # 设置当前子容器为可见并隐藏其他容器
-                                                    self._set_child_container_visibility(
-                                                        key, actual_name
-                                                    )
-
+                                                    self._set_child_container_visibility(key, combo_value)
+            
                                                     # 检查是否有缓存的子配置
-                                                    cache_key = f"{key}_{actual_name}"
-
-                                                    # 无论是否有缓存，我们都已经将配置加载到缓存中了
-                                                    self._apply_subconfigs(
-                                                        field_config["children"][
-                                                            actual_name
-                                                        ],
-                                                        child_container["config"],
-                                                        self.option_subconfig_cache[
-                                                            cache_key
-                                                        ],
-                                                    )
-
-                                                    # 处理子选项配置
-                                                    all_children_config = (
-                                                        self._build_all_children_config(
-                                                            key,
-                                                            actual_name,
-                                                            child_container["config"],
-                                                        )
-                                                    )
-                                                    # 更新current_config中的children，包含所有子选项配置
-                                                    current_config[key][
-                                                        "children"
-                                                    ] = all_children_config
-
+                                                    cache_key = f"{key}_{combo_value}"
+                                                    if cache_key in self.option_subconfig_cache:
+                                                        # 优先使用缓存的子配置
+                                                        self._apply_subconfigs(field_config["children"][combo_value], child_container['config'], self.option_subconfig_cache[cache_key])
+                                                    else:
+                                                        # 应用子配置到子容器
+                                                        # value["children"] 可能包含所有子选项配置，因此我们需要获取当前选项的配置
+                                                        child_value_config = value["children"].get(combo_value, value["children"])
+                                                         
+                                                        # 根据child_config的类型选择不同的处理方式
+                                                        if "type" in field_config["children"][combo_value]:
+                                                            # 单个控件情况，将整个配置传递进去
+                                                            self._apply_subconfigs(field_config["children"][combo_value], child_container['config'], child_value_config)
+                                                        else:
+                                                            # 多个控件情况，可能有不同的结构
+                                                            self._apply_subconfigs(field_config["children"][combo_value], child_container['config'], child_value_config)
+                                                         
+                                                        # 处理子选项配置
+                                                        all_children_config = self._build_all_children_config(key, combo_value, child_container['config'])
+                                                         
+                                                        # 更新current_config中的children，包含所有子选项配置
+                                                        current_config[key]["children"] = all_children_config
+                                                         
+                                                        # 设置当前子容器为可见并隐藏其他容器
+                                                        self._set_child_container_visibility(key, combo_value)
                                 finally:
                                     # 确保在任何情况下都恢复信号
                                     combo.blockSignals(False)
@@ -630,7 +374,7 @@ class DynamicFormMixin:
                                     # 确保current_config[key]是一个字典
                                     if key not in current_config:
                                         current_config[key] = {}
-
+                                    
                                     for input_name, input_value in value.items():
                                         if input_name in self.widgets[key]:
                                             # 临时断开信号连接
@@ -639,9 +383,7 @@ class DynamicFormMixin:
                                             try:
                                                 widget.setText(str(input_value))
                                                 # 手动更新current_config，确保保留原始值
-                                                current_config[key][
-                                                    input_name
-                                                ] = input_value
+                                                current_config[key][input_name] = input_value
                                             finally:
                                                 # 确保在任何情况下都恢复信号
                                                 widget.blockSignals(False)
