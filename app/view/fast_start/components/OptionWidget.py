@@ -7,48 +7,38 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
-    QHBoxLayout,
     QSplitter,
 )
 
 from qfluentwidgets import (
     SimpleCardWidget,
-    ToolTipPosition,
-    ToolTipFilter,
     BodyLabel,
     ScrollArea,
-    ComboBox,
-    EditableComboBox,
-    SwitchButton,
-    PrimaryPushButton,
-    LineEdit,
-    SpinBox,
-    CheckBox,
 )
 from app.view.fast_start.animations.option_transition import OptionTransitionAnimator
 from app.view.fast_start.components.Option_Widget_Mixin.DynamicFormMixin import (
     DynamicFormMixin,
 )
-
+from app.view.fast_start.components.Option_Widget_Mixin.ResourceSettingMixin import (
+    ResourceSettingMixin,
+)
 from app.utils.logger import logger
-from app.common.signal_bus import signalBus
-from app.common.constants import RESOURCE_TASK_ID, POST_TASK_ID
-from app.utils.gui_helper import IconLoader
-from app.widget.PathLineEdit import PathLineEdit
-
-from ....core.core import TaskItem, ConfigItem, ServiceCoordinator
 
 
-class OptionWidget(QWidget, DynamicFormMixin):
+from ....core.core import ServiceCoordinator
+
+
+class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin):
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         # 先调用QWidget的初始化
         self.service_coordinator = service_coordinator
         QWidget.__init__(self, parent)
         # 再调用DynamicFormMixin的初始化
         DynamicFormMixin.__init__(self)
+        # 调用ResourceSettingMixin的初始化
+        ResourceSettingMixin.__init__(self)
         self.current_config = self.service_coordinator.option.current_options
 
-        
         # 设置parent_layout为option_area_layout，供DynamicFormMixin使用
         self.parent_layout = None  # 将在_setup_ui中设置
         self._init_ui()
@@ -294,8 +284,18 @@ class OptionWidget(QWidget, DynamicFormMixin):
 
         # 只使用form_structure更新表单
         if form_structure:
-            self.update_form_from_structure(form_structure, options)
-            logger.info(f"表单已使用form_structure更新")
+            # 判断是否为资源类型的配置
+            if (
+                isinstance(form_structure, dict)
+                and form_structure.get("type") == "resource"
+            ):
+                # 使用ResourceSettingMixin创建资源设置UI
+                self.create_resource_settings()
+                logger.info("资源设置表单已创建")
+            else:
+                # 正常的表单更新逻辑
+                self.update_form_from_structure(form_structure, options)
+                logger.info(f"表单已使用form_structure更新")
         else:
             # 没有表单时清除界面
             self._clear_options()  # 使用专门的方法清除选项

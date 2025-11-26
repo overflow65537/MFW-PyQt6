@@ -13,8 +13,8 @@ class OptionService:
         self.task_service = task_service
         self.signal_bus = signal_bus
         self.current_task_id = None
-        self.current_options = {}
-        self.form_structure = {}  # 保存当前表单结构
+        self.current_options: Dict[str, Any] = {}
+        self.form_structure: Optional[Dict[str, Any]] = {}  # 保存当前表单结构
 
         # 连接信号
         self.signal_bus.task_selected.connect(self._on_task_selected)
@@ -29,9 +29,7 @@ class OptionService:
 
             if task.item_id == "resource_base_task":
 
-                self.form_structure = {
-                    "type":"resource"
-                }
+                self.form_structure = {"type": "resource"}
             else:
                 # 获取表单结构
                 self.form_structure = self.get_form_structure_by_task_name(
@@ -83,11 +81,11 @@ class OptionService:
 
     def get_form_field(self, field_name: str) -> Optional[Dict[str, Any]]:
         """获取特定表单字段的配置"""
-        return (
-            self.form_structure.get(field_name)
-            if isinstance(self.form_structure, dict)
-            else None
-        )
+        if isinstance(self.form_structure, dict):
+            field_value = self.form_structure.get(field_name)
+            # 确保返回的是字典类型，如果不是则返回None
+            return field_value if isinstance(field_value, dict) else None
+        return None
 
     def process_option_def(
         self,
