@@ -1,3 +1,4 @@
+import copy
 from typing import Any, Dict, Optional
 from venv import logger
 
@@ -31,9 +32,10 @@ class OptionService:
                     create_resource_setting_form_structure,
                 )
 
-                self.form_structure = create_resource_setting_form_structure(
+                self.form_structure = self.update_search_device_in_structure(create_resource_setting_form_structure(
                     self.task_service.interface
-                )
+                ), self.current_options)
+            
             else:
                 # 获取表单结构
                 self.form_structure = self.get_form_structure_by_task_name(
@@ -241,3 +243,43 @@ class OptionService:
                 break
 
         return form_structure if form_structure else None
+    @staticmethod
+    def update_search_device_in_structure(structure_dict: Dict[str, Any], config_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        将配置字典中的controller_type的children中的每个obj的search_device值
+        放入到结构字典中的controller_type的children中对应的search_device的value中
+        
+        Args:
+            structure_dict: 结构字典
+            config_dict: 配置字典
+            
+        Returns:
+            Dict[str, Any]: 更新后的结构字典
+        """
+        # 深度复制结构字典，避免修改原始字典
+        updated_structure = copy.deepcopy(structure_dict)
+        
+        if not updated_structure or 'controller_type' not in updated_structure:
+            return updated_structure
+            
+        # 检查配置字典中是否有controller_type的结构
+        if (config_dict and 'controller_type' in config_dict and
+            'children' in config_dict['controller_type']):
+            
+            # 获取结构字典中的controller_type部分
+            form_controller_type = updated_structure['controller_type']
+            # 获取配置字典中的controller_type部分
+            config_controller_type = config_dict['controller_type']
+            
+            # 遍历结构字典中的controller_type的children
+            if 'children' in form_controller_type:
+                for device_type, device_config in form_controller_type['children'].items():
+                    # 检查设备配置中是否有search_device字段
+                    if 'search_device' in device_config:
+                        # 检查配置字典中是否有对应的设备类型和search_device值
+                        if (device_type in config_controller_type['children'] and
+                            'search_device' in config_controller_type['children'][device_type]):
+                            # 将配置字典中的search_device值放入结构字典中的对应位置
+                            device_config['search_device']['value'] = config_controller_type['children'][device_type]['search_device']
+        
+        return updated_structure

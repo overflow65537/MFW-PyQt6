@@ -213,7 +213,7 @@ class ComboBoxGenerator:
                 combo.blockSignals(False)
         finally:
             # 恢复自动保存状态
-            self.host._disable_auto_save = old_disable_auto_save
+            self.host._disable_auto_save = old_disable_auto_save # type: ignore
 
     def _on_combobox_changed(
         self, key, value, config, parent_config, child_layout, save_config=True

@@ -57,6 +57,11 @@ class BaseDeviceSearcher(QObject):
         # 创建结果下拉框（初始为空）
         self.result_combo = ComboBox()
         self.result_combo.setPlaceholderText(self.tr("No devices found"))
+
+        # 检查配置中是否有当前资源名称并添加到下拉框
+        if "value" in config:
+            controller_name = config["value"]
+            self.result_combo.addItem(controller_name)
         # 创建搜索按钮 - 硬编码文本
         search_button = ToolButton(FIF.SEARCH)
 
@@ -131,11 +136,6 @@ class BaseDeviceSearcher(QObject):
                 current_key, value, current_config
             )
         )
-
-        # 恢复上次选择的设备名称（如果有）
-        if key in self.host.current_config and self.host.current_config[key]:
-            saved_device_name = self.host.current_config[key]
-            self.result_combo.setCurrentText(saved_device_name)
 
     def _on_search_clicked(self, key, config):
         """搜索按钮点击处理 - 需要在子类中实现"""
