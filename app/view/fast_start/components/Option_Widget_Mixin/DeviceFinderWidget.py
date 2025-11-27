@@ -44,7 +44,25 @@ class DeviceFinderTask(QRunnable):
                         "hwnd": str(device.hwnd),
                     }
         finally:
-            self.signals.finished.emit(device_mapping, self.controller_type)
+            # Convert all integer values that might exceed 64-bit signed limits to strings
+            safe_mapping = {}
+            for key, value in device_mapping.items():
+                safe_value = value.copy()
+                
+                # Special handling for adb device config which might contain large integers
+                if "config" in safe_value and isinstance(safe_value["config"], dict):
+                    for config_key, config_value in safe_value["config"].items():
+                        if isinstance(config_value, int) and not (-9223372036854775808 <= config_value <= 9223372036854775807):
+                            safe_value["config"][config_key] = str(config_value)
+                
+                # Handle any other large integer fields we might have missed
+                for field, field_value in safe_value.items():
+                    if isinstance(field_value, int) and not (-9223372036854775808 <= field_value <= 9223372036854775807):
+                        safe_value[field] = str(field_value)
+                
+                safe_mapping[key] = safe_value
+            
+            self.signals.finished.emit(safe_mapping, self.controller_type)
 
 
 class DeviceFinderWidget(QWidget):
@@ -61,7 +79,6 @@ class DeviceFinderWidget(QWidget):
 
         self.combo_box = ComboBox()
         self.combo_box.setFixedWidth(260)
-        self.combo_box.currentTextChanged.connect(self._on_device_selected)
         layout.addWidget(self.combo_box, stretch=1)
 
         self.search_button = ToolButton(FIF.SEARCH)
@@ -95,11 +112,3 @@ class DeviceFinderWidget(QWidget):
         self.combo_box.clear()
         self.combo_box.addItems(list(device_mapping.keys()))
         self.search_button.setEnabled(True)
-
-    def _on_device_selected(self, device_name):
-        if not device_name:
-            return
-
-        if device_name in self.device_mapping:
-            device_info = self.device_mapping[device_name]
-            print(device_info)

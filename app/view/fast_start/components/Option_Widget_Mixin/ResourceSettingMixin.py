@@ -1,3 +1,4 @@
+from encodings import search_function
 import jsonc
 from typing import Dict, Any
 from PySide6.QtWidgets import QVBoxLayout
@@ -97,9 +98,10 @@ class ResourceSettingMixin:
                 search_option.change_controller_type(
                     self.controller_type_mapping[label]["type"].lower()
                 )
+                device_name = self.current_config[self.current_config["controller_type"]].get("device_name", self.tr("Unknown Device"))
                 # 阻断下拉框信号发送
                 search_option.combo_box.blockSignals(True)
-                search_option.combo_box.addItem("测试")
+                search_option.combo_box.addItem(device_name)
                 search_option.combo_box.blockSignals(False)
                 break
 
@@ -447,6 +449,17 @@ class ResourceSettingMixin:
                 elif isinstance(widget, ComboBox):
                     target = self.current_config[controller_name][name]
                     widget.setCurrentIndex(self._value_to_index(target))
+        #填充设备名称
+        device_name = self.current_config[controller_name].get("device_name", self.tr("Unknown Device"))
+        # 阻断下拉框信号发送
+        search_option: DeviceFinderWidget = self.resource_setting_widgets[
+            "search_combo"
+        ]
+        search_option.combo_box.blockSignals(True)
+        search_option.combo_box.addItem(device_name)
+        search_option.combo_box.blockSignals(False)
+
+        
 
     def _toggle_win32_children_option(self, visible: bool):
         """控制Win32子选项的隐藏和显示"""
@@ -504,6 +517,7 @@ class ResourceSettingMixin:
             if isinstance(value, WindowsPath):
                 value = str(value)
             current_controller_config[key] = value
+        current_controller_config["device_name"] = device_name
         self._auto_save_options()
         self._fill_children_option(current_controller_name)
 
