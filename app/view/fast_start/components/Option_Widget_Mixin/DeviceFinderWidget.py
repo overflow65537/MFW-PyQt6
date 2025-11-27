@@ -1,3 +1,4 @@
+from asyncio.base_futures import _FINISHED
 from PySide6.QtCore import Qt, QRunnable, QThreadPool, Signal, QObject
 from PySide6.QtWidgets import QWidget, QHBoxLayout
 
@@ -75,6 +76,7 @@ class DeviceFinderWidget(QWidget):
         self.device_mapping = {}
 
     def _on_search_clicked(self):
+        self.search_button.setDisabled(True)
         if self.current_controller_type is None:
             raise ValueError("Controller type not set")
 
@@ -92,6 +94,7 @@ class DeviceFinderWidget(QWidget):
         self.device_mapping = device_mapping
         self.combo_box.clear()
         self.combo_box.addItems(list(device_mapping.keys()))
+        self.search_button.setEnabled(True)
 
     def _on_device_selected(self, device_name):
         if not device_name:

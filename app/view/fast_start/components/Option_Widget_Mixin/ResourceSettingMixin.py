@@ -1,9 +1,8 @@
-from __future__ import annotations
-from errno import EIDRM
+import jsonc
 from typing import Dict, Any
 from PySide6.QtWidgets import QVBoxLayout
-from anyio import Path
 from qfluentwidgets import BodyLabel, ComboBox, LineEdit
+from pathlib import WindowsPath
 
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
@@ -61,6 +60,11 @@ class ResourceSettingMixin:
         self._toggle_win32_children_option(False)
         self._toggle_adb_children_option(False)
         # 设置初始值为当前配置中的控制器类型
+        if self.current_config == {}:
+            for key, value in self.controller_type_mapping.items():
+                self.current_config["controller_type"] = value["name"]
+                break
+
         for idx, label in enumerate(list(self.controller_type_mapping)):
             if self.controller_type_mapping[label]["name"] == self.current_config.get(
                 "controller_type", ""
@@ -83,7 +87,6 @@ class ResourceSettingMixin:
                 search_option.combo_box.blockSignals(True)
                 search_option.combo_box.addItem("测试")
                 search_option.combo_box.blockSignals(False)
-
                 break
 
     def _create_controller_combobox(self):
@@ -173,8 +176,8 @@ class ResourceSettingMixin:
         # ADB连接地址
         self._create_resource_line_edit(
             self.tr("ADB Address"),
-            "adb_address",
-            lambda text: self._on_child_option_changed("adb_address", text),
+            "address",
+            lambda text: self._on_child_option_changed("address", text),
         )
         # 模拟器路径
         self._create_resource_line_edit(
@@ -315,7 +318,7 @@ class ResourceSettingMixin:
                 current_controller_name,
                 {
                     "adb_path": "",
-                    "adb_address": "",
+                    "address": "",
                     "emulator_path": "",
                     "emulator_params": "",
                     "wait_time": "",
@@ -338,7 +341,15 @@ class ResourceSettingMixin:
                     "win32_screencap_method": 1,
                 },
             )
-        self.current_config[current_controller_name][key] = value
+        # Parse JSON string back to dict for "config" key
+        if key == "config":
+            try:
+                self.current_config[current_controller_name][key] = jsonc.loads(value)
+            except (jsonc.JSONDecodeError, ValueError):
+                # If parsing fails, keep the string as-is or use an empty dict
+                self.current_config[current_controller_name][key] = value
+        else:
+            self.current_config[current_controller_name][key] = value
         self._auto_save_options()
 
     def _auto_save_options(self):
@@ -353,7 +364,7 @@ class ResourceSettingMixin:
         """控制ADB子选项的隐藏和显示"""
         adb_widgets = [
             "adb_path",
-            "adb_address",
+            "address",
             "emulator_path",
             "emulator_params",
             "wait_time",
@@ -370,17 +381,56 @@ class ResourceSettingMixin:
 
     # 填充新的子选项信息
     def _fill_children_option(self, controller_name):
+        controller_type = None
+        for controller_info in self.controller_type_mapping.values():
+            if controller_info["name"] == controller_name:
+                controller_type = controller_info["type"].lower()
+                break
+        if controller_type == "adb":
+            self.current_config[controller_name] = self.current_config.get(
+                controller_name,
+                {
+                    "adb_path": "",
+                    "address": "",
+                    "emulator_path": "",
+                    "emulator_params": "",
+                    "wait_time": "",
+                    "screencap_method": 1,
+                    "input_method": 1,
+                    "config": "{}",
+                },
+            )
 
-        current_config = self.current_config[controller_name]
+        elif controller_type == "win32":
+            self.current_config[controller_name] = self.current_config.get(
+                controller_name,
+                {
+                    "hwnd": "",
+                    "program_path": "",
+                    "program_params": "",
+                    "wait_launch_time": "",
+                    "mouse_input_method": 1,
+                    "keyboard_input_method": 1,
+                    "win32_screencap_method": 1,
+                },
+            )
+        else:
+            raise
         for name, widget in self.resource_setting_widgets.items():
             if name.endswith("_label"):
                 continue
-            elif name in current_config:
+            elif name in self.current_config[controller_name]:
                 if isinstance(widget, (LineEdit, PathLineEdit)):
-                    widget.setText(current_config[name])
+                    value = self.current_config[controller_name][name]
+                    # Convert dict to JSON string
+                    widget.setText(
+                        jsonc.dumps(value) if isinstance(value, dict) else str(value)
+                    )
                 elif isinstance(widget, ComboBox):
                     VALUE_TO_INDEX = {1: 0, 2: 1, 4: 2, 8: 3, 16: 4, 32: 5, 64: 6}
-                    widget.setCurrentIndex(VALUE_TO_INDEX[current_config[name]])
+                    widget.setCurrentIndex(
+                        VALUE_TO_INDEX[self.current_config[controller_name][name]]
+                    )
 
     def _toggle_win32_children_option(self, visible: bool):
         """控制Win32子选项的隐藏和显示"""
@@ -427,7 +477,19 @@ class ResourceSettingMixin:
             self._toggle_win32_children_option(True)
 
     def _on_search_combo_changed(self, device_name):
-        pass
+        current_controller_name = self.current_config["controller_type"]
+        current_controller_config = self.current_config[current_controller_name]
+        find_device_info = self.resource_setting_widgets[
+            "search_combo"
+        ].device_mapping.get(device_name)
+        if find_device_info is None:
+            return
+        for key, value in find_device_info.items():
+            if isinstance(value, WindowsPath):
+                value = str(value)
+            current_controller_config[key] = value
+        self._auto_save_options()
+        self._fill_children_option(current_controller_name)
 
     def _clear_options(self):
         """清空选项区域"""
