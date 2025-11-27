@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import List
+from typing import Dict,Any
 
 import markdown
 from PySide6.QtCore import Qt
@@ -29,6 +29,8 @@ from ....core.core import ServiceCoordinator
 
 
 class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin):
+    current_config: Dict[str, Any]
+    parent_layout:QVBoxLayout
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         # 先调用QWidget的初始化
         self.service_coordinator = service_coordinator
@@ -37,10 +39,9 @@ class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin):
         DynamicFormMixin.__init__(self)
         # 调用ResourceSettingMixin的初始化
         ResourceSettingMixin.__init__(self)
-        self.current_config = self.service_coordinator.option.current_options
+
 
         # 设置parent_layout为option_area_layout，供DynamicFormMixin使用
-        self.parent_layout = None  # 将在_setup_ui中设置
         self._init_ui()
         self._toggle_description(visible=False)
 
@@ -276,14 +277,14 @@ class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin):
         当选项被加载时触发
         """
         # 直接从OptionService获取options和form_structure
-        options = self.service_coordinator.option.get_options()
         form_structure = self.service_coordinator.option.get_form_structure()
-
-        # 记录日志
-        logger.info(f"选项加载完成，共 {len(options)} 个选项")
 
         # 只使用form_structure更新表单
         if form_structure:
+            self.current_config = self.service_coordinator.option.get_options()
+
+            # 记录日志
+            logger.info(f"选项加载完成，共 {len(self.current_config)} 个选项")
             # 判断是否为资源类型的配置
             if (
                 isinstance(form_structure, dict)
@@ -294,7 +295,7 @@ class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin):
                 logger.info("资源设置表单已创建")
             else:
                 # 正常的表单更新逻辑
-                self.update_form_from_structure(form_structure, options)
+                self.update_form_from_structure(form_structure, self.current_config)
                 logger.info(f"表单已使用form_structure更新")
         else:
             # 没有表单时清除界面

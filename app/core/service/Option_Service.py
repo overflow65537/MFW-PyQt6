@@ -24,6 +24,7 @@ class OptionService:
         """当任务被选中时加载选项和表单结构"""
         self.current_task_id = task_id
         task = self.task_service.get_task(task_id)
+        print("任务更改")
         if task:
             self.current_options = task.task_option
 

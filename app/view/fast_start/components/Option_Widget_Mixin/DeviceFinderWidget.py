@@ -1,0 +1,102 @@
+from PySide6.QtCore import Qt, QRunnable, QThreadPool, Signal, QObject
+from PySide6.QtWidgets import QWidget, QHBoxLayout
+
+from qfluentwidgets import ComboBox, ToolButton
+
+from qfluentwidgets import FluentIcon as FIF
+
+from maa.toolkit import Toolkit
+
+
+class DeviceFinderTask(QRunnable):
+    class Signals(QObject):
+        finished = Signal(dict, str)  # device_mapping, controller_type
+
+    def __init__(self, controller_type):
+        super().__init__()
+        self.controller_type = controller_type
+        self.signals = DeviceFinderTask.Signals()
+
+    def run(self):
+        device_mapping = {}
+        try:
+            if self.controller_type.lower() == "adb":
+                devices = Toolkit.find_adb_devices()
+                for device in devices:
+                    device_mapping[f"{device.name}({device.address})"] = {
+                        "name": device.name,
+                        "adb_path": device.adb_path,
+                        "address": device.address,
+                        "screencap_methods": device.screencap_methods,
+                        "input_methods": device.input_methods,
+                        "config": device.config,
+                    }
+
+            elif self.controller_type.lower() == "win32":
+                devices = Toolkit.find_desktop_windows()
+                for device in devices:
+                    device_mapping[
+                        f"{device.window_name or 'Unknow Window'}({device.hwnd})"
+                    ] = {
+                        "window_name": device.window_name,
+                        "class_name": device.class_name,
+                        "hwnd": str(device.hwnd),
+                    }
+        finally:
+            self.signals.finished.emit(device_mapping, self.controller_type)
+
+
+class DeviceFinderWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._init_ui()
+        self.current_controller_type = None
+        self.device_mapping = {}
+
+    def _init_ui(self):
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
+
+        self.combo_box = ComboBox()
+        self.combo_box.setFixedWidth(260)
+        self.combo_box.currentTextChanged.connect(self._on_device_selected)
+        layout.addWidget(self.combo_box, stretch=1)
+
+        self.search_button = ToolButton(FIF.SEARCH)
+        self.search_button.setFixedWidth(35)
+        self.search_button.clicked.connect(self._on_search_clicked)
+
+        layout.addWidget(self.search_button)
+
+    def change_controller_type(self, new_type: str):
+        self.current_controller_type = new_type
+        self.combo_box.clear()
+        self.device_mapping = {}
+
+    def _on_search_clicked(self):
+        if self.current_controller_type is None:
+            raise ValueError("Controller type not set")
+
+        # 创建任务并将其提交到线程池
+        task = DeviceFinderTask(self.current_controller_type)
+        task.signals.finished.connect(self._on_device_found)
+        QThreadPool.globalInstance().start(task)
+
+    def _on_device_found(self, device_mapping, controller_type):
+        # 确保当前控制器类型与查找结果一致
+        if controller_type != self.current_controller_type:
+            return
+
+        # 更新设备映射和下拉框
+        self.device_mapping = device_mapping
+        self.combo_box.clear()
+        self.combo_box.addItems(list(device_mapping.keys()))
+
+    def _on_device_selected(self, device_name):
+        if not device_name:
+            return
+
+        if device_name in self.device_mapping:
+            device_info = self.device_mapping[device_name]
+            print(device_info)
