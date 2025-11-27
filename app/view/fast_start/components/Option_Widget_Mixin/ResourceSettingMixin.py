@@ -29,6 +29,20 @@ class ResourceSettingMixin:
         self, sourceText: str, /, disambiguation: str | None = ..., n: int = ...
     ) -> str: ...
 
+    def _value_to_index(self, value: int) -> int:
+        """将值转换为下拉框的索引"""
+        value_mapping = {
+            1: 1,
+            2: 2,
+            4: 3,
+            8: 4,
+            16: 5,
+            32: 6,
+            64: 7,
+            128: 8,
+        }
+        return value_mapping.get(value, 0)  # 默认返回0如果值不存在
+
     def __init__(self):
         """初始化资源设置Mixin"""
         self.resource_setting_widgets = {}
@@ -201,6 +215,7 @@ class ResourceSettingMixin:
 
         # 截图方式
         screencap_options = {
+            "Auto": 0,
             "EncodeToFileAndPull": 1,
             "Encode": 2,
             "RawWithGzip": 4,
@@ -211,13 +226,14 @@ class ResourceSettingMixin:
         }
         self._create_resource_combobox(
             self.tr("Screencap Method"),
-            "screencap_method",
+            "screencap_methods",
             screencap_options,
             self._on_child_option_changed,
         )
 
         # 输入方式
         input_options = {
+            "Auto": 0,
             "AdbShell": 1,
             "MinitouchAndAdbKey": 2,
             "Maatouch": 4,
@@ -225,7 +241,7 @@ class ResourceSettingMixin:
         }
         self._create_resource_combobox(
             self.tr("Input Method"),
-            "input_method",
+            "input_methods",
             input_options,
             self._on_child_option_changed,
         )
@@ -267,6 +283,7 @@ class ResourceSettingMixin:
 
         # 鼠标和键盘输入方式选项
         mouse_keyboard_options = {
+            "Auto": 0,
             "Seize": 1,
             "SendMessage": 2,
             "PostMessage": 4,
@@ -277,20 +294,21 @@ class ResourceSettingMixin:
         # 鼠标输入方式
         self._create_resource_combobox(
             self.tr("Mouse Input Method"),
-            "mouse_input_method",
+            "mouse_input_methods",
             mouse_keyboard_options,
             self._on_child_option_changed,
         )
         # 键盘输入方式
         self._create_resource_combobox(
             self.tr("Keyboard Input Method"),
-            "keyboard_input_method",
+            "keyboard_input_methods",
             mouse_keyboard_options,
             self._on_child_option_changed,
         )
 
         # 截图方式
         screencap_options = {
+            "Auto": 0,
             "GDI": 1,
             "FramePool": 2,
             "DXGI_DesktopDup": 4,
@@ -300,7 +318,7 @@ class ResourceSettingMixin:
         }
         self._create_resource_combobox(
             self.tr("Screencap Method"),
-            "win32_screencap_method",
+            "win32_screencap_methods",
             screencap_options,
             self._on_child_option_changed,
         )
@@ -322,8 +340,8 @@ class ResourceSettingMixin:
                     "emulator_path": "",
                     "emulator_params": "",
                     "wait_time": "",
-                    "screencap_method": 1,
-                    "input_method": 1,
+                    "screencap_methods": 1,
+                    "input_methods": 1,
                     "config": "{}",
                 },
             )
@@ -336,9 +354,9 @@ class ResourceSettingMixin:
                     "program_path": "",
                     "program_params": "",
                     "wait_launch_time": "",
-                    "mouse_input_method": 1,
-                    "keyboard_input_method": 1,
-                    "win32_screencap_method": 1,
+                    "mouse_input_methods": 0,
+                    "keyboard_input_methods": 0,
+                    "win32_screencap_methods": 0,
                 },
             )
         # Parse JSON string back to dict for "config" key
@@ -368,8 +386,8 @@ class ResourceSettingMixin:
             "emulator_path",
             "emulator_params",
             "wait_time",
-            "screencap_method",
-            "input_method",
+            "screencap_methods",
+            "input_methods",
             "config",
         ]
         for widget_name in adb_widgets:
@@ -395,8 +413,8 @@ class ResourceSettingMixin:
                     "emulator_path": "",
                     "emulator_params": "",
                     "wait_time": "",
-                    "screencap_method": 1,
-                    "input_method": 1,
+                    "screencap_methods": 0,
+                    "input_methods": 0,
                     "config": "{}",
                 },
             )
@@ -409,9 +427,9 @@ class ResourceSettingMixin:
                     "program_path": "",
                     "program_params": "",
                     "wait_launch_time": "",
-                    "mouse_input_method": 1,
-                    "keyboard_input_method": 1,
-                    "win32_screencap_method": 1,
+                    "mouse_input_methods": 1,
+                    "keyboard_input_methods": 1,
+                    "win32_screencap_methods": 1,
                 },
             )
         else:
@@ -427,10 +445,8 @@ class ResourceSettingMixin:
                         jsonc.dumps(value) if isinstance(value, dict) else str(value)
                     )
                 elif isinstance(widget, ComboBox):
-                    VALUE_TO_INDEX = {1: 0, 2: 1, 4: 2, 8: 3, 16: 4, 32: 5, 64: 6}
-                    widget.setCurrentIndex(
-                        VALUE_TO_INDEX[self.current_config[controller_name][name]]
-                    )
+                    target = self.current_config[controller_name][name]
+                    widget.setCurrentIndex(self._value_to_index(target))
 
     def _toggle_win32_children_option(self, visible: bool):
         """控制Win32子选项的隐藏和显示"""
@@ -439,9 +455,9 @@ class ResourceSettingMixin:
             "program_path",
             "program_params",
             "wait_launch_time",
-            "mouse_input_method",
-            "keyboard_input_method",
-            "win32_screencap_method",
+            "mouse_input_methods",
+            "keyboard_input_methods",
+            "win32_screencap_methods",
         ]
         for widget_name in win32_widgets:
             # 显示/隐藏标签和控件
