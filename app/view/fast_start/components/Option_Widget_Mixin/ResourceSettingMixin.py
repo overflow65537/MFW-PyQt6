@@ -1,6 +1,8 @@
 from typing import Dict, Any
 from PySide6.QtWidgets import QVBoxLayout
-from qfluentwidgets import BodyLabel, ComboBox, LineEdit
+from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtCore import Qt
+from qfluentwidgets import BodyLabel, ComboBox, LineEdit, ToolTipPosition, ToolTipFilter
 from pathlib import WindowsPath
 
 import jsonc
@@ -47,16 +49,38 @@ class ResourceSettingMixin:
         """初始化资源设置Mixin"""
         self.show_hide_option = False
         self.resource_setting_widgets = {}
+
         # 构建控制器类型映射
         interface = get_interface_manager().get_interface()
         self.controller_type_mapping = {
             ctrl.get("label", ctrl.get("name", "")): {
                 "name": ctrl.get("name", ""),
                 "type": ctrl.get("type", ""),
+                "icon": ctrl.get("icon", ""),
+                "description": ctrl.get("description", ""),
             }
             for ctrl in interface.get("controller", [])
         }
         self.current_config = self.service_coordinator.option_service.current_options
+
+        # 构建资源映射表
+        self.resource_mapping = {
+            ctrl.get("label", ctrl.get("name", "")): []
+            for ctrl in interface.get("controller", [])
+        }
+        # 遍历每个资源，确定它支持哪些控制器
+        for resource in interface.get("resource", []):
+            # 获取资源指定的支持控制器列表（如果有）
+            for controller in interface.get("controller", []):
+                if controller.get("name", "") in resource.get("controller", []):
+                    self.resource_mapping[
+                        controller.get("label", controller.get("name", ""))
+                    ].append(resource)
+                    break
+                else:
+                    for key, value in self.resource_mapping.items():
+                        self.resource_mapping[key] = value + [resource]
+                    break
 
     def create_resource_settings(self):
         """创建固定的资源设置UI"""
@@ -66,6 +90,8 @@ class ResourceSettingMixin:
 
         # 创建控制器选择下拉框
         self._create_controller_combobox()
+        # 创建资源选择下拉框
+        self._create_resource_option()
         # 创建搜索设备下拉框
         self._create_search_option()
         # 创建ADB和Win32子选项
@@ -98,7 +124,9 @@ class ResourceSettingMixin:
                 search_option.change_controller_type(
                     self.controller_type_mapping[label]["type"].lower()
                 )
-                device_name = self.current_config[self.current_config["controller_type"]].get("device_name", self.tr("Unknown Device"))
+                device_name = self.current_config[
+                    self.current_config["controller_type"]
+                ].get("device_name", self.tr("Unknown Device"))
                 # 阻断下拉框信号发送
                 search_option.combo_box.blockSignals(True)
                 search_option.combo_box.addItem(device_name)
@@ -112,10 +140,25 @@ class ResourceSettingMixin:
 
         ctrl_combo = ComboBox()
         self.resource_setting_widgets["ctrl_combo"] = ctrl_combo
-        ctrl_combo.addItems(list(self.controller_type_mapping))
+        controller_list = list(self.controller_type_mapping)
+        for label in controller_list:
+            icon = ""
+            if self.controller_type_mapping[label]["icon"]:
+                icon = self.controller_type_mapping[label]["icon"]
+
+            ctrl_combo.addItem(label, icon)
 
         self.parent_layout.addWidget(ctrl_combo)
         ctrl_combo.currentTextChanged.connect(self._on_controller_type_changed)
+
+    def _create_resource_option(self):
+        resource_label = BodyLabel(self.tr("Resource"))
+        self.parent_layout.addWidget(resource_label)
+
+        resource_combox = ComboBox()
+        self.parent_layout.addWidget(resource_combox)
+        self.resource_setting_widgets["resource_combo"] = resource_combox
+        resource_combox.currentTextChanged.connect(self._on_resource_combox_changed)
 
     def _create_search_option(self):
         """创建搜索设备下拉框"""
@@ -449,8 +492,10 @@ class ResourceSettingMixin:
                 elif isinstance(widget, ComboBox):
                     target = self.current_config[controller_name][name]
                     widget.setCurrentIndex(self._value_to_index(target))
-        #填充设备名称
-        device_name = self.current_config[controller_name].get("device_name", self.tr("Unknown Device"))
+        # 填充设备名称
+        device_name = self.current_config[controller_name].get(
+            "device_name", self.tr("Unknown Device")
+        )
         # 阻断下拉框信号发送
         search_option: DeviceFinderWidget = self.resource_setting_widgets[
             "search_combo"
@@ -458,8 +503,6 @@ class ResourceSettingMixin:
         search_option.combo_box.blockSignals(True)
         search_option.combo_box.addItem(device_name)
         search_option.combo_box.blockSignals(False)
-
-        
 
     def _toggle_win32_children_option(self, visible: bool):
         """控制Win32子选项的隐藏和显示"""
@@ -497,6 +540,13 @@ class ResourceSettingMixin:
         # 填充新的信息
         self._fill_children_option(ctrl_info["name"])
 
+        # 更换控制器描述
+        ctrl_combox: ComboBox = self.resource_setting_widgets["ctrl_combo"]
+        ctrl_combox.installEventFilter(ToolTipFilter(ctrl_combox))
+        ctrl_combox.setToolTip(ctrl_info["description"])
+
+        self._fill_resource_option()
+
         # 显示/隐藏对应的子选项
         if new_type == "adb":
             self._toggle_adb_children_option(True)
@@ -504,6 +554,20 @@ class ResourceSettingMixin:
         elif new_type == "win32":
             self._toggle_adb_children_option(False)
             self._toggle_win32_children_option(True)
+
+    def _on_resource_combox_changed(self, new_resource):
+        controller_label = None
+        for key, controller in self.controller_type_mapping.items():
+            if controller.get("name", "") == self.current_config["controller_type"]:
+                controller_label = key
+                break
+        if controller_label is None:
+            return
+
+        for resource in self.resource_mapping[controller_label]:
+            if resource.get("label", resource.get("name", "")) == new_resource:
+                self.current_config["resource"] = resource["name"]
+                self._auto_save_options()
 
     def _on_search_combo_changed(self, device_name):
         current_controller_name = self.current_config["controller_type"]
@@ -535,3 +599,17 @@ class ResourceSettingMixin:
             widget.deleteLater()
         self.resource_setting_widgets.clear()
         self.current_controller_type = None
+
+    def _fill_resource_option(self):
+
+        resource_combo: ComboBox = self.resource_setting_widgets["resource_combo"]
+        resource_combo.clear()
+        current_config_name = self.current_config["controller_type"]
+        for controller in self.controller_type_mapping:
+            if self.controller_type_mapping[controller]["name"] == current_config_name:
+                curren_config = self.resource_mapping[controller]
+
+                for resource in curren_config:
+                    icon = resource.get("icon", "")
+                    resource_label = resource.get("label", resource.get("name", ""))
+                    resource_combo.addItem(resource_label, icon)

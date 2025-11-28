@@ -36,25 +36,15 @@ class ComboBoxGenerator:
         icon_label = None
         if "icon" in config:
             try:
-                from app.utils.gui_helper import IconLoader
 
-                # 检查是否有icon_loader，如果没有则创建
-                if not hasattr(self.host, "_icon_loader"):
-                    if hasattr(self.host, "service_coordinator"):
-                        self.host._icon_loader = IconLoader(
-                            self.host.service_coordinator
-                        )
+                icon = self.host._icon_loader.load_icon(config["icon"], size=24)
+                if not icon.isNull():
+                    icon_label = QLabel()
+                    icon_label.setPixmap(icon.pixmap(24, 24))
+                    icon_label.setFixedSize(24, 24)
 
-                # 使用IconLoader加载图标
-                if hasattr(self.host, "_icon_loader"):
-                    icon = self.host._icon_loader.load_icon(config["icon"], size=24)
-                    if not icon.isNull():
-                        icon_label = QLabel()
-                        icon_label.setPixmap(icon.pixmap(24, 24))
-                        icon_label.setFixedSize(24, 24)
-
-                        # 添加图标到容器
-                        label_container.addWidget(icon_label)
+                    # 添加图标到容器
+                    label_container.addWidget(icon_label)
             except Exception as e:
                 # 尝试直接加载作为备选方案
                 try:
@@ -209,7 +199,7 @@ class ComboBoxGenerator:
                 combo.blockSignals(False)
         finally:
             # 恢复自动保存状态
-            self.host._disable_auto_save = old_disable_auto_save # type: ignore
+            self.host._disable_auto_save = old_disable_auto_save  # type: ignore
 
     def _on_combobox_changed(
         self, key, value, config, parent_config, child_layout, save_config=True
@@ -228,13 +218,18 @@ class ComboBoxGenerator:
         try:
             # 保存所有子选项配置到缓存（不仅仅是当前显示的选项）
             if key in self.host.all_child_containers:
-                for option_value, container_info in self.host.all_child_containers[key].items():
+                for option_value, container_info in self.host.all_child_containers[
+                    key
+                ].items():
                     # 为每个子选项创建缓存键
                     cache_key = f"{key}_{option_value}"
-                    
+
                     # 仅当容器配置非空且缓存中不存在该配置时才保存
                     # 这避免了在初始化时覆盖已经加载的缓存配置
-                    if container_info["config"] and cache_key not in self.host.option_subconfig_cache:
+                    if (
+                        container_info["config"]
+                        and cache_key not in self.host.option_subconfig_cache
+                    ):
                         # 深拷贝子配置以保存完整状态
                         self.host.option_subconfig_cache[cache_key] = copy.deepcopy(
                             container_info["config"]
@@ -336,7 +331,6 @@ class ComboBoxGenerator:
                                     current_container["config"],
                                 )
 
-                                
                         # 方式2：如果child_config不包含type键，但包含多个配置项，处理为多个控件
                         elif len(child_config) > 0:
                             # 为每个子配置项创建控件

@@ -16,8 +16,6 @@ from qfluentwidgets import (
     FluentIcon as FIF,
 )
 
-from app.utils.gui_helper import IconLoader
-
 
 from .ListWidget import TaskDragListWidget, ConfigListWidget
 from .AddTaskMessageBox import AddConfigDialog, AddTaskDialog
@@ -30,9 +28,6 @@ class BaseListToolBarWidget(QWidget):
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         super().__init__(parent)
         self.service_coordinator = service_coordinator
-
-        # 创建图标加载器（仅 GUI 使用）
-        self.icon_loader = IconLoader(service_coordinator)
 
         self._init_title()
         self._init_selection()
@@ -147,7 +142,9 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
         if len(config_list) <= 1:
             from app.common.signal_bus import signalBus
 
-            signalBus.infobar_signal.emit(self.tr("Cannot delete the last configuration!"), "warning")
+            signalBus.infobar_signal.emit(
+                self.tr("Cannot delete the last configuration!"), "warning"
+            )
             return False
         cur = self.task_list.currentItem()
         if not cur:
@@ -226,7 +223,12 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         elif widget.task.is_base_task():
             from app.common.signal_bus import signalBus
 
-            signalBus.infobar_signal.emit(self.tr("Base tasks (Resource, Post-Task) cannot be deleted (ID: {id})").format(id=task_id), "warning")
+            signalBus.infobar_signal.emit(
+                self.tr(
+                    "Base tasks (Resource, Post-Task) cannot be deleted (ID: {id})"
+                ).format(id=task_id),
+                "warning",
+            )
             return False
         # 删除通过服务层执行，视图会通过fs系列信号刷新
         self.service_coordinator.delete_task(task_id)

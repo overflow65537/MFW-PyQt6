@@ -48,20 +48,24 @@ class DeviceFinderTask(QRunnable):
             safe_mapping = {}
             for key, value in device_mapping.items():
                 safe_value = value.copy()
-                
+
                 # Special handling for adb device config which might contain large integers
                 if "config" in safe_value and isinstance(safe_value["config"], dict):
                     for config_key, config_value in safe_value["config"].items():
-                        if isinstance(config_value, int) and not (-9223372036854775808 <= config_value <= 9223372036854775807):
+                        if isinstance(config_value, int) and not (
+                            -9223372036854775808 <= config_value <= 9223372036854775807
+                        ):
                             safe_value["config"][config_key] = str(config_value)
-                
+
                 # Handle any other large integer fields we might have missed
                 for field, field_value in safe_value.items():
-                    if isinstance(field_value, int) and not (-9223372036854775808 <= field_value <= 9223372036854775807):
+                    if isinstance(field_value, int) and not (
+                        -9223372036854775808 <= field_value <= 9223372036854775807
+                    ):
                         safe_value[field] = str(field_value)
-                
+
                 safe_mapping[key] = safe_value
-            
+
             self.signals.finished.emit(safe_mapping, self.controller_type)
 
 
