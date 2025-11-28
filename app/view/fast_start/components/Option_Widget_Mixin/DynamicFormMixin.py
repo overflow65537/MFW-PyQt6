@@ -16,6 +16,8 @@ class DynamicFormMixin:
 
     def set_description(self, description: str): ...
     def _toggle_description(self, visible=None): ...
+    def _apply_subconfigs(self, child_structure, target_config, cached_config): ...
+    def _build_all_children_config(self, key, current_value, current_config): ...
 
     def __init__(self):
         """初始化动态表单Mixin"""
@@ -26,7 +28,6 @@ class DynamicFormMixin:
         self.current_config = {}
         self.config_structure = {}
         self.parent_layout = None
-        self.child_config_cache = {}
         # 子选项配置缓存，按主选项键和主选项值组织
         self.option_subconfig_cache = {}
         # 存储所有子选项容器的字典，格式：{main_key: {option_value: {layout: QVBoxLayout, widgets: {}, config: {}}}}}
@@ -112,88 +113,6 @@ class DynamicFormMixin:
                 if child_layout:
                     self._clear_layout(child_layout)
 
-    def _apply_subconfigs(self, child_structure, target_config, cached_config):
-        """应用缓存的子配置到目标配置
-
-        :param child_structure: 子控件结构定义
-        :param target_config: 目标配置字典
-        :param cached_config: 缓存的配置字典
-        """
-        # 确保cached_config是一个字典
-        if not isinstance(cached_config, dict):
-            return
-
-        # 深度合并缓存配置到目标配置，保留未在缓存中但存在于目标配置中的键
-        # import copy is now at the top of the file
-
-        # 如果子结构是单个控件
-        if isinstance(child_structure, dict):
-            if "type" in child_structure:
-                # 单个控件情况
-                # 深度合并缓存配置到目标配置
-                for sub_key, sub_value in cached_config.items():
-                    # 确保在更新时深度复制，避免引用问题
-                    target_config[sub_key] = copy.deepcopy(sub_value)
-            else:
-                # 多个控件情况
-                for sub_key, sub_config in child_structure.items():
-                    if sub_key in cached_config:
-                        # 如果缓存配置是字典，进行深度合并
-                        if isinstance(cached_config[sub_key], dict) and isinstance(
-                            target_config.get(sub_key), dict
-                        ):
-                            # 合并两个字典，保留目标配置中不在缓存中的键
-                            for k, v in cached_config[sub_key].items():
-                                target_config[sub_key][k] = copy.deepcopy(v)
-                        else:
-                            # 否则直接复制
-                            target_config[sub_key] = copy.deepcopy(
-                                cached_config[sub_key]
-                            )
-
-        # 应用配置到UI控件
-        # 遍历目标配置中的所有键
-        for sub_key, sub_value in target_config.items():
-            # 检查子键是否在widgets字典中
-            if sub_key in self.widgets:
-                sub_widget = self.widgets[sub_key]
-                try:
-                    # 处理嵌套的widgets字典（如inputs类型）
-                    if isinstance(sub_widget, dict):
-                        for input_name, input_widget in sub_widget.items():
-                            if isinstance(sub_value, dict) and input_name in sub_value:
-                                # 临时阻断信号
-                                input_widget.blockSignals(True)
-                                try:
-                                    input_widget.setText(str(sub_value[input_name]))
-                                finally:
-                                    # 确保恢复信号
-                                    input_widget.blockSignals(False)
-                    # 处理普通控件
-                    else:
-                        # 临时阻断信号
-                        sub_widget.blockSignals(True)
-                        try:
-                            if hasattr(sub_widget, "setText"):
-                                sub_widget.setText(str(sub_value))
-                            elif hasattr(sub_widget, "setCurrentText"):
-                                index = sub_widget.findText(str(sub_value))
-                                if index >= 0:
-                                    sub_widget.setCurrentIndex(index)
-                            # 处理其他可能的控件类型
-                            elif hasattr(sub_widget, "setChecked") and isinstance(
-                                sub_value, bool
-                            ):
-                                sub_widget.setChecked(sub_value)
-                        finally:
-                            # 确保恢复信号
-                            sub_widget.blockSignals(False)
-                except Exception as e:
-                    # 记录错误但不影响其他控件的更新
-                    logger.error(
-                        f"应用子配置到控件失败 (key: {sub_key}, value: {sub_value}): {e}"
-                    )
-
     def _set_child_container_visibility(self, key, visible_option_value):
         """设置子选项容器的可见性"""
         if key in self.all_child_containers:
@@ -201,26 +120,6 @@ class DynamicFormMixin:
                 container_info["container"].setVisible(
                     option_value == visible_option_value
                 )
-
-    def _build_all_children_config(self, key, current_value, current_config):
-        """构建包含所有子选项配置的字典"""
-        all_children_config = {current_value: current_config}
-
-        if key in self.all_child_containers:
-            for option_value, container_info in self.all_child_containers[key].items():
-                if option_value != current_value:  # 已经添加了当前选项，跳过
-                    cache_key = f"{key}_{option_value}"
-                    if cache_key in self.option_subconfig_cache:
-                        # 从缓存中获取配置
-                        all_children_config[option_value] = copy.deepcopy(
-                            self.option_subconfig_cache[cache_key]
-                        )
-                    elif container_info["config"]:  # 如果缓存中没有但容器中有配置
-                        all_children_config[option_value] = copy.deepcopy(
-                            container_info["config"]
-                        )
-
-        return all_children_config
 
     def _auto_save_options(self):
         """自动保存当前选项"""

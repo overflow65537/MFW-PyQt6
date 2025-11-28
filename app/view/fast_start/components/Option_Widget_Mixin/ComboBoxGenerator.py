@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtCore import Qt
 from qfluentwidgets import ComboBox, BodyLabel, ToolTipFilter
+from .LineEditGenerator import LineEditGenerator
 from app.utils.logger import logger
 
 
@@ -74,8 +75,6 @@ class ComboBoxGenerator:
 
         # 创建下拉框 - 使用垂直布局
         label_text = config["label"]
-        if label_text.startswith("$"):
-            pass
         label = BodyLabel(label_text)
         # 移除固定宽度，让标签自然显示
 
@@ -177,9 +176,6 @@ class ComboBoxGenerator:
             # 临时禁用自动保存
             # 使用getattr获取_disable_auto_save属性，如果不存在则默认为False
             old_disable_auto_save = getattr(self.host, "_disable_auto_save", False)
-
-
-            self.host._disable_auto_save = old_disable_auto_save
             self.host._disable_auto_save = True
 
             # 阻断下拉框信号，防止触发不必要的回调
@@ -299,10 +295,6 @@ class ComboBoxGenerator:
                             elif "label" in child_config:
                                 child_key = child_config["label"]
 
-                            # 确保不使用$开头的名称
-                            if child_key.startswith("$"):
-                                child_key = child_key[1:]
-
                             # 如果还是没有找到，使用默认的键名
                             if not child_key:
                                 child_key = f"{key}_child"
@@ -320,9 +312,6 @@ class ComboBoxGenerator:
                                     current_container["config"],
                                 )
                             elif child_config["type"] == "lineedit":
-                                # 需要使用LineEditGenerator来创建输入框
-                                from .LineEditGenerator import LineEditGenerator
-
                                 line_edit_generator = LineEditGenerator(self.host)
                                 line_edit_generator.create_lineedit(
                                     child_key,
@@ -343,9 +332,6 @@ class ComboBoxGenerator:
                                         current_container["config"],
                                     )
                                 elif sub_config.get("type") == "lineedit":
-                                    # 需要使用LineEditGenerator来创建输入框
-                                    from .LineEditGenerator import LineEditGenerator
-
                                     line_edit_generator = LineEditGenerator(self.host)
                                     line_edit_generator.create_lineedit(
                                         sub_key,

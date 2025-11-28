@@ -43,8 +43,7 @@ from app.common.config import cfg
 from app.view.main_window.main_window import MainWindow
 from app.common.config import Language
 from app.common.__version__ import __version__
-from app.utils.i18n_manager import get_interface_i18n
-
+from app.core.service.interface_manager import get_interface_manager
 
 if __name__ == "__main__":
     logger.info(f"MFW 版本:{__version__}")
@@ -136,7 +135,7 @@ if __name__ == "__main__":
 
     # 初始化 interface i18n
     try:
-        interface_i18n = get_interface_i18n(language=language_code)
+        interface_i18n = get_interface_manager(language=language_code)
         logger.info(f"Interface i18n 初始化完成，语言: {language_code}")
     except Exception as e:
         logger.warning(f"Interface i18n 初始化失败: {e}")

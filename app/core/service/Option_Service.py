@@ -110,8 +110,6 @@ class OptionService:
         # 设置字段标签，处理$前缀
         # 优先使用label，其次是name，如果都没有则使用option_key
         label = option_def.get("label", option_def.get("name", option_key))
-        if label.startswith("$"):
-            pass
         field_config["label"] = label
 
         # 处理description字段

@@ -2,8 +2,6 @@
 import re
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
-from PySide6.QtGui import QIcon, QPixmap
-from PySide6.QtCore import Qt
 from PySide6.QtCore import Qt
 from qfluentwidgets import LineEdit, BodyLabel, ToolTipFilter
 from app.utils.logger import logger
@@ -34,53 +32,8 @@ class LineEditGenerator:
         label_container = QHBoxLayout()
         label_container.setSpacing(5)
         
-        # 检查是否有图标配置
-        icon_label = None
-        if "icon" in config:
-            try:
-                from app.utils.gui_helper import IconLoader
-                
-                # 检查是否有icon_loader，如果没有则创建
-                if not hasattr(self.host, '_icon_loader'):
-                    if hasattr(self.host, 'service_coordinator'):
-                        self.host._icon_loader = IconLoader(self.host.service_coordinator)
-                
-                # 使用IconLoader加载图标
-                if hasattr(self.host, '_icon_loader'):
-                    icon = self.host._icon_loader.load_icon(config["icon"], size=24)
-                    if not icon.isNull():
-                        icon_label = QLabel()
-                        icon_label.setPixmap(icon.pixmap(24, 24))
-                        icon_label.setFixedSize(24, 24)
-                        
-                        # 添加图标到容器
-                        label_container.addWidget(icon_label)
-            except Exception as e:
-                # 尝试直接加载作为备选方案
-                try:
-                    icon_path = config["icon"]
-                    icon_pixmap = QPixmap(icon_path)
-                
-                    # 检查图标是否加载成功
-                    if not icon_pixmap.isNull():
-                        # 缩放图标到合适大小
-                        icon_pixmap = icon_pixmap.scaled(
-                            24, 24, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
-                        )
-                        icon_label = QLabel()
-                        icon_label.setPixmap(icon_pixmap)
-                        icon_label.setFixedSize(24, 24)
-                        
-                        # 添加图标到容器
-                        label_container.addWidget(icon_label)
-                except Exception as fallback_e:
-                    # 加载图标失败时忽略
-                    logger.error(f"加载图标失败: {config['icon']}, 错误: {fallback_e}")
-
         # 处理标签，移除可能的$符号
         label_text = config["label"]
-        if label_text.startswith("$"):
-            pass
         label = BodyLabel(label_text)
         # 移除固定宽度，让标签自然显示
         
@@ -109,42 +62,9 @@ class LineEditGenerator:
 
                 # 处理input项的标签
                 input_label_text = input_item.get("label", input_item.get("name", ""))
-                if input_label_text.startswith("$"):
-                    pass
                 # 创建input项的标签
                 input_label = BodyLabel(input_label_text)
-                # 检查是否有图标配置
-                input_icon_label = None
-                if "icon" in input_item:
-                    try:
-                        input_icon_path = input_item["icon"]
-                        input_icon_pixmap = QPixmap(input_icon_path)
-                        
-                        # 检查图标是否加载成功
-                        if not input_icon_pixmap.isNull():
-                            # 缩放图标到合适大小
-                            input_icon_pixmap = input_icon_pixmap.scaled(
-                                24, 24, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
-                            )
-                            input_icon_label = QLabel()
-                            input_icon_label.setPixmap(input_icon_pixmap)
-                            input_icon_label.setFixedSize(24, 24)
-                            
-                            # 创建input项的标签和图标容器
-                            input_label_container = QHBoxLayout()
-                            input_label_container.setSpacing(5)
-                            input_label_container.addWidget(input_icon_label)
-                            input_label_container.addWidget(input_label)
-                            
-                            # 添加到容器
-                            input_container.addLayout(input_label_container)
-                        else:
-                            input_container.addWidget(input_label)
-                    except Exception as e:
-                        # 加载图标失败时忽略，仅显示标签
-                        input_container.addWidget(input_label)
-                else:
-                    input_container.addWidget(input_label)
+                input_container.addWidget(input_label)
 
                 # 创建输入框
                 input_line_edit = LineEdit()
