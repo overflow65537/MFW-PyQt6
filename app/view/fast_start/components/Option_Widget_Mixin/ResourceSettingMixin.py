@@ -1,10 +1,9 @@
-from encodings import search_function
-import jsonc
 from typing import Dict, Any
 from PySide6.QtWidgets import QVBoxLayout
 from qfluentwidgets import BodyLabel, ComboBox, LineEdit
 from pathlib import WindowsPath
 
+import jsonc
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
 from app.core.service.interface_manager import get_interface_manager
@@ -46,6 +45,7 @@ class ResourceSettingMixin:
 
     def __init__(self):
         """初始化资源设置Mixin"""
+        self.show_hide_option = False
         self.resource_setting_widgets = {}
         # 构建控制器类型映射
         interface = get_interface_manager().get_interface()
@@ -388,16 +388,16 @@ class ResourceSettingMixin:
             "emulator_path",
             "emulator_params",
             "wait_time",
+        ]
+        adb_hide_widgets = [
             "screencap_methods",
             "input_methods",
             "config",
         ]
-        for widget_name in adb_widgets:
-            # 显示/隐藏标签和控件
-            for suffix in ["_label", ""]:
-                full_name = f"{widget_name}{suffix}"
-                if full_name in self.resource_setting_widgets:
-                    self.resource_setting_widgets[full_name].setVisible(visible)
+        self._toggle_children_visible(adb_widgets, visible)
+        self._toggle_children_visible(
+            adb_hide_widgets, (visible and self.show_hide_option)
+        )
 
     # 填充新的子选项信息
     def _fill_children_option(self, controller_name):
@@ -468,16 +468,16 @@ class ResourceSettingMixin:
             "program_path",
             "program_params",
             "wait_launch_time",
+        ]
+        win32_hide_widgets = [
             "mouse_input_methods",
             "keyboard_input_methods",
             "win32_screencap_methods",
         ]
-        for widget_name in win32_widgets:
-            # 显示/隐藏标签和控件
-            for suffix in ["_label", ""]:
-                full_name = f"{widget_name}{suffix}"
-                if full_name in self.resource_setting_widgets:
-                    self.resource_setting_widgets[full_name].setVisible(visible)
+        self._toggle_children_visible(win32_widgets, visible)
+        self._toggle_children_visible(
+            win32_hide_widgets, (visible and self.show_hide_option)
+        )
 
     def _on_controller_type_changed(self, label: str):
         """控制器类型变化时的处理函数"""
@@ -520,6 +520,14 @@ class ResourceSettingMixin:
         current_controller_config["device_name"] = device_name
         self._auto_save_options()
         self._fill_children_option(current_controller_name)
+
+    def _toggle_children_visible(self, option_list: list, visible: bool):
+        for widget_name in option_list:
+            # 显示/隐藏标签和控件
+            for suffix in ["_label", ""]:
+                full_name = f"{widget_name}{suffix}"
+                if full_name in self.resource_setting_widgets:
+                    self.resource_setting_widgets[full_name].setVisible(visible)
 
     def _clear_options(self):
         """清空选项区域"""
