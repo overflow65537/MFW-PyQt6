@@ -27,6 +27,9 @@ class ServiceCoordinator:
     """服务协调器，整合配置、任务和选项服务"""
 
     def __init__(self, main_config_path: Path, configs_dir: Path | None = None):
+        # 初始化停止标志
+        self.need_stop = False
+        
         # 初始化信号总线
         self.signal_bus = CoreSignalBus()
         self.fs_signal_bus = FromeServiceCoordinator()
@@ -223,29 +226,70 @@ class ServiceCoordinator:
         """
         任务完整流程：启动子进程、加载资源、连接设备、启动模拟器、批量运行任务
         """
-        need_stop = False
-
-        self.fs_signal_bus.fs_start_button_status.emit(
-            {"text": "STOP", "status": "disabled"}
-        )
-        from app.common.constants import PRE_CONFIGURATION
-
-        pre_cfg = self.task_service.get_task(PRE_CONFIGURATION)
-        if not pre_cfg:
-            raise ValueError("未找到基础资源任务")
-
-        # 2. 加载资源
-        if not await self.load_resources(pre_cfg.task_option):
-            logger.error("资源加载失败，流程终止")
-            return
-
-        # 3. 连接设备
-        controller_base_task = self.task_service.get_task("controller_base_task")
-        if not controller_base_task:
-            raise ValueError("未找到基础控制器任务")
-        connected = await self.connect_device(controller_base_task.task_option)
-        if not connected:
-            pass
+        self.need_stop = False  # 重置停止标志
+        
+        try:
+            self.fs_signal_bus.fs_start_button_status.emit(
+                {"text": "STOP", "status": "disabled"}
+            )
+            
+            # 1. 获取并处理预配置任务
+            from app.common.constants import PRE_CONFIGURATION
+            pre_cfg = self.task_service.get_task(PRE_CONFIGURATION)
+            if not pre_cfg:
+                raise ValueError("未找到基础预配置任务")
+            
+            # 2. 加载资源
+            logger.info("开始加载资源...")
+            if not await self.load_resources(pre_cfg.task_option):
+                logger.error("资源加载失败，流程终止")
+                self.fs_signal_bus.fs_start_button_status.emit(
+                    {"text": "START", "status": "enabled"}
+                )
+                return
+            logger.info("资源加载成功")
+            
+            # 3. 连接设备
+            logger.info("开始连接设备...")
+            # 控制器配置包含在 Pre-Configuration 任务中
+            connected = await self.connect_device(pre_cfg.task_option)
+            if not connected:
+                logger.error("设备连接失败，流程终止")
+                self.fs_signal_bus.fs_start_button_status.emit(
+                    {"text": "START", "status": "enabled"}
+                )
+                return
+            logger.info("设备连接成功")
+            
+            # 4. 运行所有已选中的任务
+            logger.info("开始执行任务序列...")
+            for task in self.task_service.current_tasks:
+                # 跳过预配置和控制器基础任务，以及未选中的任务
+                if task.name in [PRE_CONFIGURATION, "controller_base_task"]:
+                    continue
+                    
+                if task.is_checked:
+                    logger.info(f"开始执行任务: {task.name}")
+                    try:
+                        await self.run_task(task.item_id)
+                        logger.info(f"任务执行完成: {task.name}")
+                    except Exception as e:
+                        logger.error(f"任务执行失败: {task.name}, 错误: {str(e)}")
+                        
+                if self.need_stop:
+                    logger.info("收到停止请求，流程终止")
+                    break
+            
+        except Exception as e:
+            logger.error(f"任务流程执行异常: {str(e)}")
+        finally:
+            # 无论成功失败，都重置开始按钮状态
+            self.fs_signal_bus.fs_start_button_status.emit(
+                {"text": "START", "status": "enabled"}
+            )
+            
+            # 清理资源
+            await self.maafw.stop_task()
 
     async def connect_device(self, controller_raw: Dict[str, Any]):
         """连接 MaaFW"""
@@ -261,13 +305,31 @@ class ServiceCoordinator:
         """加载资源"""
         if self.maafw.resource:
             self.maafw.resource.clear()  # 清除资源
-        resource_path = ""
-        resource_target = resource_raw.get("resource", {}).get("value")
-
-        for i in self.task_service.interface.get("resource", []):
-            if i["name"] == resource_target:
-                logger.debug(f"加载资源: {i['path']}")
-                resource_path = i["path"]
+            
+        # 处理两种情况：配置文件场景和 UI 表单场景
+        # 配置文件场景：resource 直接是字符串
+        # UI 表单场景：resource 是包含 value 字段的字典
+        resource = resource_raw.get("resource", {})
+        if isinstance(resource, str):
+            resource_target = resource
+        elif isinstance(resource, dict):
+            resource_target = resource.get("value")
+        else:
+            resource_target = None
+            
+        resource_path = []
+        
+        # 如果没有找到资源目标，尝试直接从配置中获取 resource_path（用于配置文件场景）
+        if not resource_target:
+            logger.warning("未找到资源目标，尝试直接从配置中获取资源路径")
+            # 配置文件中可能直接包含 resource_path 字段
+            resource_path = resource_raw.get("resource_path", [])
+        else:
+            for i in self.task_service.interface.get("resource", []):
+                if i["name"] == resource_target:
+                    logger.debug(f"加载资源: {i['path']}")
+                    resource_path = i["path"]
+                    break  # 找到后停止遍历
 
         if resource_path == "" and not self.need_stop:
             logger.error(f"未找到目标资源: {resource_target}")
@@ -385,12 +447,35 @@ class ServiceCoordinator:
 
     def _get_controller_type(self, controller_raw: Dict[str, Any]) -> str:
         """获取控制器类型"""
-        controller_name = controller_raw.get("controller_type", "").lower()
-        for controller in self.task_service.interface.get("controller", []):
-            if controller_name == controller.get("name", "").lower():
-                return controller.get("type", "").lower()
+        # 从控制器配置中获取控制器名称
+        controller_config = controller_raw.get("controller_type", {})
+        
+        # 处理两种情况：
+        # 1. controller_config 是字符串
+        # 2. controller_config 是字典，包含 value 字段（UI 表单场景）
+        if isinstance(controller_config, str):
+            controller_name = controller_config
+        elif isinstance(controller_config, dict):
+            controller_name = controller_config.get("value", "")
         else:
-            raise ValueError(f"未找到名称为 '{controller_name}' 的控制器")
+            controller_name = ""
+            
+        # 查找控制器类型
+        controller_name = controller_name.lower()
+        for controller in self.task_service.interface.get("controller", []):
+            if controller.get("name", "").lower() == controller_name:
+                return controller.get("type", "").lower()
+        
+        # 如果没有找到，尝试直接解析 config 中的控制器类型（用于配置文件场景）
+        # 配置文件中 controller_type 直接是字符串，如 "Windows" 或 "Android"
+        direct_controller_name = controller_raw.get("controller_type", "").lower()
+        if direct_controller_name:
+            for controller in self.task_service.interface.get("controller", []):
+                if controller.get("name", "").lower() == direct_controller_name:
+                    return controller.get("type", "").lower()
+        
+        # 如果仍然没有找到，抛出错误
+        raise ValueError(f"未找到控制器类型: {controller_raw}")
 
     # endregion
     # 提供获取服务的属性，以便UI层访问

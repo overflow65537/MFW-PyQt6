@@ -1,5 +1,7 @@
+import asyncio
 from typing import Dict
 from PySide6.QtCore import Qt
+from PySide6.QtCore import QThread
 from PySide6.QtWidgets import (
     QWidget,
     QTableWidgetItem,
@@ -38,6 +40,12 @@ class FastStartInterface(UI_FastStartInterface, QWidget):
         # 连接日志事件信号以显示 InfoBar
         signalBus.log_event.connect(self._on_log_event)
         signalBus.infobar_signal.connect(self._on_infobar_signal)
+        
+        # 连接启动/停止按钮事件
+        self.start_bar.run_button.clicked.connect(self._on_run_button_clicked)
+        
+        # 连接服务协调器的信号，用于更新按钮状态
+        self.service_coordinator.fs_signals.fs_start_button_status.connect(self._on_button_status_changed)
 
     def _on_infobar_signal(self, text: str, infobar_type: str):
         """处理 infobar_signal 信号，显示 InfoBar 通知"""
@@ -151,3 +159,35 @@ class FastStartInterface(UI_FastStartInterface, QWidget):
 
 
     
+
+    def _on_start_button_clicked(self):
+        """处理开始按钮点击事件"""
+        # 启动任务流
+        asyncio.create_task(self.service_coordinator.run_tasks_flow())
+
+    def _on_stop_button_clicked(self):
+        """处理停止按钮点击事件"""
+        # 停止任务流
+        asyncio.create_task(self.service_coordinator.stop_task())
+    
+    def _on_run_button_clicked(self):
+        """处理启动/停止按钮点击事件"""
+        # 检查按钮当前状态并执行相应操作
+        if self.start_bar.run_button.text() == "启动":
+            asyncio.create_task(self.service_coordinator.run_tasks_flow())
+        else:
+            asyncio.create_task(self.service_coordinator.stop_task())
+        
+    def _on_button_status_changed(self, status):
+        """处理按钮状态变化信号"""
+        """状态格式: {"text": "STOP", "status": "disabled"}"""
+        # 更新启动/停止按钮状态
+        if status.get("text") == "STOP":
+            self.start_bar.run_button.setText("停止")
+            self.start_bar.run_button.setIcon(FIF.CLOSE)
+        else:
+            self.start_bar.run_button.setText("启动")
+            self.start_bar.run_button.setIcon(FIF.PLAY)
+        
+        # 设置按钮是否可用
+        self.start_bar.run_button.setEnabled(status.get("status") != "disabled")
