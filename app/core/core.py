@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List, Dict, Any
 
-from qasync import asyncSlot, asyncio
+from qasync import asyncSlot
 
 from .Item import (
     CoreSignalBus,
@@ -228,13 +228,14 @@ class ServiceCoordinator:
         self.fs_signal_bus.fs_start_button_status.emit(
             {"text": "STOP", "status": "disabled"}
         )
+        from app.common.constants import PRE_CONFIGURATION
 
-        resource_base_task = self.task_service.get_task("resource_base_task")
-        if not resource_base_task:
+        pre_cfg = self.task_service.get_task(PRE_CONFIGURATION)
+        if not pre_cfg:
             raise ValueError("未找到基础资源任务")
 
         # 2. 加载资源
-        if not await self.load_resources(resource_base_task.task_option):
+        if not await self.load_resources(pre_cfg.task_option):
             logger.error("资源加载失败，流程终止")
             return
 

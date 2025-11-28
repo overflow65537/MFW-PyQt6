@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import Dict,Any
+from typing import Dict, Any
 
 import markdown
 from PySide6.QtCore import Qt
@@ -30,7 +30,8 @@ from ....core.core import ServiceCoordinator
 
 class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin):
     current_config: Dict[str, Any]
-    parent_layout:QVBoxLayout
+    parent_layout: QVBoxLayout
+
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         # 先调用QWidget的初始化
         self.service_coordinator = service_coordinator
@@ -39,7 +40,6 @@ class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin):
         DynamicFormMixin.__init__(self)
         # 调用ResourceSettingMixin的初始化
         ResourceSettingMixin.__init__(self)
-
 
         # 设置parent_layout为option_area_layout，供DynamicFormMixin使用
         self._init_ui()
@@ -232,12 +232,10 @@ class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin):
 
         self.current_task = None
         # 重置DynamicFormMixin的状态
-        if hasattr(self, "current_config"):
-            self.current_config = {}
-        if hasattr(self, "widgets"):
-            self.widgets = {}
-        if hasattr(self, "child_layouts"):
-            self.child_layouts = {}
+
+        self.current_config = {}
+        self.widgets = {}
+        self.child_layouts = {}
 
     def _on_config_changed(self, config_id: str):
         """配置切换时重置选项面板"""
@@ -285,14 +283,18 @@ class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin):
 
             # 记录日志
             logger.info(f"选项加载完成，共 {len(self.current_config)} 个选项")
+
             # 判断是否为资源类型的配置
-            if (
-                isinstance(form_structure, dict)
-                and form_structure.get("type") == "resource"
-            ):
-                # 使用ResourceSettingMixin创建资源设置UI
+            if form_structure.get("type") == "resource":
+                # 前置配置
                 self.create_resource_settings()
                 logger.info("资源设置表单已创建")
+
+            elif form_structure.get("type") == "post_action":
+                # 完成后操作
+                self.create_post_action_setting()
+                logger.info("完成后操作设置表单已创建")
+
             else:
                 # 正常的表单更新逻辑
                 self.update_form_from_structure(form_structure, self.current_config)

@@ -7,8 +7,7 @@ from qfluentwidgets import (
     BodyLabel,
 )
 from app.core.Item import TaskItem, ConfigItem
-from app.utils.logger import logger
-from app.common.constants import RESOURCE_TASK_ID, POST_TASK_ID
+from app.common.constants import PRE_CONFIGURATION, POST_ACTION
 
 
 class BaseAddDialog(MessageBoxBase):
@@ -146,15 +145,15 @@ class AddConfigDialog(BaseAddDialog):
         # 仅为配置创建所需的基础任务:资源 与 完成后操作
         default_tasks = [
             TaskItem(
-                name="资源",
-                item_id=RESOURCE_TASK_ID,
+                name="Pre-Configuration",
+                item_id=PRE_CONFIGURATION,
                 is_checked=True,
                 task_option={},
                 is_special=False,  # 基础任务，不是特殊任务
             ),
             TaskItem(
-                name="完成后操作",
-                item_id=POST_TASK_ID,
+                name="Post-Action",
+                item_id=POST_ACTION,
                 is_checked=True,
                 task_option={},
                 is_special=False,  # 基础任务，不是特殊任务
@@ -167,7 +166,9 @@ class AddConfigDialog(BaseAddDialog):
             item_id=ConfigItem.generate_id(),
             tasks=default_tasks,
             know_task=[],
-            bundle={self.resource_name: {"name": self.resource_name, "path": bundle_path}},
+            bundle={
+                self.resource_name: {"name": self.resource_name, "path": bundle_path}
+            },
         )
 
         # 接受对话框
@@ -211,36 +212,38 @@ class AddTaskDialog(BaseAddDialog):
 
     def load_task_names(self, task_names):
         """加载可用的任务名到下拉框（显示label，存储name）
-        
+
         注意：保留 $ 前缀，它用于国际化标记
         """
         if task_names:
             # 清空下拉框
             self.task_combo.clear()
-            
+
             # 构建显示文本（label）到任务名（name）的映射
             self.display_to_name = {}
             display_labels = []
-            
+
             for task_name in task_names:
                 # 在 interface 中查找对应的 label
                 display_label = task_name  # 默认使用 name
                 if self.interface:
                     for task in self.interface.get("task", []):
                         if task["name"] == task_name:
-                            display_label = task.get("label", task.get("name", task_name))
+                            display_label = task.get(
+                                "label", task.get("name", task_name)
+                            )
                             break
-                
+
                 display_labels.append(display_label)
                 self.display_to_name[display_label] = task_name
-            
+
             self.task_combo.addItems(display_labels)
 
     def on_confirm(self):
         """确认添加任务"""
         # 获取选中的显示文本
         selected_label = self.task_combo.currentText().strip()
-        
+
         # 通过映射获取真实的任务名称（name）
         self.task_name = self.display_to_name.get(selected_label, selected_label)
 
@@ -258,7 +261,11 @@ class AddTaskDialog(BaseAddDialog):
                     break
 
         # 创建 TaskItem 对象，匹配 core.TaskItem 数据结构
-        task_option = self.task_map.get(self.task_name, {}) if isinstance(self.task_map, dict) else {}
+        task_option = (
+            self.task_map.get(self.task_name, {})
+            if isinstance(self.task_map, dict)
+            else {}
+        )
         self.item = TaskItem(
             name=self.task_name,
             item_id=TaskItem.generate_id(is_special=is_special),

@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QObject, Signal
 from ..utils.logger import logger
-from ..common.constants import RESOURCE_TASK_ID, POST_TASK_ID
+from app.common.constants import PRE_CONFIGURATION, POST_ACTION
 
 
 # ==================== 信号总线 ====================
@@ -60,7 +60,7 @@ class TaskItem:
 
     def is_base_task(self) -> bool:
         """判断是否为基础任务（资源或完成后操作）"""
-        return self.item_id in (RESOURCE_TASK_ID, POST_TASK_ID)
+        return self.item_id in ( PRE_CONFIGURATION, POST_ACTION)
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""

@@ -1,6 +1,4 @@
-import copy
 from typing import Any, Dict, Optional
-from venv import logger
 
 from .Task_Service import TaskService
 from app.core.Item import CoreSignalBus
@@ -27,10 +25,11 @@ class OptionService:
         print("任务更改")
         if task:
             self.current_options = task.task_option
-
-            if task.item_id == "resource_base_task":
-
+            from app.common.constants import PRE_CONFIGURATION, POST_ACTION
+            if task.item_id == PRE_CONFIGURATION:
                 self.form_structure = {"type": "resource"}
+            elif task.item_id == POST_ACTION:
+                self.form_structure = {"type": "post_action"}
             else:
                 # 获取表单结构
                 self.form_structure = self.get_form_structure_by_task_name(

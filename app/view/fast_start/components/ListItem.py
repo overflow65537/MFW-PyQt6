@@ -14,6 +14,7 @@ from qfluentwidgets import (
     FluentIcon as FIF,
 )
 from app.core.Item import TaskItem, ConfigItem
+from app.common.constants import PRE_CONFIGURATION, POST_ACTION
 
 
 class ClickableLabel(BodyLabel):
@@ -127,12 +128,11 @@ class TaskListItem(BaseListItem):
         """
         from app.utils.logger import logger
 
-        if self.task.item_id in [
-            "resource_base_task",
-            "post_process_task",
-        ]:
-            return self.task.name
-
+        # 修改为
+        if self.task.item_id == PRE_CONFIGURATION:
+            return self.tr("Pre-Configuration")
+        elif self.task.item_id == POST_ACTION:
+            return self.tr("Post-Action")
         elif self.interface:
             for task in self.interface.get("task", []):
                 if task["name"] == self.task.name:

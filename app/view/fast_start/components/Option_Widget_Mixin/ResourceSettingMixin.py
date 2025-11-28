@@ -2,7 +2,7 @@ from typing import Dict, Any
 from PySide6.QtWidgets import QVBoxLayout
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtCore import Qt
-from qfluentwidgets import BodyLabel, ComboBox, LineEdit, ToolTipPosition, ToolTipFilter
+from qfluentwidgets import BodyLabel, ComboBox, LineEdit, ToolTipFilter
 from pathlib import WindowsPath
 
 import jsonc
@@ -49,6 +49,13 @@ class ResourceSettingMixin:
         """初始化资源设置Mixin"""
         self.show_hide_option = False
         self.resource_setting_widgets = {}
+
+        # 当前控制器信息变量
+        self.current_controller_label = None
+        self.current_controller_name = None
+        self.current_controller_type = None
+        self.current_controller_info = None
+        self.current_resource = None
 
         # 构建控制器类型映射
         interface = get_interface_manager().get_interface()
@@ -110,6 +117,14 @@ class ResourceSettingMixin:
             if self.controller_type_mapping[label]["name"] == self.current_config.get(
                 "controller_type", ""
             ):
+                # 更新当前控制器信息变量
+                self.current_controller_label = label
+                self.current_controller_info = self.controller_type_mapping[label]
+                self.current_controller_name = self.current_controller_info["name"]
+                self.current_controller_type = self.current_controller_info[
+                    "type"
+                ].lower()
+
                 # 填充信息
                 ctrl_combo: ComboBox = self.resource_setting_widgets["ctrl_combo"]
                 ctrl_combo.setCurrentIndex(idx)
@@ -370,12 +385,25 @@ class ResourceSettingMixin:
 
     def _on_child_option_changed(self, key: str, value: Any):
         """子选项变化处理"""
-        current_controller_name = self.controller_type_mapping[
-            self.resource_setting_widgets["ctrl_combo"].currentText()
-        ]["name"]
-        current_controller_type = self.controller_type_mapping[
-            self.resource_setting_widgets["ctrl_combo"].currentText()
-        ]["type"].lower()
+        # 确保当前控制器信息已初始化
+        if not self.current_controller_name or not self.current_controller_type:
+            # 从配置中重新获取控制器信息作为 fallback
+            controller_name = self.current_config.get("controller_type", "")
+            for key_ctrl, ctrl_info in self.controller_type_mapping.items():
+                if ctrl_info["name"] == controller_name:
+                    # 更新当前控制器信息变量
+                    self.current_controller_label = key_ctrl
+                    self.current_controller_info = ctrl_info
+                    self.current_controller_name = ctrl_info["name"]
+                    self.current_controller_type = ctrl_info["type"].lower()
+                    break
+            else:
+                # 如果没有找到匹配的控制器，返回
+                return
+
+        # 使用当前控制器信息变量
+        current_controller_name = self.current_controller_name
+        current_controller_type = self.current_controller_type
         if current_controller_type == "adb":
             self.current_config[current_controller_name] = self.current_config.get(
                 current_controller_name,
@@ -444,6 +472,7 @@ class ResourceSettingMixin:
 
     # 填充新的子选项信息
     def _fill_children_option(self, controller_name):
+        """填充新的子选项信息"""
         controller_type = None
         for controller_info in self.controller_type_mapping.values():
             if controller_info["name"] == controller_name:
@@ -472,9 +501,9 @@ class ResourceSettingMixin:
                     "program_path": "",
                     "program_params": "",
                     "wait_launch_time": "",
-                    "mouse_input_methods": 1,
-                    "keyboard_input_methods": 1,
-                    "win32_screencap_methods": 1,
+                    "mouse_input_methods": 0,
+                    "keyboard_input_methods": 0,
+                    "win32_screencap_methods": 0,
                 },
             )
         else:
@@ -524,8 +553,14 @@ class ResourceSettingMixin:
 
     def _on_controller_type_changed(self, label: str):
         """控制器类型变化时的处理函数"""
-        ctrl_info = self.controller_type_mapping[label]
-        new_type = ctrl_info["type"].lower()
+        # 更新当前控制器信息变量
+        self.current_controller_label = label
+        self.current_controller_info = self.controller_type_mapping[label]
+        self.current_controller_name = self.current_controller_info["name"]
+        self.current_controller_type = self.current_controller_info["type"].lower()
+
+        ctrl_info = self.current_controller_info
+        new_type = self.current_controller_type
 
         # 更新当前配置
         self.current_config["controller_type"] = ctrl_info["name"]
@@ -556,17 +591,17 @@ class ResourceSettingMixin:
             self._toggle_win32_children_option(True)
 
     def _on_resource_combox_changed(self, new_resource):
-        controller_label = None
-        for key, controller in self.controller_type_mapping.items():
-            if controller.get("name", "") == self.current_config["controller_type"]:
-                controller_label = key
-                break
-        if controller_label is None:
-            return
+        """资源变化时的处理函数"""
+        # 更新当前资源信息变量
+        self.current_resource = new_resource
 
-        for resource in self.resource_mapping[controller_label]:
-            if resource.get("label", resource.get("name", "")) == new_resource:
+        for resource in self.resource_mapping[self.current_controller_label]:
+            if resource.get("label", resource.get("name", "")) == self.current_resource:
                 self.current_config["resource"] = resource["name"]
+                res_combo: ComboBox = self.resource_setting_widgets["resource_combo"]
+                if description := resource.get("description"):
+                    res_combo.installEventFilter(ToolTipFilter(res_combo))
+                    res_combo.setToolTip(description)
                 self._auto_save_options()
 
     def _on_search_combo_changed(self, device_name):
@@ -601,15 +636,13 @@ class ResourceSettingMixin:
         self.current_controller_type = None
 
     def _fill_resource_option(self):
-
+        """填充资源选项"""
         resource_combo: ComboBox = self.resource_setting_widgets["resource_combo"]
         resource_combo.clear()
-        current_config_name = self.current_config["controller_type"]
-        for controller in self.controller_type_mapping:
-            if self.controller_type_mapping[controller]["name"] == current_config_name:
-                curren_config = self.resource_mapping[controller]
 
-                for resource in curren_config:
-                    icon = resource.get("icon", "")
-                    resource_label = resource.get("label", resource.get("name", ""))
-                    resource_combo.addItem(resource_label, icon)
+        # 使用当前控制器信息变量
+        curren_config = self.resource_mapping[self.current_controller_label]
+        for resource in curren_config:
+            icon = resource.get("icon", "")
+            resource_label = resource.get("label", resource.get("name", ""))
+            resource_combo.addItem(resource_label, icon)

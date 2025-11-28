@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from ...utils.logger import logger
 from .interface_manager import get_interface_manager
-from ...common.constants import RESOURCE_TASK_ID, POST_TASK_ID
+from ...common.constants import PRE_CONFIGURATION, POST_ACTION
 from app.core.Item import ConfigItem, TaskItem, CoreSignalBus
 
 
@@ -24,16 +24,21 @@ class JsonConfigRepository:
             # 直接使用 interface manager 获取配置
             interface_manager = get_interface_manager()
             interface = interface_manager.get_interface()
-            
+
             # 如果 interface 为空，说明加载失败
             if not interface:
                 interface_path_jsonc = Path.cwd() / "interface.jsonc"
                 interface_path_json = Path.cwd() / "interface.json"
-                
+
                 # 检查配置文件是否存在
-                if not interface_path_jsonc.exists() and not interface_path_json.exists():
-                    raise FileNotFoundError(f"无有效资源配置文件: {interface_path_jsonc} 或 {interface_path_json}")
-            
+                if (
+                    not interface_path_jsonc.exists()
+                    and not interface_path_json.exists()
+                ):
+                    raise FileNotFoundError(
+                        f"无有效资源配置文件: {interface_path_jsonc} 或 {interface_path_json}"
+                    )
+
             logger.debug("使用 interface 配置创建默认配置")
 
             default_main_config = {
@@ -121,27 +126,12 @@ class ConfigService:
             # Use the first bundle in the dictionary
             first_bundle_name = next(iter(bundle_dict.keys()), "Default Bundle")
             bundle = bundle_dict.get(first_bundle_name, {"path": "./"})
-            
-            default_tasks = [
-                TaskItem(
-                    name="资源",
-                    item_id=RESOURCE_TASK_ID,
-                    is_checked=True,
-                    task_option={},
-                    is_special=False,  # 基础任务，不是特殊任务
-                ),
-                TaskItem(
-                    name="完成后操作",
-                    item_id=POST_TASK_ID,
-                    is_checked=True,
-                    task_option={},
-                    is_special=False,  # 基础任务，不是特殊任务
-                ),
-            ]
+
+
             default_config_item = ConfigItem(
                 name="Default Config",
                 item_id=ConfigItem.generate_id(),
-                tasks=default_tasks,
+                tasks=[],
                 know_task=[],
                 bundle=bundle,
             )
@@ -224,28 +214,29 @@ class ConfigService:
         """创建新配置，统一使用 uuid 生成 id"""
         if not config.item_id:
             config.item_id = ConfigItem.generate_id()
-        
+
         # If no tasks provided, add base tasks only.
         # Task generation from interface should be handled by TaskService
         if not config.tasks:
             default_tasks = [
+
                 TaskItem(
-                    name="资源",
-                    item_id=RESOURCE_TASK_ID,
+                    name="Pre-Configuration",
+                    item_id=PRE_CONFIGURATION,
                     is_checked=True,
                     task_option={},
                     is_special=False,  # 基础任务，不是特殊任务
                 ),
                 TaskItem(
-                    name="完成后操作",
-                    item_id=POST_TASK_ID,
+                    name="Post-Action",
+                    item_id=POST_ACTION,
                     is_checked=True,
                     task_option={},
                     is_special=False,  # 基础任务，不是特殊任务
                 ),
             ]
             config.tasks = default_tasks
-        
+
         if self.save_config(config.item_id, config):
             return config.item_id
         return ""

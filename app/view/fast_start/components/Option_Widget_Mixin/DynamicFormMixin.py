@@ -2,6 +2,7 @@ import copy
 from .LineEditGenerator import LineEditGenerator
 from .ComboBoxGenerator import ComboBoxGenerator
 from app.utils.logger import logger
+from app.core.core import ServiceCoordinator
 
 
 class DynamicFormMixin:
@@ -11,9 +12,15 @@ class DynamicFormMixin:
     可以集成到OptionWidget等UI组件中
     """
 
+    service_coordinator: ServiceCoordinator
+
+    def set_description(self, description: str): ...
+    def _toggle_description(self, visible=None): ...
+
     def __init__(self):
         """初始化动态表单Mixin"""
         # 确保这些属性被初始化
+        self._disable_auto_save = False
         self.widgets = {}
         self.child_layouts = {}
         self.current_config = {}
@@ -36,14 +43,12 @@ class DynamicFormMixin:
 
         # 处理任务层级的description
         try:
-            if hasattr(self, "set_description"):
-                if "description" in form_structure:
-                    self.set_description(form_structure["description"])  # type: ignore
-                    if hasattr(self, "_toggle_description"):
-                        self._toggle_description(visible=True)  # type: ignore
-                else:
-                    # 如果form_structure中没有description字段，隐藏描述区域
-                    self.set_description("")  # type: ignore
+            if "description" in form_structure:
+                self.set_description(form_structure["description"])
+                self._toggle_description(visible=True)
+            else:
+                # 如果form_structure中没有description字段，隐藏描述区域
+                self.set_description("")
         except Exception:
             # 如果设置description失败，忽略此错误
             pass
@@ -220,19 +225,17 @@ class DynamicFormMixin:
     def _auto_save_options(self):
         """自动保存当前选项"""
         # 检查是否禁用了自动保存
-        if hasattr(self, "_disable_auto_save") and self._disable_auto_save:
+        if self._disable_auto_save:
             return
 
-        # 检查是否有service_coordinator和option_service
-        if hasattr(self, "service_coordinator") and hasattr(self.service_coordinator, "option_service"):  # type: ignore
-            try:
-                # 获取当前所有配置
-                all_config = self.get_config()
-                # 调用OptionService的update_options方法保存选项
-                self.service_coordinator.option_service.update_options(all_config)  # type: ignore
-            except Exception as e:
-                # 如果保存失败，记录错误但不影响用户操作
-                logger.error(f"自动保存选项失败: {e}")
+        try:
+            # 获取当前所有配置
+            all_config = self.get_config()
+            # 调用OptionService的update_options方法保存选项
+            self.service_coordinator.option_service.update_options(all_config)
+        except Exception as e:
+            # 如果保存失败，记录错误但不影响用户操作
+            logger.error(f"自动保存选项失败: {e}")
 
     def _apply_config(self, config, form_structure, current_config):
         """

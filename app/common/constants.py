@@ -6,7 +6,7 @@ MFW-ChainFlow Assistant 全局常量定义
 # 这些 ID 在整个系统中保持固定，便于识别和管理基础任务
 
 # 资源设置任务的固定 ID
-RESOURCE_TASK_ID = "resource_base_task"
+PRE_CONFIGURATION = "Pre-Configuration"
 
 # 完成后操作任务的固定 ID
-POST_TASK_ID = "post_action_base_task"
+POST_ACTION = "Post-Action"

@@ -177,9 +177,9 @@ class ComboBoxGenerator:
             # 临时禁用自动保存
             # 使用getattr获取_disable_auto_save属性，如果不存在则默认为False
             old_disable_auto_save = getattr(self.host, "_disable_auto_save", False)
-            # 显式初始化_disable_auto_save属性，如果不存在的话
-            if not hasattr(self.host, "_disable_auto_save"):
-                self.host._disable_auto_save = old_disable_auto_save
+
+
+            self.host._disable_auto_save = old_disable_auto_save
             self.host._disable_auto_save = True
 
             # 阻断下拉框信号，防止触发不必要的回调
@@ -199,7 +199,7 @@ class ComboBoxGenerator:
                 combo.blockSignals(False)
         finally:
             # 恢复自动保存状态
-            self.host._disable_auto_save = old_disable_auto_save  # type: ignore
+            self.host._disable_auto_save = old_disable_auto_save   # type: ignore
 
     def _on_combobox_changed(
         self, key, value, config, parent_config, child_layout, save_config=True
@@ -536,12 +536,12 @@ class ComboBoxGenerator:
             return
 
         # 检查是否有service_coordinator和option_service
-        if hasattr(self.host, "service_coordinator") and hasattr(self.host.service_coordinator, "option_service"):  # type: ignore
+        if hasattr(self.host, "service_coordinator") and hasattr(self.host.service_coordinator, "option_service"):  
             try:
                 # 获取当前所有配置
                 all_config = self.host.get_config()
                 # 调用OptionService的update_options方法保存选项
-                self.host.service_coordinator.option_service.update_options(all_config)  # type: ignore
+                self.host.service_coordinator.option_service.update_options(all_config)  
             except Exception as e:
                 # 如果保存失败，记录错误但不影响用户操作
                 logger.error(f"自动保存选项失败: {e}")
