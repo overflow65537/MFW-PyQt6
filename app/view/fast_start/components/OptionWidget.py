@@ -22,13 +22,16 @@ from app.view.fast_start.components.Option_Widget_Mixin.DynamicFormMixin import 
 from app.view.fast_start.components.Option_Widget_Mixin.ResourceSettingMixin import (
     ResourceSettingMixin,
 )
+from app.view.fast_start.components.Option_Widget_Mixin.PostActionSettingMixin import (
+    PostActionSettingMixin,
+)
 from app.utils.logger import logger
 
 
 from ....core.core import ServiceCoordinator
 
 
-class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin):
+class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin, PostActionSettingMixin):
     current_config: Dict[str, Any]
     parent_layout: QVBoxLayout
 
@@ -40,6 +43,8 @@ class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin):
         DynamicFormMixin.__init__(self)
         # 调用ResourceSettingMixin的初始化
         ResourceSettingMixin.__init__(self)
+        # 调用PostActionSettingMixin的初始化
+        PostActionSettingMixin.__init__(self)
 
         # 设置parent_layout为option_area_layout，供DynamicFormMixin使用
         self._init_ui()
