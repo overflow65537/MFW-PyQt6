@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QTextCharFormat, QTextCursor
@@ -31,6 +32,9 @@ class LogoutputWidget(QWidget):
             "ERROR": "#f85149",
             "CRITICAL": "#b62324",
         }
+        self._color_tag_pattern = re.compile(
+            r"\[color:(?P<color>[A-Za-z]+)\](?P<text>.*?)\[/color\]", re.S
+        )
         self._init_log_output()
         self.main_layout = QVBoxLayout(self)
         self.main_layout.addWidget(self.log_output_widget)
@@ -181,11 +185,27 @@ class LogoutputWidget(QWidget):
             return raw
         return self._level_color.get("INFO", "#eeeeee")
 
+    def _extract_color_tag(self, text: str):
+        match = self._color_tag_pattern.search(text)
+        if not match:
+            return None, text
+
+        color = match.group("color")
+        inner_text = match.group("text")
+        cleaned = text[: match.start()] + inner_text + text[match.end() :]
+        return color, cleaned
+
     def append_text_to_log(self, msg: str, color: str):
         """通用方法：将彩色文本写入日志面板"""
-        text = str(msg)
+        raw_text = str(msg)
         timestamp = datetime.now().strftime("%H:%M:%S")
-        normalized_color = self._normalize_color(color)
+        parsed_color, parsed_text = self._extract_color_tag(raw_text)
+        if parsed_color:
+            normalized_color = self._normalize_color(parsed_color)
+            text = parsed_text
+        else:
+            normalized_color = self._normalize_color(color)
+            text = raw_text
         fmt = QTextCharFormat()
         fmt.setForeground(QColor(normalized_color))
         cursor = self.log_output_area.textCursor()

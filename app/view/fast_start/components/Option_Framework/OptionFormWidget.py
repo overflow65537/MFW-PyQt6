@@ -50,17 +50,19 @@ class OptionFormWidget(QWidget):
             # 跳过非选项字段（如 description）
             if key == "description" or not isinstance(item_config, dict):
                 continue
-            
-            # 检查是否有 type 字段
-            if "type" not in item_config:
-                continue
-            
+
+            # 处理缺失的 type 字段（向后兼容）
+            option_config = dict(item_config)
+            if "type" not in option_config:
+                option_config["type"] = "combobox"
+                logger.debug(f"选项 {key} 缺失 type，默认作为 combobox 处理")
+
             # 创建选项项组件
-            option_item = OptionItemWidget(key, item_config, self)
+            option_item = OptionItemWidget(key, option_config, self)
             
             # 预创建子选项（如果存在）
-            if "children" in item_config:
-                for option_value, child_config in item_config["children"].items():
+            if "children" in option_config:
+                for option_value, child_config in option_config["children"].items():
                     option_item.add_child_option(option_value, child_config)
             
             # 保存选项项引用

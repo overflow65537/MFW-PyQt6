@@ -108,6 +108,10 @@ class OptionService:
         field_config = {}
         option_type = option_def.get("type")
 
+        # 向后兼容：缺失 type 的选项默认视为 combobox
+        if not option_type:
+            option_type = "combobox"
+
         # 设置字段标签，处理$前缀
         # 优先使用label，其次是name，如果都没有则使用option_key
         label = option_def.get("label", option_def.get("name", option_key))

@@ -27,7 +27,6 @@ class LogBodyLabelWidget(QWidget):
         }
         self._logs = []  # [(level, text)]
         self._init_ui()
-        self._connect_signals()
 
     def _init_ui(self):
         self.main_layout = QVBoxLayout(self)
@@ -44,7 +43,9 @@ class LogBodyLabelWidget(QWidget):
         # 滚动区域
         self.scroll_area = ScrollArea(self)
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
         self.scroll_area.setStyleSheet("background-color: transparent; border: none;")
         self.main_layout.addWidget(self.scroll_area, 1)
 
@@ -57,11 +58,6 @@ class LogBodyLabelWidget(QWidget):
         self.scroll_area.setWidget(self.content_widget)
 
         self.content_layout.addStretch()  # 占位伸展，保持顶对齐
-
-    def _connect_signals(self):
-        signalBus.log_event.connect(self._on_log_event)
-        signalBus.log_clear.connect(self.clear)
-        signalBus.log_level_changed.connect(self.set_filter_level)
 
     # ---- 外部信号槽 ----
     def _on_log_event(self, payload: dict):
@@ -103,7 +99,9 @@ class LogBodyLabelWidget(QWidget):
         self._rerender()
 
     # ---- 渲染逻辑 ----
-    def _add_label_if_visible(self, level: str, text: str, color_override: str | None = None):
+    def _add_label_if_visible(
+        self, level: str, text: str, color_override: str | None = None
+    ):
         # 判断是否满足当前过滤阈值
         current = self.level_filter.currentText()
         if current not in self._levels:
@@ -111,22 +109,25 @@ class LogBodyLabelWidget(QWidget):
         if self._levels.index(level) < self._levels.index(current):
             return  # 不显示
 
-        label = BodyLabel(self._format_line(level, text, color_override), self.content_widget)
+        label = BodyLabel(
+            self._format_line(level, text, color_override), self.content_widget
+        )
         label.setTextFormat(Qt.TextFormat.RichText)
         label.setWordWrap(True)
         self.content_layout.insertWidget(self.content_layout.count() - 1, label)
 
-    def _format_line(self, level: str, text: str, color_override: str | None = None) -> str:
+    def _format_line(
+        self, level: str, text: str, color_override: str | None = None
+    ) -> str:
         color = color_override or self._level_color.get(level, "#ffffff")
         weight = "600" if level in ("WARNING", "ERROR", "CRITICAL") else "400"
         # 简单 HTML 转义
         safe = (
-            (text or "")
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
+            (text or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         )
-        return f'<span style="color:{color}; font-weight:{weight}">[{level}] {safe}</span>'
+        return (
+            f'<span style="color:{color}; font-weight:{weight}">[{level}] {safe}</span>'
+        )
 
     def _rerender(self):
         # 全量重渲染：清空现有可见行再按过滤规则重新添加
