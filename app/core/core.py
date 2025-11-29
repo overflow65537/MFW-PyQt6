@@ -229,7 +229,6 @@ class ServiceCoordinator:
         任务完整流程：启动子进程、加载资源、连接设备、启动模拟器、批量运行任务
         """
         self.need_stop = False  # 重置停止标志
-
         try:
             self.fs_signal_bus.fs_start_button_status.emit(
                 {"text": "STOP", "status": "disabled"}
@@ -242,14 +241,7 @@ class ServiceCoordinator:
             if not pre_cfg:
                 raise ValueError("未找到基础预配置任务")
 
-            # 2. 加载资源
-            logger.info("开始加载资源...")
-            if not await self.load_resources(pre_cfg.task_option):
-                logger.error("资源加载失败，流程终止")
-                return
-            logger.info("资源加载成功")
-
-            # 3. 连接设备
+            # 2. 连接设备
             logger.info("开始连接设备...")
             # 控制器配置包含在 Pre-Configuration 任务中
             connected = await self.connect_device(pre_cfg.task_option)
@@ -257,6 +249,13 @@ class ServiceCoordinator:
                 logger.error("设备连接失败，流程终止")
                 return
             logger.info("设备连接成功")
+
+            # 3. 加载资源
+            logger.info("开始加载资源...")
+            if not await self.load_resources(pre_cfg.task_option):
+                logger.error("资源加载失败，流程终止")
+                return
+            logger.info("资源加载成功")
 
             # 解锁停止按钮
             self.fs_signal_bus.fs_start_button_status.emit(
@@ -285,6 +284,7 @@ class ServiceCoordinator:
         except Exception as e:
             logger.error(f"任务流程执行异常: {str(e)}")
             import traceback
+
             logger.critical(traceback.format_exc())
         finally:
             await self.stop_task()

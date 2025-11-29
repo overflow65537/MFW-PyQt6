@@ -252,7 +252,7 @@ class MaaFW(QObject):
     def load_resource(self, dir: str | Path, gpu_index: int = -1) -> bool:
         if not self.resource:
             self.resource = Resource()
-            # self.resource.add_sink(self.maa_resource_sink)
+            self.resource.add_sink(self.maa_resource_sink)
         if not isinstance(gpu_index, int):
             logger.warning("gpu_index 不是 int 类型，使用默认值 -1")
             gpu_index = -1

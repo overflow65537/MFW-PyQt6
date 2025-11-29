@@ -34,7 +34,9 @@ class LogoutputWidget(QWidget):
         self._init_log_output()
         self.main_layout = QVBoxLayout(self)
         self.main_layout.addWidget(self.log_output_widget)
-        self._connect_signals()
+        
+        # 连接 MAA Sink 回调信号
+        signalBus.callback.connect(self._on_maa_callback)
 
 
     def _init_log_output(self):
@@ -88,16 +90,8 @@ class LogoutputWidget(QWidget):
         self.generate_log_zip_button.clicked.connect(signalBus.request_log_zip)
         # 组件内部变更日志级别时，同步广播到总线
         self.log_level_combox.currentTextChanged.connect(self._on_level_changed)
-        self.log_level_combox.currentTextChanged.connect(signalBus.log_level_changed)
 
-    # --- 信号连接与槽 ---
-    def _connect_signals(self):
-        # 外部→组件：日志文本/等级/清空
-        signalBus.log_append.connect(self.append_log)
-        signalBus.log_set_text.connect(self.set_log_text)
-        signalBus.log_clear.connect(self.clear_log)
-        signalBus.log_level_changed.connect(self.set_log_level)
-        signalBus.log_entry.connect(self.add_structured_log)
+
 
     def append_log(self, text: str):
         if not isinstance(text, str):
@@ -128,6 +122,92 @@ class LogoutputWidget(QWidget):
     def _on_level_changed(self, level: str):
         # 下拉框改变本地阈值时，重渲染
         self._render_logs()
+
+    def _on_maa_callback(self, signal: dict):
+        """处理 MAA Sink 发送的回调信号"""
+        if not isinstance(signal, dict):
+            return
+        
+        signal_name = signal.get("name", "")
+        status = signal.get("status", 0)  # 1=Starting, 2=Succeeded, 3=Failed
+        
+        # 根据不同的信号类型处理
+        if signal_name == "resource":
+            # 资源加载状态
+            self._handle_resource_signal(status)
+        
+        elif signal_name == "controller":
+            # 控制器/模拟器连接状态
+            action = signal.get("task", "")
+            self._handle_controller_signal(status, action)
+        
+        elif signal_name == "tasker_task":
+            # 任务执行状态
+            task = signal.get("task", "")
+            self._handle_tasker_task_signal(status, task)
+        
+        elif signal_name == "task":
+            # 任务识别/执行状态
+            task = signal.get("task", "")
+            focus = signal.get("focus", "")
+            aborted = signal.get("aborted", False)
+            self._handle_task_signal(status, task, focus, aborted)
+
+    def _handle_resource_signal(self, status: int):
+        """处理资源加载信号"""
+        # status: 1=Starting, 2=Succeeded, 3=Failed
+        if status == 1:
+            self.add_structured_log("INFO", "[资源] 开始加载资源...")
+        elif status == 2:
+            self.add_structured_log("INFO", "[资源] ✅ 资源加载成功")
+        elif status == 3:
+            self.add_structured_log("ERROR", "[资源] ❌ 资源加载失败")
+
+    def _handle_controller_signal(self, status: int, action: str):
+        """处理控制器/模拟器连接信号"""
+        # status: 1=Starting, 2=Succeeded, 3=Failed
+        action_text = action if action else "连接操作"
+        if status == 1:
+            self.add_structured_log("INFO", f"[控制器] 开始执行操作: {action_text}")
+        elif status == 2:
+            self.add_structured_log("INFO", f"[控制器] ✅ 操作成功: {action_text}")
+        elif status == 3:
+            self.add_structured_log("ERROR", f"[控制器] ❌ 操作失败: {action_text}")
+
+    def _handle_tasker_task_signal(self, status: int, task: str):
+        """处理任务执行信号"""
+        # status: 1=Starting, 2=Succeeded, 3=Failed
+        task_name = task if task else "未知任务"
+        if status == 1:
+            self.add_structured_log("INFO", f"[任务] 开始执行任务: {task_name}")
+        elif status == 2:
+            self.add_structured_log("INFO", f"[任务] ✅ 任务执行成功: {task_name}")
+        elif status == 3:
+            self.add_structured_log("ERROR", f"[任务] ❌ 任务执行失败: {task_name}")
+
+    def _handle_task_signal(self, status: int, task: str, focus: str, aborted: bool):
+        """处理任务识别/执行信号"""
+        # status: 1=start, 2=succeeded, 3=failed
+        task_name = task if task else "未知任务"
+        
+        if aborted:
+            self.add_structured_log("WARNING", f"[识别] ⚠️ 任务已中止: {task_name}")
+            return
+        
+        status_map = {
+            1: ("INFO", "开始识别", "start"),
+            2: ("INFO", "✅ 识别成功", "succeeded"),
+            3: ("ERROR", "❌ 识别失败", "failed"),
+        }
+        
+        level, prefix, status_key = status_map.get(status, ("INFO", "", ""))
+        
+        if focus:
+            message = f"[识别] {prefix}: {task_name} - {focus}"
+        else:
+            message = f"[识别] {prefix}: {task_name}"
+        
+        self.add_structured_log(level, message)
 
     def add_structured_log(self, level: str, text: str):
         # 规范化级别

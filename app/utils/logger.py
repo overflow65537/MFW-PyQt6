@@ -27,9 +27,6 @@ import logging
 import os
 
 from logging.handlers import TimedRotatingFileHandler
-from datetime import datetime
-
-from app.common.signal_bus import signalBus
 
 # 提取日志格式为常量
 LOG_FORMAT = "[%(asctime)s][%(levelname)s][%(filename)s][L%(lineno)d][%(funcName)s] | %(message)s"
