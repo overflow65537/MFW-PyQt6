@@ -205,6 +205,10 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
     def set_description(self, description: str):
         """设置描述内容"""
+        # 处理 None 或空字符串
+        if not description:
+            description = ""
+        
         self.description_content.setText("")
 
         # 如果description为空，隐藏描述区域
@@ -248,22 +252,64 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
     def _clear_options(self):
         """清空选项区域"""
+        # 清空两个固定UI的字典（资源设置和完成后操作）
+        if hasattr(self, 'resource_setting_widgets'):
+            self.resource_setting_widgets.clear()
+        if hasattr(self, 'post_action_widgets'):
+            self.post_action_widgets.clear()
+        
         # 使用新框架清空选项
         self.option_form_widget._clear_options()
 
-        # 同时也清空布局中其他可能存在的控件（保留兼容性）
-        # 但保留 option_form_widget 本身
+        # 移除布局中所有不是 option_form_widget 的项（包括控件、间距、子布局等）
+        # 从后往前遍历，避免索引变化
         items_to_remove = []
-        for i in range(self.option_area_layout.count()):
+        for i in reversed(range(self.option_area_layout.count())):
             item = self.option_area_layout.itemAt(i)
-            if item and item.widget() and item.widget() != self.option_form_widget:
+            if item:
+                # 保留 option_form_widget
+                if item.widget() == self.option_form_widget:
+                    continue
+                # 移除其他所有项
                 items_to_remove.append(i)
 
-        # 从后往前移除，避免索引问题
-        for i in reversed(items_to_remove):
+        # 移除所有找到的项
+        for i in items_to_remove:
             item = self.option_area_layout.takeAt(i)
+            if item:
+                if item.widget():
+                    widget = item.widget()
+                    widget.hide()
+                    widget.setParent(None)
+                    widget.deleteLater()
+                elif item.layout():
+                    # 如果有子布局，递归清理
+                    layout = item.layout()
+                    while layout.count() > 0:
+                        child_item = layout.takeAt(0)
+                        if child_item.widget():
+                            child_widget = child_item.widget()
+                            child_widget.hide()
+                            child_widget.setParent(None)
+                            child_widget.deleteLater()
+                    layout.deleteLater()
+                # 间距项会被 takeAt 自动清理
+        
+        # 确保布局只包含 option_form_widget
+        while self.option_area_layout.count() > 1:
+            item = self.option_area_layout.itemAt(0)
+            if item and item.widget() == self.option_form_widget:
+                break
+            item = self.option_area_layout.takeAt(0)
             if item and item.widget():
-                item.widget().deleteLater()
+                widget = item.widget()
+                widget.hide()
+                widget.setParent(None)
+                widget.deleteLater()
+        
+        # 强制更新布局和几何结构
+        self.option_area_layout.update()
+        self.updateGeometry()
 
     def update_form_from_structure(self, form_structure, config=None):
         """
@@ -271,25 +317,41 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         :param form_structure: 表单结构定义
         :param config: 可选的配置对象，用于设置表单的当前选择
         """
-        # 显示选项区域
-        self.option_splitter_widget.show()
-
-        # 使用新的OptionFormWidget框架更新表单
         # 处理表单结构中的描述字段
+        description = None
         if isinstance(form_structure, dict) and "description" in form_structure:
             description = form_structure["description"]
-            self.set_description(description)
+            self.set_description(description or "")
             if description and description.strip():
                 self._toggle_description(visible=True)
-
+            else:
+                self._toggle_description(visible=False)
+        
         # 构建表单（排除 description 字段）
         form_structure_copy = {
             k: v for k, v in form_structure.items() if k != "description"
         }
-        self.option_form_widget.build_from_structure(form_structure_copy, config)
-
-        # 连接选项变化信号以实现自动保存
-        self._connect_option_signals()
+        
+        # 检查是否有有效的选项项（有 type 字段的字典项）
+        has_valid_options = False
+        for key, item_config in form_structure_copy.items():
+            if isinstance(item_config, dict) and "type" in item_config:
+                has_valid_options = True
+                break
+        
+        # 如果有有效选项，构建表单；否则清空
+        if has_valid_options:
+            # 显示选项区域
+            self.option_splitter_widget.show()
+            self.option_form_widget.build_from_structure(form_structure_copy, config)
+            # 连接选项变化信号以实现自动保存
+            self._connect_option_signals()
+        else:
+            # 没有有效选项，清空选项区域
+            self.option_form_widget._clear_options()
+            # 如果没有描述，可以隐藏整个选项区域（可选）
+            if not (description and description.strip()):
+                self.option_splitter_widget.hide()
 
     def get_current_form_config(self):
         """
@@ -342,8 +404,14 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         """
         当选项被加载时触发
         """
-        # 直接从OptionService获取options和form_structure
+        # 先从OptionService获取form_structure
         form_structure = self.service_coordinator.option.get_form_structure()
+        
+        # 无论什么情况，都先清理所有旧的UI（固定UI、选项和公告）
+        # 这样可以确保切换任务时，旧的UI不会残留
+        self._clear_options()
+        # 清空并隐藏公告
+        self.set_description("")  # 这会清空内容并隐藏公告区域
 
         # 只使用form_structure更新表单
         if form_structure:
@@ -368,8 +436,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
                 self.update_form_from_structure(form_structure, self.current_config)
                 logger.info(f"表单已使用form_structure更新")
         else:
-            # 没有表单时清除界面
-            self._clear_options()  # 使用专门的方法清除选项
+            # 没有表单时清除界面（已经在上面清理过了，这里只需要重置）
             self.reset()
             logger.info("没有提供form_structure，已清除界面")
 

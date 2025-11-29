@@ -75,14 +75,92 @@ class OptionFormWidget(QWidget):
     
     def _clear_options(self):
         """清空所有选项项"""
+        # 先断开所有信号连接，防止在清理过程中触发不必要的信号
+        for option_item in list(self.option_items.values()):
+            try:
+                option_item.option_changed.disconnect()
+            except:
+                pass  # 如果没有连接，忽略错误
+        
+        # 收集所有需要删除的控件
+        widgets_to_delete = []
+        layouts_to_delete = []
+        
         # 移除所有选项项组件
         while self.main_layout.count() > 0:
             item = self.main_layout.takeAt(0)
-            widget = item.widget()
-            if widget:
-                widget.deleteLater()
+            
+            # 处理不同类型的布局项
+            if item.widget():
+                widget = item.widget()
+                widget.hide()
+                widget.setParent(None)
+                widgets_to_delete.append(widget)
+            elif item.layout():
+                layout = item.layout()
+                # 递归清理子布局中的控件
+                while layout.count() > 0:
+                    child_item = layout.takeAt(0)
+                    if child_item.widget():
+                        child_widget = child_item.widget()
+                        child_widget.hide()
+                        child_widget.setParent(None)
+                        widgets_to_delete.append(child_widget)
+                    elif child_item.layout():
+                        # 嵌套的子布局也要清理
+                        child_layout = child_item.layout()
+                        while child_layout.count() > 0:
+                            nested_item = child_layout.takeAt(0)
+                            if nested_item.widget():
+                                nested_widget = nested_item.widget()
+                                nested_widget.hide()
+                                nested_widget.setParent(None)
+                                widgets_to_delete.append(nested_widget)
+                        layouts_to_delete.append(child_layout)
+                layouts_to_delete.append(layout)
+            # spacer 会被 takeAt 自动清理，不需要手动处理
         
+        # 清空选项项字典
         self.option_items.clear()
+        
+        # 删除所有布局
+        for layout in layouts_to_delete:
+            layout.deleteLater()
+        
+        # 删除所有控件
+        for widget in widgets_to_delete:
+            widget.deleteLater()
+        
+        # 确保布局完全清空（处理可能遗漏的项）
+        remaining_count = 0
+        max_iterations = 100  # 防止无限循环
+        iteration = 0
+        while self.main_layout.count() > 0 and iteration < max_iterations:
+            item = self.main_layout.takeAt(0)
+            # 删除剩余的项
+            if item:
+                if item.widget():
+                    widget = item.widget()
+                    widget.hide()
+                    widget.setParent(None)
+                    widget.deleteLater()
+                elif item.layout():
+                    layout = item.layout()
+                    layout.deleteLater()
+            iteration += 1
+            remaining_count = self.main_layout.count()
+        
+        # 如果还有剩余项，记录警告
+        if remaining_count > 0:
+            logger.warning(f"布局未完全清空，剩余 {remaining_count} 项")
+        
+        # 重置布局属性，确保下次添加时状态正确
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
+        
+        # 强制更新布局和几何结构，确保界面刷新
+        self.updateGeometry()
+        self.update()
     
     def apply_config(self, config: Dict[str, Any]):
         """

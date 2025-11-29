@@ -630,8 +630,27 @@ class ResourceSettingMixin:
 
     def _clear_options(self):
         """清空选项区域"""
-        for widget in self.resource_setting_widgets.values():
-            widget.deleteLater()
+        # 从布局中移除所有控件
+        widgets_to_remove = list(self.resource_setting_widgets.values())
+        
+        # 遍历布局，找到并移除这些控件
+        if hasattr(self, 'parent_layout'):
+            items_to_remove = []
+            for i in range(self.parent_layout.count()):
+                item = self.parent_layout.itemAt(i)
+                if item and item.widget() and item.widget() in widgets_to_remove:
+                    items_to_remove.append(i)
+            
+            # 从后往前移除，避免索引问题
+            for i in reversed(items_to_remove):
+                item = self.parent_layout.takeAt(i)
+                if item and item.widget():
+                    widget = item.widget()
+                    widget.hide()
+                    widget.setParent(None)
+                    widget.deleteLater()
+        
+        # 清理字典
         self.resource_setting_widgets.clear()
         self.current_controller_type = None
 
