@@ -46,6 +46,7 @@ class ServiceCoordinator:
 
         self.task_runner = TaskFlowRunner(
             task_service=self.task_service,
+            config_service=self.config_service,
             fs_signal_bus=self.fs_signal_bus,
         )
         # 连接信号

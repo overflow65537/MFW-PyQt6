@@ -1,15 +1,19 @@
+import asyncio
+import os
+import shlex
 import subprocess
+import sys
 import time as _time
 from pathlib import Path
 from typing import Any, Dict
-import asyncio
-from PySide6.QtCore import QObject
+from PySide6.QtCore import QCoreApplication, QObject
 from app.common.constants import POST_ACTION, PRE_CONFIGURATION
 from app.common.signal_bus import signalBus
 
 from maa.toolkit import Toolkit
 
 from ...utils.logger import logger
+from ..service.Config_Service import ConfigService
 from ..service.Task_Service import TaskService
 from .maafw import MaaFW
 from .maasink import (
@@ -26,9 +30,11 @@ class TaskFlowRunner(QObject):
     def __init__(
         self,
         task_service: TaskService,
+        config_service: ConfigService,
         fs_signal_bus,
     ):
         self.task_service = task_service
+        self.config_service = config_service
         self.maafw = MaaFW(
             maa_context_sink=MaaContextSink,
             maa_controller_sink=MaaControllerEventSink,
@@ -96,6 +102,10 @@ class TaskFlowRunner(QObject):
 
             logger.critical(traceback.format_exc())
         finally:
+            try:
+                await self._handle_post_action()
+            except Exception as exc:
+                logger.error(f"完成后操作执行失败: {exc}")
             await self.stop_task()
 
     async def connect_device(self, controller_raw: Dict[str, Any]):
@@ -521,3 +531,117 @@ class TaskFlowRunner(QObject):
 
         except Exception as e:
             logger.error(f"保存设备配置时出错: {e}")
+
+    async def _handle_post_action(self) -> None:
+        """统一处理完成后操作顺序"""
+        post_task = self.task_service.get_task(POST_ACTION)
+        if not post_task:
+            return
+
+        post_config = post_task.task_option.get("post_action")
+        if not isinstance(post_config, dict):
+            return
+
+        if post_config.get("run_program"):
+            await self._run_program_from_post_action(
+                post_config.get("program_path", ""),
+                post_config.get("program_args", ""),
+            )
+
+        if post_config.get("run_other"):
+            target_config = (post_config.get("target_config") or "").strip()
+            if target_config:
+                await self._run_other_configuration(target_config)
+            else:
+                logger.warning("完成后运行其他配置开关被激活，但未配置目标配置")
+
+        if post_config.get("close_software"):
+            await self._close_software()
+
+        if post_config.get("close_emulator"):
+            self._close_emulator()
+
+        if post_config.get("shutdown"):
+            self._shutdown_system()
+
+    async def _run_program_from_post_action(
+        self, program_path: str, program_args: str
+    ) -> None:
+        """根据配置启动指定程序，等待退出"""
+        executable = (program_path or "").strip()
+        if not executable:
+            logger.warning("完成后程序未填写路径，跳过")
+            return
+
+        args_list = self._parse_program_args(program_args)
+        try:
+            process = await asyncio.to_thread(
+                self._start_process, executable, args_list or None
+            )
+        except Exception as exc:
+            logger.error(f"启动完成后程序失败: {exc}")
+            return
+
+        logger.info(f"完成后程序已启动: {executable}")
+        try:
+            return_code = await asyncio.to_thread(process.wait)
+            logger.info(f"完成后程序已退出，返回码: {return_code}")
+        except Exception as exc:
+            logger.error(f"等待完成后程序退出时失败: {exc}")
+
+    def _parse_program_args(self, args: str) -> list[str]:
+        """解析完成后程序的参数字符串"""
+        trimmed = (args or "").strip()
+        if not trimmed:
+            return []
+
+        try:
+            return shlex.split(trimmed, posix=os.name != "nt")
+        except ValueError as exc:
+            logger.warning(f"解析完成后程序参数失败，退回简单分割: {exc}")
+            return [item for item in trimmed.split() if item]
+
+    async def _run_other_configuration(self, config_id: str) -> None:
+        """尝试切换到指定的配置"""
+        config_service = self.config_service
+        if not config_service:
+            logger.warning("配置服务未初始化，跳过运行其他配置")
+            return
+
+        target_config = config_service.get_config(config_id)
+        if not target_config:
+            logger.warning(f"完成后操作指定的配置不存在: {config_id}")
+            return
+
+        config_service.current_config_id = config_id
+        if config_service.current_config_id == config_id:
+            logger.info(f"已切换至完成后指定配置: {config_id}")
+        else:
+            logger.warning(f"切换至配置 {config_id} 失败")
+
+    async def _close_software(self) -> None:
+        """发出退出信号让程序自身关闭"""
+        app = QCoreApplication.instance()
+        if not app:
+            logger.warning("完成后关闭软件: 无法获取 QCoreApplication 实例")
+            return
+
+        logger.info("完成后关闭软件: 退出应用")
+        app.quit()
+
+    def _close_emulator(self) -> None:
+        """关闭模拟器（占位实现，待补充）"""
+        pass
+
+    def _shutdown_system(self) -> None:
+        """执行系统关机命令，兼容 Windows/macOS/Linux"""
+        try:
+            if sys.platform.startswith("win"):
+                subprocess.run(["shutdown", "/s", "/t", "0"], check=False)
+            elif sys.platform == "darwin":
+                subprocess.run(["sudo", "shutdown", "-h", "now"], check=False)
+            else:
+                subprocess.run(["shutdown", "-h", "now"], check=False)
+            logger.info("完成后执行关机命令")
+        except Exception as exc:
+            logger.error(f"执行关机命令失败: {exc}")
