@@ -112,14 +112,21 @@ class OptionService:
         if not option_type:
             option_type = "combobox"
 
+        # 保存选项的 name（用于从接口文件中获取具体选项）
+        if option_key:
+            field_config["name"] = option_key
+
         # 设置字段标签，处理$前缀
         # 优先使用label，其次是name，如果都没有则使用option_key
         label = option_def.get("label", option_def.get("name", option_key))
         field_config["label"] = label
 
-        # 处理description字段
-        if "description" in option_def:
-            field_config["description"] = option_def["description"]
+        # 处理description字段（向后兼容 doc）
+        description = option_def.get("description")
+        if not description and "doc" in option_def:
+            description = option_def["doc"]
+        if description:
+            field_config["description"] = description
 
         # 处理不同类型的选项
 
@@ -156,6 +163,9 @@ class OptionService:
                         child_field = self.process_option_def(
                             sub_option_def, all_options, option_value
                         )
+                        # 确保子选项包含 name 字段（用于从接口文件中获取具体选项）
+                        if "name" not in child_field:
+                            child_field["name"] = option_value
                         children[standard_name] = child_field
                     elif isinstance(option_value, list):
                         # 处理option是列表的情况
@@ -165,6 +175,9 @@ class OptionService:
                                 child_field = self.process_option_def(
                                     sub_option_def, all_options, opt
                                 )
+                                # 确保子选项包含 name 字段（用于从接口文件中获取具体选项）
+                                if "name" not in child_field:
+                                    child_field["name"] = opt
                                 children[standard_name] = child_field
                                 break
 
@@ -197,6 +210,9 @@ class OptionService:
                         child_field = self.process_option_def(
                             sub_option_def, all_options, option_value
                         )
+                        # 确保子选项包含 name 字段（用于从接口文件中获取具体选项）
+                        if "name" not in child_field:
+                            child_field["name"] = option_value
                         children[option_name] = (
                             child_field  # 使用name而不是label作为key
                         )
@@ -208,6 +224,9 @@ class OptionService:
                                 child_field = self.process_option_def(
                                     sub_option_def, all_options, opt
                                 )
+                                # 确保子选项包含 name 字段（用于从接口文件中获取具体选项）
+                                if "name" not in child_field:
+                                    child_field["name"] = opt
                                 children[option_name] = (
                                     child_field  # 使用name而不是label作为key
                                 )
@@ -273,8 +292,9 @@ class OptionService:
                 # 获取任务的option字段（字符串数组）
                 task_option_names = task.get("option", [])
                 # 检查任务是否有description字段
-                if "description" in task:
-                    form_structure["description"] = task["description"]
+                task_description = task.get("description") or task.get("doc")
+                if task_description:
+                    form_structure["description"] = task_description
                 # 获取顶层的option定义
                 all_options = interface.get("option", {})
 

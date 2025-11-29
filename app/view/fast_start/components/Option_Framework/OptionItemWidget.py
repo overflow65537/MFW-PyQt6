@@ -515,7 +515,7 @@ class OptionItemWidget(QWidget):
         """
         获取当前选项的配置（递归获取子选项）
         
-        :return: 选项配置字典，格式如 {"value": ..., "children": {...}}
+        :return: 选项配置字典，格式如 {"value": ..., "name": ..., "hidden": ..., "children": {...}}
         """
         result: Dict[str, Any] = {
             "value": self.current_value
@@ -530,10 +530,31 @@ class OptionItemWidget(QWidget):
                 if child_widget:
                     # 获取子选项的配置
                     child_option = child_widget.get_option()
+                    
+                    # 获取子选项的 name（从结构字典中获取）
+                    child_structure = self.config.get("children", {}).get(option_value, {})
+                    child_name = child_structure.get("name", "")
+                    
+                    # 检查子选项是否被隐藏（当前选中值不等于此子选项的键值时，该子选项被隐藏）
+                    is_hidden = not child_widget.isVisible()
+                    
                     # 对于 lineedit 类型的子选项，如果只有 value，直接使用值
                     if child_widget.config_type == "lineedit" and "children" not in child_option:
-                        children_config[option_value] = child_option.get("value", "")
+                        # lineedit 类型保持简单值，但如果被隐藏需要转换为字典格式
+                        if is_hidden:
+                            children_config[option_value] = {
+                                "value": child_option.get("value", ""),
+                                "hidden": True
+                            }
+                        else:
+                            children_config[option_value] = child_option.get("value", "")
                     else:
+                        # 将子选项的 name 添加到配置中（用于从接口文件中获取具体选项）
+                        if child_name:
+                            child_option["name"] = child_name
+                        # 添加隐藏属性（用于 runner 跳过已隐藏的配置）
+                        if is_hidden:
+                            child_option["hidden"] = True
                         children_config[option_value] = child_option
         
         # 如果有子选项配置，添加到结果中

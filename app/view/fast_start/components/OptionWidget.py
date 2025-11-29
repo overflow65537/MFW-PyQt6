@@ -15,7 +15,10 @@ from qfluentwidgets import (
     BodyLabel,
     ScrollArea,
 )
-from app.view.fast_start.animations.option_transition import OptionTransitionAnimator
+from app.view.fast_start.animations.optionwidget import (
+    DescriptionTransitionAnimator,
+    OptionTransitionAnimator,
+)
 from app.view.fast_start.components.Option_Widget_Mixin.ResourceSettingMixin import (
     ResourceSettingMixin,
 )
@@ -44,7 +47,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
         # 初始化UI组件
         self._init_ui()
-        self._toggle_description(visible=False)
+        self._toggle_description(visible=False, animate=False)
 
         # 连接CoreSignalBus的options_loaded信号
         service_coordinator.signal_bus.options_loaded.connect(self._on_options_loaded)
@@ -123,6 +126,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 描述内容区域
         self.description_content = BodyLabel()
         self.description_content.setWordWrap(True)
+        self.description_content.setTextFormat(Qt.TextFormat.RichText)
         self.description_layout.addWidget(self.description_content)
 
         self.description_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -176,6 +180,12 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
         # 设置初始比例
         self.splitter.setSizes([90, 10])  # 90% 和 10% 的初始比例
+        self._description_animator = DescriptionTransitionAnimator(
+            self.splitter,
+            self.description_splitter_widget,
+            expanded_ratio=0.4,
+            min_height=90,
+        )
 
         # 添加到主布局
         self.main_layout.addWidget(self.title_widget)  # 直接添加标题
@@ -186,29 +196,30 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
     # ==================== UI 辅助方法 ==================== #
 
-    def _toggle_description(self, visible: bool|None = None) -> None:
+    def _toggle_description(self, visible: bool|None = None, animate: bool = True) -> None:
         """切换描述区域的显示/隐藏
         visible: True显示，False隐藏，None切换当前状态
         """
         if visible is None:
             # 切换当前状态
-            visible = not self.description_splitter_widget.isVisible()
+            visible = not self._description_animator.is_expanded()
 
         if visible:
-            self.description_splitter_widget.show()
-            # 恢复初始比例
-            self.splitter.setSizes([90, 10])
+            if animate:
+                self._description_animator.expand()
+            else:
+                self._description_animator.set_visible_immediate(True)
         else:
-            self.description_splitter_widget.hide()
-            # 让选项区域占据全部空间
-            self.splitter.setSizes([100, 0])
+            if animate:
+                self._description_animator.collapse()
+            else:
+                self._description_animator.set_visible_immediate(False)
 
     def set_description(self, description: str):
         """设置描述内容"""
         # 处理 None 或空字符串
         if not description:
             description = ""
-        
         self.description_content.setText("")
 
         # 如果description为空，隐藏描述区域
@@ -216,7 +227,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             self._toggle_description(visible=False)
             return
 
-        html = markdown.markdown(description).replace("\n", "")
+        html = self._prepare_description_html(description)
         html = re.sub(
             r"<code>(.*?)</code>",
             r"<span style='color: #009faa;'>\1</span>",
@@ -229,6 +240,14 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         html = re.sub(r"<ul>(.*?)</ul>", r"\1", html)
 
         self.description_content.setText(html)
+
+    @staticmethod
+    def _prepare_description_html(description: str) -> str:
+        """根据传入内容决定是否直接使用 HTML 或将 Markdown 转为 HTML"""
+        stripped = description.strip()
+        if stripped.startswith("<") and stripped.endswith(">"):
+            return description
+        return markdown.markdown(description).replace("\n", "")
 
     # ==================== 公共方法 ====================
 
@@ -341,17 +360,24 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         
         # 如果有有效选项，构建表单；否则清空
         if has_valid_options:
-            # 显示选项区域
             self.option_splitter_widget.show()
-            self.option_form_widget.build_from_structure(form_structure_copy, config)
-            # 连接选项变化信号以实现自动保存
-            self._connect_option_signals()
+            self._option_animator.play(
+                lambda: self._apply_form_structure_with_animation(
+                    form_structure_copy, config
+                )
+            )
         else:
             # 没有有效选项，清空选项区域
             self.option_form_widget._clear_options()
             # 如果没有描述，可以隐藏整个选项区域（可选）
             if not (description and description.strip()):
                 self.option_splitter_widget.hide()
+
+    def _apply_form_structure_with_animation(self, form_structure, config):
+        """异步更新选项表单并连接信号（用于动画回调）。"""
+        self.option_form_widget.build_from_structure(form_structure, config)
+        self._connect_option_signals()
+        logger.info("表单已使用 form_structure 完成更新")
 
     def get_current_form_config(self):
         """
@@ -434,7 +460,6 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             else:
                 # 正常的表单更新逻辑
                 self.update_form_from_structure(form_structure, self.current_config)
-                logger.info(f"表单已使用form_structure更新")
         else:
             # 没有表单时清除界面（已经在上面清理过了，这里只需要重置）
             self.reset()
