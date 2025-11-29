@@ -61,17 +61,25 @@ class MaaFW(QObject):
     def __init__(
         self, maa_controller_sink, maa_context_sink, maa_resource_sink, maa_tasker_sink
     ):
+        # 确保正确初始化 QObject 基类，避免 Qt 运行时错误
+        super().__init__()
 
         Toolkit.init_option("./")
         self.resource = None
         self.controller = None
         self.tasker = None
-        self.maa_controller_sink = maa_controller_sink
-        self.maa_context_sink = maa_context_sink
-        self.maa_resource_sink = maa_resource_sink
-        self.maa_tasker_sink = maa_tasker_sink
+
+        # 这里传入的是 Sink 类，需要在此处实例化，避免把类对象/descriptor 直接交给底层 C 接口
+        self.maa_controller_sink = maa_controller_sink()
+        self.maa_context_sink = maa_context_sink()
+        self.maa_resource_sink = maa_resource_sink()
+        self.maa_tasker_sink = maa_tasker_sink()
+
         self.agent = None
         self.agent_thread = None
+
+        # 防止 stop_task 在短时间内被多次并发调用，导致底层资源重复释放
+        self._stopping = False
 
     def load_custom_objects(self, custom_json_path: str | Path):
         if not os.path.exists(custom_json_path):
@@ -79,6 +87,7 @@ class MaaFW(QObject):
             return
         logger.info(f"开始加载自定义配置: {custom_json_path}")
         import jsonc
+
         with open(custom_json_path, "r", encoding="utf-8") as f:
             custom_config: Dict[str, Dict] = jsonc.load(f)
         success = 0
@@ -188,14 +197,14 @@ class MaaFW(QObject):
         self,
         adb_path: str,
         address: str,
-        screencap_method: int = MaaAdbScreencapMethodEnum.Default,
-        input_method: int = MaaAdbInputMethodEnum.Default,
+        screencap_method: int = 0,
+        input_method: int = 0,
         config: Dict = {},
     ) -> bool:
-        if screencap_method == 0:
-            screencap_method = MaaAdbScreencapMethodEnum.Default
-        if input_method == 0:
-            input_method = MaaAdbInputMethodEnum.Default
+        screencap_method = MaaAdbScreencapMethodEnum(screencap_method)
+
+        input_method = MaaAdbInputMethodEnum(input_method)
+
         self.controller = AdbController(
             adb_path, address, screencap_method, input_method, config
         )
@@ -356,16 +365,36 @@ class MaaFW(QObject):
     @asyncify
     def stop_task(self):
         if self.tasker:
-            self.tasker.post_stop().wait()
+            try:
+                self.tasker.post_stop().wait()
+            except Exception as e:
+                logger.error(f"停止任务失败: {e}")
+            finally:
+                self.tasker = None
             self.tasker = None
         if self.resource:
-            self.resource.clear()
+            try:
+                self.resource.clear()
+            except Exception as e:
+                logger.error(f"清除资源失败: {e}")
+            finally:
+                self.resource = None
             self.resource = None
         if self.agent:
-            self.agent.disconnect()
+            try:
+                self.agent.disconnect()
+            except Exception as e:
+                logger.error(f"断开agent连接失败: {e}")
+            finally:
+                self.agent = None
             self.agent = None
         if self.agent_thread:
-            self.agent_thread.terminate()
+            try:
+                self.agent_thread.terminate()
+            except Exception as e:
+                logger.error(f"终止agent线程失败: {e}")
+            finally:
+                self.agent_thread = None
             self.agent_thread = None
 
     def _send_custom_info(self, info: str):

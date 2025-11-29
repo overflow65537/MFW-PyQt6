@@ -275,7 +275,7 @@ class ResourceSettingMixin:
 
         # 截图方式
         screencap_options = {
-            "Auto": 0,
+            "default": -1,
             "EncodeToFileAndPull": 1,
             "Encode": 2,
             "RawWithGzip": 4,
@@ -293,7 +293,7 @@ class ResourceSettingMixin:
 
         # 输入方式
         input_options = {
-            "Auto": 0,
+            "default": -1,
             "AdbShell": 1,
             "MinitouchAndAdbKey": 2,
             "Maatouch": 4,
@@ -343,7 +343,7 @@ class ResourceSettingMixin:
 
         # 鼠标和键盘输入方式选项
         mouse_keyboard_options = {
-            "Auto": 0,
+            "default": -1,
             "Seize": 1,
             "SendMessage": 2,
             "PostMessage": 4,
@@ -368,7 +368,7 @@ class ResourceSettingMixin:
 
         # 截图方式
         screencap_options = {
-            "Auto": 0,
+            "default": -1,
             "GDI": 1,
             "FramePool": 2,
             "DXGI_DesktopDup": 4,

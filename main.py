@@ -47,9 +47,23 @@ from app.core.service.interface_manager import get_interface_manager
 
 if __name__ == "__main__":
     logger.info(f"MFW 版本:{__version__}")
-    # 将当前工作目录设置为程序所在的目录，确保无论从哪里执行，其工作目录都正确设置为程序本身的位置，避免路径错误。
-    # os.chdir(target_dir)  # 切换工作目录
-    logger.debug(f"设置工作目录: {os.getcwd()}")
+    import faulthandler
+    from pathlib import Path
+
+    log_dir = Path("debug")
+    log_dir.mkdir(exist_ok=True)
+    crash_log = open(log_dir / "crash.log", "a", encoding="utf-8")
+    faulthandler.enable(file=crash_log, all_threads=True)
+
+    # 将当前工作目录设置为程序所在目录 / PyInstaller 临时目录，避免资源路径错误
+    try:
+
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+
+        os.chdir(base_dir)
+        logger.debug(f"工作目录已设置为: {os.getcwd()}")
+    except Exception as e:
+        logger.warning(f"设置工作目录失败，当前工作目录为: {os.getcwd()}，错误: {e}")
 
     # 检查是否存在密钥文件
     if not os.path.exists("k.ey"):

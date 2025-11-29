@@ -20,6 +20,8 @@ from .runner.maasink import (
     MaaTaskerEventSink,
 )
 
+from app.common.constants import PRE_CONFIGURATION
+
 from ..utils.logger import logger
 
 
@@ -29,7 +31,7 @@ class ServiceCoordinator:
     def __init__(self, main_config_path: Path, configs_dir: Path | None = None):
         # 初始化停止标志
         self.need_stop = False
-        
+
         # 初始化信号总线
         self.signal_bus = CoreSignalBus()
         self.fs_signal_bus = FromeServiceCoordinator()
@@ -227,47 +229,47 @@ class ServiceCoordinator:
         任务完整流程：启动子进程、加载资源、连接设备、启动模拟器、批量运行任务
         """
         self.need_stop = False  # 重置停止标志
-        
+
         try:
             self.fs_signal_bus.fs_start_button_status.emit(
                 {"text": "STOP", "status": "disabled"}
             )
-            
+
             # 1. 获取并处理预配置任务
-            from app.common.constants import PRE_CONFIGURATION
+            from app.common.constants import PRE_CONFIGURATION, POST_ACTION
+
             pre_cfg = self.task_service.get_task(PRE_CONFIGURATION)
             if not pre_cfg:
                 raise ValueError("未找到基础预配置任务")
-            
+
             # 2. 加载资源
             logger.info("开始加载资源...")
             if not await self.load_resources(pre_cfg.task_option):
                 logger.error("资源加载失败，流程终止")
-                self.fs_signal_bus.fs_start_button_status.emit(
-                    {"text": "START", "status": "enabled"}
-                )
                 return
             logger.info("资源加载成功")
-            
+
             # 3. 连接设备
             logger.info("开始连接设备...")
             # 控制器配置包含在 Pre-Configuration 任务中
             connected = await self.connect_device(pre_cfg.task_option)
             if not connected:
                 logger.error("设备连接失败，流程终止")
-                self.fs_signal_bus.fs_start_button_status.emit(
-                    {"text": "START", "status": "enabled"}
-                )
                 return
             logger.info("设备连接成功")
-            
+
+            # 解锁停止按钮
+            self.fs_signal_bus.fs_start_button_status.emit(
+                {"text": "STOP", "status": "enabled"}
+            )
+
             # 4. 运行所有已选中的任务
             logger.info("开始执行任务序列...")
             for task in self.task_service.current_tasks:
                 # 跳过预配置和控制器基础任务，以及未选中的任务
-                if task.name in [PRE_CONFIGURATION, "controller_base_task"]:
+                if task.name in [PRE_CONFIGURATION, POST_ACTION]:
                     continue
-                    
+
                 if task.is_checked:
                     logger.info(f"开始执行任务: {task.name}")
                     try:
@@ -275,21 +277,17 @@ class ServiceCoordinator:
                         logger.info(f"任务执行完成: {task.name}")
                     except Exception as e:
                         logger.error(f"任务执行失败: {task.name}, 错误: {str(e)}")
-                        
+
                 if self.need_stop:
                     logger.info("收到停止请求，流程终止")
                     break
-            
+
         except Exception as e:
             logger.error(f"任务流程执行异常: {str(e)}")
+            import traceback
+            logger.critical(traceback.format_exc())
         finally:
-            # 无论成功失败，都重置开始按钮状态
-            self.fs_signal_bus.fs_start_button_status.emit(
-                {"text": "START", "status": "enabled"}
-            )
-            
-            # 清理资源
-            await self.maafw.stop_task()
+            await self.stop_task()
 
     async def connect_device(self, controller_raw: Dict[str, Any]):
         """连接 MaaFW"""
@@ -305,7 +303,7 @@ class ServiceCoordinator:
         """加载资源"""
         if self.maafw.resource:
             self.maafw.resource.clear()  # 清除资源
-            
+
         # 处理两种情况：配置文件场景和 UI 表单场景
         # 配置文件场景：resource 直接是字符串
         # UI 表单场景：resource 是包含 value 字段的字典
@@ -316,9 +314,9 @@ class ServiceCoordinator:
             resource_target = resource.get("value")
         else:
             resource_target = None
-            
+
         resource_path = []
-        
+
         # 如果没有找到资源目标，尝试直接从配置中获取 resource_path（用于配置文件场景）
         if not resource_target:
             logger.warning("未找到资源目标，尝试直接从配置中获取资源路径")
@@ -331,15 +329,27 @@ class ServiceCoordinator:
                     resource_path = i["path"]
                     break  # 找到后停止遍历
 
-        if resource_path == "" and not self.need_stop:
+        if resource_path == [] or self.need_stop:
             logger.error(f"未找到目标资源: {resource_target}")
             await self.maafw.stop_task()
             return False
 
         for i in resource_path:
-            resource = Path(i.replace("{PROJECT_DIR}", "./"))
+            cwd = Path.cwd()
+            path_str = str(i)
+            if len(path_str) >= 2 and path_str[1] == ":" and path_str[0].isalpha():
+                resource = Path(path_str).resolve()
+            else:
+                normalized = path_str.lstrip("\\/")
+                resource = (cwd / normalized).resolve()
+
             logger.debug(f"加载资源: {resource}")
-            await self.maafw.load_resource(resource, resource_raw.get("gpu_index", -1))
+            res_cfg = self.task_service.get_task(PRE_CONFIGURATION)
+            if res_cfg is None:
+                gpu_idx = -1
+            else:
+                gpu_idx = res_cfg.task_option.get("gpu", -1)
+            await self.maafw.load_resource(resource, gpu_idx)
             logger.debug(f"资源加载完成: {resource}")
         return True
 
@@ -366,47 +376,51 @@ class ServiceCoordinator:
 
         await self.maafw.run_task(entry, pipeline_override)
 
-    @asyncSlot
     async def stop_task(self):
         """停止当前任务"""
+        if self.need_stop:
+            return
         self.need_stop = True
+        self.fs_signal_bus.fs_start_button_status.emit(
+            {"text": "STOP", "status": "disabled"}
+        )
         await self.maafw.stop_task()
+        self.fs_signal_bus.fs_start_button_status.emit(
+            {"text": "START", "status": "enabled"}
+        )
 
     async def _connect_adb_controller(self, controller_raw: Dict[str, Any]):
         """
         连接 ADB 控制器
         """
+        if not isinstance(controller_raw, dict):
+            logger.error(
+                f"控制器配置格式错误(ADB)，期望 dict，实际 {type(controller_raw)}: {controller_raw}"
+            )
+            return False
         # 从 controller_raw 中提取 ADB 配置
-        activate_controller = controller_raw.get("controller_type", {}).get("value", "")
-        adb_path = (
-            controller_raw.get("controller_type", {})
-            .get("children", {})
-            .get(activate_controller, {})
-            .get("adb_path", "")
+        activate_controller = controller_raw.get("controller_type")
+
+        if activate_controller is None:
+            logger.error(f"未找到控制器配置: {controller_raw}")
+            return False
+
+        adb_path = controller_raw.get(activate_controller, {}).get("adb_path", "")
+        address = controller_raw.get(activate_controller, {}).get("address", "")
+        input_method = int(
+            controller_raw.get(activate_controller, {}).get("input_methods", -1)
         )
-        address = (
-            controller_raw.get("controller_type", {})
-            .get("children", {})
-            .get(activate_controller, {})
-            .get("device_address", "")
+        if input_method == 18446744073709551615:
+            input_method = -1
+
+        screen_method = int(
+            controller_raw.get(activate_controller, {}).get("screencap_methods", -1)
         )
-        input_method = (
-            controller_raw.get("controller_type", {})
-            .get("children", {})
-            .get(activate_controller, {})
-            .get("input_method", "")
-        )
-        screen_method = (
-            controller_raw.get("controller_type", {})
-            .get("children", {})
-            .get(activate_controller, {})
-            .get("screen_method", "")
-        )
-        config = (
-            controller_raw.get("controller_type", {})
-            .get("children", {})
-            .get(activate_controller, {})
-            .get("config", {})
+        config = controller_raw.get(activate_controller, {}).get("config", {})
+        logger.debug(
+            f"ADB 参数类型: adb_path={type(adb_path)}, address={type(address)}, "
+            f"screen_method={screen_method}({type(screen_method)}), "
+            f"input_method={input_method}({type(input_method)})"
         )
 
         # 尝试连接 ADB
@@ -414,8 +428,8 @@ class ServiceCoordinator:
             not await self.maafw.connect_adb(
                 adb_path,
                 address,
-                input_method,
                 screen_method,
+                input_method,
                 config,
             )
             and not self.need_stop
@@ -447,9 +461,14 @@ class ServiceCoordinator:
 
     def _get_controller_type(self, controller_raw: Dict[str, Any]) -> str:
         """获取控制器类型"""
+        if not isinstance(controller_raw, dict):
+            raise TypeError(
+                f"controller_raw 类型错误，期望 dict，实际 {type(controller_raw)}: {controller_raw}"
+            )
+
         # 从控制器配置中获取控制器名称
         controller_config = controller_raw.get("controller_type", {})
-        
+
         # 处理两种情况：
         # 1. controller_config 是字符串
         # 2. controller_config 是字典，包含 value 字段（UI 表单场景）
@@ -459,21 +478,13 @@ class ServiceCoordinator:
             controller_name = controller_config.get("value", "")
         else:
             controller_name = ""
-            
+
         # 查找控制器类型
         controller_name = controller_name.lower()
         for controller in self.task_service.interface.get("controller", []):
             if controller.get("name", "").lower() == controller_name:
                 return controller.get("type", "").lower()
-        
-        # 如果没有找到，尝试直接解析 config 中的控制器类型（用于配置文件场景）
-        # 配置文件中 controller_type 直接是字符串，如 "Windows" 或 "Android"
-        direct_controller_name = controller_raw.get("controller_type", "").lower()
-        if direct_controller_name:
-            for controller in self.task_service.interface.get("controller", []):
-                if controller.get("name", "").lower() == direct_controller_name:
-                    return controller.get("type", "").lower()
-        
+
         # 如果仍然没有找到，抛出错误
         raise ValueError(f"未找到控制器类型: {controller_raw}")
 
