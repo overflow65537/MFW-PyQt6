@@ -2,7 +2,8 @@
 选项项组件
 单个选项的独立组件，支持 combobox 和 lineedit 类型，以及子选项
 """
-from typing import Dict, Any, Optional, List
+# type: ignore[attr-defined]
+from typing import Dict, Any, Optional
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from PySide6.QtCore import Qt, Signal
 from qfluentwidgets import ComboBox, LineEdit, BodyLabel, ToolTipFilter, SwitchButton
@@ -34,6 +35,13 @@ class OptionItemWidget(QWidget):
         self.config_type = config.get("type", "combobox")
         self.child_options: Dict[str, 'OptionItemWidget'] = {}  # 子选项组件字典
         self.current_value: Any = None  # 当前选中的值
+        inputs_value = self.config.get("inputs")
+        self._single_input_mode = (
+            self.config_type == "lineedit"
+            and isinstance(inputs_value, list)
+            and len(inputs_value) == 1
+            and self.config.get("single_input", False)
+        )
         
         self._init_ui()
         self._init_config()
@@ -58,14 +66,15 @@ class OptionItemWidget(QWidget):
             # 其他类型：标题在上，组件在下
             # 创建标签
             label_text = self.config.get("label", self.key)
-            self.label = BodyLabel(label_text)
-            self.main_layout.addWidget(self.label)
-            
-            # 添加 tooltip
-            if "description" in self.config:
-                filter = ToolTipFilter(self.label)
-                self.label.installEventFilter(filter)
-                self.label.setToolTip(self.config["description"])
+            if not self._single_input_mode:
+                self.label = BodyLabel(label_text)
+                self.main_layout.addWidget(self.label)
+                
+                # 添加 tooltip
+                if "description" in self.config:
+                    filter = ToolTipFilter(self.label)
+                    self.label.installEventFilter(filter)
+                    self.label.setToolTip(self.config["description"])
             
             # 创建对应的控件
             if self.config_type == "combobox":
@@ -118,7 +127,7 @@ class OptionItemWidget(QWidget):
         # 创建水平布局容器，用于放置标题和开关
         switch_container = QWidget()
         switch_layout = QHBoxLayout(switch_container)
-        switch_layout.setContentsMargins(0, 0, 0, 0)
+        switch_layout.setContentsMargins(0, 10, 0, 10)
         switch_layout.setSpacing(10)
         
         # 创建标签（标题）
@@ -169,8 +178,59 @@ class OptionItemWidget(QWidget):
     
     def _create_lineedit(self):
         """创建输入框"""
-        # 检查是否有 inputs 数组（多输入框类型）
-        if "inputs" in self.config:
+        inputs = self.config.get("inputs", [])
+
+        # 单输入模式：只渲染一个输入框，避免重复的标题/描述
+        if self._single_input_mode and inputs:
+            input_item = inputs[0]
+            input_name = input_item.get("name", self.key)
+            self.control_widget = {}
+            line_edit = LineEdit()
+
+            label_text = input_item.get("label") or self.config.get("label", self.key)
+            if label_text:
+                single_label = BodyLabel(label_text)
+                self.main_layout.addWidget(single_label)
+
+            # 设置默认值
+            if "default" in input_item:
+                line_edit.setText(str(input_item["default"]))
+
+            # 设置占位提示（优先使用 input label）
+            placeholder = input_item.get("label") or self.config.get("label", "")
+            if placeholder:
+                line_edit.setPlaceholderText(placeholder)
+
+            # 添加验证规则
+            if "verify" in input_item:
+                verify_pattern = input_item["verify"]
+                try:
+                    def create_validator(pattern):
+                        def validate(text: str):
+                            if text and not re.match(pattern, text):
+                                line_edit.setError(True)  # type: ignore[attr-defined]
+                            else:
+                                line_edit.setError(False)  # type: ignore[attr-defined]
+                        return validate
+
+                    line_edit.textChanged.connect(create_validator(verify_pattern))
+                except Exception as e:
+                    logger.error(f"设置输入验证规则失败: {verify_pattern}, 错误: {e}")
+
+            # 添加 tooltip
+            description = input_item.get("description") or self.config.get("description")
+            if description:
+                filter = ToolTipFilter(line_edit)
+                line_edit.installEventFilter(filter)
+                line_edit.setToolTip(description)
+
+            line_edit.textChanged.connect(
+                lambda text, name=input_name: self._on_lineedit_changed(name, text)
+            )
+
+            self.control_widget[input_name] = line_edit
+            self.main_layout.addWidget(line_edit)
+        elif "inputs" in self.config:
             self.control_widget = {}  # 字典存储多个输入框
             inputs = self.config.get("inputs", [])
             
@@ -198,14 +258,13 @@ class OptionItemWidget(QWidget):
                     verify_pattern = input_item["verify"]
                     try:
                         def create_validator(pattern):
-                            def validate():
-                                text = line_edit.text()
+                            def validate(text: str):
                                 if text and not re.match(pattern, text):
-                                    line_edit.setError(True)
+                                    line_edit.setError(True)  # type: ignore[attr-defined]
                                 else:
-                                    line_edit.setError(False)
+                                    line_edit.setError(False)  # type: ignore[attr-defined]
                             return validate
-                        
+
                         line_edit.textChanged.connect(create_validator(verify_pattern))
                     except Exception as e:
                         logger.error(f"设置输入验证规则失败: {verify_pattern}, 错误: {e}")
@@ -238,12 +297,11 @@ class OptionItemWidget(QWidget):
                 verify_pattern = self.config["verify"]
                 try:
                     def create_validator(pattern):
-                        def validate():
-                            text = self.control_widget.text()
+                        def validate(text: str):
                             if text and not re.match(pattern, text):
-                                self.control_widget.setError(True)
+                                self.control_widget.setError(True)  # type: ignore[attr-defined]
                             else:
-                                self.control_widget.setError(False)
+                                self.control_widget.setError(False)  # type: ignore[attr-defined]
                         return validate
                     
                     self.control_widget.textChanged.connect(create_validator(verify_pattern))

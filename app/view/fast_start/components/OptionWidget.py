@@ -228,17 +228,6 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             return
 
         html = self._prepare_description_html(description)
-        html = re.sub(
-            r"<code>(.*?)</code>",
-            r"<span style='color: #009faa;'>\1</span>",
-            html,
-        )
-        html = re.sub(
-            r'(<a\s+[^>]*href="[^"]+"[^>]*)>', r'\1 style="color: #009faa;">', html
-        )
-        html = re.sub(r"<li><p>(.*?)</p></li>", r"<p><strong>◆ </strong>\1</p>", html)
-        html = re.sub(r"<ul>(.*?)</ul>", r"\1", html)
-
         self.description_content.setText(html)
 
     @staticmethod
@@ -247,7 +236,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         stripped = description.strip()
         if stripped.startswith("<") and stripped.endswith(">"):
             return description
-        return markdown.markdown(description).replace("\n", "")
+        return markdown.markdown(
+            description, extensions=["extra", "sane_lists"]
+        )
 
     # ==================== 公共方法 ====================
 

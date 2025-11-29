@@ -26,6 +26,7 @@ class OptionService:
         if task:
             self.current_options = task.task_option
             from app.common.constants import PRE_CONFIGURATION, POST_ACTION
+
             if task.item_id == PRE_CONFIGURATION:
                 self.form_structure = {"type": "resource"}
             elif task.item_id == POST_ACTION:
@@ -107,6 +108,8 @@ class OptionService:
         """
         field_config = {}
         option_type = option_def.get("type")
+        if isinstance(option_type, str):
+            option_type = option_type.lower()
 
         # 向后兼容：缺失 type 的选项默认视为 combobox
         if not option_type:
@@ -134,18 +137,19 @@ class OptionService:
         if option_type == "switch":
             field_config["type"] = "switch"
             # switch 类型固定为 YES 和 NO 两个选项
-            options = [
-                {"name": "Yes", "label": "是"},
-                {"name": "No", "label": "否"}
-            ]
+            options = [{"name": "Yes", "label": "是"}, {"name": "No", "label": "否"}]
             children = {}
 
             # 处理 cases 中的子选项，但只关注 YES 和 NO
             for case in option_def.get("cases", []):
                 case_name = case.get("name", "")
                 # 标准化处理：不区分大小写，处理各种可能的 YES/NO 变体
-                case_name_upper = case_name.upper() if isinstance(case_name, str) else str(case_name).upper()
-                
+                case_name_upper = (
+                    case_name.upper()
+                    if isinstance(case_name, str)
+                    else str(case_name).upper()
+                )
+
                 # 确定对应的标准名称（Yes 或 No）
                 if case_name_upper in ["YES", "Y", "TRUE", "1", "ON"]:
                     standard_name = "Yes"
@@ -243,8 +247,11 @@ class OptionService:
             # 每个input项将作为一个独立的lineedit字段
             # 但为了简化实现，这里创建一个lineedit作为主字段，实际使用时需要特殊处理
             field_config["type"] = "lineedit"
+            inputs = option_def["inputs"]
             # 保存inputs数组，供后续处理
-            field_config["inputs"] = option_def["inputs"]
+            field_config["inputs"] = inputs
+            # 如果只有一个输入项，则启用单输入渲染模式（UI 层会简化展示）
+            field_config["single_input"] = len(inputs) == 1
 
             # 传递verify字段到表单结构中
             if "verify" in option_def:
