@@ -7,6 +7,8 @@ from PySide6.QtCore import QObject
 from app.common.constants import POST_ACTION, PRE_CONFIGURATION
 from app.common.signal_bus import signalBus
 
+from maa.toolkit import Toolkit
+
 from ...utils.logger import logger
 from ..service.Task_Service import TaskService
 from .maafw import MaaFW
@@ -194,6 +196,21 @@ class TaskFlowRunner(QObject):
 
         adb_path = controller_raw.get(activate_controller, {}).get("adb_path", "")
         address = controller_raw.get(activate_controller, {}).get("address", "")
+
+        # 如果 adb_path 或 address 为空，自动搜索设备
+        if not adb_path or not address:
+            logger.info("ADB 路径或地址为空，开始自动搜索设备...")
+            signalBus.log_output.emit("INFO", self.tr("Auto searching ADB devices..."))
+            found_device = await self._auto_find_adb_device(
+                controller_raw, activate_controller
+            )
+            if found_device:
+                adb_path = found_device.get("adb_path", "")
+                address = found_device.get("address", "")
+            else:
+                logger.warning("未找到可用的 ADB 设备")
+                signalBus.log_output.emit("WARNING", self.tr("No ADB device found"))
+                return False
         input_method = int(
             controller_raw.get(activate_controller, {}).get("input_methods", -1)
         )
@@ -227,7 +244,7 @@ class TaskFlowRunner(QObject):
             emu_params = controller_raw.get(activate_controller, {}).get(
                 "emulator_params", ""
             )
-            wait_emu_start = self._safe_int(
+            wait_emu_start = int(
                 controller_raw.get(activate_controller, {}).get("wait_time", 0)
             )
 
@@ -253,10 +270,37 @@ class TaskFlowRunner(QObject):
 
     async def _connect_win32_controller(self, controller_raw: Dict[str, Any]):
         """连接 Win32 控制器"""
-        hwnd: int = controller_raw.get("hwnd", 0)
-        screencap_method: int = controller_raw.get("screencap_method", 0)
-        mouse_method: int = controller_raw.get("screencap_method", 0)
-        keyboard_method: int = controller_raw.get("keyboard_method", 0)
+        activate_controller = controller_raw.get("controller_type")
+        if activate_controller is None:
+            logger.error(f"未找到控制器配置: {controller_raw}")
+            return False
+
+        hwnd = controller_raw.get(activate_controller, {}).get("hwnd", 0)
+        screencap_method: int = controller_raw.get(activate_controller, {}).get(
+            "win32_screencap_methods", 0
+        )
+        mouse_method: int = controller_raw.get(activate_controller, {}).get(
+            "mouse_input_methods", 0
+        )
+        keyboard_method: int = controller_raw.get(activate_controller, {}).get(
+            "keyboard_input_methods", 0
+        )
+
+        # 如果 hwnd 为空，自动搜索窗口
+        if not hwnd:
+            logger.info("HWND 为空，开始自动搜索 Win32 窗口...")
+            signalBus.log_output.emit(
+                "INFO", self.tr("Auto searching Win32 windows...")
+            )
+            found_device = await self._auto_find_win32_window(
+                controller_raw, activate_controller
+            )
+            if found_device:
+                hwnd = found_device.get("hwnd", 0)
+            else:
+                logger.warning("未找到可用的 Win32 窗口")
+                signalBus.log_output.emit("WARNING", self.tr("No Win32 window found"))
+                return False
 
         if await self.maafw.connect_win32hwnd(
             hwnd,
@@ -265,13 +309,17 @@ class TaskFlowRunner(QObject):
             keyboard_method,
         ):
             return True
-        elif controller_raw.get("emulator_path", ""):
+        elif controller_raw.get(activate_controller, {}).get("program_path", ""):
             logger.info("尝试启动程序")
             signalBus.log_output.emit("INFO", self.tr("try to start program"))
-            program_path = controller_raw.get("program_path", "")
-            program_params = controller_raw.get("program_params", "")
-            wait_program_start = self._safe_int(
-                controller_raw.get("wait_launch_time", 0)
+            program_path = controller_raw.get(activate_controller, {}).get(
+                "program_path", ""
+            )
+            program_params = controller_raw.get(activate_controller, {}).get(
+                "program_params", ""
+            )
+            wait_program_start = int(
+                controller_raw.get(activate_controller, {}).get("wait_launch_time", 0)
             )
             self.process = self._start_process(program_path, program_params)
             if wait_program_start > 0:
@@ -331,17 +379,6 @@ class TaskFlowRunner(QObject):
             await asyncio.sleep(1)
         return True
 
-    @staticmethod
-    def _safe_int(value: str | int | float | None, default: int = 0) -> int:
-        """安全将字符串/数值转换为 int，失败时返回默认值"""
-
-        if value is None:
-            return default
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            return default
-
     def _get_controller_type(self, controller_raw: Dict[str, Any]) -> str:
         """获取控制器类型"""
         if not isinstance(controller_raw, dict):
@@ -363,3 +400,124 @@ class TaskFlowRunner(QObject):
                 return controller.get("type", "").lower()
 
         raise ValueError(f"未找到控制器类型: {controller_raw}")
+
+    async def _auto_find_adb_device(
+        self, controller_raw: Dict[str, Any], activate_controller: str
+    ) -> Dict[str, Any] | None:
+        """自动搜索 ADB 设备并保存第一个结果到配置
+
+        Args:
+            controller_raw: 控制器原始配置
+            activate_controller: 当前激活的控制器名称
+
+        Returns:
+            找到的设备信息字典，未找到返回 None
+        """
+        try:
+            devices = Toolkit.find_adb_devices()
+            if not devices:
+                logger.warning("未找到任何 ADB 设备")
+                return None
+
+            # 取第一个设备
+            device = devices[0]
+            device_info = {
+                "adb_path": str(device.adb_path),
+                "address": device.address,
+                "screencap_methods": device.screencap_methods,
+                "input_methods": device.input_methods,
+                "config": device.config,
+                "device_name": f"{device.name}({device.address})",
+            }
+
+            logger.info(f"自动搜索到 ADB 设备: {device_info['device_name']}")
+            signalBus.log_output.emit(
+                "INFO",
+                self.tr("Found ADB device: ") + device_info["device_name"],
+            )
+
+            # 更新配置并保存
+            self._save_device_to_config(
+                controller_raw, activate_controller, device_info
+            )
+
+            return device_info
+
+        except Exception as e:
+            logger.error(f"自动搜索 ADB 设备时出错: {e}")
+            return None
+
+    async def _auto_find_win32_window(
+        self, controller_raw: Dict[str, Any], activate_controller: str
+    ) -> Dict[str, Any] | None:
+        """自动搜索 Win32 窗口并保存第一个结果到配置
+
+        Args:
+            controller_raw: 控制器原始配置
+            activate_controller: 当前激活的控制器名称
+
+        Returns:
+            找到的窗口信息字典，未找到返回 None
+        """
+        try:
+            windows = Toolkit.find_desktop_windows()
+            if not windows:
+                logger.warning("未找到任何 Win32 窗口")
+                return None
+
+            # 取第一个窗口
+            window = windows[0]
+            window_info = {
+                "hwnd": str(window.hwnd),
+                "window_name": window.window_name,
+                "class_name": window.class_name,
+                "device_name": f"{window.window_name or 'Unknown Window'}({window.hwnd})",
+            }
+
+            logger.info(f"自动搜索到 Win32 窗口: {window_info['device_name']}")
+            signalBus.log_output.emit(
+                "INFO",
+                self.tr("Found Win32 window: ") + window_info["device_name"],
+            )
+
+            # 更新配置并保存
+            self._save_device_to_config(
+                controller_raw, activate_controller, window_info
+            )
+
+            return window_info
+
+        except Exception as e:
+            logger.error(f"自动搜索 Win32 窗口时出错: {e}")
+            return None
+
+    def _save_device_to_config(
+        self,
+        controller_raw: Dict[str, Any],
+        activate_controller: str,
+        device_info: Dict[str, Any],
+    ) -> None:
+        """保存设备信息到配置
+
+        Args:
+            controller_raw: 控制器原始配置
+            activate_controller: 当前激活的控制器名称
+            device_info: 设备信息字典
+        """
+        try:
+            # 确保控制器配置存在
+            if activate_controller not in controller_raw:
+                controller_raw[activate_controller] = {}
+
+            # 更新设备信息
+            controller_raw[activate_controller].update(device_info)
+
+            # 获取预配置任务并更新
+            pre_cfg = self.task_service.get_task(PRE_CONFIGURATION)
+            if pre_cfg:
+                pre_cfg.task_option.update(controller_raw)
+                self.task_service.update_task(pre_cfg)
+                logger.info(f"设备配置已保存: {device_info.get('device_name', '')}")
+
+        except Exception as e:
+            logger.error(f"保存设备配置时出错: {e}")
