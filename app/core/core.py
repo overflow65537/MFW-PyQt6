@@ -46,7 +46,6 @@ class ServiceCoordinator:
 
         self.task_runner = TaskFlowRunner(
             task_service=self.task_service,
-    
             fs_signal_bus=self.fs_signal_bus,
         )
         # 连接信号
@@ -227,6 +226,7 @@ class ServiceCoordinator:
     @property
     def run_manager(self) -> TaskFlowRunner:
         return self.task_runner
+
     # 提供获取服务的属性，以便UI层访问
     @property
     def config(self) -> ConfigService:

@@ -1,7 +1,9 @@
-import time
+import subprocess
+import time as _time
 from pathlib import Path
 from typing import Any, Dict
-
+import asyncio
+from PySide6.QtCore import QObject
 from app.common.constants import POST_ACTION, PRE_CONFIGURATION
 from app.common.signal_bus import signalBus
 
@@ -16,7 +18,7 @@ from .maasink import (
 )
 
 
-class TaskFlowRunner:
+class TaskFlowRunner(QObject):
     """负责执行任务流的运行时组件"""
 
     def __init__(
@@ -31,6 +33,7 @@ class TaskFlowRunner:
             maa_resource_sink=MaaResourceEventSink,
             maa_tasker_sink=MaaTaskerEventSink,
         )
+        self.process = None
         self.fs_signal_bus = fs_signal_bus
         self.need_stop = False
 
@@ -49,14 +52,14 @@ class TaskFlowRunner:
             logger.info("开始连接设备...")
             connected = await self.connect_device(pre_cfg.task_option)
             if not connected:
-                logger.error("设备连接失败，流程终止")
+                logger.error("设备连接失败，尝试启动进程")
                 return
             logger.info("设备连接成功")
 
             logger.info("开始截图测试...")
-            start_time = time.time()
+            start_time = _time.time()
             await self.maafw.screencap_test()
-            end_time = time.time()
+            end_time = _time.time()
             logger.info(f"截图测试成功，耗时: {end_time - start_time}毫秒")
             signalBus.callback.emit(
                 {"name": "speed_test", "details": end_time - start_time}
@@ -67,10 +70,6 @@ class TaskFlowRunner:
                 logger.error("资源加载失败，流程终止")
                 return
             logger.info("资源加载成功")
-
-            self.fs_signal_bus.fs_start_button_status.emit(
-                {"text": "STOP", "status": "enabled"}
-            )
 
             logger.info("开始执行任务序列...")
             for task in self.task_service.current_tasks:
@@ -100,9 +99,12 @@ class TaskFlowRunner:
     async def connect_device(self, controller_raw: Dict[str, Any]):
         """连接 MaaFW 控制器"""
         controller_type = self._get_controller_type(controller_raw)
+        self.fs_signal_bus.fs_start_button_status.emit(
+            {"text": "STOP", "status": "enabled"}
+        )
         if controller_type == "adb":
             return await self._connect_adb_controller(controller_raw)
-        if controller_type == "win":
+        elif controller_type == "win":
             return await self._connect_win32_controller(controller_raw)
         raise ValueError("不支持的控制器类型")
 
@@ -208,18 +210,46 @@ class TaskFlowRunner:
             f"input_method={input_method}({type(input_method)})"
         )
 
-        if (
-            not await self.maafw.connect_adb(
+        if await self.maafw.connect_adb(
+            adb_path,
+            address,
+            screen_method,
+            input_method,
+            config,
+        ):
+            return True
+        elif controller_raw.get(activate_controller, {}).get("emulator_path", ""):
+            logger.info("尝试启动模拟器")
+            signalBus.log_output.emit("INFO", self.tr("try to start emulator"))
+            emu_path = controller_raw.get(activate_controller, {}).get(
+                "emulator_path", ""
+            )
+            emu_params = controller_raw.get(activate_controller, {}).get(
+                "emulator_params", ""
+            )
+            wait_emu_start = self._safe_int(
+                controller_raw.get(activate_controller, {}).get("wait_time", 0)
+            )
+
+            self.process = self._start_process(emu_path, emu_params)
+            # 异步等待
+            if wait_emu_start > 0:
+                countdown_ok = await self._countdown_wait(
+                    wait_emu_start, self.tr("waiting for emulator start...")
+                )
+                if not countdown_ok:
+                    return False
+            if await self.maafw.connect_adb(
                 adb_path,
                 address,
                 screen_method,
                 input_method,
                 config,
-            )
-            and not self.need_stop
-        ):
-            return False
-        return True
+            ):
+                print("connect adb success")
+                return True
+
+        return False
 
     async def _connect_win32_controller(self, controller_raw: Dict[str, Any]):
         """连接 Win32 控制器"""
@@ -228,17 +258,89 @@ class TaskFlowRunner:
         mouse_method: int = controller_raw.get("screencap_method", 0)
         keyboard_method: int = controller_raw.get("keyboard_method", 0)
 
-        if (
-            not await self.maafw.connect_win32hwnd(
+        if await self.maafw.connect_win32hwnd(
+            hwnd,
+            screencap_method,
+            mouse_method,
+            keyboard_method,
+        ):
+            return True
+        elif controller_raw.get("emulator_path", ""):
+            logger.info("尝试启动程序")
+            signalBus.log_output.emit("INFO", self.tr("try to start program"))
+            program_path = controller_raw.get("program_path", "")
+            program_params = controller_raw.get("program_params", "")
+            wait_program_start = self._safe_int(
+                controller_raw.get("wait_launch_time", 0)
+            )
+            self.process = self._start_process(program_path, program_params)
+            if wait_program_start > 0:
+                countdown_ok = await self._countdown_wait(
+                    wait_program_start,
+                    self.tr("waiting for program start..."),
+                )
+                if not countdown_ok:
+                    return False
+            if await self.maafw.connect_win32hwnd(
                 hwnd,
                 screencap_method,
                 mouse_method,
                 keyboard_method,
-            )
-            and not self.need_stop
-        ):
+            ):
+                return False
+        else:
             return False
         return True
+
+    def _start_process(
+        self, entry: str | Path, argv: list[str] | tuple[str, ...] | str | None = None
+    ) -> subprocess.Popen:
+        """根据入口路径/命令开启子进程，返回 Popen 对象"""
+
+        command = [str(entry)]
+        if argv is not None:
+            if isinstance(argv, (list, tuple)):
+                command.extend(str(arg) for arg in argv)
+            else:
+                command.append(str(argv))
+
+        logger.debug(f"准备启动子进程: {command}")
+        return subprocess.Popen(command)
+
+    async def _countdown_wait(self, wait_seconds: int, message: str) -> bool:
+        """按指定阈值输出倒计时日志，返回 False 表示提前停止"""
+
+        if wait_seconds <= 0:
+            return True
+
+        thresholds = [60, 30, 15, 10, 5, 4, 3, 2, 1]
+        log_points = {wait_seconds}
+        for point in thresholds:
+            if wait_seconds >= point:
+                log_points.add(point)
+
+        for remaining in range(wait_seconds, 0, -1):
+            if remaining in log_points:
+                signalBus.log_output.emit(
+                    "INFO",
+                    message + str(remaining) + self.tr(" seconds"),
+                )
+                log_points.remove(remaining)
+            if self.need_stop:
+                return False
+            await asyncio.sleep(1)
+        return True
+
+    @staticmethod
+    def _safe_int(value: str | int | float | None, default: int = 0) -> int:
+        """安全将字符串/数值转换为 int，失败时返回默认值"""
+
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
 
     def _get_controller_type(self, controller_raw: Dict[str, Any]) -> str:
         """获取控制器类型"""
@@ -261,4 +363,3 @@ class TaskFlowRunner:
                 return controller.get("type", "").lower()
 
         raise ValueError(f"未找到控制器类型: {controller_raw}")
-
