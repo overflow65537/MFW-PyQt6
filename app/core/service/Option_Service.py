@@ -35,6 +35,7 @@ class OptionService:
                 self.form_structure = self.get_form_structure_by_task_name(
                     task.name, self.task_service.interface
                 )
+            print(self.form_structure)
             self.signal_bus.options_loaded.emit()
 
     def _on_option_updated(self, option_data: Dict[str, Any]):
@@ -118,7 +119,57 @@ class OptionService:
 
         # 处理不同类型的选项
 
-        if option_type == "select" or "cases" in option_def:
+        # 处理 switch 类型
+        if option_type == "switch":
+            field_config["type"] = "switch"
+            # switch 类型固定为 YES 和 NO 两个选项
+            options = [
+                {"name": "Yes", "label": "是"},
+                {"name": "No", "label": "否"}
+            ]
+            children = {}
+
+            # 处理 cases 中的子选项，但只关注 YES 和 NO
+            for case in option_def.get("cases", []):
+                case_name = case.get("name", "")
+                # 标准化处理：不区分大小写，处理各种可能的 YES/NO 变体
+                case_name_upper = case_name.upper() if isinstance(case_name, str) else str(case_name).upper()
+                
+                # 确定对应的标准名称（Yes 或 No）
+                if case_name_upper in ["YES", "Y", "TRUE", "1", "ON"]:
+                    standard_name = "Yes"
+                elif case_name_upper in ["NO", "N", "FALSE", "0", "OFF"]:
+                    standard_name = "No"
+                else:
+                    # 如果不匹配，跳过
+                    continue
+
+                # 递归处理 cases 中的子选项(option参数)
+                if "option" in case:
+                    option_value = case["option"]
+                    if isinstance(option_value, str) and option_value in all_options:
+                        sub_option_def = all_options[option_value]
+                        child_field = self.process_option_def(
+                            sub_option_def, all_options, option_value
+                        )
+                        children[standard_name] = child_field
+                    elif isinstance(option_value, list):
+                        # 处理option是列表的情况
+                        for opt in option_value:
+                            if isinstance(opt, str) and opt in all_options:
+                                sub_option_def = all_options[opt]
+                                child_field = self.process_option_def(
+                                    sub_option_def, all_options, opt
+                                )
+                                children[standard_name] = child_field
+                                break
+
+            field_config["options"] = options
+            # 如果有子选项，添加children属性
+            if children:
+                field_config["children"] = children
+
+        elif option_type == "select" or "cases" in option_def:
             # 默认类型为combobox
             field_config["type"] = "combobox"
             options = []

@@ -16,22 +16,20 @@ from qfluentwidgets import (
     ScrollArea,
 )
 from app.view.fast_start.animations.option_transition import OptionTransitionAnimator
-from app.view.fast_start.components.Option_Widget_Mixin.DynamicFormMixin import (
-    DynamicFormMixin,
-)
 from app.view.fast_start.components.Option_Widget_Mixin.ResourceSettingMixin import (
     ResourceSettingMixin,
 )
 from app.view.fast_start.components.Option_Widget_Mixin.PostActionSettingMixin import (
     PostActionSettingMixin,
 )
+from app.view.fast_start.components.Option_Framework import OptionFormWidget
 from app.utils.logger import logger
 
 
 from ....core.core import ServiceCoordinator
 
 
-class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin, PostActionSettingMixin):
+class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
     current_config: Dict[str, Any]
     parent_layout: QVBoxLayout
 
@@ -39,14 +37,12 @@ class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin, PostActionSe
         # 先调用QWidget的初始化
         self.service_coordinator = service_coordinator
         QWidget.__init__(self, parent)
-        # 再调用DynamicFormMixin的初始化
-        DynamicFormMixin.__init__(self)
         # 调用ResourceSettingMixin的初始化
         ResourceSettingMixin.__init__(self)
         # 调用PostActionSettingMixin的初始化
         PostActionSettingMixin.__init__(self)
 
-        # 设置parent_layout为option_area_layout，供DynamicFormMixin使用
+        # 初始化UI组件
         self._init_ui()
         self._toggle_description(visible=False)
 
@@ -87,8 +83,12 @@ class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin, PostActionSe
         self.option_area_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.option_area_layout.setContentsMargins(10, 10, 10, 10)  # 添加内边距
 
-        # 设置DynamicFormMixin的parent_layout为option_area_layout
+        # 保存布局引用（某些 Mixin 可能需要）
         self.parent_layout = self.option_area_layout
+
+        # 创建新的选项表单组件
+        self.option_form_widget = OptionFormWidget()
+        self.option_area_layout.addWidget(self.option_form_widget)
 
         # 将容器widget设置到滚动区域
         self.option_area_widget.setWidget(option_container)
@@ -186,7 +186,7 @@ class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin, PostActionSe
 
     # ==================== UI 辅助方法 ==================== #
 
-    def _toggle_description(self, visible=None):
+    def _toggle_description(self, visible: bool|None = None) -> None:
         """切换描述区域的显示/隐藏
         visible: True显示，False隐藏，None切换当前状态
         """
@@ -236,11 +236,7 @@ class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin, PostActionSe
         self.option_splitter_widget.show()
 
         self.current_task = None
-        # 重置DynamicFormMixin的状态
-
         self.current_config = {}
-        self.widgets = {}
-        self.child_layouts = {}
 
     def _on_config_changed(self, config_id: str):
         """配置切换时重置选项面板"""
@@ -252,7 +248,22 @@ class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin, PostActionSe
 
     def _clear_options(self):
         """清空选项区域"""
-        self._clear_layout(self.option_area_layout)
+        # 使用新框架清空选项
+        self.option_form_widget._clear_options()
+
+        # 同时也清空布局中其他可能存在的控件（保留兼容性）
+        # 但保留 option_form_widget 本身
+        items_to_remove = []
+        for i in range(self.option_area_layout.count()):
+            item = self.option_area_layout.itemAt(i)
+            if item and item.widget() and item.widget() != self.option_form_widget:
+                items_to_remove.append(i)
+
+        # 从后往前移除，避免索引问题
+        for i in reversed(items_to_remove):
+            item = self.option_area_layout.takeAt(i)
+            if item and item.widget():
+                item.widget().deleteLater()
 
     def update_form_from_structure(self, form_structure, config=None):
         """
@@ -263,17 +274,69 @@ class OptionWidget(QWidget, DynamicFormMixin, ResourceSettingMixin, PostActionSe
         # 显示选项区域
         self.option_splitter_widget.show()
 
-        # 使用DynamicFormMixin的update_form方法更新表单
-        self.update_form(form_structure, config)
-        # 控制器类型切换的逻辑已由DynamicFormMixin的_on_combobox_changed方法处理
+        # 使用新的OptionFormWidget框架更新表单
+        # 处理表单结构中的描述字段
+        if isinstance(form_structure, dict) and "description" in form_structure:
+            description = form_structure["description"]
+            self.set_description(description)
+            if description and description.strip():
+                self._toggle_description(visible=True)
+
+        # 构建表单（排除 description 字段）
+        form_structure_copy = {
+            k: v for k, v in form_structure.items() if k != "description"
+        }
+        self.option_form_widget.build_from_structure(form_structure_copy, config)
+
+        # 连接选项变化信号以实现自动保存
+        self._connect_option_signals()
 
     def get_current_form_config(self):
         """
         获取当前表单的配置
         :return: 当前选择的配置字典
         """
-        # 使用DynamicFormMixin的get_config方法
-        return self.get_config()
+        # 使用新的OptionFormWidget框架获取配置
+        return self.option_form_widget.get_options()
+
+    def _connect_option_signals(self):
+        """
+        连接选项变化信号以实现自动保存
+        """
+        # 遍历所有选项项，连接它们的信号
+        for option_item in self.option_form_widget.option_items.values():
+            # 连接选项变化信号
+            option_item.option_changed.connect(self._on_option_changed)
+
+            # 递归连接子选项的信号
+            self._connect_child_option_signals(option_item)
+
+    def _connect_child_option_signals(self, option_item):
+        """
+        递归连接子选项的信号
+
+        :param option_item: 选项项组件
+        """
+        for child_widget in option_item.child_options.values():
+            child_widget.option_changed.connect(self._on_option_changed)
+            # 递归连接子选项的子选项
+            self._connect_child_option_signals(child_widget)
+
+    def _on_option_changed(self, key: str, value: Any):
+        """
+        选项变化时的回调函数，用于自动保存
+
+        :param key: 选项键名
+        :param value: 选项值
+        """
+        try:
+            # 获取当前所有配置
+            all_config = self.get_current_form_config()
+            # 调用OptionService的update_options方法保存选项
+            self.service_coordinator.option_service.update_options(all_config)
+        except Exception as e:
+            # 如果保存失败，记录错误但不影响用户操作
+            logger.error(f"自动保存选项失败: {e}")
 
     def _on_options_loaded(self):
         """
