@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import List, Dict, Any
-
-from qasync import asyncSlot
+import time
 
 from .Item import (
     CoreSignalBus,
@@ -23,6 +22,7 @@ from .runner.maasink import (
 from app.common.constants import PRE_CONFIGURATION
 
 from ..utils.logger import logger
+from ..common.signal_bus import signalBus
 
 
 class ServiceCoordinator:
@@ -250,6 +250,20 @@ class ServiceCoordinator:
                 return
             logger.info("设备连接成功")
 
+            # 3. 截图测试
+
+            logger.info("开始截图测试...")
+            start_time = time.time()
+            await self.maafw.screencap_test()
+            end_time = time.time()
+            logger.info(f"截图测试成功，耗时: {end_time - start_time}毫秒")
+            signalBus.callback.emit(
+                {
+                    "name": "speed_test",
+                    "details": end_time - start_time,
+                }
+            )
+
             # 3. 加载资源
             logger.info("开始加载资源...")
             if not await self.load_resources(pre_cfg.task_option):
@@ -304,24 +318,13 @@ class ServiceCoordinator:
         if self.maafw.resource:
             self.maafw.resource.clear()  # 清除资源
 
-        # 处理两种情况：配置文件场景和 UI 表单场景
-        # 配置文件场景：resource 直接是字符串
-        # UI 表单场景：resource 是包含 value 字段的字典
-        resource = resource_raw.get("resource", {})
-        if isinstance(resource, str):
-            resource_target = resource
-        elif isinstance(resource, dict):
-            resource_target = resource.get("value")
-        else:
-            resource_target = None
-
+        resource_target = resource_raw.get("resource")
         resource_path = []
 
         # 如果没有找到资源目标，尝试直接从配置中获取 resource_path（用于配置文件场景）
         if not resource_target:
             logger.warning("未找到资源目标，尝试直接从配置中获取资源路径")
-            # 配置文件中可能直接包含 resource_path 字段
-            resource_path = resource_raw.get("resource_path", [])
+            raise ValueError("未找到资源目标")
         else:
             for i in self.task_service.interface.get("resource", []):
                 if i["name"] == resource_target:

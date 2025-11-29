@@ -8,8 +8,11 @@ from app.common.signal_bus import signalBus
 
 class MaaContextSink(ContextEventSink):
     def on_raw_notification(self, context: Context, msg: str, details: dict):
-        signalBus.callback.emit({"name": "context", "status": "focus", "details": details})
-        print(f"上下文原始信息:{msg},详细信息:{details}")
+        if detial := details.get("focus", {}).get(msg, ""):
+            detial = detial.replace("{name}", details.get("name", ""))
+            detial = detial.replace("{task_id}", str(details.get("task_id", "")))
+            detial = detial.replace("{list}", details.get("list", ""))
+            signalBus.callback.emit({"name": "context", "details": detial})
 
     def on_node_next_list(
         self,
@@ -36,7 +39,6 @@ class MaaContextSink(ContextEventSink):
         pass
 
 
-
 class MaaControllerEventSink(ControllerEventSink):
     def on_raw_notification(self, controller: Controller, msg: str, details: dict):
         pass
@@ -48,9 +50,7 @@ class MaaControllerEventSink(ControllerEventSink):
         noti_type: NotificationType,
         detail: ControllerEventSink.ControllerActionDetail,
     ):
-        signalBus.callback.emit(
-            {"name": "controller", "task": detail.action, "status": noti_type.value}
-        )
+        signalBus.callback.emit({"name": "controller", "status": noti_type.value})
 
 
 class MaaResourceEventSink(ResourceEventSink):
@@ -79,5 +79,5 @@ class MaaTaskerEventSink(TaskerEventSink):
         detail: TaskerEventSink.TaskerTaskDetail,
     ):
         signalBus.callback.emit(
-            {"name": "tasker_task", "task": detail.entry, "status": noti_type.value}
+            {"name": "task", "task": detail.entry, "status": noti_type.value}
         )

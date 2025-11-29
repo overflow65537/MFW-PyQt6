@@ -12,8 +12,9 @@ import importlib.util
 from typing import List, Dict
 import subprocess
 from pathlib import Path
-
+import numpy
 from asyncify import asyncify
+
 import maa
 from maa.context import Context, ContextEventSink
 from maa.custom_action import CustomAction
@@ -77,9 +78,6 @@ class MaaFW(QObject):
 
         self.agent = None
         self.agent_thread = None
-
-        # 防止 stop_task 在短时间内被多次并发调用，导致底层资源重复释放
-        self._stopping = False
 
     def load_custom_objects(self, custom_json_path: str | Path):
         if not os.path.exists(custom_json_path):
@@ -205,12 +203,11 @@ class MaaFW(QObject):
 
         input_method = MaaAdbInputMethodEnum(input_method)
 
-        self.controller = AdbController(
+        controller = AdbController(
             adb_path, address, screencap_method, input_method, config
         )
-
-        self.controller.add_sink(self.maa_controller_sink)
-        connected = self.controller.post_connection().wait().succeeded
+        controller = self._init_controller(controller)
+        connected = controller.post_connection().wait().succeeded
         if not connected:
             print(f"Failed to connect {adb_path} {address}")
             return False
@@ -232,40 +229,78 @@ class MaaFW(QObject):
         )
         mouse_method = mouse_method or MaaWin32InputMethodEnum.Seize
         keyboard_method = keyboard_method or MaaWin32InputMethodEnum.Seize
-        self.controller = Win32Controller(
+        controller = Win32Controller(
             hwnd,
             screencap_method=screencap_method,
             mouse_method=mouse_method,
             keyboard_method=keyboard_method,
         )
+        controller = self._init_controller(controller)
 
-        # self.controller.add_sink(self.maa_controller_sink)
-
-        connected = self.controller.post_connection().wait().succeeded
+        connected = controller.post_connection().wait().succeeded
         if not connected:
             print(f"Failed to connect {hwnd}")
             return False
 
         return True
 
-    @asyncify
-    def load_resource(self, dir: str | Path, gpu_index: int = -1) -> bool:
-        if not self.resource:
+    def _init_controller(
+        self, controller: AdbController | Win32Controller
+    ) -> AdbController | Win32Controller:
+        controller.add_sink(self.maa_controller_sink)
+        self.controller = controller
+        return self.controller
+
+    def _init_resource(self) -> Resource:
+        if self.resource is None:
             self.resource = Resource()
             self.resource.add_sink(self.maa_resource_sink)
+        return self.resource
+
+    def _init_tasker(self) -> Tasker:
+        if self.tasker is None:
+            self.tasker = Tasker()
+            self.tasker.add_context_sink(self.maa_context_sink)
+            self.tasker.add_sink(self.maa_tasker_sink)
+        if not self.resource or not self.controller:
+            raise RuntimeError("Resource 与 Controller 必须先初始化再初始化 Tasker")
+        self.tasker.bind(self.resource, self.controller)
+        return self.tasker
+
+    def _init_agent(self) -> AgentClient:
+        if not (self.resource and self.controller and self.tasker):
+            raise RuntimeError("agent 初始化前必须存在 resource/controller/tasker")
+        if self.agent is None:
+            self.agent = AgentClient()
+        self.agent.register_sink(self.resource, self.controller, self.tasker)
+        self.agent.bind(self.resource)
+        return self.agent
+
+    def _resolve_agent_path(self, raw_path: str, base_dir: Path) -> str:
+        if not raw_path:
+            return raw_path
+        replaced = raw_path.replace("{PROJECT_DIR}", str(base_dir))
+        candidate = Path(replaced).expanduser()
+        if candidate.is_absolute():
+            return str(candidate)
+        return str((base_dir / candidate).resolve())
+
+    @asyncify
+    def load_resource(self, dir: str | Path, gpu_index: int = -1) -> bool:
+        resource = self._init_resource()
         if not isinstance(gpu_index, int):
             logger.warning("gpu_index 不是 int 类型，使用默认值 -1")
             gpu_index = -1
         if gpu_index == -2:
             logger.debug("设置CPU推理")
-            self.resource.use_cpu()
+            resource.use_cpu()
         elif gpu_index == -1:
             logger.debug("设置自动")
-            self.resource.use_auto_ep()
+            resource.use_auto_ep()
         else:
             logger.debug(f"设置GPU推理: {gpu_index}")
-            self.resource.use_directml(gpu_index)
-        return self.resource.post_bundle(dir).wait().succeeded
+            resource.use_directml(gpu_index)
+        return resource.post_bundle(dir).wait().succeeded
 
     @asyncify
     def run_task(
@@ -276,16 +311,11 @@ class MaaFW(QObject):
         agent_data_raw: dict | None = None,
         save_draw: bool = False,
     ) -> bool:
-        if not self.tasker:
-            self.tasker = Tasker()
-            self.tasker.add_context_sink(self.maa_context_sink)
-            self.tasker.add_sink(self.maa_tasker_sink)
-
         if not self.resource or not self.controller:
             self._send_custom_info(self.tr("Resource or Controller not initialized"))
             return False
 
-        self.tasker.bind(self.resource, self.controller)
+        tasker = self._init_tasker()
 
         # 动态加载.py
         self.resource.clear_custom_recognition()
@@ -312,10 +342,12 @@ class MaaFW(QObject):
                 logger.warning("agent 配置既不是字典也不是列表，使用空字典作为默认值")
 
             if agent_data and agent_data.get("child_exec") and not self.agent:
-                self.agent = AgentClient()
-                self.agent.register_sink(self.resource, self.controller, self.tasker)
-                self.agent.bind(self.resource)
-                socket_id = self.agent.identifier
+                project_dir = Path.cwd()
+                child_exec = self._resolve_agent_path(
+                    agent_data.get("child_exec", ""), project_dir
+                )
+                agent = self._init_agent()
+                socket_id = agent.identifier
                 if callable(socket_id):
                     socket_id = socket_id() or "maafw_socket_id"
                 elif socket_id is None:
@@ -328,14 +360,10 @@ class MaaFW(QObject):
                     if not maa_bin:
                         maa_bin = os.getcwd()
 
-                    child_exec = agent_data.get("child_exec", "").replace(
-                        "{PROJECT_DIR}", "./"
-                    )
                     child_args = agent_data.get("child_args", [])
-
-                    for i in range(len(child_args)):
-                        if "{PROJECT_DIR}" in child_args[i]:
-                            child_args[i] = child_args[i].replace("{PROJECT_DIR}", "./")
+                    child_args = [
+                        self._resolve_agent_path(arg, project_dir) for arg in child_args
+                    ]
                     print(
                         f"agent启动: {child_exec}\n参数{child_args}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
                     )
@@ -352,15 +380,15 @@ class MaaFW(QObject):
                 except Exception as e:
                     logger.error(f"agent启动失败: {e}")
                     self._send_custom_info(self.tr("Agent start failed"))
-                if not self.agent.connect():
+                if not agent.connect():
                     logger.error(f"agent连接失败")
                     self._send_custom_info(self.tr("Agent connection failed"))
                 print("cusotm加载完毕 ")
-        if not self.tasker.inited:
+        if not tasker.inited:
             self._send_custom_info(self.tr("Tasker not initialized"))
             return False
-        self.tasker.set_save_draw(save_draw)
-        return self.tasker.post_task(entry, pipeline_override).wait().succeeded
+        tasker.set_save_draw(save_draw)
+        return tasker.post_task(entry, pipeline_override).wait().succeeded
 
     @asyncify
     def stop_task(self):
@@ -399,3 +427,8 @@ class MaaFW(QObject):
 
     def _send_custom_info(self, info: str):
         self.custom_info.emit(info)
+
+    async def screencap_test(self) -> numpy.ndarray:
+        if not self.controller:
+            raise RuntimeError("Controller not initialized")
+        return self.controller.post_screencap().wait().get()

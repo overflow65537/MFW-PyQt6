@@ -39,6 +39,9 @@ class SignalBus(QObject):
     # maa sink 发送信号
     callback = Signal(dict)
 
+    #输出到日志组件
+    log_output = Signal(str,str) #(level,text)
+
     # 由信息输出组件发射，外部模块处理
     request_log_zip = Signal()  # 请求生成日志压缩包
 
