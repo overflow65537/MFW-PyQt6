@@ -160,30 +160,31 @@ class OptionService:
                     continue
 
                 # 递归处理 cases 中的子选项(option参数)
+                child_fields = []
                 if "option" in case:
                     option_value = case["option"]
-                    if isinstance(option_value, str) and option_value in all_options:
-                        sub_option_def = all_options[option_value]
-                        child_field = self.process_option_def(
-                            sub_option_def, all_options, option_value
-                        )
-                        # 确保子选项包含 name 字段（用于从接口文件中获取具体选项）
-                        if "name" not in child_field:
-                            child_field["name"] = option_value
-                        children[standard_name] = child_field
+
+                    def _append_child(opt_value: str):
+                        if isinstance(opt_value, str) and opt_value in all_options:
+                            sub_option_def = all_options[opt_value]
+                            child_field = self.process_option_def(
+                                sub_option_def, all_options, opt_value
+                            )
+                            if "name" not in child_field:
+                                child_field["name"] = opt_value
+                            child_fields.append(child_field)
+
+                    if isinstance(option_value, str):
+                        _append_child(option_value)
                     elif isinstance(option_value, list):
-                        # 处理option是列表的情况
                         for opt in option_value:
-                            if isinstance(opt, str) and opt in all_options:
-                                sub_option_def = all_options[opt]
-                                child_field = self.process_option_def(
-                                    sub_option_def, all_options, opt
-                                )
-                                # 确保子选项包含 name 字段（用于从接口文件中获取具体选项）
-                                if "name" not in child_field:
-                                    child_field["name"] = opt
-                                children[standard_name] = child_field
-                                break
+                            _append_child(opt)
+
+                if child_fields:
+                    if len(child_fields) == 1:
+                        children[standard_name] = child_fields[0]
+                    else:
+                        children[standard_name] = child_fields
 
             field_config["options"] = options
             # 如果有子选项，添加children属性
@@ -206,35 +207,31 @@ class OptionService:
                 options.append({"name": option_name, "label": display_label})
 
                 # 递归处理cases中的子选项(option参数)
+                child_fields = []
                 if "option" in case:
-                    # 处理option可能是字符串或列表的情况
                     option_value = case["option"]
-                    if isinstance(option_value, str) and option_value in all_options:
-                        sub_option_def = all_options[option_value]
-                        child_field = self.process_option_def(
-                            sub_option_def, all_options, option_value
-                        )
-                        # 确保子选项包含 name 字段（用于从接口文件中获取具体选项）
-                        if "name" not in child_field:
-                            child_field["name"] = option_value
-                        children[option_name] = (
-                            child_field  # 使用name而不是label作为key
-                        )
+
+                    def _append_child(opt_value: str):
+                        if isinstance(opt_value, str) and opt_value in all_options:
+                            sub_option_def = all_options[opt_value]
+                            child_field = self.process_option_def(
+                                sub_option_def, all_options, opt_value
+                            )
+                            if "name" not in child_field:
+                                child_field["name"] = opt_value
+                            child_fields.append(child_field)
+
+                    if isinstance(option_value, str):
+                        _append_child(option_value)
                     elif isinstance(option_value, list):
-                        # 处理option是列表的情况，这里简化处理，只取第一个有效的选项
                         for opt in option_value:
-                            if isinstance(opt, str) and opt in all_options:
-                                sub_option_def = all_options[opt]
-                                child_field = self.process_option_def(
-                                    sub_option_def, all_options, opt
-                                )
-                                # 确保子选项包含 name 字段（用于从接口文件中获取具体选项）
-                                if "name" not in child_field:
-                                    child_field["name"] = opt
-                                children[option_name] = (
-                                    child_field  # 使用name而不是label作为key
-                                )
-                                break
+                            _append_child(opt)
+
+                if child_fields:
+                    if len(child_fields) == 1:
+                        children[option_name] = child_fields[0]
+                    else:
+                        children[option_name] = child_fields
 
             field_config["options"] = options
             # 如果有子选项，添加children属性

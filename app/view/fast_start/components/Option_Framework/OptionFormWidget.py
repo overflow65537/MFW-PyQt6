@@ -221,14 +221,16 @@ class OptionFormWidget(QWidget):
         :param option_value: 子选项的值（当前选中值）
         :param child_config: 子选项配置
         """
-        # 确保子选项已创建（应该已经通过 set_value -> _update_children_visibility 创建了）
         if option_value in option_item.config.get("children", {}):
-            if option_value not in option_item.child_options:
-                child_structure = option_item.config["children"][option_value]
-                option_item.add_child_option(option_value, child_structure)
-        
-        # 获取子选项组件
-        child_widget = option_item.child_options.get(option_value)
+            child_structure = option_item.config["children"][option_value]
+            option_item.add_child_option(option_value, child_structure)
+
+        if isinstance(child_config, list):
+            for config_item in child_config:
+                self._apply_single_child_config(option_item, option_value, config_item)
+            return
+
+        child_widget = option_item.find_child_widget(option_value, child_config)
         if child_widget:
             # 注意：不需要设置可见性，因为 set_value 已经通过 _update_children_visibility 处理了
             

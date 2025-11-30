@@ -3,7 +3,7 @@
 单个选项的独立组件，支持 combobox 和 lineedit 类型，以及子选项
 """
 # type: ignore[attr-defined]
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from PySide6.QtCore import Qt, Signal
 from qfluentwidgets import ComboBox, LineEdit, BodyLabel, ToolTipFilter, SwitchButton
@@ -34,6 +34,8 @@ class OptionItemWidget(QWidget):
         self.config = config
         self.config_type = config.get("type", "combobox")
         self.child_options: Dict[str, 'OptionItemWidget'] = {}  # 子选项组件字典
+        self._child_value_map: Dict[str, List[str]] = {}
+        self._child_name_map: Dict[Tuple[str, str], str] = {}
         self.current_value: Any = None  # 当前选中的值
         inputs_value = self.config.get("inputs")
         self._single_input_mode = (
@@ -114,10 +116,7 @@ class OptionItemWidget(QWidget):
         
         self.main_layout.addWidget(self.control_widget)
         
-        # 预创建所有子选项（如果存在）
-        children = self.config.get("children", {})
-        for option_value, child_config in children.items():
-            self.add_child_option(option_value, child_config)
+        self._preload_child_options()
         
         # 连接信号（在预创建子选项后）
         self.control_widget.currentTextChanged.connect(self._on_combobox_changed)
@@ -168,10 +167,7 @@ class OptionItemWidget(QWidget):
         # 将整个容器添加到主布局
         self.main_layout.addWidget(switch_container)
         
-        # 预创建所有子选项（如果存在）
-        children = self.config.get("children", {})
-        for option_value, child_config in children.items():
-            self.add_child_option(option_value, child_config)
+        self._preload_child_options()
         
         # 连接信号（在预创建子选项后）
         self.control_widget.checkedChanged.connect(self._on_switch_changed)
@@ -384,104 +380,136 @@ class OptionItemWidget(QWidget):
     def _update_children_visibility(self, selected_value: Any):
         """更新子选项的可见性"""
         children = self.config.get("children", {})
-        
-        # 确保 selected_value 是字符串类型，以便与 children 字典的键匹配
         selected_value_str = str(selected_value) if selected_value is not None else ""
-        
-        # 调试日志
-        logger.debug(f"更新子选项可见性: key={self.key}, selected_value={selected_value}, selected_value_str={selected_value_str}, children_keys={list(children.keys())}")
-        
-        # 隐藏所有子选项
-        for child_key, child_widget in self.child_options.items():
-            child_widget.setVisible(False)
-        
-        # 显示选中的子选项
-        # 使用更宽松的匹配逻辑：去除前后空格
-        matched_key = None
-        
-        # 标准化 selected_value（去除空格）
         normalized_selected = selected_value_str.strip()
-        
-        # 首先尝试精确匹配
-        if selected_value_str in children:
-            matched_key = selected_value_str
-            logger.debug(f"精确匹配1: selected_value_str={selected_value_str}")
-        elif selected_value in children:
-            matched_key = selected_value
-            logger.debug(f"精确匹配2: selected_value={selected_value}")
-        elif normalized_selected in children:
-            matched_key = normalized_selected
-            logger.debug(f"精确匹配3: normalized_selected={normalized_selected}")
-        else:
-            # 尝试遍历所有键，使用标准化后的值进行匹配
-            logger.debug(f"开始遍历匹配，标准化值={normalized_selected}")
-            for key in children.keys():
-                key_str = str(key)
-                key_stripped = key_str.strip()
-                
-                # 详细日志
-                logger.debug(f"比较键: key={repr(key)}, key_str={repr(key_str)}, key_stripped={repr(key_stripped)}")
-                
-                # 精确匹配（原始值）
-                if key_str == selected_value_str:
-                    matched_key = key
-                    logger.debug(f"匹配成功（原始值）: {key}")
-                    break
-                # 精确匹配（标准化值）
-                if key_stripped == normalized_selected:
-                    matched_key = key
-                    logger.debug(f"匹配成功（标准化值）: {key}")
-                    break
-                # 原始值匹配
-                if str(key) == str(selected_value):
-                    matched_key = key
-                    logger.debug(f"匹配成功（字符串转换）: {key}")
-                    break
-        
+
+        logger.debug(
+            f"更新子选项可见性: key={self.key}, selected_value={selected_value}, "
+            f"selected_value_str={selected_value_str}, children_keys={list(children.keys())}"
+        )
+
+        for child_widget in self.child_options.values():
+            child_widget.setVisible(False)
+
+        matched_key = self._match_child_key(
+            children, selected_value, selected_value_str, normalized_selected
+        )
+
         if matched_key:
             logger.debug(f"找到匹配的子选项: matched_key={matched_key}")
-            child_config = children[matched_key]
-            
-            if matched_key not in self.child_options:
-                # 创建子选项组件（延迟创建）
-                logger.debug(f"创建新的子选项组件: {matched_key}")
-                child_widget = OptionItemWidget(
-                    f"{self.key}_child_{matched_key}",
-                    child_config,
-                    self
-                )
-                self.child_options[matched_key] = child_widget
-                self.children_layout.addWidget(child_widget)
-            
-            # 显示当前选中的子选项
-            child_widget = self.child_options[matched_key]
-            child_widget.setVisible(True)
-            logger.debug(f"设置子选项可见: {matched_key}")
-            
-            # 确保子选项容器可见
-            self.children_container.setVisible(True)
-            logger.debug(f"设置子选项容器可见")
+            if matched_key not in self._child_value_map:
+                self.add_child_option(matched_key, children.get(matched_key))
+
+            visible_any = False
+            for child_key in self._child_value_map.get(matched_key, []):
+                child_widget = self.child_options.get(child_key)
+                if child_widget:
+                    child_widget.setVisible(True)
+                    visible_any = True
+
+            self.children_container.setVisible(visible_any)
+            if visible_any:
+                logger.debug("设置子选项容器可见")
         else:
-            # 没有匹配的子选项，隐藏容器
-            logger.debug(f"没有找到匹配的子选项，隐藏容器")
+            logger.debug("没有找到匹配的子选项，隐藏容器")
             self.children_container.setVisible(False)
+
+    def _match_child_key(
+        self,
+        children: Dict[str, Any],
+        selected_value: Any,
+        selected_value_str: str,
+        normalized_selected: str,
+    ) -> Optional[str]:
+        """匹配哪个子选项集合应该被显示"""
+        if selected_value_str in children:
+            logger.debug(f"精确匹配1: selected_value_str={selected_value_str}")
+            return selected_value_str
+        if selected_value in children:
+            logger.debug(f"精确匹配2: selected_value={selected_value}")
+            return selected_value
+        if normalized_selected in children:
+            logger.debug(f"精确匹配3: normalized_selected={normalized_selected}")
+            return normalized_selected
+
+        logger.debug(f"开始遍历匹配，标准化值={normalized_selected}")
+        for key in children.keys():
+            key_str = str(key)
+            key_stripped = key_str.strip()
+            logger.debug(
+                f"比较键: key={repr(key)}, key_str={repr(key_str)}, key_stripped={repr(key_stripped)}"
+            )
+            if key_str == selected_value_str:
+                logger.debug(f"匹配成功（原始值）: {key}")
+                return key
+            if key_stripped == normalized_selected:
+                logger.debug(f"匹配成功（标准化值）: {key}")
+                return key
+            if str(key) == str(selected_value):
+                logger.debug(f"匹配成功（字符串转换）: {key}")
+                return key
+
+        return None
     
-    def add_child_option(self, option_value: str, child_config: Dict[str, Any]):
+    def _preload_child_options(self):
+        for option_value, child_config in self.config.get("children", {}).items():
+            self.add_child_option(option_value, child_config)
+
+    def add_child_option(self, option_value: str, child_config: Any):
         """
         添加子选项组件
         
         :param option_value: 选项值（当下拉框选中此值时显示）
-        :param child_config: 子选项配置
+        :param child_config: 子选项配置，支持 dict 或 list
         """
-        if option_value not in self.child_options:
-            child_widget = OptionItemWidget(
-                f"{self.key}_child_{option_value}",
-                child_config,
-                self
-            )
-            self.child_options[option_value] = child_widget
-            self.children_layout.addWidget(child_widget)
-            child_widget.setVisible(False)
+        self._create_child_widgets_for_config(option_value, child_config)
+
+    def _create_child_widgets_for_config(self, option_value: str, child_config: Any):
+        if not child_config:
+            return
+
+        if isinstance(child_config, dict) and child_config.get("_type") == "multi":
+            configs = child_config.get("items", [])
+        elif isinstance(child_config, list):
+            configs = child_config
+        else:
+            configs = [child_config]
+
+        for index, config in enumerate(configs):
+            self._create_single_child_widget(option_value, config, index)
+
+    def _create_single_child_widget(self, option_value: str, child_config: Dict[str, Any], index: int):
+        if not isinstance(child_config, dict):
+            return
+
+        child_copy = dict(child_config)
+        child_name = child_copy.get("name") or child_copy.get("label") or f"{option_value}_{index}"
+        child_copy["name"] = child_name
+
+        if (option_value, child_name) in self._child_name_map:
+            return
+
+        child_key = f"{self.key}_child_{option_value}_{child_name}_{index}"
+        child_widget = OptionItemWidget(child_key, child_copy, self)
+        child_widget.setVisible(False)
+        self.child_options[child_key] = child_widget
+        self._child_value_map.setdefault(option_value, []).append(child_key)
+        self._child_name_map[(option_value, child_name)] = child_key
+        self.children_layout.addWidget(child_widget)
+
+    def get_child_widgets_for_value(self, option_value: str) -> List['OptionItemWidget']:
+        child_keys = self._child_value_map.get(option_value, [])
+        return [self.child_options[key] for key in child_keys if key in self.child_options]
+
+    def find_child_widget(self, option_value: str, child_config: Dict[str, Any]) -> Optional['OptionItemWidget']:
+        child_name = child_config.get("name")
+        if child_name:
+            child_key = self._child_name_map.get((option_value, child_name))
+            if child_key:
+                return self.child_options.get(child_key)
+
+        child_widgets = self.get_child_widgets_for_value(option_value)
+        return child_widgets[0] if child_widgets else None
     
     def set_value(self, value: Any):
         """
