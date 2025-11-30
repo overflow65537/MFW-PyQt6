@@ -175,7 +175,7 @@ class OptionFormWidget(QWidget):
             if option_item.config_type in ["combobox", "switch"]:
                 for child_widget in option_item.child_options.values():
                     child_widget.setVisible(False)
-                option_item.children_container.setVisible(False)
+                option_item.children_wrapper.setVisible(False)
         
         # 第二步：应用配置并设置值
         for key, value in config.items():

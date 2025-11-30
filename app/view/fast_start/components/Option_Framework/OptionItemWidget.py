@@ -4,9 +4,9 @@
 """
 # type: ignore[attr-defined]
 from typing import Dict, Any, Optional, List, Tuple
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy, QFrame
 from PySide6.QtCore import Qt, Signal
-from qfluentwidgets import ComboBox, LineEdit, BodyLabel, ToolTipFilter, SwitchButton
+from qfluentwidgets import ComboBox, LineEdit, BodyLabel, ToolTipFilter, SwitchButton, isDarkTheme, qconfig
 import re
 from app.common.signal_bus import signalBus
 from app.utils.logger import logger
@@ -103,15 +103,34 @@ class OptionItemWidget(QWidget):
             else:
                 logger.warning(f"不支持的选项类型: {self.config_type}")
         
-        # 将子选项容器添加到主布局
-        self.main_layout.addWidget(self.children_container)
+        # 创建子选项包装容器（水平布局：竖线 + 子选项容器）
+        self.children_wrapper = QWidget()
+        self.children_wrapper_layout = QHBoxLayout(self.children_wrapper)
+        self.children_wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        self.children_wrapper_layout.setSpacing(8)
         
-        # 初始状态隐藏子选项容器（将在 _init_config 中根据是否有子选项来设置可见性）
-        self.children_container.setVisible(False)
-        self.children_container.setMaximumHeight(0)
+        # 创建竖线控件
+        self.children_indicator_line = QFrame()
+        self.children_indicator_line.setFrameShape(QFrame.Shape.VLine)
+        self.children_indicator_line.setFrameShadow(QFrame.Shadow.Plain)
+        self.children_indicator_line.setFixedWidth(3)
+        self._update_indicator_line_color()
+        # 监听主题变化，更新竖线颜色
+        qconfig.themeChanged.connect(self._update_indicator_line_color)
         
-        # 创建子选项容器的动画控制器
-        self._children_animator = HeightAnimator(self.children_container, duration=200, parent=self)
+        # 将竖线和子选项容器添加到水平布局
+        self.children_wrapper_layout.addWidget(self.children_indicator_line)
+        self.children_wrapper_layout.addWidget(self.children_container, 1)  # stretch=1 让子选项容器占据剩余空间
+        
+        # 将子选项包装容器添加到主布局
+        self.main_layout.addWidget(self.children_wrapper)
+        
+        # 初始状态隐藏子选项包装容器（将在 _init_config 中根据是否有子选项来设置可见性）
+        self.children_wrapper.setVisible(False)
+        self.children_wrapper.setMaximumHeight(0)
+        
+        # 创建子选项包装容器的动画控制器（动画作用于包装容器，而不是子选项容器本身）
+        self._children_animator = HeightAnimator(self.children_wrapper, duration=200, parent=self)
     
     def _create_combobox(self):
         """创建下拉框"""
@@ -435,15 +454,15 @@ class OptionItemWidget(QWidget):
                     self._children_animator.expand()
                 else:
                     # 无动画直接显示
-                    self.children_container.setVisible(True)
-                    self.children_container.setMaximumHeight(16777215)
+                    self.children_wrapper.setVisible(True)
+                    self.children_wrapper.setMaximumHeight(16777215)
             else:
                 if use_animation:
                     self._children_animator.collapse(on_finished=self._hide_all_children)
                 else:
                     self._hide_all_children()
-                    self.children_container.setVisible(False)
-                    self.children_container.setMaximumHeight(0)
+                    self.children_wrapper.setVisible(False)
+                    self.children_wrapper.setMaximumHeight(0)
         else:
             logger.debug("没有找到匹配的子选项，隐藏容器")
             if use_animation:
@@ -452,13 +471,26 @@ class OptionItemWidget(QWidget):
             else:
                 # 无动画直接隐藏
                 self._hide_all_children()
-                self.children_container.setVisible(False)
-                self.children_container.setMaximumHeight(0)
+                self.children_wrapper.setVisible(False)
+                self.children_wrapper.setMaximumHeight(0)
     
     def _hide_all_children(self):
         """隐藏所有子选项（收起动画完成后调用）"""
         for child_widget in self.child_options.values():
             child_widget.setVisible(False)
+    
+    def _update_indicator_line_color(self):
+        """更新子选项指示线的颜色（根据主题）"""
+        if isDarkTheme():
+            # 深色主题：使用较亮的颜色
+            self.children_indicator_line.setStyleSheet(
+                "QFrame { background-color: rgba(255, 255, 255, 0.3); border: none; border-radius: 1px; }"
+            )
+        else:
+            # 浅色主题：使用较深的颜色
+            self.children_indicator_line.setStyleSheet(
+                "QFrame { background-color: rgba(0, 0, 0, 0.2); border: none; border-radius: 1px; }"
+            )
 
     def _match_child_key(
         self,
