@@ -145,7 +145,7 @@ class TaskFlowRunner(QObject):
 
         for path_item in resource_path:
             cwd = Path.cwd()
-            path_str = str(path_item)
+            path_str = str(path_item.replace("{PROJECT_DIR}",""))
             if len(path_str) >= 2 and path_str[1] == ":" and path_str[0].isalpha():
                 resource = Path(path_str).resolve()
             else:

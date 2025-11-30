@@ -354,7 +354,6 @@ class MaaFW(QObject):
                     socket_id = "maafw_socket_id"
                 socket_id = str(socket_id)
                 self._send_custom_info(self.tr("Agent Service Start"))
-                print("agent启动")
                 try:
                     maa_bin = os.getenv("MAAFW_BINARY_PATH")
                     if not maa_bin:
