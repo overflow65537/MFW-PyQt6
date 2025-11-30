@@ -127,6 +127,13 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self.description_content = BodyLabel()
         self.description_content.setWordWrap(True)
         self.description_content.setTextFormat(Qt.TextFormat.RichText)
+        self.description_content.setTextInteractionFlags(
+            Qt.TextInteractionFlag.NoTextInteraction
+        )
+        self.description_content.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.NoContextMenu
+        )
+        self.description_content.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.description_layout.addWidget(self.description_content)
 
         self.description_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -233,11 +240,12 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
     @staticmethod
     def _prepare_description_html(description: str) -> str:
         """根据传入内容决定是否直接使用 HTML 或将 Markdown 转为 HTML"""
-        stripped = description.strip()
+        processed = description.replace("\n", "<br>")
+        stripped = processed.strip()
         if stripped.startswith("<") and stripped.endswith(">"):
-            return description
+            return processed.replace("\n", "<br>") if "\n" in description else description
         return markdown.markdown(
-            description, extensions=["extra", "sane_lists"]
+            processed, extensions=["extra", "sane_lists"]
         )
 
     # ==================== 公共方法 ====================
