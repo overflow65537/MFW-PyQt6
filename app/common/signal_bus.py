@@ -42,6 +42,9 @@ class SignalBus(QObject):
     #输出到日志组件
     log_output = Signal(str,str) #(level,text)
 
+    # 显示 InfoBar 的请求
+    info_bar_requested = Signal(str, str)  # (level, message)
+
     # 由信息输出组件发射，外部模块处理
     request_log_zip = Signal()  # 请求生成日志压缩包
 

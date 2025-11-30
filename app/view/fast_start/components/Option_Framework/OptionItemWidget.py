@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
 from PySide6.QtCore import Qt, Signal
 from qfluentwidgets import ComboBox, LineEdit, BodyLabel, ToolTipFilter, SwitchButton
 import re
+from app.common.signal_bus import signalBus
 from app.utils.logger import logger
 from .animations import HeightAnimator
 
@@ -192,6 +193,23 @@ class OptionItemWidget(QWidget):
         # 连接信号（在预创建子选项后）
         self.control_widget.checkedChanged.connect(self._on_switch_changed)
     
+    def _connect_validator(self, line_edit: LineEdit, pattern: str, message: str | None):
+        """将验证规则应用到line edit，并在首次失效时显示 InfoBar 警告。"""
+        try:
+            last_invalid = False
+
+            def validate(text: str):
+                nonlocal last_invalid
+                invalid = bool(text and not re.match(pattern, text))
+                line_edit.setError(invalid)
+                if invalid and message and not last_invalid:
+                    signalBus.info_bar_requested.emit("warning", message)
+                last_invalid = invalid
+
+            line_edit.textChanged.connect(validate)
+        except Exception as e:
+            logger.error(f"设置输入验证规则失败: {pattern}, 错误: {e}")
+
     def _create_lineedit(self):
         """创建输入框"""
         inputs = self.config.get("inputs", [])
@@ -220,18 +238,10 @@ class OptionItemWidget(QWidget):
             # 添加验证规则
             if "verify" in input_item:
                 verify_pattern = input_item["verify"]
-                try:
-                    def create_validator(pattern):
-                        def validate(text: str):
-                            if text and not re.match(pattern, text):
-                                line_edit.setError(True)  # type: ignore[attr-defined]
-                            else:
-                                line_edit.setError(False)  # type: ignore[attr-defined]
-                        return validate
-
-                    line_edit.textChanged.connect(create_validator(verify_pattern))
-                except Exception as e:
-                    logger.error(f"设置输入验证规则失败: {verify_pattern}, 错误: {e}")
+                pattern_msg = input_item.get("pattern_msg") or self.config.get(
+                    "pattern_msg"
+                )
+                self._connect_validator(line_edit, verify_pattern, pattern_msg)
 
             # 添加 tooltip
             description = input_item.get("description") or self.config.get("description")
@@ -272,18 +282,10 @@ class OptionItemWidget(QWidget):
                 # 添加验证规则
                 if "verify" in input_item:
                     verify_pattern = input_item["verify"]
-                    try:
-                        def create_validator(pattern):
-                            def validate(text: str):
-                                if text and not re.match(pattern, text):
-                                    line_edit.setError(True)  # type: ignore[attr-defined]
-                                else:
-                                    line_edit.setError(False)  # type: ignore[attr-defined]
-                            return validate
-
-                        line_edit.textChanged.connect(create_validator(verify_pattern))
-                    except Exception as e:
-                        logger.error(f"设置输入验证规则失败: {verify_pattern}, 错误: {e}")
+                    pattern_msg = input_item.get("pattern_msg") or self.config.get(
+                        "pattern_msg"
+                    )
+                    self._connect_validator(line_edit, verify_pattern, pattern_msg)
                 
                 # 添加 tooltip
                 if "description" in input_item:
@@ -311,18 +313,8 @@ class OptionItemWidget(QWidget):
             # 添加验证规则
             if "verify" in self.config:
                 verify_pattern = self.config["verify"]
-                try:
-                    def create_validator(pattern):
-                        def validate(text: str):
-                            if text and not re.match(pattern, text):
-                                self.control_widget.setError(True)  # type: ignore[attr-defined]
-                            else:
-                                self.control_widget.setError(False)  # type: ignore[attr-defined]
-                        return validate
-                    
-                    self.control_widget.textChanged.connect(create_validator(verify_pattern))
-                except Exception as e:
-                    logger.error(f"设置输入验证规则失败: {verify_pattern}, 错误: {e}")
+                pattern_msg = self.config.get("pattern_msg")
+                self._connect_validator(self.control_widget, verify_pattern, pattern_msg)
             
             # 添加 tooltip
             if "description" in self.config:

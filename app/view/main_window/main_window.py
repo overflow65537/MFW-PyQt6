@@ -33,7 +33,7 @@ MFW-ChainFlow Assistant 主界面
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QSize, QTimer
+from PySide6.QtCore import QSize, QTimer, Qt
 from PySide6.QtGui import QIcon, QShortcut, QKeySequence, QGuiApplication
 from PySide6.QtWidgets import QApplication
 
@@ -44,6 +44,7 @@ from qfluentwidgets import (
     SystemThemeListener,
     isDarkTheme,
     InfoBar,
+    InfoBarPosition,
     MSFluentWindow,
 )
 from qfluentwidgets import FluentIcon as FIF
@@ -90,6 +91,9 @@ class MainWindow(MSFluentWindow):
         # 启动主题监听器
         self.themeListener.start()
 
+        # 连接公共信号
+        self.connectSignalToSlot()
+
         logger.info(" 主界面初始化完成。")
 
     def initWindow(self):
@@ -117,6 +121,40 @@ class MainWindow(MSFluentWindow):
         """连接信号到槽函数。"""
         signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
         signalBus.title_changed.connect(self.set_title)
+        signalBus.info_bar_requested.connect(self.show_info_bar)
+
+    def show_info_bar(self, level: str, message: str):
+        """根据等级显示 InfoBar 提示。"""
+        level_name = (level or "").lower()
+        show_method = {
+            "info": InfoBar.info,
+            "warning": InfoBar.warning,
+            "error": InfoBar.error,
+        }.get(level_name, InfoBar.info)
+        level_title = {
+            "info": self.tr("Info"),
+            "warning": self.tr("Warning"),
+            "error": self.tr("Error"),
+        }.get(level_name, self.tr("Info"))
+
+        show_method(
+            title=level_title,
+            content=message,
+            orient=Qt.Orientation.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.BOTTOM_RIGHT,
+            duration=-1 if level_name == "error" else self._calculate_info_bar_duration(
+                message
+            ),
+            parent=self,
+        )
+
+    def _calculate_info_bar_duration(self, message: str) -> int:
+        """根据消息长度计算 InfoBar 显示时长，最少 1.5s。"""
+        if not message:
+            return 1500
+        duration = len(message) * 80
+        return max(1500, duration)
 
     def is_admin(self):
         """判断是否为管理员权限"""

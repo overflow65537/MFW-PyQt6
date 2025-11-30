@@ -244,7 +244,8 @@ class OptionService:
             # 每个input项将作为一个独立的lineedit字段
             # 但为了简化实现，这里创建一个lineedit作为主字段，实际使用时需要特殊处理
             field_config["type"] = "lineedit"
-            inputs = option_def["inputs"]
+            inputs_source = option_def.get("inputs", [])
+            inputs = [dict(item) for item in inputs_source]
             # 保存inputs数组，供后续处理
             field_config["inputs"] = inputs
             # 如果只有一个输入项，则启用单输入渲染模式（UI 层会简化展示）
@@ -254,14 +255,21 @@ class OptionService:
             if "verify" in option_def:
                 field_config["verify"] = option_def["verify"]
             # 如果有默认值，使用第一个input的默认值
-            if option_def["inputs"] and "default" in option_def["inputs"][0]:
-                field_config["default"] = option_def["inputs"][0]["default"]
+            if inputs and "default" in inputs[0]:
+                field_config["default"] = inputs[0]["default"]
+            # 处理 option 级别的 pattern_msg
+            option_pattern_msg = option_def.get("pattern_msg")
+            if option_pattern_msg:
+                field_config["pattern_msg"] = option_pattern_msg
 
             # 为每个input项传递verify字段
             for input_item in field_config["inputs"]:
                 # 如果input项没有自己的verify字段，使用父级的verify字段
                 if "verify" not in input_item and "verify" in option_def:
                     input_item["verify"] = option_def["verify"]
+                # 如果input项没有自己的 pattern_msg，则继承父级 pattern_msg
+                if "pattern_msg" not in input_item and option_pattern_msg:
+                    input_item["pattern_msg"] = option_pattern_msg
 
         # 默认类型
         else:
