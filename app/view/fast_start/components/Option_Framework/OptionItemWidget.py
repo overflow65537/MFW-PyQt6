@@ -4,11 +4,12 @@
 """
 # type: ignore[attr-defined]
 from typing import Dict, Any, Optional, List, Tuple
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
 from PySide6.QtCore import Qt, Signal
 from qfluentwidgets import ComboBox, LineEdit, BodyLabel, ToolTipFilter, SwitchButton
 import re
 from app.utils.logger import logger
+from .animations import HeightAnimator
 
 
 class OptionItemWidget(QWidget):
@@ -45,14 +46,29 @@ class OptionItemWidget(QWidget):
             and self.config.get("single_input", False)
         )
         
+        # 动画控制标志：初始化和配置应用时跳过动画
+        self._animation_enabled = False
+        self._children_animator: Optional[HeightAnimator] = None
+        
         self._init_ui()
         self._init_config()
+        
+        # 初始化完成后启用动画
+        self._animation_enabled = True
     
     def _init_ui(self):
         """初始化UI"""
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(5, 5, 5, 5)
         self.main_layout.setSpacing(5)
+        
+        # 创建主选项容器（包含标签和控件），确保不因子选项变化而抖动
+        self.main_option_container = QWidget()
+        self.main_option_container.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        self.main_option_layout = QVBoxLayout(self.main_option_container)
+        self.main_option_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_option_layout.setSpacing(5)
+        self.main_layout.addWidget(self.main_option_container)
         
         # 先创建子选项容器（用于存放子选项）
         # 必须在创建控件之前创建，因为 _create_combobox 中可能会调用 add_child_option
@@ -70,7 +86,7 @@ class OptionItemWidget(QWidget):
             label_text = self.config.get("label", self.key)
             if not self._single_input_mode:
                 self.label = BodyLabel(label_text)
-                self.main_layout.addWidget(self.label)
+                self.main_option_layout.addWidget(self.label)
                 
                 # 添加 tooltip
                 if "description" in self.config:
@@ -91,6 +107,10 @@ class OptionItemWidget(QWidget):
         
         # 初始状态隐藏子选项容器（将在 _init_config 中根据是否有子选项来设置可见性）
         self.children_container.setVisible(False)
+        self.children_container.setMaximumHeight(0)
+        
+        # 创建子选项容器的动画控制器
+        self._children_animator = HeightAnimator(self.children_container, duration=200, parent=self)
     
     def _create_combobox(self):
         """创建下拉框"""
@@ -114,7 +134,7 @@ class OptionItemWidget(QWidget):
             self._option_map[label] = name
             self._reverse_option_map[name] = label
         
-        self.main_layout.addWidget(self.control_widget)
+        self.main_option_layout.addWidget(self.control_widget)
         
         self._preload_child_options()
         
@@ -164,8 +184,8 @@ class OptionItemWidget(QWidget):
         # 将开关按钮添加到水平布局
         switch_layout.addWidget(self.control_widget)
         
-        # 将整个容器添加到主布局
-        self.main_layout.addWidget(switch_container)
+        # 将整个容器添加到主选项布局
+        self.main_option_layout.addWidget(switch_container)
         
         self._preload_child_options()
         
@@ -186,7 +206,7 @@ class OptionItemWidget(QWidget):
             label_text = input_item.get("label") or self.config.get("label", self.key)
             if label_text:
                 single_label = BodyLabel(label_text)
-                self.main_layout.addWidget(single_label)
+                self.main_option_layout.addWidget(single_label)
 
             # 设置默认值
             if "default" in input_item:
@@ -225,7 +245,7 @@ class OptionItemWidget(QWidget):
             )
 
             self.control_widget[input_name] = line_edit
-            self.main_layout.addWidget(line_edit)
+            self.main_option_layout.addWidget(line_edit)
         elif "inputs" in self.config:
             self.control_widget = {}  # 字典存储多个输入框
             inputs = self.config.get("inputs", [])
@@ -272,7 +292,7 @@ class OptionItemWidget(QWidget):
                     line_edit.setToolTip(input_item["description"])
                 
                 input_container.addWidget(line_edit)
-                self.main_layout.addLayout(input_container)
+                self.main_option_layout.addLayout(input_container)
                 
                 # 连接信号
                 line_edit.textChanged.connect(
@@ -315,21 +335,21 @@ class OptionItemWidget(QWidget):
                 lambda text: self._on_lineedit_changed(None, text)
             )
             
-            self.main_layout.addWidget(self.control_widget)
+            self.main_option_layout.addWidget(self.control_widget)
     
     def _init_config(self):
         """初始化配置值"""
         if self.config_type == "combobox":
             current_label = self.control_widget.currentText()
             self.current_value = self._option_map.get(current_label, current_label)
-            # 触发初始子选项显示
-            self._update_children_visibility(self.current_value)
+            # 触发初始子选项显示（跳过动画）
+            self._update_children_visibility(self.current_value, skip_animation=True)
         elif self.config_type == "switch":
             # switch 类型：checked -> "Yes", unchecked -> "No"
             is_checked = self.control_widget.isChecked()
             self.current_value = "Yes" if is_checked else "No"
-            # 触发初始子选项显示
-            self._update_children_visibility(self.current_value)
+            # 触发初始子选项显示（跳过动画）
+            self._update_children_visibility(self.current_value, skip_animation=True)
         elif self.config_type == "lineedit":
             if isinstance(self.control_widget, dict):
                 # 多输入框类型
@@ -377,8 +397,13 @@ class OptionItemWidget(QWidget):
         # 发出信号
         self.option_changed.emit(self.key, self.current_value)
     
-    def _update_children_visibility(self, selected_value: Any):
-        """更新子选项的可见性"""
+    def _update_children_visibility(self, selected_value: Any, skip_animation: bool = False):
+        """
+        更新子选项的可见性
+        
+        :param selected_value: 当前选中的值
+        :param skip_animation: 是否跳过动画（用于初始化和配置应用）
+        """
         children = self.config.get("children", {})
         selected_value_str = str(selected_value) if selected_value is not None else ""
         normalized_selected = selected_value_str.strip()
@@ -388,31 +413,60 @@ class OptionItemWidget(QWidget):
             f"selected_value_str={selected_value_str}, children_keys={list(children.keys())}"
         )
 
-        for child_widget in self.child_options.values():
-            child_widget.setVisible(False)
-
         matched_key = self._match_child_key(
             children, selected_value, selected_value_str, normalized_selected
         )
+
+        # 判断是否使用动画
+        use_animation = self._animation_enabled and not skip_animation and self._children_animator is not None
 
         if matched_key:
             logger.debug(f"找到匹配的子选项: matched_key={matched_key}")
             if matched_key not in self._child_value_map:
                 self.add_child_option(matched_key, children.get(matched_key))
 
+            # 获取需要显示的子选项键列表
+            target_child_keys = set(self._child_value_map.get(matched_key, []))
+            
+            # 隐藏不匹配的子选项，显示匹配的子选项
             visible_any = False
-            for child_key in self._child_value_map.get(matched_key, []):
-                child_widget = self.child_options.get(child_key)
-                if child_widget:
-                    child_widget.setVisible(True)
+            for child_key, child_widget in self.child_options.items():
+                should_show = child_key in target_child_keys
+                child_widget.setVisible(should_show)
+                if should_show:
                     visible_any = True
 
-            self.children_container.setVisible(visible_any)
             if visible_any:
                 logger.debug("设置子选项容器可见")
+                if use_animation:
+                    # 使用动画展开
+                    self._children_animator.expand()
+                else:
+                    # 无动画直接显示
+                    self.children_container.setVisible(True)
+                    self.children_container.setMaximumHeight(16777215)
+            else:
+                if use_animation:
+                    self._children_animator.collapse(on_finished=self._hide_all_children)
+                else:
+                    self._hide_all_children()
+                    self.children_container.setVisible(False)
+                    self.children_container.setMaximumHeight(0)
         else:
             logger.debug("没有找到匹配的子选项，隐藏容器")
-            self.children_container.setVisible(False)
+            if use_animation:
+                # 使用动画收起，动画完成后再隐藏子选项内容
+                self._children_animator.collapse(on_finished=self._hide_all_children)
+            else:
+                # 无动画直接隐藏
+                self._hide_all_children()
+                self.children_container.setVisible(False)
+                self.children_container.setMaximumHeight(0)
+    
+    def _hide_all_children(self):
+        """隐藏所有子选项（收起动画完成后调用）"""
+        for child_widget in self.child_options.values():
+            child_widget.setVisible(False)
 
     def _match_child_key(
         self,
@@ -511,11 +565,12 @@ class OptionItemWidget(QWidget):
         child_widgets = self.get_child_widgets_for_value(option_value)
         return child_widgets[0] if child_widgets else None
     
-    def set_value(self, value: Any):
+    def set_value(self, value: Any, skip_animation: bool = True):
         """
         设置选项的值
         
         :param value: 要设置的值
+        :param skip_animation: 是否跳过动画（默认跳过，用于配置应用）
         """
         if self.config_type == "combobox":
             # 如果传入的是字典，说明可能是配置对象，尝试提取 value
@@ -541,7 +596,7 @@ class OptionItemWidget(QWidget):
                 try:
                     self.control_widget.setCurrentIndex(index)
                     self.current_value = str(value)
-                    self._update_children_visibility(str(value))
+                    self._update_children_visibility(str(value), skip_animation=skip_animation)
                 finally:
                     self.control_widget.blockSignals(False)
         elif self.config_type == "switch":
@@ -572,7 +627,7 @@ class OptionItemWidget(QWidget):
             try:
                 self.control_widget.setChecked(target_checked)
                 self.current_value = target_value
-                self._update_children_visibility(target_value)
+                self._update_children_visibility(target_value, skip_animation=skip_animation)
             finally:
                 self.control_widget.blockSignals(False)
         elif self.config_type == "lineedit":

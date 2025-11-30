@@ -210,8 +210,8 @@ class OptionFormWidget(QWidget):
         # 第三步：最后确保所有选项项的子选项可见性正确（只显示当前选中值对应的子选项）
         for option_item in self.option_items.values():
             if option_item.config_type in ["combobox", "switch"]:
-                # 再次调用 _update_children_visibility 确保只显示当前选中值对应的子选项
-                option_item._update_children_visibility(option_item.current_value)
+                # 再次调用 _update_children_visibility 确保只显示当前选中值对应的子选项（跳过动画）
+                option_item._update_children_visibility(option_item.current_value, skip_animation=True)
     
     def _apply_single_child_config(self, option_item: OptionItemWidget, option_value: str, child_config: Any):
         """
