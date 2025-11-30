@@ -33,16 +33,21 @@ class TaskService:
                 # 直接使用 interface manager 获取配置
                 interface_manager = get_interface_manager()
                 self.interface = interface_manager.get_interface()
-                
+
                 # 如果 interface 为空，说明加载失败
                 if not self.interface:
                     interface_path_jsonc = Path.cwd() / "interface.jsonc"
                     interface_path_json = Path.cwd() / "interface.json"
-                    
+
                     # 检查配置文件是否存在
-                    if not interface_path_jsonc.exists() and not interface_path_json.exists():
-                        raise FileNotFoundError(f"无有效资源配置文件: {interface_path_jsonc} 或 {interface_path_json}")
-                
+                    if (
+                        not interface_path_jsonc.exists()
+                        and not interface_path_json.exists()
+                    ):
+                        raise FileNotFoundError(
+                            f"无有效资源配置文件: {interface_path_jsonc} 或 {interface_path_json}"
+                        )
+
                 logger.debug("使用 interface 配置")
                 self.current_tasks = config.tasks
                 self.know_task = config.know_task
@@ -72,16 +77,16 @@ class TaskService:
             self.config_service.update_config(config.item_id, config)
 
         return True
-        
+
     def init_new_config(self):
         """初始化新配置的任务"""
         # Re-load interface to get the latest configuration
         interface_manager = get_interface_manager()
         self.interface = interface_manager.get_interface()
-        
+
         # Regenerate default options
         self.default_option = self.gen_default_option()
-        
+
         # Reset know_task and add all tasks from interface
         self.know_task = []
         self._check_know_task()
@@ -118,52 +123,58 @@ class TaskService:
         """生成单个任务的默认选项"""
         if not self.interface:
             raise ValueError("Interface not loaded")
-            
+
         def _gen_option_defaults_recursive(option_template):
             """递归生成选项默认值"""
-            if "inputs" in option_template and isinstance(option_template["inputs"], list):
+            if "inputs" in option_template and isinstance(
+                option_template["inputs"], list
+            ):
                 # Input type with multiple inputs
                 nested_values = {}
                 for input_config in option_template["inputs"]:
                     input_name = input_config.get("name")
                     default_value = input_config.get("default", "")
                     pipeline_type = input_config.get("pipeline_type", "string")
-                    
+
                     # Convert to appropriate type
                     if pipeline_type == "int":
                         try:
                             default_value = int(default_value) if default_value else 0
                         except (ValueError, TypeError):
                             pass
-                    
+
                     nested_values[input_name] = default_value
-                
+
                 return nested_values
-            
+
             elif option_template.get("cases") and len(option_template["cases"]) > 0:
                 # Select type with cases
                 selected_case = option_template["cases"][0]
                 case_name = selected_case["name"]
-                
+
                 # Process child options recursively
                 child_option_defaults = {}
                 if "option" in selected_case:
                     for child_option_name in selected_case["option"]:
-                        child_option_template = self.interface.get("option", {}).get(child_option_name)
+                        child_option_template = self.interface.get("option", {}).get(
+                            child_option_name
+                        )
                         if child_option_template:
-                            child_option_defaults[child_option_name] = _gen_option_defaults_recursive(child_option_template)
-                
+                            child_option_defaults[child_option_name] = (
+                                _gen_option_defaults_recursive(child_option_template)
+                            )
+
                 # Return appropriate structure based on whether there are child options
                 if child_option_defaults:
                     return {case_name: child_option_defaults}
                 else:
                     return case_name
-            
+
             return {}
-        
+
         task_name = task["name"]
         task_default_option = {}
-        
+
         # Iterate through options defined for this task
         for option in task.get("option", []):
             option_template = self.interface.get("option", {}).get(option)
@@ -171,20 +182,20 @@ class TaskService:
                 # Generate defaults for this option recursively
                 option_defaults = _gen_option_defaults_recursive(option_template)
                 task_default_option[option] = option_defaults
-        
+
         return task_default_option
-        
+
     def gen_default_option(self) -> dict[str, dict[str, dict]]:
         """生成所有任务的默认选项映射"""
         if not self.interface:
             raise ValueError("Interface not loaded")
-        
+
         default_option = {}
-        
+
         # Iterate through all tasks
         for task in self.interface.get("task", []):
             default_option[task["name"]] = self.gen_single_task_default_option(task)
-        
+
         return default_option
 
     def _on_task_updated(self, task_data: TaskItem):

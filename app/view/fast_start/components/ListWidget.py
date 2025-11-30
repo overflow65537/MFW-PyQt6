@@ -4,9 +4,12 @@ from PySide6.QtWidgets import (
     QGraphicsOpacityEffect,
     QWidget,
     QHBoxLayout,
+    QVBoxLayout,
+    QSizePolicy,
 )
-from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
-from qfluentwidgets import ListWidget, IndeterminateProgressRing
+from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve, QTimer, QSize
+from qfluentwidgets import ListWidget, IndeterminateProgressRing, SimpleCardWidget
+
 from app.core.core import  ServiceCoordinator
 from app.core.Item import TaskItem, ConfigItem
 from .ListItem import TaskListItem, ConfigListItem
@@ -45,8 +48,36 @@ class BaseListWidget(ListWidget):
                 break
 
 
+class SkeletonBar(QWidget):
+    """用于模拟骨架占位的矩形条"""
+
+    def __init__(self, parent=None, height: int = 10):
+        super().__init__(parent)
+        self.setFixedHeight(height)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setStyleSheet(
+            "background-color: rgba(255, 255, 255, 0.25); border-radius: 5px;"
+        )
+
+
+class TaskSkeletonWidget(SimpleCardWidget):
+    """qfluentwidgets 风格的骨架占位器，用于在大量任务加载时缓解卡顿"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setBorderRadius(8)
+        layout = QVBoxLayout(self)
+        layout.setSpacing(6)
+        layout.setContentsMargins(12, 12, 12, 12)
+
+        layout.addWidget(SkeletonBar(self, height=12))
+        layout.addWidget(SkeletonBar(self, height=12))
+
+
 class TaskDragListWidget(BaseListWidget):
     """任务拖拽列表组件：支持拖动排序、添加、修改、删除任务（基础任务禁止删除/拖动）"""
+
+    _TASK_ITEM_HEIGHT = 44
 
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         super().__init__(service_coordinator, parent)
@@ -76,6 +107,10 @@ class TaskDragListWidget(BaseListWidget):
 
         # 维护 task_id -> widget 的映射，避免重复遍历列表
         self._task_widgets: dict[str, TaskListItem] = {}
+        self._skeleton_items: list[QListWidgetItem] = []
+        self._pending_tasks: list[TaskItem] = []
+        self._render_index: int = 0
+        self._loading_tasks: bool = False
 
         self._init_loading_overlay()
 
@@ -137,16 +172,71 @@ class TaskDragListWidget(BaseListWidget):
         self._hide_loading_overlay()
 
     def update_list(self):
-        """刷新任务列表UI"""
+        """刷新任务列表UI（先显示骨架占位，再逐项渲染）"""
         self.clear()
-        self.setCurrentRow(-1) 
+        self.setCurrentRow(-1)
         self._task_widgets.clear()
+        self._skeleton_items.clear()
         task_list = self.service_coordinator.task.get_tasks()
-        # 批量刷新时保持顺序，避免基础任务顺序被打乱
-        self._bulk_updating = True
-        for task in task_list:
-            self.modify_task(task)
-        self._bulk_updating = False
+        self._pending_tasks = task_list
+        self._render_index = 0
+        self._loading_tasks = bool(task_list)
+        self._add_task_skeletons(len(task_list))
+        if self._pending_tasks:
+            QTimer.singleShot(5, self._render_pending_task)
+        else:
+            self._loading_tasks = False
+
+    def _add_task_skeletons(self, count: int):
+        """根据任务数量先添加骨架占位，避免一次性渲染卡顿"""
+        for _ in range(count):
+            list_item = QListWidgetItem()
+            list_item.setSizeHint(QSize(0, self._TASK_ITEM_HEIGHT))
+            list_item.setFlags(Qt.ItemFlag.NoItemFlags)
+            skeleton = TaskSkeletonWidget(self)
+            self.addItem(list_item)
+            self.setItemWidget(list_item, skeleton)
+            self._skeleton_items.append(list_item)
+
+    def _render_pending_task(self):
+        """逐项替换骨架为真实任务组件，确保 UI 不被阻塞"""
+        if self._render_index >= len(self._pending_tasks):
+            self._loading_tasks = False
+            self._pending_tasks = []
+            return
+
+        task = self._pending_tasks[self._render_index]
+        self._render_task_at_index(self._render_index, task)
+        self._render_index += 1
+        QTimer.singleShot(5, self._render_pending_task)
+
+    def _render_task_at_index(self, index: int, task: TaskItem):
+        """将指定位置的骨架替换为实际的 `TaskListItem`"""
+        interface = getattr(self.service_coordinator.task, "interface", None)
+        if index < len(self._skeleton_items):
+            list_item = self._skeleton_items[index]
+        else:
+            list_item = QListWidgetItem()
+            list_item.setSizeHint(QSize(0, self._TASK_ITEM_HEIGHT))
+            self.addItem(list_item)
+            self._skeleton_items.append(list_item)
+
+        placeholder = self.itemWidget(list_item)
+        if isinstance(placeholder, TaskSkeletonWidget):
+            placeholder.deleteLater()
+
+        task_widget = TaskListItem(task, interface=interface)
+        task_widget.checkbox_changed.connect(self._on_task_checkbox_changed)
+
+        flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
+        if not task.is_base_task():
+            flags |= Qt.ItemFlag.ItemIsDragEnabled
+        else:
+            flags &= ~Qt.ItemFlag.ItemIsDragEnabled
+
+        list_item.setFlags(flags)
+        self.setItemWidget(list_item, task_widget)
+        self._task_widgets[task.item_id] = task_widget
 
     def modify_task(self, task: TaskItem):
         """添加或更新任务项到列表（如果存在同 id 的任务则更新，否则新增）。"""
@@ -159,6 +249,10 @@ class TaskDragListWidget(BaseListWidget):
             existing_widget.interface = interface or {}
             existing_widget.name_label.setText(existing_widget._get_display_name())
             existing_widget.checkbox.setChecked(task.is_checked)
+            return
+
+        if self._loading_tasks:
+            # 正在依次渲染骨架，不需要重复插入
             return
 
         # 否则按原有逻辑新增项
@@ -189,7 +283,9 @@ class TaskDragListWidget(BaseListWidget):
             if isinstance(widget, TaskListItem) and widget.task.item_id == task_id:
                 if widget.task.is_base_task():
                     # 基础任务不可删除，记录日志并显示提示
-                    signalBus.infobar_signal.emit("基础任务（资源、完成后操作）不可删除", "warning")
+                    signalBus.info_bar_requested.emit(
+                        "warning", "基础任务（资源、完成后操作）不可删除"
+                    )
                     return
                 self.takeItem(i)
                 widget.deleteLater()

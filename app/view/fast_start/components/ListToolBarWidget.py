@@ -152,8 +152,11 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
         if len(config_list) <= 1:
             from app.common.signal_bus import signalBus
 
-            signalBus.infobar_signal.emit(
-                self.tr("Cannot delete the last configuration!"), "warning"
+            signalBus.info_bar_requested.emit(
+                "warning", self.tr("Cannot delete the last configuration!")
+            )
+            signalBus.info_bar_requested.emit(
+                "warning", self.tr("Cannot delete the last configuration!")
             )
             return False
         cur = self.task_list.currentItem()
@@ -233,11 +236,11 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         elif widget.task.is_base_task():
             from app.common.signal_bus import signalBus
 
-            signalBus.infobar_signal.emit(
+            signalBus.info_bar_requested.emit(
+                "warning",
                 self.tr(
                     "Base tasks (Resource, Post-Task) cannot be deleted (ID: {id})"
                 ).format(id=task_id),
-                "warning",
             )
             return False
         # 删除通过服务层执行，视图会通过fs系列信号刷新
