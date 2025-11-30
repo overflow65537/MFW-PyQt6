@@ -79,6 +79,10 @@ class TaskFlowRunner(QObject):
                 return
             logger.info("资源加载成功")
 
+            logger.info("开始加载agent...")
+            if self.load_agent(self.task_service.interface):
+                logger.info("agent加载成功")
+
             logger.info("开始执行任务序列...")
             for task in self.task_service.current_tasks:
                 if task.name in [PRE_CONFIGURATION, POST_ACTION]:
@@ -107,6 +111,67 @@ class TaskFlowRunner(QObject):
             except Exception as exc:
                 logger.error(f"完成后操作执行失败: {exc}")
             await self.stop_task()
+
+    def load_agent(self, interface: Dict[str, Any]):
+        """加载agent"""
+        agent_data = interface.get("agent")
+        if not agent_data:
+            logger.warning("未找到agent配置")
+            return False
+
+        elif agent_data and agent_data.get("child_exec") and not self.maafw.agent:
+            child_exec = agent_data.get("child_exec", "")
+            agent = self.maafw._init_agent()
+            socket_id = agent.identifier
+            if callable(socket_id):
+                socket_id = socket_id() or "maafw_socket_id"
+            elif socket_id is None:
+                socket_id = "maafw_socket_id"
+            socket_id = str(socket_id)
+            signalBus.log_output.emit("INFO", self.tr("Agent Service Start"))
+            try:
+                child_args = agent_data.get("child_args", [])
+                child_args = [arg for arg in child_args]
+
+                fallback_exec_raw = agent_data.get("exec", "")
+                fallback_exec = fallback_exec_raw if fallback_exec_raw else child_exec
+
+                agent_command = []
+                if self._is_python_launcher(child_exec):
+                    try:
+                        agent_command = self._build_agent_command(
+                            sys.executable, child_args, socket_id
+                        )
+                        self.agent_thread = subprocess.Popen(agent_command)
+                    except Exception as exc:
+                        logger.error(f"agent inside 启动失败，回退至 exec: {exc}")
+                        agent_command = []
+                if not agent_command:
+                    try:
+                        agent_command = self._build_agent_command(
+                            fallback_exec, child_args, socket_id
+                        )
+                        self.agent_thread = subprocess.Popen(agent_command)
+                    except Exception as exc:
+                        logger.error(f"agent启动失败: {exc}")
+                        signalBus.log_output.emit(
+                            "ERROR", self.tr("Agent start failed")
+                        )
+                        agent_command = []
+
+                if agent_command:
+                    print(
+                        f"agent启动: {agent_command[0]}\n参数{agent_command[1:]}\nsocket_id: {socket_id}"
+                    )
+
+            except Exception as e:
+                logger.error(f"agent启动失败: {e}")
+                signalBus.log_output.emit("ERROR", self.tr("Agent start failed"))
+            if not agent.connect():
+                logger.error(f"agent连接失败")
+                signalBus.log_output.emit("ERROR", self.tr("Agent connection failed"))
+            print("cusotm加载完毕 ")
+        return False
 
     async def connect_device(self, controller_raw: Dict[str, Any]):
         """连接 MaaFW 控制器"""
@@ -145,7 +210,7 @@ class TaskFlowRunner(QObject):
 
         for path_item in resource_path:
             cwd = Path.cwd()
-            path_str = str(path_item.replace("{PROJECT_DIR}",""))
+            path_str = str(path_item.replace("{PROJECT_DIR}", ""))
             if len(path_str) >= 2 and path_str[1] == ":" and path_str[0].isalpha():
                 resource = Path(path_str).resolve()
             else:
@@ -233,9 +298,11 @@ class TaskFlowRunner(QObject):
         )
         config = controller_raw.get(activate_controller, {}).get("config", {})
         logger.debug(
-            f"ADB 参数类型: adb_path={type(adb_path)}, address={type(address)}, "
-            f"screen_method={screen_method}({type(screen_method)}), "
-            f"input_method={input_method}({type(input_method)})"
+            (
+                f"ADB 参数类型: adb_path={type(adb_path)}, address={type(address)}, "
+                f"screen_method={screen_method}({type(screen_method)}), "
+                f"input_method={input_method}({type(input_method)})"
+            )
         )
 
         if await self.maafw.connect_adb(
@@ -365,6 +432,24 @@ class TaskFlowRunner(QObject):
 
         logger.debug(f"准备启动子进程: {command}")
         return subprocess.Popen(command)
+
+    def _build_agent_command(
+        self, executable: str, args: list[str], socket_id: str
+    ) -> list[str]:
+        """构建 Agent 启动命令"""
+
+        command = [executable]
+        command.extend(args)
+        command.append(socket_id)
+        return command
+
+    def _is_python_launcher(self, executable: str) -> bool:
+        """判断是否为 Python 可执行文件"""
+
+        if not executable:
+            return False
+        executable_name = Path(executable).stem.lower()
+        return executable_name.startswith("python")
 
     async def _countdown_wait(self, wait_seconds: int, message: str) -> bool:
         """按指定阈值输出倒计时日志，返回 False 表示提前停止"""

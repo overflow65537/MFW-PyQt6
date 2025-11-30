@@ -268,22 +268,15 @@ class MaaFW(QObject):
         return self.tasker
 
     def _init_agent(self) -> AgentClient:
-        if not (self.resource and self.controller and self.tasker):
-            raise RuntimeError("agent 初始化前必须存在 resource/controller/tasker")
+        if not (self.resource and self.controller):
+            raise RuntimeError("agent 初始化前必须存在 resource/controller")
+        if not self.tasker:
+            self.tasker = self._init_tasker()
         if self.agent is None:
             self.agent = AgentClient()
         self.agent.register_sink(self.resource, self.controller, self.tasker)
         self.agent.bind(self.resource)
         return self.agent
-
-    def _resolve_agent_path(self, raw_path: str, base_dir: Path) -> str:
-        if not raw_path:
-            return raw_path
-        replaced = raw_path.replace("{PROJECT_DIR}", str(base_dir))
-        candidate = Path(replaced).expanduser()
-        if candidate.is_absolute():
-            return str(candidate)
-        return str((base_dir / candidate).resolve())
 
     @asyncify
     def load_resource(self, dir: str | Path, gpu_index: int = -1) -> bool:
@@ -316,73 +309,6 @@ class MaaFW(QObject):
             return False
 
         tasker = self._init_tasker()
-
-        # 动态加载.py
-        self.resource.clear_custom_recognition()
-        self.resource.clear_custom_action()
-        if custom_dir is not None:
-            try:
-                logger.debug(f"加载自定义内容路径: {custom_dir}")
-                self.load_custom_objects(custom_dir)
-            except Exception as e:
-                logger.error(f"加载自定义内容时发生错误: {e}")
-
-        # agent加载
-        if agent_data_raw is not None:
-            if isinstance(agent_data_raw, list):
-                if agent_data_raw:
-                    agent_data: dict = agent_data_raw[0]
-                else:
-                    agent_data = {}
-                    logger.warning("agent 配置为一个空列表，使用空字典作为默认值")
-            elif isinstance(agent_data_raw, dict):
-                agent_data = agent_data_raw
-            else:
-                agent_data = {}
-                logger.warning("agent 配置既不是字典也不是列表，使用空字典作为默认值")
-
-            if agent_data and agent_data.get("child_exec") and not self.agent:
-                project_dir = Path.cwd()
-                child_exec = self._resolve_agent_path(
-                    agent_data.get("child_exec", ""), project_dir
-                )
-                agent = self._init_agent()
-                socket_id = agent.identifier
-                if callable(socket_id):
-                    socket_id = socket_id() or "maafw_socket_id"
-                elif socket_id is None:
-                    socket_id = "maafw_socket_id"
-                socket_id = str(socket_id)
-                self._send_custom_info(self.tr("Agent Service Start"))
-                try:
-                    maa_bin = os.getenv("MAAFW_BINARY_PATH")
-                    if not maa_bin:
-                        maa_bin = os.getcwd()
-
-                    child_args = agent_data.get("child_args", [])
-                    child_args = [
-                        self._resolve_agent_path(arg, project_dir) for arg in child_args
-                    ]
-                    print(
-                        f"agent启动: {child_exec}\n参数{child_args}\nMAA库地址{maa_bin}\nsocket_id: {socket_id}"
-                    )
-
-                    self.agent_thread = subprocess.Popen(
-                        [
-                            child_exec,
-                            *child_args,
-                            maa_bin,
-                            socket_id,
-                        ],
-                    )
-
-                except Exception as e:
-                    logger.error(f"agent启动失败: {e}")
-                    self._send_custom_info(self.tr("Agent start failed"))
-                if not agent.connect():
-                    logger.error(f"agent连接失败")
-                    self._send_custom_info(self.tr("Agent connection failed"))
-                print("cusotm加载完毕 ")
         if not tasker.inited:
             self._send_custom_info(self.tr("Tasker not initialized"))
             return False
