@@ -42,7 +42,6 @@ class MaaContextSink(ContextEventSink):
 class MaaControllerEventSink(ControllerEventSink):
     def on_raw_notification(self, controller: Controller, msg: str, details: dict):
         pass
-        print(f"控制器原始信息:{msg},详细信息:{details}")
 
     def on_controller_action(
         self,
@@ -56,7 +55,6 @@ class MaaControllerEventSink(ControllerEventSink):
 class MaaResourceEventSink(ResourceEventSink):
     def on_raw_notification(self, resource: Resource, msg: str, details: dict):
         pass
-        print(f"资源原始信息:{msg},详细信息:{details}")
 
     def on_resource_loading(
         self,

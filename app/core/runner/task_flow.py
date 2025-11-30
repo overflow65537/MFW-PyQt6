@@ -158,6 +158,7 @@ class TaskFlowRunner(QObject):
                             "ERROR", self.tr("Agent start failed")
                         )
                         agent_command = []
+                        return False
 
                 if agent_command:
                     print(
@@ -170,8 +171,7 @@ class TaskFlowRunner(QObject):
             if not agent.connect():
                 logger.error(f"agent连接失败")
                 signalBus.log_output.emit("ERROR", self.tr("Agent connection failed"))
-            print("cusotm加载完毕 ")
-        return False
+        return True
 
     async def connect_device(self, controller_raw: Dict[str, Any]):
         """连接 MaaFW 控制器"""
