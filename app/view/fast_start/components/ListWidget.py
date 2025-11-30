@@ -74,6 +74,9 @@ class TaskDragListWidget(BaseListWidget):
         self._fade_in.finished.connect(self._on_fade_in_finished)
         self._pending_refresh = False
 
+        # 维护 task_id -> widget 的映射，避免重复遍历列表
+        self._task_widgets: dict[str, TaskListItem] = {}
+
         self._init_loading_overlay()
 
         self.item_selected.connect(self._on_item_selected_to_service)
@@ -137,6 +140,7 @@ class TaskDragListWidget(BaseListWidget):
         """刷新任务列表UI"""
         self.clear()
         self.setCurrentRow(-1) 
+        self._task_widgets.clear()
         task_list = self.service_coordinator.task.get_tasks()
         # 批量刷新时保持顺序，避免基础任务顺序被打乱
         self._bulk_updating = True
@@ -148,23 +152,14 @@ class TaskDragListWidget(BaseListWidget):
         """添加或更新任务项到列表（如果存在同 id 的任务则更新，否则新增）。"""
         # 获取 interface 配置
         interface = getattr(self.service_coordinator.task, "interface", None)
-        
         # 先尝试查找是否已有同 id 的项，若有则进行更新
-        for i in range(self.count()):
-            item = self.item(i)
-            widget = self.itemWidget(item)
-            if (
-                isinstance(widget, TaskListItem)
-                and getattr(widget, "task", None) is not None
-            ):
-                if widget.task.item_id == task.item_id:
-                    # 更新已有 widget 的数据
-                    widget.task = task
-                    widget.interface = interface or {}
-                    # 使用 _get_display_name 获取显示名称
-                    widget.name_label.setText(widget._get_display_name())
-                    widget.checkbox.setChecked(task.is_checked)
-                    return
+        existing_widget = self._task_widgets.get(task.item_id)
+        if existing_widget:
+            existing_widget.task = task
+            existing_widget.interface = interface or {}
+            existing_widget.name_label.setText(existing_widget._get_display_name())
+            existing_widget.checkbox.setChecked(task.is_checked)
+            return
 
         # 否则按原有逻辑新增项
         list_item = QListWidgetItem()
@@ -183,6 +178,7 @@ class TaskDragListWidget(BaseListWidget):
             insert_index = max(0, self.count() - 1)
             self.insertItem(insert_index, list_item)
         self.setItemWidget(list_item, task_widget)
+        self._task_widgets[task.item_id] = task_widget
 
     def remove_task(self, task_id: str):
         """移除任务项，基础任务不可移除"""
@@ -197,6 +193,7 @@ class TaskDragListWidget(BaseListWidget):
                     return
                 self.takeItem(i)
                 widget.deleteLater()
+                self._task_widgets.pop(task_id, None)
                 break
 
     def _collect_task_items(self) -> list[TaskItem]:
@@ -381,6 +378,8 @@ class ConfigListWidget(BaseListWidget):
     def add_config(self, config: ConfigItem):
         """添加配置项到列表"""
         self._add_config_to_list(config)
+        # 新增时尝试选中它，保持UI当前配置与服务一致
+        self._select_config_by_id(config.item_id)
 
     def remove_config(self, config_id: str):
         """移除配置项"""

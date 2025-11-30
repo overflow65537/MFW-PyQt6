@@ -128,7 +128,17 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
         bundles = []
         main_cfg = getattr(self.service_coordinator.config, "_main_config", None)
         if main_cfg:
-            bundles = main_cfg.get("bundle", [])
+            bundle_source = main_cfg.get("bundle", [])
+            if isinstance(bundle_source, dict):
+                for name, value in bundle_source.items():
+                    bundle_info = {"name": name}
+                    if isinstance(value, dict):
+                        bundle_info["path"] = value.get("path", "")
+                    else:
+                        bundle_info["path"] = str(value)
+                    bundles.append(bundle_info)
+            elif isinstance(bundle_source, list):
+                bundles = bundle_source
 
         dlg = AddConfigDialog(resource_bundles=bundles, parent=self.window())
         if dlg.exec():

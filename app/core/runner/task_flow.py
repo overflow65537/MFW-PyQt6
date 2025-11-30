@@ -170,6 +170,7 @@ class TaskFlowRunner(QObject):
             return
 
         raw_info = self.task_service.get_task_execution_info(task_id)
+        logger.info(f"任务 '{task.name}' 的执行信息: {raw_info}")
         if raw_info is None:
             logger.error(f"无法获取任务 '{task.name}' 的执行信息")
             return
