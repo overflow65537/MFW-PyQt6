@@ -122,6 +122,11 @@ class TaskDragListWidget(BaseListWidget):
         service_coordinator.fs_signal_bus.fs_task_removed.connect(self.remove_task)
         self.update_list()
 
+        self._bulk_toggle_queue: list[tuple[TaskListItem, bool]] = []
+        self._bulk_toggle_timer = QTimer(self)
+        self._bulk_toggle_timer.setSingleShot(True)
+        self._bulk_toggle_timer.timeout.connect(self._process_bulk_toggle_step)
+
     def _on_item_selected_to_service(self, item_id: str):
         self.service_coordinator.select_task(item_id)
 
@@ -390,31 +395,42 @@ class TaskDragListWidget(BaseListWidget):
 
     def select_all(self) -> None:
         """选择全部任务(排除基础任务和特殊任务)"""
-        task_list = []
+        steps: list[tuple[TaskListItem, bool]] = []
         for i in range(self.count()):
             item = self.item(i)
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem):
-                # 排除基础任务和特殊任务
                 if not widget.task.is_base_task() and not widget.task.is_special:
-                    widget.checkbox.setChecked(True)
-                    widget.task.is_checked = True
-                    task_list.append(widget.task)
-        self.service_coordinator.modify_tasks(task_list)
+                    steps.append((widget, True))
+        self._enqueue_bulk_toggle(steps)
 
     def deselect_all(self) -> None:
         """取消选择全部任务(排除基础任务,但包含特殊任务)"""
-        task_list = []
+        steps: list[tuple[TaskListItem, bool]] = []
         for i in range(self.count()):
             item = self.item(i)
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem):
-                # 只排除基础任务
                 if not widget.task.is_base_task():
-                    widget.checkbox.setChecked(False)
-                    widget.task.is_checked = False
-                    task_list.append(widget.task)
-        self.service_coordinator.modify_tasks(task_list)
+                    steps.append((widget, False))
+        self._enqueue_bulk_toggle(steps)
+
+    def _enqueue_bulk_toggle(self, steps: list[tuple[TaskListItem, bool]]) -> None:
+        if not steps:
+            return
+        self._bulk_toggle_queue = steps
+        if not self._bulk_toggle_timer.isActive():
+            self._bulk_toggle_timer.start(10)
+
+    def _process_bulk_toggle_step(self) -> None:
+        if not self._bulk_toggle_queue:
+            return
+        widget, target_state = self._bulk_toggle_queue.pop(0)
+        if widget:
+            if widget.checkbox.isChecked() != target_state:
+                widget.checkbox.setChecked(target_state)
+        if self._bulk_toggle_queue:
+            self._bulk_toggle_timer.start(1)
 
 
 class ConfigListWidget(BaseListWidget):
