@@ -15,6 +15,7 @@ from qfluentwidgets import (
     BodyLabel,
     ScrollArea,
 )
+from app.view.fast_start.components.ImagePreviewDialog import ImagePreviewDialog
 from app.view.fast_start.animations.optionwidget import (
     DescriptionTransitionAnimator,
     OptionTransitionAnimator,
@@ -127,9 +128,12 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self.description_content = BodyLabel()
         self.description_content.setWordWrap(True)
         self.description_content.setTextFormat(Qt.TextFormat.RichText)
+        # 启用链接点击交互（用于图片点击）
         self.description_content.setTextInteractionFlags(
-            Qt.TextInteractionFlag.NoTextInteraction
+            Qt.TextInteractionFlag.LinksAccessibleByMouse
         )
+        self.description_content.setOpenExternalLinks(False)  # 不自动打开外部链接
+        self.description_content.linkActivated.connect(self._on_link_activated)
         self.description_content.setContextMenuPolicy(
             Qt.ContextMenuPolicy.NoContextMenu
         )
@@ -273,10 +277,39 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         processed = description.replace("\n", "<br>")
         stripped = processed.strip()
         if stripped.startswith("<") and stripped.endswith(">"):
-            return processed.replace("\n", "<br>") if "\n" in description else description
-        return markdown.markdown(
-            processed, extensions=["extra", "sane_lists"]
+            html = processed.replace("\n", "<br>") if "\n" in description else description
+        else:
+            html = markdown.markdown(
+                processed, extensions=["extra", "sane_lists"]
+            )
+        
+        # 将图片包裹在可点击的链接中
+        # 匹配 <img ... src="xxx" ...> 标签，将其包裹在 <a href="image:xxx"> 中
+        img_pattern = re.compile(
+            r'<img\s+([^>]*?)src=["\']([^"\']+)["\']([^>]*)>',
+            re.IGNORECASE
         )
+        
+        def wrap_image_with_link(match):
+            before_src = match.group(1)
+            src = match.group(2)
+            after_src = match.group(3)
+            # 添加 cursor: pointer 样式提示可点击
+            img_tag = f'<img {before_src}src="{src}"{after_src} style="cursor: pointer;">'
+            # 使用 image: 协议标记这是图片链接
+            return f'<a href="image:{src}" style="text-decoration: none;">{img_tag}</a>'
+        
+        html = img_pattern.sub(wrap_image_with_link, html)
+        return html
+    
+    def _on_link_activated(self, link: str):
+        """处理链接点击事件"""
+        if link.startswith("image:"):
+            # 提取图片路径
+            image_path = link[6:]  # 移除 "image:" 前缀
+            # 打开图片预览对话框
+            dialog = ImagePreviewDialog(image_path, self)
+            dialog.exec()
 
     # ==================== 公共方法 ====================
 
