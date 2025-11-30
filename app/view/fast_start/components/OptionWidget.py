@@ -424,9 +424,11 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
                 )
             )
         else:
-            # 没有有效选项，清空选项区域（但不直接隐藏，让动画处理）
-            self.option_form_widget._clear_options()
-            # 保持选项区域可见，让动画将其缩小到0
+            # 没有有效选项，使用动画清空选项区域
+            self._option_animator.play(
+                lambda: self._clear_options()
+            )
+            # 保持选项区域可见
             self.option_splitter_widget.show()
         
         # 设置描述内容（set_description会处理显示/隐藏和动画过渡）
@@ -435,6 +437,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
     def _apply_form_structure_with_animation(self, form_structure, config):
         """异步更新选项表单并连接信号（用于动画回调）。"""
+        # 先清空旧选项
+        self._clear_options()
+        # 构建新选项
         self.option_form_widget.build_from_structure(form_structure, config)
         self._connect_option_signals()
         logger.info("表单已使用 form_structure 完成更新")
@@ -492,9 +497,6 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         """
         # 先从OptionService获取form_structure
         form_structure = self.service_coordinator.option.get_form_structure()
-        
-        # 清理旧的选项UI（但不清空公告，让公告平滑过渡）
-        self._clear_options()
 
         # 只使用form_structure更新表单
         if form_structure:
@@ -505,18 +507,20 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
             # 判断是否为资源类型的配置
             if form_structure.get("type") == "resource":
-                # 前置配置
-                self.create_resource_settings()
+                # 前置配置 - 使用动画过渡
+                self._option_animator.play(
+                    lambda: self._apply_resource_settings_with_animation()
+                )
                 # 资源类型没有公告，隐藏公告区域
                 self.set_description("", has_options=True)
-                logger.info("资源设置表单已创建")
 
             elif form_structure.get("type") == "post_action":
-                # 完成后操作
-                self.create_post_action_setting()
+                # 完成后操作 - 使用动画过渡
+                self._option_animator.play(
+                    lambda: self._apply_post_action_settings_with_animation()
+                )
                 # 完成后操作类型没有公告，隐藏公告区域
                 self.set_description("", has_options=True)
-                logger.info("完成后操作设置表单已创建")
 
             else:
                 # 正常的表单更新逻辑（update_form_from_structure会处理公告）
@@ -525,6 +529,18 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             # 没有表单时清除界面
             self.reset()
             logger.info("没有提供form_structure，已清除界面")
+
+    def _apply_resource_settings_with_animation(self):
+        """在动画回调中应用资源设置"""
+        self._clear_options()
+        self.create_resource_settings()
+        logger.info("资源设置表单已创建")
+
+    def _apply_post_action_settings_with_animation(self):
+        """在动画回调中应用完成后操作设置"""
+        self._clear_options()
+        self.create_post_action_setting()
+        logger.info("完成后操作设置表单已创建")
 
     def _set_layout_visibility(self, layout, visible):
         """
