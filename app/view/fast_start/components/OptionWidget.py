@@ -190,7 +190,8 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self._description_animator = DescriptionTransitionAnimator(
             self.splitter,
             self.description_splitter_widget,
-            expanded_ratio=0.4,
+            content_widget=self.description_content,  # 传入内容控件用于计算实际高度
+            max_ratio=0.5,  # 默认最大比例50%
             min_height=90,
         )
 
@@ -222,20 +223,49 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             else:
                 self._description_animator.set_visible_immediate(False)
 
-    def set_description(self, description: str):
-        """设置描述内容"""
+    def set_description(self, description: str, has_options: bool = True):
+        """设置描述内容
+        
+        :param description: 描述内容
+        :param has_options: 是否有选项内容，用于确定公告最大占比
+                           - True: 最大占比50%
+                           - False: 最大占比100%
+        """
         # 处理 None 或空字符串
         if not description:
             description = ""
-        self.description_content.setText("")
-
+        
         # 如果description为空，隐藏描述区域
         if not description.strip():
+            self.description_content.setText("")
             self._toggle_description(visible=False)
             return
 
+        # 计算新的最大比例
+        new_max_ratio = 0.5 if has_options else 1.0
+        # 获取旧的最大比例来判断是否有变化
+        old_max_ratio = self._description_animator.max_ratio
+        ratio_changed = abs(new_max_ratio - old_max_ratio) > 0.1
+        
+        # 设置最大比例：有选项时50%，无选项时100%
+        self._description_animator.set_max_ratio(new_max_ratio)
+
         html = self._prepare_description_html(description)
+        
+        # 检查公告是否已经展开
+        was_expanded = self._description_animator.is_expanded()
+        
+        # 设置内容
         self.description_content.setText(html)
+        
+        if was_expanded:
+            # 如果已经展开，直接平滑过渡到新高度（不收回再展开）
+            # 如果比例发生了变化，强制播放动画
+            self._description_animator.update_size(force_animation=ratio_changed)
+        else:
+            # 如果之前是隐藏的，正常展开
+            # 如果没有选项（100%），强制从零开始动画，防止瞬间占满
+            self._description_animator.expand(force_from_zero=not has_options)
 
     @staticmethod
     def _prepare_description_html(description: str) -> str:
@@ -335,16 +365,6 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         :param form_structure: 表单结构定义
         :param config: 可选的配置对象，用于设置表单的当前选择
         """
-        # 处理表单结构中的描述字段
-        description = None
-        if isinstance(form_structure, dict) and "description" in form_structure:
-            description = form_structure["description"]
-            self.set_description(description or "")
-            if description and description.strip():
-                self._toggle_description(visible=True)
-            else:
-                self._toggle_description(visible=False)
-        
         # 构建表单（排除 description 字段）
         form_structure_copy = {
             k: v for k, v in form_structure.items() if k != "description"
@@ -357,6 +377,11 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
                 has_valid_options = True
                 break
         
+        # 处理表单结构中的描述字段（传入是否有选项的信息）
+        description = None
+        if isinstance(form_structure, dict) and "description" in form_structure:
+            description = form_structure["description"]
+        
         # 如果有有效选项，构建表单；否则清空
         if has_valid_options:
             self.option_splitter_widget.show()
@@ -366,11 +391,14 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
                 )
             )
         else:
-            # 没有有效选项，清空选项区域
+            # 没有有效选项，清空选项区域（但不直接隐藏，让动画处理）
             self.option_form_widget._clear_options()
-            # 如果没有描述，可以隐藏整个选项区域（可选）
-            if not (description and description.strip()):
-                self.option_splitter_widget.hide()
+            # 保持选项区域可见，让动画将其缩小到0
+            self.option_splitter_widget.show()
+        
+        # 设置描述内容（set_description会处理显示/隐藏和动画过渡）
+        # 放在最后确保选项区域已经正确设置可见性
+        self.set_description(description or "", has_options=has_valid_options)
 
     def _apply_form_structure_with_animation(self, form_structure, config):
         """异步更新选项表单并连接信号（用于动画回调）。"""
@@ -432,11 +460,8 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 先从OptionService获取form_structure
         form_structure = self.service_coordinator.option.get_form_structure()
         
-        # 无论什么情况，都先清理所有旧的UI（固定UI、选项和公告）
-        # 这样可以确保切换任务时，旧的UI不会残留
+        # 清理旧的选项UI（但不清空公告，让公告平滑过渡）
         self._clear_options()
-        # 清空并隐藏公告
-        self.set_description("")  # 这会清空内容并隐藏公告区域
 
         # 只使用form_structure更新表单
         if form_structure:
@@ -449,18 +474,22 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             if form_structure.get("type") == "resource":
                 # 前置配置
                 self.create_resource_settings()
+                # 资源类型没有公告，隐藏公告区域
+                self.set_description("", has_options=True)
                 logger.info("资源设置表单已创建")
 
             elif form_structure.get("type") == "post_action":
                 # 完成后操作
                 self.create_post_action_setting()
+                # 完成后操作类型没有公告，隐藏公告区域
+                self.set_description("", has_options=True)
                 logger.info("完成后操作设置表单已创建")
 
             else:
-                # 正常的表单更新逻辑
+                # 正常的表单更新逻辑（update_form_from_structure会处理公告）
                 self.update_form_from_structure(form_structure, self.current_config)
         else:
-            # 没有表单时清除界面（已经在上面清理过了，这里只需要重置）
+            # 没有表单时清除界面
             self.reset()
             logger.info("没有提供form_structure，已清除界面")
 
