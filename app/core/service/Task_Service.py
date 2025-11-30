@@ -1,3 +1,4 @@
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -124,51 +125,96 @@ class TaskService:
         if not self.interface:
             raise ValueError("Interface not loaded")
 
-        def _gen_option_defaults_recursive(option_template):
+        interface_options = self.interface.get("option", {})
+
+        def _select_default_case(option_def: dict) -> Optional[dict]:
+            cases = option_def.get("cases", [])
+            if not cases:
+                return None
+            target_case_name = option_def.get("default_case")
+            if target_case_name:
+                for case in cases:
+                    if case.get("name") == target_case_name:
+                        return case
+            return cases[0]
+
+        def _normalize_child_payload(payload: Any) -> dict[str, Any]:
+            if isinstance(payload, dict):
+                if "value" in payload:
+                    return deepcopy(payload)
+                return {"value": deepcopy(payload)}
+            return {"value": deepcopy(payload)}
+
+        def _gen_option_defaults_recursive(
+            option_key: str, option_template: dict
+        ) -> Any:
             """递归生成选项默认值"""
-            if "inputs" in option_template and isinstance(
-                option_template["inputs"], list
-            ):
-                # Input type with multiple inputs
-                nested_values = {}
-                for input_config in option_template["inputs"]:
+            inputs = option_template.get("inputs")
+            if isinstance(inputs, list) and inputs:
+                nested_values: dict[str, Any] = {}
+                for input_config in inputs:
                     input_name = input_config.get("name")
                     default_value = input_config.get("default", "")
                     pipeline_type = input_config.get("pipeline_type", "string")
 
-                    # Convert to appropriate type
                     if pipeline_type == "int":
                         try:
                             default_value = int(default_value) if default_value else 0
                         except (ValueError, TypeError):
                             pass
 
-                    nested_values[input_name] = default_value
+                    if input_name:
+                        nested_values[input_name] = default_value
+                return {"value": nested_values}
 
-                return nested_values
+            cases = option_template.get("cases", [])
+            if cases:
+                selected_case = _select_default_case(option_template)
+                if not selected_case:
+                    return {}
+                selected_case_name = selected_case.get("name", "")
+                option_result: dict[str, Any] = {"value": selected_case_name}
 
-            elif option_template.get("cases") and len(option_template["cases"]) > 0:
-                # Select type with cases
-                selected_case = option_template["cases"][0]
-                case_name = selected_case["name"]
+                children: dict[str, Any] = {}
+                for case in cases:
+                    case_name = case.get("name", "")
+                    option_values = case.get("option")
+                    if not option_values:
+                        continue
 
-                # Process child options recursively
-                child_option_defaults = {}
-                if "option" in selected_case:
-                    for child_option_name in selected_case["option"]:
-                        child_option_template = self.interface.get("option", {}).get(
-                            child_option_name
+                    if isinstance(option_values, str):
+                        child_keys = [option_values]
+                    elif isinstance(option_values, list):
+                        child_keys = [
+                            value for value in option_values if isinstance(value, str)
+                        ]
+                    else:
+                        continue
+
+                    for index, child_option_key in enumerate(child_keys):
+                        child_template = interface_options.get(child_option_key)
+                        if not child_template:
+                            continue
+
+                        child_default = _gen_option_defaults_recursive(
+                            child_option_key, child_template
                         )
-                        if child_option_template:
-                            child_option_defaults[child_option_name] = (
-                                _gen_option_defaults_recursive(child_option_template)
-                            )
+                        child_entry = _normalize_child_payload(child_default)
 
-                # Return appropriate structure based on whether there are child options
-                if child_option_defaults:
-                    return {case_name: child_option_defaults}
-                else:
-                    return case_name
+                        if case_name != selected_case_name:
+                            child_entry["hidden"] = True
+                        else:
+                            child_entry.pop("hidden", None)
+
+                        child_key = (
+                            f"{option_key}_child_{case_name}_{child_option_key}_{index}"
+                        )
+                        children[child_key] = child_entry
+
+                if children:
+                    option_result["children"] = children
+
+                return option_result
 
             return {}
 
@@ -177,10 +223,9 @@ class TaskService:
 
         # Iterate through options defined for this task
         for option in task.get("option", []):
-            option_template = self.interface.get("option", {}).get(option)
+            option_template = interface_options.get(option)
             if option_template:
-                # Generate defaults for this option recursively
-                option_defaults = _gen_option_defaults_recursive(option_template)
+                option_defaults = _gen_option_defaults_recursive(option, option_template)
                 task_default_option[option] = option_defaults
 
         return task_default_option
