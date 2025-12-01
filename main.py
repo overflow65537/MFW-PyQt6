@@ -36,7 +36,6 @@ from qasync import QEventLoop, asyncio
 from qfluentwidgets import ConfigItem, FluentTranslator
 from PySide6.QtCore import Qt, QTranslator
 from PySide6.QtWidgets import QApplication
-from cryptography.fernet import Fernet
 
 from app.utils.logger import logger
 from app.common.config import cfg
@@ -44,6 +43,8 @@ from app.view.main_window.main_window import MainWindow
 from app.common.config import Language
 from app.common.__version__ import __version__
 from app.core.service.interface_manager import get_interface_manager
+from app.utils.crypto import crypto_manager
+
 
 if __name__ == "__main__":
     logger.info(f"MFW 版本:{__version__}")
@@ -65,12 +66,8 @@ if __name__ == "__main__":
     except Exception as e:
         logger.warning(f"设置工作目录失败，当前工作目录为: {os.getcwd()}，错误: {e}")
 
-    # 检查是否存在密钥文件
-    if not os.path.exists("k.ey"):
-        logger.debug("生成密钥文件")
-        key = Fernet.generate_key()
-        with open("k.ey", "wb") as key_file:
-            key_file.write(key)  # TODO 密钥应该放在应用支持目录中
+    # 检查并加载密钥
+    crypto_manager.ensure_key_exists()
 
     # 单实例检查
     """PID_FILE = os.path.join(os.getcwd(), "MFW.pid")
