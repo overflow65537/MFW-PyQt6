@@ -60,6 +60,118 @@ class ResourceSettingMixin:
             return embedded.strip().lower() in {"1", "true", "yes", "on"}
         return bool(embedded)
 
+    def _coerce_int(self, value: Any) -> int | None:
+        """尝试将值转换为整数，失败则返回 None"""
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _find_win32_candidate_value(
+        self, normalized: dict[str, Any], candidates: list[str]
+    ) -> int | None:
+        """从一组候选键中获取并转换整型值"""
+        for candidate in candidates:
+            candidate_key = candidate.lower()
+            if candidate_key in normalized:
+                value = self._coerce_int(normalized[candidate_key])
+                if value is not None:
+                    return value
+        return None
+
+    def _build_win32_default_mapping(
+        self, controllers: list[dict[str, Any]]
+    ) -> dict[str, dict[str, Any]]:
+        """构建 Win32 控制器的默认输入/截图映射"""
+        win32_mapping: dict[str, dict[str, Any]] = {}
+        for controller in controllers:
+            if controller.get("type", "").lower() != "win32":
+                continue
+            controller_name = controller.get("name", "")
+            if not controller_name:
+                continue
+
+            win32_config = controller.get("win32")
+            if not isinstance(win32_config, dict):
+                continue
+
+            normalized = {
+                str(key).lower(): value
+                for key, value in win32_config.items()
+                if isinstance(key, str)
+            }
+
+            mouse_value = self._find_win32_candidate_value(
+                normalized, ["mouse_input", "mouse"]
+            )
+            keyboard_value = self._find_win32_candidate_value(
+                normalized, ["keyboard_input", "keyboard"]
+            )
+            general_input = self._find_win32_candidate_value(
+                normalized, ["input", "input_method", "input_methods"]
+            )
+            if mouse_value is None:
+                mouse_value = general_input
+            if keyboard_value is None:
+                keyboard_value = general_input
+
+            defaults: dict[str, int] = {}
+            if mouse_value is not None:
+                defaults["mouse_input_methods"] = mouse_value
+            if keyboard_value is not None:
+                defaults["keyboard_input_methods"] = keyboard_value
+
+            screencap_value = self._find_win32_candidate_value(
+                normalized,
+                [
+                    "screencap",
+                    "screencap_method",
+                    "screencap_methods",
+                    "screenshot",
+                    "screen_cap",
+                ],
+            )
+            if screencap_value is not None:
+                defaults["win32_screencap_methods"] = screencap_value
+
+            mapping_entry: dict[str, Any] = {"defaults": defaults}
+            class_regex = normalized.get("class_regex")
+            window_regex = normalized.get("window_regex")
+            if class_regex:
+                mapping_entry["class_regex"] = str(class_regex)
+            if window_regex:
+                mapping_entry["window_regex"] = str(window_regex)
+
+            if defaults or "class_regex" in mapping_entry or "window_regex" in mapping_entry:
+                win32_mapping[controller_name] = mapping_entry
+
+        return win32_mapping
+
+    def _ensure_defaults(self, controller_cfg: dict, defaults: dict):
+        """确保指定键存在于控制器配置里"""
+        for key, value in defaults.items():
+            controller_cfg.setdefault(key, value)
+
+    def _ensure_win32_input_defaults(self, controller_cfg: dict, controller_name: str):
+        """为 Win32 控制器设置输入/截图默认值"""
+        win32_defaults = self.win32_default_mapping.get(controller_name, {}).get(
+            "defaults", {}
+        )
+        for key in [
+            "mouse_input_methods",
+            "keyboard_input_methods",
+            "win32_screencap_methods",
+        ]:
+            controller_cfg.setdefault(key, win32_defaults.get(key, 0))
+
+    def _get_win32_regex_filters(self, controller_name: str) -> tuple[str | None, str | None]:
+        """获取 Win32 控制器的 class/window regex"""
+        mapping_data = self.win32_default_mapping.get(controller_name, {})
+        return (
+            mapping_data.get("class_regex"),
+            mapping_data.get("window_regex"),
+        )
+
     def __init__(self):
         """初始化资源设置Mixin"""
         self.show_hide_option = True
@@ -83,6 +195,9 @@ class ResourceSettingMixin:
             }
             for ctrl in interface.get("controller", [])
         }
+        self.win32_default_mapping = self._build_win32_default_mapping(
+            interface.get("controller", [])
+        )
         agent_interface_config = interface.get("agent", {})
         self.agent_embedded_default = self._resolve_agent_embedded_default(
             agent_interface_config
@@ -158,22 +273,6 @@ class ResourceSettingMixin:
                 self._on_controller_type_changed(label)  # 立即显示对应的子选项
 
                 # 更换搜索设备类型
-                search_option: DeviceFinderWidget = self.resource_setting_widgets[
-                    "search_combo"
-                ]
-                # controller = self.service_coordinator.option.current_options.get
-
-                search_option.change_controller_type(
-                    self.controller_type_mapping[label]["type"].lower()
-                )
-                device_name = self.current_config[
-                    self.current_config["controller_type"]
-                ].get("device_name", self.tr("Unknown Device"))
-                # 阻断下拉框信号发送
-                search_option.combo_box.blockSignals(True)
-                search_option.combo_box.addItem(device_name)
-                search_option.combo_box.blockSignals(False)
-                break
 
     def _create_controller_combobox(self):
         """创建控制器类型下拉框"""
@@ -573,34 +672,28 @@ class ResourceSettingMixin:
             if controller_info["name"] == controller_name:
                 controller_type = controller_info["type"].lower()
                 break
+        controller_cfg = self.current_config.setdefault(controller_name, {})
         if controller_type == "adb":
-            self.current_config[controller_name] = self.current_config.get(
-                controller_name,
-                {
-                    "adb_path": "",
-                    "address": "",
-                    "emulator_path": "",
-                    "emulator_params": "",
-                    "wait_time": "0",
-                    "screencap_methods": 0,
-                    "input_methods": 0,
-                    "config": "{}",
-                },
-            )
-
+            adb_defaults = {
+                "adb_path": "",
+                "address": "",
+                "emulator_path": "",
+                "emulator_params": "",
+                "wait_time": "0",
+                "screencap_methods": 0,
+                "input_methods": 0,
+                "config": "{}",
+            }
+            self._ensure_defaults(controller_cfg, adb_defaults)
         elif controller_type == "win32":
-            self.current_config[controller_name] = self.current_config.get(
-                controller_name,
-                {
-                    "hwnd": "",
-                    "program_path": "",
-                    "program_params": "",
-                    "wait_launch_time": "0",
-                    "mouse_input_methods": 0,
-                    "keyboard_input_methods": 0,
-                    "win32_screencap_methods": 0,
-                },
-            )
+            win32_defaults = {
+                "hwnd": "",
+                "program_path": "",
+                "program_params": "",
+                "wait_launch_time": "0",
+            }
+            self._ensure_defaults(controller_cfg, win32_defaults)
+            self._ensure_win32_input_defaults(controller_cfg, controller_name)
         else:
             raise
         for name, widget in self.resource_setting_widgets.items():
@@ -742,6 +835,13 @@ class ResourceSettingMixin:
             "search_combo"
         ]
         search_option.change_controller_type(new_type)
+        if new_type == "win32":
+            class_regex, window_regex = self._get_win32_regex_filters(
+                ctrl_info["name"]
+            )
+            search_option.set_win32_filters(class_regex, window_regex)
+        else:
+            search_option.set_win32_filters(None, None)
 
         # 填充新的信息
         self._fill_children_option(ctrl_info["name"])

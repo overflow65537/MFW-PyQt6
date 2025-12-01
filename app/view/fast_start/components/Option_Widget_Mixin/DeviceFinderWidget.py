@@ -1,12 +1,15 @@
 from asyncio.base_futures import _FINISHED
+import re
+
 from PySide6.QtCore import Qt, QRunnable, QThreadPool, Signal, QObject
 from PySide6.QtWidgets import QWidget, QHBoxLayout
 
 from qfluentwidgets import ComboBox, ToolButton
-
 from qfluentwidgets import FluentIcon as FIF
 
 from maa.toolkit import Toolkit
+
+from app.utils.logger import logger
 
 
 class DeviceFinderTask(QRunnable):
@@ -73,6 +76,8 @@ class DeviceFinderWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._init_ui()
+        self._win32_class_pattern = None
+        self._win32_window_pattern = None
         self.current_controller_type = None
         self.device_mapping = {}
 
@@ -111,8 +116,49 @@ class DeviceFinderWidget(QWidget):
         if controller_type != self.current_controller_type:
             return
 
+        if controller_type.lower() == "win32":
+            filtered = {}
+            for key, device in device_mapping.items():
+                if self._matches_win32_filters(device):
+                    filtered[key] = device
+            device_mapping = filtered
+
         # 更新设备映射和下拉框
         self.device_mapping = device_mapping
         self.combo_box.clear()
         self.combo_box.addItems(list(device_mapping.keys()))
         self.search_button.setEnabled(True)
+
+    def _matches_win32_filters(self, device: dict) -> bool:
+        if not (self._win32_class_pattern or self._win32_window_pattern):
+            return True
+
+        class_name = str(device.get("class_name") or "")
+        window_name = str(device.get("window_name") or "")
+        class_match = (
+            bool(self._win32_class_pattern.search(class_name))
+            if self._win32_class_pattern
+            else True
+        )
+        window_match = (
+            bool(self._win32_window_pattern.search(window_name))
+            if self._win32_window_pattern
+            else True
+        )
+
+        if self._win32_class_pattern and self._win32_window_pattern:
+            return class_match and window_match
+        return class_match and window_match
+
+    def set_win32_filters(self, class_regex: str | None, window_regex: str | None):
+        self._win32_class_pattern = self._compile_regex(class_regex, "class")
+        self._win32_window_pattern = self._compile_regex(window_regex, "window")
+
+    def _compile_regex(self, pattern: str | None, label: str):
+        if not pattern:
+            return None
+        try:
+            return re.compile(pattern)
+        except re.error as exc:
+            logger.warning(f"正则过滤器 [{label}] 编译失败: {exc}")
+            return None
