@@ -42,9 +42,30 @@ class TaskFlowRunner(QObject):
             maa_tasker_sink=MaaTaskerEventSink,
         )
         self.maafw.custom_info.connect(self._handle_maafw_custom_info)
+        self.maafw.agent_info.connect(self._handle_agent_info)
         self.process = None
         self.fs_signal_bus = fs_signal_bus
         self.need_stop = False
+
+    def _handle_agent_info(self, info: str):
+        if "| WARNING |" in info:
+            # 从warning开始截断
+            info = info.split("| WARNING |")[1]
+            signalBus.log_output.emit("WARNING", info)
+        elif "| ERROR |" in info:
+            # 从error开始截断
+            info = info.split("| ERROR |")[1]
+            signalBus.log_output.emit("ERROR", info)
+        elif "| INFO |" in info:
+            # 从info开始截断
+            info = info.split("| INFO |")[1]
+            signalBus.log_output.emit("INFO", info)
+        else:
+            # 使用re截断格式为2025-12-01 15:20:37,944 的时间
+            import re
+
+            time = re.match(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}", info)
+            signalBus.log_output.emit("INFO", info)
 
     def _handle_maafw_custom_info(self, error_code: int):
         try:

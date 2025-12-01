@@ -12,6 +12,7 @@ import importlib.util
 from enum import Enum
 from typing import List, Dict
 import subprocess
+import threading
 from pathlib import Path
 import numpy
 from asyncify import asyncify
@@ -63,6 +64,7 @@ class MaaFW(QObject):
     agent: AgentClient | None
 
     agent_thread: subprocess.Popen | None
+    agent_output_thread: threading.Thread | None
 
     maa_controller_sink: MaaControllerEventSink
     maa_context_sink: MaaContextSink
@@ -70,6 +72,7 @@ class MaaFW(QObject):
     maa_tasker_sink: MaaTaskerEventSink
 
     custom_info = Signal(int)
+    agent_info = Signal(str)
 
     embedded_agent_mode: bool = False
     agent_timeout: int = 30
@@ -93,6 +96,7 @@ class MaaFW(QObject):
 
         self.agent = None
         self.agent_thread = None
+        self.agent_output_thread = None
 
         self.agent_data_raw = None
 
@@ -248,17 +252,23 @@ class MaaFW(QObject):
             arg.replace("{PROJECT_DIR}", str(project_dir)) for arg in child_args
         ]
         agent_process: subprocess.Popen | None = None
-        try:
-            if self.embedded_agent_mode and _is_python_launcher(executable=child_exec):
-                import sys
+        start_cmd = [child_exec, *child_args, socket_id]
+        if self.embedded_agent_mode and _is_python_launcher(executable=child_exec):
+            import sys
 
-                agent_process = subprocess.Popen(
-                    [sys.executable, *child_args, socket_id]
-                )
-                self.agent_thread = agent_process
-            else:
-                agent_process = subprocess.Popen([child_exec, *child_args, socket_id])
-                self.agent_thread = agent_process
+            start_cmd = [sys.executable, *child_args, socket_id]
+        try:
+            agent_process = subprocess.Popen(
+                start_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1,
+            )
+            self.agent_thread = agent_process
+            self._watch_agent_output(agent_process)
         except Exception as e:
             logger.error(f"启动agent失败: {e}")
             self._send_custom_info(MaaFWError.AGENT_START_FAILED)
@@ -345,10 +355,27 @@ class MaaFW(QObject):
                 logger.error(f"终止agent线程失败: {e}")
             finally:
                 self.agent_thread = None
-            self.agent_thread = None
+        if self.agent_output_thread:
+            self.agent_output_thread.join(timeout=0.1)
+            self.agent_output_thread = None
 
     def _send_custom_info(self, error: MaaFWError):
         self.custom_info.emit(error.value)
+
+    def _watch_agent_output(self, process: subprocess.Popen):
+        def _forward_output():
+            stream = process.stdout
+            if not stream:
+                return
+            for line in stream:
+                text = line.rstrip("\r\n")
+                if text:
+                    self.agent_info.emit(text)
+            stream.close()
+
+        watcher = threading.Thread(target=_forward_output, daemon=True)
+        watcher.start()
+        self.agent_output_thread = watcher
 
     async def screencap_test(self) -> numpy.ndarray:
         if not self.controller:
