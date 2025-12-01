@@ -9,6 +9,7 @@ MFW-ChainFlow Assistant MaaFW核心
 import re
 import os
 import importlib.util
+from enum import Enum
 from typing import List, Dict
 import subprocess
 from pathlib import Path
@@ -43,6 +44,17 @@ from .maasink import (
 
 
 # 以下代码引用自 MaaDebugger 项目的 ./src/MaaDebugger/maafw/__init__.py 文件，用于生成maafw实例
+class MaaFWError(Enum):
+    RESOURCE_OR_CONTROLLER_NOT_INITIALIZED = 1
+    AGENT_CONNECTION_FAILED = 2
+    TASKER_NOT_INITIALIZED = 3
+    AGENT_CONFIG_MISSING = 4
+    AGENT_CONFIG_EMPTY_LIST = 5
+    AGENT_CONFIG_INVALID = 6
+    AGENT_CHILD_EXEC_MISSING = 7
+    AGENT_START_FAILED = 8
+
+
 class MaaFW(QObject):
 
     resource: Resource | None
@@ -57,7 +69,7 @@ class MaaFW(QObject):
     maa_resource_sink: MaaResourceEventSink
     maa_tasker_sink: MaaTaskerEventSink
 
-    custom_info = Signal(str)
+    custom_info = Signal(int)
 
     def __init__(
         self, maa_controller_sink, maa_context_sink, maa_resource_sink, maa_tasker_sink
@@ -79,98 +91,7 @@ class MaaFW(QObject):
         self.agent = None
         self.agent_thread = None
 
-    def load_custom_objects(self, custom_json_path: str | Path):
-        if not os.path.exists(custom_json_path):
-            logger.error(f"custom.json 路径不存在: {custom_json_path}")
-            return
-        logger.info(f"开始加载自定义配置: {custom_json_path}")
-        import jsonc
-
-        with open(custom_json_path, "r", encoding="utf-8") as f:
-            custom_config: Dict[str, Dict] = jsonc.load(f)
-        success = 0
-        failed = []
-        for custom_name, custom in custom_config.items():
-            if self._load_single_custom(custom_name, custom):
-                success += 1
-            else:
-                failed.append(custom_name)
-        logger.info(f"自定义加载完成: 成功 {success} 个, 失败 {len(failed)} 个")
-
-    def _load_single_custom(self, custom_name: str, custom: dict) -> bool:
-        custom_type: str = custom.get("type", "")
-        custom_class_name: str = custom.get("class", "")
-        custom_file_path: str = custom.get("file_path", "")
-        if not all([custom_type, custom_name, custom_class_name, custom_file_path]):
-            logger.warning(f"配置项 {custom} 缺少必要信息，跳过")
-            msg = custom_name + self.tr(f" custom load failed: missing info")
-            self._send_custom_info(msg)
-            return False
-        module_name = os.path.splitext(os.path.basename(custom_file_path))[0]
-        spec = importlib.util.spec_from_file_location(module_name, custom_file_path)
-        if spec is None:
-            logger.error(f"无法获取模块 {module_name} 的 spec，跳过加载")
-            msg = custom_name + self.tr(f" custom load failed: no spec")
-            self._send_custom_info(msg)
-            return False
-        module = importlib.util.module_from_spec(spec)
-        if spec.loader is None:
-            logger.error(f"模块 {module_name} 的 loader 为 None，跳过加载")
-            msg = custom_name + self.tr(f" custom load failed: no loader")
-            self._send_custom_info(msg)
-            return False
-        try:
-            spec.loader.exec_module(module)
-        except Exception as e:
-            logger.error(f"模块加载异常: {e}")
-            msg = custom_name + self.tr(f" custom load failed: module error")
-            self._send_custom_info(msg)
-            return False
-        try:
-            class_obj = getattr(module, custom_class_name)
-        except Exception as e:
-            logger.error(f"获取类对象失败: {e}")
-            msg = custom_name + self.tr(f" custom load failed: class error")
-            self._send_custom_info(msg)
-            return False
-        try:
-            instance = class_obj()
-        except Exception as e:
-            logger.error(f"实例化类失败: {e}")
-            msg = custom_name + self.tr(f" custom load failed: instance error")
-            self._send_custom_info(msg)
-            return False
-        try:
-            if custom_type == "action":
-                assert self.resource is not None, "self.resource 不应为 None"
-                if self.resource.register_custom_action(custom_name, instance):
-                    logger.info(f"加载自定义动作{custom_name}")
-                    return True
-                else:
-                    logger.error(f"注册自定义动作失败: {custom_name}")
-                    msg = custom_name + self.tr(f" action load failed")
-                    self._send_custom_info(msg)
-                    return False
-            elif custom_type == "recognition":
-                assert self.resource is not None, "self.resource 不应为 None"
-                if self.resource.register_custom_recognition(custom_name, instance):
-                    logger.info(f"加载自定义识别器{custom_name}")
-                    return True
-                else:
-                    logger.error(f"注册自定义识别器失败: {custom_name}")
-                    msg = custom_name + self.tr(f" recognition load failed")
-                    self._send_custom_info(msg)
-                    return False
-            else:
-                logger.warning(f"未知类型: {custom_type}")
-                msg = custom_name + self.tr(f" custom load failed: unknown type")
-                self._send_custom_info(msg)
-                return False
-        except Exception as e:
-            logger.error(f"注册自定义对象失败: {e}")
-            msg = custom_name + self.tr(f" custom load failed: register error")
-            self._send_custom_info(msg)
-            return False
+        self.agent_data_raw = None
 
     @staticmethod
     @asyncify
@@ -267,16 +188,85 @@ class MaaFW(QObject):
         self.tasker.bind(self.resource, self.controller)
         return self.tasker
 
-    def _init_agent(self) -> AgentClient:
+    def _init_agent(self, agent_data_raw: dict) -> bool:
+        def _is_python_launcher(executable: str) -> bool:
+            """判断是否为 Python 可执行文件"""
+
+            if not executable:
+                return False
+            executable_name = Path(executable).stem.lower()
+            return executable_name.startswith("python")
+
         if not (self.resource and self.controller):
             raise RuntimeError("agent 初始化前必须存在 resource/controller")
         if not self.tasker:
             self.tasker = self._init_tasker()
-        if self.agent is None:
-            self.agent = AgentClient()
+        if self.agent:
+            return True
+
+        self.agent = AgentClient()
         self.agent.register_sink(self.resource, self.controller, self.tasker)
         self.agent.bind(self.resource)
-        return self.agent
+
+        if not agent_data_raw:
+            logger.warning("未找到agent配置")
+            self._send_custom_info(MaaFWError.AGENT_CONFIG_MISSING)
+            return False
+
+        if isinstance(agent_data_raw, list):
+            if agent_data_raw:
+                agent_data: dict = agent_data_raw[0]
+            else:
+                agent_data = {}
+                logger.warning("agent 配置为一个空列表，使用空字典作为默认值")
+                self._send_custom_info(MaaFWError.AGENT_CONFIG_EMPTY_LIST)
+        elif isinstance(agent_data_raw, dict):
+            agent_data = agent_data_raw
+        else:
+            agent_data = {}
+            logger.warning("agent 配置既不是字典也不是列表，使用空字典作为默认值")
+            self._send_custom_info(MaaFWError.AGENT_CONFIG_INVALID)
+
+        child_exec = agent_data.get("child_exec", "")
+        if not child_exec:
+            logger.warning("agent 配置缺少 child_exec，无法启动")
+            self._send_custom_info(MaaFWError.AGENT_CHILD_EXEC_MISSING)
+            return False
+
+        socket_id = self.agent.identifier
+        if callable(socket_id):
+            socket_id = socket_id() or "maafw_socket_id"
+        elif socket_id is None:
+            socket_id = "maafw_socket_id"
+        socket_id = str(socket_id)
+        child_args = agent_data.get("child_args", [])
+        project_dir = Path.cwd()
+        child_args = [
+            arg.replace("{PROJECT_DIR}", str(project_dir)) for arg in child_args
+        ]
+
+        embedded_flag = True
+        agent_process: subprocess.Popen | None = None
+        try:
+            if embedded_flag and _is_python_launcher(executable=child_exec):
+                import sys
+
+                agent_process = subprocess.Popen(
+                    [sys.executable, *child_args, socket_id]
+                )
+                self.agent_thread = agent_process
+            else:
+                agent_process = subprocess.Popen([child_exec, *child_args, socket_id])
+                self.agent_thread = agent_process
+        except Exception as e:
+            logger.error(f"启动agent失败: {e}")
+            self._send_custom_info(MaaFWError.AGENT_START_FAILED)
+            return False
+        self.agent.set_timeout(30000)
+        if not self.agent.connect():
+            self._send_custom_info(MaaFWError.AGENT_CONNECTION_FAILED)
+            return False
+        return True
 
     @asyncify
     def load_resource(self, dir: str | Path, gpu_index: int = -1) -> bool:
@@ -301,16 +291,19 @@ class MaaFW(QObject):
         entry: str,
         pipeline_override: dict = {},
         custom_dir: str | None = None,
-        agent_data_raw: dict | None = None,
         save_draw: bool = False,
     ) -> bool:
         if not self.resource or not self.controller:
-            self._send_custom_info(self.tr("Resource or Controller not initialized"))
+            self._send_custom_info(MaaFWError.RESOURCE_OR_CONTROLLER_NOT_INITIALIZED)
             return False
 
         tasker = self._init_tasker()
+
+        if self.agent_data_raw:
+            if not self._init_agent(self.agent_data_raw):
+                return False
         if not tasker.inited:
-            self._send_custom_info(self.tr("Tasker not initialized"))
+            self._send_custom_info(MaaFWError.TASKER_NOT_INITIALIZED)
             return False
         tasker.set_save_draw(save_draw)
         return tasker.post_task(entry, pipeline_override).wait().succeeded
@@ -336,6 +329,7 @@ class MaaFW(QObject):
         if self.agent:
             try:
                 self.agent.disconnect()
+                self.agent_data_raw = None
             except Exception as e:
                 logger.error(f"断开agent连接失败: {e}")
             finally:
@@ -350,8 +344,8 @@ class MaaFW(QObject):
                 self.agent_thread = None
             self.agent_thread = None
 
-    def _send_custom_info(self, info: str):
-        self.custom_info.emit(info)
+    def _send_custom_info(self, error: MaaFWError):
+        self.custom_info.emit(error.value)
 
     async def screencap_test(self) -> numpy.ndarray:
         if not self.controller:
