@@ -100,10 +100,16 @@ class TaskFlowRunner(QObject):
             logger.info("资源加载成功")
 
             if self.task_service.interface.get("agent", None):
-                logger.info("开始加载agent...")
+                logger.info("传入agent配置...")
                 self.maafw.agent_data_raw = self.task_service.interface.get(
                     "agent", None
                 )
+                self.maafw.embedded_agent_mode = pre_cfg.task_option.get(
+                    "embedded_agent", False
+                )
+                self.maafw.agent_timeout = pre_cfg.task_option.get("agent_timeout", 30)
+                logger.info(f"内嵌Agent模式: {self.maafw.embedded_agent_mode}")
+                logger.info(f"Agent超时时间: {self.maafw.agent_timeout}")
                 signalBus.log_output.emit("INFO", self.tr("Agent Service Start"))
 
             logger.info("开始执行任务序列...")

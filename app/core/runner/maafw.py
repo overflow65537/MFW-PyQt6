@@ -71,6 +71,9 @@ class MaaFW(QObject):
 
     custom_info = Signal(int)
 
+    embedded_agent_mode: bool = False
+    agent_timeout: int = 30
+
     def __init__(
         self, maa_controller_sink, maa_context_sink, maa_resource_sink, maa_tasker_sink
     ):
@@ -244,11 +247,9 @@ class MaaFW(QObject):
         child_args = [
             arg.replace("{PROJECT_DIR}", str(project_dir)) for arg in child_args
         ]
-
-        embedded_flag = True
         agent_process: subprocess.Popen | None = None
         try:
-            if embedded_flag and _is_python_launcher(executable=child_exec):
+            if self.embedded_agent_mode and _is_python_launcher(executable=child_exec):
                 import sys
 
                 agent_process = subprocess.Popen(
@@ -262,7 +263,7 @@ class MaaFW(QObject):
             logger.error(f"启动agent失败: {e}")
             self._send_custom_info(MaaFWError.AGENT_START_FAILED)
             return False
-        self.agent.set_timeout(30000)
+        self.agent.set_timeout(int(self.agent_timeout * 1000))
         if not self.agent.connect():
             self._send_custom_info(MaaFWError.AGENT_CONNECTION_FAILED)
             return False
@@ -330,6 +331,8 @@ class MaaFW(QObject):
             try:
                 self.agent.disconnect()
                 self.agent_data_raw = None
+                self.embedded_agent_mode = False
+                self.agent_timeout = 30
             except Exception as e:
                 logger.error(f"断开agent连接失败: {e}")
             finally:
