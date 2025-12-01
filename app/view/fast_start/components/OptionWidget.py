@@ -76,6 +76,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self.option_area_widget.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
+        self.option_area_widget.enableTransparentBackground()
         # 设置透明无边框
         self.option_area_widget.setStyleSheet(
             "background-color: transparent; border: none;"
@@ -149,6 +150,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self.description_scroll_area.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
+        self.description_scroll_area.enableTransparentBackground()
         self.description_scroll_area.setStyleSheet(
             "background-color: transparent; border: none;"
         )

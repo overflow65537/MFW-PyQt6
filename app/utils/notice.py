@@ -28,6 +28,8 @@ import hmac
 import hashlib
 import base64
 import urllib.parse
+from enum import IntEnum
+
 import requests
 import smtplib
 from email.mime.text import MIMEText
@@ -37,8 +39,7 @@ from PySide6.QtCore import QThread
 from ..common.signal_bus import signalBus
 from ..common.config import cfg
 from ..utils.logger import logger
-from ..utils.notice_enum import NoticeErrorCode
-from ..utils.tool import decrypt
+from .crypto import crypto_manager
 
 
 # 解码密钥
@@ -50,13 +51,52 @@ def decode_key(key_name) -> str:
         "wxpusher": cfg.Notice_WxPusher_SPT_token,
         "QYWX": cfg.Notice_QYWX_key,
     }
+
+    config_item = mapping.get(key_name)
+    if config_item is None:
+        logger.error("无法识别的通知密钥类型: %s", key_name)
+        return ""
+
+    encrypted_value = cfg.get(config_item)
+    if not encrypted_value:
+        logger.warning("尚未配置 %s 的密钥", key_name)
+        return ""
+
     try:
-        with open("k.ey", "rb") as key_file:
-            key = key_file.read()
-            return decrypt(cfg.get(mapping[key_name]), key)
-    except Exception as e:
+        decrypted_bytes = crypto_manager.decrypt_payload(encrypted_value)
+        return (
+            decrypted_bytes.decode("utf-8")
+            if isinstance(decrypted_bytes, (bytes, bytearray))
+            else str(decrypted_bytes)
+        )
+    except Exception:
         logger.exception("获取ckd失败")
         return ""
+
+
+class NoticeErrorCode(IntEnum):
+    """通知模块错误码枚举."""
+
+    SUCCESS = 0  # 成功
+    DISABLED = 1  # 通知未启用
+    PARAM_EMPTY = 2  # 关键参数为空
+    PARAM_INVALID = 3  # 参数格式错误
+    NETWORK_ERROR = 4  # 网络请求异常
+    RESPONSE_ERROR = 5  # 接口返回状态错误
+    UNKNOWN_ERROR = 6  # 未知错误
+    SMTP_PORT_INVALID = 7  # SMTP端口非整数
+    SMTP_CONNECT_FAILED = 8  # SMTP连接失败
+
+
+class NoticeTiming(IntEnum):
+    """通知触发的时机."""
+
+    WHEN_START_UP = 1
+    WHEN_CONNECT_FAILED = 2
+    WHEN_CONNECT_SUCCESS = 4
+    WHEN_POST_TASK = 8
+    WHEN_TASK_FAILED = 16
+    WHEN_TASK_FINISHED = 32
 
 
 class DingTalk:
@@ -83,7 +123,6 @@ class DingTalk:
         # 钉钉的签名校验方法为将 sign 与 timestamp 组合进 url 中
         url = cfg.get(cfg.Notice_DingTalk_url)
         secret = decode_key("dingtalk")
-
 
         if url == "":
             logger.error("DingTalk 通知地址为空")
@@ -172,21 +211,29 @@ class SMTP:
         try:
             port = int(cfg.get(cfg.Notice_SMTP_sever_port))
         except ValueError:
-            logger.error(f"SMTP 端口号 {cfg.get(cfg.Notice_SMTP_sever_port)} 不是有效的整数")
+            logger.error(
+                f"SMTP 端口号 {cfg.get(cfg.Notice_SMTP_sever_port)} 不是有效的整数"
+            )
             return NoticeErrorCode.SMTP_PORT_INVALID
 
         try:
             if cfg.get(cfg.Notice_SMTP_used_ssl):
                 smtp = smtplib.SMTP_SSL(cfg.get(cfg.Notice_SMTP_sever_address), port)
             else:
-                smtp = smtplib.SMTP(cfg.get(cfg.Notice_SMTP_sever_address), port, timeout=1)
+                smtp = smtplib.SMTP(
+                    cfg.get(cfg.Notice_SMTP_sever_address), port, timeout=1
+                )
             smtp.login(cfg.get(cfg.Notice_SMTP_user_name), decode_key("smtp"))
         except Exception as e:
             logger.error(f"SMTP 连接失败: {e}")
             return NoticeErrorCode.SMTP_CONNECT_FAILED
 
         try:
-            smtp.sendmail(cfg.get(cfg.Notice_SMTP_user_name), cfg.get(cfg.Notice_SMTP_receive_mail), msg.as_string())
+            smtp.sendmail(
+                cfg.get(cfg.Notice_SMTP_user_name),
+                cfg.get(cfg.Notice_SMTP_receive_mail),
+                msg.as_string(),
+            )
             return NoticeErrorCode.SUCCESS
         except Exception as e:
             logger.error(f"SMTP 发送邮件失败: {e}")
@@ -293,11 +340,11 @@ class NoticeSendThread(QThread):
                 send_func, msg_dict, status = self.queue.get()
                 try:
                     result = send_func(msg_dict, status)
-                    signalBus.notice_finished.emit(result, send_func.__name__)
+                    signalBus.notice_finished.emit(int(result), send_func.__name__)
                 except Exception as e:
                     logger.error(f"通知线程 {send_func.__name__} 执行异常: {str(e)}")
                     signalBus.notice_finished.emit(
-                        NoticeErrorCode.UNKNOWN_ERROR, send_func.__name__
+                        int(NoticeErrorCode.UNKNOWN_ERROR), send_func.__name__
                     )
             else:
                 self.msleep(100)
@@ -437,6 +484,51 @@ def QYWX_send(
     app = qywx
     result = app.send(msg_dict)
     return result
+
+
+NOTICE_CHANNEL_STATUS = {
+    "dingtalk": cfg.Notice_DingTalk_status,
+    "lark": cfg.Notice_Lark_status,
+    "smtp": cfg.Notice_SMTP_status,
+    "wxpusher": cfg.Notice_WxPusher_status,
+    "qywx": cfg.Notice_QYWX_status,
+}
+
+NOTICE_EVENT_CONFIG = {
+    NoticeTiming.WHEN_START_UP: cfg.when_start_up,
+    NoticeTiming.WHEN_CONNECT_FAILED: cfg.when_connect_failed,
+    NoticeTiming.WHEN_CONNECT_SUCCESS: cfg.when_connect_success,
+    NoticeTiming.WHEN_POST_TASK: cfg.when_post_task,
+    NoticeTiming.WHEN_TASK_FAILED: cfg.when_task_failed,
+    NoticeTiming.WHEN_TASK_FINISHED: cfg.when_task_finished,
+}
+
+
+def should_send_notice(event: NoticeTiming) -> bool:
+    config_item = NOTICE_EVENT_CONFIG.get(event)
+    if not config_item:
+        return False
+    return bool(cfg.get(config_item))
+
+
+def broadcast_enabled_notices(title: str, text: str) -> None:
+    msg = {"title": title, "text": text}
+    for channel, status_cfg in NOTICE_CHANNEL_STATUS.items():
+        if cfg.get(status_cfg):
+            send_thread.add_task(channel, msg, True)
+            logger.debug(f"{channel}发送通知")
+
+
+def send_notice(event: NoticeTiming, title: str, text: str) -> None:
+    if not should_send_notice(event):
+        logger.debug("跳过通知 %s (%s)，未启用对应的发送时机", event.name, int(event))
+        return
+    broadcast_enabled_notices(title, text)
+
+
+def send_all_enabled_channels(title: str, text: str) -> None:
+    """直接发送给所有已启用的外部渠道（无条件判断时机）"""
+    broadcast_enabled_notices(title, text)
 
 
 send_thread = NoticeSendThread()

@@ -50,14 +50,15 @@ from qfluentwidgets import (
 from qfluentwidgets import FluentIcon as FIF
 
 
-
 from ..fast_start.fast_start_logic import FastStartInterface
+from app.view.setting_interface.setting_interface import SettingInterface
 
 from ...common.config import cfg
 from ...common.signal_bus import signalBus
 from ...utils.logger import logger
 from ...common.__version__ import __version__
 from ...core.core import ServiceCoordinator
+
 
 class CustomSystemThemeListener(SystemThemeListener):
     def run(self):
@@ -79,12 +80,16 @@ class MainWindow(MSFluentWindow):
         multi_config_path = Path.cwd() / "config" / "multi_config.json"
         self.service_coordinator = ServiceCoordinator(multi_config_path)
 
-
-
         # 创建子界面
         self.FastStartInterface = FastStartInterface(self.service_coordinator)
         self.addSubInterface(self.FastStartInterface, FIF.CHECKBOX, self.tr("Task"))
-
+        self.SettingInterface = SettingInterface(self.service_coordinator)
+        self.addSubInterface(
+            self.SettingInterface,
+            FIF.SETTING,
+            self.tr("Setting"),
+            position=NavigationItemPosition.BOTTOM,
+        )
         # 添加导航项
         self.splashScreen.finish()
 
@@ -143,8 +148,10 @@ class MainWindow(MSFluentWindow):
             orient=Qt.Orientation.Horizontal,
             isClosable=True,
             position=InfoBarPosition.BOTTOM_RIGHT,
-            duration=-1 if level_name == "error" else self._calculate_info_bar_duration(
-                message
+            duration=(
+                -1
+                if level_name == "error"
+                else self._calculate_info_bar_duration(message)
             ),
             parent=self,
         )

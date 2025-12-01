@@ -11,6 +11,7 @@ from app.common.constants import POST_ACTION, PRE_CONFIGURATION
 from app.common.signal_bus import signalBus
 
 from maa.toolkit import Toolkit
+from app.utils.notice import NoticeTiming, send_notice
 
 from ...utils.logger import logger
 from ..service.Config_Service import ConfigService
@@ -89,6 +90,27 @@ class TaskFlowRunner(QObject):
     async def run_tasks_flow(self):
         """任务完整流程：连接设备、加载资源、批量运行任务"""
         self.need_stop = False
+        tasks_to_report = [
+            task
+            for task in self.task_service.current_tasks
+            if task.name not in [PRE_CONFIGURATION, POST_ACTION]
+        ]
+        task_status_records: list[dict[str, str]] = []
+        task_status_by_id: dict[str, dict[str, str]] = {}
+        for report_task in tasks_to_report:
+            record = {
+                "item_id": report_task.item_id,
+                "name": report_task.name,
+                "status": self.tr("未运行"),
+            }
+            task_status_records.append(record)
+            task_status_by_id[report_task.item_id] = record
+
+        selected_task_count = sum(1 for task in tasks_to_report if task.is_checked)
+        post_task_event_pending = bool(task_status_records)
+        config_label = (
+            self.config_service.current_config_id or self.tr("未知配置")
+        )
         try:
             self.fs_signal_bus.fs_start_button_status.emit(
                 {"text": "STOP", "status": "disabled"}
@@ -98,12 +120,41 @@ class TaskFlowRunner(QObject):
             if not pre_cfg:
                 raise ValueError("未找到基础预配置任务")
 
+            selected_task_count = len(
+                [
+                    task
+                    for task in self.task_service.current_tasks
+                    if task.is_checked and task.name not in [PRE_CONFIGURATION, POST_ACTION]
+                ]
+            )
+            send_notice(
+                NoticeTiming.WHEN_START_UP,
+                self.tr("任务流启动"),
+                self.tr(
+                    "配置 {config_id} 包含 {task_count} 个任务，准备连接设备。"
+                ).format(config_id=config_label, task_count=selected_task_count),
+            )
+
             logger.info("开始连接设备...")
             connected = await self.connect_device(pre_cfg.task_option)
             if not connected:
                 logger.error("设备连接失败，尝试启动进程")
+                send_notice(
+                    NoticeTiming.WHEN_CONNECT_FAILED,
+                    self.tr("设备连接失败"),
+                    self.tr(
+                        "配置 {config_id} 无法连接设备，请检查控制器配置。"
+                    ).format(config_id=config_label),
+                )
                 return
             logger.info("设备连接成功")
+            send_notice(
+                NoticeTiming.WHEN_CONNECT_SUCCESS,
+                self.tr("设备连接成功"),
+                self.tr("配置 {config_id} 设备连接成功，开始执行任务。").format(
+                    config_id=config_label
+                ),
+            )
 
             logger.info("开始截图测试...")
             start_time = _time.time()
@@ -138,14 +189,50 @@ class TaskFlowRunner(QObject):
                 if task.name in [PRE_CONFIGURATION, POST_ACTION]:
                     continue
 
-                if task.is_checked:
-                    logger.info(f"开始执行任务: {task.name}")
-                    try:
-                        if not await self.run_task(task.item_id):
-                            await self.stop_task()
-                        logger.info(f"任务执行完成: {task.name}")
-                    except Exception as exc:
-                        logger.error(f"任务执行失败: {task.name}, 错误: {str(exc)}")
+                if not task.is_checked:
+                    continue
+
+                logger.info(f"开始执行任务: {task.name}")
+                record = task_status_by_id.get(task.item_id)
+                try:
+                    task_result = await self.run_task(task.item_id)
+                    if task_result is False:
+                        if record:
+                            record["status"] = self.tr("失败")
+                        logger.error(
+                            f"任务执行失败: {task.name}, 返回 False，终止流程"
+                        )
+                        send_notice(
+                            NoticeTiming.WHEN_TASK_FAILED,
+                            self.tr("任务失败"),
+                            self.tr(
+                                "任务 {task_name} 未返回成功状态，流程提前退出。"
+                            ).format(task_name=task.name),
+                        )
+                        await self.stop_task()
+                        break
+
+                    logger.info(f"任务执行完成: {task.name}")
+                    if record:
+                        record["status"] = self.tr("成功")
+                    send_notice(
+                        NoticeTiming.WHEN_TASK_FINISHED,
+                        self.tr("任务完成"),
+                        self.tr("任务 {task_name} 已完成。").format(
+                            task_name=task.name
+                        ),
+                    )
+                except Exception as exc:
+                    logger.error(f"任务执行失败: {task.name}, 错误: {str(exc)}")
+                    if record:
+                        record["status"] = self.tr("失败")
+                    send_notice(
+                        NoticeTiming.WHEN_TASK_FAILED,
+                        self.tr("任务失败"),
+                        self.tr("任务 {task_name} 执行失败: {error}").format(
+                            task_name=task.name, error=str(exc)
+                        ),
+                    )
 
                 if self.need_stop:
                     logger.info("收到停止请求，流程终止")
@@ -153,6 +240,11 @@ class TaskFlowRunner(QObject):
 
         except Exception as exc:
             logger.error(f"任务流程执行异常: {str(exc)}")
+            send_notice(
+                NoticeTiming.WHEN_TASK_FAILED,
+                self.tr("任务流程异常"),
+                self.tr("任务流程执行异常: {error}").format(error=str(exc)),
+            )
             import traceback
 
             logger.critical(traceback.format_exc())
@@ -162,6 +254,25 @@ class TaskFlowRunner(QObject):
             except Exception as exc:
                 logger.error(f"完成后操作执行失败: {exc}")
             await self.stop_task()
+            if post_task_event_pending:
+                if task_status_records:
+                    task_summary = "\n".join(
+                        f"{record['name']}: {record['status']}"
+                        for record in task_status_records
+                    )
+                else:
+                    task_summary = self.tr("无任务")
+                send_notice(
+                    NoticeTiming.WHEN_POST_TASK,
+                    self.tr("任务流完成"),
+                    self.tr(
+                        "配置 {config_id} 的所有任务与完成后操作已结束，共处理 {task_count} 个任务。\n任务状态:\n{task_list}"
+                    ).format(
+                        config_id=config_label,
+                        task_count=selected_task_count,
+                        task_list=task_summary,
+                    ),
+                )
 
     async def connect_device(self, controller_raw: Dict[str, Any]):
         """连接 MaaFW 控制器"""
