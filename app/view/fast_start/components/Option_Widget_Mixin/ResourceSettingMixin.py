@@ -6,6 +6,7 @@ from qfluentwidgets import BodyLabel, ComboBox, LineEdit, ToolTipFilter
 from pathlib import WindowsPath
 
 import jsonc
+from app.utils.gpu_cache import gpu_cache
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
 from app.core.service.interface_manager import get_interface_manager
@@ -69,6 +70,7 @@ class ResourceSettingMixin:
             for ctrl in interface.get("controller", [])
         }
         self.current_config = self.service_coordinator.option_service.current_options
+        self.current_config.setdefault("gpu", -1)
 
         # 构建资源映射表
         self.resource_mapping = {
@@ -101,6 +103,8 @@ class ResourceSettingMixin:
         self._create_resource_option()
         # 创建搜索设备下拉框
         self._create_search_option()
+        # 创建GPU加速下拉框
+        self._create_gpu_option()
         # 创建ADB和Win32子选项
         self._create_adb_children_option()
         self._create_win32_children_option()
@@ -187,6 +191,38 @@ class ResourceSettingMixin:
 
         self.parent_layout.addWidget(search_combo)
         search_combo.combo_box.currentTextChanged.connect(self._on_search_combo_changed)
+
+    def _create_gpu_option(self):
+        """创建GPU加速下拉框"""
+        gpu_label = BodyLabel(self.tr("GPU Acceleration"))
+        self.parent_layout.addWidget(gpu_label)
+
+        gpu_combo = ComboBox()
+        self.parent_layout.addWidget(gpu_combo)
+
+        self.resource_setting_widgets["gpu_combo_label"] = gpu_label
+        self.resource_setting_widgets["gpu_combo"] = gpu_combo
+
+        gpu_combo.currentIndexChanged.connect(self._on_gpu_option_changed)
+        self._populate_gpu_combo_options()
+        self._toggle_children_visible(["gpu_combo"], self.show_hide_option)
+
+    def _populate_gpu_combo_options(self):
+        combo: ComboBox | None = self.resource_setting_widgets.get("gpu_combo")
+        if combo is None:
+            return
+
+        combo.blockSignals(True)
+        combo.clear()
+        combo.addItem(self.tr("Auto"), userData=-1)
+        combo.addItem(self.tr("CPU"), userData=-2)
+
+        gpu_info = gpu_cache.get_gpu_info()
+        for gpu_id in sorted(gpu_info):
+            gpu_name = gpu_info[gpu_id]
+            combo.addItem(f"GPU {gpu_id}: {gpu_name}", userData=gpu_id)
+
+        combo.blockSignals(False)
 
     def _create_resource_line_edit(
         self,
@@ -474,6 +510,7 @@ class ResourceSettingMixin:
     def _fill_children_option(self, controller_name):
         """填充新的子选项信息"""
         controller_type = None
+        self.current_config.setdefault("gpu", -1)
         for controller_info in self.controller_type_mapping.values():
             if controller_info["name"] == controller_name:
                 controller_type = controller_info["type"].lower()
@@ -521,6 +558,7 @@ class ResourceSettingMixin:
                 elif isinstance(widget, ComboBox):
                     target = self.current_config[controller_name][name]
                     widget.setCurrentIndex(self._value_to_index(target))
+        self._fill_gpu_option()
         # 填充设备名称
         device_name = self.current_config[controller_name].get(
             "device_name", self.tr("Unknown Device")
@@ -532,6 +570,42 @@ class ResourceSettingMixin:
         search_option.combo_box.blockSignals(True)
         search_option.combo_box.addItem(device_name)
         search_option.combo_box.blockSignals(False)
+
+    def _fill_gpu_option(self):
+        combo = self.resource_setting_widgets.get("gpu_combo")
+        if combo is None:
+            return
+        self._populate_gpu_combo_options()
+
+        combo.blockSignals(True)
+        value = self.current_config.get("gpu", -1)
+        try:
+            value = int(value)
+        except (TypeError, ValueError):
+            value = -1
+
+        target_index = 0
+        for idx in range(combo.count()):
+            if combo.itemData(idx) == value:
+                target_index = idx
+                break
+
+        combo.setCurrentIndex(target_index)
+        combo.blockSignals(False)
+
+    def _on_gpu_option_changed(self, index: int):
+        combo = self.resource_setting_widgets.get("gpu_combo")
+        if combo is None:
+            return
+
+        value = combo.itemData(index)
+        try:
+            value = int(value)
+        except (TypeError, ValueError):
+            value = -1
+
+        self.current_config["gpu"] = value
+        self._auto_save_options()
 
     def _toggle_win32_children_option(self, visible: bool):
         """控制Win32子选项的隐藏和显示"""
