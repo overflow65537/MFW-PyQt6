@@ -75,7 +75,6 @@ class MaaFW(QObject):
     agent_info = Signal(str)
 
     embedded_agent_mode: bool = False
-    agent_timeout: int = 30
 
     def __init__(
         self, maa_controller_sink, maa_context_sink, maa_resource_sink, maa_tasker_sink
@@ -273,7 +272,6 @@ class MaaFW(QObject):
             logger.error(f"启动agent失败: {e}")
             self._send_custom_info(MaaFWError.AGENT_START_FAILED)
             return False
-        self.agent.set_timeout(int(self.agent_timeout * 1000))
         if not self.agent.connect():
             self._send_custom_info(MaaFWError.AGENT_CONNECTION_FAILED)
             return False
@@ -342,7 +340,6 @@ class MaaFW(QObject):
                 self.agent.disconnect()
                 self.agent_data_raw = None
                 self.embedded_agent_mode = False
-                self.agent_timeout = 30
             except Exception as e:
                 logger.error(f"断开agent连接失败: {e}")
             finally:
