@@ -331,22 +331,6 @@ class ResourceSettingMixin:
 
         embedded_switch.checkedChanged.connect(self._on_embedded_agent_toggled)
 
-        timeout_label = BodyLabel(self.tr("Agent Timeout (s)"))
-        self.parent_layout.addWidget(timeout_label)
-
-        timeout_input = LineEdit()
-        timeout_validator = QIntValidator(1, 86400, None)
-        timeout_input.setValidator(timeout_validator)
-        self.parent_layout.addWidget(timeout_input)
-
-        self.resource_setting_widgets["agent_timeout_label"] = timeout_label
-        self.resource_setting_widgets["agent_timeout"] = timeout_input
-
-        timeout_input.textChanged.connect(self._on_agent_timeout_changed)
-
-        self._toggle_children_visible(
-            ["embedded_agent_mode", "agent_timeout"], self.show_hide_option
-        )
         self._fill_agent_hidden_options()
 
     def _create_gpu_option(self):

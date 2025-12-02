@@ -90,13 +90,21 @@ class Config(QConfig):
     # 标题
     title = ConfigItem("MainWindow", "Title", "")
 
-    # MFW更新通道
-    MFW_update_channel = ConfigItem(
-        "MFW", "MFW_update_channel", 0, OptionsValidator([0, 1, 2])
-    )
-    # 资源更新通道
-    resource_update_channel = ConfigItem(
-        "MFW", "resource_update_channel", 0, OptionsValidator([0, 1, 2])
+    class UpdateChannel(Enum):
+        """Update channel options"""
+
+        ALPHA = 0
+        BETA = 1
+        STABLE = 2
+
+    _update_channel_values = OptionsValidator([item.value for item in UpdateChannel])
+
+    # 更新通道
+    resource_update_channel = OptionsConfigItem(
+        "MFW",
+        "resource_update_channel",
+        UpdateChannel.STABLE.value,
+        _update_channel_values,
     )
 
     # 资源存在

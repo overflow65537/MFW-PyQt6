@@ -1,35 +1,23 @@
-import re
-from pathlib import Path
 from typing import Dict, Any
 
-import markdown
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QSplitter,
-)
+from PySide6.QtWidgets import QSplitter, QWidget, QVBoxLayout
+from qfluentwidgets import BodyLabel, ScrollArea, SimpleCardWidget
 
-from qfluentwidgets import (
-    SimpleCardWidget,
-    BodyLabel,
-    ScrollArea,
-)
-from app.view.fast_start.components.ImagePreviewDialog import ImagePreviewDialog
+from app.utils.logger import logger
+from app.utils.markdown_helper import render_markdown
 from app.view.fast_start.animations.optionwidget import (
     DescriptionTransitionAnimator,
     OptionTransitionAnimator,
 )
-from app.view.fast_start.components.Option_Widget_Mixin.ResourceSettingMixin import (
-    ResourceSettingMixin,
-)
+from app.view.fast_start.components.ImagePreviewDialog import ImagePreviewDialog
+from app.view.fast_start.components.Option_Framework import OptionFormWidget
 from app.view.fast_start.components.Option_Widget_Mixin.PostActionSettingMixin import (
     PostActionSettingMixin,
 )
-from app.view.fast_start.components.Option_Framework import OptionFormWidget
-from app.utils.logger import logger
-
-
+from app.view.fast_start.components.Option_Widget_Mixin.ResourceSettingMixin import (
+    ResourceSettingMixin,
+)
 from ....core.core import ServiceCoordinator
 
 
@@ -256,7 +244,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 设置最大比例：有选项时50%，无选项时100%
         self._description_animator.set_max_ratio(new_max_ratio)
 
-        html = self._prepare_description_html(description)
+        html = render_markdown(description)
         
         # 检查公告是否已经展开
         was_expanded = self._description_animator.is_expanded()
@@ -273,36 +261,6 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             # 如果没有选项（100%），强制从零开始动画，防止瞬间占满
             self._description_animator.expand(force_from_zero=not has_options)
 
-    @staticmethod
-    def _prepare_description_html(description: str) -> str:
-        """根据传入内容决定是否直接使用 HTML 或将 Markdown 转为 HTML"""
-        processed = description.replace("\n", "<br>")
-        stripped = processed.strip()
-        if stripped.startswith("<") and stripped.endswith(">"):
-            html = processed.replace("\n", "<br>") if "\n" in description else description
-        else:
-            html = markdown.markdown(
-                processed, extensions=["extra", "sane_lists"]
-            )
-        
-        # 将图片包裹在可点击的链接中
-        # 匹配 <img ... src="xxx" ...> 标签，将其包裹在 <a href="image:xxx"> 中
-        img_pattern = re.compile(
-            r'<img\s+([^>]*?)src=["\']([^"\']+)["\']([^>]*)>',
-            re.IGNORECASE
-        )
-        
-        def wrap_image_with_link(match):
-            before_src = match.group(1)
-            src = match.group(2)
-            after_src = match.group(3)
-            # 添加 cursor: pointer 样式提示可点击
-            img_tag = f'<img {before_src}src="{src}"{after_src} style="cursor: pointer;">'
-            # 使用 image: 协议标记这是图片链接
-            return f'<a href="image:{src}" style="text-decoration: none;">{img_tag}</a>'
-        
-        html = img_pattern.sub(wrap_image_with_link, html)
-        return html
     
     def _on_link_activated(self, link: str):
         """处理链接点击事件"""

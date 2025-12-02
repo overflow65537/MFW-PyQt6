@@ -6,9 +6,18 @@ MFW-ChainFlow Assistant 设置界面
 
 from typing import Optional
 
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import QFrame, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtCore import Qt, QUrl, Signal
+from PySide6.QtGui import QDesktopServices, QPixmap
+from PySide6.QtWidgets import (
+    QFrame,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+    QHBoxLayout,
+    QProgressBar,
+    QLabel,
+    QGridLayout,
+)
 from qfluentwidgets import (
     BodyLabel,
     ComboBoxSettingCard,
@@ -16,8 +25,11 @@ from qfluentwidgets import (
     ExpandLayout,
     FluentIcon as FIF,
     InfoBar,
+    IndeterminateProgressRing,
     OptionsSettingCard,
+    PrimaryPushButton,
     PrimaryPushSettingCard,
+    ProgressRing,
     ScrollArea,
     SettingCardGroup,
     SwitchSettingCard,
@@ -25,14 +37,19 @@ from qfluentwidgets import (
     setThemeColor,
 )
 
+from app.utils.markdown_helper import render_markdown
+
 from app.common.__version__ import __version__
 from app.common.config import cfg, REPO_URL, isWin11
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
+from app.utils.crypto import crypto_manager
 from app.utils.logger import logger
 from app.view.setting_interface.widget.DoubleButtonSettingCard import (
     DoubleButtonSettingCard,
 )
+from app.view.setting_interface.widget.ProxySettingCard import ProxySettingCard
+from app.view.setting_interface.widget.LineEditCard import LineEditCard
 
 
 class SettingInterface(QWidget):
@@ -51,21 +68,17 @@ class SettingInterface(QWidget):
         self.project_name = ""
         self.project_version = ""
         self.project_url = ""
+        self.interface_data = {}
         self.Setting_scroll_widget = QWidget()
         self.Setting_expand_layout = ExpandLayout(self.Setting_scroll_widget)
         self.scroll_area = ScrollArea(self)
         self._setup_ui()
 
     def _setup_ui(self):
-        """搭建整体结构：标题 + 滚动区域 + ExpandLayout + 底部留白。"""
+        """搭建整体结构：标题 + 更新详情 + 滚动区域 + ExpandLayout。"""
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(24, 24, 24, 0)
         self.main_layout.setSpacing(8)
-
-        self.title_label = BodyLabel(self.tr("Settings"), self)
-        self.title_label.setStyleSheet("font-size: 24px; font-weight: 600;")
-        self.title_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.main_layout.addWidget(self.title_label)
 
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
@@ -73,16 +86,25 @@ class SettingInterface(QWidget):
         self.scroll_area.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
-        self.scroll_area.setWidget(self.Setting_scroll_widget)
+        self.interface_data = self._get_interface_metadata()
 
         self.Setting_expand_layout.setSpacing(28)
         self.Setting_expand_layout.setContentsMargins(24, 24, 24, 24)
 
+        self.scroll_content = QWidget()
+        self.scroll_content_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_content_layout.setContentsMargins(0, 0, 0, 0)
+        self.scroll_content_layout.setSpacing(16)
+
+        self.scroll_content_layout.addWidget(self._build_update_header())
+        self.scroll_content_layout.addWidget(self.Setting_scroll_widget)
+        self.scroll_area.setWidget(self.scroll_content)
+
         self.initialize_start_settings()
-        self.initialize_personalization_settings()
         self.initialize_notice_settings()
-        self.initialize_advanced_settings()
-        self.initialize_about_settings()
+        self.initialize_personalization_settings()
+        self.initialize_update_settings()
+        self._refresh_update_header()
 
         self.main_layout.addWidget(self.scroll_area)
         self.main_layout.setStretch(1, 1)
@@ -92,12 +114,120 @@ class SettingInterface(QWidget):
         self.bottom_label.setStyleSheet("background-color: transparent;")
         self.main_layout.addWidget(self.bottom_label)
 
-        self.init_info()
         self.__connectSignalToSlot()
         self.setup_updater_interface()
         self._apply_theme_from_config()
         self._apply_interface_font()
         self.micaCard.setEnabled(isWin11())
+
+    def _apply_markdown_to_label(self, label: QLabel, content: str | None) -> None:
+        """把 Markdown 文本渲染到标签并开启链接交互。"""
+        label.setTextFormat(Qt.TextFormat.RichText)
+        label.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+        label.setOpenExternalLinks(True)
+        label.setText(render_markdown(content))
+
+    def _build_update_header(self) -> QWidget:
+
+        header_card = QFrame(self)
+        header_card.setFrameShape(QFrame.Shape.StyledPanel)
+        header_card.setObjectName("updateHeaderCard")
+        header_card.setStyleSheet("border-radius: 12px;")
+        header_card.setMinimumHeight(220)
+
+        header_layout = QVBoxLayout(header_card)
+        header_layout.setContentsMargins(20, 20, 20, 20)
+        header_layout.setSpacing(16)
+
+        top_row = QHBoxLayout()
+        top_row.setSpacing(16)
+
+        self.icon_label = QLabel(self)
+        pixmap = QPixmap("app/assets/icons/logo.png")
+        if not pixmap.isNull():
+            self.icon_label.setPixmap(
+                pixmap.scaled(
+                    72,
+                    72,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+            )
+        self.icon_label.setFixedSize(72, 72)
+        top_row.addWidget(self.icon_label)
+
+        info_column = QVBoxLayout()
+        info_column.setSpacing(6)
+
+        self.resource_name_label = BodyLabel(self.tr("ChainFlow Assistant"), self)
+        self.resource_name_label.setStyleSheet("font-size: 24px; font-weight: 600;")
+        default_contact = self.tr(
+            "Contact: support@chainflow.io / Twitter @overflow65537"
+        )
+        self.contact_label = BodyLabel("", self)
+        self.contact_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
+        self.contact_label.setWordWrap(True)
+        self._apply_markdown_to_label(self.contact_label, default_contact)
+
+        info_column.addWidget(self.resource_name_label)
+        info_column.addWidget(self.contact_label)
+        top_row.addLayout(info_column)
+        header_layout.addLayout(top_row)
+
+        self.version_label = BodyLabel(self.tr("Version:") + " " + __version__, self)
+        self.version_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
+        header_layout.addWidget(self.version_label)
+
+        badge_row = QHBoxLayout()
+        badge_row.setSpacing(12)
+
+        badge_style = (
+            "border-radius: 10px; padding: 4px 12px; font-size: 12px; font-weight: 600;"
+            "background-color: rgba(255, 255, 255, 0.12);"
+        )
+        self.license_badge = BodyLabel(self.tr("License: MIT"), self)
+        self.license_badge.setStyleSheet(badge_style)
+        self.github_badge = BodyLabel(self.tr("GitHub"), self)
+        self.github_badge.setStyleSheet(badge_style)
+        self.custom_badge = BodyLabel(self.tr("Stable"), self)
+        self.custom_badge.setStyleSheet(badge_style)
+
+        badge_row.addWidget(self.license_badge)
+        badge_row.addWidget(self.github_badge)
+        badge_row.addWidget(self.custom_badge)
+        badge_row.addStretch()
+        header_layout.addLayout(badge_row)
+
+        default_description = self.tr(
+            "Description: A powerful automation assistant for MaaS tasks with flexible update options."
+        )
+        self.description_label = BodyLabel("", self)
+        self.description_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
+        self.description_label.setWordWrap(True)
+        self._apply_markdown_to_label(self.description_label, default_description)
+        header_layout.addWidget(self.description_label)
+
+        action_layout = QHBoxLayout()
+        action_layout.setSpacing(12)
+        action_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+
+        self.progress_bar = QProgressBar(self)
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setFixedHeight(8)
+        self.progress_bar.setFixedWidth(220)
+        self.progress_bar.setVisible(False)
+
+        progress_layout = QVBoxLayout()
+        progress_layout.addWidget(self.progress_bar)
+        progress_layout.addStretch()
+        action_layout.addLayout(progress_layout, 1)
+
+        action_layout.addStretch()
+
+        header_layout.addLayout(action_layout)
+        return header_card
 
     def add_setting_group(self, group_widget: QWidget):
         """
@@ -269,115 +399,163 @@ class SettingInterface(QWidget):
         self.noticeGroup.addSettingCard(self.send_settingCard)
         self.add_setting_group(self.noticeGroup)
 
-    def initialize_advanced_settings(self):
-        """初始化高级设置。"""
-        self.advancedGroup = SettingCardGroup(
-            self.tr("Advanced"), self.Setting_scroll_widget
+    def initialize_update_settings(self):
+        """插入更新设置卡片组（跟原先的 UpdateSettingsSection 等价）。"""
+        self.updateGroup = SettingCardGroup(
+            self.tr("Update"), self.Setting_scroll_widget
         )
-        cfg.set(cfg.recording, False)
-        cfg.set(cfg.save_draw, False)
 
-        self.Show_Agent_CMD_Card = SwitchSettingCard(
-            FIF.APPLICATION,
-            self.tr("Show Agent CMD"),
-            self.tr("Show the agent command line"),
-            configItem=cfg.show_agent_cmd,
-            parent=self.advancedGroup,
+        self.MirrorCard = LineEditCard(
+            icon=FIF.APPLICATION,
+            title=self.tr("mirrorchyan CDK"),
+            content=self.tr("Enter mirrorchyan CDK for stable update path"),
+            is_passwork=True,
+            num_only=False,
+            holderText=self._get_mirror_holder_text(),
+            button=True,
+            button_type="primary",
+            button_text=self.tr("About Mirror"),
+            parent=self.updateGroup,
         )
-        self.RecordingCard = SwitchSettingCard(
-            FIF.VIDEO,
-            self.tr("Recording"),
+
+        self.auto_update = SwitchSettingCard(
+            FIF.UPDATE,
+            self.tr("Auto Update resource"),
+            self.tr("Automatically update resources on every startup"),
+            configItem=cfg.auto_update_resource,
+            parent=self.updateGroup,
+        )
+
+        channel_parent = getattr(self, "personalGroup", None) or self.updateGroup
+        self.channel_selector = ComboBoxSettingCard(
+            cfg.resource_update_channel,
+            FIF.UPDATE,
+            self.tr("select update channel for resource"),
+            self.tr("select the update channel for the resource"),
+            texts=["Alpha", "Beta", "Stable"],
+            parent=channel_parent,
+        )
+
+        self.force_github = SwitchSettingCard(
+            FIF.UPDATE,
+            self.tr("Force use GitHub"),
+            self.tr("Force use GitHub for resource update"),
+            configItem=cfg.force_github,
+            parent=self.updateGroup,
+        )
+
+        self.proxy = ProxySettingCard(
+            FIF.GLOBE,
+            self.tr("Use Proxy"),
             self.tr(
-                "The video recording and saving function saves all screenshots and operation data during the runtime. You can use the DbgController for reproduction and debugging."
+                "After filling in the proxy settings, all traffic except that to the Mirror will be proxied."
             ),
-            configItem=cfg.recording,
-            parent=self.advancedGroup,
+            parent=self.updateGroup,
         )
 
-        self.SaveDrawCard = SwitchSettingCard(
-            FIF.PHOTO,
-            self.tr("Save Draw"),
-            self.tr(
-                "Saving the visualization results of image recognition will save all the drawn diagrams of the visualization results of image recognition during the runtime."
-            ),
-            configItem=cfg.save_draw,
-            parent=self.advancedGroup,
-        )
+        self._initialize_proxy_controls()
+        self._configure_mirror_card()
+        self.MirrorCard.lineEdit.textChanged.connect(self._onMirrorCardChange)
 
-        self.advancedGroup.addSettingCard(self.Show_Agent_CMD_Card)
-        self.advancedGroup.addSettingCard(self.RecordingCard)
-        self.advancedGroup.addSettingCard(self.SaveDrawCard)
+        self.updateGroup.addSettingCard(self.MirrorCard)
+        self.updateGroup.addSettingCard(self.auto_update)
+        self.updateGroup.addSettingCard(self.channel_selector)
+        self.updateGroup.addSettingCard(self.force_github)
+        self.updateGroup.addSettingCard(self.proxy)
 
-        self.RecordingCard.switchButton.checkedChanged.connect(
-            lambda: signalBus.title_changed.emit()
-        )
-        self.SaveDrawCard.switchButton.checkedChanged.connect(
-            lambda: signalBus.title_changed.emit()
-        )
+        self.add_setting_group(self.updateGroup)
 
-        self.add_setting_group(self.advancedGroup)
+    def _initialize_proxy_controls(self):
+        """初始化代理控制器展示及默认值。"""
+        combox_index = cfg.get(cfg.proxy)
+        self.proxy.combobox.setCurrentIndex(combox_index)
 
+        if combox_index == 0:
+            self.proxy.input.setText(cfg.get(cfg.http_proxy))
+        elif combox_index == 1:
+            self.proxy.input.setText(cfg.get(cfg.socks5_proxy))
 
-    def initialize_about_settings(self):
-        """初始化关于设置。"""
-        MFW_update_channel = cfg.get(cfg.MFW_update_channel)
-        resource_update_channel = cfg.get(cfg.resource_update_channel)
-        self.aboutGroup = SettingCardGroup(
-            self.tr("Feedback and About"), self.Setting_scroll_widget
-        )
+        self.proxy.combobox.currentIndexChanged.connect(self.proxy_com_change)
+        self.proxy.input.textChanged.connect(self.proxy_inp_change)
 
-        self.updateCard = DoubleButtonSettingCard(
-            text2=self.tr("Check for updates"),
-            text=self.tr("About Resource"),
-            icon=FIF.UPDATE,
-            title=self.tr("Check for updates"),
-            configItem=cfg.resource_update_channel,
-            content=self.tr("Current") + " " + " " + self.tr("version:") + " ",
-            parent=self.aboutGroup,
-        )
-        self.aboutCard = DoubleButtonSettingCard(
-            text=self.tr("About UI"),
-            text2=self.tr("Check for updates"),
-            icon=FIF.INFO,
-            title=self.tr("ChainFlow Assistant") + " " + __version__,
-            configItem=cfg.MFW_update_channel,
-            content=self.tr(
-                "ChainFlow Assistant is open source under the GPLv3 license. Visit the project URL for more information."
-            ),
-            parent=self.aboutGroup,
-        )
-        self.aboutCard.combobox.setCurrentIndex(MFW_update_channel)
-        self.updateCard.combobox.setCurrentIndex(resource_update_channel)
+    def proxy_com_change(self):
+        cfg.set(cfg.proxy, self.proxy.combobox.currentIndex())
+        if self.proxy.combobox.currentIndex() == 0:
+            self.proxy.input.setText(cfg.get(cfg.http_proxy))
+        elif self.proxy.combobox.currentIndex() == 1:
+            self.proxy.input.setText(cfg.get(cfg.socks5_proxy))
 
-        self.aboutGroup.addSettingCard(self.updateCard)
-        self.aboutGroup.addSettingCard(self.aboutCard)
-        self.add_setting_group(self.aboutGroup)
+    def proxy_inp_change(self):
+        if self.proxy.combobox.currentIndex() == 0:
+            cfg.set(cfg.http_proxy, self.proxy.input.text())
+        elif self.proxy.combobox.currentIndex() == 1:
+            cfg.set(cfg.socks5_proxy, self.proxy.input.text())
 
-    def init_info(self):
-        """
-        初始化控件信息
-        """
-        interface_data = self._get_interface_metadata()
-        self.project_name = interface_data.get("name", "")
-        self.project_version = interface_data.get("version", "")
-        self.project_url = (
-            interface_data.get("github")
-            or interface_data.get("url")
-            or interface_data.get("repository")
-            or ""
-        )
-
-
-        if hasattr(self, "updateCard"):
-            self.updateCard.setContent(
-                self.tr("Current")
-                + " "
-                + self.project_name
-                + " "
-                + self.tr("version:")
-                + " "
-                + self.project_version
+    def _configure_mirror_card(self):
+        """根据接口能力打开/关闭 mirror CDK 文本域。"""
+        metadata = self.interface_data or {}
+        mirror_supported = bool(metadata.get("mirrorchyan_rid"))
+        if mirror_supported:
+            self.MirrorCard.setContent(
+                self.tr("Enter mirrorchyan CDK for stable update path")
             )
+            self.MirrorCard.lineEdit.setEnabled(True)
+        else:
+            self.MirrorCard.setContent(
+                self.tr(
+                    "Resource does not support Mirrorchyan, right-click about mirror to unlock input"
+                )
+            )
+            self.MirrorCard.lineEdit.setEnabled(False)
+
+    def _get_mirror_holder_text(self) -> str:
+        encrypted = cfg.get(cfg.Mcdk)
+        if not encrypted:
+            return ""
+        try:
+            decrypted = crypto_manager.decrypt_payload(encrypted)
+            if isinstance(decrypted, bytes):
+                decrypted = decrypted.decode("utf-8", errors="ignore")
+            return decrypted
+        except Exception as exc:
+            logger.warning("解密 Mirror CDK 失败: %s", exc)
+            return ""
+
+    def _onMirrorCardChange(self):
+        try:
+            encrypted = crypto_manager.encrypt_payload(self.MirrorCard.lineEdit.text())
+            encrypted_value = (
+                encrypted.decode("utf-8", errors="ignore")
+                if isinstance(encrypted, bytes)
+                else str(encrypted)
+            )
+            cfg.set(cfg.Mcdk, encrypted_value)
+        except Exception as exc:
+            logger.error("加密 Mirror CDK 失败: %s", exc)
+            return
+        cfg.set(cfg.is_change_cdk, True)
+
+    def _refresh_update_header(self):
+        metadata = self.interface_data or {}
+        name = metadata.get("name") or self.tr("ChainFlow Assistant")
+        version = metadata.get("version") or __version__
+        license_name = metadata.get("license") or self.tr("MIT")
+        github_label = metadata.get("github") or self.tr("GitHub")
+        custom_badge = metadata.get("badge") or self.tr("Stable Channel")
+        description = metadata.get("description") or self.tr(
+            "Description: A powerful automation assistant for MaaS tasks with flexible update options."
+        )
+        contact = metadata.get("contact") or self.tr(
+            "Contact: support@chainflow.io / Twitter @overflow65537"
+        )
+
+        self.resource_name_label.setText(name)
+        self.version_label.setText(self.tr("Version:") + " " + version)
+        self.license_badge.setText(self.tr("License:") + " " + license_name)
+        self.github_badge.setText(github_label)
+        self.custom_badge.setText(custom_badge)
+        self._apply_markdown_to_label(self.description_label, description)
+        self._apply_markdown_to_label(self.contact_label, contact)
 
     def _get_interface_metadata(self):
         """从服务协调器的任务服务获取 interface 数据。"""
@@ -425,33 +603,12 @@ class SettingInterface(QWidget):
     def __connectSignalToSlot(self):
         """连接信号到对应的槽函数。"""
         cfg.appRestartSig.connect(self.__showRestartTooltip)
-        self.updateCard.clicked2.connect(self._on_resource_update_requested)
-        self.updateCard.clicked2.connect(lambda: cfg.set(cfg.start_complete, True))
+
         self.run_after_startup.checkedChanged.connect(self._onRunAfterStartupCardChange)
 
         cfg.themeChanged.connect(setTheme)
         self.themeColorCard.colorChanged.connect(lambda c: setThemeColor(c))
         self.micaCard.checkedChanged.connect(signalBus.micaEnableChanged)
-
-        resource_issue_link = self.project_url
-        if resource_issue_link:
-            self.updateCard.clicked.connect(
-                lambda: QDesktopServices.openUrl(QUrl(resource_issue_link))
-            )
-        else:
-            self.updateCard.clicked.connect(
-                lambda: InfoBar.warning(
-                    self.tr("Warning"),
-                    self.tr(
-                        "The current version of the program does not support automatic updates."
-                    ),
-                    duration=1500,
-                    parent=self,
-                )
-            )
-
-        self.aboutCard.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(REPO_URL)))
-        self.aboutCard.clicked2.connect(self._on_self_update_requested)
         self._apply_theme_from_config()
 
     def setup_updater_interface(self):
@@ -470,3 +627,9 @@ class SettingInterface(QWidget):
         """根据输入更新启动前运行的程序脚本路径。"""
         cfg.set(cfg.run_after_startup, self.run_after_startup.isChecked())
 
+    def _on_check_updates(self):
+        if REPO_URL:
+            QDesktopServices.openUrl(QUrl(REPO_URL))
+
+    def _on_stop_update_requested(self):
+        signalBus.update_download_stopped.emit()

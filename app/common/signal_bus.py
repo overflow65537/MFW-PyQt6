@@ -51,5 +51,22 @@ class SignalBus(QObject):
     # 由信息输出组件发射，外部模块处理
     request_log_zip = Signal()  # 请求生成日志压缩包
 
+    # 下载相关进度
+    bundle_download_progress = Signal(int, int)
+    bundle_download_finished = Signal()
+    bundle_download_stopped = Signal()
+    mirror_bundle_download_progress = Signal(int, int)
+    mirror_bundle_download_finished = Signal()
+    mirror_bundle_download_stopped = Signal()
+    download_self_progress = Signal(int, int)
+    download_self_finished = Signal(dict)
+    download_self_stopped = Signal()
+    download_finished = Signal(dict)
+
+    dragging_finished = Signal()
+    run_sp_task = Signal(dict)
+    update_task_list = Signal()
+    update_download_stopped = Signal()
+
 
 signalBus = SignalBus()
