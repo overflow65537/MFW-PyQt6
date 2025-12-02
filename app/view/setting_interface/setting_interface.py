@@ -6,7 +6,7 @@ MFW-ChainFlow Assistant 设置界面
 
 from typing import Optional
 
-from PySide6.QtCore import Qt, QUrl, Signal
+from PySide6.QtCore import Qt, QSize, QUrl, QTimer
 from PySide6.QtGui import QDesktopServices, QPixmap
 from PySide6.QtWidgets import (
     QFrame,
@@ -16,6 +16,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QProgressBar,
     QLabel,
+    QDialog,
+    QDialogButtonBox,
     QGridLayout,
 )
 from qfluentwidgets import (
@@ -35,6 +37,7 @@ from qfluentwidgets import (
     SwitchSettingCard,
     setTheme,
     setThemeColor,
+    TransparentPushButton,
 )
 
 from app.utils.markdown_helper import render_markdown
@@ -45,6 +48,7 @@ from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
 from app.utils.crypto import crypto_manager
 from app.utils.logger import logger
+from app.utils.update import Update
 from app.view.setting_interface.widget.DoubleButtonSettingCard import (
     DoubleButtonSettingCard,
 )
@@ -55,6 +59,20 @@ from app.view.setting_interface.widget.LineEditCard import LineEditCard
 class SettingInterface(QWidget):
     """
     设置界面，用于配置应用程序设置，主体以滚动区域 + ExpandLayout。
+    """
+
+    _DETAIL_BUTTON_STYLE = """
+        TransparentPushButton {
+            color: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 6px 14px;
+            background-color: rgba(255, 255, 255, 0.04);
+            text-align: left;
+        }
+        TransparentPushButton:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
     """
 
     def __init__(
@@ -69,10 +87,16 @@ class SettingInterface(QWidget):
         self.project_version = ""
         self.project_url = ""
         self.interface_data = {}
+
+        self._current_version = __version__
+        self._license_content = ""
+        self._github_url = REPO_URL or "https://github.com/overflow65537/MFW-PyQt6"
+        self._updater: Optional[Update] = None
         self.Setting_scroll_widget = QWidget()
         self.Setting_expand_layout = ExpandLayout(self.Setting_scroll_widget)
         self.scroll_area = ScrollArea(self)
         self._setup_ui()
+        self._init_updater()
 
     def _setup_ui(self):
         """搭建整体结构：标题 + 更新详情 + 滚动区域 + ExpandLayout。"""
@@ -115,7 +139,6 @@ class SettingInterface(QWidget):
         self.main_layout.addWidget(self.bottom_label)
 
         self.__connectSignalToSlot()
-        self.setup_updater_interface()
         self._apply_theme_from_config()
         self._apply_interface_font()
         self.micaCard.setEnabled(isWin11())
@@ -143,17 +166,8 @@ class SettingInterface(QWidget):
         top_row.setSpacing(16)
 
         self.icon_label = QLabel(self)
-        pixmap = QPixmap("app/assets/icons/logo.png")
-        if not pixmap.isNull():
-            self.icon_label.setPixmap(
-                pixmap.scaled(
-                    72,
-                    72,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-            )
         self.icon_label.setFixedSize(72, 72)
+        self._apply_header_icon("app/assets/icons/logo.png")
         top_row.addWidget(self.icon_label)
 
         info_column = QVBoxLayout()
@@ -176,27 +190,65 @@ class SettingInterface(QWidget):
 
         self.version_label = BodyLabel(self.tr("Version:") + " " + __version__, self)
         self.version_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
-        header_layout.addWidget(self.version_label)
+        self.last_version_label = BodyLabel("", self)
+        self.last_version_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
 
-        badge_row = QHBoxLayout()
-        badge_row.setSpacing(12)
+        self.detail_progress = QProgressBar(self)
+        self.detail_progress.setRange(0, 100)
+        self.detail_progress.setValue(0)
+        self.detail_progress.setTextVisible(False)
+        self.detail_progress.setFixedHeight(6)
+        self.detail_progress.setVisible(False)
 
-        badge_style = (
-            "border-radius: 10px; padding: 4px 12px; font-size: 12px; font-weight: 600;"
-            "background-color: rgba(255, 255, 255, 0.12);"
+        version_layout = QHBoxLayout()
+        version_layout.setSpacing(12)
+        version_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        version_column = QVBoxLayout()
+        version_column.setSpacing(4)
+        version_column.addWidget(self.version_label)
+        version_column.addWidget(self.last_version_label)
+        version_layout.addLayout(version_column)
+        version_layout.addWidget(self.detail_progress, 1)
+        header_layout.addLayout(version_layout)
+
+        detail_row = QHBoxLayout()
+        detail_row.setSpacing(12)
+        detail_row.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )
-        self.license_badge = BodyLabel(self.tr("License: MIT"), self)
-        self.license_badge.setStyleSheet(badge_style)
-        self.github_badge = BodyLabel(self.tr("GitHub"), self)
-        self.github_badge.setStyleSheet(badge_style)
-        self.custom_badge = BodyLabel(self.tr("Stable"), self)
-        self.custom_badge.setStyleSheet(badge_style)
 
-        badge_row.addWidget(self.license_badge)
-        badge_row.addWidget(self.github_badge)
-        badge_row.addWidget(self.custom_badge)
-        badge_row.addStretch()
-        header_layout.addLayout(badge_row)
+        self.license_button = self._create_detail_button(
+            self.tr("License"), FIF.CERTIFICATE
+        )
+        self.github_button = self._create_detail_button(
+            self.tr("GitHub URL"), FIF.GITHUB
+        )
+        self.update_button = self._create_detail_button(self.tr("Update"), FIF.UPDATE)
+        self.update_log_button = self._create_detail_button(
+            self.tr("Open update log"), FIF.QUICK_NOTE
+        )
+
+        self.progress_bar = QProgressBar(self)
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setFixedHeight(8)
+        self.progress_bar.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        self.progress_bar.setVisible(False)
+
+        self.license_button.clicked.connect(self._open_license_dialog)
+        self.github_button.clicked.connect(self._open_github_home)
+        self.update_log_button.clicked.connect(self._open_update_log)
+        self._bind_start_button(enable=True)
+
+        detail_row.addWidget(self.license_button)
+        detail_row.addWidget(self.github_button)
+        detail_row.addWidget(self.update_button)
+        detail_row.addWidget(self.update_log_button)
+        detail_row.addWidget(self.progress_bar)
+        header_layout.addLayout(detail_row)
 
         default_description = self.tr(
             "Description: A powerful automation assistant for MaaS tasks with flexible update options."
@@ -207,27 +259,122 @@ class SettingInterface(QWidget):
         self._apply_markdown_to_label(self.description_label, default_description)
         header_layout.addWidget(self.description_label)
 
-        action_layout = QHBoxLayout()
-        action_layout.setSpacing(12)
-        action_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-
-        self.progress_bar = QProgressBar(self)
-        self.progress_bar.setRange(0, 100)
-        self.progress_bar.setValue(0)
-        self.progress_bar.setTextVisible(False)
-        self.progress_bar.setFixedHeight(8)
-        self.progress_bar.setFixedWidth(220)
-        self.progress_bar.setVisible(False)
-
-        progress_layout = QVBoxLayout()
-        progress_layout.addWidget(self.progress_bar)
-        progress_layout.addStretch()
-        action_layout.addLayout(progress_layout, 1)
-
-        action_layout.addStretch()
-
-        header_layout.addLayout(action_layout)
         return header_card
+
+    def _create_detail_button(self, text: str, icon) -> TransparentPushButton:
+        button = TransparentPushButton(text, self, icon)
+        button.setIconSize(QSize(18, 18))
+        button.setCursor(Qt.CursorShape.PointingHandCursor)
+        button.setStyleSheet(self._DETAIL_BUTTON_STYLE)
+        button.setFixedHeight(42)
+        button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        return button
+
+    def _open_license_dialog(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle(self.tr("License"))
+        dialog.setModal(True)
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+
+        content_label = BodyLabel(self._license_content, dialog)
+        content_label.setWordWrap(True)
+        layout.addWidget(content_label)
+
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Close, parent=dialog
+        )
+        button_box.rejected.connect(dialog.reject)
+        layout.addWidget(button_box)
+
+        dialog.resize(480, 280)
+        dialog.exec()
+
+    def _open_github_home(self):
+        if not self._github_url:
+            return
+        QDesktopServices.openUrl(QUrl(self._github_url))
+
+    def _apply_header_icon(self, icon_path: Optional[str] = None) -> None:
+        """加载 interface 中提供的图标路径，失败时回退到默认 logo。"""
+        path = icon_path or "app/assets/icons/logo.png"
+        pixmap = QPixmap(path)
+        if pixmap.isNull():
+            pixmap = QPixmap("app/assets/icons/logo.png")
+        if pixmap.isNull():
+            return
+        self.icon_label.setPixmap(
+            pixmap.scaled(
+                72,
+                72,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+        )
+
+    def _open_update_log(self):
+        if REPO_URL:
+            QDesktopServices.openUrl(QUrl(REPO_URL + "releases"))
+        else:
+            QDesktopServices.openUrl(
+                QUrl("https://github.com/overflow65537/MFW-PyQt6/releases")
+            )
+
+    def _start_detail_progress(self):
+        """启动不确定进度条（用于检查更新）"""
+        self.detail_progress.setRange(0, 0)
+        self.detail_progress.setVisible(True)
+
+    def _stop_detail_progress(self):
+        """停止不确定进度条"""
+        self.detail_progress.setVisible(False)
+        self.detail_progress.setRange(0, 100)
+        self.detail_progress.setValue(0)
+
+    def _show_progress_bar(self):
+        """显示下载进度条"""
+        self.progress_bar.setValue(0)
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setVisible(True)
+
+    def _lock_update_button_temporarily(self) -> None:
+        self.update_button.setEnabled(False)
+        QTimer.singleShot(
+            500,
+            lambda: self.update_button.setEnabled(True),
+        )
+
+    def _disconnect_update_button(self) -> None:
+        try:
+            self.update_button.clicked.disconnect()
+        except (TypeError, RuntimeError):
+            pass
+
+    def _bind_start_button(self, *, enable: bool = True) -> None:
+        self._disconnect_update_button()
+        self.update_button.clicked.connect(self._on_update_start_clicked)
+        self.update_button.setText(self.tr("Update"))
+        self.update_button.setEnabled(enable)
+
+    def _bind_stop_button(self, text: str, *, enable: bool = True) -> None:
+        self._disconnect_update_button()
+        self.update_button.clicked.connect(self._on_update_stop_clicked)
+        self.update_button.setText(text)
+        self.update_button.setEnabled(enable)
+
+    def _bind_instant_update_button(self, *, enable: bool = True) -> None:
+        self._disconnect_update_button()
+        self.update_button.clicked.connect(self._on_instant_update_clicked)
+        self.update_button.setText(self.tr("立刻更新"))
+        self.update_button.setEnabled(enable)
+
+    def _hide_progress_indicators(self) -> None:
+        self.detail_progress.setVisible(False)
+        self.detail_progress.setRange(0, 100)
+        self.detail_progress.setValue(0)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setVisible(False)
 
     def add_setting_group(self, group_widget: QWidget):
         """
@@ -418,13 +565,23 @@ class SettingInterface(QWidget):
             parent=self.updateGroup,
         )
 
+        self.auto_check_update = SwitchSettingCard(
+            FIF.UPDATE,
+            self.tr("Automatically check for updates after startup"),
+            self.tr("Check for available resource updates on every startup"),
+            configItem=cfg.auto_check_updates,
+            parent=self.updateGroup,
+        )
+
         self.auto_update = SwitchSettingCard(
             FIF.UPDATE,
-            self.tr("Auto Update resource"),
-            self.tr("Automatically update resources on every startup"),
+            self.tr("Automatically update after startup"),
+            self.tr("Automatically download and apply updates once available"),
             configItem=cfg.auto_update_resource,
             parent=self.updateGroup,
         )
+        self.auto_check_update.checkedChanged.connect(self._on_auto_check_change)
+        self.auto_update.checkedChanged.connect(self._on_auto_update_change)
 
         channel_parent = getattr(self, "personalGroup", None) or self.updateGroup
         self.channel_selector = ComboBoxSettingCard(
@@ -458,6 +615,7 @@ class SettingInterface(QWidget):
         self.MirrorCard.lineEdit.textChanged.connect(self._onMirrorCardChange)
 
         self.updateGroup.addSettingCard(self.MirrorCard)
+        self.updateGroup.addSettingCard(self.auto_check_update)
         self.updateGroup.addSettingCard(self.auto_update)
         self.updateGroup.addSettingCard(self.channel_selector)
         self.updateGroup.addSettingCard(self.force_github)
@@ -535,12 +693,32 @@ class SettingInterface(QWidget):
             return
         cfg.set(cfg.is_change_cdk, True)
 
+    def _on_auto_check_change(self, checked: bool):
+        if not checked and self.auto_update.isChecked():
+            self.auto_update.blockSignals(True)
+            self.auto_update.setChecked(False)
+            self.auto_update.blockSignals(False)
+
+    def _on_auto_update_change(self, checked: bool):
+        if checked and not self.auto_check_update.isChecked():
+            self.auto_check_update.setChecked(True)
+
     def _refresh_update_header(self):
         metadata = self.interface_data or {}
+        icon_path = metadata.get("icon")
         name = metadata.get("name") or self.tr("ChainFlow Assistant")
         version = metadata.get("version") or __version__
-        license_name = metadata.get("license") or self.tr("MIT")
+        self._current_version = version
+        license_value = metadata.get("license")
+        if license_value is None:
+            license_value = self.tr("MIT")
+        else:
+            license_value = str(license_value)
         github_label = metadata.get("github") or self.tr("GitHub")
+        github_url = metadata.get("github") or self._github_url
+        github_url = (
+            github_url if github_url else "https://github.com/overflow65537/MFW-PyQt6"
+        )
         custom_badge = metadata.get("badge") or self.tr("Stable Channel")
         description = metadata.get("description") or self.tr(
             "Description: A powerful automation assistant for MaaS tasks with flexible update options."
@@ -551,11 +729,22 @@ class SettingInterface(QWidget):
 
         self.resource_name_label.setText(name)
         self.version_label.setText(self.tr("Version:") + " " + version)
-        self.license_badge.setText(self.tr("License:") + " " + license_name)
-        self.github_badge.setText(github_label)
-        self.custom_badge.setText(custom_badge)
+        last_version_text = metadata.get("version") or __version__
+        self._set_last_version_label(last_version_text)
+        self.license_button.setToolTip(self.tr("License:") + " " + license_value)
+        self.github_button.setToolTip(github_label)
+        self.update_button.setToolTip(self.tr("Check for resource updates"))
+        self.update_log_button.setToolTip(self.tr("View update log"))
         self._apply_markdown_to_label(self.description_label, description)
         self._apply_markdown_to_label(self.contact_label, contact)
+        self._github_url = github_url
+        self._license_content = license_value
+        self.license_button.setText(self.tr("License"))
+        self._apply_header_icon(icon_path)
+
+    def _set_last_version_label(self, version: str | None):
+        version_text = version or self.tr("N/A")
+        self.last_version_label.setText(self.tr("Last version:") + " " + version_text)
 
     def _get_interface_metadata(self):
         """从服务协调器的任务服务获取 interface 数据。"""
@@ -611,25 +800,75 @@ class SettingInterface(QWidget):
         self.micaCard.checkedChanged.connect(signalBus.micaEnableChanged)
         self._apply_theme_from_config()
 
-    def setup_updater_interface(self):
-        """占位方法，供未来重构更新器接口使用。"""
-        pass
-
-    def _on_resource_update_requested(self):
-        """资源更新入口（暂时无实现）。"""
-        pass
-
-    def _on_self_update_requested(self):
-        """应用更新入口（暂时无实现）。"""
-        pass
-
     def _onRunAfterStartupCardChange(self):
         """根据输入更新启动前运行的程序脚本路径。"""
         cfg.set(cfg.run_after_startup, self.run_after_startup.isChecked())
 
-    def _on_check_updates(self):
-        if REPO_URL:
-            QDesktopServices.openUrl(QUrl(REPO_URL))
+    def _init_updater(self):
+        """初始化更新器对象并绑定信号"""
+        if not self._service_coordinator:
+            logger.warning("service_coordinator 未初始化，跳过更新器初始化")
+            return
+
+        # 创建更新器
+        self._updater = Update(
+            service_coordinator=self._service_coordinator,
+            stop_signal=signalBus.update_stopped,
+            progress_signal=signalBus.update_progress,
+            info_bar_signal=signalBus.info_bar_requested,
+        )
+
+        # 绑定信号
+        signalBus.update_progress.connect(self._on_download_progress)
+        signalBus.update_stopped.connect(self._on_update_stopped)
+
+        logger.info("更新器初始化完成")
+
+    def _on_update_start_clicked(self):
+        """点击开始更新"""
+        if not self._updater:
+            logger.warning("更新器未初始化")
+            if REPO_URL:
+                QDesktopServices.openUrl(QUrl(REPO_URL))
+            return
+
+        self._show_progress_bar()
+        self._bind_stop_button(self.tr("Stop update"), enable=False)
+        self._lock_update_button_temporarily()
+        self._updater.start()
+
+    def _on_update_stop_clicked(self):
+        """点击停止更新"""
+        if self._updater and self._updater.isRunning():
+            self._lock_update_button_temporarily()
+            self._on_stop_update_requested()
+
+    def _on_update_stopped(self, status: int):
+        """更新器停止信号统一处理 UI"""
+        self._hide_progress_indicators()
+        self._lock_update_button_temporarily()
+        if status == 2:
+            self._bind_instant_update_button(enable=False)
+            return
+        self._bind_start_button(enable=False)
+
+    def _on_instant_update_clicked(self):
+        """立即更新占位处理"""
+        pass
+
+    def _on_download_progress(self, downloaded: int, total: int):
+        """下载进度回调"""
+        if total <= 0:
+            self.progress_bar.setRange(0, 0)  # 不确定进度模式
+            return
+        self.progress_bar.setRange(0, 100)
+        value = min(100, int(downloaded / total * 100))
+        self.progress_bar.setValue(value)
+        # 确保进度条可见（取消透明）
+        self.progress_bar.setStyleSheet("")
+
 
     def _on_stop_update_requested(self):
-        signalBus.update_download_stopped.emit()
+        """停止更新"""
+        if self._updater and self._updater.isRunning():
+            self._updater.stop()

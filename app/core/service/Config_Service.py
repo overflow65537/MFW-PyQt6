@@ -127,7 +127,6 @@ class ConfigService:
             first_bundle_name = next(iter(bundle_dict.keys()), "Default Bundle")
             bundle = bundle_dict.get(first_bundle_name, {"path": "./"})
 
-
             default_config_item = ConfigItem(
                 name="Default Config",
                 item_id=ConfigItem.generate_id(),
@@ -190,12 +189,14 @@ class ConfigService:
 
         return ConfigItem.from_dict(config_data)
 
-    def get_current_config(self) -> Optional[ConfigItem]:
+    def get_current_config(self) -> ConfigItem:
         """获取当前配置"""
         if not self.current_config_id:
-            return None
-
-        return self.get_config(self.current_config_id)
+            raise ValueError("当前配置ID为空")
+        config = self.get_config(self.current_config_id)
+        if not config:
+            raise ValueError("当前配置不存在")
+        return config
 
     def save_config(self, config_id: str, config_data: ConfigItem) -> bool:
         """保存指定配置"""
@@ -219,7 +220,6 @@ class ConfigService:
         # Task generation from interface should be handled by TaskService
         if not config.tasks:
             default_tasks = [
-
                 TaskItem(
                     name="Pre-Configuration",
                     item_id=PRE_CONFIGURATION,

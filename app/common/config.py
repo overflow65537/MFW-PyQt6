@@ -137,6 +137,7 @@ class Config(QConfig):
         "Maa", "auto_update_resource", True, BoolValidator()
     )
     auto_update_MFW = ConfigItem("Maa", "auto_update_MFW", True, BoolValidator())
+    auto_check_updates = ConfigItem("Maa", "auto_check_updates", True, BoolValidator())
     # 更新UI失败
     update_ui_failed = ConfigItem("Maa", "update_ui_failed", False, BoolValidator())
 
@@ -216,6 +217,10 @@ class Config(QConfig):
     checkUpdateAtStartUp = ConfigItem(
         "Update", "CheckUpdateAtStartUp", True, BoolValidator()
     )
+    latest_update_version = ConfigItem(
+        "Update", "LatestUpdateVersion", ""
+    )
+    cdk_expired_time = ConfigItem("Update", "CdkExpiredTime", 0)
 
 
 REPO_URL = "https://github.com/overflow65537/MFW-PyQt6/"

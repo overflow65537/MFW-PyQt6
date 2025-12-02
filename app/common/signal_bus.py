@@ -39,8 +39,8 @@ class SignalBus(QObject):
     # maa sink 发送信号
     callback = Signal(dict)
 
-    #输出到日志组件
-    log_output = Signal(str,str) #(level,text)
+    # 输出到日志组件
+    log_output = Signal(str, str)  # (level,text)
 
     # 显示 InfoBar 的请求
     info_bar_requested = Signal(str, str)  # (level, message)
@@ -52,21 +52,11 @@ class SignalBus(QObject):
     request_log_zip = Signal()  # 请求生成日志压缩包
 
     # 下载相关进度
-    bundle_download_progress = Signal(int, int)
-    bundle_download_finished = Signal()
-    bundle_download_stopped = Signal()
-    mirror_bundle_download_progress = Signal(int, int)
-    mirror_bundle_download_finished = Signal()
-    mirror_bundle_download_stopped = Signal()
-    download_self_progress = Signal(int, int)
-    download_self_finished = Signal(dict)
-    download_self_stopped = Signal()
-    download_finished = Signal(dict)
-
-    dragging_finished = Signal()
-    run_sp_task = Signal(dict)
-    update_task_list = Signal()
-    update_download_stopped = Signal()
+    start_update = Signal()  # 开始更新
+    update_progress = Signal(int, int)  # 下载进度条(downloaded, total)
+    update_stopped = Signal(
+        int
+    )  # 更新停止(0:手动停止, 1:热更新完成, 2:更新包下载完成,需要重启安装)
 
 
 signalBus = SignalBus()

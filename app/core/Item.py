@@ -104,7 +104,7 @@ class ConfigItem:
         item_id: str,
         tasks: List[TaskItem],
         know_task: List[str],
-        bundle: Dict[str, Dict[str, Any]],
+        bundle: Dict[str, Dict[str, str]],
     ):
         self.name = name
         self.item_id = item_id
