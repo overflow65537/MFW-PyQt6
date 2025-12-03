@@ -32,6 +32,7 @@ MFW-ChainFlow Assistant 主界面
 
 import sys
 from pathlib import Path
+from typing import Dict, Optional
 
 from PySide6.QtCore import QSize, QTimer, Qt
 from PySide6.QtGui import QIcon, QShortcut, QKeySequence, QGuiApplication
@@ -39,7 +40,6 @@ from PySide6.QtWidgets import QApplication
 
 from qfluentwidgets import (
     NavigationItemPosition,
-    FluentWindow,
     SplashScreen,
     SystemThemeListener,
     isDarkTheme,
@@ -57,6 +57,7 @@ from app.common.signal_bus import signalBus
 from app.utils.logger import logger
 from app.common.__version__ import __version__
 from app.core.core import ServiceCoordinator
+from app.widget.notice_message import NoticeMessageBox
 
 
 class CustomSystemThemeListener(SystemThemeListener):
@@ -78,11 +79,15 @@ class MainWindow(MSFluentWindow):
         # 初始化配置管理器
         multi_config_path = Path.cwd() / "config" / "multi_config.json"
         self.service_coordinator = ServiceCoordinator(multi_config_path)
+
+        self._init_announcement()
+
         # 初始化窗口
         self.initWindow()
         # 创建子界面
         self.FastStartInterface = FastStartInterface(self.service_coordinator)
         self.addSubInterface(self.FastStartInterface, FIF.CHECKBOX, self.tr("Task"))
+        self._insert_announcement_nav_item()
         self.SettingInterface = SettingInterface(self.service_coordinator)
         self.addSubInterface(
             self.SettingInterface,
@@ -127,6 +132,74 @@ class MainWindow(MSFluentWindow):
         signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
         signalBus.title_changed.connect(self.set_title)
         signalBus.info_bar_requested.connect(self.show_info_bar)
+
+    def _init_announcement(self):
+        self._announcement_title = self.tr("Announcement")
+        self._announcement_content: Dict[str, str] = {}
+        self._announcement_empty_hint = self.tr(
+            "There is no announcement at the moment."
+        )
+
+        cfg_announcement = cfg.get(cfg.announcement)
+
+        res_announcement = self.service_coordinator.task.interface.get("wellcome", "")
+        if cfg_announcement != res_announcement:
+            # 公告内容不一致，更新公告内容
+            self.set_announcement_content(self.tr("Announcement"), res_announcement)
+            # 主动弹出公告对话框
+            self._on_announcement_button_clicked()
+
+    def _insert_announcement_nav_item(self):
+        """在设置入口上方插入公告按钮，并挂载点击行为。"""
+        self.navigationInterface.insertItem(
+            0,
+            "announcement_button",
+            FIF.MEGAPHONE,
+            self.tr("Announcement"),
+            onClick=self._on_announcement_button_clicked,
+            selectable=False,
+            position=NavigationItemPosition.BOTTOM,
+        )
+
+    def _on_announcement_button_clicked(self):
+        """处理公告按钮点击，弹出公告对话框或提示无内容。"""
+        if not self._announcement_content:
+            self.show_info_bar("info", self._announcement_empty_hint)
+            return
+
+        dialog = NoticeMessageBox(
+            parent=self,
+            title=self._announcement_title,
+            content=self._announcement_content,
+        )
+        dialog.button_yes.hide()
+        dialog.button_cancel.setText(self.tr("Close"))
+        dialog.exec()
+
+    def set_announcement_content(self, title: Optional[str], content) -> None:
+        """更新公告数据，外部可以通过调用该方法传入内容。"""
+        self._announcement_title = title or self.tr("Announcement")
+        self._announcement_content = self._normalize_announcement_content(content)
+
+    def _normalize_announcement_content(self, content) -> Dict[str, str]:
+        """将各种形式的公告内容规整为路由标题字典。"""
+        if not content:
+            return {}
+        if isinstance(content, dict):
+            return {
+                str(key): str(value)
+                for key, value in content.items()
+                if value is not None
+            }
+
+        if isinstance(content, (list, tuple, set)):
+            normalized = {}
+            for index, entry in enumerate(content, start=1):
+                label = self.tr("Item {index}").format(index=index)
+                normalized[label] = str(entry)
+            return normalized
+
+        return {self.tr("Detail"): str(content)}
 
     def show_info_bar(self, level: str, message: str):
         """根据等级显示 InfoBar 提示。"""

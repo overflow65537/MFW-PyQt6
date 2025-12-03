@@ -61,10 +61,17 @@ class Config(QConfig):
         """序列化 Language 枚举，方便写入/读取 settting."""
 
         def serialize(self, value):
-            return value.value.name()
+            return value.name
 
         def deserialize(self, value: str) -> Language:
-            return Language(QLocale(value))
+            if isinstance(value, str):
+                try:
+                    return Language[value]
+                except KeyError:
+                    for lang in Language:
+                        if lang.value.name() == value:
+                            return lang
+            return Language.CHINESE_SIMPLIFIED
 
     class UpdateChannel(Enum):
         """Update channel options."""
@@ -91,6 +98,8 @@ class Config(QConfig):
     run_after_startup_arg = ConfigItem(
         "General", "run_after_startup_arg", False, BoolValidator()
     )
+
+    announcement = ConfigItem("General", "announcement", "")
 
     save_draw = ConfigItem("General", "save_draw", False, BoolValidator())
 
