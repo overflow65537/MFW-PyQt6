@@ -41,6 +41,7 @@ from qfluentwidgets import (
 )
 
 from app.utils.markdown_helper import render_markdown
+from app.utils.notice_message import NoticeMessageBox
 
 from app.common.__version__ import __version__
 from app.common.config import cfg, REPO_URL, isWin11
@@ -48,7 +49,7 @@ from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
 from app.utils.crypto import crypto_manager
 from app.utils.logger import logger
-from app.utils.update import Update
+from app.utils.update import Update, UpdateCheckTask
 from app.view.setting_interface.widget.DoubleButtonSettingCard import (
     DoubleButtonSettingCard,
 )
@@ -92,11 +93,14 @@ class SettingInterface(QWidget):
         self._license_content = ""
         self._github_url = REPO_URL or "https://github.com/overflow65537/MFW-PyQt6"
         self._updater: Optional[Update] = None
+        self._update_checker: Optional[UpdateCheckTask] = None
+        self._latest_update_check_result: str | bool | None = None
         self.Setting_scroll_widget = QWidget()
         self.Setting_expand_layout = ExpandLayout(self.Setting_scroll_widget)
         self.scroll_area = ScrollArea(self)
         self._setup_ui()
         self._init_updater()
+        self._init_update_checker()
 
     def _setup_ui(self):
         """搭建整体结构：标题 + 更新详情 + 滚动区域 + ExpandLayout。"""
@@ -314,12 +318,27 @@ class SettingInterface(QWidget):
         )
 
     def _open_update_log(self):
-        if REPO_URL:
-            QDesktopServices.openUrl(QUrl(REPO_URL + "releases"))
-        else:
-            QDesktopServices.openUrl(
-                QUrl("https://github.com/overflow65537/MFW-PyQt6/releases")
-            )
+        """打开更新日志对话框"""
+        release_notes = self._load_release_notes()
+
+        if not release_notes:
+            # 如果没有本地更新日志，显示提示信息
+            release_notes = {
+                self.tr("No update log"): self.tr(
+                    "No update log found locally.\n\n"
+                    "Please check for updates first, or visit the GitHub releases page."
+                )
+            }
+
+        # 使用 NoticeMessageBox 显示更新日志
+        dialog = NoticeMessageBox(
+            parent=self,
+            title=self.tr("Update Log"),
+            content=release_notes,
+        )
+        # 隐藏"确认且不再显示"按钮，只保留确认按钮
+        dialog.button_yes.hide()
+        dialog.exec()
 
     def _start_detail_progress(self):
         """启动不确定进度条（用于检查更新）"""
@@ -565,14 +584,6 @@ class SettingInterface(QWidget):
             parent=self.updateGroup,
         )
 
-        self.auto_check_update = SwitchSettingCard(
-            FIF.UPDATE,
-            self.tr("Automatically check for updates after startup"),
-            self.tr("Check for available resource updates on every startup"),
-            configItem=cfg.auto_check_updates,
-            parent=self.updateGroup,
-        )
-
         self.auto_update = SwitchSettingCard(
             FIF.UPDATE,
             self.tr("Automatically update after startup"),
@@ -580,8 +591,6 @@ class SettingInterface(QWidget):
             configItem=cfg.auto_update_resource,
             parent=self.updateGroup,
         )
-        self.auto_check_update.checkedChanged.connect(self._on_auto_check_change)
-        self.auto_update.checkedChanged.connect(self._on_auto_update_change)
 
         channel_parent = getattr(self, "personalGroup", None) or self.updateGroup
         self.channel_selector = ComboBoxSettingCard(
@@ -615,7 +624,6 @@ class SettingInterface(QWidget):
         self.MirrorCard.lineEdit.textChanged.connect(self._onMirrorCardChange)
 
         self.updateGroup.addSettingCard(self.MirrorCard)
-        self.updateGroup.addSettingCard(self.auto_check_update)
         self.updateGroup.addSettingCard(self.auto_update)
         self.updateGroup.addSettingCard(self.channel_selector)
         self.updateGroup.addSettingCard(self.force_github)
@@ -692,16 +700,6 @@ class SettingInterface(QWidget):
             logger.error("加密 Mirror CDK 失败: %s", exc)
             return
         cfg.set(cfg.is_change_cdk, True)
-
-    def _on_auto_check_change(self, checked: bool):
-        if not checked and self.auto_update.isChecked():
-            self.auto_update.blockSignals(True)
-            self.auto_update.setChecked(False)
-            self.auto_update.blockSignals(False)
-
-    def _on_auto_update_change(self, checked: bool):
-        if checked and not self.auto_check_update.isChecked():
-            self.auto_check_update.setChecked(True)
 
     def _refresh_update_header(self):
         metadata = self.interface_data or {}
@@ -824,6 +822,81 @@ class SettingInterface(QWidget):
 
         logger.info("更新器初始化完成")
 
+    def _init_update_checker(self):
+        """在后台检查资源更新，并在完成后回传结果"""
+        if not self._service_coordinator:
+            logger.warning("service_coordinator 未初始化，跳过更新检查器")
+            return
+
+        self._update_checker = UpdateCheckTask(
+            service_coordinator=self._service_coordinator
+        )
+        self._update_checker.result_ready.connect(self._on_update_check_result)
+        self._update_checker.start()
+
+    def _on_update_check_result(self, result: dict):
+        """预留的接口，用于接收后台检查结果"""
+        if result.get("enable"):
+            release_note = result.get("release_note", "")
+            latest_version = result.get("latest_update_version", "")
+            if latest_version:
+                # 更新设置页面的最新版本号显示
+                self._set_last_version_label(latest_version)
+                # 发送 InfoBar 通知用户有新版本
+                InfoBar.info(
+                    self.tr("Update Available"),
+                    self.tr("New version available: ") + latest_version,
+                    duration=5000,
+                    parent=self,
+                )
+                logger.info(f"检测到新版本: {latest_version}")
+            if release_note and latest_version:
+                self._save_release_note(latest_version, release_note)
+
+    def _save_release_note(self, version: str, content: str):
+        """保存更新日志到文件"""
+        import os
+
+        release_notes_dir = "debug/release_notes"
+        os.makedirs(release_notes_dir, exist_ok=True)
+
+        # 清理版本号中的非法字符作为文件名
+        safe_version = version.replace("/", "-").replace("\\", "-").replace(":", "-")
+        file_path = os.path.join(release_notes_dir, f"{safe_version}.md")
+
+        try:
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(content)
+            logger.info(f"更新日志已保存到: {file_path}")
+        except Exception as e:
+            logger.error(f"保存更新日志失败: {e}")
+
+    def _load_release_notes(self) -> dict:
+        """加载所有已保存的更新日志"""
+        import os
+
+        release_notes_dir = "debug/release_notes"
+        notes = {}
+
+        if not os.path.exists(release_notes_dir):
+            return notes
+
+        try:
+            for filename in os.listdir(release_notes_dir):
+                if filename.endswith(".md"):
+                    version = filename[:-3]  # 移除 .md 后缀
+                    file_path = os.path.join(release_notes_dir, filename)
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        notes[version] = f.read()
+        except Exception as e:
+            logger.error(f"加载更新日志失败: {e}")
+
+        # 按版本号排序（降序，最新版本在前）
+        sorted_notes = dict(
+            sorted(notes.items(), key=lambda x: x[0], reverse=True)
+        )
+        return sorted_notes
+
     def _on_update_start_clicked(self):
         """点击开始更新"""
         if not self._updater:
@@ -866,7 +939,6 @@ class SettingInterface(QWidget):
         self.progress_bar.setValue(value)
         # 确保进度条可见（取消透明）
         self.progress_bar.setStyleSheet("")
-
 
     def _on_stop_update_requested(self):
         """停止更新"""

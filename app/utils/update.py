@@ -745,6 +745,7 @@ class Update(BaseUpdate):
             cfg.get(cfg.latest_update_version) or self.current_version
         )
         self.download_url = None
+        self.release_note = ""
 
     def _normalize_channel(self, value) -> Config.UpdateChannel:
         """Convert stored channel value into a valid UpdateChannel enum."""
@@ -980,7 +981,7 @@ class Update(BaseUpdate):
         )
 
         mirror_status = mirror_result.get("status")
-        mirror_data = mirror_result.get("data") or {}
+        mirror_data = mirror_result.get("data", {})
         mirror_url = mirror_data.get("url")
         mirror_version = mirror_data.get("version_name")
         logger.debug("  [检查更新] Mirror 返回状态: %s", mirror_status)
@@ -999,6 +1000,7 @@ class Update(BaseUpdate):
                 "  [检查更新] Mirror 下载地址: %s",
                 mirror_url[:80] if mirror_url else "N/A",
             )
+            self.release_note = mirror_data.get("release_note", "")
             self.download_url = mirror_url
             self.latest_update_version = mirror_version or self.current_version
             cfg.set(cfg.latest_update_version, self.latest_update_version)
@@ -1060,6 +1062,7 @@ class Update(BaseUpdate):
             "  [检查更新] GitHub 下载地址: %s",
             download_url[:80] if download_url else "N/A",
         )
+        self.release_note = github_result.get("body", "")
         self.download_url = download_url
         self.latest_update_version = tag_name or self.current_version
         cfg.set(cfg.latest_update_version, self.latest_update_version)
@@ -1126,3 +1129,51 @@ class Update(BaseUpdate):
                 return None
             return_url = f"https://api.github.com/repos/{username}/{repository}/zipball/{version}"
         return return_url
+
+
+class _NullSignal:
+    """Simple fallback signal implementation used by the lightweight checker."""
+
+    def emit(self, *args, **kwargs):
+        return None
+
+
+class UpdateCheckTask(QThread):
+    """
+    在后台检查更新但不触发完整更新流程的线程。
+
+    结果会通过 `result_ready` 以下载地址（str）或 `False` 的形式返回。
+    """
+
+    result_ready = Signal(dict)
+
+    def __init__(
+        self,
+        service_coordinator: ServiceCoordinator,
+        parent=None,
+    ):
+        super().__init__(parent)
+        self._service_coordinator = service_coordinator
+        self._stop_signal: SignalInstance = cast(SignalInstance, _NullSignal())
+        self._progress_signal: SignalInstance = cast(SignalInstance, _NullSignal())
+        self._info_bar_signal: SignalInstance = cast(SignalInstance, _NullSignal())
+        self.finished.connect(self.deleteLater)
+
+    def run(self):
+        if not self._service_coordinator:
+            self.result_ready.emit(False)
+            return
+
+        updater = Update(
+            service_coordinator=self._service_coordinator,
+            stop_signal=self._stop_signal,
+            progress_signal=self._progress_signal,
+            info_bar_signal=self._info_bar_signal,
+        )
+        result = updater.check_update()
+        result_data: dict = {
+            "enable": bool(result),
+            "release_note": updater.release_note or "",
+            "latest_update_version": updater.latest_update_version or "",
+        }
+        self.result_ready.emit(result_data)
