@@ -19,7 +19,7 @@ from .runner.maasink import (
 )
 
 from .runner.task_flow import TaskFlowRunner
-
+from .runner.monitor_task import MonitorTask
 from ..utils.logger import logger
 from ..common.signal_bus import signalBus
 
@@ -49,6 +49,7 @@ class ServiceCoordinator:
             config_service=self.config_service,
             fs_signal_bus=self.fs_signal_bus,
         )
+
         # 连接信号
         self._connect_signals()
 

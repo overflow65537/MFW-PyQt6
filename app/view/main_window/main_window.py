@@ -51,6 +51,7 @@ from qfluentwidgets import FluentIcon as FIF
 
 
 from app.view.fast_start.fast_start_logic import FastStartInterface
+from app.view.monitor_interface import MonitorInterface
 from app.view.setting_interface.setting_interface import SettingInterface
 from app.common.config import cfg
 from app.common.signal_bus import signalBus
@@ -88,6 +89,12 @@ class MainWindow(MSFluentWindow):
         # 创建子界面
         self.FastStartInterface = FastStartInterface(self.service_coordinator)
         self.addSubInterface(self.FastStartInterface, FIF.CHECKBOX, self.tr("Task"))
+        self.MonitorInterface = MonitorInterface(self.service_coordinator)
+        self.addSubInterface(
+            self.MonitorInterface,
+            FIF.PROJECTOR,
+            self.tr("Monitor"),
+        )
         self._insert_announcement_nav_item()
         self.SettingInterface = SettingInterface(self.service_coordinator)
         self.addSubInterface(

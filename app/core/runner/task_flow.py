@@ -23,6 +23,7 @@ from .maasink import (
     MaaResourceEventSink,
     MaaTaskerEventSink,
 )
+from app.core.Item import FromeServiceCoordinator
 
 
 class TaskFlowRunner(QObject):
@@ -32,7 +33,7 @@ class TaskFlowRunner(QObject):
         self,
         task_service: TaskService,
         config_service: ConfigService,
-        fs_signal_bus,
+        fs_signal_bus: FromeServiceCoordinator|None = None,
     ):
         self.task_service = task_service
         self.config_service = config_service
@@ -47,6 +48,7 @@ class TaskFlowRunner(QObject):
         self.process = None
         self.fs_signal_bus = fs_signal_bus
         self.need_stop = False
+        self.monitor_need_stop = False
 
     def _handle_agent_info(self, info: str):
         if "| WARNING |" in info:
@@ -108,13 +110,12 @@ class TaskFlowRunner(QObject):
 
         selected_task_count = sum(1 for task in tasks_to_report if task.is_checked)
         post_task_event_pending = bool(task_status_records)
-        config_label = (
-            self.config_service.current_config_id or self.tr("未知配置")
-        )
+        config_label = self.config_service.current_config_id or self.tr("未知配置")
         try:
-            self.fs_signal_bus.fs_start_button_status.emit(
-                {"text": "STOP", "status": "disabled"}
-            )
+            if self.fs_signal_bus:
+                self.fs_signal_bus.fs_start_button_status.emit(
+                    {"text": "STOP", "status": "disabled"}
+                )
 
             pre_cfg = self.task_service.get_task(PRE_CONFIGURATION)
             if not pre_cfg:
@@ -124,7 +125,8 @@ class TaskFlowRunner(QObject):
                 [
                     task
                     for task in self.task_service.current_tasks
-                    if task.is_checked and task.name not in [PRE_CONFIGURATION, POST_ACTION]
+                    if task.is_checked
+                    and task.name not in [PRE_CONFIGURATION, POST_ACTION]
                 ]
             )
             send_notice(
@@ -142,9 +144,9 @@ class TaskFlowRunner(QObject):
                 send_notice(
                     NoticeTiming.WHEN_CONNECT_FAILED,
                     self.tr("设备连接失败"),
-                    self.tr(
-                        "配置 {config_id} 无法连接设备，请检查控制器配置。"
-                    ).format(config_id=config_label),
+                    self.tr("配置 {config_id} 无法连接设备，请检查控制器配置。").format(
+                        config_id=config_label
+                    ),
                 )
                 return
             logger.info("设备连接成功")
@@ -197,9 +199,7 @@ class TaskFlowRunner(QObject):
                     if task_result is False:
                         if record:
                             record["status"] = self.tr("失败")
-                        logger.error(
-                            f"任务执行失败: {task.name}, 返回 False，终止流程"
-                        )
+                        logger.error(f"任务执行失败: {task.name}, 返回 False，终止流程")
                         send_notice(
                             NoticeTiming.WHEN_TASK_FAILED,
                             self.tr("任务失败"),
@@ -275,7 +275,8 @@ class TaskFlowRunner(QObject):
     async def connect_device(self, controller_raw: Dict[str, Any]):
         """连接 MaaFW 控制器"""
         controller_type = self._get_controller_type(controller_raw)
-        self.fs_signal_bus.fs_start_button_status.emit(
+        if self.fs_signal_bus:
+            self.fs_signal_bus.fs_start_button_status.emit(
             {"text": "STOP", "status": "enabled"}
         )
         if controller_type == "adb":
@@ -349,11 +350,13 @@ class TaskFlowRunner(QObject):
             return
         signalBus.log_output.emit("INFO", self.tr("Stopping task..."))
         self.need_stop = True
-        self.fs_signal_bus.fs_start_button_status.emit(
+        if self.fs_signal_bus:
+            self.fs_signal_bus.fs_start_button_status.emit(
             {"text": "STOP", "status": "disabled"}
         )
         await self.maafw.stop_task()
-        self.fs_signal_bus.fs_start_button_status.emit(
+        if self.fs_signal_bus:
+            self.fs_signal_bus.fs_start_button_status.emit(
             {"text": "START", "status": "enabled"}
         )
 

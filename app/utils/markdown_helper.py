@@ -20,12 +20,8 @@ def _wrap_image(match: re.Match[str]) -> str:
     before_src = match.group(1)
     src = match.group(2)
     after_src = match.group(3)
-    img_tag = (
-        f'<img {before_src}src="{src}"{after_src} style="cursor: pointer;">'
-    )
-    return (
-        f'<a href="image:{src}" style="text-decoration: none;">{img_tag}</a>'
-    )
+    img_tag = f'<img {before_src}src="{src}"{after_src} style="cursor: pointer;">'
+    return f'<a href="image:{src}" style="text-decoration: none;">{img_tag}</a>'
 
 
 def render_markdown(content: str | None) -> str:
@@ -39,15 +35,9 @@ def render_markdown(content: str | None) -> str:
     stripped = processed.strip()
 
     if stripped.startswith("<") and stripped.endswith(">"):
-        html = (
-            processed.replace("\n", "<br>")
-            if "\n" in processed
-            else processed
-        )
+        html = processed.replace("\n", "<br>") if "\n" in processed else processed
     else:
-        html = markdown.markdown(
-            processed, extensions=["extra", "sane_lists"]
-        )
+        html = markdown.markdown(processed, extensions=["extra", "sane_lists"])
 
     return _IMG_PATTERN.sub(_wrap_image, html)
 
@@ -58,4 +48,3 @@ def load_markdown_file(path: Union[str, Path]) -> str:
     """
     file_path = Path(path)
     return file_path.read_text(encoding="utf-8")
-
