@@ -8,11 +8,9 @@ from time import time
 
 from PIL import Image
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtGui import QImage, QIntValidator, QPixmap
 from PySide6.QtWidgets import (
     QHBoxLayout,
-    QLabel,
-    QSpinBox,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -22,6 +20,9 @@ from qfluentwidgets import (
     BodyLabel,
     FluentIcon as FIF,
     IndicatorPosition,
+    IndeterminateProgressBar,
+    LineEdit,
+    PixmapLabel,
     PrimaryPushButton,
     SwitchButton,
 )
@@ -38,8 +39,11 @@ from app.utils.logger import (
 from app.common.signal_bus import signalBus
 
 
-class _ClickablePreviewLabel(QLabel):
+class _ClickablePreviewLabel(PixmapLabel):
     clicked = Signal(int, int)
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -60,9 +64,9 @@ class MonitorInterface(QWidget):
         self._preview_scaled_size: QSize = QSize(0, 0)
         self._locked = True
         self._lock_overlay: Optional[QWidget] = None
+        self._unlock_progress: Optional[IndeterminateProgressBar] = None
         self._setup_ui()
         self._create_lock_overlay()
-        self._load_placeholder_image()
         self.monitor_task = MonitorTask(
             task_service=self.service_coordinator.task_service,
             config_service=self.service_coordinator.config_service,
@@ -121,7 +125,7 @@ class MonitorInterface(QWidget):
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )
 
-        self.refresh_button = PrimaryPushButton(self.tr("刷新截图"), self)
+        self.refresh_button = PrimaryPushButton(self.tr("Refresh"), self)
         self.refresh_button.clicked.connect(self._on_refresh_screenshot)
         self.refresh_button.setToolTip(self.tr("重新抓取当前画面并刷新预览"))
         controls_layout.addWidget(self.refresh_button)
@@ -156,15 +160,15 @@ class MonitorInterface(QWidget):
         fps_layout.setContentsMargins(0, 0, 0, 0)
         fps_layout.setSpacing(6)
         fps_layout.addWidget(BodyLabel(self.tr("Target FPS"), self))
-        self.fps_spinbox = QSpinBox(self)
-        self.fps_spinbox.setRange(1, 240)
-        self.fps_spinbox.setValue(30)
-        self.fps_spinbox.setFixedWidth(96)
-        self.fps_spinbox.setSuffix(f" {self.tr('FPS')}")
-        self.fps_spinbox.setToolTip(self.tr("Set the preferred frame rate for capture"))
-        fps_layout.addWidget(self.fps_spinbox)
+        self.fps_input = LineEdit(self)
+        self.fps_input.setValidator(QIntValidator(1, 240, self))
+        self.fps_input.setFixedWidth(96)
+        self.fps_input.setText("30")
+        self.fps_input.setPlaceholderText(self.tr("FPS"))
+        self.fps_input.setToolTip(self.tr("Set the preferred frame rate for capture"))
+        fps_layout.addWidget(self.fps_input)
         controls_layout.addWidget(fps_widget)
-        self.fps_spinbox.valueChanged.connect(self._on_fps_value_changed)
+        self.fps_input.textChanged.connect(self._on_fps_value_changed)
 
         override_widget = QWidget(self)
         override_layout = QHBoxLayout(override_widget)
@@ -272,8 +276,20 @@ class MonitorInterface(QWidget):
         return Image.fromarray(raw_frame[..., ::-1])
 
     def _get_target_interval(self) -> float:
-        fps = max(1, self.fps_spinbox.value())
+        fps = self._get_fps_value()
         return 1.0 / fps
+
+    def _get_fps_value(self) -> int:
+        if not hasattr(self, "fps_input"):
+            return 30
+        text = self.fps_input.text().strip()
+        if not text:
+            return 1
+        try:
+            value = int(text)
+        except ValueError:
+            return 1
+        return max(1, min(240, value))
 
     def _on_monitor_mode_changed(self, checked: bool) -> None:
         if checked:
@@ -340,6 +356,8 @@ class MonitorInterface(QWidget):
         try:
             self._current_pil_image.save(save_path)
             logger.info("监控子页面：截图已保存至 %s", save_path)
+            message = self.tr("Screenshot saved to {}").format(save_path)
+            signalBus.info_bar_requested.emit("success", message)
         except Exception as exc:
             logger.exception("监控子页面：保存截图失败：%s", exc)
 
@@ -411,6 +429,16 @@ class MonitorInterface(QWidget):
 
         return device_x, device_y
 
+    def _show_unlock_loading(self) -> None:
+        if self._unlock_progress:
+            self._unlock_progress.setVisible(True)
+            self._unlock_progress.start()
+
+    def _hide_unlock_loading(self) -> None:
+        if self._unlock_progress:
+            self._unlock_progress.setVisible(False)
+            self._unlock_progress.stop()
+
     def _create_lock_overlay(self) -> None:
         overlay = QWidget(self)
         overlay.setObjectName("monitorLockOverlay")
@@ -432,7 +460,25 @@ class MonitorInterface(QWidget):
         self._unlock_button = PrimaryPushButton(self.tr("Unlock"), overlay)
         self._unlock_button.setToolTip(self.tr("Unlock this page"))
         self._unlock_button.clicked.connect(self._on_unlock_clicked)
-        layout.addWidget(self._unlock_button)
+        self._unlock_button.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
+        )
+        self._unlock_button.setFixedWidth(160)
+        layout.addWidget(self._unlock_button, alignment=Qt.AlignmentFlag.AlignHCenter)
+        progress = IndeterminateProgressBar(overlay, start=False)
+        progress.setFixedWidth(160)
+        progress.setTextVisible(False)
+        progress.setVisible(False)
+        container = QWidget(overlay)
+        container_layout = QHBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(0)
+        container_layout.addStretch()
+        container_layout.addWidget(progress)
+        container_layout.addStretch()
+        container.setFixedHeight(24)
+        layout.addWidget(container, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self._unlock_progress = progress
         overlay.setGeometry(self.rect())
         overlay.raise_()
         overlay.setVisible(self._locked)
@@ -440,16 +486,27 @@ class MonitorInterface(QWidget):
 
     def _on_unlock_clicked(self) -> None:
         async def _unlock_sequence():
-            await self.service_coordinator.stop_task()
-            connected = await self.monitor_task._connect()
-            if not connected:
-                logger.error("设备连接失败，无法解锁监控页面")
-                signalBus.info_bar_requested.emit(
-                    "error", "设备连接失败，无法解锁监控页面"
-                )
-                return
-            self._set_locked(False)
-            signalBus.info_bar_requested.emit("success", "监控页面解锁成功")
+            try:
+                await self.service_coordinator.stop_task()
+                connected = await self.monitor_task._connect()
+                if not connected:
+                    logger.error("设备连接失败，无法解锁监控页面")
+                    signalBus.info_bar_requested.emit(
+                        "error", "设备连接失败，无法解锁监控页面"
+                    )
+                    return
+                self._set_locked(False)
+                signalBus.info_bar_requested.emit("success", "监控页面解锁成功")
+                try:
+                    pil_image = await asyncio.to_thread(self._capture_frame)
+                except Exception as exc:
+                    logger.exception("监控子页面：解锁后刷新画面失败：%s", exc)
+                else:
+                    self._apply_preview_from_pil(pil_image)
+            finally:
+                self._hide_unlock_loading()
+
+        self._show_unlock_loading()
 
         asyncio.create_task(_unlock_sequence())
 
