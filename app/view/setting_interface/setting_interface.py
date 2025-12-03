@@ -843,7 +843,7 @@ class SettingInterface(QWidget):
         """保存更新日志到文件"""
         import os
 
-        release_notes_dir = "debug/release_notes"
+        release_notes_dir = "./release_notes"
         os.makedirs(release_notes_dir, exist_ok=True)
 
         # 清理版本号中的非法字符作为文件名
