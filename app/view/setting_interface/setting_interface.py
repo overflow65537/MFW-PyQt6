@@ -46,10 +46,7 @@ from app.utils.crypto import crypto_manager
 from app.utils.logger import logger
 from app.utils.update import Update, UpdateCheckTask
 from app.view.setting_interface.widget.ProxySettingCard import ProxySettingCard
-from app.view.setting_interface.widget.LineEditCard import (
-    LineEditCard,
-    MirrorCdkLineEditCard,
-)
+from app.view.setting_interface.widget.LineEditCard import MirrorCdkLineEditCard
 
 
 class SettingInterface(QWidget):
@@ -281,7 +278,19 @@ class SettingInterface(QWidget):
 
         content_label = BodyLabel(self._license_content, dialog)
         content_label.setWordWrap(True)
-        layout.addWidget(content_label)
+        content_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.LinksAccessibleByMouse
+        )
+
+        scroll_area = ScrollArea(dialog)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.enableTransparentBackground()
+        scroll_area.setWidget(content_label)
+        scroll_area.setMinimumHeight(280)
+
+        layout.addWidget(scroll_area)
 
         button_box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Close, parent=dialog
