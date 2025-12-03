@@ -117,6 +117,12 @@ class MainWindow(MSFluentWindow):
         self.set_title()
         self.setMicaEffectEnabled(cfg.get(cfg.micaEnabled))
 
+        # 设置图标
+        icon_path = self.service_coordinator.task.interface.get(
+            "icon", "./app/icons/logo.png"
+        )
+        self.setWindowIcon(QIcon(icon_path))
+
         # 创建启动画面
         self.splashScreen = SplashScreen(self.windowIcon(), self)
         self.splashScreen.setIconSize(QSize(106, 106))
