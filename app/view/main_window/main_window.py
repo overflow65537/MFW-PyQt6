@@ -80,6 +80,7 @@ class MainWindow(MSFluentWindow):
         multi_config_path = Path.cwd() / "config" / "multi_config.json"
         self.service_coordinator = ServiceCoordinator(multi_config_path)
 
+        self._announcement_pending_show = False
         self._init_announcement()
 
         # 初始化窗口
@@ -97,6 +98,7 @@ class MainWindow(MSFluentWindow):
         )
         # 添加导航项
         self.splashScreen.finish()
+        self._maybe_show_pending_announcement()
 
         # 启动主题监听器
         self.themeListener.start()
@@ -141,13 +143,12 @@ class MainWindow(MSFluentWindow):
         )
 
         cfg_announcement = cfg.get(cfg.announcement)
-
         res_announcement = self.service_coordinator.task.interface.get("wellcome", "")
+        self.set_announcement_content(self.tr("Announcement"), res_announcement)
         if cfg_announcement != res_announcement:
-            # 公告内容不一致，更新公告内容
-            self.set_announcement_content(self.tr("Announcement"), res_announcement)
-            # 主动弹出公告对话框
-            self._on_announcement_button_clicked()
+            # 公告内容不一致，更新配置并在界面准备好后弹出对话框
+            self._announcement_pending_show = True
+            cfg.set(cfg.announcement, res_announcement)
 
     def _insert_announcement_nav_item(self):
         """在设置入口上方插入公告按钮，并挂载点击行为。"""
@@ -160,6 +161,12 @@ class MainWindow(MSFluentWindow):
             selectable=False,
             position=NavigationItemPosition.BOTTOM,
         )
+
+    def _maybe_show_pending_announcement(self):
+        """在主界面完成初始化后延迟展示公告对话框。"""
+        if self._announcement_pending_show:
+            self._announcement_pending_show = False
+            QTimer.singleShot(0, self._on_announcement_button_clicked)
 
     def _on_announcement_button_clicked(self):
         """处理公告按钮点击，弹出公告对话框或提示无内容。"""
