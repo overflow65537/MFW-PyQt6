@@ -20,6 +20,9 @@ class InterfaceManager:
     _original_interface: Dict[str, Any] = {}
     _translations: Dict[str, str] = {}
     _current_language: str = "zh_cn"
+    _interface_path: Optional[Path] = None
+    _interface_dir: Path = Path.cwd()
+    _file_text_fields = {"contact", "license", "welcome", "wellcome", "description"}
 
     def __new__(cls):
         if cls._instance is None:
@@ -55,6 +58,11 @@ class InterfaceManager:
                 interface_path_json = Path.cwd() / "interface.json"
                 logger.debug(f"尝试加载: {interface_path_json}")
                 interface_path = interface_path_json
+
+        self._interface_path = interface_path
+        self._interface_dir = (
+            interface_path.parent if interface_path else Path.cwd()
+        )
 
         # 加载原始 interface 配置
         try:
@@ -164,6 +172,9 @@ class InterfaceManager:
         # 翻译顶层字段
         self._translate_dict(self._translated_interface)
 
+        # 尝试将可能指向文本文件的字段展开
+        self._resolve_text_fields_from_files(self._translated_interface)
+
         logger.debug(f"interface 配置翻译完成，当前语言: {self._current_language}")
 
         # 自动补全label字段：如果label不存在或为空，用name填充
@@ -187,6 +198,7 @@ class InterfaceManager:
                     "label",
                     "icon",
                     "description",
+                    "license",
                     "title",
                     "welcome",
                     "contact",
@@ -205,6 +217,45 @@ class InterfaceManager:
             return self._translate_text(data)
 
         return data
+
+    def _resolve_text_fields_from_files(self, data: Any):
+        """
+        递归检查指定字段，如果对应值指向存在的文本文件则读取其内容
+        """
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if key in self._file_text_fields and isinstance(value, str):
+                    data[key] = self._try_load_text_from_path(value)
+                else:
+                    self._resolve_text_fields_from_files(value)
+
+        elif isinstance(data, list):
+            for item in data:
+                self._resolve_text_fields_from_files(item)
+
+    def _try_load_text_from_path(self, value: str) -> str:
+        """
+        尝试将字符串当作文件路径读取文本内容，读取失败则返回原始字符串
+        """
+        if not value:
+            return value
+
+        candidate = value.strip()
+        if not candidate:
+            return value
+
+        target_path = Path(candidate)
+        if not target_path.is_absolute():
+            target_path = self._interface_dir / target_path
+
+        if not target_path.exists() or not target_path.is_file():
+            return value
+
+        try:
+            with open(target_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except (OSError, UnicodeDecodeError):
+            return value
 
     def _auto_fill_label(self, data: Any):
         """
@@ -294,6 +345,8 @@ class InterfaceManager:
         self._original_interface = {}
         self._translated_interface = {}
         self._translations = {}
+        self._interface_path = None
+        self._interface_dir = Path.cwd()
 
         # 重新初始化
         self.initialize()
