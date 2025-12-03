@@ -4,7 +4,7 @@ MFW-ChainFlow Assistant 设置界面
 作者:overflow65537
 """
 
-from typing import Optional
+from typing import Callable, Optional
 
 from PySide6.QtCore import Qt, QSize, QUrl, QTimer
 from PySide6.QtGui import QDesktopServices, QPixmap
@@ -46,7 +46,10 @@ from app.utils.crypto import crypto_manager
 from app.utils.logger import logger
 from app.utils.update import Update, UpdateCheckTask
 from app.view.setting_interface.widget.ProxySettingCard import ProxySettingCard
-from app.view.setting_interface.widget.LineEditCard import LineEditCard
+from app.view.setting_interface.widget.LineEditCard import (
+    LineEditCard,
+    MirrorCdkLineEditCard,
+)
 
 
 class SettingInterface(QWidget):
@@ -87,6 +90,7 @@ class SettingInterface(QWidget):
         self._update_checker: Optional[UpdateCheckTask] = None
         self._latest_update_check_result: str | bool | None = None
         self._updater_started = False
+        self._update_button_handler: Callable | None = None
         self.Setting_scroll_widget = QWidget()
         self.Setting_expand_layout = ExpandLayout(self.Setting_scroll_widget)
         self.scroll_area = ScrollArea(self)
@@ -170,9 +174,7 @@ class SettingInterface(QWidget):
 
         self.resource_name_label = BodyLabel(self.tr("ChainFlow Assistant"), self)
         self.resource_name_label.setStyleSheet("font-size: 24px; font-weight: 600;")
-        default_contact = self.tr(
-            "Contact: support@chainflow.io / Twitter @overflow65537"
-        )
+        default_contact = self.interface_data.get("contact", "")
         self.contact_label = BodyLabel("", self)
         self.contact_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
         self.contact_label.setWordWrap(True)
@@ -183,7 +185,10 @@ class SettingInterface(QWidget):
         top_row.addLayout(info_column)
         header_layout.addLayout(top_row)
 
-        self.version_label = BodyLabel(self.tr("Version:") + " " + __version__, self)
+        self.version_label = BodyLabel(
+            self.tr("Version:") + " " + self.interface_data.get("version", "0.0.1"),
+            self,
+        )
         self.version_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
         self.last_version_label = BodyLabel("", self)
         self.last_version_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
@@ -245,9 +250,10 @@ class SettingInterface(QWidget):
         detail_row.addWidget(self.progress_bar)
         header_layout.addLayout(detail_row)
 
-        default_description = self.tr(
-            "Description: A powerful automation assistant for MaaS tasks with flexible update options."
+        default_description = self.tr("Description: ") + self.interface_data.get(
+            "description", ""
         )
+
         self.description_label = BodyLabel("", self)
         self.description_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
         self.description_label.setWordWrap(True)
@@ -356,28 +362,34 @@ class SettingInterface(QWidget):
         )
 
     def _disconnect_update_button(self) -> None:
-        try:
-            self.update_button.clicked.disconnect()
-        except (TypeError, RuntimeError):
-            pass
+        if handler := self._update_button_handler:
+            try:
+                self.update_button.clicked.disconnect(handler)
+            except (TypeError, RuntimeError):
+                pass
+            finally:
+                self._update_button_handler = None
 
     def _bind_start_button(self, *, enable: bool = True) -> None:
         self._disconnect_update_button()
         self.update_button.clicked.connect(self._on_update_start_clicked)
         self.update_button.setText(self.tr("Update"))
         self.update_button.setEnabled(enable)
+        self._update_button_handler = self._on_update_start_clicked
 
     def _bind_stop_button(self, text: str, *, enable: bool = True) -> None:
         self._disconnect_update_button()
         self.update_button.clicked.connect(self._on_update_stop_clicked)
         self.update_button.setText(text)
         self.update_button.setEnabled(enable)
+        self._update_button_handler = self._on_update_stop_clicked
 
     def _bind_instant_update_button(self, *, enable: bool = True) -> None:
         self._disconnect_update_button()
         self.update_button.clicked.connect(self._on_instant_update_clicked)
         self.update_button.setText(self.tr("Update Now"))
         self.update_button.setEnabled(enable)
+        self._update_button_handler = self._on_instant_update_clicked
 
     def _hide_progress_indicators(self) -> None:
         self.detail_progress.setVisible(False)
@@ -562,15 +574,11 @@ class SettingInterface(QWidget):
             self.tr("Update"), self.Setting_scroll_widget
         )
 
-        self.MirrorCard = LineEditCard(
+        self.MirrorCard = MirrorCdkLineEditCard(
             icon=FIF.APPLICATION,
             title=self.tr("mirrorchyan CDK"),
             content=self.tr("Enter mirrorchyan CDK for stable update path"),
-            is_passwork=True,
-            num_only=False,
             holderText=self._get_mirror_holder_text(),
-            button=True,
-            button_type="primary",
             button_text=self.tr("About Mirror"),
             parent=self.updateGroup,
         )
@@ -579,7 +587,7 @@ class SettingInterface(QWidget):
             FIF.UPDATE,
             self.tr("Automatically update after startup"),
             self.tr("Automatically download and apply updates once available"),
-            configItem=cfg.auto_update_resource,
+            configItem=cfg.auto_update,
             parent=self.updateGroup,
         )
 
@@ -690,7 +698,6 @@ class SettingInterface(QWidget):
         except Exception as exc:
             logger.error("加密 Mirror CDK 失败: %s", exc)
             return
-        cfg.set(cfg.is_change_cdk, True)
 
     def _refresh_update_header(self):
         metadata = self.interface_data or {}
@@ -894,7 +901,7 @@ class SettingInterface(QWidget):
         self._bind_start_button(enable=False)
 
     def _on_instant_update_clicked(self):
-        """立即更新占位处理"""
+        """立即更新"""
         # 如果已经启动过更新程序，忽略重复调用（幂等保护）
         if self._updater_started:
             logger.info("更新程序已启动，忽略重复调用。")

@@ -517,7 +517,7 @@ class BaseUpdate(QThread):
             }
 
         data: dict = mirror_data.get("data", {})
-        cfg.set(cfg.cdk_expired_time, data.get("cdk_expired_time", 0))
+        cfg.set(cfg.cdk_expired_time, data.get("cdk_expired_time", -1))
         if data is not None and data.get("version_name") == version:
             return {"status": "no_need", "msg": self.tr("current version is latest")}
         return mirror_data
@@ -992,6 +992,7 @@ class Update(BaseUpdate):
         if mirror_status == "no_need":
             logger.info("  [检查更新] Mirror: 当前已是最新版本")
             self.latest_update_version = self.current_version
+
             cfg.set(cfg.latest_update_version, self.latest_update_version)
             return False
 
@@ -1014,6 +1015,7 @@ class Update(BaseUpdate):
         # Mirror 失败，记录日志
         if mirror_status == "failed_info":
             logger.info("  [检查更新] Mirror 检查失败: %s", mirror_result.get("msg"))
+            self._emit_info_bar("warning", mirror_result.get("msg"))
         else:
             logger.info("  [检查更新] Mirror 未返回下载地址，可能未配置 CDK")
 

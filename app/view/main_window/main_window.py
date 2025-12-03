@@ -71,14 +71,15 @@ class MainWindow(MSFluentWindow):
 
     def __init__(self):
         super().__init__()
-        self.initWindow()
+
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)
 
         # 初始化配置管理器
         multi_config_path = Path.cwd() / "config" / "multi_config.json"
         self.service_coordinator = ServiceCoordinator(multi_config_path)
-
+        # 初始化窗口
+        self.initWindow()
         # 创建子界面
         self.FastStartInterface = FastStartInterface(self.service_coordinator)
         self.addSubInterface(self.FastStartInterface, FIF.CHECKBOX, self.tr("Task"))
@@ -176,26 +177,18 @@ class MainWindow(MSFluentWindow):
 
     def set_title(self):
         """设置窗口标题"""
-        title = cfg.get(cfg.title)
-        if not title:
-            title = self.tr("ChainFlow Assistant")
-        resource_name = cfg.get(cfg.maa_resource_name)
-        config_name = cfg.get(cfg.maa_config_name)
-        # version = res_cfg.interface_config.get("version", "")
-
-        title += f" {__version__}"
-
-        if resource_name != "":
-            title += f" {resource_name}"
-        """if version != "":
-            title += f" {version}"""
-        if config_name != "":
-            title += f" {config_name}"
+        title = self.service_coordinator.task.interface.get("custom_title", "")
+        if title:
+            self.setWindowTitle(title)
+            return
+        project_name = self.service_coordinator.task.interface.get("name")
+        if project_name:
+            title += f" {project_name}"
+        version = self.service_coordinator.task.interface.get("version")
+        if version:
+            title += f" {version}"
         if self.is_admin():
             title += " " + self.tr("admin")
-        if cfg.get(cfg.save_draw) or cfg.get(cfg.recording):
-            title += " " + self.tr("Debug")
-
         logger.info(f" 设置窗口标题：{title}")
         self.setWindowTitle(title)
 
