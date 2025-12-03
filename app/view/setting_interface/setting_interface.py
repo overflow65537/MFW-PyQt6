@@ -488,11 +488,22 @@ class SettingInterface(QWidget):
             parent=self.personalGroup,
         )
 
+        self.remember_geometry_card = SwitchSettingCard(
+            FIF.PIN,
+            self.tr("Restore window position"),
+            self.tr(
+                "When enabled, the application reopens at the last recorded size and position"
+            ),
+            cfg.remember_window_geometry,
+            self.personalGroup,
+        )
+
         self.personalGroup.addSettingCard(self.micaCard)
         self.personalGroup.addSettingCard(self.themeCard)
         self.personalGroup.addSettingCard(self.themeColorCard)
         self.personalGroup.addSettingCard(self.zoomCard)
         self.personalGroup.addSettingCard(self.languageCard)
+        self.personalGroup.addSettingCard(self.remember_geometry_card)
         self.add_setting_group(self.personalGroup)
 
     def initialize_notice_settings(self):

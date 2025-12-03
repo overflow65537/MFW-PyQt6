@@ -135,12 +135,40 @@ class MainWindow(MSFluentWindow):
         self.splashScreen.setIconSize(QSize(106, 106))
         self.splashScreen.raise_()
 
-        # 设置启动位置
-        desktop = QApplication.screens()[0].availableGeometry()
-        w, h = desktop.width(), desktop.height()
-        self.move(w // 2 - self.width() // 2, h // 2 - self.height() // 2)
+        self._set_initial_geometry()
         self.show()
         QApplication.processEvents()
+
+    def _set_initial_geometry(self):
+        """在首次展示前恢复之前的窗口几何，或居中显示。"""
+        if not self._restore_window_geometry():
+            self._center_window()
+
+    def _restore_window_geometry(self) -> bool:
+        """尝试从配置中恢复上次记录的位置与大小。"""
+        if not cfg.get(cfg.remember_window_geometry):
+            return False
+        geometry_value = cfg.get(cfg.last_window_geometry)
+        if not geometry_value:
+            return False
+        try:
+            x, y, width, height = map(int, geometry_value.split(","))
+        except ValueError:
+            logger.warning("无法解析保存的窗口几何尺寸: %s", geometry_value)
+            return False
+        if width <= 0 or height <= 0:
+            return False
+        self.setGeometry(x, y, width, height)
+        return True
+
+    def _center_window(self):
+        """默认居中显示主窗口。"""
+        screens = QApplication.screens()
+        if not screens:
+            return
+        desktop = screens[0].availableGeometry()
+        w, h = desktop.width(), desktop.height()
+        self.move(w // 2 - self.width() // 2, h // 2 - self.height() // 2)
 
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
@@ -291,8 +319,19 @@ class MainWindow(MSFluentWindow):
         if hasattr(self, "splashScreen"):
             self.splashScreen.resize(self.size())
 
+    def _save_window_geometry_if_needed(self):
+        """在关闭时保存当前窗口的位置与大小，用于下次恢复。"""
+        if not cfg.get(cfg.remember_window_geometry):
+            return
+        geo = self.geometry()
+        cfg.set(
+            cfg.last_window_geometry,
+            f"{geo.x()},{geo.y()},{geo.width()},{geo.height()}",
+        )
+
     def closeEvent(self, e):
         """关闭事件"""
+        self._save_window_geometry_if_needed()
         self.themeListener.terminate()
         self.themeListener.deleteLater()
         e.accept()

@@ -177,6 +177,13 @@ class Config(QConfig):
         "MainWindow", "LanguageAutoDetected", False, BoolValidator()
     )
 
+    remember_window_geometry = ConfigItem(
+        "MainWindow", "remember_window_geometry", False, BoolValidator()
+    )
+    last_window_geometry = ConfigItem(
+        "MainWindow", "LastWindowGeometry", ""
+    )
+
     # ===== 材质 & 通用界面 =====
     blurRadius = RangeConfigItem(
         "Material", "AcrylicBlurRadius", 15, RangeValidator(0, 40)
