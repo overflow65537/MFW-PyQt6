@@ -146,7 +146,7 @@ class MainWindow(MSFluentWindow):
             content=message,
             orient=Qt.Orientation.Horizontal,
             isClosable=True,
-            position=InfoBarPosition.BOTTOM_RIGHT,
+            position=InfoBarPosition.TOP_RIGHT,
             duration=(
                 -1
                 if level_name == "error"
@@ -159,7 +159,7 @@ class MainWindow(MSFluentWindow):
         """根据消息长度计算 InfoBar 显示时长，最少 1.5s。"""
         if not message:
             return 1500
-        duration = len(message) * 80
+        duration = len(message) * 150
         return max(1500, duration)
 
     def is_admin(self):

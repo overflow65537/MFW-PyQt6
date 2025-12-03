@@ -223,8 +223,6 @@ class Config(QConfig):
     cdk_expired_time = ConfigItem("Update", "CdkExpiredTime", 0)
 
 
-REPO_URL = "https://github.com/overflow65537/MFW-PyQt6/"
-
 cfg = Config()
 cfg.themeMode.value = Theme.AUTO
 qconfig.load("config/config.json", cfg)

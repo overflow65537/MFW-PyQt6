@@ -18,7 +18,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QDialog,
     QDialogButtonBox,
-    QGridLayout,
 )
 from qfluentwidgets import (
     BodyLabel,
@@ -26,12 +25,8 @@ from qfluentwidgets import (
     CustomColorSettingCard,
     ExpandLayout,
     FluentIcon as FIF,
-    InfoBar,
-    IndeterminateProgressRing,
     OptionsSettingCard,
-    PrimaryPushButton,
     PrimaryPushSettingCard,
-    ProgressRing,
     ScrollArea,
     SettingCardGroup,
     SwitchSettingCard,
@@ -44,15 +39,12 @@ from app.utils.markdown_helper import render_markdown
 from app.utils.notice_message import NoticeMessageBox
 
 from app.common.__version__ import __version__
-from app.common.config import cfg, REPO_URL, isWin11
+from app.common.config import cfg, isWin11
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
 from app.utils.crypto import crypto_manager
 from app.utils.logger import logger
 from app.utils.update import Update, UpdateCheckTask
-from app.view.setting_interface.widget.DoubleButtonSettingCard import (
-    DoubleButtonSettingCard,
-)
 from app.view.setting_interface.widget.ProxySettingCard import ProxySettingCard
 from app.view.setting_interface.widget.LineEditCard import LineEditCard
 
@@ -78,23 +70,23 @@ class SettingInterface(QWidget):
 
     def __init__(
         self,
-        service_coordinator: Optional[ServiceCoordinator] = None,
+        service_coordinator: ServiceCoordinator,
         parent=None,
     ):
         super().__init__(parent=parent)
         self.setObjectName("settingInterface")
         self._service_coordinator = service_coordinator
-        self.project_name = ""
-        self.project_version = ""
-        self.project_url = ""
-        self.interface_data = {}
+        self.interface_data = self._service_coordinator.task.interface
 
-        self._current_version = __version__
-        self._license_content = ""
-        self._github_url = REPO_URL or "https://github.com/overflow65537/MFW-PyQt6"
+        self._license_content = self.interface_data.get("license", "")
+        self._github_url = self.interface_data.get(
+            "github", self.interface_data.get("url", "")
+        )
+        self.description = self.interface_data.get("description", "")
         self._updater: Optional[Update] = None
         self._update_checker: Optional[UpdateCheckTask] = None
         self._latest_update_check_result: str | bool | None = None
+        self._updater_started = False
         self.Setting_scroll_widget = QWidget()
         self.Setting_expand_layout = ExpandLayout(self.Setting_scroll_widget)
         self.scroll_area = ScrollArea(self)
@@ -114,7 +106,6 @@ class SettingInterface(QWidget):
         self.scroll_area.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
-        self.interface_data = self._get_interface_metadata()
 
         self.Setting_expand_layout.setSpacing(28)
         self.Setting_expand_layout.setContentsMargins(24, 24, 24, 24)
@@ -385,7 +376,7 @@ class SettingInterface(QWidget):
     def _bind_instant_update_button(self, *, enable: bool = True) -> None:
         self._disconnect_update_button()
         self.update_button.clicked.connect(self._on_instant_update_clicked)
-        self.update_button.setText(self.tr("立刻更新"))
+        self.update_button.setText(self.tr("Update Now"))
         self.update_button.setEnabled(enable)
 
     def _hide_progress_indicators(self) -> None:
@@ -703,39 +694,24 @@ class SettingInterface(QWidget):
 
     def _refresh_update_header(self):
         metadata = self.interface_data or {}
-        icon_path = metadata.get("icon")
-        name = metadata.get("name") or self.tr("ChainFlow Assistant")
-        version = metadata.get("version") or __version__
-        self._current_version = version
-        license_value = metadata.get("license")
-        if license_value is None:
-            license_value = self.tr("MIT")
-        else:
-            license_value = str(license_value)
-        github_label = metadata.get("github") or self.tr("GitHub")
-        github_url = metadata.get("github") or self._github_url
-        github_url = (
-            github_url if github_url else "https://github.com/overflow65537/MFW-PyQt6"
-        )
-        custom_badge = metadata.get("badge") or self.tr("Stable Channel")
-        description = metadata.get("description") or self.tr(
-            "Description: A powerful automation assistant for MaaS tasks with flexible update options."
-        )
-        contact = metadata.get("contact") or self.tr(
-            "Contact: support@chainflow.io / Twitter @overflow65537"
-        )
+        icon_path = metadata.get("icon", "")
+        name = metadata.get("name", "")
+        version = metadata.get("version", "0.0.1")
+        last_version = cfg.get(cfg.latest_update_version)
+        license_value = metadata.get("license", "None License")
+        github = metadata.get("github", metadata.get("url", ""))
+        description = metadata.get("description", "")
+        contact = metadata.get("contact", "")
 
         self.resource_name_label.setText(name)
         self.version_label.setText(self.tr("Version:") + " " + version)
-        last_version_text = metadata.get("version") or __version__
-        self._set_last_version_label(last_version_text)
+        self._set_last_version_label(last_version)
         self.license_button.setToolTip(self.tr("License:") + " " + license_value)
-        self.github_button.setToolTip(github_label)
         self.update_button.setToolTip(self.tr("Check for resource updates"))
         self.update_log_button.setToolTip(self.tr("View update log"))
         self._apply_markdown_to_label(self.description_label, description)
         self._apply_markdown_to_label(self.contact_label, contact)
-        self._github_url = github_url
+        self._github_url = github
         self._license_content = license_value
         self.license_button.setText(self.tr("License"))
         self._apply_header_icon(icon_path)
@@ -780,11 +756,8 @@ class SettingInterface(QWidget):
 
     def __showRestartTooltip(self):
         """显示重启提示。"""
-        InfoBar.success(
-            self.tr("Updated successfully"),
-            self.tr("Configuration takes effect after restart"),
-            duration=1500,
-            parent=self,
+        signalBus.info_bar_requested.emit(
+            "info", self.tr("Configuration takes effect after restart")
         )
 
     def __connectSignalToSlot(self):
@@ -843,11 +816,8 @@ class SettingInterface(QWidget):
                 # 更新设置页面的最新版本号显示
                 self._set_last_version_label(latest_version)
                 # 发送 InfoBar 通知用户有新版本
-                InfoBar.info(
-                    self.tr("Update Available"),
-                    self.tr("New version available: ") + latest_version,
-                    duration=5000,
-                    parent=self,
+                signalBus.info_bar_requested.emit(
+                    "info", self.tr("New version available: ") + latest_version
                 )
                 logger.info(f"检测到新版本: {latest_version}")
             if release_note and latest_version:
@@ -892,17 +862,15 @@ class SettingInterface(QWidget):
             logger.error(f"加载更新日志失败: {e}")
 
         # 按版本号排序（降序，最新版本在前）
-        sorted_notes = dict(
-            sorted(notes.items(), key=lambda x: x[0], reverse=True)
-        )
+        sorted_notes = dict(sorted(notes.items(), key=lambda x: x[0], reverse=True))
         return sorted_notes
 
     def _on_update_start_clicked(self):
         """点击开始更新"""
         if not self._updater:
             logger.warning("更新器未初始化")
-            if REPO_URL:
-                QDesktopServices.openUrl(QUrl(REPO_URL))
+            if self._github_url:
+                QDesktopServices.openUrl(QUrl(self._github_url))
             return
 
         self._show_progress_bar()
@@ -927,7 +895,76 @@ class SettingInterface(QWidget):
 
     def _on_instant_update_clicked(self):
         """立即更新占位处理"""
-        pass
+        # 如果已经启动过更新程序，忽略重复调用（幂等保护）
+        if self._updater_started:
+            logger.info("更新程序已启动，忽略重复调用。")
+            return
+
+        # 标记为已启动，防止并发重复调用
+        self._updater_started = True
+
+        # 重命名更新程序防止占用
+        import sys
+
+        try:
+            if sys.platform.startswith("win32"):
+                self._rename_updater("MFWUpdater.exe", "MFWUpdater1.exe")
+            elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
+                self._rename_updater("MFWUpdater", "MFWUpdater1")
+        except Exception as e:
+            # 如果重命名失败，重置启动标志并报告错误
+            self._updater_started = False
+            logger.error(f"重命名更新程序失败: {e}")
+            signalBus.info_bar_requested.emit("error", e)
+            return
+
+        # 启动更新程序（子进程）
+        try:
+            self._start_updater()
+        except Exception as e:
+            # 启动失败则重置标志并报告错误
+            self._updater_started = False
+            logger.error(f"启动更新程序失败: {e}")
+            signalBus.info_bar_requested.emit("error", e)
+            return
+
+        # 启动成功后退出主程序
+        from PySide6.QtWidgets import QApplication
+
+        QApplication.quit()
+
+    def _rename_updater(self, old_name, new_name):
+        """重命名更新程序。"""
+        import os
+
+        if os.path.exists(old_name) and os.path.exists(new_name):
+            os.remove(new_name)
+        if os.path.exists(old_name):
+            os.rename(old_name, new_name)
+
+    def _start_updater(self):
+        """启动更新程序。"""
+        import sys
+        import subprocess
+
+        try:
+            if sys.platform.startswith("win32"):
+                from subprocess import CREATE_NEW_PROCESS_GROUP, DETACHED_PROCESS
+
+                subprocess.Popen(
+                    ["./MFWUpdater1.exe", "-update"],
+                    creationflags=CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS,
+                )
+            elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
+                subprocess.Popen(["./MFWUpdater1", "-update"], start_new_session=True)
+            else:
+                raise NotImplementedError("Unsupported platform")
+        except Exception as e:
+            logger.error(f"启动更新程序失败: {e}")
+            signalBus.info_bar_requested.emit("error", e)
+            return
+
+        logger.info("正在启动更新程序")
 
     def _on_download_progress(self, downloaded: int, total: int):
         """下载进度回调"""
