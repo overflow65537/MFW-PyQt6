@@ -69,7 +69,8 @@ class Config(QConfig):
                     return Language[value]
                 except KeyError:
                     for lang in Language:
-                        if lang.value.name() == value:
+                        # 兼容旧版用 QLocale.name() 保存的值
+                        if lang.value.name() == value or lang.name == value:
                             return lang
             return Language.CHINESE_SIMPLIFIED
 
