@@ -952,6 +952,8 @@ class Update(BaseUpdate):
             logger.info("[步骤4] 热更新成功完成!")
             logger.info("=" * 50)
             self._emit_info_bar("success", self.tr("Update applied successfully"))
+            # 触发服务协调器重新初始化
+            signalBus.fs_reinit_requested.emit()
             self.stop_signal.emit(1)
 
         except Exception as e:

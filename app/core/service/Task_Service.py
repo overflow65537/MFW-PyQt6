@@ -92,6 +92,22 @@ class TaskService:
         self.know_task = []
         self._check_know_task()
 
+    def reload_interface(self):
+        """重新加载 interface 数据，用于热更新后刷新"""
+        logger.info("重新加载 interface 数据...")
+        interface_manager = get_interface_manager()
+        # 强制重新加载
+        interface_manager.reload()
+        self.interface = interface_manager.get_interface()
+
+        # 重新生成默认选项
+        self.default_option = self.gen_default_option()
+
+        # 检查是否有新任务
+        self._check_know_task()
+
+        logger.info("interface 数据重新加载完成")
+
     def add_task(self, task_name: str, is_special: bool = False) -> bool:
         """添加任务
 

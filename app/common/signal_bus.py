@@ -58,5 +58,8 @@ class SignalBus(QObject):
         int
     )  # 更新停止(0:手动停止, 1:热更新完成, 2:更新包下载完成,需要重启安装)
 
+    # 服务协调器重新初始化
+    fs_reinit_requested = Signal()  # 热更新完成后请求服务协调器重新初始化
+
 
 signalBus = SignalBus()

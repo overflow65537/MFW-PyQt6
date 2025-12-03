@@ -283,6 +283,23 @@ class InterfaceManager:
         self._translate_interface()
         logger.info(f"interface 配置翻译已刷新，当前语言: {self._current_language}")
 
+    def reload(self):
+        """重新加载 interface 配置文件（热更新后调用）"""
+        logger.info("重新加载 interface 配置文件...")
+
+        # 重置初始化标志以允许重新加载
+        self._initialized = False
+
+        # 清空现有数据
+        self._original_interface = {}
+        self._translated_interface = {}
+        self._translations = {}
+
+        # 重新初始化
+        self.initialize()
+
+        logger.info("interface 配置文件重新加载完成")
+
 
 # 全局单例实例
 _interface_manager = InterfaceManager()

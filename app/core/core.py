@@ -56,6 +56,8 @@ class ServiceCoordinator:
         """连接所有信号"""
         # UI请求保存配置
         self.signal_bus.need_save.connect(self._on_need_save)
+        # 热更新完成后重新初始化
+        signalBus.fs_reinit_requested.connect(self.reinit)
 
     # region 配置相关方法
     def add_config(self, config_item: ConfigItem) -> str:
@@ -217,6 +219,25 @@ class ServiceCoordinator:
         """当UI请求保存时保存所有配置"""
         self.config_service.save_main_config()
         self.signal_bus.config_saved.emit(True)
+
+    def reinit(self):
+        """重新初始化服务协调器，用于热更新完成后刷新资源"""
+        logger.info("开始重新初始化服务协调器...")
+        try:
+            # 重新加载主配置
+            self.config_repo.load_main_config()
+
+            # 重新初始化任务服务（刷新 interface 数据）
+            self.task_service.reload_interface()
+
+            # 通知 UI 配置已更新
+            current_config_id = self.config_service.current_config_id
+            if current_config_id:
+                self.signal_bus.config_changed.emit(current_config_id)
+
+            logger.info("服务协调器重新初始化完成")
+        except Exception as e:
+            logger.error(f"重新初始化服务协调器失败: {e}")
 
     async def run_tasks_flow(self):
         return await self.task_runner.run_tasks_flow()
