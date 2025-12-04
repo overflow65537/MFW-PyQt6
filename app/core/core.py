@@ -8,6 +8,7 @@ from .Item import (
     TaskItem,
 )
 from .service.Config_Service import ConfigService, JsonConfigRepository
+from .service.Schedule_Service import ScheduleService
 from .service.Task_Service import TaskService
 from .service.Option_Service import OptionService
 from .runner.maafw import MaaFW
@@ -49,6 +50,8 @@ class ServiceCoordinator:
             config_service=self.config_service,
             fs_signal_bus=self.fs_signal_bus,
         )
+        schedule_store = main_config_path.parent / "schedules.json"
+        self.schedule_service = ScheduleService(self, schedule_store)
 
         # 连接信号
         self._connect_signals()

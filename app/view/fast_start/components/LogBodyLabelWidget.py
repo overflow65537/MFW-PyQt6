@@ -1,5 +1,5 @@
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget, QVBoxLayout
+from PySide6.QtCore import QEvent, Qt
+from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout
 from qfluentwidgets import ScrollArea, BodyLabel, ComboBox
 
 from app.common.signal_bus import signalBus
@@ -56,6 +56,7 @@ class LogBodyLabelWidget(QWidget):
         self.content_layout.setContentsMargins(4, 4, 4, 4)
         self.content_layout.setSpacing(2)
         self.scroll_area.setWidget(self.content_widget)
+        self.content_widget.installEventFilter(self)
 
         self.content_layout.addStretch()  # 占位伸展，保持顶对齐
 
@@ -114,6 +115,7 @@ class LogBodyLabelWidget(QWidget):
         )
         label.setTextFormat(Qt.TextFormat.RichText)
         label.setWordWrap(True)
+        label.installEventFilter(self)
         self.content_layout.insertWidget(self.content_layout.count() - 1, label)
 
     def _format_line(
@@ -142,3 +144,12 @@ class LogBodyLabelWidget(QWidget):
         for lvl, txt in self._logs:
             if self._levels.index(lvl) >= threshold:
                 self._add_label_if_visible(lvl, txt)
+
+    def _should_forward_wheel(self, watched):
+        return watched is self.content_widget or isinstance(watched, BodyLabel)
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Type.Wheel and self._should_forward_wheel(watched):
+            QApplication.sendEvent(self.scroll_area.viewport(), event)
+            return True
+        return super().eventFilter(watched, event)

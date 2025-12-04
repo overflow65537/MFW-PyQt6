@@ -52,6 +52,7 @@ from qfluentwidgets import FluentIcon as FIF
 
 from app.view.fast_start.fast_start_logic import FastStartInterface
 from app.view.monitor_interface import MonitorInterface
+from app.view.schedule_interface.schedule_interface import ScheduleInterface
 from app.view.setting_interface.setting_interface import SettingInterface
 from app.common.config import cfg
 from app.common.signal_bus import signalBus
@@ -95,6 +96,12 @@ class MainWindow(MSFluentWindow):
             FIF.PROJECTOR,
             self.tr("Monitor"),
         )
+        self.ScheduleInterface = ScheduleInterface(self.service_coordinator)
+        self.addSubInterface(
+            self.ScheduleInterface,
+            FIF.CALENDAR,
+            self.tr("Schedule"),
+        )
         self._insert_announcement_nav_item()
         self.SettingInterface = SettingInterface(self.service_coordinator)
         self.addSubInterface(
@@ -106,6 +113,7 @@ class MainWindow(MSFluentWindow):
         # 添加导航项
         self.splashScreen.finish()
         self._maybe_show_pending_announcement()
+        QTimer.singleShot(0, self.service_coordinator.schedule_service.start)
 
         # 启动主题监听器
         self.themeListener.start()
