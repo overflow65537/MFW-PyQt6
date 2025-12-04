@@ -34,13 +34,6 @@ from maa.define import (
 from PySide6.QtCore import QObject, Signal
 
 from app.utils.logger import logger
-from app.core.runner.maasink import (
-    MaaContextSink,
-    MaaControllerEventSink,
-    MaaResourceEventSink,
-    MaaTaskerEventSink,
-)
-
 
 # 以下代码引用自 MaaDebugger 项目的 ./src/MaaDebugger/maafw/__init__.py 文件，用于生成maafw实例
 class MaaFWError(Enum):
@@ -52,6 +45,93 @@ class MaaFWError(Enum):
     AGENT_CONFIG_INVALID = 6
     AGENT_CHILD_EXEC_MISSING = 7
     AGENT_START_FAILED = 8
+from maa.controller import ControllerEventSink, Controller, NotificationType
+from maa.resource import ResourceEventSink, Resource
+from maa.tasker import TaskerEventSink, Tasker
+from maa.context import ContextEventSink, Context
+
+from app.common.signal_bus import signalBus
+
+
+class MaaContextSink(ContextEventSink):
+    def on_raw_notification(self, context: Context, msg: str, details: dict):
+        if detial := details.get("focus", {}).get(msg, ""):
+            detial = detial.replace("{name}", details.get("name", ""))
+            detial = detial.replace("{task_id}", str(details.get("task_id", "")))
+            detial = detial.replace("{list}", details.get("list", ""))
+            signalBus.callback.emit({"name": "context", "details": detial})
+
+    def on_node_next_list(
+        self,
+        context: Context,
+        noti_type: NotificationType,
+        detail: ContextEventSink.NodeNextListDetail,
+    ):
+        pass
+
+    def on_node_action(
+        self,
+        context: Context,
+        noti_type: NotificationType,
+        detail: ContextEventSink.NodeActionDetail,
+    ):
+        pass
+
+    def on_node_recognition(
+        self,
+        context: Context,
+        noti_type: NotificationType,
+        detail: ContextEventSink.NodeRecognitionDetail,
+    ):
+        pass
+
+
+class MaaControllerEventSink(ControllerEventSink):
+    def on_raw_notification(self, controller: Controller, msg: str, details: dict):
+        pass
+
+    def on_controller_action(
+        self,
+        controller: Controller,
+        noti_type: NotificationType,
+        detail: ControllerEventSink.ControllerActionDetail,
+    ):
+        signalBus.callback.emit({"name": "controller", "status": noti_type.value})
+
+
+class MaaResourceEventSink(ResourceEventSink):
+    def on_raw_notification(self, resource: Resource, msg: str, details: dict):
+        pass
+
+    def on_resource_loading(
+        self,
+        resource: Resource,
+        noti_type: NotificationType,
+        detail: ResourceEventSink.ResourceLoadingDetail,
+    ):
+        signalBus.callback.emit({"name": "resource", "status": noti_type.value})
+
+
+class MaaTaskerEventSink(TaskerEventSink):
+    def on_raw_notification(self, tasker: Tasker, msg: str, details: dict):
+        pass
+        print(f"任务器原始信息:{msg},详细信息:{details}")
+
+    def on_tasker_task(
+        self,
+        tasker: Tasker,
+        noti_type: NotificationType,
+        detail: TaskerEventSink.TaskerTaskDetail,
+    ):
+        signalBus.callback.emit(
+            {"name": "task", "task": detail.entry, "status": noti_type.value}
+        )
+
+
+maa_context_sink = MaaContextSink()
+maa_controller_sink = MaaControllerEventSink()
+maa_resource_sink = MaaResourceEventSink()
+maa_tasker_sink = MaaTaskerEventSink()
 
 
 class MaaFW(QObject):
@@ -75,7 +155,11 @@ class MaaFW(QObject):
     embedded_agent_mode: bool = False
 
     def __init__(
-        self, maa_controller_sink: MaaControllerEventSink | None = None, maa_context_sink: MaaContextSink | None = None, maa_resource_sink: MaaResourceEventSink | None = None, maa_tasker_sink: MaaTaskerEventSink | None = None
+        self,
+        maa_controller_sink: MaaControllerEventSink | None = None,
+        maa_context_sink: MaaContextSink | None = None,
+        maa_resource_sink: MaaResourceEventSink | None = None,
+        maa_tasker_sink: MaaTaskerEventSink | None = None,
     ):
         # 确保正确初始化 QObject 基类，避免 Qt 运行时错误
         super().__init__()

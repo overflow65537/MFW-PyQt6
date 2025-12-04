@@ -85,7 +85,6 @@ base_command = [
     "--hidden-import=darkdetect",
     "--hidden-import=maa",
     "--hidden-import=MaaAgentBinary",
-    "--hidden-import=app.core.runner.maasink",
 ]
 
 # === 平台特定配置 准备阶段 ===

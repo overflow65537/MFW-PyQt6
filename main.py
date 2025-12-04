@@ -26,18 +26,21 @@ import os
 import sys
 import argparse
 
+from app.utils.logger import logger
+
+if getattr(sys, "frozen", False):
+    os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
+    logger.info(f"打包状态下，MAAFW_BINARY_PATH: {os.environ['MAAFW_BINARY_PATH']}")
+
 import maa
 from maa.context import Context
 from maa.custom_action import CustomAction
 from maa.custom_recognition import CustomRecognition
-
-import atexit
 from qasync import QEventLoop, asyncio
 from qfluentwidgets import ConfigItem, FluentTranslator
 from PySide6.QtCore import Qt, QTranslator
 from PySide6.QtWidgets import QApplication
 
-from app.utils.logger import logger
 from app.common.config import cfg
 from app.view.main_window.main_window import MainWindow
 from app.common.config import Language
@@ -56,10 +59,7 @@ if __name__ == "__main__":
     crash_log = open(log_dir / "crash.log", "a", encoding="utf-8")
     faulthandler.enable(file=crash_log, all_threads=True)
 
-    #如果处于打包状态下
-    if getattr(sys, 'frozen', False):
-        os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
-        logger.info(f"打包状态下，MAAFW_BINARY_PATH: {os.environ['MAAFW_BINARY_PATH']}")
+    # 如果处于打包状态下
 
     # 将当前工作目录设置为程序所在目录 / PyInstaller 临时目录，避免资源路径错误
     try:

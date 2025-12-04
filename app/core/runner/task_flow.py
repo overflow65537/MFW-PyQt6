@@ -18,13 +18,15 @@ from app.utils.notice import NoticeTiming, send_notice
 from app.utils.logger import logger
 from app.core.service.Config_Service import ConfigService
 from app.core.service.Task_Service import TaskService
-from app.core.runner.maafw import MaaFW, MaaFWError
-from app.core.runner.maasink import (
+from app.core.runner.maafw import (
+    MaaFW,
+    MaaFWError,
     maa_context_sink,
     maa_controller_sink,
     maa_resource_sink,
     maa_tasker_sink,
 )
+
 from app.core.Item import FromeServiceCoordinator, TaskItem
 
 
