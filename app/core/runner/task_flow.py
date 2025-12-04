@@ -54,6 +54,7 @@ class TaskFlowRunner(QObject):
         
         self.need_stop = False
         self.monitor_need_stop = False
+        self._is_running = False
 
     def _handle_agent_info(self, info: str):
         if "| WARNING |" in info:
@@ -96,6 +97,10 @@ class TaskFlowRunner(QObject):
 
     async def run_tasks_flow(self):
         """任务完整流程：连接设备、加载资源、批量运行任务"""
+        if self._is_running:
+            logger.warning("任务流已经在运行，忽略新的启动请求")
+            return
+        self._is_running = True
         self.need_stop = False
         tasks_to_report = [
             task
@@ -276,6 +281,11 @@ class TaskFlowRunner(QObject):
                         task_list=task_summary,
                     ),
                 )
+            self._is_running = False
+
+    @property
+    def is_running(self) -> bool:
+        return self._is_running
 
     async def connect_device(self, controller_raw: Dict[str, Any]):
         """连接 MaaFW 控制器"""
