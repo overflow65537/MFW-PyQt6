@@ -93,12 +93,47 @@ class TaskListItem(BaseListItem):
         self.interface = interface or {}
         super().__init__(task, parent)
 
+        self._apply_interface_constraints()
+
         # 基础任务（资源、完成后操作）的复选框始终勾选且禁用
         if self.task.is_base_task():
             self.checkbox.setChecked(True)
             self.checkbox.setDisabled(True)
 
         self.checkbox.stateChanged.connect(self.on_checkbox_changed)
+
+    def _apply_interface_constraints(self):
+        """根据 interface 中的 task 列表决定是否允许此任务勾选/显示为禁用状态。"""
+        interface_task_defs = self.interface.get("task")
+        self._interface_allowed = True
+        if (
+            isinstance(interface_task_defs, list)
+            and not self.task.is_base_task()
+        ):
+            allowed_names = [
+                task_def.get("name")
+                for task_def in interface_task_defs
+                if isinstance(task_def, dict) and task_def.get("name")
+            ]
+            self._interface_allowed = self.task.name in allowed_names
+        if not self._interface_allowed:
+            self.checkbox.setChecked(False)
+            self.checkbox.setDisabled(True)
+            self.name_label.setStyleSheet("color: #d32f2f;")
+        else:
+            # 只有非基础任务才需要解除禁用
+            if not self.task.is_base_task():
+                self.checkbox.setDisabled(False)
+            self.name_label.setStyleSheet("")
+
+    @property
+    def interface_allows(self) -> bool:
+        return self._interface_allowed
+
+    def update_interface(self, interface: dict | None):
+        """在接口数据变更时重新评估任务是否被允许显示。"""
+        self.interface = interface or {}
+        self._apply_interface_constraints()
 
     def _init_ui(self):
         # 创建水平布局

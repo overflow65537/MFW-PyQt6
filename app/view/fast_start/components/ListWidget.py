@@ -251,7 +251,7 @@ class TaskDragListWidget(BaseListWidget):
         existing_widget = self._task_widgets.get(task.item_id)
         if existing_widget:
             existing_widget.task = task
-            existing_widget.interface = interface or {}
+            existing_widget.update_interface(interface)
             existing_widget.name_label.setText(existing_widget._get_display_name())
             existing_widget.checkbox.setChecked(task.is_checked)
             return
