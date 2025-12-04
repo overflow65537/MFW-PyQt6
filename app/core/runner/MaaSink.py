@@ -79,3 +79,9 @@ class MaaTaskerEventSink(TaskerEventSink):
         signalBus.callback.emit(
             {"name": "task", "task": detail.entry, "status": noti_type.value}
         )
+
+
+maa_context_sink = MaaContextSink()
+maa_controller_sink = MaaControllerEventSink()
+maa_resource_sink = MaaResourceEventSink()
+maa_tasker_sink = MaaTaskerEventSink()

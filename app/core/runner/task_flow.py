@@ -20,10 +20,10 @@ from app.core.service.Config_Service import ConfigService
 from app.core.service.Task_Service import TaskService
 from app.core.runner.maafw import MaaFW, MaaFWError
 from app.core.runner.maasink import (
-    MaaContextSink,
-    MaaControllerEventSink,
-    MaaResourceEventSink,
-    MaaTaskerEventSink,
+    maa_context_sink,
+    maa_controller_sink,
+    maa_resource_sink,
+    maa_tasker_sink,
 )
 from app.core.Item import FromeServiceCoordinator, TaskItem
 
@@ -41,10 +41,10 @@ class TaskFlowRunner(QObject):
         self.config_service = config_service
         if fs_signal_bus:
             self.maafw = MaaFW(
-                maa_context_sink=MaaContextSink(),
-                maa_controller_sink=MaaControllerEventSink(),
-                maa_resource_sink=MaaResourceEventSink(),
-                maa_tasker_sink=MaaTaskerEventSink(),
+                maa_context_sink=maa_context_sink,
+                maa_controller_sink=maa_controller_sink,
+                maa_resource_sink=maa_resource_sink,
+                maa_tasker_sink=maa_tasker_sink,
             )
             self.fs_signal_bus = fs_signal_bus
         else:
