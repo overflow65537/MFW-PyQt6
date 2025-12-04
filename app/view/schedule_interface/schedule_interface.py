@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-from copy import deepcopy
 from datetime import datetime
 from functools import partial
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
-
-import jsonc
 
 from PySide6.QtCore import QDate, QDateTime, QTime, Qt
 from PySide6.QtWidgets import (
@@ -49,78 +45,6 @@ from app.core.service.Schedule_Service import (
     SCHEDULE_WEEKLY,
     ScheduleEntry,
 )
-
-
-class ScheduleInterfaceConfigStore:
-    STORAGE_FILENAME = "schedule_interface.json"
-    DEFAULT_STATE = {
-        "last_config_id": "",
-        "last_trigger_type": SCHEDULE_SINGLE,
-        "last_force_start": False,
-        "last_enabled": True,
-        "single": {"datetime": None},
-        "daily": {"datetime": None, "interval_days": 1},
-        "weekly": {"datetime": None, "interval_weeks": 0, "weekdays": [0]},
-        "monthly": {
-            "datetime": None,
-            "month": 0,
-            "month_day": 1,
-            "use_ordinal": False,
-            "ordinal": 0,
-            "weekday": 0,
-        },
-    }
-
-    def __init__(self):
-        self._path = self._determine_path()
-        self._state: dict[str, Any] = deepcopy(self.DEFAULT_STATE)
-        self._ensure_storage()
-        self._load_state()
-
-    def _determine_path(self) -> Path:
-        base_dir = Path(__file__).resolve().parents[3]
-        return base_dir / "config" / self.STORAGE_FILENAME
-
-    def _ensure_storage(self) -> None:
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        if not self._path.exists():
-            self._persist()
-
-    def _load_state(self) -> None:
-        try:
-            with open(self._path, "r", encoding="utf-8") as handle:
-                raw = jsonc.load(handle)
-        except Exception:
-            raw = {}
-        self._state = deepcopy(self.DEFAULT_STATE)
-        if isinstance(raw, dict):
-            self._merge_state(raw)
-        self._persist()
-
-    def _merge_state(self, source: dict[str, Any]) -> None:
-        for key, value in source.items():
-            if isinstance(value, dict) and isinstance(self._state.get(key), dict):
-                self._state[key].update(value)
-            else:
-                self._state[key] = value
-
-    def get_state(self) -> dict[str, Any]:
-        return deepcopy(self._state)
-
-    def update_state(self, changes: dict[str, Any]) -> None:
-        if not changes:
-            return
-        self._merge_state(changes)
-        self._persist()
-
-    def _persist(self) -> None:
-        try:
-            with open(self._path, "w", encoding="utf-8") as handle:
-                jsonc.dump(self._state, handle, indent=4, ensure_ascii=False)
-        except Exception:
-            pass
-
-
 class ZhDateTimeInput(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -165,11 +89,9 @@ class ScheduleInterface(QWidget):
         self.schedule_service = service_coordinator.schedule_service
         self._config_map: dict[str, str] = {}
         self._schedule_entries: list[ScheduleEntry] = []
-        self._config_store = ScheduleInterfaceConfigStore()
         self._setup_ui()
         self._connect_signals()
         self._refresh_config_selector()
-        self._apply_saved_state()
         self._refresh_schedule_table(self.schedule_service.get_schedules())
 
     def _setup_ui(self) -> None:
@@ -203,9 +125,6 @@ class ScheduleInterface(QWidget):
             lambda _: self._refresh_config_selector()
         )
         self.trigger_group.buttonClicked.connect(self._on_trigger_button_clicked)
-        self.config_selector.currentIndexChanged.connect(lambda _: self._persist_ui_state())
-        self.force_checkbox.stateChanged.connect(lambda _: self._persist_ui_state())
-        self.enabled_checkbox.stateChanged.connect(lambda _: self._persist_ui_state())
         self.add_button.clicked.connect(self._on_add_schedule)
 
     def _create_schedule_form_card(self) -> SimpleCardWidget:
@@ -306,7 +225,7 @@ class ScheduleInterface(QWidget):
         return datetime_input
 
     def _default_qdatetime(self) -> QDateTime:
-        return QDateTime.currentDateTime().addSecs(3600)
+        return QDateTime.currentDateTime().addSecs(60)
 
     def _build_date_time_row(self, datetime_input: ZhDateTimeInput) -> QWidget:
         container = QWidget()
@@ -492,6 +411,9 @@ class ScheduleInterface(QWidget):
         self._switch_schedule_detail()
         self._persist_ui_state()
 
+    def _persist_ui_state(self) -> None:
+        return
+
     def _create_schedule_list_card(self) -> SimpleCardWidget:
         card = SimpleCardWidget()
         layout = QVBoxLayout(card)
@@ -551,11 +473,6 @@ class ScheduleInterface(QWidget):
             config_id = str(raw_id)
             self.config_selector.addItem(name, userData=config_id)
             self._config_map[config_id] = name
-        saved_id = self._config_store.get_state().get("last_config_id", "")
-        if saved_id:
-            idx = self.config_selector.findData(saved_id)
-            if idx >= 0:
-                self.config_selector.setCurrentIndex(idx)
         self.config_selector.blockSignals(False)
 
     def _refresh_schedule_table(self, entries: list[ScheduleEntry]) -> None:
@@ -566,135 +483,6 @@ class ScheduleInterface(QWidget):
         has_entries = bool(entries)
         self.schedule_table.setVisible(has_entries)
         self.empty_label.setVisible(not has_entries)
-
-    def _apply_saved_state(self) -> None:
-        state = self._config_store.get_state()
-        saved_config = state.get("last_config_id", "")
-        if saved_config:
-            idx = self.config_selector.findData(saved_config)
-            if idx >= 0:
-                self.config_selector.blockSignals(True)
-                self.config_selector.setCurrentIndex(idx)
-                self.config_selector.blockSignals(False)
-        trigger_type = state.get("last_trigger_type", SCHEDULE_SINGLE)
-        for idx, (_, type_id) in enumerate(self._trigger_types):
-            if type_id == trigger_type:
-                button = self.trigger_group.button(idx)
-                if button:
-                    button.setChecked(True)
-                break
-        self.force_checkbox.setChecked(bool(state.get("last_force_start", False)))
-        self.enabled_checkbox.setChecked(bool(state.get("last_enabled", True)))
-        self._apply_datetime_input(
-            self.single_datetime, state.get("single", {}).get("datetime")
-        )
-        daily_state = state.get("daily", {})
-        self._apply_datetime_input(
-            self.daily_datetime, daily_state.get("datetime")
-        )
-        interval_days = daily_state.get("interval_days")
-        if isinstance(interval_days, int) and interval_days >= 1:
-            self.daily_interval_spin.setValue(interval_days)
-        weekly_state = state.get("weekly", {})
-        self._apply_datetime_input(
-            self.weekly_datetime, weekly_state.get("datetime")
-        )
-        interval_weeks = weekly_state.get("interval_weeks")
-        if isinstance(interval_weeks, int) and interval_weeks >= 0:
-            self.weekly_interval_spin.setValue(interval_weeks)
-        weekdays = weekly_state.get("weekdays")
-        if not isinstance(weekdays, list) or not weekdays:
-            weekdays = [0]
-        for idx, checkbox in enumerate(self.weekday_checkboxes):
-            checkbox.setChecked(idx in weekdays)
-        monthly_state = state.get("monthly", {})
-        self._apply_datetime_input(
-            self.monthly_datetime, monthly_state.get("datetime")
-        )
-        month_value = monthly_state.get("month")
-        if isinstance(month_value, int):
-            month_idx = self.monthly_month_combo.findData(month_value)
-            if month_idx >= 0:
-                self.monthly_month_combo.setCurrentIndex(month_idx)
-        day_value = monthly_state.get("month_day")
-        if isinstance(day_value, int):
-            day_idx = self.monthly_day_combo.findData(day_value)
-            if day_idx >= 0:
-                self.monthly_day_combo.setCurrentIndex(day_idx)
-        use_ordinal = bool(monthly_state.get("use_ordinal"))
-        ordinal_value = monthly_state.get("ordinal")
-        weekday_value = monthly_state.get("weekday")
-        self.monthly_use_ordinal_checkbox.setChecked(use_ordinal)
-        if isinstance(ordinal_value, int):
-            ordinal_idx = self.monthly_ordinal_combo.findData(ordinal_value)
-            if ordinal_idx >= 0:
-                self.monthly_ordinal_combo.setCurrentIndex(ordinal_idx)
-        if isinstance(weekday_value, int):
-            weekday_idx = self.monthly_weekday_combo.findData(weekday_value)
-            if weekday_idx >= 0:
-                self.monthly_weekday_combo.setCurrentIndex(weekday_idx)
-        self._on_monthly_ordinal_toggled(
-            Qt.CheckState.Checked if use_ordinal else Qt.CheckState.Unchecked
-        )
-        self._switch_schedule_detail()
-
-    def _apply_datetime_input(
-        self, target: ZhDateTimeInput, iso_value: Any | None
-    ) -> None:
-        if not isinstance(iso_value, str):
-            return
-        try:
-            parsed = datetime.fromisoformat(iso_value)
-        except ValueError:
-            return
-        qdate = QDate(parsed.year, parsed.month, parsed.day)
-        qtime = QTime(parsed.hour, parsed.minute, parsed.second)
-        target.setDateTime(QDateTime(qdate, qtime))
-
-    def _persist_ui_state(self) -> None:
-        self._config_store.update_state(self._collect_state())
-
-    def _collect_state(self) -> dict[str, Any]:
-        config_id = ""
-        current_index = self.config_selector.currentIndex()
-        if current_index >= 0:
-            config_id = str(self.config_selector.itemData(current_index) or "")
-        trigger_type = SCHEDULE_SINGLE
-        checked_id = self.trigger_group.checkedId()
-        if 0 <= checked_id < len(self._trigger_types):
-            trigger_type = self._trigger_types[checked_id][1]
-        weekdays = [
-            idx for idx, checkbox in enumerate(self.weekday_checkboxes) if checkbox.isChecked()
-        ]
-        if not weekdays:
-            weekdays = [0]
-        return {
-            "last_config_id": config_id,
-            "last_trigger_type": trigger_type,
-            "last_force_start": self.force_checkbox.isChecked(),
-            "last_enabled": self.enabled_checkbox.isChecked(),
-            "single": {"datetime": self._serialize_datetime(self.single_datetime)},
-            "daily": {
-                "datetime": self._serialize_datetime(self.daily_datetime),
-                "interval_days": self.daily_interval_spin.value(),
-            },
-            "weekly": {
-                "datetime": self._serialize_datetime(self.weekly_datetime),
-                "interval_weeks": self.weekly_interval_spin.value(),
-                "weekdays": weekdays,
-            },
-            "monthly": {
-                "datetime": self._serialize_datetime(self.monthly_datetime),
-                "month": int(self.monthly_month_combo.currentData() or 0),
-                "month_day": int(self.monthly_day_combo.currentData() or 1),
-                "use_ordinal": self.monthly_use_ordinal_checkbox.isChecked(),
-                "ordinal": int(self.monthly_ordinal_combo.currentData() or 0),
-                "weekday": int(self.monthly_weekday_combo.currentData() or 0),
-            },
-        }
-
-    def _serialize_datetime(self, datetime_input: ZhDateTimeInput) -> str:
-        return datetime_input.dateTime().isoformat()
 
     def _write_schedule_row(self, row: int, entry: ScheduleEntry) -> None:
         item = QTableWidgetItem(entry.name or self.tr("Unknown"))
