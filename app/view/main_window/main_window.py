@@ -54,6 +54,7 @@ from app.view.fast_start.fast_start_logic import FastStartInterface
 from app.view.monitor_interface import MonitorInterface
 from app.view.schedule_interface.schedule_interface import ScheduleInterface
 from app.view.setting_interface.setting_interface import SettingInterface
+from app.view.test_interface.test_interface import TestInterface
 from app.common.config import cfg
 from app.common.signal_bus import signalBus
 from app.utils.logger import logger
@@ -68,6 +69,9 @@ class CustomSystemThemeListener(SystemThemeListener):
             super().run()
         except NotImplementedError:
             logger.error("当前环境不支持主题监听，已忽略")
+
+
+ENABLE_TEST_INTERFACE_PAGE = cfg.get(cfg.enable_test_interface_page)
 
 
 class MainWindow(MSFluentWindow):
@@ -102,6 +106,13 @@ class MainWindow(MSFluentWindow):
             FIF.CALENDAR,
             self.tr("Schedule"),
         )
+        if ENABLE_TEST_INTERFACE_PAGE:
+            self.TestInterface = TestInterface(self.service_coordinator)
+            self.addSubInterface(
+                self.TestInterface,
+                FIF.MEGAPHONE,
+                self.tr("test_interface"),
+            )
         self._insert_announcement_nav_item()
         self.SettingInterface = SettingInterface(self.service_coordinator)
         self.addSubInterface(

@@ -503,6 +503,10 @@ class ScheduleService(QObject):
                 await self._try_start_next()
                 return
             signalBus.config_changed.emit(entry.config_id)
+            logger.info(
+                "计划任务：配置切换完成，当前配置 %s",
+                self.service_coordinator.config.current_config_id,
+            )
         try:
             await self.service_coordinator.run_tasks_flow()
         except Exception as exc:
@@ -511,6 +515,10 @@ class ScheduleService(QObject):
         finally:
             if switched and entry.config_id != original_config:
                 self.service_coordinator.select_config(original_config)
+                logger.info(
+                    "计划任务：已经恢复原始配置 %s",
+                    self.service_coordinator.config.current_config_id,
+                )
             self._current_task = None
             await self._try_start_next()
 

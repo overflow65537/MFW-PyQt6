@@ -180,9 +180,7 @@ class Config(QConfig):
     remember_window_geometry = ConfigItem(
         "MainWindow", "remember_window_geometry", False, BoolValidator()
     )
-    last_window_geometry = ConfigItem(
-        "MainWindow", "LastWindowGeometry", ""
-    )
+    last_window_geometry = ConfigItem("MainWindow", "LastWindowGeometry", "")
 
     # ===== 材质 & 通用界面 =====
     blurRadius = RangeConfigItem(
@@ -192,6 +190,11 @@ class Config(QConfig):
     # ===== 软件更新 =====
     latest_update_version = ConfigItem("Update", "LatestUpdateVersion", "")
     cdk_expired_time = ConfigItem("Update", "CdkExpiredTime", -1)
+
+    # dev
+    enable_test_interface_page = ConfigItem(
+        "Dev", "enable_test_interface_page", False, BoolValidator()
+    )
 
 
 cfg = Config()
