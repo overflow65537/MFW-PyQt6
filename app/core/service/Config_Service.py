@@ -220,13 +220,15 @@ class ConfigService:
 
         # If no tasks provided, add base tasks only.
         # Task generation from interface should be handled by TaskService
+        init_controller = self.repo.interface["controller"][0]["name"]
+        init_resource = self.repo.interface["resource"][0]["name"]
         if not config.tasks:
             default_tasks = [
                 TaskItem(
                     name="Pre-Configuration",
                     item_id=PRE_CONFIGURATION,
                     is_checked=True,
-                    task_option={},
+                    task_option={"controller_type": init_controller, "resource": init_resource},
                     is_special=False,  # 基础任务，不是特殊任务
                 ),
                 TaskItem(

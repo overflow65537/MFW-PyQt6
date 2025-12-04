@@ -66,11 +66,13 @@ class AddConfigDialog(BaseAddDialog):
         self,
         resource_bundles: list | None = None,
         default_resource: str | None = None,
+        interface: dict | None = None,
         parent=None,
     ):
         # 调用基类构造函数，设置标题
         super().__init__(self.tr("Add New Config"), parent)
 
+        self.interface = interface or {}
         # 配置名输入框
         self.name_layout = QVBoxLayout()
         self.name_label = BodyLabel(self.tr("Config Name:"), self)
@@ -141,14 +143,18 @@ class AddConfigDialog(BaseAddDialog):
         if not bundle_path:
             self.show_error(self.tr("Resource bundle not found"))
             return
-
+        init_controller = self.interface["controller"][0]["name"]
+        init_resource = self.interface["resource"][0]["name"]
         # 仅为配置创建所需的基础任务:资源 与 完成后操作
         default_tasks = [
             TaskItem(
                 name="Pre-Configuration",
                 item_id=PRE_CONFIGURATION,
                 is_checked=True,
-                task_option={},
+                task_option={
+                    "controller_type": init_controller,
+                    "resource": init_resource,
+                },
                 is_special=False,  # 基础任务，不是特殊任务
             ),
             TaskItem(
