@@ -108,7 +108,7 @@ if sys.platform == "darwin":
 
 elif sys.platform == "win32":
     base_command += [
-        "--icon=./app/icons/logo.ico",
+        "--icon=./app/assets/icons/logo.ico",
         "--distpath",
         os.path.join("dist"),
     ]
@@ -144,41 +144,44 @@ PyInstaller.__main__.run(base_command)
 
 # === 构建后处理 ===
 # 复制TEM_files的内容到 dist/MFW 目录
-shutil.copytree(
-    os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"),
-    os.path.join(os.getcwd(), "dist", "MFW"),
-    dirs_exist_ok=True,
-)
-# 删除临时目录
-shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"))
+dist_dir = os.path.join(os.getcwd(), "dist", "MFW")
+internal_dir = os.path.join(dist_dir, "_internal")
+temp_files_dir = os.path.join(internal_dir, "TEM_files")
+if os.path.isdir(temp_files_dir):
+    shutil.copytree(temp_files_dir, dist_dir, dirs_exist_ok=True)
+    shutil.rmtree(temp_files_dir)
+else:
+    print(f"[WARN] Temporary files directory not found: {temp_files_dir}")
 
 
 for i in bin_files:
-    # 复制二进制文件到 dist/MFW 目录
-    shutil.copy(
-        os.path.join(os.getcwd(), "dist", "MFW", "_internal", i),
-        os.path.join(os.getcwd(), "dist", "MFW"),
-    )
-    # 删除临时文件
-    os.remove(os.path.join(os.getcwd(), "dist", "MFW", "_internal", i))
+    src_binary = os.path.join(dist_dir, "_internal", i)
+    dst_binary = os.path.join(dist_dir, i)
+    if os.path.exists(src_binary):
+        shutil.copy(src_binary, dst_binary)
+        os.remove(src_binary)
+    else:
+        print(f"[WARN] Expected binary missing: {src_binary}")
 
-shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin"))
+maa_bin_internal = os.path.join(internal_dir, "maa", "bin")
+if os.path.isdir(maa_bin_internal):
+    shutil.rmtree(maa_bin_internal)
 
 # 复制README和许可证
 shutil.copy(
     os.path.join(os.getcwd(), "README.md"),
-    os.path.join(os.getcwd(), "dist", "MFW", "README.md"),
+    os.path.join(os.getcwd(), "dist", "MFW", "MFW_README.md"),
 )
 shutil.copy(
     os.path.join(os.getcwd(), "README-en.md"),
-    os.path.join(os.getcwd(), "dist", "MFW", "README-en.md"),
+    os.path.join(os.getcwd(), "dist", "MFW", "MFW_README-en.md"),
 )
 shutil.copy(
     os.path.join(os.getcwd(), "LICENSE"),
-    os.path.join(os.getcwd(), "dist", "MFW", "LICENSE"),
+    os.path.join(os.getcwd(), "dist", "MFW", "MFW_LICENSE"),
 )
 
-os.mkdir(os.path.join(os.getcwd(), "dist", "MFW", "app", "i18n"))
+os.makedirs(os.path.join(os.getcwd(), "dist", "MFW", "app", "i18n"), exist_ok=True)
 # 复制i18n文件
 for qm_file in ["i18n.zh_CN.qm", "i18n.zh_HK.qm"]:
     shutil.copy(
