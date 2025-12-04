@@ -1,32 +1,21 @@
 from re import S
-from PySide6.QtCore import Qt, QSize, QMetaObject, QCoreApplication
+from PySide6.QtCore import QMetaObject, QCoreApplication
 
 from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QWidget,
-    QGridLayout,
-    QSizePolicy,
 )
 
-from qfluentwidgets import (
-    BodyLabel,
-    ComboBox,
-    ListWidget,
-    ToolButton,
-    TextEdit,
-    FluentIcon as FIF,
-    SimpleCardWidget,
-    TransparentPushButton,
-    ToolTipFilter,
-    ToolTipPosition,
+
+from app.core.core import ServiceCoordinator
+from app.view.fast_start.components.LogoutputWidget import LogoutputWidget
+from app.view.fast_start.components.ListToolBarWidget import (
+    TaskListToolBarWidget,
+    ConfigListToolBarWidget,
 )
-from ...core.core import ServiceCoordinator
-from ...widget.DashboardCard import DashboardCard
-from .components.LogoutputWidget import LogoutputWidget
-from .components.ListToolBarWidget import TaskListToolBarWidget, ConfigListToolBarWidget
-from .components.OptionWidget import OptionWidget
-from .components.StartBarWidget import StartBarWidget
+from app.view.fast_start.components.OptionWidget import OptionWidget
+from app.view.fast_start.components.StartBarWidget import StartBarWidget
 
 
 class UI_FastStartInterface(object):

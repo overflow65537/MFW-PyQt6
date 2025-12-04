@@ -80,7 +80,7 @@ import traceback
 import os
 from typing import Union, Dict, List
 
-from ..common.signal_bus import signalBus
+from app.common.signal_bus import signalBus
 from app.utils.logger import logger
 from ..utils.tool import (
     Read_Config,

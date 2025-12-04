@@ -1,8 +1,8 @@
 from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
-from ...utils.logger import logger
-from .Config_Service import ConfigService
+from app.utils.logger import logger
+from app.core.service.Config_Service import ConfigService
 from app.core.Item import TaskItem, CoreSignalBus
 
 
@@ -437,7 +437,7 @@ class TaskService:
             logger.warning(f"任务 '{task.name}' 在 interface 中未找到 entry")
             return None
 
-        from ..utils.pipeline_helper import get_pipeline_override_from_task_option
+        from app.core.utils.pipeline_helper import get_pipeline_override_from_task_option
 
         option_pipeline_override = get_pipeline_override_from_task_option(
             self.interface, task.task_option

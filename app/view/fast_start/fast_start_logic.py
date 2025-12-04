@@ -18,7 +18,7 @@ from qfluentwidgets import (
 )
 
 
-from .fast_start_ui import UI_FastStartInterface
+from app.view.fast_start.fast_start_ui import UI_FastStartInterface
 from app.common.signal_bus import signalBus
 
 

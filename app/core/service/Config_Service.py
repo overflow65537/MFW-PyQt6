@@ -3,8 +3,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
-from ...utils.logger import logger
-from ...common.constants import PRE_CONFIGURATION, POST_ACTION
+from app.utils.logger import logger
+from app.common.constants import PRE_CONFIGURATION, POST_ACTION
 from app.core.Item import ConfigItem, TaskItem, CoreSignalBus
 
 

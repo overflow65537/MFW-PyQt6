@@ -1,29 +1,20 @@
 from pathlib import Path
 from typing import List, Dict, Any
 
-from .Item import (
+from app.core.Item import (
     CoreSignalBus,
     FromeServiceCoordinator,
     ConfigItem,
     TaskItem,
 )
-from .service.Config_Service import ConfigService, JsonConfigRepository
-from .service.Schedule_Service import ScheduleService
-from .service.Task_Service import TaskService
-from .service.Option_Service import OptionService
-from .service.interface_manager import get_interface_manager, InterfaceManager
-from .runner.maafw import MaaFW
-from .runner.maasink import (
-    MaaContextSink,
-    MaaControllerEventSink,
-    MaaResourceEventSink,
-    MaaTaskerEventSink,
-)
-
-from .runner.task_flow import TaskFlowRunner
-from .runner.monitor_task import MonitorTask
-from ..utils.logger import logger
-from ..common.signal_bus import signalBus
+from app.core.service.Config_Service import ConfigService, JsonConfigRepository
+from app.core.service.Schedule_Service import ScheduleService
+from app.core.service.Task_Service import TaskService
+from app.core.service.Option_Service import OptionService
+from app.core.service.interface_manager import get_interface_manager, InterfaceManager
+from app.core.runner.task_flow import TaskFlowRunner
+from app.utils.logger import logger
+from app.common.signal_bus import signalBus
 
 
 class ServiceCoordinator:

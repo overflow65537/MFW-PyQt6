@@ -2,11 +2,10 @@
 选项表单组件
 从 form_structure 生成选项表单，包含多个选项项组件
 """
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from PySide6.QtWidgets import QWidget, QVBoxLayout
-from PySide6.QtCore import Qt
 from app.utils.logger import logger
-from .OptionItemWidget import OptionItemWidget
+from app.view.fast_start.components.Option_Framework.OptionItemWidget import OptionItemWidget
 
 
 class OptionFormWidget(QWidget):

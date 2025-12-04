@@ -7,8 +7,6 @@ MFW-ChainFlow Assistant MaaFW核心
 """
 
 import re
-import os
-import importlib.util
 from enum import Enum
 from typing import List, Dict
 import subprocess
@@ -35,8 +33,8 @@ from maa.define import (
 )
 from PySide6.QtCore import QObject, Signal
 
-from ...utils.logger import logger
-from .maasink import (
+from app.utils.logger import logger
+from app.core.runner.maasink import (
     MaaContextSink,
     MaaControllerEventSink,
     MaaResourceEventSink,

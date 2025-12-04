@@ -1,6 +1,3 @@
-from PySide6.QtCore import QObject
-
-
 from app.core.runner.task_flow import TaskFlowRunner
 from app.core.service.Task_Service import TaskService
 from app.core.service.Config_Service import ConfigService

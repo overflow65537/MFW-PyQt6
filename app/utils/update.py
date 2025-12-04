@@ -56,11 +56,11 @@ class UpdateState(Enum):
     FAILED = "failed"  # 更新失败
 
 
-from ..utils.logger import logger
-from ..common.config import cfg, Config
-from ..utils.crypto import crypto_manager
-from ..common.__version__ import __version__
-from ..common.signal_bus import signalBus
+from app.utils.logger import logger
+from app.common.config import cfg, Config
+from app.utils.crypto import crypto_manager
+from app.common.__version__ import __version__
+from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
 
 

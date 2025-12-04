@@ -3,14 +3,14 @@
 单个选项的独立组件，支持 combobox 和 lineedit 类型，以及子选项
 """
 # type: ignore[attr-defined]
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List, Tuple, Union
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy, QFrame
 from PySide6.QtCore import Qt, Signal
 from qfluentwidgets import ComboBox, LineEdit, BodyLabel, ToolTipFilter, SwitchButton, isDarkTheme, qconfig
 import re
 from app.common.signal_bus import signalBus
 from app.utils.logger import logger
-from .animations import HeightAnimator
+from app.view.fast_start.components.Option_Framework.animations import HeightAnimator
 
 
 class OptionItemWidget(QWidget):
@@ -39,6 +39,7 @@ class OptionItemWidget(QWidget):
         self._child_value_map: Dict[str, List[str]] = {}
         self._child_name_map: Dict[Tuple[str, str], str] = {}
         self.current_value: Any = None  # 当前选中的值
+        self.control_widget: Union[ComboBox, SwitchButton, LineEdit, Dict[str, LineEdit], None] = None
         inputs_value = self.config.get("inputs")
         self._single_input_mode = (
             self.config_type == "lineedit"
@@ -350,12 +351,12 @@ class OptionItemWidget(QWidget):
     
     def _init_config(self):
         """初始化配置值"""
-        if self.config_type == "combobox":
+        if self.config_type == "combobox" and isinstance(self.control_widget, ComboBox):
             current_label = self.control_widget.currentText()
             self.current_value = self._option_map.get(current_label, current_label)
             # 触发初始子选项显示（跳过动画）
             self._update_children_visibility(self.current_value, skip_animation=True)
-        elif self.config_type == "switch":
+        elif self.config_type == "switch" and isinstance(self.control_widget, SwitchButton):
             # switch 类型：checked -> "Yes", unchecked -> "No"
             is_checked = self.control_widget.isChecked()
             self.current_value = "Yes" if is_checked else "No"
@@ -369,7 +370,10 @@ class OptionItemWidget(QWidget):
                 }
             else:
                 # 单个输入框
-                self.current_value = self.control_widget.text()
+                if isinstance(self.control_widget, LineEdit):
+                    self.current_value = self.control_widget.text()
+                else:
+                    logger.warning("lineedit 类型的控件未初始化，无法读取默认值")
     
     def _on_combobox_changed(self, label: str):
         """下拉框值改变处理"""
@@ -429,7 +433,8 @@ class OptionItemWidget(QWidget):
         )
 
         # 判断是否使用动画
-        use_animation = self._animation_enabled and not skip_animation and self._children_animator is not None
+        animator = self._children_animator
+        use_animation = self._animation_enabled and not skip_animation and animator is not None
 
         if matched_key:
             logger.debug(f"找到匹配的子选项: matched_key={matched_key}")
@@ -449,16 +454,16 @@ class OptionItemWidget(QWidget):
 
             if visible_any:
                 logger.debug("设置子选项容器可见")
-                if use_animation:
+                if use_animation and animator is not None:
                     # 使用动画展开
-                    self._children_animator.expand()
+                    animator.expand()
                 else:
                     # 无动画直接显示
                     self.children_wrapper.setVisible(True)
                     self.children_wrapper.setMaximumHeight(16777215)
             else:
-                if use_animation:
-                    self._children_animator.collapse(on_finished=self._hide_all_children)
+                if use_animation and animator is not None:
+                    animator.collapse(on_finished=self._hide_all_children)
                 else:
                     self._hide_all_children()
                     self.children_wrapper.setVisible(False)
@@ -467,7 +472,8 @@ class OptionItemWidget(QWidget):
             logger.debug("没有找到匹配的子选项，隐藏容器")
             if use_animation:
                 # 使用动画收起，动画完成后再隐藏子选项内容
-                self._children_animator.collapse(on_finished=self._hide_all_children)
+                if animator is not None:
+                    animator.collapse(on_finished=self._hide_all_children)
             else:
                 # 无动画直接隐藏
                 self._hide_all_children()
@@ -614,15 +620,19 @@ class OptionItemWidget(QWidget):
             
             # 尝试从反向映射获取 label
             label = self._reverse_option_map.get(str(value), str(value))
-            index = self.control_widget.findText(label)
-            if index >= 0:
-                self.control_widget.blockSignals(True)
-                try:
-                    self.control_widget.setCurrentIndex(index)
-                    self.current_value = str(value)
-                    self._update_children_visibility(str(value), skip_animation=skip_animation)
-                finally:
-                    self.control_widget.blockSignals(False)
+            if isinstance(self.control_widget, ComboBox):
+                combobox = self.control_widget
+                index = combobox.findText(label)
+                if index >= 0:
+                    combobox.blockSignals(True)
+                    try:
+                        combobox.setCurrentIndex(index)
+                        self.current_value = str(value)
+                        self._update_children_visibility(str(value), skip_animation=skip_animation)
+                    finally:
+                        combobox.blockSignals(False)
+            else:
+                logger.warning("combobox 控件未准备好，无法设置值")
         elif self.config_type == "switch":
             # 如果传入的是字典，说明可能是配置对象，尝试提取 value
             if isinstance(value, dict):
@@ -647,13 +657,17 @@ class OptionItemWidget(QWidget):
                 logger.warning(f"switch 值类型不正确: {value}")
                 return
             
-            self.control_widget.blockSignals(True)
-            try:
-                self.control_widget.setChecked(target_checked)
-                self.current_value = target_value
-                self._update_children_visibility(target_value, skip_animation=skip_animation)
-            finally:
-                self.control_widget.blockSignals(False)
+            if isinstance(self.control_widget, SwitchButton):
+                switch_button = self.control_widget
+                switch_button.blockSignals(True)
+                try:
+                    switch_button.setChecked(target_checked)
+                    self.current_value = target_value
+                    self._update_children_visibility(target_value, skip_animation=skip_animation)
+                finally:
+                    switch_button.blockSignals(False)
+            else:
+                logger.warning("switch 控件未准备好，无法设置值")
         elif self.config_type == "lineedit":
             if isinstance(self.control_widget, dict):
                 # 多输入框类型
@@ -667,7 +681,7 @@ class OptionItemWidget(QWidget):
                                 self.current_value[input_name] = str(input_value)
                             finally:
                                 widget.blockSignals(False)
-            else:
+            elif isinstance(self.control_widget, LineEdit):
                 # 单个输入框
                 self.control_widget.blockSignals(True)
                 try:
@@ -675,6 +689,8 @@ class OptionItemWidget(QWidget):
                     self.current_value = str(value)
                 finally:
                     self.control_widget.blockSignals(False)
+            else:
+                logger.warning("lineedit 类型的控件未准备好，无法设置值")
     
     def get_option(self) -> Dict[str, Any]:
         """

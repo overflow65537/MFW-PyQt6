@@ -36,10 +36,10 @@ from email.mime.text import MIMEText
 from queue import Queue
 from PySide6.QtCore import QThread
 
-from ..common.signal_bus import signalBus
-from ..common.config import cfg
-from ..utils.logger import logger
-from .crypto import crypto_manager
+from app.common.signal_bus import signalBus
+from app.common.config import cfg
+from app.utils.logger import logger
+from app.utils.crypto import crypto_manager
 
 
 # 解码密钥

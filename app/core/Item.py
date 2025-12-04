@@ -1,11 +1,7 @@
 import uuid
-import json
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-
+from typing import Any, Dict, List
 from PySide6.QtCore import QObject, Signal
-from ..utils.logger import logger
 from app.common.constants import PRE_CONFIGURATION, POST_ACTION
 
 

@@ -17,10 +17,10 @@ from qfluentwidgets import (
 )
 
 
-from .ListWidget import TaskDragListWidget, ConfigListWidget
-from .AddTaskMessageBox import AddConfigDialog, AddTaskDialog
-from ....core.core import ServiceCoordinator
-from .ListItem import TaskListItem, ConfigListItem
+from app.view.fast_start.components.ListWidget import TaskDragListWidget, ConfigListWidget
+from app.view.fast_start.components.AddTaskMessageBox import AddConfigDialog, AddTaskDialog
+from app.core.core import ServiceCoordinator
+from app.view.fast_start.components.ListItem import TaskListItem, ConfigListItem
 
 
 class BaseListToolBarWidget(QWidget):

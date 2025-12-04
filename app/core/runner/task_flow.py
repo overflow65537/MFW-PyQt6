@@ -15,11 +15,11 @@ from app.common.signal_bus import signalBus
 from maa.toolkit import Toolkit
 from app.utils.notice import NoticeTiming, send_notice
 
-from ...utils.logger import logger
-from ..service.Config_Service import ConfigService
-from ..service.Task_Service import TaskService
-from .maafw import MaaFW, MaaFWError
-from .maasink import (
+from app.utils.logger import logger
+from app.core.service.Config_Service import ConfigService
+from app.core.service.Task_Service import TaskService
+from app.core.runner.maafw import MaaFW, MaaFWError
+from app.core.runner.maasink import (
     MaaContextSink,
     MaaControllerEventSink,
     MaaResourceEventSink,
