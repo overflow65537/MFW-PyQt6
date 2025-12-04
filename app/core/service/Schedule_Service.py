@@ -502,4 +502,4 @@ class ScheduleService(QObject):
 
     def _log_info(self, message: str) -> None:
         logger.info(message)
-        signalBus.log_output.emit("INFO", message)
+        signalBus.info_bar_requested.emit("INFO", message)

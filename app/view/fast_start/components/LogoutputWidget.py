@@ -1,8 +1,8 @@
 from datetime import datetime
 import re
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QTextCharFormat, QTextCursor
+from PySide6.QtCore import QEvent, Qt
+from PySide6.QtGui import QColor, QPalette, QTextCharFormat, QTextCursor
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from qfluentwidgets import (
@@ -49,7 +49,20 @@ class LogoutputWidget(QWidget):
         # 日志输出区域
         self.log_output_area = TextEdit()
         self.log_output_area.setReadOnly(True)
-        self.log_output_area.setDisabled(True)
+        self.log_output_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.log_output_area.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.log_output_area.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+            | Qt.TextInteractionFlag.TextSelectableByKeyboard
+        )
+        palette = self.log_output_area.palette()
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(0, 0, 0, 0))
+        palette.setColor(
+            QPalette.ColorRole.HighlightedText,
+            palette.color(QPalette.ColorRole.WindowText),
+        )
+        self.log_output_area.setPalette(palette)
+        self.log_output_area.installEventFilter(self)
         font = QFont("Microsoft YaHei", 11)
         self.log_output_area.setFont(font)
 
@@ -216,3 +229,22 @@ class LogoutputWidget(QWidget):
             cursor.insertBlock()
         self.log_output_area.setTextCursor(cursor)
         self.log_output_area.ensureCursorVisible()
+
+    def eventFilter(self, obj, event):
+        """拦截鼠标点击和复制快捷键"""
+        if obj is self.log_output_area:
+            if event.type() in (
+                QEvent.Type.MouseButtonPress,
+                QEvent.Type.MouseButtonDblClick,
+                QEvent.Type.MouseButtonRelease,
+            ):
+                return True
+            if event.type() == QEvent.Type.KeyPress:
+                key_event = event
+                modifiers = key_event.modifiers()
+                if modifiers & Qt.KeyboardModifier.ControlModifier:
+                    if key_event.key() in (Qt.Key.Key_C, Qt.Key.Key_Insert):
+                        return True
+                if modifiers & Qt.KeyboardModifier.ControlModifier and key_event.key() == Qt.Key.Key_A:
+                    return True
+        return super().eventFilter(obj, event)
