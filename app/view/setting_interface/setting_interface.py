@@ -872,7 +872,7 @@ class SettingInterface(QWidget):
         """加载所有已保存的更新日志"""
         import os
 
-        release_notes_dir = "debug/release_notes"
+        release_notes_dir = "./release_notes"
         notes = {}
 
         if not os.path.exists(release_notes_dir):

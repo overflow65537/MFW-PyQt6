@@ -986,7 +986,7 @@ class Update(BaseUpdate):
         mirror_data = mirror_result.get("data", {})
         mirror_url = mirror_data.get("url")
         mirror_version = mirror_data.get("version_name")
-        logger.debug("  [检查更新] Mirror 返回状态: %s", mirror_status)
+        logger.debug("  [检查更新] Mirror 返回状态: %s", mirror_result.get("msg"))
 
         # Mirror 检查表示当前版本已是最新
         if mirror_status == "no_need":
@@ -995,6 +995,8 @@ class Update(BaseUpdate):
 
             cfg.set(cfg.latest_update_version, self.latest_update_version)
             return False
+        self.latest_update_version = mirror_version or self.current_version
+        cfg.set(cfg.latest_update_version, self.latest_update_version)
 
         # Mirror 成功返回下载地址，直接使用
         if isinstance(mirror_url, str) and mirror_url:
@@ -1005,8 +1007,6 @@ class Update(BaseUpdate):
             )
             self.release_note = mirror_data.get("release_note", "")
             self.download_url = mirror_url
-            self.latest_update_version = mirror_version or self.current_version
-            cfg.set(cfg.latest_update_version, self.latest_update_version)
             self._emit_info_bar(
                 "info", self.tr("Found update: ") + str(self.latest_update_version)
             )
