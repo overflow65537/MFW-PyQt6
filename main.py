@@ -56,6 +56,11 @@ if __name__ == "__main__":
     crash_log = open(log_dir / "crash.log", "a", encoding="utf-8")
     faulthandler.enable(file=crash_log, all_threads=True)
 
+    #如果处于打包状态下
+    if getattr(sys, 'frozen', False):
+        os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
+        logger.info(f"打包状态下，MAAFW_BINARY_PATH: {os.environ['MAAFW_BINARY_PATH']}")
+
     # 将当前工作目录设置为程序所在目录 / PyInstaller 临时目录，避免资源路径错误
     try:
 
