@@ -1,9 +1,11 @@
 import asyncio
+import calendar
 import os
 import shlex
 import subprocess
 import sys
 import time as _time
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict
 from PySide6.QtCore import QCoreApplication, QObject
@@ -23,7 +25,7 @@ from .maasink import (
     MaaResourceEventSink,
     MaaTaskerEventSink,
 )
-from app.core.Item import FromeServiceCoordinator
+from app.core.Item import FromeServiceCoordinator, TaskItem
 
 
 class TaskFlowRunner(QObject):
@@ -51,6 +53,8 @@ class TaskFlowRunner(QObject):
         self.maafw.custom_info.connect(self._handle_maafw_custom_info)
         self.maafw.agent_info.connect(self._handle_agent_info)
         self.process = None
+
+        self.speedrun_mode = False
 
         self.need_stop = False
         self.monitor_need_stop = False
@@ -208,6 +212,10 @@ class TaskFlowRunner(QObject):
                 record = task_status_by_id.get(task.item_id)
                 try:
                     task_result = await self.run_task(task.item_id)
+                    if task_result == "skipped":
+                        if record:
+                            record["status"] = self.tr("跳过")
+                        continue
                     if task_result is False:
                         if record:
                             record["status"] = self.tr("失败")
@@ -347,9 +355,25 @@ class TaskFlowRunner(QObject):
         if not task:
             logger.error(f"任务 ID '{task_id}' 不存在")
             return
-        if not task.is_checked:
+        elif not task.is_checked:
             logger.warning(f"任务 '{task.name}' 未被选中，跳过执行")
             return
+
+        speedrun_cfg = self._get_task_by_name(task.name).get("speedrun", None)
+        if speedrun_cfg:
+            allowed, reason = self._evaluate_speedrun(task, speedrun_cfg)
+            if not allowed:
+                logger.info(
+                    f"任务 '{task.name}' 遵循 speedrun 限制，跳过本次运行: {reason}"
+                )
+                signalBus.log_output.emit(
+                    "INFO",
+                    self.tr(
+                        "Task '{task_name}' follows speedrun limit, skipping this run: {reason}"
+                    ).format(task_name=task.name, reason=reason),
+                )
+                return "skipped"
+            signalBus.log_output.emit("INFO", self.tr("Speedrun rule allows execution"))
 
         raw_info = self.task_service.get_task_execution_info(task_id)
         logger.info(f"任务 '{task.name}' 的执行信息: {raw_info}")
@@ -359,7 +383,9 @@ class TaskFlowRunner(QObject):
 
         entry = raw_info.get("entry", "")
         pipeline_override = raw_info.get("pipeline_override", {})
+
         await self.maafw.run_task(entry, pipeline_override)
+        self._record_speedrun_runtime(task)
 
     async def stop_task(self):
         """停止当前正在运行的任务"""
@@ -835,3 +861,294 @@ class TaskFlowRunner(QObject):
             logger.info("完成后执行关机命令")
         except Exception as exc:
             logger.error(f"执行关机命令失败: {exc}")
+
+    def _evaluate_speedrun(
+        self, task: TaskItem, speedrun: Dict[str, Any]
+    ) -> tuple[bool, str]:
+        """校验 speedrun 限制"""
+        if not speedrun or not isinstance(speedrun, dict):
+            return True, ""
+
+        run_cfg = speedrun.get("run") or {}
+        if not isinstance(run_cfg, dict):
+            run_cfg = {}
+
+        count_limit_value = self._get_speedrun_count_limit(run_cfg)
+        if count_limit_value is None:
+            return True, ""
+
+        state = self._ensure_speedrun_state(task)
+        history_entries = state.get("last_runtime", [])
+        history = self._parse_speedrun_history(history_entries)
+        last_run = history[-1] if history else datetime(1970, 1, 1)
+        now = datetime.now()
+
+        next_refresh = self._get_speedrun_next_refresh_time(last_run, speedrun)
+        if not next_refresh:
+            return True, ""
+
+        state_dirty = False
+        remaining_count = state.get("remaining_count")
+        if not isinstance(remaining_count, int):
+            remaining_count = -1
+        if remaining_count < 0:
+            state["remaining_count"] = 0
+            remaining_count = 0
+            state_dirty = True
+
+        if now >= next_refresh:
+            if state.get("remaining_count") != count_limit_value:
+                state["remaining_count"] = count_limit_value
+                remaining_count = count_limit_value
+                state_dirty = True
+
+        if remaining_count == 0:
+            if state_dirty:
+                self.task_service.update_task(task)
+            return False, self.tr("本周期内剩余执行次数为0")
+
+        min_interval_value = self._get_speedrun_min_interval(run_cfg)
+        if min_interval_value and history:
+            last_run_time = history[-1]
+            elapsed = (now - last_run_time).total_seconds()
+            if elapsed < min_interval_value * 3600:
+                if state_dirty:
+                    self.task_service.update_task(task)
+                return (
+                    False,
+                    self.tr("距离上次运行不到 {hours} 小时").format(
+                        hours=min_interval_value
+                    ),
+                )
+
+        if state_dirty:
+            self.task_service.update_task(task)
+        return True, ""
+
+    def _record_speedrun_runtime(self, task: TaskItem) -> None:
+        """记录 speedrun 运行时间"""
+        state = self._ensure_speedrun_state(task)
+
+        history = self._parse_speedrun_history(state.get("last_runtime", []))
+        history.append(datetime.now())
+        last_entry = history[-1]
+        state["last_runtime"] = [last_entry.isoformat()]
+        self._consume_speedrun_count(state)
+        remaining = state.get("remaining_count", -1)
+        logger.info(
+            f"任务 '{task.name}' 已记录 speedrun 运行时间, 最新 {state['last_runtime'][-1]}, 剩余 {remaining}"
+        )
+        self.task_service.update_task(task)
+
+    def _parse_speedrun_history(self, raw_history: Any) -> list[datetime]:
+        entries = raw_history or []
+        if not isinstance(entries, list):
+            entries = [entries]
+
+        parsed: list[datetime] = []
+        for entry in entries:
+            parsed_entry: datetime | None = None
+            if isinstance(entry, (int, float)):
+                try:
+                    parsed_entry = datetime.fromtimestamp(entry)
+                except OverflowError:
+                    parsed_entry = None
+            elif isinstance(entry, str):
+                try:
+                    parsed_entry = datetime.fromisoformat(entry)
+                except ValueError:
+                    try:
+                        parsed_entry = datetime.fromtimestamp(float(entry))
+                    except (TypeError, ValueError, OverflowError):
+                        parsed_entry = None
+            if parsed_entry:
+                parsed.append(parsed_entry)
+
+        parsed.sort()
+        return parsed
+
+    def _get_speedrun_next_refresh_time(
+        self, base_time: datetime, speedrun: Dict[str, Any]
+    ) -> datetime | None:
+        mode = (speedrun.get("mode") or "").lower()
+        trigger_cfg = speedrun.get("trigger") or {}
+        if not isinstance(trigger_cfg, dict):
+            return None
+
+        if mode == "daily":
+            daily_trigger = trigger_cfg.get("daily") or {}
+            hour_start = self._normalize_hour_value(daily_trigger.get("hour_start"))
+            if hour_start is None:
+                hour_start = 0
+            return self._next_daily_refresh_time(base_time, hour_start)
+
+        if mode == "weekly":
+            weekly_trigger = trigger_cfg.get("weekly") or {}
+            weekdays = self._collect_valid_ints(
+                weekly_trigger.get("weekday", []), 1, 7
+            )
+            hour_start = self._normalize_hour_value(
+                weekly_trigger.get("hour_start")
+            )
+            if hour_start is None:
+                hour_start = 0
+            return self._next_weekly_refresh_time(base_time, weekdays, hour_start)
+
+        if mode == "monthly":
+            monthly_trigger = trigger_cfg.get("monthly") or {}
+            days = self._collect_valid_ints(monthly_trigger.get("day", []), 1, 31)
+            hour_start = self._normalize_hour_value(
+                monthly_trigger.get("hour_start")
+            )
+            if hour_start is None:
+                hour_start = 0
+            return self._next_monthly_refresh_time(base_time, days, hour_start)
+
+        return None
+
+    def _next_daily_refresh_time(
+        self, base_time: datetime, hour_start: int
+    ) -> datetime:
+        candidate = base_time.replace(
+            hour=hour_start, minute=0, second=0, microsecond=0
+        )
+        if candidate <= base_time:
+            candidate += timedelta(days=1)
+        return candidate
+
+    def _next_weekly_refresh_time(
+        self, base_time: datetime, weekdays: list[int], hour_start: int
+    ) -> datetime | None:
+        allowed = weekdays or list(range(1, 8))
+        start_date = base_time.date()
+        for day_offset in range(0, 14):
+            candidate_date = start_date + timedelta(days=day_offset)
+            if candidate_date.isoweekday() not in allowed:
+                continue
+            candidate = datetime(
+                candidate_date.year,
+                candidate_date.month,
+                candidate_date.day,
+                hour_start,
+                0,
+                0,
+            )
+            if candidate > base_time:
+                return candidate
+        offset = 14
+        while True:
+            candidate_date = start_date + timedelta(days=offset)
+            if candidate_date.isoweekday() in allowed:
+                candidate = datetime(
+                    candidate_date.year,
+                    candidate_date.month,
+                    candidate_date.day,
+                    hour_start,
+                    0,
+                    0,
+                )
+                if candidate > base_time:
+                    return candidate
+            offset += 1
+
+    def _next_monthly_refresh_time(
+        self, base_time: datetime, days: list[int], hour_start: int
+    ) -> datetime | None:
+        allowed_days = sorted(set(days)) if days else list(range(1, 32))
+        start_year = base_time.year
+        start_month = base_time.month
+        for month_offset in range(0, 24):
+            month_index = start_month - 1 + month_offset
+            year = start_year + month_index // 12
+            month = (month_index % 12) + 1
+            days_in_month = calendar.monthrange(year, month)[1]
+            for day in allowed_days:
+                if day > days_in_month:
+                    continue
+                candidate = datetime(year, month, day, hour_start, 0, 0)
+                if candidate > base_time:
+                    return candidate
+        return None
+
+    def _collect_valid_ints(
+        self, raw_value: Any, min_value: int, max_value: int
+    ) -> list[int]:
+        if not isinstance(raw_value, (list, tuple)):
+            return []
+
+        normalized: list[int] = []
+        for item in raw_value:
+            try:
+                number = int(item)
+            except (TypeError, ValueError):
+                continue
+            if min_value <= number <= max_value:
+                normalized.append(number)
+
+        return normalized
+
+    def _normalize_hour_value(self, raw_value: Any) -> int | None:
+        try:
+            hour = int(raw_value)
+        except (TypeError, ValueError):
+            return None
+
+        if hour < 0:
+            hour = 0
+        hour %= 24
+        return hour
+
+    def _ensure_speedrun_state(self, task: TaskItem) -> dict:
+        if not isinstance(task.task_option, dict):
+            task.task_option = {}
+        state = task.task_option.get("_speedrun_state")
+        if not isinstance(state, dict):
+            epoch = datetime(1970, 1, 1)
+            state = {
+                "last_runtime": [epoch.isoformat()],
+                "remaining_count": -1,
+            }
+            task.task_option["_speedrun_state"] = state
+        if "last_runtime" not in state or not isinstance(state["last_runtime"], list):
+            epoch = datetime(1970, 1, 1)
+            state["last_runtime"] = [epoch.isoformat()]
+        if "remaining_count" not in state or not isinstance(
+            state["remaining_count"], int
+        ):
+            state["remaining_count"] = -1
+        return state
+
+    def _get_speedrun_count_limit(self, run_cfg: Dict[str, Any]) -> int | None:
+        count_limit = run_cfg.get("count")
+        try:
+            return int(count_limit) if count_limit not in (None, "", False) else None
+        except (TypeError, ValueError):
+            return None
+
+    def _get_speedrun_min_interval(self, run_cfg: Dict[str, Any]) -> float | None:
+        min_interval = run_cfg.get("min_interval_hours")
+        try:
+            return (
+                float(min_interval) if min_interval not in (None, "", False) else None
+            )
+        except (TypeError, ValueError):
+            return None
+
+    def _consume_speedrun_count(self, state: dict) -> None:
+        remaining = state.get("remaining_count")
+        if isinstance(remaining, int) and remaining > 0:
+            state["remaining_count"] = remaining - 1
+
+    def _get_task_by_name(self, name: str) -> Dict[str, Any]:
+        interface = self.task_service.interface
+        tasks = interface.get("task")
+
+        if not isinstance(tasks, list):
+            return {}
+        for task in tasks:
+            if not isinstance(task, dict):
+                continue
+            if task.get("name") == name:
+                return task
+
+        return {}

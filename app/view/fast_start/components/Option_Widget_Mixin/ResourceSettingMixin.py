@@ -16,7 +16,6 @@ import jsonc
 from app.utils.gpu_cache import gpu_cache
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
-from app.core.service.interface_manager import get_interface_manager
 from app.widget.PathLineEdit import PathLineEdit
 from app.view.fast_start.components.Option_Widget_Mixin.DeviceFinderWidget import (
     DeviceFinderWidget,
@@ -185,7 +184,7 @@ class ResourceSettingMixin:
         self.current_resource = None
 
         # 构建控制器类型映射
-        interface = get_interface_manager().get_interface()
+        interface = self.service_coordinator.interface
         self.controller_type_mapping = {
             ctrl.get("label", ctrl.get("name", "")): {
                 "name": ctrl.get("name", ""),

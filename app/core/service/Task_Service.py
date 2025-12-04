@@ -1,9 +1,7 @@
 from copy import deepcopy
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ...utils.logger import logger
-from .interface_manager import get_interface_manager
 from .Config_Service import ConfigService
 from app.core.Item import TaskItem, CoreSignalBus
 
@@ -11,12 +9,17 @@ from app.core.Item import TaskItem, CoreSignalBus
 class TaskService:
     """任务服务实现"""
 
-    def __init__(self, config_service: ConfigService, signal_bus: CoreSignalBus):
+    def __init__(
+        self,
+        config_service: ConfigService,
+        signal_bus: CoreSignalBus,
+        interface: Dict[str, Any],
+    ):
         self.config_service = config_service
         self.signal_bus = signal_bus
         self.current_tasks = []
         self.know_task = []
-        self.interface = {}
+        self.interface = interface or {}
         self.default_option = {}
         self._on_config_changed(self.config_service.current_config_id)
 
@@ -31,25 +34,6 @@ class TaskService:
         if config_id:
             config = self.config_service.get_config(config_id)
             if config:
-                # 直接使用 interface manager 获取配置
-                interface_manager = get_interface_manager()
-                self.interface = interface_manager.get_interface()
-
-                # 如果 interface 为空，说明加载失败
-                if not self.interface:
-                    interface_path_jsonc = Path.cwd() / "interface.jsonc"
-                    interface_path_json = Path.cwd() / "interface.json"
-
-                    # 检查配置文件是否存在
-                    if (
-                        not interface_path_jsonc.exists()
-                        and not interface_path_json.exists()
-                    ):
-                        raise FileNotFoundError(
-                            f"无有效资源配置文件: {interface_path_jsonc} 或 {interface_path_json}"
-                        )
-
-                logger.debug("使用 interface 配置")
                 self.current_tasks = config.tasks
                 self.know_task = config.know_task
                 self.default_option = self.gen_default_option()
@@ -81,10 +65,8 @@ class TaskService:
 
     def init_new_config(self):
         """初始化新配置的任务"""
-        # Re-load interface to get the latest configuration
-        interface_manager = get_interface_manager()
-        self.interface = interface_manager.get_interface()
-
+        if not self.interface:
+            raise ValueError("Interface not loaded")
         # Regenerate default options
         self.default_option = self.gen_default_option()
 
@@ -92,13 +74,12 @@ class TaskService:
         self.know_task = []
         self._check_know_task()
 
-    def reload_interface(self):
-        """重新加载 interface 数据，用于热更新后刷新"""
+    def reload_interface(self, interface: Dict[str, Any]):
+        """刷新 interface 数据，用于热更新后同步"""
         logger.info("重新加载 interface 数据...")
-        interface_manager = get_interface_manager()
-        # 强制重新加载
-        interface_manager.reload()
-        self.interface = interface_manager.get_interface()
+        if not interface:
+            raise ValueError("Interface not loaded")
+        self.interface = interface
 
         # 重新生成默认选项
         self.default_option = self.gen_default_option()

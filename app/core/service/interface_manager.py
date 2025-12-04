@@ -60,9 +60,7 @@ class InterfaceManager:
                 interface_path = interface_path_json
 
         self._interface_path = interface_path
-        self._interface_dir = (
-            interface_path.parent if interface_path else Path.cwd()
-        )
+        self._interface_dir = interface_path.parent if interface_path else Path.cwd()
 
         # 加载原始 interface 配置
         try:

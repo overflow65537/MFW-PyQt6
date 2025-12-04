@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Dict, Any
 
 from .Item import (
     CoreSignalBus,
@@ -11,6 +11,7 @@ from .service.Config_Service import ConfigService, JsonConfigRepository
 from .service.Schedule_Service import ScheduleService
 from .service.Task_Service import TaskService
 from .service.Option_Service import OptionService
+from .service.interface_manager import get_interface_manager, InterfaceManager
 from .runner.maafw import MaaFW
 from .runner.maasink import (
     MaaContextSink,
@@ -37,10 +38,18 @@ class ServiceCoordinator:
         if configs_dir is None:
             configs_dir = main_config_path.parent / "configs"
 
+        # 生成 interface 并传递给服务
+        self.interface_manager: InterfaceManager = get_interface_manager()
+        self._interface: Dict = self.interface_manager.get_interface()
+
         # 初始化存储库和服务
-        self.config_repo = JsonConfigRepository(main_config_path, configs_dir)
+        self.config_repo = JsonConfigRepository(
+            main_config_path, configs_dir, interface=self._interface
+        )
         self.config_service = ConfigService(self.config_repo, self.signal_bus)
-        self.task_service = TaskService(self.config_service, self.signal_bus)
+        self.task_service = TaskService(
+            self.config_service, self.signal_bus, self._interface
+        )
         self.option_service = OptionService(self.task_service, self.signal_bus)
 
         # 运行器
@@ -231,8 +240,13 @@ class ServiceCoordinator:
             # 重新加载主配置
             self.config_repo.load_main_config()
 
+            # 刷新 interface 数据
+            self.interface_manager.reload()
+            self._interface = self.interface_manager.get_interface()
+            self.config_repo.interface = self._interface
+
             # 重新初始化任务服务（刷新 interface 数据）
-            self.task_service.reload_interface()
+            self.task_service.reload_interface(self._interface)
 
             # 通知 UI 配置已更新
             current_config_id = self.config_service.current_config_id
@@ -254,6 +268,15 @@ class ServiceCoordinator:
         return self.task_runner
 
     # 提供获取服务的属性，以便UI层访问
+    @property
+    def interface_obj(self) -> InterfaceManager:
+        return self.interface_manager
+
+    @property
+    def interface(self) -> Dict[str, Any]:
+        """返回当前加载的 interface 字典"""
+        return self._interface
+
     @property
     def config(self) -> ConfigService:
         return self.config_service

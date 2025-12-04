@@ -60,7 +60,7 @@ class TaskItem:
 
     def is_base_task(self) -> bool:
         """判断是否为基础任务（资源或完成后操作）"""
-        return self.item_id in ( PRE_CONFIGURATION, POST_ACTION)
+        return self.item_id in (PRE_CONFIGURATION, POST_ACTION)
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""

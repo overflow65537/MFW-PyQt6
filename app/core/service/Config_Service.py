@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional
 
 
 from ...utils.logger import logger
-from .interface_manager import get_interface_manager
 from ...common.constants import PRE_CONFIGURATION, POST_ACTION
 from app.core.Item import ConfigItem, TaskItem, CoreSignalBus
 
@@ -12,21 +11,23 @@ from app.core.Item import ConfigItem, TaskItem, CoreSignalBus
 class JsonConfigRepository:
     """JSON配置存储库实现"""
 
-    def __init__(self, main_config_path: Path, configs_dir: Path):
+    def __init__(
+        self,
+        main_config_path: Path,
+        configs_dir: Path,
+        interface: Optional[Dict[str, Any]] = None,
+    ):
         self.main_config_path = main_config_path
         self.configs_dir = configs_dir
+        self.interface = interface or {}
 
         # 确保目录存在
         if not self.configs_dir.exists():
             self.configs_dir.mkdir(parents=True)
 
         if not self.main_config_path.exists():
-            # 直接使用 interface manager 获取配置
-            interface_manager = get_interface_manager()
-            interface = interface_manager.get_interface()
-
             # 如果 interface 为空，说明加载失败
-            if not interface:
+            if not self.interface:
                 interface_path_jsonc = Path.cwd() / "interface.jsonc"
                 interface_path_json = Path.cwd() / "interface.json"
 
@@ -41,11 +42,12 @@ class JsonConfigRepository:
 
             logger.debug("使用 interface 配置创建默认配置")
 
+            bundle_name = self.interface.get("name", "Default Bundle")
             default_main_config = {
                 "curr_config_id": "",
                 "config_list": [],
                 "bundle": {
-                    interface.get("name", "Default Bundle"): {
+                    bundle_name: {
                         "path": "./",
                     }
                 },
