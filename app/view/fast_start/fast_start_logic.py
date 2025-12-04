@@ -31,8 +31,8 @@ class FastStartInterface(UI_FastStartInterface, QWidget):
         self.setupUi(self)
         self.service_coordinator = service_coordinator
 
-        self.task_info.set_title(self.tr("任务信息"))
-        self.config_selection.set_title(self.tr("配置选择"))
+        self.task_info.set_title(self.tr("Task Information"))
+        self.config_selection.set_title(self.tr("Configuration Selection"))
 
         # 连接启动/停止按钮事件
         self.start_bar.run_button.clicked.connect(self._on_run_button_clicked)

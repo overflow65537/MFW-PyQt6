@@ -262,7 +262,7 @@ class MainWindow(MSFluentWindow):
         if isinstance(content, (list, tuple, set)):
             normalized = {}
             for index, entry in enumerate(content, start=1):
-                label = self.tr("Item {index}").format(index=index)
+                label = self.tr("Item ") + str(index)
                 normalized[label] = str(entry)
             return normalized
 

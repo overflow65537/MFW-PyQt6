@@ -39,22 +39,22 @@ class TestInterface(QWidget):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
 
-        header = BodyLabel(self.tr("测试界面"))
+        header = BodyLabel("测试界面")
         header.setStyleSheet("font-weight: 600; font-size: 18px;")
         layout.addWidget(header)
 
         button_layout = QHBoxLayout()
         button_layout.setSpacing(12)
 
-        switch_btn = PrimaryPushButton(self.tr("切换配置测试"))
+        switch_btn = PrimaryPushButton("切换配置测试")
         switch_btn.clicked.connect(self._test_switch_config)
         button_layout.addWidget(switch_btn)
 
-        run_btn = PrimaryPushButton(self.tr("运行任务测试"))
+        run_btn = PrimaryPushButton("运行任务测试")
         run_btn.clicked.connect(self._test_run_tasks)
         button_layout.addWidget(run_btn)
 
-        force_btn = PrimaryPushButton(self.tr("强制运行测试"))
+        force_btn = PrimaryPushButton("强制运行测试")
         force_btn.clicked.connect(self._test_force_start)
         button_layout.addWidget(force_btn)
 
@@ -62,7 +62,7 @@ class TestInterface(QWidget):
 
         self._log_view = QPlainTextEdit(self)
         self._log_view.setReadOnly(True)
-        self._log_view.setPlaceholderText(self.tr("日志输出会在此处展示"))
+        self._log_view.setPlaceholderText("日志输出会在此处展示")
         self._log_view.setMinimumHeight(240)
         layout.addWidget(self._log_view)
 
@@ -70,7 +70,7 @@ class TestInterface(QWidget):
         configs = self.service_coordinator.config.list_configs()
         if not configs:
             signalBus.info_bar_requested.emit(
-                "warning", self.tr("未找到任何配置，无法切换")
+                "warning", "未找到任何配置，无法切换"
             )
             return
 
@@ -85,15 +85,15 @@ class TestInterface(QWidget):
         target_id = target_info.get("item_id", "")
         if not target_id:
             signalBus.info_bar_requested.emit(
-                "warning", self.tr("目标配置 ID 无效")
+                "warning", "目标配置 ID 无效"
             )
             return
 
         success = self.service_coordinator.select_config(target_id)
         msg = (
-            self.tr("切换配置成功: {id}").format(id=target_id)
+            "切换配置成功: {id}".format(id=target_id)
             if success
-            else self.tr("切换配置失败: {id}").format(id=target_id)
+            else "切换配置失败: {id}".format(id=target_id)
         )
         signalBus.info_bar_requested.emit("info" if success else "error", msg)
         logger.info("测试页面：切换配置 %s -> %s", current, target_id)
@@ -101,17 +101,17 @@ class TestInterface(QWidget):
     def _test_run_tasks(self) -> None:
         if self.service_coordinator.run_manager.is_running:
             signalBus.info_bar_requested.emit(
-                "warning", self.tr("任务流正在运行，无法重复启动")
+                "warning", "任务流正在运行，无法重复启动"
             )
             return
-        signalBus.info_bar_requested.emit("info", self.tr("已触发任务流测试"))
+        signalBus.info_bar_requested.emit("info", "已触发任务流测试")
         asyncio.create_task(self.service_coordinator.run_tasks_flow())
 
     def _test_force_start(self) -> None:
         configs = self.service_coordinator.config.list_configs()
         if not configs:
             signalBus.info_bar_requested.emit(
-                "warning", self.tr("未找到任何配置，无法强制运行")
+                "warning", "未找到任何配置，无法强制运行"
             )
             return
         current_id = self.service_coordinator.config.current_config_id
@@ -119,14 +119,14 @@ class TestInterface(QWidget):
             current_id = configs[0].get("item_id", "")
         if not current_id:
             signalBus.info_bar_requested.emit(
-                "warning", self.tr("当前配置 ID 不可用")
+                "warning", "当前配置 ID 不可用"
             )
             return
 
         entry = ScheduleEntry(
             entry_id=f"debug_{uuid4().hex}",
             config_id=current_id,
-            name=self.tr("调试条目"),
+            name="调试条目",
             schedule_type=SCHEDULE_SINGLE,
             params={
                 "run_at": (datetime.now() + timedelta(seconds=1)).isoformat(),
@@ -135,7 +135,7 @@ class TestInterface(QWidget):
             enabled=True,
             created_at=datetime.now(),
         )
-        signalBus.info_bar_requested.emit("info", self.tr("已发起强制运行"))
+        signalBus.info_bar_requested.emit("info", "已发起强制运行")
         asyncio.create_task(self.service_coordinator.schedule_service._force_start(entry))
 
     def _on_log_output(self, level: str, message: str) -> None:

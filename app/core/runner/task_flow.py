@@ -119,14 +119,16 @@ class TaskFlowRunner(QObject):
             record = {
                 "item_id": report_task.item_id,
                 "name": report_task.name,
-                "status": self.tr("未运行"),
+                "status": self.tr("NOT STARTED"),
             }
             task_status_records.append(record)
             task_status_by_id[report_task.item_id] = record
 
         selected_task_count = sum(1 for task in tasks_to_report if task.is_checked)
         post_task_event_pending = bool(task_status_records)
-        config_label = self.config_service.current_config_id or self.tr("未知配置")
+        config_label = self.config_service.current_config_id or self.tr(
+            "Unknown Config"
+        )
         try:
             if self.fs_signal_bus:
                 self.fs_signal_bus.fs_start_button_status.emit(
@@ -147,10 +149,12 @@ class TaskFlowRunner(QObject):
             )
             send_notice(
                 NoticeTiming.WHEN_START_UP,
-                self.tr("任务流启动"),
-                self.tr(
-                    "配置 {config_id} 包含 {task_count} 个任务，准备连接设备。"
-                ).format(config_id=config_label, task_count=selected_task_count),
+                self.tr("Task Flow Started"),
+                self.tr("Config ")
+                + str(config_label)
+                + self.tr(" contains ")
+                + str(selected_task_count)
+                + self.tr(" tasks, ready to connect device."),
             )
 
             logger.info("开始连接设备...")
@@ -159,19 +163,22 @@ class TaskFlowRunner(QObject):
                 logger.error("设备连接失败，尝试启动进程")
                 send_notice(
                     NoticeTiming.WHEN_CONNECT_FAILED,
-                    self.tr("设备连接失败"),
-                    self.tr("配置 {config_id} 无法连接设备，请检查控制器配置。").format(
-                        config_id=config_label
+                    self.tr("Device Connection Failed"),
+                    self.tr("Config ")
+                    + str(config_label)
+                    + self.tr(
+                        " cannot connect device, please check controller configuration."
                     ),
                 )
+
                 return
             logger.info("设备连接成功")
             send_notice(
                 NoticeTiming.WHEN_CONNECT_SUCCESS,
-                self.tr("设备连接成功"),
-                self.tr("配置 {config_id} 设备连接成功，开始执行任务。").format(
-                    config_id=config_label
-                ),
+                self.tr("Device Connection Successful"),
+                self.tr("Config ")
+                + str(config_label)
+                + self.tr(" device connection successful, start to execute tasks."),
             )
 
             logger.info("开始截图测试...")
@@ -214,42 +221,46 @@ class TaskFlowRunner(QObject):
                     task_result = await self.run_task(task.item_id)
                     if task_result == "skipped":
                         if record:
-                            record["status"] = self.tr("跳过")
+                            record["status"] = self.tr("SKIPPED")
                         continue
                     if task_result is False:
                         if record:
-                            record["status"] = self.tr("失败")
+                            record["status"] = self.tr("FAILED")
                         logger.error(f"任务执行失败: {task.name}, 返回 False，终止流程")
                         send_notice(
                             NoticeTiming.WHEN_TASK_FAILED,
-                            self.tr("任务失败"),
-                            self.tr(
-                                "任务 {task_name} 未返回成功状态，流程提前退出。"
-                            ).format(task_name=task.name),
+                            self.tr("Task Failed"),
+                            self.tr("Task ")
+                            + str(task.name)
+                            + self.tr(
+                                " did not return a successful status, the flow is terminated."
+                            ),
                         )
                         await self.stop_task()
                         break
 
                     logger.info(f"任务执行完成: {task.name}")
                     if record:
-                        record["status"] = self.tr("成功")
+                        record["status"] = self.tr("SUCCESS")
                     send_notice(
                         NoticeTiming.WHEN_TASK_FINISHED,
-                        self.tr("任务完成"),
-                        self.tr("任务 {task_name} 已完成。").format(
-                            task_name=task.name
-                        ),
+                        self.tr("Task Finished"),
+                        self.tr("Task ")
+                        + str(task.name)
+                        + self.tr(" has been completed."),
                     )
+
                 except Exception as exc:
                     logger.error(f"任务执行失败: {task.name}, 错误: {str(exc)}")
                     if record:
-                        record["status"] = self.tr("失败")
+                        record["status"] = self.tr("FAILED")
                     send_notice(
                         NoticeTiming.WHEN_TASK_FAILED,
-                        self.tr("任务失败"),
-                        self.tr("任务 {task_name} 执行失败: {error}").format(
-                            task_name=task.name, error=str(exc)
-                        ),
+                        self.tr("Task Failed"),
+                        self.tr("Task ")
+                        + str(task.name)
+                        + self.tr(" execution failed: ")
+                        + str(exc),
                     )
 
                 if self.need_stop:
@@ -260,8 +271,8 @@ class TaskFlowRunner(QObject):
             logger.error(f"任务流程执行异常: {str(exc)}")
             send_notice(
                 NoticeTiming.WHEN_TASK_FAILED,
-                self.tr("任务流程异常"),
-                self.tr("任务流程执行异常: {error}").format(error=str(exc)),
+                self.tr("Task Flow Exception"),
+                self.tr("Task flow execution exception: ") + str(exc),
             )
             import traceback
 
@@ -279,18 +290,20 @@ class TaskFlowRunner(QObject):
                         for record in task_status_records
                     )
                 else:
-                    task_summary = self.tr("无任务")
+                    task_summary = self.tr("No tasks")
                 send_notice(
                     NoticeTiming.WHEN_POST_TASK,
-                    self.tr("任务流完成"),
-                    self.tr(
-                        "配置 {config_id} 的所有任务与完成后操作已结束，共处理 {task_count} 个任务。\n任务状态:\n{task_list}"
-                    ).format(
-                        config_id=config_label,
-                        task_count=selected_task_count,
-                        task_list=task_summary,
-                    ),
+                    self.tr("Task Flow Completed"),
+                    self.tr("Configuration ")
+                    + config_label
+                    + self.tr(
+                        " all tasks and post actions have been completed, processed "
+                    )
+                    + str(selected_task_count)
+                    + self.tr(" tasks.\nTask Status:\n")
+                    + task_summary,
                 )
+
             self._is_running = False
 
     @property
@@ -368,9 +381,10 @@ class TaskFlowRunner(QObject):
                 )
                 signalBus.log_output.emit(
                     "INFO",
-                    self.tr(
-                        "Task '{task_name}' follows speedrun limit, skipping this run: {reason}"
-                    ).format(task_name=task.name, reason=reason),
+                    self.tr("Task ")
+                    + task.name
+                    + self.tr(" follows speedrun limit, skipping this run: ")
+                    + reason,
                 )
                 return "skipped"
             signalBus.log_output.emit("INFO", self.tr("Speedrun rule allows execution"))
@@ -905,7 +919,7 @@ class TaskFlowRunner(QObject):
         if remaining_count == 0:
             if state_dirty:
                 self.task_service.update_task(task)
-            return False, self.tr("本周期内剩余执行次数为0")
+            return False, self.tr("This period's remaining execution count is 0")
 
         min_interval_value = self._get_speedrun_min_interval(run_cfg)
         if min_interval_value and history:
@@ -916,9 +930,11 @@ class TaskFlowRunner(QObject):
                     self.task_service.update_task(task)
                 return (
                     False,
-                    self.tr("距离上次运行不到 {hours} 小时").format(
-                        hours=min_interval_value
-                    ),
+                    self.tr(
+                        "Not enough time passed since last run. Minimum interval is "
+                    )
+                    + str(min_interval_value)
+                    + self.tr(" hours."),
                 )
 
         if state_dirty:
@@ -984,12 +1000,8 @@ class TaskFlowRunner(QObject):
 
         if mode == "weekly":
             weekly_trigger = trigger_cfg.get("weekly") or {}
-            weekdays = self._collect_valid_ints(
-                weekly_trigger.get("weekday", []), 1, 7
-            )
-            hour_start = self._normalize_hour_value(
-                weekly_trigger.get("hour_start")
-            )
+            weekdays = self._collect_valid_ints(weekly_trigger.get("weekday", []), 1, 7)
+            hour_start = self._normalize_hour_value(weekly_trigger.get("hour_start"))
             if hour_start is None:
                 hour_start = 0
             return self._next_weekly_refresh_time(base_time, weekdays, hour_start)
@@ -997,9 +1009,7 @@ class TaskFlowRunner(QObject):
         if mode == "monthly":
             monthly_trigger = trigger_cfg.get("monthly") or {}
             days = self._collect_valid_ints(monthly_trigger.get("day", []), 1, 31)
-            hour_start = self._normalize_hour_value(
-                monthly_trigger.get("hour_start")
-            )
+            hour_start = self._normalize_hour_value(monthly_trigger.get("hour_start"))
             if hour_start is None:
                 hour_start = 0
             return self._next_monthly_refresh_time(base_time, days, hour_start)

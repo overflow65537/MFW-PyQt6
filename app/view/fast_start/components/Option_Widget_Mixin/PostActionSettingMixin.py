@@ -125,7 +125,7 @@ class PostActionSettingMixin:
             target = self._post_action_state.get("target_config", "")
             target_index = combo.findData(target)
             if target_index < 0 and target:
-                combo.addItem(self.tr("未知配置"), userData=target)
+                combo.addItem(self.tr("Unknown config"), userData=target)
                 target_index = combo.findData(target)
 
             combo.blockSignals(True)
@@ -274,7 +274,7 @@ class PostActionSettingMixin:
                 configs.append(
                     (
                         info.get("item_id", ""),
-                        info.get("name", self.tr("未命名配置")),
+                        info.get("name", "Unnamed Configuration"),
                     )
                 )
         except Exception as exc:

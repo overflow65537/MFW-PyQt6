@@ -317,7 +317,7 @@ class MonitorInterface(QWidget):
         try:
             self._current_pil_image.save(save_path)
             logger.info("监控子页面：截图已保存至 %s", save_path)
-            message = self.tr("Screenshot saved to {}").format(save_path)
+            message = self.tr("Screenshot saved to ")+str(save_path)
             signalBus.info_bar_requested.emit("success", message)
         except Exception as exc:
             logger.exception("监控子页面：保存截图失败：%s", exc)
