@@ -51,7 +51,7 @@ class TaskFlowRunner(QObject):
         self.maafw.custom_info.connect(self._handle_maafw_custom_info)
         self.maafw.agent_info.connect(self._handle_agent_info)
         self.process = None
-        
+
         self.need_stop = False
         self.monitor_need_stop = False
         self._is_running = False
@@ -99,7 +99,9 @@ class TaskFlowRunner(QObject):
         """任务完整流程：连接设备、加载资源、批量运行任务"""
         if self._is_running:
             logger.warning("任务流已经在运行，忽略新的启动请求")
-            return
+            if self._is_running:
+                logger.warning("等待结束后仍在运行，取消当前启动请求")
+                return
         self._is_running = True
         self.need_stop = False
         tasks_to_report = [
@@ -320,7 +322,7 @@ class TaskFlowRunner(QObject):
 
         if not resource_path or self.need_stop:
             logger.error(f"未找到目标资源: {resource_target}")
-            await self.maafw.stop_task()
+            await self.stop_task()
             return False
 
         for path_item in resource_path:
@@ -374,6 +376,8 @@ class TaskFlowRunner(QObject):
             self.fs_signal_bus.fs_start_button_status.emit(
                 {"text": "START", "status": "enabled"}
             )
+        self._is_running = False
+        logger.info("任务流停止")
 
     async def _connect_adb_controller(self, controller_raw: Dict[str, Any]):
         """连接 ADB 控制器"""

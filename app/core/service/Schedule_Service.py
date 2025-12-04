@@ -302,7 +302,6 @@ class ScheduleService(QObject):
         self._schedules: List[ScheduleEntry] = []
         self._pending_queue: Deque[ScheduleEntry] = deque()
         self._current_task: Optional[asyncio.Task] = None
-        self._run_manager_wait_task: Optional[asyncio.Task] = None
         self._scheduler_task: Optional[asyncio.Task] = None
         self._check_interval = 15
         self._ensure_storage()
@@ -462,40 +461,37 @@ class ScheduleService(QObject):
             await self._try_start_next()
 
     async def _force_start(self, entry: ScheduleEntry) -> None:
-        if self._current_task and not self._current_task.done():
+        if self.service_coordinator.run_manager.is_running or (
+            self._current_task and not self._current_task.done()
+        ):
             await self.service_coordinator.stop_task()
             try:
-                await self._current_task
+                if self._current_task:
+                    await self._current_task
             except asyncio.CancelledError:
                 pass
         self._pending_queue.appendleft(entry)
         await self._try_start_next()
 
     async def _try_start_next(self) -> None:
-        if self.service_coordinator.run_manager.is_running:
-            if not self._run_manager_wait_task or self._run_manager_wait_task.done():
-                self._run_manager_wait_task = asyncio.create_task(
-                    self._wait_for_run_manager_completion()
-                )
-            return
         if self._current_task and not self._current_task.done():
             return
         if not self._pending_queue:
             return
-        next_entry = self._pending_queue.popleft()
-        self._current_task = asyncio.create_task(self._execute_entry(next_entry))
-
-    async def _wait_for_run_manager_completion(self) -> None:
-        try:
-            while self.service_coordinator.run_manager.is_running:
+        while self._pending_queue:
+            next_entry = self._pending_queue[0]
+            if (
+                self.service_coordinator.run_manager.is_running
+                and not next_entry.force_start
+            ):
                 await asyncio.sleep(1)
-        except asyncio.CancelledError:
+                continue
+            next_entry = self._pending_queue.popleft()
+            self._current_task = asyncio.create_task(self._execute_entry(next_entry))
             return
-        finally:
-            self._run_manager_wait_task = None
-        await self._try_start_next()
 
     async def _execute_entry(self, entry: ScheduleEntry) -> None:
+        signalBus.log_clear_requested.emit()
         self._log_info(f"计划任务：{entry.name} ({entry.describe()}) 开始执行")
         original_config = self.service_coordinator.config.current_config_id
         switched = False
@@ -506,6 +502,7 @@ class ScheduleService(QObject):
                 self._current_task = None
                 await self._try_start_next()
                 return
+            signalBus.config_changed.emit(entry.config_id)
         try:
             await self.service_coordinator.run_tasks_flow()
         except Exception as exc:

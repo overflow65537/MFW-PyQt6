@@ -42,6 +42,7 @@ class LogoutputWidget(QWidget):
         # 连接 MAA Sink 回调信号
         signalBus.callback.connect(self._on_maa_callback)
         signalBus.log_output.connect(self._on_log_output)
+        signalBus.log_clear_requested.connect(self.clear_log)
 
     def _init_log_output(self):
         """初始化日志输出区域"""
