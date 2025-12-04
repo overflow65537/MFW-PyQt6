@@ -33,20 +33,25 @@ class TaskFlowRunner(QObject):
         self,
         task_service: TaskService,
         config_service: ConfigService,
-        fs_signal_bus: FromeServiceCoordinator|None = None,
+        fs_signal_bus: FromeServiceCoordinator | None = None,
     ):
         self.task_service = task_service
         self.config_service = config_service
-        self.maafw = MaaFW(
-            maa_context_sink=MaaContextSink,
-            maa_controller_sink=MaaControllerEventSink,
-            maa_resource_sink=MaaResourceEventSink,
-            maa_tasker_sink=MaaTaskerEventSink,
-        )
+        if fs_signal_bus:
+            self.maafw = MaaFW(
+                maa_context_sink=MaaContextSink(),
+                maa_controller_sink=MaaControllerEventSink(),
+                maa_resource_sink=MaaResourceEventSink(),
+                maa_tasker_sink=MaaTaskerEventSink(),
+            )
+            self.fs_signal_bus = fs_signal_bus
+        else:
+            self.maafw = MaaFW()
+            self.fs_signal_bus = None
         self.maafw.custom_info.connect(self._handle_maafw_custom_info)
         self.maafw.agent_info.connect(self._handle_agent_info)
         self.process = None
-        self.fs_signal_bus = fs_signal_bus
+        
         self.need_stop = False
         self.monitor_need_stop = False
 
@@ -277,8 +282,8 @@ class TaskFlowRunner(QObject):
         controller_type = self._get_controller_type(controller_raw)
         if self.fs_signal_bus:
             self.fs_signal_bus.fs_start_button_status.emit(
-            {"text": "STOP", "status": "enabled"}
-        )
+                {"text": "STOP", "status": "enabled"}
+            )
         if controller_type == "adb":
             return await self._connect_adb_controller(controller_raw)
         elif controller_type == "win":
@@ -348,17 +353,17 @@ class TaskFlowRunner(QObject):
         """停止当前正在运行的任务"""
         if self.need_stop:
             return
-        signalBus.log_output.emit("INFO", self.tr("Stopping task..."))
         self.need_stop = True
         if self.fs_signal_bus:
+            signalBus.log_output.emit("INFO", self.tr("Stopping task..."))
             self.fs_signal_bus.fs_start_button_status.emit(
-            {"text": "STOP", "status": "disabled"}
-        )
+                {"text": "STOP", "status": "disabled"}
+            )
         await self.maafw.stop_task()
         if self.fs_signal_bus:
             self.fs_signal_bus.fs_start_button_status.emit(
-            {"text": "START", "status": "enabled"}
-        )
+                {"text": "START", "status": "enabled"}
+            )
 
     async def _connect_adb_controller(self, controller_raw: Dict[str, Any]):
         """连接 ADB 控制器"""

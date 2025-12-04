@@ -66,10 +66,10 @@ class MaaFW(QObject):
     agent_thread: subprocess.Popen | None
     agent_output_thread: threading.Thread | None
 
-    maa_controller_sink: MaaControllerEventSink
-    maa_context_sink: MaaContextSink
-    maa_resource_sink: MaaResourceEventSink
-    maa_tasker_sink: MaaTaskerEventSink
+    maa_controller_sink: MaaControllerEventSink | None
+    maa_context_sink: MaaContextSink | None
+    maa_resource_sink: MaaResourceEventSink | None
+    maa_tasker_sink: MaaTaskerEventSink | None
 
     custom_info = Signal(int)
     agent_info = Signal(str)
@@ -77,7 +77,7 @@ class MaaFW(QObject):
     embedded_agent_mode: bool = False
 
     def __init__(
-        self, maa_controller_sink, maa_context_sink, maa_resource_sink, maa_tasker_sink
+        self, maa_controller_sink: MaaControllerEventSink | None = None, maa_context_sink: MaaContextSink | None = None, maa_resource_sink: MaaResourceEventSink | None = None, maa_tasker_sink: MaaTaskerEventSink | None = None
     ):
         # 确保正确初始化 QObject 基类，避免 Qt 运行时错误
         super().__init__()
@@ -88,10 +88,10 @@ class MaaFW(QObject):
         self.tasker = None
 
         # 这里传入的是 Sink 类，需要在此处实例化，避免把类对象/descriptor 直接交给底层 C 接口
-        self.maa_controller_sink = maa_controller_sink()
-        self.maa_context_sink = maa_context_sink()
-        self.maa_resource_sink = maa_resource_sink()
-        self.maa_tasker_sink = maa_tasker_sink()
+        self.maa_controller_sink = maa_controller_sink
+        self.maa_context_sink = maa_context_sink
+        self.maa_resource_sink = maa_resource_sink
+        self.maa_tasker_sink = maa_tasker_sink
 
         self.agent = None
         self.agent_thread = None
@@ -174,21 +174,25 @@ class MaaFW(QObject):
     def _init_controller(
         self, controller: AdbController | Win32Controller
     ) -> AdbController | Win32Controller:
-        controller.add_sink(self.maa_controller_sink)
+        if self.maa_controller_sink:
+            controller.add_sink(self.maa_controller_sink)
         self.controller = controller
         return self.controller
 
     def _init_resource(self) -> Resource:
         if self.resource is None:
             self.resource = Resource()
-            self.resource.add_sink(self.maa_resource_sink)
+            if self.maa_resource_sink:
+                self.resource.add_sink(self.maa_resource_sink)
         return self.resource
 
     def _init_tasker(self) -> Tasker:
         if self.tasker is None:
             self.tasker = Tasker()
             self.tasker.add_context_sink(self.maa_context_sink)
-            self.tasker.add_sink(self.maa_tasker_sink)
+
+            if self.maa_tasker_sink:
+                self.tasker.add_sink(self.maa_tasker_sink)
         if not self.resource or not self.controller:
             raise RuntimeError("Resource 与 Controller 必须先初始化再初始化 Tasker")
         self.tasker.bind(self.resource, self.controller)

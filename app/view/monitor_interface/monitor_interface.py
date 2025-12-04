@@ -8,7 +8,7 @@ from time import time
 
 from PIL import Image
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QImage, QIntValidator, QPixmap
+from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QSizePolicy,
@@ -19,12 +19,9 @@ from PySide6.QtWidgets import (
 from qfluentwidgets import (
     BodyLabel,
     FluentIcon as FIF,
-    IndicatorPosition,
     IndeterminateProgressBar,
-    LineEdit,
     PixmapLabel,
     PrimaryPushButton,
-    SwitchButton,
 )
 
 from app.core.core import ServiceCoordinator
@@ -72,6 +69,8 @@ class MonitorInterface(QWidget):
             config_service=self.service_coordinator.config_service,
         )
         self._monitor_loop_task: Optional[asyncio.Task] = None
+        self._monitoring_active = False
+        self._target_interval = 1.0 / 30
 
     def _setup_ui(self) -> None:
         self.main_layout = QVBoxLayout(self)
@@ -125,11 +124,6 @@ class MonitorInterface(QWidget):
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )
 
-        self.refresh_button = PrimaryPushButton(self.tr("Refresh"), self)
-        self.refresh_button.clicked.connect(self._on_refresh_screenshot)
-        self.refresh_button.setToolTip(self.tr("重新抓取当前画面并刷新预览"))
-        controls_layout.addWidget(self.refresh_button)
-
         self.save_button = PrimaryPushButton(self.tr("Save Screenshot"), self)
         self.save_button.setIcon(FIF.CAMERA)
         self.save_button.setIconSize(QSize(18, 18))
@@ -138,51 +132,6 @@ class MonitorInterface(QWidget):
             self.tr("Capture the current preview and store it on disk")
         )
         controls_layout.addWidget(self.save_button)
-
-        monitor_widget = QWidget(self)
-        monitor_widget.setSizePolicy(
-            QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed
-        )
-        monitor_layout = QHBoxLayout(monitor_widget)
-        monitor_layout.setContentsMargins(0, 0, 0, 0)
-        monitor_layout.setSpacing(6)
-        monitor_layout.addWidget(BodyLabel(self.tr("Monitor Mode"), self))
-        self.monitor_switch = SwitchButton(
-            self.tr("Off"), self, IndicatorPosition.RIGHT
-        )
-        self.monitor_switch.setToolTip(self.tr("Toggle live monitoring mode"))
-        self.monitor_switch.checkedChanged.connect(self._on_monitor_mode_changed)
-        monitor_layout.addWidget(self.monitor_switch)
-        controls_layout.addWidget(monitor_widget)
-
-        fps_widget = QWidget(self)
-        fps_layout = QHBoxLayout(fps_widget)
-        fps_layout.setContentsMargins(0, 0, 0, 0)
-        fps_layout.setSpacing(6)
-        fps_layout.addWidget(BodyLabel(self.tr("Target FPS"), self))
-        self.fps_input = LineEdit(self)
-        self.fps_input.setValidator(QIntValidator(1, 240, self))
-        self.fps_input.setFixedWidth(96)
-        self.fps_input.setText("30")
-        self.fps_input.setPlaceholderText(self.tr("FPS"))
-        self.fps_input.setToolTip(self.tr("Set the preferred frame rate for capture"))
-        fps_layout.addWidget(self.fps_input)
-        controls_layout.addWidget(fps_widget)
-        self.fps_input.textChanged.connect(self._on_fps_value_changed)
-
-        override_widget = QWidget(self)
-        override_layout = QHBoxLayout(override_widget)
-        override_layout.setContentsMargins(0, 0, 0, 0)
-        override_layout.setSpacing(6)
-        override_layout.addWidget(BodyLabel(self.tr("Overdrive Control"), self))
-        self.override_switch = SwitchButton(
-            self.tr("Off"), self, IndicatorPosition.RIGHT
-        )
-        self.override_switch.setToolTip(
-            self.tr("Clicks inside the preview are mapped to the real device and fire actions")
-        )
-        override_layout.addWidget(self.override_switch)
-        controls_layout.addWidget(override_widget)
 
         controls_layout.addStretch()
         self.main_layout.addLayout(controls_layout)
@@ -276,40 +225,18 @@ class MonitorInterface(QWidget):
         return Image.fromarray(raw_frame[..., ::-1])
 
     def _get_target_interval(self) -> float:
-        fps = self._get_fps_value()
-        return 1.0 / fps
-
-    def _get_fps_value(self) -> int:
-        if not hasattr(self, "fps_input"):
-            return 30
-        text = self.fps_input.text().strip()
-        if not text:
-            return 1
-        try:
-            value = int(text)
-        except ValueError:
-            return 1
-        return max(1, min(240, value))
-
-    def _on_monitor_mode_changed(self, checked: bool) -> None:
-        if checked:
-            logger.info("监控子页面：监控模式已开启。")
-            self._start_monitor_loop()
-        else:
-            logger.info("监控子页面：监控模式已停止。")
-            self._stop_monitor_loop()
-
-    def _on_fps_value_changed(self, value: int) -> None:
-        return
+        return self._target_interval
 
     def _start_monitor_loop(self) -> None:
         if self._monitor_loop_task and not self._monitor_loop_task.done():
             return
         suppress_asyncify_logging()
         suppress_qasync_logging()
+        self._monitoring_active = True
         self._monitor_loop_task = asyncio.create_task(self._monitor_loop())
 
     def _stop_monitor_loop(self) -> None:
+        self._monitoring_active = False
         task = self._monitor_loop_task
         self._monitor_loop_task = None
         if task and not task.done():
@@ -320,8 +247,11 @@ class MonitorInterface(QWidget):
     async def _monitor_loop(self) -> None:
         loop = asyncio.get_running_loop()
         try:
-            while self.monitor_switch.isChecked():
+            while self._monitoring_active and not self._locked:
                 start = loop.time()
+                if not self._is_controller_connected():
+                    await self._handle_controller_disconnection()
+                    return
                 try:
                     pil_image = await asyncio.to_thread(self._capture_frame)
                 except Exception:
@@ -337,6 +267,37 @@ class MonitorInterface(QWidget):
             self._monitor_loop_task = None
             restore_asyncify_logging()
             restore_qasync_logging()
+
+    def _is_controller_connected(self) -> bool:
+        controller = getattr(self.monitor_task.maafw, "controller", None)
+        if controller is None:
+            return False
+        connected = getattr(controller, "connected", None)
+        return connected is not False
+
+    async def _handle_controller_disconnection(self) -> None:
+        if not self._monitoring_active or self._locked:
+            return
+        logger.warning("监控子页面：检测到控制器断开，停止监控并自动锁定。")
+        self._monitoring_active = False
+        current_task = asyncio.current_task()
+        if current_task is not self._monitor_loop_task:
+            self._stop_monitor_loop()
+        try:
+            await self.monitor_task.maafw.stop_task()
+        except Exception as exc:
+            logger.exception("监控子页面：停止任务失败：%s", exc)
+        self.lock_monitor_page(stop_loop=False)
+
+    def _schedule_controller_disconnection(self) -> None:
+        if not self._monitoring_active or self._locked:
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop and loop.is_running():
+            loop.create_task(self._handle_controller_disconnection())
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
@@ -361,17 +322,12 @@ class MonitorInterface(QWidget):
         except Exception as exc:
             logger.exception("监控子页面：保存截图失败：%s", exc)
 
-    def _on_refresh_screenshot(self) -> None:
-        logger.info("监控子页面：用户请求刷新截图。")
-        try:
-            pil_image = self._capture_frame()
-            self._apply_preview_from_pil(pil_image)
-        except Exception as exc:
-            logger.exception("监控子页面：刷新截图失败：%s", exc)
-
     def _on_preview_clicked(self, x: int, y: int) -> None:
         logger.info("监控子页面：预览图被点击，开始同步到设备。")
         if not self.service_coordinator:
+            return
+        if not self._is_controller_connected():
+            self._schedule_controller_disconnection()
             return
         handler = getattr(self.service_coordinator, "sync_monitor_preview_click", None)
         if callable(handler):
@@ -487,7 +443,6 @@ class MonitorInterface(QWidget):
     def _on_unlock_clicked(self) -> None:
         async def _unlock_sequence():
             try:
-                await self.service_coordinator.stop_task()
                 connected = await self.monitor_task._connect()
                 if not connected:
                     logger.error("设备连接失败，无法解锁监控页面")
@@ -496,8 +451,12 @@ class MonitorInterface(QWidget):
                     )
                     return
                 self._set_locked(False)
+                self._start_monitor_loop()
                 signalBus.info_bar_requested.emit("success", "监控页面解锁成功")
                 try:
+                    if not self._is_controller_connected():
+                        await self._handle_controller_disconnection()
+                        return
                     pil_image = await asyncio.to_thread(self._capture_frame)
                 except Exception as exc:
                     logger.exception("监控子页面：解锁后刷新画面失败：%s", exc)
@@ -515,6 +474,10 @@ class MonitorInterface(QWidget):
         if self._lock_overlay:
             self._lock_overlay.setVisible(locked)
 
-    def lock_monitor_page(self) -> None:
+    def lock_monitor_page(self, stop_loop: bool = True) -> None:
         """重新锁定监控页面。"""
+        if stop_loop:
+            self._stop_monitor_loop()
+        else:
+            self._monitoring_active = False
         self._set_locked(True)
