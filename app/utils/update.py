@@ -707,13 +707,12 @@ class Update(BaseUpdate):
 
             # 版本兼容性检查
             interface_path = os.path.join(target_path, "interface.json")
-            check_interface = Read_Config(interface_path).get(
-                "MFW_min_req_version", "0.0.0.1"
-            )
+            interface = Read_Config(interface_path)
+            check_interface = interface.get("MFW_min_req_version", "0.0.0.1")
             logger.info(f"版本检查 - 最低需求: {check_interface} | 当前: {version}")
 
             compare_result = self.compare_versions(check_interface, version)
-            if not compare_result:
+            if not compare_result or interface.get("interface_version", 0) <= 2:
                 logger.warning("当前版本过低，已中止更新")
                 signalBus.update_download_finished.emit(
                     {
