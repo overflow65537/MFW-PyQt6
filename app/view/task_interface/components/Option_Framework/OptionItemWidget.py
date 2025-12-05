@@ -3,8 +3,18 @@
 单个选项的独立组件，支持 combobox 和 lineedit 类型，以及子选项
 """
 # type: ignore[attr-defined]
+from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple, Union
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy, QFrame
+from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QSizePolicy,
+    QFrame,
+    QLabel,
+    QLayout,
+)
 from PySide6.QtCore import Qt, Signal
 from qfluentwidgets import ComboBox, LineEdit, BodyLabel, ToolTipFilter, SwitchButton, isDarkTheme, qconfig
 import re
@@ -57,6 +67,56 @@ class OptionItemWidget(QWidget):
         
         # 初始化完成后启用动画
         self._animation_enabled = True
+
+    ICON_SIZE = 18
+
+    def _resolve_icon(self, icon_source: Any) -> Optional[QIcon]:
+        """将 icon 字段转换为 QIcon 对象"""
+        if not icon_source:
+            return None
+        if isinstance(icon_source, QIcon):
+            return icon_source
+        if isinstance(icon_source, QPixmap):
+            return QIcon(icon_source)
+        if isinstance(icon_source, Path):
+            icon_source = str(icon_source)
+        if isinstance(icon_source, str):
+            icon = QIcon(icon_source)
+            return icon if not icon.isNull() else None
+        return None
+
+    def _add_icon_to_layout(self, layout: QHBoxLayout, icon_source: Any) -> Optional[QLabel]:
+        """在横向布局前端插入图标标签"""
+        icon = self._resolve_icon(icon_source)
+        if not icon:
+            return None
+
+        pixmap = icon.pixmap(self.ICON_SIZE, self.ICON_SIZE)
+        if pixmap.isNull():
+            return None
+
+        icon_label = QLabel()
+        icon_label.setPixmap(pixmap)
+        icon_label.setFixedSize(self.ICON_SIZE, self.ICON_SIZE)
+        icon_label.setScaledContents(True)
+        layout.addWidget(icon_label)
+        return icon_label
+
+    def _create_label_with_optional_icon(
+        self, text: str, icon_source: Any, parent_layout: QLayout
+    ) -> BodyLabel:
+        """创建带图标的横向布局，并返回 BodyLabel"""
+        container = QWidget()
+        container_layout = QHBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(6)
+        self._add_icon_to_layout(container_layout, icon_source)
+
+        label = BodyLabel(text)
+        container_layout.addWidget(label)
+        container_layout.addStretch()
+        parent_layout.addWidget(container)
+        return label
     
     def _init_ui(self):
         """初始化UI"""
@@ -87,8 +147,9 @@ class OptionItemWidget(QWidget):
             # 创建标签
             label_text = self.config.get("label", self.key)
             if not self._single_input_mode:
-                self.label = BodyLabel(label_text)
-                self.main_option_layout.addWidget(self.label)
+                self.label = self._create_label_with_optional_icon(
+                    label_text, self.config.get("icon"), self.main_option_layout
+                )
                 
                 # 添加 tooltip
                 if "description" in self.config:
@@ -144,14 +205,20 @@ class OptionItemWidget(QWidget):
         # 添加选项
         options = self.config.get("options", [])
         for option in options:
+            option_icon = None
             if isinstance(option, dict):
                 label = option.get("label", "")
                 name = option.get("name", label)
+                option_icon = option.get("icon")
             else:
                 label = str(option)
                 name = label
-            
+            icon_to_use = self._resolve_icon(option_icon)
             self.control_widget.addItem(label)
+            if icon_to_use:
+                index = self.control_widget.count() - 1
+                self.control_widget.setItemIcon(index, icon_to_use)
+
             self._option_map[label] = name
             self._reverse_option_map[name] = label
         
@@ -172,6 +239,7 @@ class OptionItemWidget(QWidget):
         
         # 创建标签（标题）
         label_text = self.config.get("label", self.key)
+        self._add_icon_to_layout(switch_layout, self.config.get("icon"))
         self.label = BodyLabel(label_text)
         switch_layout.addWidget(self.label)
         
@@ -243,8 +311,11 @@ class OptionItemWidget(QWidget):
 
             label_text = input_item.get("label") or self.config.get("label", self.key)
             if label_text:
-                single_label = BodyLabel(label_text)
-                self.main_option_layout.addWidget(single_label)
+                single_label = self._create_label_with_optional_icon(
+                    label_text,
+                    input_item.get("icon") or self.config.get("icon"),
+                    self.main_option_layout,
+                )
 
             # 设置默认值
             if "default" in input_item:
@@ -289,8 +360,9 @@ class OptionItemWidget(QWidget):
                 input_container.setContentsMargins(10, 5, 10, 5)
                 
                 # 创建标签
-                input_label = BodyLabel(input_label_text)
-                input_container.addWidget(input_label)
+                input_label = self._create_label_with_optional_icon(
+                    input_label_text, input_item.get("icon"), input_container
+                )
                 
                 # 创建输入框
                 line_edit = LineEdit()

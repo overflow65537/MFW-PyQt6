@@ -89,6 +89,12 @@ class OptionService:
             return field_value if isinstance(field_value, dict) else None
         return None
 
+    def _copy_icon_from_source(self, target: Dict[str, Any], source: Dict[str, Any]) -> None:
+        """将 source 中的 icon 字段复制到 target"""
+        icon = source.get("icon")
+        if icon:
+            target["icon"] = icon
+
     def process_option_def(
         self,
         option_def: Dict[str, Any],
@@ -130,6 +136,9 @@ class OptionService:
             description = option_def["doc"]
         if description:
             field_config["description"] = description
+
+        # 复制 icon 信息（如果有）
+        self._copy_icon_from_source(field_config, option_def)
 
         # 处理不同类型的选项
 
@@ -203,8 +212,9 @@ class OptionService:
                 display_label = case.get("label", case.get("name", ""))
                 option_name = case.get("name", display_label)
 
-                # 以字典形式保存name和label，用于i18n支持
-                options.append({"name": option_name, "label": display_label})
+                option_entry = {"name": option_name, "label": display_label}
+                self._copy_icon_from_source(option_entry, case)
+                options.append(option_entry)
 
                 # 递归处理cases中的子选项(option参数)
                 child_fields = []
