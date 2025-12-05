@@ -77,12 +77,7 @@ class TaskFlowRunner(QObject):
             # 从info开始截断
             info = info.split("| INFO |")[1]
             signalBus.log_output.emit("INFO", info)
-        else:
-            # 使用re截断格式为2025-12-01 15:20:37,944 的时间
-            import re
 
-            time = re.match(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}", info)
-            signalBus.log_output.emit("INFO", info)
 
     def _handle_maafw_custom_info(self, error_code: int):
         try:
