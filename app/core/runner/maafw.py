@@ -35,6 +35,7 @@ from PySide6.QtCore import QObject, Signal
 
 from app.utils.logger import logger
 
+
 # 以下代码引用自 MaaDebugger 项目的 ./src/MaaDebugger/maafw/__init__.py 文件，用于生成maafw实例
 class MaaFWError(Enum):
     RESOURCE_OR_CONTROLLER_NOT_INITIALIZED = 1
@@ -45,6 +46,8 @@ class MaaFWError(Enum):
     AGENT_CONFIG_INVALID = 6
     AGENT_CHILD_EXEC_MISSING = 7
     AGENT_START_FAILED = 8
+
+
 from maa.controller import ControllerEventSink, Controller, NotificationType
 from maa.resource import ResourceEventSink, Resource
 from maa.tasker import TaskerEventSink, Tasker
@@ -345,6 +348,7 @@ class MaaFW(QObject):
             import sys
 
             start_cmd = [sys.executable, *child_args, socket_id]
+        logger.debug(f"启动agent命令: {start_cmd},内置模式: {self.embedded_agent_mode}")
         try:
             agent_process = subprocess.Popen(
                 start_cmd,
