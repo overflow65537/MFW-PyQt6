@@ -29,13 +29,14 @@ import requests
 from requests import Response, HTTPError
 import jsonc
 import os
+import re
 import shutil
-import zipfile
-import tarfile
-import time
 import sys
-from pathlib import Path
-from typing import Any, Callable, Dict, Optional, TYPE_CHECKING, cast
+import tarfile
+import zipfile
+from pathlib import Path, PurePosixPath
+from typing import Any, Callable, Dict, Literal, Optional, TYPE_CHECKING, cast
+from urllib.parse import unquote, urlparse
 
 import platform
 
@@ -92,13 +93,14 @@ class BaseUpdate(QThread):
 
     def download_file(
         self, url, file_path, progress_signal: SignalInstance, use_proxies
-    ):
+    ) -> Path | None:
         logger.info("  [下载] 开始下载文件...")
         logger.debug("  [下载] URL: %s", url[:100] if url else "N/A")
         logger.debug("  [下载] 保存路径: %s", file_path)
 
         need_clear_update = False
         response = None
+        final_path: Path | None = None
         if use_proxies:
             proxies = self.get_proxy_data()
             logger.debug("  [下载] 使用代理: %s", "是" if proxies else "否")
@@ -110,6 +112,44 @@ class BaseUpdate(QThread):
             logger.debug("  [下载] 检测到NO_SSL文件，跳过SSL验证")
         else:
             verify = True
+
+        def _format_filename_from_headers(resp: Response) -> str | None:
+            cd_header = resp.headers.get("content-disposition", "")
+            if cd_header:
+                match = re.search(
+                    r"filename\*\s*=\s*(?:UTF-8'')?([^;]+)",
+                    cd_header,
+                    flags=re.IGNORECASE,
+                )
+                if match:
+                    return unquote(match.group(1).strip().strip('"'))
+                match = re.search(
+                    r'filename\s*=\s*"?([^";]+)"?',
+                    cd_header,
+                    flags=re.IGNORECASE,
+                )
+                if match:
+                    return match.group(1)
+            return None
+
+        def _derive_filename(resp: Response) -> str:
+            name = _format_filename_from_headers(resp)
+            if name:
+                return name
+            parsed = urlparse(url)
+            fallback = Path(parsed.path).name
+            if fallback:
+                return unquote(fallback)
+            return "update.zip"
+
+        def _resolve_target_location(base_path: Path, filename: str) -> Path:
+            is_dir = (base_path.exists() and base_path.is_dir()) or str(
+                base_path
+            ).endswith(os.sep)
+            if is_dir:
+                return base_path / filename
+            return base_path
+
         try:
             logger.debug("  [下载] 发起请求...")
             response = requests.get(
@@ -123,12 +163,17 @@ class BaseUpdate(QThread):
 
             downloaded_size = 0
             last_log_percent = 0
-            with open(file_path, "wb") as file:
+            if not final_path:
+                filename = _derive_filename(response)
+                target_path = Path(file_path)
+                final_path = _resolve_target_location(target_path, filename)
+            final_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(final_path, "wb") as file:
                 for data in response.iter_content(chunk_size=4096):
                     if self.stop_flag:
                         logger.warning("  [下载] 收到停止信号，中断下载")
                         response.close()
-                        if os.path.exists("update.zip"):
+                        if final_path and final_path.exists():
                             need_clear_update = True
                         break
 
@@ -145,47 +190,134 @@ class BaseUpdate(QThread):
 
             if not need_clear_update and not self.stop_flag:
                 logger.info("  [下载] 下载完成，共 %d 字节", downloaded_size)
-                return True
-            else:
-                if os.path.exists("update.zip"):
-                    os.remove("update.zip")
-                return False
+                return final_path
+            if final_path and final_path.exists():
+                final_path.unlink()
+            return None
         except Exception as e:
             logger.exception(f"下载文件时出错{url} -> {file_path}\n{e}")
-            if os.path.exists("update.zip"):
-                os.remove("update.zip")
-            return False
+            if final_path and final_path.exists():
+                final_path.unlink()
+            return None
         finally:
             if response:
                 response.close()
 
+    def extract_archive(self, archive_path, extract_to, flatten_assets=False) -> Path | None:
+        target_path = Path(archive_path)
+        normalized_name = target_path.name.lower()
+
+        if normalized_name.endswith(".tar.gz") or normalized_name.endswith(".tgz"):
+            archive_type = "tar"
+        elif normalized_name.endswith(".zip"):
+            archive_type = "zip"
+        else:
+            logger.warning(
+                "未知压缩格式: %s，默认按照 zip 处理",
+                target_path.name,
+            )
+            archive_type = "zip"
+
+        return self._perform_archive_extraction(
+            target_path, extract_to, flatten_assets, archive_type
+        )
+
     def extract_zip(self, zip_file_path, extract_to, flatten_assets=False):
-        actual_main_folder = None
+        return self.extract_archive(zip_file_path, extract_to, flatten_assets)
+
+    def _perform_archive_extraction(
+        self,
+        archive_path: Path,
+        extract_to: Path | str,
+        flatten_assets: bool,
+        archive_type: Literal["zip", "tar"],
+    ) -> Path | None:
+        extract_to_path = Path(extract_to)
+        extract_to_path.mkdir(parents=True, exist_ok=True)
+
+        def _normalize_parts(parts: tuple[str, ...]) -> tuple[str, ...]:
+            return tuple(part for part in parts if part and part != ".")
+
+        interface_names = {"interface.json", "interface.jsonc"}
+        final_root: Path | None = None
+
         try:
-            with zipfile.ZipFile(
-                zip_file_path, "r", metadata_encoding="utf-8"
-            ) as zip_ref:
-                all_members = zip_ref.namelist()
-                actual_main_folder = all_members[0].split("/")[0]
-                zip_ref.extractall(extract_to)
-            if flatten_assets:
-                self._normalize_assets_package(extract_to)
-            return actual_main_folder
-        except zipfile.BadZipFile as e:
-            tar_file_path = zip_file_path.with_suffix(".tar.gz")
-            os.rename(zip_file_path, tar_file_path)
-            with tarfile.open(tar_file_path, "r") as tar_ref:
-                members = tar_ref.getmembers()
-                if members:
-                    # 从第一个成员路径提取主文件夹名
-                    actual_main_folder = members[0].name.split("/")[0]
-                tar_ref.extractall(extract_to)
-            if flatten_assets:
-                self._normalize_assets_package(extract_to)
-            return actual_main_folder
+            if archive_type == "zip":
+                with zipfile.ZipFile(
+                    archive_path, "r", metadata_encoding="utf-8"
+                ) as archive:
+                    members = archive.namelist()
+                    interface_dir_parts = self._determine_interface_dir(
+                        members, _normalize_parts, interface_names
+                    )
+                    self._extract_members_filtered(
+                        archive, members, interface_dir_parts, extract_to_path, _normalize_parts
+                    )
+                    final_root = self._resolve_final_root(
+                        extract_to_path, interface_dir_parts
+                    )
+            else:
+                with tarfile.open(archive_path, "r:*") as archive:
+                    members = archive.getmembers()
+                    member_names = [member.name for member in members]
+                    interface_dir_parts = self._determine_interface_dir(
+                        member_names, _normalize_parts, interface_names
+                    )
+                    self._extract_members_filtered(
+                        archive,
+                        members,
+                        interface_dir_parts,
+                        extract_to_path,
+                        _normalize_parts,
+                    )
+                    final_root = self._resolve_final_root(
+                        extract_to_path, interface_dir_parts
+                    )
+
+            if flatten_assets and final_root:
+                self._normalize_assets_package(final_root)
+            return final_root or extract_to_path
         except Exception as e:
-            logger.exception(f"解压文件时出错 {e}")
-            return False
+            logger.exception("解压文件时出错 %s", e)
+            return None
+
+    def _determine_interface_dir(
+        self,
+        members: list[str],
+        normalize: Callable[[tuple[str, ...]], tuple[str, ...]],
+        interface_names: set[str],
+    ) -> tuple[str, ...] | None:
+        for member in members:
+            member_path = PurePosixPath(member)
+            if member_path.name.lower() in interface_names:
+                return normalize(member_path.parent.parts)
+        return None
+
+    def _extract_members_filtered(
+        self,
+        archive: Any,
+        members: list[Any],
+        interface_dir_parts: tuple[str, ...] | None,
+        extract_to_path: Path,
+        normalize: Callable[[tuple[str, ...]], tuple[str, ...]],
+    ) -> None:
+        for member in members:
+            member_name = member if isinstance(member, str) else member.name
+            member_path = PurePosixPath(member_name)
+            member_parts = normalize(member_path.parts)
+            if (
+                interface_dir_parts
+                and member_parts[: len(interface_dir_parts)] != interface_dir_parts
+            ):
+                continue
+            archive.extract(member, extract_to_path)
+
+    def _resolve_final_root(
+        self, extract_to_path: Path, interface_dir_parts: tuple[str, ...] | None
+    ) -> Path:
+        if interface_dir_parts:
+            return extract_to_path.joinpath(*interface_dir_parts)
+        return extract_to_path
 
     def _normalize_assets_package(self, extract_to):
         """
@@ -799,6 +931,8 @@ class Update(BaseUpdate):
         logger.info("GitHub URL: %s", self.url)
         logger.info("=" * 50)
         self.stop_flag = False
+        deleted_backups: list[tuple[Path, Path]] = []
+        backup_dir: Path | None = None
 
         try:
             if not self.service_coordinator:
@@ -824,7 +958,7 @@ class Update(BaseUpdate):
             )
 
             # 步骤2: 检查是否支持热更新
-            logger.info("[步骤2] 检查热更新支持...")
+            logger.info("[步骤2] 开始判断热更新支持...")
             hotfix = False
             update_flag_url = self._form_github_url(
                 self.url, "update_flag", str(self.latest_update_version)
@@ -849,102 +983,124 @@ class Update(BaseUpdate):
                 logger.warning("[步骤2] 标志位比较失败，跳过热更新")
                 hotfix = False
             if not hotfix:
-                logger.info("[步骤2] 标志位不匹配，跳过热更新")
+                logger.info("[步骤2] 标志位不匹配，热更新不可用")
                 hotfix = False
 
-            self._emit_info_bar("info", self.tr("Downloading update..."))
-            if hotfix:
-                logger.info("[步骤2] 标志位匹配，下载热更新包")
-                zip_file_path = Path.cwd() / "hotfix.zip"
-            else:
-                logger.info("[步骤2] 标志位不匹配，开始下载完整包")
-                zip_file_path = Path.cwd() / "update.zip"
+            self._emit_info_bar("info", self.tr("Preparing to download update..."))
 
+            download_dir = Path.cwd() / "update" / "new_version"
+            download_dir.mkdir(parents=True, exist_ok=True)
             if not download_url:
                 logger.error("[步骤2] 未设置下载地址，无法执行下载")
                 self._emit_info_bar("error", self.tr("Download failed"))
                 self.stop_signal.emit(0)
                 return
+            logger.debug("[步骤2] 保存路径: %s", download_dir)
 
-            logger.debug("[步骤2] 保存路径: %s", zip_file_path)
-
-            if not self.download_file(
+            logger.info("[步骤3] 开始下载更新包...")
+            logger.debug("[步骤3] 下载地址: %s", download_url)
+            downloaded_zip_path = self.download_file(
                 download_url,
-                zip_file_path,
+                download_dir,
                 self.progress_signal,
                 use_proxies=self.get_proxy_data(),
-            ):
-                logger.error("[步骤2] 下载失败")
+            )
+            if not downloaded_zip_path:
+                logger.error("[步骤3] 下载失败")
                 self._emit_info_bar("error", self.tr("Download failed"))
                 self.stop_signal.emit(0)
                 return
+            zip_file_path = downloaded_zip_path
+            logger.debug("[步骤3] 下载文件: %s", zip_file_path)
 
-            logger.info("[步骤2] 下载完成")
+            logger.info(
+                "[步骤3] 下载完成，大小: %.2f MB",
+                zip_file_path.stat().st_size / (1024 * 1024),
+            )
             self._emit_info_bar("success", self.tr("Download complete"))
 
-            # 步骤3: 执行热更新
+            # 步骤3: 判断是否可以热更新
             if not hotfix:
-                logger.info("[步骤3] 标志位不匹配，开始下载更新包")
+                logger.info("[步骤3] 热更新标志位仍不匹配，转向补丁准备流程")
                 self.stop_signal.emit(2)
                 return
-
-            logger.info("[步骤3] 开始执行热更新...")
+            logger.info("[步骤4] 开始执行热更新，准备解压更新包...")
             self._emit_info_bar("info", self.tr("Applying hotfix..."))
 
-            logger.debug("[步骤3] 解压更新包到 hotfix 目录")
-            self.extract_zip(zip_file_path, Path.cwd() / "hotfix")
+            logger.debug("[步骤4] 解压更新包到 hotfix 目录")
+            hotfix_dir = Path.cwd() / "hotfix"
+            hotfix_root = self.extract_zip(zip_file_path, hotfix_dir)
+            if not hotfix_root:
+                logger.error("[步骤4] 解压更新包失败")
+                self.stop_signal.emit(2)
+                return
+            logger.info("[步骤4] 更新包解压完成: %s", hotfix_root)
 
-            change_data_path = Path.cwd() / "hotfix" / "changes.json"
+            change_data_path = hotfix_root / "changes.json"
 
             # 获取 bundle 路径
             bundle_path = self._get_bundle_path()
             if not bundle_path:
-                logger.warning("[步骤3] Bundle 配置不存在，跳过热更新")
+                logger.warning("[步骤4] Bundle 配置不存在，跳过热更新")
                 self.stop_signal.emit(2)
                 return
-
-            logger.debug("[步骤3] Bundle 路径: %s", bundle_path)
+            bundle_path_obj = Path(bundle_path)
+            logger.debug("[步骤4] Bundle 路径: %s", bundle_path_obj)
 
             if change_data_path.exists():
-                logger.info("[步骤3] 使用 changes.json 进行增量更新")
+                logger.info("[步骤4] 使用 changes.json 进行增量更新")
                 change_data = self._read_config(str(change_data_path)).get(
                     "deleted", []
                 )
-                logger.debug("[步骤3] 需要删除 %d 个文件", len(change_data))
+                logger.debug("[步骤4] 需要删除 %d 个文件", len(change_data))
+
+                backup_dir = bundle_path_obj / ".update_delete_backup"
+                backup_dir.mkdir(parents=True, exist_ok=True)
+
+                def _backup_and_delete(target: Path) -> None:
+                    try:
+                        relative_target = target.relative_to(bundle_path_obj)
+                    except ValueError:
+                        relative_target = Path(target.name)
+                    backup_target = backup_dir / relative_target
+                    backup_target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(target, backup_target)
+                    deleted_backups.append((target, backup_target))
+                    target.unlink()
+                    logger.debug("[步骤4] 删除文件: %s", target)
 
                 for file in change_data:
                     if file.startswith("install"):
-                        file_path = file.replace("install", bundle_path, 1)
-                        if os.path.exists(file_path):
-                            if os.path.isfile(file_path):
-                                os.remove(file_path)
-                                logger.debug("[步骤3] 删除文件: %s", file_path)
-                    elif file.startswith("resource"):
-                        file_path = file.replace(
-                            "resource", f"{bundle_path}/resource", 1
+                        file_path = Path(
+                            file.replace("install", str(bundle_path_obj), 1)
                         )
-                        if os.path.exists(file_path):
-                            if os.path.isfile(file_path):
-                                os.remove(file_path)
-                                logger.debug("[步骤3] 删除文件: %s", file_path)
+                    elif file.startswith("resource"):
+                        file_path = Path(
+                            file.replace(
+                                "resource", str(bundle_path_obj / "resource"), 1
+                            )
+                        )
                     else:
-                        logger.warning("[步骤3] 未知文件格式: %s", file)
+                        logger.warning("[步骤4] 未知文件格式: %s", file)
                         continue
+
+                    if file_path.exists() and file_path.is_file():
+                        _backup_and_delete(file_path)
             else:
-                logger.info("[步骤3] 使用安全覆盖模式进行全量更新")
-                project_path = Path(bundle_path)
-                hotfix_root = Path.cwd() / "hotfix"
-
-                if not hotfix_root.exists():
-                    logger.error("[步骤3] hotfix 目录不存在")
+                logger.info("[步骤5] 使用安全覆盖模式进行全量更新")
+                project_path = bundle_path_obj
+                if not hotfix_root or not hotfix_root.exists():
+                    logger.error("[步骤5] hotfix 目录不存在，无法覆盖")
                     self.stop_signal.emit(2)
                     return
 
+                logger.info("[步骤5] 开始安全覆盖项目目录: %s", project_path)
                 if not self._safe_overwrite_project(project_path, hotfix_root):
-                    logger.error("[步骤3] 安全覆盖失败")
+                    logger.error("[步骤5] 安全覆盖失败")
+
                     self.stop_signal.emit(2)
                     return
-            bundle_path_obj = Path(bundle_path)
+                logger.info("[步骤5] 安全覆盖操作完成")
             interface_path = [
                 bundle_path_obj / "interface.jsonc",
                 bundle_path_obj / "interface.json",
@@ -957,10 +1113,11 @@ class Update(BaseUpdate):
                         interface["version"] = self.latest_update_version
                         with open(path, "w", encoding="utf-8") as f:
                             jsonc.dump(interface, f, indent=4, ensure_ascii=False)
-                        logger.info("[步骤3] 更新 interface.jsonc 成功")
+                        logger.info("[步骤5] 更新 interface.jsonc 成功")
                         break
-            # 步骤4: 完成
-            logger.info("[步骤4] 热更新成功完成!")
+            logger.info("[步骤5] interface 配置同步完毕")
+            # 步骤5: 完成
+            logger.info("[步骤5] 热更新成功完成!")
             logger.info("=" * 50)
             self._emit_info_bar("success", self.tr("Update applied successfully"))
             # 触发服务协调器重新初始化
@@ -968,9 +1125,30 @@ class Update(BaseUpdate):
             self.stop_signal.emit(1)
 
         except Exception as e:
+            if deleted_backups:
+                logger.warning("[步骤5] 更新失败，正在恢复已删除文件...")
+                for original_path, backup_path in reversed(deleted_backups):
+                    try:
+                        if backup_path.exists():
+                            original_path.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copy2(backup_path, original_path)
+                            logger.debug("[步骤5] 已恢复文件: %s", original_path)
+                    except Exception as restore_err:
+                        logger.exception(
+                            "[步骤5] 恢复文件失败: %s -> %s",
+                            original_path,
+                            restore_err,
+                        )
+                deleted_backups.clear()
             logger.exception("更新过程中出现错误: %s", e)
             self._emit_info_bar("error", self.tr("Failed to update"))
             self.stop_signal.emit(0)
+        finally:
+            if backup_dir and backup_dir.exists():
+                try:
+                    shutil.rmtree(backup_dir)
+                except Exception as cleanup_err:
+                    logger.debug("[步骤5] 清理删除备份目录失败: %s", cleanup_err)
 
     def check_update(self) -> str | bool:
         logger.info("  [检查更新] 开始检查...")
