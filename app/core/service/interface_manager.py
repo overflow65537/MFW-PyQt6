@@ -22,7 +22,7 @@ class InterfaceManager:
     _current_language: str = "zh_cn"
     _interface_path: Optional[Path] = None
     _interface_dir: Path = Path.cwd()
-    _file_text_fields = {"contact", "license", "welcome", "welcome", "description"}
+    _file_text_fields = {"contact", "license", "welcome", "description"}
 
     def __new__(cls):
         if cls._instance is None:
