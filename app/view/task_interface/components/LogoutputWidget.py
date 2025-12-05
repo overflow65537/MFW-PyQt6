@@ -1,5 +1,6 @@
 from datetime import datetime
 import re
+from typing import Optional
 from venv import logger
 
 from PySide6.QtCore import QEvent, Qt
@@ -34,7 +35,7 @@ class LogoutputWidget(QWidget):
             "CRITICAL": "#b63923",
         }
         self._color_tag_pattern = re.compile(
-            r"\[color:(?P<color>[A-Za-z]+)\](?P<text>.*?)\[/color\]", re.S
+            r"\[color:(?P<color>[^\]]+)\](?P<text>.*?)\[/color\]", re.S
         )
         self._init_log_output()
         self.main_layout = QVBoxLayout(self)
@@ -187,13 +188,30 @@ class LogoutputWidget(QWidget):
         self.append_text_to_log(text, color)
         logger.info(f"[{level}] {text}")
 
-    def _normalize_color(self, color: str) -> str:
+    def _normalize_color(self, color: str, fallback: str | None = None) -> str:
         if isinstance(color, QColor):
             return color.name()
         raw = str(color).strip() if color else ""
         if raw and QColor(raw).isValid():
             return raw
-        return self._level_color.get("INFO", "#eeeeee")
+        return fallback or self._level_color.get("INFO", "#eeeeee")
+
+    def _parse_color_segments(self, text: str) -> list[tuple[str, Optional[str]]]:
+        """将单行文本拆分为带或不带颜色的片段"""
+        segments: list[tuple[str, Optional[str]]] = []
+        last_end = 0
+        for match in self._color_tag_pattern.finditer(text):
+            if match.start() > last_end:
+                segments.append((text[last_end : match.start()], None))
+            color = match.group("color").strip()
+            inner_text = match.group("text")
+            segments.append((inner_text, color))
+            last_end = match.end()
+        if last_end < len(text):
+            segments.append((text[last_end:], None))
+        if not segments:
+            segments.append((text, None))
+        return segments
 
     def _extract_color_tag(self, text: str):
         match = self._color_tag_pattern.search(text)
@@ -209,23 +227,41 @@ class LogoutputWidget(QWidget):
         """通用方法：将彩色文本写入日志面板"""
         raw_text = str(msg)
         timestamp = datetime.now().strftime("%H:%M:%S")
-        parsed_color, parsed_text = self._extract_color_tag(raw_text)
-        if parsed_color:
-            normalized_color = self._normalize_color(parsed_color)
-            text = parsed_text
-        else:
-            normalized_color = self._normalize_color(color)
-            text = raw_text
-        fmt = QTextCharFormat()
-        fmt.setForeground(QColor(normalized_color))
+        default_color = self._normalize_color(color)
         cursor = self.log_output_area.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
-        lines = text.splitlines() or [""]
+        lines = raw_text.splitlines()
+        if not lines:
+            lines = [""]
         for line in lines:
-            cursor.insertText(f"{timestamp} {line}", fmt)
-            cursor.insertBlock()
+            segments = self._parse_color_segments(line)
+            self._insert_log_line(cursor, timestamp, segments, default_color)
         self.log_output_area.setTextCursor(cursor)
         self.log_output_area.ensureCursorVisible()
+
+    def _insert_log_line(
+        self,
+        cursor: QTextCursor,
+        timestamp: str,
+        segments: list[tuple[str, Optional[str]]],
+        default_color: str,
+    ):
+        """按段落将时间戳和颜色片段写入日志"""
+        timestamp_fmt = QTextCharFormat()
+        timestamp_fmt.setForeground(QColor(default_color))
+        cursor.insertText(f"{timestamp} ", timestamp_fmt)
+        for segment_text, tag_color in segments:
+            if not segment_text:
+                continue
+            segment_color = (
+                self._normalize_color(tag_color, fallback=default_color)
+                if tag_color
+                else default_color
+            )
+            segment_fmt = QTextCharFormat()
+            segment_fmt.setForeground(QColor(segment_color))
+            cursor.insertText(segment_text, segment_fmt)
+        cursor.insertBlock()
 
     def eventFilter(self, obj, event):
         """拦截鼠标点击和复制快捷键"""

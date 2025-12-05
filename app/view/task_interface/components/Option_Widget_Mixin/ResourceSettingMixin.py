@@ -72,7 +72,7 @@ class ResourceSettingMixin:
 
     def _resolve_agent_embedded_default(self, agent_config: dict) -> bool:
         """根据 interface 中的 agent 配置解析内置 agent 模式默认值"""
-        embedded = agent_config.get("Embedded")
+        embedded = agent_config.get("embedded_mode")
         if isinstance(embedded, str):
             return embedded.strip().lower() in {"1", "true", "yes", "on"}
         return bool(embedded)
