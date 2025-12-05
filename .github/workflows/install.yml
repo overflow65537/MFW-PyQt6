@@ -156,6 +156,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install --force-reinstall --no-cache-dir pyinstaller
+          brew install libffi pkg-config
+          LIBFFI_PREFIX=$(brew --prefix libffi)
+          export CPPFLAGS="-I${LIBFFI_PREFIX}/include"
+          export LDFLAGS="-L${LIBFFI_PREFIX}/lib"
+          export PKG_CONFIG_PATH="${LIBFFI_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+          export ARCHFLAGS="-arch x86_64 -arch arm64"
+          python -m pip install --no-binary :all: cffi
           python -m pip install -r requirements.txt
 
       - name: Install dependencies (other)

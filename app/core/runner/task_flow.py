@@ -157,6 +157,7 @@ class TaskFlowRunner(QObject):
             )
 
             logger.info("开始连接设备...")
+            signalBus.log_output.emit("INFO", self.tr("Starting to connect device..."))
             connected = await self.connect_device(pre_cfg.task_option)
             if not connected:
                 logger.error("设备连接失败，尝试启动进程")
@@ -171,6 +172,7 @@ class TaskFlowRunner(QObject):
                 )
 
                 return
+            signalBus.log_output.emit("INFO", self.tr("Device connected successfully"))
             logger.info("设备连接成功")
             send_notice(
                 NoticeTiming.WHEN_CONNECT_SUCCESS,
@@ -265,6 +267,7 @@ class TaskFlowRunner(QObject):
                 if self.need_stop:
                     logger.info("收到停止请求，流程终止")
                     break
+            signalBus.log_output.emit("INFO", self.tr("All tasks have been completed"))
 
         except Exception as exc:
             logger.error(f"任务流程执行异常: {str(exc)}")

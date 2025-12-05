@@ -173,8 +173,13 @@ class ServiceCoordinator:
         # 保存配置
         ok = self.config_service.update_config(config_id, config)
         if ok:
+            # 告知任务服务当前任务选中状态已同步，避免缓存旧状态
+            if target_task:
+                self.signal_bus.task_updated.emit(target_task)
+
             # 如果有其他特殊任务被取消选中,发射信号通知UI更新
             for task in unchecked_tasks:
+                self.signal_bus.task_updated.emit(task)
                 self.fs_signal_bus.fs_task_modified.emit(task)
 
         return ok
