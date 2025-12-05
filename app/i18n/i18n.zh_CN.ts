@@ -1275,10 +1275,6 @@
         <translation type="vanished">选择文件</translation>
     </message>
     <message>
-        <source>Select Win32 Input Mode</source>
-        <translation type="vanished">选择Win32输入模式</translation>
-    </message>
-    <message>
         <source>Error</source>
         <translation type="vanished">错误</translation>
     </message>
@@ -3903,10 +3899,6 @@ Task Status:
     <message>
         <source>Unexpected error during update</source>
         <translation type="vanished">未知错误</translation>
-    </message>
-    <message>
-        <source>Clean up failed</source>
-        <translation type="vanished">清理文件失败</translation>
     </message>
     <message>
         <source>update failed: version_data is None</source>

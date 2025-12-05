@@ -108,8 +108,8 @@
       <source>Delete</source>
       <translation type="unfinished">刪除</translation>
     </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>BaseUpdate</name>
     <message>
       <location filename="..\utils\update.py" line="408" />
@@ -209,23 +209,23 @@
       <translation>清理文件時發生錯誤</translation>
     </message>
     <message>
-        <source>MirrorChyan Update check failed,status code: </source>
-        <translation type="vanished">Mirror醬檢查更新失敗 錯誤碼: </translation>
+      <source>MirrorChyan Update check failed,status code: </source>
+      <translation type="vanished">Mirror醬檢查更新失敗 錯誤碼: </translation>
     </message>
     <message>
-        <source>MirrorChyan Update check failed</source>
-        <translation type="vanished">Mirror醬檢查更新失敗</translation>
+      <source>MirrorChyan Update check failed</source>
+      <translation type="vanished">Mirror醬檢查更新失敗</translation>
     </message>
     <message>
-        <source>Github Update check failed</source>
-        <translation type="vanished">Github檢查更新失敗</translation>
+      <source>Github Update check failed</source>
+      <translation type="vanished">Github檢查更新失敗</translation>
     </message>
     <message>
-        <source>The interface file has been changed. Clear the task configuration.</source>
-        <translation type="vanished">interface 檔案已更改，清空任務配置.</translation>
+      <source>The interface file has been changed. Clear the task configuration.</source>
+      <translation type="vanished">interface 檔案已更改，清空任務配置.</translation>
     </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>ComboBoxSettingCardCustom</name>
     <message>
       <location filename="..\utils\widget.py" line="1350" />
@@ -250,15 +250,15 @@
   <context>
     <name>ContinuousTaskInterface</name>
     <message>
-        <source>start</source>
-        <translation type="vanished">開始</translation>
+      <source>start</source>
+      <translation type="vanished">開始</translation>
     </message>
     <message>
-        <source>stop</source>
-        <translation type="vanished">停止</translation>
+      <source>stop</source>
+      <translation type="vanished">停止</translation>
     </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>CustomMessageBox</name>
     <message>
       <location filename="..\utils\widget.py" line="1025" />
@@ -333,38 +333,38 @@
       <translation>資源包已經存在</translation>
     </message>
     <message>
-        <source>Info</source>
-        <translation type="vanished">信息</translation>
+      <source>Info</source>
+      <translation type="vanished">信息</translation>
     </message>
     <message>
-        <source>Select Resource</source>
-        <translation type="vanished">選擇資源</translation>
+      <source>Select Resource</source>
+      <translation type="vanished">選擇資源</translation>
     </message>
     <message>
-        <source>The resource does not have an interface.json file</source>
-        <translation type="vanished">當前路徑內無interface.json文件</translation>
+      <source>The resource does not have an interface.json file</source>
+      <translation type="vanished">當前路徑內無interface.json文件</translation>
     </message>
     <message>
-        <source>No update found</source>
-        <translation type="vanished">未發現更新</translation>
+      <source>No update found</source>
+      <translation type="vanished">未發現更新</translation>
     </message>
     <message>
-        <source>Update found</source>
-        <translation type="vanished">發現更新</translation>
+      <source>Update found</source>
+      <translation type="vanished">發現更新</translation>
     </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>CustomSettingInterface</name>
     <message>
-        <source>Custom Setting</source>
-        <translation type="vanished">自定義程式設置</translation>
+      <source>Custom Setting</source>
+      <translation type="vanished">自定義程式設置</translation>
     </message>
     <message>
-        <source>Setting</source>
-        <translation type="vanished">設置</translation>
+      <source>Setting</source>
+      <translation type="vanished">設置</translation>
     </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>DoubleButtonSettingCard</name>
     <message>
       <location filename="..\view\setting_interface\widget\DoubleButtonSettingCard.py" line="55" />
@@ -379,11 +379,11 @@
       <translation>測試版</translation>
     </message>
     <message>
-        <source>alpha</source>
-        <translation type="vanished">內測版</translation>
+      <source>alpha</source>
+      <translation type="vanished">內測版</translation>
     </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>DownloadBundle</name>
     <message>
       <source>Project URL not configured</source>
@@ -406,11 +406,11 @@
       <translation type="vanished">更新成功</translation>
     </message>
     <message>
-        <source>Move files failed</source>
-        <translation type="vanished">移動文件失敗</translation>
+      <source>Move files failed</source>
+      <translation type="vanished">移動文件失敗</translation>
     </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>ListWidge_Menu_Draggable</name>
     <message>
       <location filename="..\utils\widget.py" line="675" />
@@ -438,20 +438,20 @@
       <translation>刪除全部</translation>
     </message>
     <message>
-        <source>Error</source>
-        <translation type="vanished">錯誤</translation>
+      <source>Error</source>
+      <translation type="vanished">錯誤</translation>
     </message>
     <message>
-        <source>No task can be deleted</source>
-        <translation type="vanished">沒有任務可以被刪除</translation>
+      <source>No task can be deleted</source>
+      <translation type="vanished">沒有任務可以被刪除</translation>
     </message>
     <message>
-        <source>Already the first task</source>
-        <translation type="vanished">已經是首位任務</translation>
+      <source>Already the first task</source>
+      <translation type="vanished">已經是首位任務</translation>
     </message>
     <message>
-        <source>Already the last task</source>
-        <translation type="vanished">已經是末位任務</translation>
+      <source>Already the last task</source>
+      <translation type="vanished">已經是末位任務</translation>
     </message>
   </context>
   <context>
@@ -693,32 +693,32 @@
       <translation type="vanished">輔助工具</translation>
     </message>
     <message>
-        <source>New task found: </source>
-        <translation type="vanished">發現新任務: </translation>
+      <source>New task found: </source>
+      <translation type="vanished">發現新任務: </translation>
     </message>
     <message>
-        <source>Resource Announcement</source>
-        <translation type="vanished">資源公告</translation>
+      <source>Resource Announcement</source>
+      <translation type="vanished">資源公告</translation>
     </message>
     <message>
-        <source>Scheduled</source>
-        <translation type="vanished">計劃任務</translation>
+      <source>Scheduled</source>
+      <translation type="vanished">計劃任務</translation>
     </message>
     <message>
-        <source>Continuous Task</source>
-        <translation type="vanished">特殊任務</translation>
+      <source>Continuous Task</source>
+      <translation type="vanished">特殊任務</translation>
     </message>
     <message>
-        <source>Scheduling tasks</source>
-        <translation type="vanished">計劃任務</translation>
+      <source>Scheduling tasks</source>
+      <translation type="vanished">計劃任務</translation>
     </message>
     <message>
-        <source>Custom Setting</source>
-        <translation type="vanished">自定義程式設置</translation>
+      <source>Custom Setting</source>
+      <translation type="vanished">自定義程式設置</translation>
     </message>
     <message>
-        <source>Resource</source>
-        <translation type="vanished">資源</translation>
+      <source>Resource</source>
+      <translation type="vanished">資源</translation>
     </message>
   </context>
   <context>
@@ -777,24 +777,24 @@
   <context>
     <name>MirrorDownloadBundle</name>
     <message>
-        <source>switching to Github download</source>
-        <translation type="vanished">轉為 GitHub 下載</translation>
+      <source>switching to Github download</source>
+      <translation type="vanished">轉為 GitHub 下載</translation>
     </message>
     <message>
-        <source>Download failed</source>
-        <translation type="vanished">下載失敗</translation>
+      <source>Download failed</source>
+      <translation type="vanished">下載失敗</translation>
     </message>
     <message>
-        <source>Extraction failed</source>
-        <translation type="vanished">解壓失敗</translation>
+      <source>Extraction failed</source>
+      <translation type="vanished">解壓失敗</translation>
     </message>
     <message>
-        <source>Move files failed</source>
-        <translation type="vanished">移動文件失敗</translation>
+      <source>Move files failed</source>
+      <translation type="vanished">移動文件失敗</translation>
     </message>
     <message>
-        <source>Download successful</source>
-        <translation type="vanished">更新成功</translation>
+      <source>Download successful</source>
+      <translation type="vanished">更新成功</translation>
     </message>
   </context>
   <context>
@@ -849,15 +849,15 @@
   <context>
     <name>NoticeButtonSettingCard</name>
     <message>
-        <source>Notification Enabled</source>
-        <translation type="vanished">通知已啟用</translation>
+      <source>Notification Enabled</source>
+      <translation type="vanished">通知已啟用</translation>
     </message>
     <message>
-        <source>Notification disabled</source>
-        <translation type="vanished">通知已禁用</translation>
+      <source>Notification disabled</source>
+      <translation type="vanished">通知已禁用</translation>
     </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>NoticeMessageBox</name>
     <message>
       <location filename="..\widget\notice_message.py" line="78" />
@@ -869,8 +869,8 @@
       <source>Confirm</source>
       <translation>確認</translation>
     </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>NoticeType</name>
     <message>
       <location filename="..\view\setting_interface\widget\NoticeType.py" line="26" />
@@ -1011,40 +1011,40 @@
       <translation>企業微信機器人推送狀態:</translation>
     </message>
     <message>
-        <source>OK</source>
-        <translation type="vanished">確認</translation>
+      <source>OK</source>
+      <translation type="vanished">確認</translation>
     </message>
     <message>
-        <source>test</source>
-        <translation type="vanished">測試</translation>
+      <source>test</source>
+      <translation type="vanished">測試</translation>
     </message>
     <message>
-        <source>Clear</source>
-        <translation type="vanished">清除</translation>
+      <source>Clear</source>
+      <translation type="vanished">清除</translation>
     </message>
     <message>
-        <source>send test message success</source>
-        <translation type="vanished">發送測試成功</translation>
+      <source>send test message success</source>
+      <translation type="vanished">發送測試成功</translation>
     </message>
     <message>
-        <source>send test message failed</source>
-        <translation type="vanished">發送測試失敗</translation>
+      <source>send test message failed</source>
+      <translation type="vanished">發送測試失敗</translation>
     </message>
     <message>
-        <source>Error</source>
-        <translation type="vanished">錯誤</translation>
+      <source>Error</source>
+      <translation type="vanished">錯誤</translation>
     </message>
     <message>
-        <source>Success</source>
-        <translation type="vanished">成功</translation>
+      <source>Success</source>
+      <translation type="vanished">成功</translation>
     </message>
     <message>
-        <source>Resource does not support MirrorChan, right-click about mirror to unlock input</source>
-        <translation type="vanished">資源不支持Mirror醬,右鍵關於Mirror以解鎖輸入</translation>
+      <source>Resource does not support MirrorChan, right-click about mirror to unlock input</source>
+      <translation type="vanished">資源不支持Mirror醬,右鍵關於Mirror以解鎖輸入</translation>
     </message>
     <message>
-        <source>Send Mail:</source>
-        <translation type="vanished">發送電子郵件：</translation>
+      <source>Send Mail:</source>
+      <translation type="vanished">發送電子郵件：</translation>
     </message>
   </context>
   <context>
@@ -1248,9 +1248,8 @@
       <translation type="vanished">选择文件</translation>
     </message>
     <message>
-        <location filename="../../app/view/resource_setting_interface.py" line="948"/>
-        <source>Choose file</source>
-        <translation>选择文件</translation>
+      <source>Error</source>
+      <translation type="vanished">錯誤</translation>
     </message>
   </context>
   <context>
@@ -1645,195 +1644,195 @@
   <context>
     <name>ScheduledInterface</name>
     <message>
-        <source>Success</source>
-        <translation type="vanished">成功</translation>
+      <source>Success</source>
+      <translation type="vanished">成功</translation>
     </message>
     <message>
-        <source>Schedule settings saved successfully</source>
-        <translation type="vanished">成功儲存計劃設定</translation>
+      <source>Schedule settings saved successfully</source>
+      <translation type="vanished">成功儲存計劃設定</translation>
     </message>
     <message>
-        <source>Start Date</source>
-        <translation type="vanished">啓動</translation>
+      <source>Start Date</source>
+      <translation type="vanished">啓動</translation>
     </message>
     <message>
-        <source>Schedule Mode</source>
-        <translation type="vanished">計劃模式</translation>
+      <source>Schedule Mode</source>
+      <translation type="vanished">計劃模式</translation>
     </message>
     <message>
-        <source>Daily</source>
-        <translation type="vanished">每日</translation>
+      <source>Daily</source>
+      <translation type="vanished">每日</translation>
     </message>
     <message>
-        <source>Weekly</source>
-        <translation type="vanished">每週</translation>
+      <source>Weekly</source>
+      <translation type="vanished">每週</translation>
     </message>
     <message>
-        <source>Monthly</source>
-        <translation type="vanished">每月</translation>
+      <source>Monthly</source>
+      <translation type="vanished">每月</translation>
     </message>
     <message>
-        <source>Refresh Time, Daily</source>
-        <translation type="vanished">刷新時間：每日 </translation>
+      <source>Refresh Time, Daily</source>
+      <translation type="vanished">刷新時間：每日 </translation>
     </message>
     <message>
-        <source>Monday</source>
-        <translation type="vanished">週一</translation>
+      <source>Monday</source>
+      <translation type="vanished">週一</translation>
     </message>
     <message>
-        <source>Tuesday</source>
-        <translation type="vanished">週二</translation>
+      <source>Tuesday</source>
+      <translation type="vanished">週二</translation>
     </message>
     <message>
-        <source>Wednesday</source>
-        <translation type="vanished">週三</translation>
+      <source>Wednesday</source>
+      <translation type="vanished">週三</translation>
     </message>
     <message>
-        <source>Thursday</source>
-        <translation type="vanished">週四</translation>
+      <source>Thursday</source>
+      <translation type="vanished">週四</translation>
     </message>
     <message>
-        <source>Friday</source>
-        <translation type="vanished">週五</translation>
+      <source>Friday</source>
+      <translation type="vanished">週五</translation>
     </message>
     <message>
-        <source>Saturday</source>
-        <translation type="vanished">週六</translation>
+      <source>Saturday</source>
+      <translation type="vanished">週六</translation>
     </message>
     <message>
-        <source>Sunday</source>
-        <translation type="vanished">週日</translation>
+      <source>Sunday</source>
+      <translation type="vanished">週日</translation>
     </message>
     <message>
-        <source>Hour</source>
-        <translation type="vanished">小時</translation>
+      <source>Hour</source>
+      <translation type="vanished">小時</translation>
     </message>
     <message>
-        <source>Interval</source>
-        <translation type="vanished">週期</translation>
+      <source>Interval</source>
+      <translation type="vanished">週期</translation>
     </message>
     <message>
-        <source>Minutes</source>
-        <translation type="vanished">分</translation>
+      <source>Minutes</source>
+      <translation type="vanished">分</translation>
     </message>
     <message>
-        <source>Hours</source>
-        <translation type="vanished">時</translation>
+      <source>Hours</source>
+      <translation type="vanished">時</translation>
     </message>
     <message>
-        <source>Days</source>
-        <translation type="vanished">日</translation>
+      <source>Days</source>
+      <translation type="vanished">日</translation>
     </message>
     <message>
-        <source>Loop</source>
-        <translation type="vanished">循環</translation>
+      <source>Loop</source>
+      <translation type="vanished">循環</translation>
     </message>
     <message>
-        <source>Times</source>
-        <translation type="vanished">次</translation>
+      <source>Times</source>
+      <translation type="vanished">次</translation>
     </message>
     <message>
-        <source>Confirm</source>
-        <translation type="vanished">確認</translation>
+      <source>Confirm</source>
+      <translation type="vanished">確認</translation>
     </message>
     <message>
-        <source>Start Automatically</source>
-        <translation type="vanished">啟用狀態</translation>
+      <source>Start Automatically</source>
+      <translation type="vanished">啟用狀態</translation>
     </message>
     <message>
-        <source>Day</source>
-        <translation type="vanished">日</translation>
+      <source>Day</source>
+      <translation type="vanished">日</translation>
     </message>
     <message>
-        <source>Loop item</source>
-        <translation type="vanished">執行次數</translation>
+      <source>Loop item</source>
+      <translation type="vanished">執行次數</translation>
     </message>
     <message>
-        <source>Last Run</source>
-        <translation type="vanished">上次運行時間: </translation>
+      <source>Last Run</source>
+      <translation type="vanished">上次運行時間: </translation>
     </message>
     <message>
-        <source>Error</source>
-        <translation type="vanished">錯誤</translation>
+      <source>Error</source>
+      <translation type="vanished">錯誤</translation>
     </message>
     <message>
-        <source>Refresh Time, Weekly</source>
-        <translation type="vanished">刷新時間：每週 </translation>
+      <source>Refresh Time, Weekly</source>
+      <translation type="vanished">刷新時間：每週 </translation>
     </message>
     <message>
-        <source>Refresh Time, Monthly</source>
-        <translation type="vanished">刷新時間：每月 </translation>
+      <source>Refresh Time, Monthly</source>
+      <translation type="vanished">刷新時間：每月 </translation>
     </message>
     <message>
-        <source>Configuration</source>
-        <translation type="vanished">配置</translation>
+      <source>Configuration</source>
+      <translation type="vanished">配置</translation>
     </message>
     <message>
-        <source>Resource</source>
-        <translation type="vanished">資源</translation>
+      <source>Resource</source>
+      <translation type="vanished">資源</translation>
     </message>
     <message>
-        <source>Add</source>
-        <translation type="vanished">添加</translation>
+      <source>Add</source>
+      <translation type="vanished">添加</translation>
     </message>
     <message>
-        <source>Delete</source>
-        <translation type="vanished">刪除</translation>
+      <source>Delete</source>
+      <translation type="vanished">刪除</translation>
     </message>
     <message>
-        <source>Please add resources first.</source>
-        <translation type="vanished">請先添加資源。</translation>
+      <source>Please add resources first.</source>
+      <translation type="vanished">請先添加資源。</translation>
     </message>
     <message>
-        <source>Scheduled_Interface</source>
-        <comment>Configuration</comment>
-        <translation type="vanished">配置</translation>
+      <source>Scheduled_Interface</source>
+      <comment>Configuration</comment>
+      <translation type="vanished">配置</translation>
     </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>Scheduled_Interface</name>
     <message>
-        <source>Scheduled Interface</source>
-        <translation type="vanished">計劃任務介面</translation>
+      <source>Scheduled Interface</source>
+      <translation type="vanished">計劃任務介面</translation>
     </message>
     <message>
-        <source>Add</source>
-        <translation type="vanished">添加</translation>
+      <source>Add</source>
+      <translation type="vanished">添加</translation>
     </message>
     <message>
-        <source>Delete</source>
-        <translation type="vanished">刪除</translation>
+      <source>Delete</source>
+      <translation type="vanished">刪除</translation>
     </message>
     <message>
-        <source>Scheduled name</source>
-        <translation type="vanished">計劃名稱</translation>
+      <source>Scheduled name</source>
+      <translation type="vanished">計劃名稱</translation>
     </message>
     <message>
-        <source>please inter scheduled name</source>
-        <translation type="vanished">請輸入計劃名稱</translation>
+      <source>please inter scheduled name</source>
+      <translation type="vanished">請輸入計劃名稱</translation>
     </message>
     <message>
-        <source>Trigger Time</source>
-        <translation type="vanished">觸發時間</translation>
+      <source>Trigger Time</source>
+      <translation type="vanished">觸發時間</translation>
     </message>
     <message>
-        <source>Use Configuration</source>
-        <translation type="vanished">选择配置</translation>
+      <source>Use Configuration</source>
+      <translation type="vanished">选择配置</translation>
     </message>
     <message>
-        <source>Configuration</source>
-        <translation type="vanished">配置</translation>
+      <source>Configuration</source>
+      <translation type="vanished">配置</translation>
     </message>
     <message>
-        <source>Resource</source>
-        <translation type="vanished">資源</translation>
+      <source>Resource</source>
+      <translation type="vanished">資源</translation>
     </message>
     <message>
-        <source>Use Resource</source>
-        <translation type="vanished">選擇資源</translation>
+      <source>Use Resource</source>
+      <translation type="vanished">選擇資源</translation>
     </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>SendSettingCard</name>
     <message>
       <location filename="..\view\setting_interface\widget\SendSettingCard.py" line="17" />
@@ -1865,8 +1864,8 @@
       <source>When Task Finished</source>
       <translation>儅隊列結束時</translation>
     </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>SettingInterface</name>
     <message>
       <location filename="..\view\setting_interface\setting_interface.py" line="172" />
@@ -2288,14 +2287,12 @@ Please check for updates first, or visit the GitHub releases page.</source>
       <translation type="vanished">保存圖像識別可視化結果，會保存運行期間所有圖像識別可視化結果繪製圖。</translation>
     </message>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="741"/>
-        <source>Compression failed, please check the debug folder</source>
-        <translation>壓縮失敗,請檢查debug目錄</translation>
+      <source>Show Hit Draw</source>
+      <translation type="vanished">显示命中</translation>
     </message>
     <message>
-        <location filename="../../app/view/setting_interface.py" line="751"/>
-        <source>Updating...</source>
-        <translation>更新中...</translation>
+      <source>Show the node hit pop-up window. A pop-up window will appear to display the recognition results every time the recognition is successful.</source>
+      <translation type="vanished">显示节点命中弹窗，每次识别成功会弹窗显示识别结果。</translation>
     </message>
     <message>
       <source>Auto Update resource</source>
@@ -2370,231 +2367,223 @@ Please check for updates first, or visit the GitHub releases page.</source>
       <translation type="vanished">關於</translation>
     </message>
     <message>
-        <source>Show the node hit pop-up window. A pop-up window will appear to display the recognition results every time the recognition is successful.</source>
-        <translation type="vanished">显示节点命中弹窗，每次识别成功会弹窗显示识别结果。</translation>
+      <source>Submit Feedback</source>
+      <translation type="vanished">發送反饋</translation>
     </message>
     <message>
-        <source>About</source>
-        <translation type="vanished">關於</translation>
+      <source>MFW-PyQt6 is open source under the GPLv3 license. Visit the project URL for more information.</source>
+      <translation type="vanished">MFW-PyQt6 是在 GPLv3 許可證下開源的。請訪問項目的 URL 以獲取更多信息。</translation>
     </message>
     <message>
       <source>In the speedrun mode, resource developers can specify the operation cycle of a certain task. The task will only run once within the cycle.</source>
       <translation type="vanished">在速通模式下，資源開發者可以指定某個任務運行週期。任務只會在週期內運行一次。</translation>
     </message>
     <message>
-        <source>Speedrun Mode</source>
-        <translation type="vanished">速通模式</translation>
+      <source>ADB</source>
+      <translation type="vanished">安卓調試橋</translation>
     </message>
     <message>
-        <source>In the speedrun mode, resource developers can specify the operation cycle of a certain task. The task will only run once within the cycle.</source>
-        <translation type="vanished">在速通模式下，資源開發者可以指定某個任務運行週期。任務只會在週期內運行一次。</translation>
+      <source>ADB Port</source>
+      <translation type="vanished">ADB 連接埠</translation>
     </message>
     <message>
-        <source>ADB</source>
-        <translation type="vanished">安卓調試橋</translation>
+      <source>ADB Path</source>
+      <translation type="vanished">ADB 路徑</translation>
     </message>
     <message>
-        <source>ADB Port</source>
-        <translation type="vanished">ADB 連接埠</translation>
+      <source>Select ADB Path</source>
+      <translation type="vanished">選擇 ADB 路徑</translation>
     </message>
     <message>
-        <source>ADB Path</source>
-        <translation type="vanished">ADB 路徑</translation>
+      <source>Select Emulator Path</source>
+      <translation type="vanished">選擇模擬器路徑</translation>
     </message>
     <message>
-        <source>Select ADB Path</source>
-        <translation type="vanished">選擇 ADB 路徑</translation>
+      <source>Run Parameters</source>
+      <translation type="vanished">運行參數</translation>
     </message>
     <message>
-        <source>Select Emulator Path</source>
-        <translation type="vanished">選擇模擬器路徑</translation>
+      <source>Wait Time for Emulator Startup</source>
+      <translation type="vanished">模擬器啟動等待時間</translation>
     </message>
     <message>
-        <source>Run Parameters</source>
-        <translation type="vanished">運行參數</translation>
+      <source>Win32</source>
+      <translation type="vanished">Win32</translation>
     </message>
     <message>
-        <source>Wait Time for Emulator Startup</source>
-        <translation type="vanished">模擬器啟動等待時間</translation>
+      <source>Executable Path</source>
+      <translation type="vanished">可執行文件路徑</translation>
     </message>
     <message>
-        <source>Win32</source>
-        <translation type="vanished">Win32</translation>
+      <source>Select Executable Path</source>
+      <translation type="vanished">選擇可執行文件路徑</translation>
     </message>
     <message>
-        <source>Executable Path</source>
-        <translation type="vanished">可執行文件路徑</translation>
+      <source>Wait Time for Program Startup</source>
+      <translation type="vanished">程式啟動等待時間</translation>
     </message>
     <message>
-        <source>Select Executable Path</source>
-        <translation type="vanished">選擇可執行文件路徑</translation>
+      <source>Run Program Before Start</source>
+      <translation type="vanished">啟動前運行程式</translation>
     </message>
     <message>
-        <source>Wait Time for Program Startup</source>
-        <translation type="vanished">程式啟動等待時間</translation>
+      <source>Select Program</source>
+      <translation type="vanished">選擇程式</translation>
     </message>
     <message>
-        <source>Run Program Before Start</source>
-        <translation type="vanished">啟動前運行程式</translation>
+      <source>Run Program After Finish</source>
+      <translation type="vanished">結束後運行程式</translation>
     </message>
     <message>
-        <source>Select Program</source>
-        <translation type="vanished">選擇程式</translation>
+      <source>Vision &amp; Input</source>
+      <translation type="vanished">視覺與輸入</translation>
     </message>
     <message>
-        <source>Run Program After Finish</source>
-        <translation type="vanished">結束後運行程式</translation>
+      <source>Auto</source>
+      <translation type="vanished">自動</translation>
     </message>
     <message>
-        <source>Vision &amp; Input</source>
-        <translation type="vanished">視覺與輸入</translation>
+      <source>Disabled</source>
+      <translation type="vanished">關閉</translation>
     </message>
     <message>
-        <source>Auto</source>
-        <translation type="vanished">自動</translation>
+      <source>default</source>
+      <translation type="vanished">默認</translation>
     </message>
     <message>
-        <source>Disabled</source>
-        <translation type="vanished">關閉</translation>
+      <source>Select GPU</source>
+      <translation type="vanished">選擇GPU</translation>
     </message>
     <message>
-        <source>default</source>
-        <translation type="vanished">默認</translation>
+      <source>Use GPU to accelerate inference</source>
+      <translation type="vanished">使用GPU加速推理</translation>
     </message>
     <message>
-        <source>Select GPU</source>
-        <translation type="vanished">選擇GPU</translation>
+      <source>Select Win32 Input Mode</source>
+      <translation type="vanished">選擇Win32輸入模式</translation>
     </message>
     <message>
-        <source>Use GPU to accelerate inference</source>
-        <translation type="vanished">使用GPU加速推理</translation>
+      <source>Select Win32 Screencap Mode</source>
+      <translation type="vanished">選擇Win32截圖模式</translation>
     </message>
     <message>
-        <source>Select Win32 Input Mode</source>
-        <translation type="vanished">選擇Win32輸入模式</translation>
+      <source>Select ADB Input Mode</source>
+      <translation type="vanished">選擇ADB輸入模式</translation>
     </message>
     <message>
-        <source>Select Win32 Screencap Mode</source>
-        <translation type="vanished">選擇Win32截圖模式</translation>
+      <source>Select ADB Screencap Mode</source>
+      <translation type="vanished">選擇ADB截圖模式</translation>
     </message>
     <message>
-        <source>Select ADB Input Mode</source>
-        <translation type="vanished">選擇ADB輸入模式</translation>
+      <source>Choose file</source>
+      <translation type="vanished">选择文件</translation>
     </message>
     <message>
-        <source>Select ADB Screencap Mode</source>
-        <translation type="vanished">選擇ADB截圖模式</translation>
+      <source>DEV Mode</source>
+      <translation type="vanished">開發者選項</translation>
     </message>
     <message>
-        <source>Choose file</source>
-        <translation type="vanished">选择文件</translation>
+      <source>If enabled, screenshots will be saved in ./debug/vision</source>
+      <translation type="vanished">如果開啟,會保存截圖至./debug/vision</translation>
     </message>
     <message>
-        <source>DEV Mode</source>
-        <translation type="vanished">開發者選項</translation>
+      <source>successful</source>
+      <translation type="vanished">成功</translation>
     </message>
     <message>
-        <source>If enabled, screenshots will be saved in ./debug/vision</source>
-        <translation type="vanished">如果開啟,會保存截圖至./debug/vision</translation>
+      <source>Update failed</source>
+      <translation type="vanished">更新失敗</translation>
     </message>
     <message>
-        <source>successful</source>
-        <translation type="vanished">成功</translation>
+      <source>info</source>
+      <translation type="vanished">信息</translation>
     </message>
     <message>
-        <source>Update failed</source>
-        <translation type="vanished">更新失敗</translation>
+      <source>Already the latest version</source>
+      <translation type="vanished">已經是最新版本</translation>
     </message>
     <message>
-        <source>info</source>
-        <translation type="vanished">信息</translation>
+      <source>Please check your internet connection</source>
+      <translation type="vanished">請檢查網絡連接</translation>
     </message>
     <message>
-        <source>Already the latest version</source>
-        <translation type="vanished">已經是最新版本</translation>
+      <source>Update completed</source>
+      <translation type="vanished">更新完成</translation>
     </message>
     <message>
-        <source>Please check your internet connection</source>
-        <translation type="vanished">請檢查網絡連接</translation>
+      <source>Successfully Downloaded updates</source>
+      <translation type="vanished">成功下載更新</translation>
     </message>
     <message>
-        <source>Update completed</source>
-        <translation type="vanished">更新完成</translation>
+      <source>Check for updates from Mirror</source>
+      <translation type="vanished">從Mirror獲取更新</translation>
     </message>
     <message>
-        <source>Successfully Downloaded updates</source>
-        <translation type="vanished">成功下載更新</translation>
+      <source>Check for updates from Github</source>
+      <translation type="vanished">從Github獲取更新</translation>
     </message>
     <message>
-        <source>Check for updates from Mirror</source>
-        <translation type="vanished">從Mirror獲取更新</translation>
+      <source>Emulator Path</source>
+      <translation type="vanished">模擬器路徑</translation>
     </message>
     <message>
-        <source>Check for updates from Github</source>
-        <translation type="vanished">從Github獲取更新</translation>
+      <source>DingTalk Configuration</source>
+      <translation type="vanished">釘釘配置</translation>
     </message>
     <message>
-        <source>Emulator Path</source>
-        <translation type="vanished">模擬器路徑</translation>
+      <source>Lark Configuration</source>
+      <translation type="vanished">飛書配置</translation>
     </message>
     <message>
-        <source>DingTalk Configuration</source>
-        <translation type="vanished">釘釘配置</translation>
+      <source>Qmsg</source>
+      <translation type="vanished">Qmsg</translation>
     </message>
     <message>
-        <source>Lark Configuration</source>
-        <translation type="vanished">飛書配置</translation>
+      <source>Qmsg Configuration</source>
+      <translation type="vanished">Qmsg配置</translation>
     </message>
     <message>
-        <source>Qmsg</source>
-        <translation type="vanished">Qmsg</translation>
+      <source>SMTP Configuration</source>
+      <translation type="vanished">SMTP配置</translation>
     </message>
     <message>
-        <source>Qmsg Configuration</source>
-        <translation type="vanished">Qmsg配置</translation>
+      <source>Submit feedback to help us improve</source>
+      <translation type="vanished">發送反饋幫助我們改善 </translation>
     </message>
     <message>
-        <source>SMTP Configuration</source>
-        <translation type="vanished">SMTP配置</translation>
+      <source>About PyQt-MAA</source>
+      <translation type="vanished">關於PyQt-MAA</translation>
     </message>
     <message>
-        <source>Submit feedback to help us improve</source>
-        <translation type="vanished">發送反饋幫助我們改善 </translation>
+      <source>PyQt-MAA is open source under the GPLv3 license. Visit the project URL for more information.</source>
+      <translation type="vanished">PyQt-MAA 遵循GPLv3開源協議,訪問項目地址以了解更多</translation>
     </message>
     <message>
-        <source>About PyQt-MAA</source>
-        <translation type="vanished">關於PyQt-MAA</translation>
+      <source>Please set the project URL first</source>
+      <translation type="vanished">請檢查資源連結</translation>
     </message>
     <message>
-        <source>PyQt-MAA is open source under the GPLv3 license. Visit the project URL for more information.</source>
-        <translation type="vanished">PyQt-MAA 遵循GPLv3開源協議,訪問項目地址以了解更多</translation>
+      <source>No need to update</source>
+      <translation type="vanished">無需更新</translation>
     </message>
     <message>
-        <source>Please set the project URL first</source>
-        <translation type="vanished">請檢查資源連結</translation>
+      <source>You are using the latest version</source>
+      <translation type="vanished">你已經在使用最新版本</translation>
     </message>
     <message>
-        <source>No need to update</source>
-        <translation type="vanished">無需更新</translation>
+      <source>Update available</source>
+      <translation type="vanished">更新可用</translation>
     </message>
     <message>
-        <source>You are using the latest version</source>
-        <translation type="vanished">你已經在使用最新版本</translation>
+      <source>New version: </source>
+      <translation type="vanished">新版本: </translation>
     </message>
     <message>
-        <source>Update available</source>
-        <translation type="vanished">更新可用</translation>
+      <source>Successfully updated to</source>
+      <translation type="vanished">成功更新至</translation>
     </message>
-    <message>
-        <source>New version: </source>
-        <translation type="vanished">新版本: </translation>
-    </message>
-    <message>
-        <source>Successfully updated to</source>
-        <translation type="vanished">成功更新至</translation>
-    </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>ShowDownload</name>
     <message>
       <location filename="..\utils\widget.py" line="169" />
@@ -2611,16 +2600,16 @@ Please check for updates first, or visit the GitHub releases page.</source>
       <source>bytes</source>
       <translation>bytes</translation>
     </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>SwitchSettingCardCustom</name>
     <message>
       <location filename="..\utils\widget.py" line="119" />
       <source>Off</source>
       <translation>關閉</translation>
     </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>TaskCooldownInterface</name>
     <message>
       <source>Success</source>
@@ -2739,8 +2728,8 @@ Please check for updates first, or visit the GitHub releases page.</source>
       <translation type="vanished">刷新時間：每月 </translation>
     </message>
     <message>
-        <source>Error</source>
-        <translation type="vanished">錯誤</translation>
+      <source>Error</source>
+      <translation type="vanished">錯誤</translation>
     </message>
   </context>
   <context>
@@ -3307,132 +3296,132 @@ Task Status:
       <translation type="vanished">週六</translation>
     </message>
     <message>
-        <source>Delete: </source>
-        <translation type="vanished">刪除: </translation>
+      <source>Delete: </source>
+      <translation type="vanished">刪除: </translation>
     </message>
     <message>
-        <source>Task Entry</source>
-        <translation type="vanished">未找到任務入口</translation>
+      <source>Task Entry</source>
+      <translation type="vanished">未找到任務入口</translation>
     </message>
     <message>
-        <source>Task Entry Failed</source>
-        <translation type="vanished">未找到任務入口</translation>
+      <source>Task Entry Failed</source>
+      <translation type="vanished">未找到任務入口</translation>
     </message>
     <message>
-        <source>Succeeded</source>
-        <translation type="vanished">成功</translation>
+      <source>Succeeded</source>
+      <translation type="vanished">成功</translation>
     </message>
     <message>
-        <source>aborted</source>
-        <translation type="vanished">終止</translation>
+      <source>aborted</source>
+      <translation type="vanished">終止</translation>
     </message>
     <message>
-        <source>Error</source>
-        <translation type="vanished">錯誤</translation>
+      <source>Error</source>
+      <translation type="vanished">錯誤</translation>
     </message>
     <message>
-        <source>first Connection failed,try to kill ADB process</source>
-        <translation type="vanished">連接失敗，嘗試終止 ADB 進程</translation>
+      <source>first Connection failed,try to kill ADB process</source>
+      <translation type="vanished">連接失敗，嘗試終止 ADB 進程</translation>
     </message>
     <message>
-        <source>Connection</source>
-        <translation type="vanished">連接</translation>
+      <source>Connection</source>
+      <translation type="vanished">連接</translation>
     </message>
     <message>
-        <source>DingTalk Failed</source>
-        <translation type="vanished">釘釘推送失敗</translation>
+      <source>DingTalk Failed</source>
+      <translation type="vanished">釘釘推送失敗</translation>
     </message>
     <message>
-        <source>Lark Failed</source>
-        <translation type="vanished">飛書推送失敗</translation>
+      <source>Lark Failed</source>
+      <translation type="vanished">飛書推送失敗</translation>
     </message>
     <message>
-        <source>SMTP Failed</source>
-        <translation type="vanished">SMTP推送失敗</translation>
+      <source>SMTP Failed</source>
+      <translation type="vanished">SMTP推送失敗</translation>
     </message>
     <message>
-        <source>WxPusher Failed</source>
-        <translation type="vanished">微信推送失敗</translation>
+      <source>WxPusher Failed</source>
+      <translation type="vanished">微信推送失敗</translation>
     </message>
     <message>
-        <source>QYWX Failed</source>
-        <translation type="vanished">企業微信機器人推送失敗</translation>
+      <source>QYWX Failed</source>
+      <translation type="vanished">企業微信機器人推送失敗</translation>
     </message>
     <message>
-        <source>DingTalk Success</source>
-        <translation type="vanished">釘釘推送成功</translation>
+      <source>DingTalk Success</source>
+      <translation type="vanished">釘釘推送成功</translation>
     </message>
     <message>
-        <source>Lark Success</source>
-        <translation type="vanished">飛書推送成功</translation>
+      <source>Lark Success</source>
+      <translation type="vanished">飛書推送成功</translation>
     </message>
     <message>
-        <source>SMTP Success</source>
-        <translation type="vanished">SMTP推送成功</translation>
+      <source>SMTP Success</source>
+      <translation type="vanished">SMTP推送成功</translation>
     </message>
     <message>
-        <source>WxPusher Success</source>
-        <translation type="vanished">微信推送成功</translation>
+      <source>WxPusher Success</source>
+      <translation type="vanished">微信推送成功</translation>
     </message>
     <message>
-        <source>QYWX Success</source>
-        <translation type="vanished">企業微信機器人推送成功</translation>
+      <source>QYWX Success</source>
+      <translation type="vanished">企業微信機器人推送成功</translation>
     </message>
     <message>
-        <source>The task has timed out</source>
-        <translation type="vanished">任務超時</translation>
+      <source>The task has timed out</source>
+      <translation type="vanished">任務超時</translation>
     </message>
     <message>
-        <source>Refresh time: Daily </source>
-        <translation type="vanished">刷新時間：每日 </translation>
+      <source>Refresh time: Daily </source>
+      <translation type="vanished">刷新時間：每日 </translation>
     </message>
     <message>
-        <source>Refresh time: Every </source>
-        <translation type="vanished">刷新時間：每 </translation>
+      <source>Refresh time: Every </source>
+      <translation type="vanished">刷新時間：每 </translation>
     </message>
     <message>
-        <source>Task </source>
-        <translation type="vanished">任務 </translation>
+      <source>Task </source>
+      <translation type="vanished">任務 </translation>
     </message>
     <message>
-        <source> has been run today, skipping</source>
-        <translation type="vanished"> 今日已運行</translation>
+      <source> has been run today, skipping</source>
+      <translation type="vanished"> 今日已運行</translation>
     </message>
     <message>
-        <source>Last runing time: </source>
-        <translation type="vanished">上次運行時間: </translation>
+      <source>Last runing time: </source>
+      <translation type="vanished">上次運行時間: </translation>
     </message>
     <message>
-        <source> has been run this week, skipping</source>
-        <translation type="vanished"> 本周已運行</translation>
+      <source> has been run this week, skipping</source>
+      <translation type="vanished"> 本周已運行</translation>
     </message>
     <message>
-        <source>Do Nothing</source>
-        <translation type="vanished">無動作</translation>
+      <source>Do Nothing</source>
+      <translation type="vanished">無動作</translation>
     </message>
     <message>
-        <source>Quit Application</source>
-        <translation type="vanished">退出應用</translation>
+      <source>Quit Application</source>
+      <translation type="vanished">退出應用</translation>
     </message>
     <message>
-        <source>Close Application and Quit</source>
-        <translation type="vanished">退出模擬器和應用</translation>
+      <source>Close Application and Quit</source>
+      <translation type="vanished">退出模擬器和應用</translation>
     </message>
     <message>
-        <source>successful</source>
-        <translation type="vanished">成功</translation>
+      <source>successful</source>
+      <translation type="vanished">成功</translation>
     </message>
     <message>
-        <source>Update failed</source>
-        <translation type="vanished">更新失敗</translation>
+      <source>Update failed</source>
+      <translation type="vanished">更新失敗</translation>
     </message>
     <message>
-        <source>info</source>
-        <translation type="vanished">信息</translation>
+      <source>info</source>
+      <translation type="vanished">信息</translation>
     </message>
     <message>
-        <source>Delete</source>
-        <translation type="vanished">刪除</translation>
+      <source>Delete</source>
+      <translation type="vanished">刪除</translation>
     </message>
   </context>
   <context>
@@ -3464,287 +3453,287 @@ Task Status:
   <context>
     <name>Task_Interface</name>
     <message>
-        <source>Load Custom Action:</source>
-        <translation type="vanished">載入自定義動作:</translation>
+      <source>Load Custom Action:</source>
+      <translation type="vanished">載入自定義動作:</translation>
     </message>
     <message>
-        <source>Load Custom Recognition:</source>
-        <translation type="vanished">載入自定義識別器:</translation>
+      <source>Load Custom Recognition:</source>
+      <translation type="vanished">載入自定義識別器:</translation>
     </message>
     <message>
-        <source>Started</source>
-        <translation type="vanished">啓動</translation>
+      <source>Started</source>
+      <translation type="vanished">啓動</translation>
     </message>
     <message>
-        <source>Succeeded</source>
-        <translation type="vanished">成功</translation>
+      <source>Succeeded</source>
+      <translation type="vanished">成功</translation>
     </message>
     <message>
-        <source>Failed</source>
-        <translation type="vanished">失敗</translation>
+      <source>Failed</source>
+      <translation type="vanished">失敗</translation>
     </message>
     <message>
-        <source>Error</source>
-        <translation type="vanished">錯誤</translation>
+      <source>Error</source>
+      <translation type="vanished">錯誤</translation>
     </message>
     <message>
-        <source>Drag to Delete</source>
-        <translation type="vanished">拖動至此刪除</translation>
+      <source>Drag to Delete</source>
+      <translation type="vanished">拖動至此刪除</translation>
     </message>
     <message>
-        <source>Do nothing</source>
-        <translation type="vanished">無動作</translation>
+      <source>Do nothing</source>
+      <translation type="vanished">無動作</translation>
     </message>
     <message>
-        <source>Close emulator</source>
-        <translation type="vanished">退出模擬器</translation>
+      <source>Close emulator</source>
+      <translation type="vanished">退出模擬器</translation>
     </message>
     <message>
-        <source>Close emulator and Quit app</source>
-        <translation type="vanished">退出模擬器和應用</translation>
+      <source>Close emulator and Quit app</source>
+      <translation type="vanished">退出模擬器和應用</translation>
     </message>
     <message>
-        <source>Quit app</source>
-        <translation type="vanished">退出應用</translation>
+      <source>Quit app</source>
+      <translation type="vanished">退出應用</translation>
     </message>
     <message>
-        <source>Shutdown</source>
-        <translation type="vanished">關機</translation>
+      <source>Shutdown</source>
+      <translation type="vanished">關機</translation>
     </message>
     <message>
-        <source>Starting Connection</source>
-        <translation type="vanished">開始連接</translation>
+      <source>Starting Connection</source>
+      <translation type="vanished">開始連接</translation>
     </message>
     <message>
-        <source>Connection Success</source>
-        <translation type="vanished">連接成功</translation>
+      <source>Connection Success</source>
+      <translation type="vanished">連接成功</translation>
     </message>
     <message>
-        <source>Connection Failed</source>
-        <translation type="vanished">連接失敗</translation>
+      <source>Connection Failed</source>
+      <translation type="vanished">連接失敗</translation>
     </message>
     <message>
-        <source>Unknow Error</source>
-        <translation type="vanished">未知錯誤</translation>
+      <source>Unknow Error</source>
+      <translation type="vanished">未知錯誤</translation>
     </message>
     <message>
-        <source>Run Other Config</source>
-        <translation type="vanished">運行其他配置</translation>
+      <source>Run Other Config</source>
+      <translation type="vanished">運行其他配置</translation>
     </message>
     <message>
-        <source>Resource file not detected</source>
-        <translation type="vanished">未找到資源文件</translation>
+      <source>Resource file not detected</source>
+      <translation type="vanished">未找到資源文件</translation>
     </message>
     <message>
-        <source>Stop</source>
-        <translation type="vanished">停止</translation>
+      <source>Stop</source>
+      <translation type="vanished">停止</translation>
     </message>
     <message>
-        <source>File not found</source>
-        <translation type="vanished">未找到文件</translation>
+      <source>File not found</source>
+      <translation type="vanished">未找到文件</translation>
     </message>
     <message>
-        <source>Can not start the file</source>
-        <translation type="vanished">無法打開文件</translation>
+      <source>Can not start the file</source>
+      <translation type="vanished">無法打開文件</translation>
     </message>
     <message>
-        <source>Start</source>
-        <translation type="vanished">開始</translation>
+      <source>Start</source>
+      <translation type="vanished">開始</translation>
     </message>
     <message>
-        <source>waiting for emulator start...</source>
-        <translation type="vanished">等待模擬器啟動中</translation>
+      <source>waiting for emulator start...</source>
+      <translation type="vanished">等待模擬器啟動中</translation>
     </message>
     <message>
-        <source>Starting task in </source>
-        <translation type="vanished">任務啟動於</translation>
+      <source>Starting task in </source>
+      <translation type="vanished">任務啟動於</translation>
     </message>
     <message>
-        <source>Starting game...</source>
-        <translation type="vanished">啟動遊戲中</translation>
+      <source>Starting game...</source>
+      <translation type="vanished">啟動遊戲中</translation>
     </message>
     <message>
-        <source>Starting game in </source>
-        <translation type="vanished">遊戲啟動於</translation>
+      <source>Starting game in </source>
+      <translation type="vanished">遊戲啟動於</translation>
     </message>
     <message>
-        <source>Starting task...</source>
-        <translation type="vanished">啟動任務中</translation>
+      <source>Starting task...</source>
+      <translation type="vanished">啟動任務中</translation>
     </message>
     <message>
-        <source>running task:</source>
-        <translation type="vanished">運行任務:</translation>
+      <source>running task:</source>
+      <translation type="vanished">運行任務:</translation>
     </message>
     <message>
-        <source>Task finished</source>
-        <translation type="vanished">任務完成</translation>
+      <source>Task finished</source>
+      <translation type="vanished">任務完成</translation>
     </message>
     <message>
-        <source>Stopping task...</source>
-        <translation type="vanished">停止任務中</translation>
+      <source>Stopping task...</source>
+      <translation type="vanished">停止任務中</translation>
     </message>
     <message>
-        <source>No task can be deleted</source>
-        <translation type="vanished">沒有任務可以被刪除</translation>
+      <source>No task can be deleted</source>
+      <translation type="vanished">沒有任務可以被刪除</translation>
     </message>
     <message>
-        <source>Already the first task</source>
-        <translation type="vanished">已經是首位任務</translation>
+      <source>Already the first task</source>
+      <translation type="vanished">已經是首位任務</translation>
     </message>
     <message>
-        <source>Already the last task</source>
-        <translation type="vanished">已經是末位任務</translation>
+      <source>Already the last task</source>
+      <translation type="vanished">已經是末位任務</translation>
     </message>
     <message>
-        <source>Saving ADB configuration...</source>
-        <translation type="vanished">使用ADB方案</translation>
+      <source>Saving ADB configuration...</source>
+      <translation type="vanished">使用ADB方案</translation>
     </message>
     <message>
-        <source>Saving Win32 configuration...</source>
-        <translation type="vanished">使用Win32方案</translation>
+      <source>Saving Win32 configuration...</source>
+      <translation type="vanished">使用Win32方案</translation>
     </message>
     <message>
-        <source>Task</source>
-        <translation type="vanished">任務</translation>
+      <source>Task</source>
+      <translation type="vanished">任務</translation>
     </message>
     <message>
-        <source>Detecting game...</source>
-        <translation type="vanished">檢測Win32應用中</translation>
+      <source>Detecting game...</source>
+      <translation type="vanished">檢測Win32應用中</translation>
     </message>
     <message>
-        <source>No game detected</source>
-        <translation type="vanished">指定程式不存在</translation>
+      <source>No game detected</source>
+      <translation type="vanished">指定程式不存在</translation>
     </message>
     <message>
-        <source>Game detected</source>
-        <translation type="vanished">檢測到指定程式</translation>
+      <source>Game detected</source>
+      <translation type="vanished">檢測到指定程式</translation>
     </message>
     <message>
-        <source>Detecting emulator...</source>
-        <translation type="vanished">檢測模擬器中</translation>
+      <source>Detecting emulator...</source>
+      <translation type="vanished">檢測模擬器中</translation>
     </message>
     <message>
-        <source>No emulator detected</source>
-        <translation type="vanished">未檢測到模擬器</translation>
+      <source>No emulator detected</source>
+      <translation type="vanished">未檢測到模擬器</translation>
     </message>
     <message>
-        <source>Emulator detected</source>
-        <translation type="vanished">檢測到模擬器</translation>
+      <source>Emulator detected</source>
+      <translation type="vanished">檢測到模擬器</translation>
     </message>
     <message>
-        <source>Tip</source>
-        <translation type="vanished">提示</translation>
+      <source>Tip</source>
+      <translation type="vanished">提示</translation>
     </message>
     <message>
-        <source>Success</source>
-        <translation type="vanished">成功</translation>
+      <source>Success</source>
+      <translation type="vanished">成功</translation>
     </message>
     <message>
-        <source>DingTalk Failed</source>
-        <translation type="vanished">釘釘推送失敗</translation>
+      <source>DingTalk Failed</source>
+      <translation type="vanished">釘釘推送失敗</translation>
     </message>
     <message>
-        <source>Lark Failed</source>
-        <translation type="vanished">飛書推送失敗</translation>
+      <source>Lark Failed</source>
+      <translation type="vanished">飛書推送失敗</translation>
     </message>
     <message>
-        <source>SMTP Failed</source>
-        <translation type="vanished">SMTP推送失敗</translation>
+      <source>SMTP Failed</source>
+      <translation type="vanished">SMTP推送失敗</translation>
     </message>
     <message>
-        <source>WxPusher Failed</source>
-        <translation type="vanished">微信推送失敗</translation>
+      <source>WxPusher Failed</source>
+      <translation type="vanished">微信推送失敗</translation>
     </message>
     <message>
-        <source>DingTalk Success</source>
-        <translation type="vanished">釘釘推送成功</translation>
+      <source>DingTalk Success</source>
+      <translation type="vanished">釘釘推送成功</translation>
     </message>
     <message>
-        <source>Lark Success</source>
-        <translation type="vanished">飛書推送成功</translation>
+      <source>Lark Success</source>
+      <translation type="vanished">飛書推送成功</translation>
     </message>
     <message>
-        <source>SMTP Success</source>
-        <translation type="vanished">SMTP推送成功</translation>
+      <source>SMTP Success</source>
+      <translation type="vanished">SMTP推送成功</translation>
     </message>
     <message>
-        <source>WxPusher Success</source>
-        <translation type="vanished">微信推送成功</translation>
+      <source>WxPusher Success</source>
+      <translation type="vanished">微信推送成功</translation>
     </message>
     <message>
-        <source>Unknown Error</source>
-        <translation type="vanished">未知錯誤</translation>
+      <source>Unknown Error</source>
+      <translation type="vanished">未知錯誤</translation>
     </message>
     <message>
-        <source> Failed</source>
-        <translation type="vanished">失敗</translation>
+      <source> Failed</source>
+      <translation type="vanished">失敗</translation>
     </message>
     <message>
-        <source>save Win32 config...</source>
-        <translation type="vanished">保存Win32控制器</translation>
+      <source>save Win32 config...</source>
+      <translation type="vanished">保存Win32控制器</translation>
     </message>
     <message>
-        <source>task completed</source>
-        <translation type="vanished">任務完成</translation>
+      <source>task completed</source>
+      <translation type="vanished">任務完成</translation>
     </message>
     <message>
-        <source>task failed</source>
-        <translation type="vanished">任務失敗</translation>
+      <source>task failed</source>
+      <translation type="vanished">任務失敗</translation>
     </message>
     <message>
-        <source>task running:</source>
-        <translation type="vanished">運行任務:</translation>
+      <source>task running:</source>
+      <translation type="vanished">運行任務:</translation>
     </message>
     <message>
-        <source>save ADB config...</source>
-        <translation type="vanished">保存ADB控制器</translation>
+      <source>save ADB config...</source>
+      <translation type="vanished">保存ADB控制器</translation>
     </message>
     <message>
-        <source>Add Task</source>
-        <translation type="vanished">添加</translation>
+      <source>Add Task</source>
+      <translation type="vanished">添加</translation>
     </message>
     <message>
-        <source>Rewrite</source>
-        <translation type="vanished">重寫</translation>
+      <source>Rewrite</source>
+      <translation type="vanished">重寫</translation>
     </message>
     <message>
-        <source>Task Interface</source>
-        <translation type="vanished">任務頁面</translation>
+      <source>Task Interface</source>
+      <translation type="vanished">任務頁面</translation>
     </message>
     <message>
-        <source>Finish Action</source>
-        <translation type="vanished">結束後操作</translation>
+      <source>Finish Action</source>
+      <translation type="vanished">結束後操作</translation>
     </message>
     <message>
-        <source>Resource</source>
-        <translation type="vanished">資源</translation>
+      <source>Resource</source>
+      <translation type="vanished">資源</translation>
     </message>
     <message>
-        <source>Controller</source>
-        <translation type="vanished">控制端</translation>
+      <source>Controller</source>
+      <translation type="vanished">控制端</translation>
     </message>
     <message>
-        <source>Auto Detect</source>
-        <translation type="vanished">自动检测</translation>
+      <source>Auto Detect</source>
+      <translation type="vanished">自动检测</translation>
     </message>
     <message>
-        <source>Finished</source>
-        <translation type="vanished">完成後</translation>
+      <source>Finished</source>
+      <translation type="vanished">完成後</translation>
     </message>
     <message>
-        <source>Move Up</source>
-        <translation type="vanished">上移</translation>
+      <source>Move Up</source>
+      <translation type="vanished">上移</translation>
     </message>
     <message>
-        <source>Move Down</source>
-        <translation type="vanished">下移</translation>
+      <source>Move Down</source>
+      <translation type="vanished">下移</translation>
     </message>
     <message>
-        <source>Delete</source>
-        <translation type="vanished">刪除</translation>
+      <source>Delete</source>
+      <translation type="vanished">刪除</translation>
     </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>Update</name>
     <message>
       <location filename="..\utils\update.py" line="800" />
@@ -3870,127 +3859,127 @@ Task Status:
       <translation type="vanished">未預期的錯誤</translation>
     </message>
     <message>
-        <source>update failed: version_data is None</source>
-        <translation type="vanished">更新失敗:版本數據丟失</translation>
+      <source>update failed: version_data is None</source>
+      <translation type="vanished">更新失敗:版本數據丟失</translation>
     </message>
     <message>
-        <source>version file not found</source>
-        <translation type="vanished">版本文件未找到</translation>
+      <source>version file not found</source>
+      <translation type="vanished">版本文件未找到</translation>
     </message>
     <message>
-        <source>version file format error</source>
-        <translation type="vanished">版本文件格式錯誤</translation>
+      <source>version file format error</source>
+      <translation type="vanished">版本文件格式錯誤</translation>
     </message>
     <message>
-        <source>INVALID_PARAMS</source>
-        <translation type="vanished">參數不正確</translation>
+      <source>INVALID_PARAMS</source>
+      <translation type="vanished">參數不正確</translation>
     </message>
     <message>
-        <source>switching to Github download</source>
-        <translation type="vanished">切換至 GitHub 下載</translation>
+      <source>switching to Github download</source>
+      <translation type="vanished">切換至 GitHub 下載</translation>
     </message>
     <message>
-        <source>KEY_EXPIRED</source>
-        <translation type="vanished">CDK已過期</translation>
+      <source>KEY_EXPIRED</source>
+      <translation type="vanished">CDK已過期</translation>
     </message>
     <message>
-        <source>KEY_INVALID</source>
-        <translation type="vanished">CDK錯誤</translation>
+      <source>KEY_INVALID</source>
+      <translation type="vanished">CDK錯誤</translation>
     </message>
     <message>
-        <source>RESOURCE_QUOTA_EXHAUSTED</source>
-        <translation type="vanished">CDK 今日下載次數已達上限</translation>
+      <source>RESOURCE_QUOTA_EXHAUSTED</source>
+      <translation type="vanished">CDK 今日下載次數已達上限</translation>
     </message>
     <message>
-        <source>KEY_MISMATCHED</source>
-        <translation type="vanished">CDK 類型和待下載的資源不匹配</translation>
+      <source>KEY_MISMATCHED</source>
+      <translation type="vanished">CDK 類型和待下載的資源不匹配</translation>
     </message>
     <message>
-        <source>RESOURCE_NOT_FOUND</source>
-        <translation type="vanished">對應架構和系統下的資源不存在</translation>
+      <source>RESOURCE_NOT_FOUND</source>
+      <translation type="vanished">對應架構和系統下的資源不存在</translation>
     </message>
     <message>
-        <source>INVALID_OS</source>
-        <translation type="vanished">錯誤的系統參數</translation>
+      <source>INVALID_OS</source>
+      <translation type="vanished">錯誤的系統參數</translation>
     </message>
     <message>
-        <source>INVALID_ARCH</source>
-        <translation type="vanished">錯誤的架構參數</translation>
+      <source>INVALID_ARCH</source>
+      <translation type="vanished">錯誤的架構參數</translation>
     </message>
     <message>
-        <source>INVALID_CHANNEL</source>
-        <translation type="vanished">錯誤的更新通道參數</translation>
+      <source>INVALID_CHANNEL</source>
+      <translation type="vanished">錯誤的更新通道參數</translation>
     </message>
     <message>
-        <source>current version is latest</source>
-        <translation type="vanished">當前已經是最新版</translation>
+      <source>current version is latest</source>
+      <translation type="vanished">當前已經是最新版</translation>
     </message>
     <message>
-        <source>Project address configuration not found</source>
-        <translation type="vanished">項目地址未配置</translation>
+      <source>Project address configuration not found</source>
+      <translation type="vanished">項目地址未配置</translation>
     </message>
     <message>
-        <source>Invalid project URL format</source>
-        <translation type="vanished">無效的項目URL格式</translation>
+      <source>Invalid project URL format</source>
+      <translation type="vanished">無效的項目URL格式</translation>
     </message>
     <message>
-        <source>SSL error occurred, please check your network connection</source>
-        <translation type="vanished">發生SSL錯誤，請檢查你的網絡連接</translation>
+      <source>SSL error occurred, please check your network connection</source>
+      <translation type="vanished">發生SSL錯誤，請檢查你的網絡連接</translation>
     </message>
     <message>
-        <source>GitHub API request limit exceeded,please try again later</source>
-        <translation type="vanished">GitHub API 請求次數已達上限，請稍後再試</translation>
+      <source>GitHub API request limit exceeded,please try again later</source>
+      <translation type="vanished">GitHub API 請求次數已達上限，請稍後再試</translation>
     </message>
     <message>
-        <source>GitHub response is empty</source>
-        <translation type="vanished">GitHub 回應為空</translation>
+      <source>GitHub response is empty</source>
+      <translation type="vanished">GitHub 回應為空</translation>
     </message>
     <message>
-        <source>Invalid response from GitHub</source>
-        <translation type="vanished">来自 GitHub 的响应无效</translation>
+      <source>Invalid response from GitHub</source>
+      <translation type="vanished">来自 GitHub 的响应无效</translation>
     </message>
     <message>
-        <source>Update check failed due to unexpected error</source>
-        <translation type="vanished">由于意外错误，更新检查失败</translation>
+      <source>Update check failed due to unexpected error</source>
+      <translation type="vanished">由于意外错误，更新检查失败</translation>
     </message>
     <message>
-        <source>Version file not found</source>
-        <translation type="vanished">版本文件未找到</translation>
+      <source>Version file not found</source>
+      <translation type="vanished">版本文件未找到</translation>
     </message>
     <message>
-        <source>Version file format error</source>
-        <translation type="vanished">版本文件格式錯誤</translation>
+      <source>Version file format error</source>
+      <translation type="vanished">版本文件格式錯誤</translation>
     </message>
     <message>
-        <source>Projeund, unable to perform update check</source>
-        <translation type="vanished">項目未找到，無法執行更新檢查</translation>
+      <source>Projeund, unable to perform update check</source>
+      <translation type="vanished">項目未找到，無法執行更新檢查</translation>
     </message>
     <message>
-        <source>unknow error, unable to perform update check</source>
-        <translation type="vanished">未知錯誤，無法執行更新檢查</translation>
+      <source>unknow error, unable to perform update check</source>
+      <translation type="vanished">未知錯誤，無法執行更新檢查</translation>
     </message>
     <message>
-        <source>Update successful</source>
-        <translation type="vanished">更新成功</translation>
+      <source>Update successful</source>
+      <translation type="vanished">更新成功</translation>
     </message>
     <message>
-        <source>Project address configuration not found, unable to perform update check</source>
-        <translation type="vanished">未找到項目地址配置，無法執行更新檢查</translation>
+      <source>Project address configuration not found, unable to perform update check</source>
+      <translation type="vanished">未找到項目地址配置，無法執行更新檢查</translation>
     </message>
     <message>
-        <source>Project address configuration error, unable to perform update check</source>
-        <translation type="vanished">項目地址配置錯誤，無法執行更新檢查</translation>
+      <source>Project address configuration error, unable to perform update check</source>
+      <translation type="vanished">項目地址配置錯誤，無法執行更新檢查</translation>
     </message>
     <message>
-        <source>Move files failed</source>
-        <translation type="vanished">移動文件失敗</translation>
+      <source>Move files failed</source>
+      <translation type="vanished">移動文件失敗</translation>
     </message>
     <message>
-        <source>MirrorChyan update check successful, starting download</source>
-        <translation type="vanished">Mirror醬檢查更新成功，開始下載</translation>
+      <source>MirrorChyan update check successful, starting download</source>
+      <translation type="vanished">Mirror醬檢查更新成功，開始下載</translation>
     </message>
-</context>
-<context>
+  </context>
+  <context>
     <name>UpdateSelf</name>
     <message>
       <source>Failed to get download address</source>
@@ -4021,64 +4010,64 @@ Task Status:
       <translation type="vanished">下載失敗</translation>
     </message>
     <message>
-        <source>current version is latest</source>
-        <translation type="vanished">當前已經是最新版</translation>
+      <source>current version is latest</source>
+      <translation type="vanished">當前已經是最新版</translation>
     </message>
     <message>
-        <source>update failed: version_data is None</source>
-        <translation type="vanished">更新失敗:版本數據丟失</translation>
+      <source>update failed: version_data is None</source>
+      <translation type="vanished">更新失敗:版本數據丟失</translation>
     </message>
     <message>
-        <source>Version file update failed</source>
-        <translation type="vanished">版本文件更新失败</translation>
+      <source>Version file update failed</source>
+      <translation type="vanished">版本文件更新失败</translation>
     </message>
     <message>
-        <source>Version file write failed</source>
-        <translation type="vanished">版本文件写入失败</translation>
+      <source>Version file write failed</source>
+      <translation type="vanished">版本文件写入失败</translation>
     </message>
     <message>
-        <source>Cannot read version file</source>
-        <translation type="vanished">无法读取版本文件</translation>
+      <source>Cannot read version file</source>
+      <translation type="vanished">无法读取版本文件</translation>
     </message>
     <message>
-        <source>INVALID_PARAMS</source>
-        <translation type="vanished">參數不正確</translation>
+      <source>INVALID_PARAMS</source>
+      <translation type="vanished">參數不正確</translation>
     </message>
     <message>
-        <source>KEY_EXPIRED</source>
-        <translation type="vanished">金鑰已過期</translation>
+      <source>KEY_EXPIRED</source>
+      <translation type="vanished">金鑰已過期</translation>
     </message>
     <message>
-        <source>KEY_INVALID</source>
-        <translation type="vanished">金鑰錯誤</translation>
+      <source>KEY_INVALID</source>
+      <translation type="vanished">金鑰錯誤</translation>
     </message>
     <message>
-        <source>RESOURCE_QUOTA_EXHAUSTED</source>
-        <translation type="vanished">金鑰今日下載次數已達上限</translation>
+      <source>RESOURCE_QUOTA_EXHAUSTED</source>
+      <translation type="vanished">金鑰今日下載次數已達上限</translation>
     </message>
     <message>
-        <source>KEY_MISMATCHED</source>
-        <translation type="vanished">金鑰類型和待下載的資源不匹配</translation>
+      <source>KEY_MISMATCHED</source>
+      <translation type="vanished">金鑰類型和待下載的資源不匹配</translation>
     </message>
     <message>
-        <source>KEY_BLOCKED</source>
-        <translation type="vanished">金鑰已被封鎖</translation>
+      <source>KEY_BLOCKED</source>
+      <translation type="vanished">金鑰已被封鎖</translation>
     </message>
     <message>
-        <source>RESOURCE_NOT_FOUND</source>
-        <translation type="vanished">對應架構和系統下的資源不存在</translation>
+      <source>RESOURCE_NOT_FOUND</source>
+      <translation type="vanished">對應架構和系統下的資源不存在</translation>
     </message>
     <message>
-        <source>INVALID_OS</source>
-        <translation type="vanished">錯誤的系統參數</translation>
+      <source>INVALID_OS</source>
+      <translation type="vanished">錯誤的系統參數</translation>
     </message>
     <message>
-        <source>INVALID_ARCH</source>
-        <translation type="vanished">錯誤的架構參數</translation>
+      <source>INVALID_ARCH</source>
+      <translation type="vanished">錯誤的架構參數</translation>
     </message>
     <message>
-        <source>INVALID_CHANNEL</source>
-        <translation type="vanished">錯誤的更新通道參數</translation>
+      <source>INVALID_CHANNEL</source>
+      <translation type="vanished">錯誤的更新通道參數</translation>
     </message>
-</context>
+  </context>
 </TS>
