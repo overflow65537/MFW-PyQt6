@@ -432,8 +432,16 @@ class SettingInterface(QWidget):
             configItem=cfg.hide_notice,
             parent=self.start_Setting,
         )
+        self.speedrun_mode_card = SwitchSettingCard(
+            FIF.SPEED_HIGH,
+            self.tr("Speedrun Mode"),
+            self.tr("Open to skip some tasks already run"),
+            configItem=cfg.speedrun_mode,
+            parent=self.start_Setting,
+        )
         self.start_Setting.addSettingCard(self.run_after_startup)
         self.start_Setting.addSettingCard(self.never_show_notice)
+        self.start_Setting.addSettingCard(self.speedrun_mode_card)
         self.add_setting_group(self.start_Setting)
 
     def initialize_personalization_settings(self):

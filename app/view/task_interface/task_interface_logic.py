@@ -1,25 +1,15 @@
 import asyncio
-from typing import Dict
-from PySide6.QtCore import Qt
-from PySide6.QtCore import QThread
 from PySide6.QtWidgets import (
     QWidget,
-    QTableWidgetItem,
-    QListWidgetItem,
-    QHBoxLayout,
-    QSizePolicy,
 )
 from qfluentwidgets import (
-    CheckBox,
-    TransparentToolButton,
     FluentIcon as FIF,
-    InfoBar,
-    InfoBarPosition,
 )
 
 
 from app.view.task_interface.task_interface_ui import UI_TaskInterface
 from app.common.signal_bus import signalBus
+from app.common.config import cfg
 
 
 class TaskInterface(UI_TaskInterface, QWidget):
@@ -69,6 +59,9 @@ class TaskInterface(UI_TaskInterface, QWidget):
             self.start_bar.run_button.setText("停止")
             self.start_bar.run_button.setIcon(FIF.CLOSE)
         else:
+            self.service_coordinator.task_runner.speedrun_mode = cfg.get(
+                cfg.speedrun_mode
+            )
             self.start_bar.run_button.setText("启动")
             self.start_bar.run_button.setIcon(FIF.PLAY)
 

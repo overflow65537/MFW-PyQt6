@@ -78,28 +78,6 @@ if __name__ == "__main__":
     crypto_manager.ensure_key_exists()
 
     # 单实例检查
-    """PID_FILE = os.path.join(os.getcwd(), "MFW.pid")
-
-    def cleanup_pid():
-        if os.path.exists(PID_FILE):
-            os.remove(PID_FILE)
-            logger.debug("已清理PID文件")
-
-    if os.path.exists(PID_FILE):
-        try:
-            with open(PID_FILE, "r") as f:
-                existing_pid = int(f.read().strip())
-            os.kill(existing_pid, 0)  # 检测进程是否存活
-            logger.error(f"检测到已有实例运行（PID: {existing_pid}），当前实例退出")
-            sys.exit(0)
-        except (ValueError, ProcessLookupError):
-            cleanup_pid()
-            logger.debug("检测到残留PID文件，已清理")
-
-    with open(PID_FILE, "w") as f:
-        f.write(str(os.getpid()))
-    atexit.register(cleanup_pid)
-    logger.debug(f"创建PID文件（当前PID: {os.getpid()}）")"""
 
     # 参数解析与配置检查
     parser = argparse.ArgumentParser()
@@ -109,13 +87,13 @@ if __name__ == "__main__":
     parser.add_argument("-DEV", "--DEV", action="store_true")
     args = parser.parse_args()
 
-    """# 全局异常钩子
+    # 全局异常钩子
     def global_except_hook(exc_type, exc_value, exc_traceback):
         logger.exception(
             "未捕获的全局异常:", exc_info=(exc_type, exc_value, exc_traceback)
         )
 
-    sys.excepthook = global_except_hook"""
+    sys.excepthook = global_except_hook
 
     # DPI缩放配置
     if cfg.get(cfg.dpiScale) != "Auto":
@@ -161,6 +139,13 @@ if __name__ == "__main__":
 
     # 异步事件循环初始化
     loop = QEventLoop(app)
+
+    # 异步异常处理
+    def handle_async_exception(loop, context):
+        logger.exception("异步任务异常:", exc_info=context.get("exception"))
+
+    loop.set_exception_handler(handle_async_exception)
+
     asyncio.set_event_loop(loop)
 
     # 初始化 GPU 信息缓存
@@ -174,12 +159,6 @@ if __name__ == "__main__":
     # 创建主窗口
     w = MainWindow()
     w.show()
-
-    """# 异步异常处理
-    def handle_async_exception(loop, context):
-        logger.exception("异步任务异常:", exc_info=context.get("exception"))
-
-    loop.set_exception_handler(handle_async_exception)"""
 
     # 运行事件循环
     with loop:

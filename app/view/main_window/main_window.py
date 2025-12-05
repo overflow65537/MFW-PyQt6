@@ -295,6 +295,7 @@ class MainWindow(MSFluentWindow):
             ),
             parent=self,
         )
+        logger.info(f" 显示 InfoBar 提示：{message}")
 
     def _calculate_info_bar_duration(self, message: str) -> int:
         """根据消息长度计算 InfoBar 显示时长，最少 1.5s。"""

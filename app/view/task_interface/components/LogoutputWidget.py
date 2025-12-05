@@ -185,6 +185,7 @@ class LogoutputWidget(QWidget):
             upper = "INFO"
         color = self._level_color.get(upper, "#eeeeee")
         self.append_text_to_log(text, color)
+        logger.info(f"[{level}] {text}")
 
     def _normalize_color(self, color: str) -> str:
         if isinstance(color, QColor):
