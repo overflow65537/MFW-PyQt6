@@ -92,15 +92,14 @@ print(f"[DEBUG] Platform: {sys.platform}")
 
 if sys.platform == "darwin":
     if architecture == "x86_64":  # intel CPU
-        base_command += [
-            "--target-arch=x86_64",
-        ]
+        base_command += ["--target-arch=x86_64"]
         print("[DEBUG] Target arch: x86_64")
     elif architecture == "aarch64":  # M1/M2 CPU
-        base_command += [
-            "--target-arch=arm64",
-        ]
+        base_command += ["--target-arch=arm64"]
         print("[DEBUG] Target arch: aarch64")
+    elif architecture == "universal2":
+        base_command += ["--target-arch=universal2"]
+        print("[DEBUG] Target arch: universal2")
     base_command += [
         "--osx-bundle-identifier=com.overflow65537.MFW",
         "--noconsole",  # 禁用控制台窗口
