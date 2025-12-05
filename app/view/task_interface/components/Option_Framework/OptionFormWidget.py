@@ -5,7 +5,7 @@
 from typing import Dict, Any, Optional
 from PySide6.QtWidgets import QWidget, QVBoxLayout
 from app.utils.logger import logger
-from app.view.fast_start.components.Option_Framework.OptionItemWidget import OptionItemWidget
+from app.view.task_interface.components.Option_Framework.OptionItemWidget import OptionItemWidget
 
 
 class OptionFormWidget(QWidget):

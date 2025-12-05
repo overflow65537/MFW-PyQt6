@@ -12,7 +12,7 @@ from qfluentwidgets import ListWidget, IndeterminateProgressRing, SimpleCardWidg
 
 from app.core.core import  ServiceCoordinator
 from app.core.Item import TaskItem, ConfigItem
-from app.view.fast_start.components.ListItem import TaskListItem, ConfigListItem
+from app.view.task_interface.components.ListItem import TaskListItem, ConfigListItem
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
 

@@ -10,7 +10,7 @@ from qfluentwidgets import ComboBox, LineEdit, BodyLabel, ToolTipFilter, SwitchB
 import re
 from app.common.signal_bus import signalBus
 from app.utils.logger import logger
-from app.view.fast_start.components.Option_Framework.animations import HeightAnimator
+from app.view.task_interface.components.Option_Framework.animations import HeightAnimator
 
 
 class OptionItemWidget(QWidget):

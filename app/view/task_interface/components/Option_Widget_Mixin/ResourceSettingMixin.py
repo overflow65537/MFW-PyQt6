@@ -17,7 +17,7 @@ from app.utils.gpu_cache import gpu_cache
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
 from app.widget.PathLineEdit import PathLineEdit
-from app.view.fast_start.components.Option_Widget_Mixin.DeviceFinderWidget import (
+from app.view.task_interface.components.Option_Widget_Mixin.DeviceFinderWidget import (
     DeviceFinderWidget,
 )
 

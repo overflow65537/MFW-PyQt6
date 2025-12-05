@@ -1,5 +1,6 @@
 from datetime import datetime
 import re
+from venv import logger
 
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QColor, QPalette, QTextCharFormat, QTextCursor
@@ -29,8 +30,8 @@ class LogoutputWidget(QWidget):
         self._level_color = {
             "INFO": "#eeeeee",
             "WARNING": "#e3b341",
-            "ERROR": "#f85149",
-            "CRITICAL": "#b62324",
+            "ERROR": "#ff4b42",
+            "CRITICAL": "#b63923",
         }
         self._color_tag_pattern = re.compile(
             r"\[color:(?P<color>[A-Za-z]+)\](?P<text>.*?)\[/color\]", re.S
@@ -126,8 +127,7 @@ class LogoutputWidget(QWidget):
 
         elif signal_name == "controller":
             # 控制器/模拟器连接状态
-            action = signal.get("task", "")
-            self._handle_controller_signal(status, action)
+            self._handle_controller_signal(status)
 
         elif signal_name == "task":
             # 任务执行状态
@@ -144,25 +144,20 @@ class LogoutputWidget(QWidget):
         """处理资源加载信号 - 只输出失败"""
         # status: 1=Starting, 2=Succeeded, 3=Failed
         if status == 3:
-            self.add_structured_log("ERROR", self.tr("Resource loading failed"))
+            self.add_structured_log("ERROR", self.tr("Resource Loading Failed"))
 
-    def _handle_controller_signal(self, status: int, action: str):
+    def _handle_controller_signal(self, status: int):
         """处理控制器/模拟器连接信号 - 只输出开始和失败"""
         # status: 1=Starting, 2=Succeeded, 3=Failed
-        action_text = action if action else self.tr("Connection operation")
         if status == 1:
-            self.add_structured_log(
-                "INFO", self.tr("Controller started operation: ") + action_text
-            )
+            self.add_structured_log("INFO", self.tr("Controller Started Connect"))
         elif status == 3:
-            self.add_structured_log(
-                "ERROR", self.tr("Controller operation failed: ") + action_text
-            )
+            self.add_structured_log("ERROR", self.tr("Controller Connect Failed"))
 
     def _handle_task_signal(self, status: int, task: str):
         """处理任务执行信号 - 只输出开始和失败"""
         # status: 1=Starting, 2=Succeeded, 3=Failed
-        task_text = task if task else self.tr("Unknown task")
+        task_text = task if task else self.tr("Unknown Task")
         if task_text == "MaaNS::Tasker::post_stop":
             return
         elif status == 1:
@@ -246,6 +241,9 @@ class LogoutputWidget(QWidget):
                 if modifiers & Qt.KeyboardModifier.ControlModifier:
                     if key_event.key() in (Qt.Key.Key_C, Qt.Key.Key_Insert):
                         return True
-                if modifiers & Qt.KeyboardModifier.ControlModifier and key_event.key() == Qt.Key.Key_A:
+                if (
+                    modifiers & Qt.KeyboardModifier.ControlModifier
+                    and key_event.key() == Qt.Key.Key_A
+                ):
                     return True
         return super().eventFilter(obj, event)

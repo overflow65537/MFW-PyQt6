@@ -9,22 +9,22 @@ from PySide6.QtWidgets import (
 
 
 from app.core.core import ServiceCoordinator
-from app.view.fast_start.components.LogoutputWidget import LogoutputWidget
-from app.view.fast_start.components.ListToolBarWidget import (
+from app.view.task_interface.components.LogoutputWidget import LogoutputWidget
+from app.view.task_interface.components.ListToolBarWidget import (
     TaskListToolBarWidget,
     ConfigListToolBarWidget,
 )
-from app.view.fast_start.components.OptionWidget import OptionWidget
-from app.view.fast_start.components.StartBarWidget import StartBarWidget
+from app.view.task_interface.components.OptionWidget import OptionWidget
+from app.view.task_interface.components.StartBarWidget import StartBarWidget
 
 
-class UI_FastStartInterface(object):
+class UI_TaskInterface(object):
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         self.service_coordinator = service_coordinator
         self.parent = parent
 
-    def setupUi(self, FastStartInterface):
-        FastStartInterface.setObjectName("FastStartInterface")
+    def setupUi(self, TaskInterface):
+        TaskInterface.setObjectName("TaskInterface")
         # 主窗口
         self.main_layout = QHBoxLayout()
         self.log_output_widget = LogoutputWidget()
@@ -39,9 +39,9 @@ class UI_FastStartInterface(object):
         self.main_layout.setStretch(1, 1)
         self.main_layout.setStretch(2, 99)
 
-        FastStartInterface.setLayout(self.main_layout)
-        self.retranslateUi(FastStartInterface)
-        QMetaObject.connectSlotsByName(FastStartInterface)
+        TaskInterface.setLayout(self.main_layout)
+        self.retranslateUi(TaskInterface)
+        QMetaObject.connectSlotsByName(TaskInterface)
 
     def _init_option_panel(self):
         """初始化选项面板"""
@@ -80,6 +80,6 @@ class UI_FastStartInterface(object):
         self.control_panel_layout.setStretch(1, 10)
         self.control_panel_layout.setStretch(2, 1)
 
-    def retranslateUi(self, FastStartInterface):
+    def retranslateUi(self, TaskInterface):
         _translate = QCoreApplication.translate
-        FastStartInterface.setWindowTitle(_translate("FastStartInterface", "Form"))
+        TaskInterface.setWindowTitle(_translate("TaskInterface", "Form"))

@@ -6,16 +6,16 @@ from qfluentwidgets import BodyLabel, ScrollArea, SimpleCardWidget
 
 from app.utils.logger import logger
 from app.utils.markdown_helper import render_markdown
-from app.view.fast_start.animations.optionwidget import (
+from app.view.task_interface.animations.optionwidget import (
     DescriptionTransitionAnimator,
     OptionTransitionAnimator,
 )
-from app.view.fast_start.components.ImagePreviewDialog import ImagePreviewDialog
-from app.view.fast_start.components.Option_Framework import OptionFormWidget
-from app.view.fast_start.components.Option_Widget_Mixin.PostActionSettingMixin import (
+from app.view.task_interface.components.ImagePreviewDialog import ImagePreviewDialog
+from app.view.task_interface.components.Option_Framework import OptionFormWidget
+from app.view.task_interface.components.Option_Widget_Mixin.PostActionSettingMixin import (
     PostActionSettingMixin,
 )
-from app.view.fast_start.components.Option_Widget_Mixin.ResourceSettingMixin import (
+from app.view.task_interface.components.Option_Widget_Mixin.ResourceSettingMixin import (
     ResourceSettingMixin,
 )
 from ....core.core import ServiceCoordinator

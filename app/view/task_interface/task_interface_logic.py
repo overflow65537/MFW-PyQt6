@@ -18,14 +18,14 @@ from qfluentwidgets import (
 )
 
 
-from app.view.fast_start.fast_start_ui import UI_FastStartInterface
+from app.view.task_interface.task_interface_ui import UI_TaskInterface
 from app.common.signal_bus import signalBus
 
 
-class FastStartInterface(UI_FastStartInterface, QWidget):
+class TaskInterface(UI_TaskInterface, QWidget):
     def __init__(self, service_coordinator=None, parent=None):
         QWidget.__init__(self, parent=parent)
-        UI_FastStartInterface.__init__(
+        UI_TaskInterface.__init__(
             self, service_coordinator=service_coordinator, parent=parent
         )
         self.setupUi(self)
