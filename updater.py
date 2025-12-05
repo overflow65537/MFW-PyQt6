@@ -1,6 +1,7 @@
 import os
 import sys
 import shutil
+import time
 
 
 def is_mfw_running():
@@ -48,16 +49,16 @@ def move_specific_files_to_temp_backup(update_file_path):
         # 只备份更新包中会覆盖的文件
         for file_info in update_files:
             file_path = os.path.join(current_dir, file_info)
-            
+
             # 检查文件是否存在
             if os.path.exists(file_path):
                 backup_path = os.path.join(temp_backup_dir, file_info)
-                
+
                 # 确保备份目录结构存在
                 backup_dir = os.path.dirname(backup_path)
                 if backup_dir and not os.path.exists(backup_dir):
                     os.makedirs(backup_dir)
-                
+
                 try:
                     # 移动文件到临时备份目录
                     shutil.move(file_path, backup_path)
@@ -89,17 +90,21 @@ def restore_files_from_backup(backup_dir):
             for root, dirs, files in os.walk(backup_dir):
                 # 计算相对路径
                 rel_path = os.path.relpath(root, backup_dir)
-                target_root = current_dir if rel_path == "." else os.path.join(current_dir, rel_path)
-                
+                target_root = (
+                    current_dir
+                    if rel_path == "."
+                    else os.path.join(current_dir, rel_path)
+                )
+
                 # 确保目标目录存在
                 if not os.path.exists(target_root):
                     os.makedirs(target_root)
-                
+
                 # 恢复文件
                 for file in files:
                     backup_path = os.path.join(root, file)
                     target_path = os.path.join(target_root, file)
-                    
+
                     # 如果目标文件已存在，先删除
                     if os.path.exists(target_path):
                         if os.path.isdir(target_path):
@@ -109,7 +114,9 @@ def restore_files_from_backup(backup_dir):
 
                     # 移动文件回原位置
                     shutil.move(backup_path, target_path)
-                    print(f"已恢复: {os.path.join(rel_path, file) if rel_path != '.' else file}")
+                    print(
+                        f"已恢复: {os.path.join(rel_path, file) if rel_path != '.' else file}"
+                    )
 
             # 删除备份目录
             shutil.rmtree(backup_dir)
@@ -138,7 +145,9 @@ def extract_zip_file_with_validation(update_file_path):
         print(f"解压目标目录: {current_dir}")
 
         # 创建备份并移动当前文件（只备份更新包中会覆盖的文件）
-        backup_dir, moved_files, failed_files = move_specific_files_to_temp_backup(update_file_path)
+        backup_dir, moved_files, failed_files = move_specific_files_to_temp_backup(
+            update_file_path
+        )
 
         # 如果有文件备份失败，记录日志并恢复
         if failed_files:
@@ -216,8 +225,6 @@ def log_error(error_message):
     Args:
         error_message: 错误信息
     """
-    import time
-
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     log_entry = f"[{timestamp}] {error_message}\n"
 
@@ -227,12 +234,63 @@ def log_error(error_message):
     print(f"错误已记录: {error_message}")
 
 
+def ensure_update_directories():
+    """
+    确保 update/new_version 和 update/update_back 存在，并返回路径
+    """
+    update_root = os.path.join(os.getcwd(), "update")
+    new_version_dir = os.path.join(update_root, "new_version")
+    update_back_dir = os.path.join(update_root, "update_back")
+    os.makedirs(new_version_dir, exist_ok=True)
+    os.makedirs(update_back_dir, exist_ok=True)
+    return new_version_dir, update_back_dir
+
+
+def find_latest_zip_file(directory):
+    """
+    查找目录中最新的 zip 包
+    """
+    try:
+        candidates = [
+            os.path.join(directory, file_name)
+            for file_name in os.listdir(directory)
+            if os.path.isfile(os.path.join(directory, file_name))
+            and file_name.lower().endswith(".zip")
+        ]
+        if not candidates:
+            return None
+        return max(candidates, key=os.path.getmtime)
+    except FileNotFoundError:
+        return None
+    except Exception as e:
+        log_error(f"查找更新包时出错: {e}")
+        return None
+
+
+def move_update_archive_to_backup(src_path, backup_dir):
+    """
+    将更新包移动到备份目录，避免名称冲突
+    """
+    base_name = os.path.basename(src_path)
+    dest_path = os.path.join(backup_dir, base_name)
+    if os.path.exists(dest_path):
+        name, ext = os.path.splitext(base_name)
+        dest_path = os.path.join(
+            backup_dir,
+            f"{name}_{time.strftime('%Y%m%d%H%M%S')}{ext}",
+        )
+    try:
+        shutil.move(src_path, dest_path)
+        print(f"更新包已移入备份目录: {dest_path}")
+    except Exception as e:
+        log_error(f"移动更新包到备份目录失败: {e}")
+
+
 def standard_update():
     """
     标准更新模式
     """
     import subprocess
-    import time
 
     # 检查MFW是否在运行
     max_checks = 3
@@ -252,40 +310,13 @@ def standard_update():
         log_error(error_message)
         sys.exit(error_message)
 
-    zip_file_name = os.path.join(os.getcwd(), "update.zip")
-    update1_zip_name = os.path.join(os.getcwd(), "update1.zip")
-
-    # 检查并解压更新文件
-    update_file = None
-    if os.path.exists(zip_file_name):
-        update_file = zip_file_name
+    new_version_dir, update_back_dir = ensure_update_directories()
+    update_file = find_latest_zip_file(new_version_dir)
 
     if update_file:
-        # 使用新的解压方法
         if extract_zip_file_with_validation(update_file):
             print("更新文件解压成功")
-
-            # 重命名更新文件为备份文件
-            if os.path.exists(update_file):
-                # 如果目标备份文件已存在，先删除以避免重命名失败
-                if os.path.exists(update1_zip_name):
-                    try:
-                        os.remove(update1_zip_name)
-                        print(f"已删除旧的备份文件: {update1_zip_name}")
-                    except Exception as e:
-                        error_message = f"删除旧备份文件失败: {e}"
-                        log_error(error_message)
-                        print(error_message)
-                        # 删除失败则中止更新
-                        sys.exit(error_message)
-                
-                try:
-                    os.rename(update_file, update1_zip_name)
-                    print(f"更新文件已重命名为: {update1_zip_name}")
-                except Exception as e:
-                    error_message = f"重命名更新文件失败: {e}"
-                    log_error(error_message)
-                    sys.exit(error_message)
+            move_update_archive_to_backup(update_file, update_back_dir)
         else:
             error_message = "更新文件解压失败，更新已中止"
             log_error(error_message)
@@ -321,12 +352,8 @@ def recovery_mode():
 
     input("按回车键开始恢复更新...")
 
-    update1_zip_name = os.path.join(os.getcwd(), "update1.zip")
-
-    # 检查并解压备份的更新文件
-    update_file = None
-    if os.path.exists(update1_zip_name):
-        update_file = update1_zip_name
+    _, update_back_dir = ensure_update_directories()
+    update_file = find_latest_zip_file(update_back_dir)
 
     if update_file:
         if extract_zip_file_with_validation(update_file):
@@ -360,7 +387,10 @@ if __name__ == "__main__":
     # 不再启动时删除旧日志，而是追加写入（便于排查历史错误）
     # 在日志中记录本次更新开始
     import time
-    log_entry = f"\n{'='*60}\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] 更新程序启动\n{'='*60}\n"
+
+    log_entry = (
+        f"\n{'='*60}\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] 更新程序启动\n{'='*60}\n"
+    )
     try:
         with open("UPDATE_ERROR.log", "a", encoding="utf-8") as log_file:
             log_file.write(log_entry)
@@ -371,7 +401,9 @@ if __name__ == "__main__":
         if len(sys.argv) > 1 and sys.argv[1] == "-update":
             standard_update()
         else:
-            mode = input("1. 更新模式 / Standard update\n2. 恢复模式 / Recovery update\n")
+            mode = input(
+                "1. 更新模式 / Standard update\n2. 恢复模式 / Recovery update\n"
+            )
             if mode == "1":
                 standard_update()
             elif mode == "2":

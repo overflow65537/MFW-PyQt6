@@ -203,7 +203,9 @@ class BaseUpdate(QThread):
             if response:
                 response.close()
 
-    def extract_archive(self, archive_path, extract_to, flatten_assets=False) -> Path | None:
+    def extract_archive(
+        self, archive_path, extract_to, flatten_assets=False
+    ) -> Path | None:
         target_path = Path(archive_path)
         normalized_name = target_path.name.lower()
 
@@ -251,7 +253,11 @@ class BaseUpdate(QThread):
                         members, _normalize_parts, interface_names
                     )
                     self._extract_members_filtered(
-                        archive, members, interface_dir_parts, extract_to_path, _normalize_parts
+                        archive,
+                        members,
+                        interface_dir_parts,
+                        extract_to_path,
+                        _normalize_parts,
                     )
                     final_root = self._resolve_final_root(
                         extract_to_path, interface_dir_parts
