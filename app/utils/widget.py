@@ -76,7 +76,6 @@ from qfluentwidgets import (
 )
 from qfluentwidgets import FluentIcon as FIF
 
-import traceback
 import os
 from typing import Union, Dict, List
 
