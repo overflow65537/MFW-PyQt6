@@ -77,7 +77,6 @@ base_command = [
     f"--add-data={maa_path}{os.pathsep}maa",
     f"--add-data={agent_path}{os.pathsep}MaaAgentBinary",
     f"--add-data={darkdetect_path}{os.pathsep}darkdetect",
-    f"--add-data={os.path.join(os.getcwd(), 'MFW_resource')}{os.pathsep}TEM_files{os.sep}MFW_resource",
     # 自动收集包数据
     "--collect-data=darkdetect",
     "--collect-data=maa",
@@ -93,15 +92,14 @@ print(f"[DEBUG] Platform: {sys.platform}")
 
 if sys.platform == "darwin":
     if architecture == "x86_64":  # intel CPU
-        base_command += [
-            "--target-arch=x86_64",
-        ]
+        base_command += ["--target-arch=x86_64"]
         print("[DEBUG] Target arch: x86_64")
     elif architecture == "aarch64":  # M1/M2 CPU
-        base_command += [
-            "--target-arch=arm64",
-        ]
+        base_command += ["--target-arch=arm64"]
         print("[DEBUG] Target arch: aarch64")
+    elif architecture == "universal2":
+        base_command += ["--target-arch=universal2"]
+        print("[DEBUG] Target arch: universal2")
     base_command += [
         "--osx-bundle-identifier=com.overflow65537.MFW",
         "--noconsole",  # 禁用控制台窗口
@@ -109,7 +107,7 @@ if sys.platform == "darwin":
 
 elif sys.platform == "win32":
     base_command += [
-        "--icon=MFW_resource/icon/logo.ico",
+        "--icon=./app/assets/icons/logo.ico",
         "--distpath",
         os.path.join("dist"),
     ]
@@ -145,33 +143,50 @@ PyInstaller.__main__.run(base_command)
 
 # === 构建后处理 ===
 # 复制TEM_files的内容到 dist/MFW 目录
-shutil.copytree(
-    os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"),
-    os.path.join(os.getcwd(), "dist", "MFW"),
-    dirs_exist_ok=True,
-)
-# 删除临时目录
-shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "TEM_files"))
+dist_dir = os.path.join(os.getcwd(), "dist", "MFW")
+internal_dir = os.path.join(dist_dir, "_internal")
+temp_files_dir = os.path.join(internal_dir, "TEM_files")
+if os.path.isdir(temp_files_dir):
+    shutil.copytree(temp_files_dir, dist_dir, dirs_exist_ok=True)
+    shutil.rmtree(temp_files_dir)
+else:
+    print(f"[WARN] Temporary files directory not found: {temp_files_dir}")
 
 
 for i in bin_files:
-    # 复制二进制文件到 dist/MFW 目录
+    src_binary = os.path.join(dist_dir, "_internal", i)
+    dst_binary = os.path.join(dist_dir, i)
+    if os.path.exists(src_binary):
+        shutil.copy(src_binary, dst_binary)
+        os.remove(src_binary)
+    else:
+        print(f"[WARN] Expected binary missing: {src_binary}")
+
+maa_bin_internal = os.path.join(internal_dir, "maa", "bin")
+if os.path.isdir(maa_bin_internal):
+    shutil.rmtree(maa_bin_internal)
+
+# 复制README和许可证
+shutil.copy(
+    os.path.join(os.getcwd(), "README.md"),
+    os.path.join(os.getcwd(), "dist", "MFW", "MFW_README.md"),
+)
+shutil.copy(
+    os.path.join(os.getcwd(), "README-en.md"),
+    os.path.join(os.getcwd(), "dist", "MFW", "MFW_README-en.md"),
+)
+shutil.copy(
+    os.path.join(os.getcwd(), "LICENSE"),
+    os.path.join(os.getcwd(), "dist", "MFW", "MFW_LICENSE"),
+)
+
+os.makedirs(os.path.join(os.getcwd(), "dist", "MFW", "app", "i18n"), exist_ok=True)
+# 复制i18n文件
+for qm_file in ["i18n.zh_CN.qm", "i18n.zh_HK.qm"]:
     shutil.copy(
-        os.path.join(os.getcwd(), "dist", "MFW", "_internal", i),
-        os.path.join(os.getcwd(), "dist", "MFW"),
+        os.path.join(os.getcwd(), "app", "i18n", qm_file),
+        os.path.join(os.getcwd(), "dist", "MFW", "app", "i18n", qm_file),
     )
-    # 删除临时文件
-    os.remove(os.path.join(os.getcwd(), "dist", "MFW", "_internal", i))
-
-shutil.rmtree(os.path.join(os.getcwd(), "dist", "MFW", "_internal", "maa", "bin"))
-
-# 复制README和许可证并在开头加上MFW_前缀
-for file in ["README.md", "README-en.md", "LICENSE"]:
-    shutil.copy(
-        os.path.join(os.getcwd(), file),
-        os.path.join(os.getcwd(), "dist", "MFW", f"MFW_{file}"),
-    )
-
 
 # === 构建updater ===
 updater_command = [

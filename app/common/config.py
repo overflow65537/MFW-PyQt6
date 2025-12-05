@@ -43,21 +43,11 @@ from qfluentwidgets import (
 
 
 class Language(Enum):
-    """Language enumeration"""
+    """Language enumeration mapped to QLocale."""
 
     CHINESE_SIMPLIFIED = QLocale(QLocale.Language.Chinese, QLocale.Country.China)
     CHINESE_TRADITIONAL = QLocale(QLocale.Language.Chinese, QLocale.Country.HongKong)
     ENGLISH = QLocale(QLocale.Language.English)
-
-
-class LanguageSerializer(ConfigSerializer):
-    """Language serializer"""
-
-    def serialize(self, value):
-        return value.value.name()
-
-    def deserialize(self, value: str) -> Language:
-        return Language(QLocale(value))
 
 
 def isWin11():
@@ -65,76 +55,69 @@ def isWin11():
 
 
 class Config(QConfig):
-    """Config of application"""
+    """Application configuration container."""
 
-    # 代理设置
-    proxy = ConfigItem("proxy", "proxy", 0)
-    http_proxy = ConfigItem("proxy", "http_proxy", "")
-    socks5_proxy = ConfigItem("proxy", "socks5_proxy", "")
+    class LanguageSerializer(ConfigSerializer):
+        """序列化 Language 枚举，方便写入/读取 settting."""
 
-    # agent路径
-    agent_path = ConfigItem("program", "agent_path", "")
-    # 永不展示公告
-    hide_notice = ConfigItem("program", "hide_notice", False, BoolValidator())
+        def serialize(self, value):
+            return value.name
 
-    # 展示公告
-    show_notice = ConfigItem("program", "show_notice", True, BoolValidator())
+        def deserialize(self, value: str) -> Language:
+            if isinstance(value, str):
+                try:
+                    return Language[value]
+                except KeyError:
+                    for lang in Language:
+                        # 兼容旧版用 QLocale.name() 保存的值
+                        if lang.value.name() == value or lang.name == value:
+                            return lang
+            return Language.CHINESE_SIMPLIFIED
 
-    # 展示agent命令行
-    show_agent_cmd = ConfigItem("program", "show_agent_cmd", False, BoolValidator())
-    # Mirror酱cdk
-    Mcdk = ConfigItem("program", "cdk", "")
-    is_change_cdk = ConfigItem("program", "is_change_cdk", True, BoolValidator())
-    # 强制更新
-    force_update = ConfigItem("program", "force_update", False, BoolValidator())
-    # 标题
-    title = ConfigItem("MainWindow", "Title", "")
+    class UpdateChannel(Enum):
+        """Update channel options."""
 
-    # MFW更新通道
-    MFW_update_channel = ConfigItem(
-        "MFW", "MFW_update_channel", 0, OptionsValidator([0, 1, 2])
-    )
-    # 资源更新通道
-    resource_update_channel = ConfigItem(
-        "MFW", "resource_update_channel", 0, OptionsValidator([0, 1, 2])
-    )
+        ALPHA = 0
+        BETA = 1
+        STABLE = 2
 
-    # 资源存在
-    resource_exist = ConfigItem("program", "resource_exist", False, BoolValidator())
+    _update_channel_validator = OptionsValidator([item.value for item in UpdateChannel])
 
-    # 启动后直接运行
+    # ===== 通用设置 =====
+    proxy = ConfigItem("General", "proxy", 0)
+    http_proxy = ConfigItem("General", "http_proxy", "")
+    socks5_proxy = ConfigItem("General", "socks5_proxy", "")
+
+    hide_notice = ConfigItem("General", "hide_notice", False, BoolValidator())
+    show_agent_cmd = ConfigItem("General", "show_agent_cmd", False, BoolValidator())
+    Mcdk = ConfigItem("General", "cdk", "")
+    title = ConfigItem("General", "Title", "")
+
     run_after_startup = ConfigItem(
-        "program", "run_after_startup", False, BoolValidator()
+        "General", "run_after_startup", False, BoolValidator()
     )
-    # 启动后直接运行 -d参数
     run_after_startup_arg = ConfigItem(
-        "program", "run_after_startup_arg", False, BoolValidator()
+        "General", "run_after_startup_arg", False, BoolValidator()
+    )
+    speedrun_mode = ConfigItem("General", "speedrun_mode", False, BoolValidator())
+
+    announcement = ConfigItem("General", "announcement", "")
+
+    save_draw = ConfigItem("General", "save_draw", False, BoolValidator())
+
+    auto_update = ConfigItem("Update", "auto_update", True, BoolValidator())
+    update_ui_failed = ConfigItem("Update", "update_ui_failed", False, BoolValidator())
+    force_github = ConfigItem("Update", "force_github", False, BoolValidator())
+    start_complete = ConfigItem("Update", "start_complete", False, BoolValidator())
+
+    resource_update_channel = OptionsConfigItem(
+        "Update",
+        "resource_update_channel",
+        UpdateChannel.STABLE.value,
+        _update_channel_validator,
     )
 
-    # 保存截图
-    recording = ConfigItem("program", "recording", False, BoolValidator())
-    save_draw = ConfigItem("program", "save_draw", False, BoolValidator())
-
-    # MAA路径
-    maa_config_name = ConfigItem("Maa", "Maa_config_name", "")
-    maa_config_path = ConfigItem("Maa", "Maa_config_path", "")
-    maa_resource_name = ConfigItem("Maa", "Maa_resource_name", "")
-    maa_resource_path = ConfigItem("Maa", "Maa_resource_path", "")
-
-    # 多配置
-    maa_config_list = ConfigItem("Maa", "maa_config_list", {})
-    maa_resource_list = ConfigItem("Maa", "maa_resource_list", {})
-    # 自动更新资源
-    auto_update_resource = ConfigItem(
-        "Maa", "auto_update_resource", True, BoolValidator()
-    )
-    auto_update_MFW = ConfigItem("Maa", "auto_update_MFW", False, BoolValidator())
-    # 更新UI失败
-    update_ui_failed = ConfigItem("Maa", "update_ui_failed", False, BoolValidator())
-
-    force_github = ConfigItem("Maa", "force_github", False, BoolValidator())
-    start_complete = ConfigItem("Maa", "start_complete", False, BoolValidator())
-    # 外部通知
+    # ===== 通知 =====
     Notice_DingTalk_status = ConfigItem("Notice", "DingTalk_status", False)
     Notice_DingTalk_url = ConfigItem("Notice", "DingTalk_url", "")
     Notice_DingTalk_secret = ConfigItem("Notice", "DingTalk_secret", "")
@@ -164,14 +147,14 @@ class Config(QConfig):
     Notice_QYWX_status = ConfigItem("Notice", "QYWX_status", False)
     Notice_QYWX_key = ConfigItem("Notice", "QYWX_key", "")
 
-    when_start_up = ConfigItem("Notice_setting", "when_start_up", False)
-    when_connect_failed = ConfigItem("Notice_setting", "when_connect_failed", False)
-    when_connect_success = ConfigItem("Notice_setting", "when_connect_success", False)
-    when_post_task = ConfigItem("Notice_setting", "when_post_task", False)
-    when_task_failed = ConfigItem("Notice_setting", "when_task_failed", True)
-    when_task_finished = ConfigItem("Notice_setting", "when_task_finished", True)
+    when_start_up = ConfigItem("Notice", "when_start_up", False)
+    when_connect_failed = ConfigItem("Notice", "when_connect_failed", False)
+    when_connect_success = ConfigItem("Notice", "when_connect_success", False)
+    when_post_task = ConfigItem("Notice", "when_post_task", False)
+    when_task_failed = ConfigItem("Notice", "when_task_failed", True)
+    when_task_finished = ConfigItem("Notice", "when_task_finished", True)
 
-    # main window
+    # ===== 主窗口 =====
     micaEnabled = ConfigItem("MainWindow", "MicaEnabled", isWin11(), BoolValidator())
 
     dpiScale = OptionsConfigItem(
@@ -185,25 +168,84 @@ class Config(QConfig):
     language = OptionsConfigItem(
         "MainWindow",
         "Language",
-        Language.CHINESE_SIMPLIFIED,
+        Language.CHINESE_SIMPLIFIED,  # 默认值（后续会被自动检测覆盖）
         OptionsValidator(Language),
         LanguageSerializer(),
         restart=True,
     )
 
-    # Material
+    language_auto_detected = ConfigItem(
+        "MainWindow", "LanguageAutoDetected", False, BoolValidator()
+    )
+
+    remember_window_geometry = ConfigItem(
+        "MainWindow", "remember_window_geometry", False, BoolValidator()
+    )
+    last_window_geometry = ConfigItem("MainWindow", "LastWindowGeometry", "")
+
+    show_advanced_startup_options = ConfigItem(
+        "Personalization",
+        "show_advanced_startup_options",
+        False,
+        BoolValidator(),
+    )
+
+    # ===== 材质 & 通用界面 =====
     blurRadius = RangeConfigItem(
         "Material", "AcrylicBlurRadius", 15, RangeValidator(0, 40)
     )
 
-    # software update
-    checkUpdateAtStartUp = ConfigItem(
-        "Update", "CheckUpdateAtStartUp", True, BoolValidator()
+    # ===== 软件更新 =====
+    latest_update_version = ConfigItem("Update", "LatestUpdateVersion", "")
+    cdk_expired_time = ConfigItem("Update", "CdkExpiredTime", -1)
+
+    # dev
+    enable_test_interface_page = ConfigItem(
+        "Dev", "enable_test_interface_page", False, BoolValidator()
     )
 
-
-REPO_URL = "https://github.com/overflow65537/MFW-PyQt6/"
 
 cfg = Config()
 cfg.themeMode.value = Theme.AUTO
 qconfig.load("config/config.json", cfg)
+
+
+def detect_system_language() -> Language:
+    """检测系统语言并返回对应的 Language 枚举
+
+    Returns:
+        Language: 根据系统语言返回对应枚举，默认简体中文
+    """
+    system_locale = QLocale.system()
+    language = system_locale.language()
+    country = system_locale.country()
+
+    # 中文判断
+    if language == QLocale.Language.Chinese:
+        # 繁体
+        if country in (QLocale.Country.HongKong,):
+            return Language.CHINESE_TRADITIONAL
+        # 简体
+        return Language.CHINESE_SIMPLIFIED
+
+    # 其他语言默认英文
+    else:
+        return Language.ENGLISH
+
+
+def init_language_on_first_run():
+    """初次运行时自动检测并设置系统语言
+
+    仅在未设置过语言时执行（通过 language_auto_detected 标记判断）
+    """
+    if not cfg.get(cfg.language_auto_detected):
+        detected_lang = detect_system_language()
+        cfg.set(cfg.language, detected_lang)
+        cfg.set(cfg.language_auto_detected, True)
+        from app.utils.logger import logger
+
+        logger.info(f"首次启动，自动检测系统语言: {detected_lang}")
+    else:
+        from app.utils.logger import logger
+
+        logger.debug("已设置语言偏好，跳过自动检测")

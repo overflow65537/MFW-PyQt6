@@ -10,4 +10,5 @@ cryptography
 markdown
 chardet
 pyperclip
+pillow
 json-with-comments

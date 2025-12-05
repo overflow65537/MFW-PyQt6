@@ -31,6 +31,7 @@ from logging.handlers import TimedRotatingFileHandler
 # 提取日志格式为常量
 LOG_FORMAT = "[%(asctime)s][%(levelname)s][%(filename)s][L%(lineno)d][%(funcName)s] | %(message)s"
 
+
 class LoggerManager:
     def __init__(self, log_file_path="debug/gui.log"):
         """
@@ -42,7 +43,10 @@ class LoggerManager:
         self.logger = self._create_logger(log_file_path)
         # 关闭requests模块的日志输出
         requests_logger = logging.getLogger("urllib3")
-        requests_logger.setLevel(logging.INFO)
+        requests_logger.setLevel(logging.CRITICAL)
+        self._asyncify_logger = logging.getLogger("asyncify")
+        self._qasync_logger = logging.getLogger("qasync")
+        self._logger_state_cache: dict[str, tuple[int, bool]] = {}
 
     def _create_logger(self, log_file_path):
         """
@@ -84,7 +88,67 @@ class LoggerManager:
 
         return root_logger
 
-# 创建日志管理器实例
+    def change_log_path(self, new_log_path):
+        """
+        在运行时更改日志的存放位置。
+
+        Args:
+            new_log_path (str): 新的日志文件路径。
+        """
+        self.logger = self._create_logger(new_log_path)
+
+    def _record_logger_state(self, logger: logging.Logger) -> None:
+        """记录给定 Logger 的原始 level/disabled 状态。"""
+        if logger.name not in self._logger_state_cache:
+            self._logger_state_cache[logger.name] = (logger.level, logger.disabled)
+
+    def _restore_logger_state(self, logger: logging.Logger) -> None:
+        """恢复先前保存的 Logger 状态（如有）。"""
+        state = self._logger_state_cache.pop(logger.name, None)
+        if not state:
+            return
+        level, disabled = state
+        logger.disabled = disabled
+        logger.setLevel(level)
+
+    def _suppress_logger(self, logger: logging.Logger, level=logging.WARNING) -> None:
+        """降低 Logger 级别并禁用输出，以便短期内屏蔽日志。"""
+        self._record_logger_state(logger)
+        logger.setLevel(level)
+        logger.disabled = True
+
+    def suppress_asyncify_logging(self) -> None:
+        """Temporarily raise asyncify logger level and disable outputs."""
+        self._suppress_logger(self._asyncify_logger)
+
+    def restore_asyncify_logging(self) -> None:
+        """Restore asyncify logger to its original level/disabled state."""
+        self._restore_logger_state(self._asyncify_logger)
+
+    def suppress_qasync_logging(self) -> None:
+        """屏蔽 qasync 产生的调试日志，以减小日志量。"""
+        self._suppress_logger(self._qasync_logger)
+
+    def restore_qasync_logging(self) -> None:
+        """恢复 qasync Logger 的原始状态。"""
+        self._restore_logger_state(self._qasync_logger)
+
+
 logger_manager = LoggerManager()
-# 获取日志记录器
 logger = logger_manager.logger
+
+
+def suppress_asyncify_logging() -> None:
+    logger_manager.suppress_asyncify_logging()
+
+
+def restore_asyncify_logging() -> None:
+    logger_manager.restore_asyncify_logging()
+
+
+def suppress_qasync_logging() -> None:
+    logger_manager.suppress_qasync_logging()
+
+
+def restore_qasync_logging() -> None:
+    logger_manager.restore_qasync_logging()

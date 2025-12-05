@@ -79,7 +79,7 @@ from qfluentwidgets import FluentIcon as FIF
 import os
 from typing import Union, Dict, List
 
-from ..common.signal_bus import signalBus
+from app.common.signal_bus import signalBus
 from app.utils.logger import logger
 from ..utils.tool import (
     Read_Config,
@@ -96,7 +96,7 @@ from ..utils.tool import (
 )
 from ..utils.notice import send_thread
 from ..common.config import cfg
-from ..common.maa_config_data import maa_config_data
+from ..common.resource_config import res_cfg
 from ..utils.update import DownloadBundle
 
 
@@ -243,13 +243,6 @@ class RightCheckButton(PushButton):
         super().mousePressEvent(e)
 
 
-class RightCheckPrimaryPushButton(PrimaryPushButton):
-    rightClicked = Signal()
-
-    def mousePressEvent(self, e: QMouseEvent):
-        if e.button() == Qt.MouseButton.RightButton:
-            self.rightClicked.emit()
-        super().mousePressEvent(e)
 
 
 class NoticeType(MessageBoxBase):
@@ -708,14 +701,14 @@ class ListWidge_Menu_Draggable(ListWidget):
         Select_Target = self.currentRow()
         if Select_Target == -1:
             return
-        task_obj = maa_config_data.config.get("task")[Select_Target]
-        task_dict = get_override(task_obj, maa_config_data.interface_config)
+        task_obj = res_cfg.config.get("task")[Select_Target]
+        task_dict = get_override(task_obj, res_cfg.interface_config)
         signalBus.run_sp_task.emit(task_dict)
 
     def Delete_All_Task(self):
         self.clear()
-        maa_config_data.config["task"] = []
-        Save_Config(maa_config_data.config_path, maa_config_data.config)
+        res_cfg.config["task"] = []
+        Save_Config(res_cfg.config_path, res_cfg.config)
         signalBus.update_task_list.emit()
         signalBus.dragging_finished.emit()
 
@@ -725,7 +718,7 @@ class ListWidge_Menu_Draggable(ListWidget):
         selected_rows = sorted(
             [self.row(item) for item in selected_items], reverse=True
         )
-        task_list = maa_config_data.config.get("task", [])
+        task_list = res_cfg.config.get("task", [])
 
         for row in selected_rows:
             if 0 <= row < len(task_list):
@@ -753,7 +746,7 @@ class ListWidge_Menu_Draggable(ListWidget):
         self.move_tasks(selected_rows, 1)
 
     def move_tasks(self, selected_rows, offset):
-        task_list = maa_config_data.config.get("task", [])
+        task_list = res_cfg.config.get("task", [])
         moved_indices = []
 
         for row in selected_rows:
@@ -765,7 +758,7 @@ class ListWidge_Menu_Draggable(ListWidget):
 
         self.update_task_config(task_list)
         self.clear()
-        self.addItems(Get_Values_list_Option(maa_config_data.config_path, "task"))
+        self.addItems(Get_Values_list_Option(res_cfg.config_path, "task"))
 
         # 重新设置选中状态
         for index in moved_indices:
@@ -775,8 +768,8 @@ class ListWidge_Menu_Draggable(ListWidget):
         signalBus.dragging_finished.emit()
 
     def update_task_config(self, Task_List):
-        maa_config_data.config["task"] = Task_List
-        Save_Config(maa_config_data.config_path, maa_config_data.config)
+        res_cfg.config["task"] = Task_List
+        Save_Config(res_cfg.config_path, res_cfg.config)
 
     def update_selection(self, Select_Target):
         if Select_Target == 0 and self.count() > 0:
@@ -854,7 +847,7 @@ class ListWidge_Menu_Draggable(ListWidget):
                 target_item = self.itemAt(position)
                 target_row = self.row(target_item) if target_item else self.count()
 
-                task_list = maa_config_data.config.get("task", [])
+                task_list = res_cfg.config.get("task", [])
                 # 先移除选中的任务
                 moved_tasks = []
                 for row in source_rows:
@@ -871,12 +864,12 @@ class ListWidge_Menu_Draggable(ListWidget):
                     task_list.insert(insert_index, task)
                     insert_index += 1
 
-                maa_config_data.config["task"] = task_list
-                Save_Config(maa_config_data.config_path, maa_config_data.config)
+                res_cfg.config["task"] = task_list
+                Save_Config(res_cfg.config_path, res_cfg.config)
 
                 # 刷新列表
                 self.clear()
-                self.addItems(Get_Values_list_Option(maa_config_data.config_path, "task"))
+                self.addItems(Get_Values_list_Option(res_cfg.config_path, "task"))
 
                 # 重新设置选中状态
                 if selected_items:  # 添加空值检查
@@ -898,142 +891,9 @@ class ListWidge_Menu_Draggable(ListWidget):
             event.ignore()
 
 
-class SendSettingCard(MessageBoxBase):
-    """选择发送通知的时机"""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.widget.setMinimumWidth(350)
-        self.widget.setMinimumHeight(100)
-        self.init_widget()
-
-    def init_widget(self):
-        self.when_start_up = CheckBox(self.tr("When Start Up"), self)
-        self.when_connect_failed = CheckBox(self.tr("When Connect Failed"), self)
-        self.when_connect_success = CheckBox(self.tr("When Connect Succeed"), self)
-        self.when_post_task = CheckBox(self.tr("When Post Task"), self)
-        self.when_task_failed = CheckBox(self.tr("When Task Failed"), self)
-        self.when_task_finished = CheckBox(self.tr("When Task Finished"), self)
-
-        col1 = QVBoxLayout()
-        col2 = QVBoxLayout()
-
-        col1.addWidget(self.when_start_up)
-        col1.addWidget(self.when_connect_failed)
-        col1.addWidget(self.when_connect_success)
-        col2.addWidget(self.when_post_task)
-        col2.addWidget(self.when_task_failed)
-        col2.addWidget(self.when_task_finished)
-
-        mainLayout = QHBoxLayout()
-        mainLayout.addLayout(col1)
-        mainLayout.addLayout(col2)
-        self.viewLayout.addLayout(mainLayout)
-
-        self.when_start_up.setChecked(cfg.get(cfg.when_start_up))
-        self.when_connect_failed.setChecked(cfg.get(cfg.when_connect_failed))
-        self.when_connect_success.setChecked(cfg.get(cfg.when_connect_success))
-        self.when_post_task.setChecked(cfg.get(cfg.when_post_task))
-        self.when_task_failed.setChecked(cfg.get(cfg.when_task_failed))
-        self.when_task_finished.setChecked(cfg.get(cfg.when_task_finished))
-
-    def save_setting(self):
-        cfg.set(cfg.when_start_up, self.when_start_up.isChecked())
-        cfg.set(cfg.when_connect_failed, self.when_connect_failed.isChecked())
-        cfg.set(cfg.when_connect_success, self.when_connect_success.isChecked())
-        cfg.set(cfg.when_post_task, self.when_post_task.isChecked())
-        cfg.set(cfg.when_task_failed, self.when_task_failed.isChecked())
-        cfg.set(cfg.when_task_finished, self.when_task_finished.isChecked())
 
 
-class LineEditCard(SettingCard):
-    """设置中的输入框卡片"""
 
-    def __init__(
-        self,
-        icon: Union[str, QIcon, FluentIconBase],
-        title: str,
-        holderText: str = "",
-        target: str = "",
-        content=None,
-        parent=None,
-        is_passwork: bool = False,
-        num_only=True,
-        button: bool = False,
-        button_type: str = "",
-        button_text: str = "",
-    ):
-        """
-        初始化输入框卡片。
-
-        :param icon: 图标
-        :param title: 标题
-        :param holderText: 占位符文本
-        :param target: 修改目标（custom页面要用）
-        :param content: 内容
-        :param parent: 父级控件
-        :param num_only: 是否只能输入数字
-        """
-        super().__init__(icon, title, content, parent)
-
-        self.target = target
-        if is_passwork:
-            self.lineEdit = PasswordLineEdit(self)
-        else:
-            self.lineEdit = LineEdit(self)
-        if button_type == "primary":
-            self.button = RightCheckPrimaryPushButton(button_text, self)
-            self.button.rightClicked.connect(self._on_right_clicked)
-        else:
-            self.toolbutton = ToolButton(FIF.FOLDER_ADD, self)
-
-        # 设置布局
-        self.hBoxLayout.addWidget(self.lineEdit, 0)
-        self.hBoxLayout.addSpacing(16)
-
-        if button:
-            if button_type == "primary":
-                self.hBoxLayout.addWidget(self.button, 0)
-            else:
-                self.hBoxLayout.addWidget(self.toolbutton, 0)
-            self.hBoxLayout.addSpacing(16)
-            self.lineEdit.setFixedWidth(300)
-
-        else:
-            self.toolbutton.hide()
-        # 设置占位符文本
-
-        self.lineEdit.setText(str(holderText))
-
-        # 设置输入限制
-        if num_only:
-            self.lineEdit.setValidator(QIntValidator())
-
-        # 连接文本变化信号
-        self.lineEdit.textChanged.connect(self._on_text_changed)
-
-    def _on_right_clicked(self):
-        """处理右键点击事件"""
-        self.lineEdit.setEnabled(True)
-
-    def _on_text_changed(self):
-        """处理文本变化事件"""
-        text = self.lineEdit.text()
-
-        if self.target != "":
-            self._save_text_to_config(text)
-
-    def _save_text_to_config(self, text: str):
-        """将文本保存到配置文件"""
-        try:
-            config_path = os.path.join(
-                os.getcwd(), "config", "custom_setting_config.json"
-            )
-            data = Read_Config(config_path)
-            data[self.target] = text
-            Save_Config(config_path, data)
-        except Exception as e:
-            logger.warning(f"保存配置时出错: {e}")
 
 
 class DoubleButtonSettingCard(SettingCard):
@@ -1230,13 +1090,19 @@ class CustomMessageBox(MessageBoxBase):
         if not message["status"] == "failed":
             self.folder = message["target_path"]
             if os.path.basename(self.folder) == "resource":
-                interface_path = os.path.join(
-                    os.path.dirname(self.folder), "interface.json"
-                )
+                # 优先尝试读取 interface.jsonc
+                interface_path = os.path.join(os.path.dirname(self.folder), "interface.jsonc")
+                if not os.path.exists(interface_path):
+                    # 如果 interface.jsonc 不存在，再尝试 interface.json
+                    interface_path = os.path.join(os.path.dirname(self.folder), "interface.json")
                 resource_path = self.folder
                 self.status = 0  # 0 直接选择resource目录，1选择resource目录的上级目录
             else:
-                interface_path = os.path.join(self.folder, "interface.json")
+                # 优先尝试读取 interface.jsonc
+                interface_path = os.path.join(self.folder, "interface.jsonc")
+                if not os.path.exists(interface_path):
+                    # 如果 interface.jsonc 不存在，再尝试 interface.json
+                    interface_path = os.path.join(self.folder, "interface.json")
                 resource_path = os.path.join(self.folder, "resource")
                 self.status = 1  # 0 直接选择resource目录，1选择resource目录的上级目录
 
@@ -1265,13 +1131,19 @@ class CustomMessageBox(MessageBoxBase):
             self, self.tr("Choose folder"), "./"
         )
         if os.path.basename(self.folder) == "resource":
-            interface_path = os.path.join(
-                os.path.dirname(self.folder), "interface.json"
-            )
+            # 优先尝试读取 interface.jsonc
+            interface_path = os.path.join(os.path.dirname(self.folder), "interface.jsonc")
+            if not os.path.exists(interface_path):
+                # 如果 interface.jsonc 不存在，再尝试 interface.json
+                interface_path = os.path.join(os.path.dirname(self.folder), "interface.json")
             resource_path = self.folder
             self.status = 0  # 0 直接选择resource目录，1选择resource目录的上级目录
         else:
-            interface_path = os.path.join(self.folder, "interface.json")
+            # 优先尝试读取 interface.jsonc
+            interface_path = os.path.join(self.folder, "interface.jsonc")
+            if not os.path.exists(interface_path):
+                # 如果 interface.jsonc 不存在，再尝试 interface.json
+                interface_path = os.path.join(self.folder, "interface.json")
             resource_path = os.path.join(self.folder, "resource")
             self.status = 1  # 0 直接选择resource目录，1选择resource目录的上级目录
 
@@ -1504,19 +1376,3 @@ class ComboBoxSettingCardCustom(SettingCard):
 
         Save_Config(self.path, data)
 
-
-class ProxySettingCard(SettingCard):
-    def __init__(
-        self, icon: Union[str, QIcon, FluentIconBase], title, content=None, parent=None
-    ):
-        # 有一个下拉框和一个输入框
-        super().__init__(icon, title, content, parent)
-        self.input = LineEdit(self)
-        self.input.setPlaceholderText("<IP>:<PORT>")
-        self.combobox = ComboBox(self)
-        self.combobox.addItems(["HTTP", "SOCKS5"])
-
-        self.hBoxLayout.addWidget(self.combobox, 0, Qt.AlignmentFlag.AlignRight)
-        self.hBoxLayout.addSpacing(16)
-        self.hBoxLayout.addWidget(self.input, 0, Qt.AlignmentFlag.AlignRight)
-        self.hBoxLayout.addSpacing(16)

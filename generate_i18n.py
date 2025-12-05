@@ -43,8 +43,8 @@ project_root = os.getcwd()
 
 # 输出的 .ts 文件路径
 output_ts_files = [
-    os.path.join(project_root, "MFW_resource", "i18n", "i18n.zh_CN.ts"),
-    os.path.join(project_root, "MFW_resource", "i18n", "i18n.zh_HK.ts"),
+    os.path.join(project_root, "app", "i18n", "i18n.zh_CN.ts"),
+    os.path.join(project_root, "app", "i18n", "i18n.zh_HK.ts"),
 ]
 
 # 创建 translations 目录（如果不存在）
