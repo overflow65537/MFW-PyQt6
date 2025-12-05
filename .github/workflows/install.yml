@@ -162,7 +162,13 @@ jobs:
           export LDFLAGS="-L${LIBFFI_PREFIX}/lib"
           export PKG_CONFIG_PATH="${LIBFFI_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
           export ARCHFLAGS="-arch x86_64 -arch arm64"
+          brew install openblas
+          OPENBLAS_PREFIX=$(brew --prefix openblas)
+          export CPPFLAGS="${CPPFLAGS} -I${OPENBLAS_PREFIX}/include"
+          export LDFLAGS="${LDFLAGS} -L${OPENBLAS_PREFIX}/lib"
+          export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${OPENBLAS_PREFIX}/lib/pkgconfig"
           python -m pip install --no-binary :all: cffi
+          python -m pip install --no-binary :all: numpy wheel
           python -m pip install -r requirements.txt
 
       - name: Install dependencies (other)
