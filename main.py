@@ -61,19 +61,6 @@ if __name__ == "__main__":
     log_dir.mkdir(exist_ok=True)
     crash_log = open(log_dir / "crash.log", "a", encoding="utf-8")
     faulthandler.enable(file=crash_log, all_threads=True)
-
-    # 如果处于打包状态下
-
-    # 将当前工作目录设置为程序所在目录 / PyInstaller 临时目录，避免资源路径错误
-    try:
-
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-
-        os.chdir(base_dir)
-        logger.debug(f"工作目录已设置为: {os.getcwd()}")
-    except Exception as e:
-        logger.warning(f"设置工作目录失败，当前工作目录为: {os.getcwd()}，错误: {e}")
-
     # 检查并加载密钥
     crypto_manager.ensure_key_exists()
 
