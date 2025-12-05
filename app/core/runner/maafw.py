@@ -154,6 +154,9 @@ class MaaFW(QObject):
 
     embedded_agent_mode: bool = False
 
+    # 超时后仍未停止的 agent 进程最长等待时间
+    AGENT_TERMINATE_TIMEOUT_SECONDS: float = 5.0
+
     def __init__(
         self,
         maa_controller_sink: MaaControllerEventSink | None = None,
@@ -434,6 +437,11 @@ class MaaFW(QObject):
         if self.agent_thread:
             try:
                 self.agent_thread.terminate()
+                try:
+                    self.agent_thread.wait(timeout=self.AGENT_TERMINATE_TIMEOUT_SECONDS)
+                except subprocess.TimeoutExpired:
+                    logger.warning("等待 agent 终止超时，执行 kill 操作")
+                    self.agent_thread.kill()
             except Exception as e:
                 logger.error(f"终止agent线程失败: {e}")
             finally:
