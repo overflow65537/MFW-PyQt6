@@ -203,7 +203,7 @@ class MainWindow(MSFluentWindow):
         )
 
         cfg_announcement = cfg.get(cfg.announcement)
-        res_announcement = self.service_coordinator.task.interface.get("wellcome", "")
+        res_announcement = self.service_coordinator.task.interface.get("welcome", "")
         self.set_announcement_content(self.tr("Announcement"), res_announcement)
         if cfg_announcement != res_announcement:
             # 公告内容不一致，更新配置并在界面准备好后弹出对话框
