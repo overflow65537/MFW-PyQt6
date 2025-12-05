@@ -35,7 +35,7 @@ import tarfile
 import time
 import sys
 from pathlib import Path
-from typing import Callable, Dict, Optional, TYPE_CHECKING, cast
+from typing import Any, Callable, Dict, Optional, TYPE_CHECKING, cast
 
 import platform
 
@@ -493,7 +493,7 @@ class BaseUpdate(QThread):
         response = self._mirror_response(url)
         if isinstance(response, dict):
             return response  # 返回错误信息给run方法
-        mirror_data: Dict[str, Dict] = response.json()
+        mirror_data: Dict[str, Any] = response.json()
         code = mirror_data.get("code")
         mirror_msg = str(mirror_data.get("msg", ""))
         switch_msg = self.tr("switching to Github download")
@@ -509,15 +509,25 @@ class BaseUpdate(QThread):
             8004: self.tr("INVALID_CHANNEL"),
         }
         if isinstance(code, int) and code not in [None, 0]:
-            logger.warning(f"更新检查失败: {mirror_msg}")
             msg_value = error_translations.get(code, self.tr("Unknown error"))
-            return {
-                "status": "failed_info",
-                "msg": msg_value + "\n" + switch_msg,
-            }
+            logger.warning(f"更新检查失败: {mirror_msg}")
+            if code in [7001, 7002, 7003, 7004]:  # 这些错误不会影响更新检查
+                mirror_data.update(
+                    {
+                        "status": "failed_info",
+                        "msg": error_translations[code] + "\n" + switch_msg,
+                    }
+                )
+            else:
+                return {
+                    "status": "failed_info",
+                    "msg": msg_value + "\n" + switch_msg,
+                }
 
-        data: dict = mirror_data.get("data", {})
-        cfg.set(cfg.cdk_expired_time, data.get("cdk_expired_time", -1))
+        data: dict[str, Any] = mirror_data.get("data", {})
+        cdk_expired_time = data.get("cdk_expired_time")
+        if isinstance(cdk_expired_time, int) and cdk_expired_time > 0:
+            cfg.set(cfg.cdk_expired_time, cdk_expired_time)
         if data is not None and data.get("version_name") == version:
             return {"status": "no_need", "msg": self.tr("current version is latest")}
         return mirror_data
@@ -788,6 +798,7 @@ class Update(BaseUpdate):
         logger.info("资源ID: %s", self.current_res_id)
         logger.info("GitHub URL: %s", self.url)
         logger.info("=" * 50)
+        self.stop_flag = False
 
         try:
             if not self.service_coordinator:
@@ -1164,6 +1175,7 @@ class UpdateCheckTask(QThread):
         self.finished.connect(self.deleteLater)
 
     def run(self):
+        self.stop_flag = True
         if not self._service_coordinator:
             self.result_ready.emit(False)
             return

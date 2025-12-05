@@ -7,7 +7,7 @@ MFW-ChainFlow Assistant 设置界面
 from typing import Callable, Optional
 from time import perf_counter
 
-from PySide6.QtCore import Qt, QSize, QUrl, QTimer
+from PySide6.QtCore import Qt, QSize, QUrl, QTimer, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QDesktopServices, QPixmap
 from PySide6.QtWidgets import (
     QFrame,
@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QStackedLayout,
+    QGraphicsOpacityEffect,
 )
 from qfluentwidgets import (
     BodyLabel,
@@ -92,6 +93,8 @@ class SettingInterface(QWidget):
         self._update_button_handler: Callable | None = None
         self._last_progress_time: float | None = None
         self._last_downloaded_bytes = 0
+        self._detail_progress_animation: Optional[QPropertyAnimation] = None
+        self._progress_content_animation: Optional[QPropertyAnimation] = None
         self.Setting_scroll_widget = QWidget()
         self.Setting_expand_layout = ExpandLayout(self.Setting_scroll_widget)
         self.scroll_area = ScrollArea(self)
@@ -199,7 +202,10 @@ class SettingInterface(QWidget):
         self.detail_progress.setValue(0)
         self.detail_progress.setTextVisible(False)
         self.detail_progress.setFixedHeight(6)
-        self.detail_progress.setVisible(False)
+        self.detail_progress_effect = QGraphicsOpacityEffect(self.detail_progress)
+        self.detail_progress.setGraphicsEffect(self.detail_progress_effect)
+        self.detail_progress_effect.setOpacity(0.0)
+
 
         version_layout = QHBoxLayout()
         version_layout.setSpacing(12)
@@ -209,7 +215,21 @@ class SettingInterface(QWidget):
         version_column.addWidget(self.version_label)
         version_column.addWidget(self.last_version_label)
         version_layout.addLayout(version_column)
-        version_layout.addWidget(self.detail_progress, 1)
+        self.detail_progress_placeholder = QWidget(self)
+        self.detail_progress_placeholder.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        self.detail_progress_placeholder.setFixedHeight(self.detail_progress.height())
+        self.detail_progress_container = QWidget(self)
+        self.detail_progress_container.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        self.detail_progress_stack = QStackedLayout(self.detail_progress_container)
+        self.detail_progress_stack.setContentsMargins(0, 0, 0, 0)
+        self.detail_progress_stack.addWidget(self.detail_progress_placeholder)
+        self.detail_progress_stack.addWidget(self.detail_progress)
+        self.detail_progress_stack.setCurrentWidget(self.detail_progress_placeholder)
+        version_layout.addWidget(self.detail_progress_container, 1)
         header_layout.addLayout(version_layout)
 
         detail_row = QHBoxLayout()
@@ -237,7 +257,7 @@ class SettingInterface(QWidget):
         self.progress_bar.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
-        self.progress_bar.setVisible(False)
+        self.progress_bar.setVisible(True)
         self.progress_info_label = BodyLabel("", self)
         self.progress_info_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
         self.progress_info_label.setAlignment(
@@ -246,7 +266,7 @@ class SettingInterface(QWidget):
         self.progress_info_label.setSizePolicy(
             QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed
         )
-        self.progress_info_label.setVisible(False)
+        self.progress_info_label.setVisible(True)
         self.progress_container = QWidget(self)
         self.progress_container.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
@@ -259,10 +279,14 @@ class SettingInterface(QWidget):
         self.progress_content_layout.setSpacing(8)
         self.progress_content_layout.addWidget(self.progress_bar, 1)
         self.progress_content_layout.addWidget(self.progress_info_label)
+        self.progress_content_effect = QGraphicsOpacityEffect(self.progress_content_widget)
+        self.progress_content_widget.setGraphicsEffect(self.progress_content_effect)
+        self.progress_content_effect.setOpacity(0.0)
         self.progress_placeholder = QWidget()
         self.progress_placeholder.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
+        self.progress_placeholder.setFixedHeight(self.progress_bar.height())
         self.progress_stack.addWidget(self.progress_placeholder)
         self.progress_stack.addWidget(self.progress_content_widget)
         self.progress_stack.setCurrentWidget(self.progress_placeholder)
@@ -381,25 +405,20 @@ class SettingInterface(QWidget):
     def _start_detail_progress(self):
         """启动不确定进度条（用于检查更新）"""
         self.detail_progress.setRange(0, 0)
-        self.detail_progress.setVisible(True)
+        self._fade_detail_progress(show=True)
 
     def _stop_detail_progress(self):
         """停止不确定进度条"""
-        self.detail_progress.setVisible(False)
-        self.detail_progress.setRange(0, 100)
-        self.detail_progress.setValue(0)
+        self._fade_detail_progress(show=False)
 
     def _show_progress_bar(self):
         """显示下载进度条"""
         self.progress_bar.setValue(0)
         self.progress_bar.setRange(0, 100)
-        self.progress_bar.setVisible(True)
-        self.progress_stack.setCurrentWidget(self.progress_content_widget)
-        self.progress_info_label.setVisible(True)
         self.progress_info_label.setText("0.00/0.00 MB   0.00 MB/s")
-        self.progress_info_label.setVisible(True)
         self._last_progress_time = perf_counter()
         self._last_downloaded_bytes = 0
+        self._fade_progress_content(show=True)
 
     def _lock_update_button_temporarily(self) -> None:
         self.update_button.setEnabled(False)
@@ -439,16 +458,86 @@ class SettingInterface(QWidget):
         self._update_button_handler = self._on_instant_update_clicked
 
     def _hide_progress_indicators(self) -> None:
-        self.detail_progress.setVisible(False)
-        self.detail_progress.setRange(0, 100)
-        self.detail_progress.setValue(0)
-        self.progress_bar.setValue(0)
-        self.progress_bar.setVisible(False)
-        self.progress_stack.setCurrentWidget(self.progress_placeholder)
-        self.progress_info_label.setVisible(False)
-        self.progress_info_label.setText("")
+        self._fade_detail_progress(show=False)
+        self._fade_progress_content(show=False)
         self._last_progress_time = None
         self._last_downloaded_bytes = 0
+
+    def _create_opacity_animation(
+        self,
+        effect: QGraphicsOpacityEffect,
+        start: float,
+        end: float,
+        on_finished: Optional[Callable[[], None]] = None,
+        duration: int = 220,
+    ) -> QPropertyAnimation:
+        animation = QPropertyAnimation(effect, b"opacity", self)
+        animation.setDuration(duration)
+        animation.setStartValue(start)
+        animation.setEndValue(end)
+        animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
+        if on_finished:
+            animation.finished.connect(on_finished)
+        animation.start()
+        return animation
+
+    def _fade_detail_progress(self, show: bool) -> None:
+        target = 1.0 if show else 0.0
+        effect = self.detail_progress_effect
+        start = effect.opacity()
+        if start == target:
+            if not show:
+                self.detail_progress_stack.setCurrentWidget(
+                    self.detail_progress_placeholder
+                )
+            return
+        if self._detail_progress_animation is not None:
+            self._detail_progress_animation.stop()
+        if show:
+            if self.detail_progress_stack.currentWidget() != self.detail_progress:
+                self.detail_progress_stack.setCurrentWidget(self.detail_progress)
+            start = 0.0
+            effect.setOpacity(0.0)
+
+        def on_finished():
+            if not show:
+                self.detail_progress_stack.setCurrentWidget(
+                    self.detail_progress_placeholder
+                )
+                self.detail_progress.setRange(0, 100)
+                self.detail_progress.setValue(0)
+
+        self._detail_progress_animation = self._create_opacity_animation(
+            effect, start, target, on_finished=on_finished
+        )
+
+    def _fade_progress_content(self, show: bool) -> None:
+        target = 1.0 if show else 0.0
+        effect = self.progress_content_effect
+        start = effect.opacity()
+        if start == target:
+            if not show:
+                self.progress_stack.setCurrentWidget(self.progress_placeholder)
+            return
+        if self._progress_content_animation is not None:
+            self._progress_content_animation.stop()
+        if show:
+            if self.progress_stack.currentWidget() != self.progress_content_widget:
+                self.progress_stack.setCurrentWidget(self.progress_content_widget)
+            start = 0.0
+            effect.setOpacity(0.0)
+
+        def on_finished():
+            if not show:
+                self.progress_stack.setCurrentWidget(self.progress_placeholder)
+                self.progress_bar.setValue(0)
+                self.progress_bar.setRange(0, 100)
+                self.progress_info_label.setText("")
+                effect.setOpacity(0.0)
+
+        self._progress_content_animation = self._create_opacity_animation(
+            effect, start, target, on_finished=on_finished
+        )
 
     def add_setting_group(self, group_widget: QWidget):
         """
