@@ -4,6 +4,7 @@ MFW-ChainFlow Assistant 设置界面
 作者:overflow65537
 """
 
+import re
 from typing import Callable, Optional
 from time import perf_counter
 
@@ -50,6 +51,8 @@ from app.utils.logger import logger
 from app.utils.update import Update, UpdateCheckTask
 from app.view.setting_interface.widget.ProxySettingCard import ProxySettingCard
 from app.view.setting_interface.widget.LineEditCard import MirrorCdkLineEditCard
+
+_CONTACT_URL_PATTERN = re.compile(r"(?:https?://|www\.)[^\s，,]+")
 
 
 class SettingInterface(QWidget):
@@ -153,6 +156,18 @@ class SettingInterface(QWidget):
         label.setOpenExternalLinks(True)
         label.setText(render_markdown(content))
 
+    def _linkify_contact_urls(self, contact: str) -> str:
+        """把联系方式中的网址转换成 Markdown 超链接。"""
+        if not contact:
+            return contact
+
+        def replace(match: re.Match[str]) -> str:
+            url = match.group(0)
+            href = url if url.startswith(("http://", "https://")) else f"http://{url}"
+            return f"[{url}]({href})"
+
+        return _CONTACT_URL_PATTERN.sub(replace, contact)
+
     def _build_update_header(self) -> QWidget:
 
         header_card = QFrame(self)
@@ -182,7 +197,9 @@ class SettingInterface(QWidget):
         self.contact_label = BodyLabel("", self)
         self.contact_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
         self.contact_label.setWordWrap(True)
-        self._apply_markdown_to_label(self.contact_label, default_contact)
+        self._apply_markdown_to_label(
+            self.contact_label, self._linkify_contact_urls(default_contact)
+        )
 
         info_column.addWidget(self.resource_name_label)
         info_column.addWidget(self.contact_label)
@@ -885,7 +902,9 @@ class SettingInterface(QWidget):
         self.update_button.setToolTip(self.tr("Check for resource updates"))
         self.update_log_button.setToolTip(self.tr("View update log"))
         self._apply_markdown_to_label(self.description_label, description)
-        self._apply_markdown_to_label(self.contact_label, contact)
+        self._apply_markdown_to_label(
+            self.contact_label, self._linkify_contact_urls(contact)
+        )
         self._github_url = github
         self._license_content = license_value
         self.license_button.setText(self.tr("License"))
