@@ -637,6 +637,13 @@ class SettingInterface(QWidget):
             cfg.remember_window_geometry,
             self.personalGroup,
         )
+        self.advanced_settings_card = SwitchSettingCard(
+            FIF.SETTING,
+            self.tr("Advanced Settings"),
+            self.tr("Enable to show more options in Pre-configuration"),
+            cfg.show_advanced_startup_options,
+            self.personalGroup,
+        )
 
         self.personalGroup.addSettingCard(self.micaCard)
         self.personalGroup.addSettingCard(self.themeCard)
@@ -644,6 +651,7 @@ class SettingInterface(QWidget):
         self.personalGroup.addSettingCard(self.zoomCard)
         self.personalGroup.addSettingCard(self.languageCard)
         self.personalGroup.addSettingCard(self.remember_geometry_card)
+        self.personalGroup.addSettingCard(self.advanced_settings_card)
         self.add_setting_group(self.personalGroup)
 
     def initialize_notice_settings(self):

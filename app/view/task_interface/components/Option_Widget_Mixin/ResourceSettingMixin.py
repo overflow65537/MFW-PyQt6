@@ -15,6 +15,7 @@ from pathlib import WindowsPath
 import jsonc
 from app.utils.gpu_cache import gpu_cache
 from app.utils.logger import logger
+from app.common.config import cfg
 from app.core.core import ServiceCoordinator
 from app.widget.PathLineEdit import PathLineEdit
 from app.view.task_interface.components.Option_Widget_Mixin.DeviceFinderWidget import (
@@ -32,6 +33,23 @@ class ResourceSettingMixin:
 
     resource_setting_widgets: Dict[str, Any]
     CHILD = [300, 300]
+    WIN32_INPUT_METHOD_ALIAS_VALUES: Dict[str, int] = {
+        "Seize": 1,
+        "SendMessage": 2,
+        "SendMessageWithCursorPos": 2,
+        "PostMessage": 4,
+        "PostMessageWithCursorPos": 4,
+        "LegacyEvent": 8,
+        "PostThreadMessage": 16,
+    }
+    WIN32_SCREENCAP_METHOD_ALIAS_VALUES: Dict[str, int] = {
+        "GDI": 1,
+        "FramePool": 2,
+        "DXGI_DesktopDup": 4,
+        "DXGI_DesktopDup_Window": 8,
+        "PrintWindow": 16,
+        "ScreenDC": 32,
+    }
 
     def _toggle_description(self, visible: bool) -> None: ...
     def tr(
@@ -66,14 +84,86 @@ class ResourceSettingMixin:
         except (TypeError, ValueError):
             return None
 
+    @staticmethod
+    def _normalize_method_name(value: str) -> str:
+        """将方法名标准化以便查找别名"""
+        return "".join(ch.lower() for ch in value if ch.isalnum())
+
+    def _normalize_alias_map(self, alias_map: Dict[str, int]) -> Dict[str, int]:
+        """用标准化的键创建别名映射"""
+        normalized_map: Dict[str, int] = {}
+        for name, mapped_value in alias_map.items():
+            normalized_key = self._normalize_method_name(name)
+            if normalized_key:
+                normalized_map[normalized_key] = mapped_value
+        return normalized_map
+
+    def _build_win32_method_alias_map(self) -> Dict[str, Dict[str, int]]:
+        """构建 Win32 输入/截图方法别名映射"""
+        input_aliases = self._normalize_alias_map(
+            self.WIN32_INPUT_METHOD_ALIAS_VALUES
+        )
+        screencap_aliases = self._normalize_alias_map(
+            self.WIN32_SCREENCAP_METHOD_ALIAS_VALUES
+        )
+
+        return {
+            "input": input_aliases,
+            "mouse": input_aliases,
+            "keyboard": input_aliases,
+            "screencap": screencap_aliases,
+        }
+
+    def _resolve_win32_setting_value(
+        self, value: Any, method_type: str | None = None
+    ) -> int | None:
+        """尝试解析 controller 配置中的输入/截图方法值"""
+        int_value = self._coerce_int(value)
+        if int_value is not None:
+            return int_value
+
+        if method_type is None or not isinstance(value, str):
+            return None
+
+        alias_map = self.win32_method_alias_map.get(method_type.lower())
+        if not alias_map:
+            return None
+
+        normalized_value = self._normalize_method_name(value)
+        if not normalized_value:
+            return None
+
+        if (mapped := alias_map.get(normalized_value)) is not None:
+            return mapped
+
+        # 兜底：包含关键字的情况也能命中
+        if method_type.lower() in {"input", "mouse", "keyboard"}:
+            fallback_rules = (
+                ("sendmessage", "sendmessage"),
+                ("postmessage", "postmessage"),
+                ("legacyevent", "legacyevent"),
+                ("postthreadmessage", "postthreadmessage"),
+                ("seize", "seize"),
+            )
+            for keyword, alias_key in fallback_rules:
+                if keyword in normalized_value and alias_key in alias_map:
+                    return alias_map[alias_key]
+
+        return None
+
     def _find_win32_candidate_value(
-        self, normalized: dict[str, Any], candidates: list[str]
+        self,
+        normalized: dict[str, Any],
+        candidates: list[str],
+        method_type: str | None = None,
     ) -> int | None:
         """从一组候选键中获取并转换整型值"""
         for candidate in candidates:
             candidate_key = candidate.lower()
             if candidate_key in normalized:
-                value = self._coerce_int(normalized[candidate_key])
+                value = self._resolve_win32_setting_value(
+                    normalized[candidate_key], method_type
+                )
                 if value is not None:
                     return value
         return None
@@ -101,13 +191,13 @@ class ResourceSettingMixin:
             }
 
             mouse_value = self._find_win32_candidate_value(
-                normalized, ["mouse_input", "mouse"]
+                normalized, ["mouse_input", "mouse"], "mouse"
             )
             keyboard_value = self._find_win32_candidate_value(
-                normalized, ["keyboard_input", "keyboard"]
+                normalized, ["keyboard_input", "keyboard"], "keyboard"
             )
             general_input = self._find_win32_candidate_value(
-                normalized, ["input", "input_method", "input_methods"]
+                normalized, ["input", "input_method", "input_methods"], "input"
             )
             if mouse_value is None:
                 mouse_value = general_input
@@ -129,6 +219,7 @@ class ResourceSettingMixin:
                     "screenshot",
                     "screen_cap",
                 ],
+                "screencap",
             )
             if screencap_value is not None:
                 defaults["win32_screencap_methods"] = screencap_value
@@ -173,7 +264,7 @@ class ResourceSettingMixin:
 
     def __init__(self):
         """初始化资源设置Mixin"""
-        self.show_hide_option = True
+        self.show_hide_option = bool(cfg.get(cfg.show_advanced_startup_options))
         self.resource_setting_widgets = {}
 
         # 当前控制器信息变量
@@ -194,6 +285,7 @@ class ResourceSettingMixin:
             }
             for ctrl in interface.get("controller", [])
         }
+        self.win32_method_alias_map = self._build_win32_method_alias_map()
         self.win32_default_mapping = self._build_win32_default_mapping(
             interface.get("controller", [])
         )
@@ -214,23 +306,24 @@ class ResourceSettingMixin:
         }
         # 遍历每个资源，确定它支持哪些控制器
         for resource in interface.get("resource", []):
-            # 获取资源指定的支持控制器列表（如果有）
+            supported_controllers = resource.get("controller")
+            if not supported_controllers:
+                # 未指定支持的控制器则默认对所有控制器生效
+                for key in self.resource_mapping:
+                    self.resource_mapping[key].append(resource)
+                continue
+
             for controller in interface.get("controller", []):
-                if controller.get("name", "") in resource.get("controller", []):
-                    self.resource_mapping[
-                        controller.get("label", controller.get("name", ""))
-                    ].append(resource)
-                    break
-                else:
-                    for key, value in self.resource_mapping.items():
-                        self.resource_mapping[key] = value + [resource]
-                    break
+                if controller.get("name", "") in supported_controllers:
+                    label = controller.get("label", controller.get("name", ""))
+                    self.resource_mapping[label].append(resource)
 
     def create_resource_settings(self):
         """创建固定的资源设置UI"""
         logger.info("Creating resource settings UI...")
         self._clear_options()
         self._toggle_description(False)
+        self.show_hide_option = bool(cfg.get(cfg.show_advanced_startup_options))
 
         # 创建控制器选择下拉框
         self._create_controller_combobox()
@@ -331,6 +424,7 @@ class ResourceSettingMixin:
         embedded_switch.checkedChanged.connect(self._on_embedded_agent_toggled)
 
         self._fill_agent_hidden_options()
+        self._toggle_children_visible(["embedded_agent_mode"], self.show_hide_option)
 
     def _create_gpu_option(self):
         """创建GPU加速下拉框"""
@@ -794,9 +888,7 @@ class ResourceSettingMixin:
             "win32_screencap_methods",
         ]
         self._toggle_children_visible(win32_widgets, visible)
-        self._toggle_children_visible(
-            win32_hide_widgets, (visible and self.show_hide_option)
-        )
+        self._toggle_children_visible(win32_hide_widgets, visible)
 
     def _on_controller_type_changed(self, label: str):
         """控制器类型变化时的处理函数"""

@@ -183,6 +183,13 @@ class Config(QConfig):
     )
     last_window_geometry = ConfigItem("MainWindow", "LastWindowGeometry", "")
 
+    show_advanced_startup_options = ConfigItem(
+        "Personalization",
+        "show_advanced_startup_options",
+        False,
+        BoolValidator(),
+    )
+
     # ===== 材质 & 通用界面 =====
     blurRadius = RangeConfigItem(
         "Material", "AcrylicBlurRadius", 15, RangeValidator(0, 40)
