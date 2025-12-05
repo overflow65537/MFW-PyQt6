@@ -349,13 +349,18 @@ class MaaFW(QObject):
 
             start_cmd = [sys.executable, *child_args, socket_id]
         logger.debug(f"启动agent命令: {start_cmd},内置模式: {self.embedded_agent_mode}")
+        # 如果是打包模式,使用utf8,否则使用gbk
+        import os
+
+        is_packed = os.path.exists("./lrelease.py")
+        encoding = "utf-8" if is_packed else "gbk"
         try:
             agent_process = subprocess.Popen(
                 start_cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                encoding="gbk",
+                encoding=encoding,
                 errors="replace",
                 bufsize=1,
             )
@@ -365,6 +370,9 @@ class MaaFW(QObject):
             logger.error(f"启动agent失败: {e}")
             self._send_custom_info(MaaFWError.AGENT_START_FAILED)
             return False
+        if self.agent_data_raw and self.agent_data_raw.get("timeout"):
+            timeout = self.agent_data_raw.get("timeout")
+            self.agent.set_timeout(timeout)
         if not self.agent.connect():
             self._send_custom_info(MaaFWError.AGENT_CONNECTION_FAILED)
             return False

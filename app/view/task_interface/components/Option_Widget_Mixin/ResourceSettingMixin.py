@@ -296,7 +296,11 @@ class ResourceSettingMixin:
         self.current_config = self.service_coordinator.option_service.current_options
         self.current_config.setdefault("gpu", -1)
         self.current_config.setdefault("embedded_agent", self.agent_embedded_default)
-        self.current_config.setdefault("agent_timeout", 30.0)
+        agent_timeout_default = self._coerce_int(agent_interface_config.get("timeout"))
+        if agent_timeout_default is None:
+            agent_timeout_default = 30
+        self.agent_timeout_default = agent_timeout_default
+        self.current_config.setdefault("agent_timeout", self.agent_timeout_default)
         self.current_config.setdefault("gpu", -1)
 
         # 构建资源映射表
@@ -423,8 +427,26 @@ class ResourceSettingMixin:
 
         embedded_switch.checkedChanged.connect(self._on_embedded_agent_toggled)
 
+        timeout_label = BodyLabel(self.tr("Agent Timeout"))
+        timeout_edit = LineEdit()
+        timeout_validator = QIntValidator(-1, 2147483647, timeout_edit)
+        timeout_edit.setValidator(timeout_validator)
+        timeout_edit.setPlaceholderText(self.tr("-1 表示无限"))
+
+        timeout_layout = QHBoxLayout()
+        timeout_layout.addWidget(timeout_label)
+        timeout_layout.addStretch()
+        timeout_layout.addWidget(timeout_edit)
+        self.parent_layout.addLayout(timeout_layout)
+
+        self.resource_setting_widgets["agent_timeout_label"] = timeout_label
+        self.resource_setting_widgets["agent_timeout"] = timeout_edit
+        timeout_edit.textChanged.connect(self._on_agent_timeout_changed)
+
         self._fill_agent_hidden_options()
-        self._toggle_children_visible(["embedded_agent_mode"], self.show_hide_option)
+        self._toggle_children_visible(
+            ["embedded_agent_mode", "agent_timeout"], self.show_hide_option
+        )
 
     def _create_gpu_option(self):
         """创建GPU加速下拉框"""
@@ -838,11 +860,15 @@ class ResourceSettingMixin:
         timeout_edit = self.resource_setting_widgets.get("agent_timeout")
         if isinstance(timeout_edit, LineEdit):
             timeout_edit.blockSignals(True)
-            timeout_value = self.current_config.get("agent_timeout", 30.0)
-            try:
-                timeout_text = str(float(timeout_value))
-            except (TypeError, ValueError):
-                timeout_text = "30.0"
+            timeout_value = self.current_config.get(
+                "agent_timeout", self.agent_timeout_default
+            )
+            timeout_int = self._coerce_int(timeout_value)
+            timeout_text = (
+                str(timeout_int)
+                if timeout_int is not None
+                else str(self.agent_timeout_default)
+            )
             timeout_edit.setText(timeout_text)
             timeout_edit.blockSignals(False)
 
