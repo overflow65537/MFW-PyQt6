@@ -442,7 +442,6 @@ enc_temp_folder/*
 # Build
 deps
 build
-install
 main.dist
 main.build
 dist
