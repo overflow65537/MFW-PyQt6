@@ -5,6 +5,7 @@ MFW-ChainFlow Assistant 设置界面
 """
 
 from typing import Callable, Optional
+from time import perf_counter
 
 from PySide6.QtCore import Qt, QSize, QUrl, QTimer
 from PySide6.QtGui import QDesktopServices, QPixmap
@@ -18,6 +19,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QDialog,
     QDialogButtonBox,
+    QStackedLayout,
 )
 from qfluentwidgets import (
     BodyLabel,
@@ -88,6 +90,8 @@ class SettingInterface(QWidget):
         self._latest_update_check_result: str | bool | None = None
         self._updater_started = False
         self._update_button_handler: Callable | None = None
+        self._last_progress_time: float | None = None
+        self._last_downloaded_bytes = 0
         self.Setting_scroll_widget = QWidget()
         self.Setting_expand_layout = ExpandLayout(self.Setting_scroll_widget)
         self.scroll_area = ScrollArea(self)
@@ -234,6 +238,34 @@ class SettingInterface(QWidget):
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
         self.progress_bar.setVisible(False)
+        self.progress_info_label = BodyLabel("", self)
+        self.progress_info_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
+        self.progress_info_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        self.progress_info_label.setSizePolicy(
+            QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed
+        )
+        self.progress_info_label.setVisible(False)
+        self.progress_container = QWidget(self)
+        self.progress_container.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        self.progress_stack = QStackedLayout(self.progress_container)
+        self.progress_stack.setContentsMargins(0, 0, 0, 0)
+        self.progress_content_widget = QWidget()
+        self.progress_content_layout = QHBoxLayout(self.progress_content_widget)
+        self.progress_content_layout.setContentsMargins(0, 0, 0, 0)
+        self.progress_content_layout.setSpacing(8)
+        self.progress_content_layout.addWidget(self.progress_bar, 1)
+        self.progress_content_layout.addWidget(self.progress_info_label)
+        self.progress_placeholder = QWidget()
+        self.progress_placeholder.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        self.progress_stack.addWidget(self.progress_placeholder)
+        self.progress_stack.addWidget(self.progress_content_widget)
+        self.progress_stack.setCurrentWidget(self.progress_placeholder)
 
         self.license_button.clicked.connect(self._open_license_dialog)
         self.github_button.clicked.connect(self._open_github_home)
@@ -244,7 +276,7 @@ class SettingInterface(QWidget):
         detail_row.addWidget(self.github_button)
         detail_row.addWidget(self.update_button)
         detail_row.addWidget(self.update_log_button)
-        detail_row.addWidget(self.progress_bar)
+        detail_row.addWidget(self.progress_container, 1)
         header_layout.addLayout(detail_row)
 
         default_description = self.tr("Description: ") + self.interface_data.get(
@@ -362,6 +394,12 @@ class SettingInterface(QWidget):
         self.progress_bar.setValue(0)
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setVisible(True)
+        self.progress_stack.setCurrentWidget(self.progress_content_widget)
+        self.progress_info_label.setVisible(True)
+        self.progress_info_label.setText("0.00/0.00 MB   0.00 MB/s")
+        self.progress_info_label.setVisible(True)
+        self._last_progress_time = perf_counter()
+        self._last_downloaded_bytes = 0
 
     def _lock_update_button_temporarily(self) -> None:
         self.update_button.setEnabled(False)
@@ -406,6 +444,11 @@ class SettingInterface(QWidget):
         self.detail_progress.setValue(0)
         self.progress_bar.setValue(0)
         self.progress_bar.setVisible(False)
+        self.progress_stack.setCurrentWidget(self.progress_placeholder)
+        self.progress_info_label.setVisible(False)
+        self.progress_info_label.setText("")
+        self._last_progress_time = None
+        self._last_downloaded_bytes = 0
 
     def add_setting_group(self, group_widget: QWidget):
         """
@@ -1005,12 +1048,33 @@ class SettingInterface(QWidget):
         """下载进度回调"""
         if total <= 0:
             self.progress_bar.setRange(0, 0)  # 不确定进度模式
+            self._update_progress_info_label(downloaded, total)
             return
         self.progress_bar.setRange(0, 100)
         value = min(100, int(downloaded / total * 100))
         self.progress_bar.setValue(value)
         # 确保进度条可见（取消透明）
         self.progress_bar.setStyleSheet("")
+        self._update_progress_info_label(downloaded, total)
+
+    def _update_progress_info_label(self, downloaded: int, total: int) -> None:
+        """更新进度信息标签（显示当前大小、总大小和速度）。"""
+        previous_time = self._last_progress_time
+        now = perf_counter()
+        elapsed = None if previous_time is None else now - previous_time
+        delta_bytes = max(downloaded - self._last_downloaded_bytes, 0)
+        self._last_progress_time = now
+        self._last_downloaded_bytes = downloaded
+
+        speed_bytes_per_sec = 0.0
+        if elapsed and elapsed > 0:
+            speed_bytes_per_sec = delta_bytes / elapsed
+        downloaded_mb = downloaded / (1024 * 1024)
+        total_text = f"{total / (1024 * 1024):.2f}" if total > 0 else "--"
+        speed_mb_per_sec = speed_bytes_per_sec / (1024 * 1024)
+        self.progress_info_label.setText(
+            f"{downloaded_mb:.2f}/{total_text} MB   {speed_mb_per_sec:.2f} MB/s"
+        )
 
     def _on_stop_update_requested(self):
         """停止更新"""
