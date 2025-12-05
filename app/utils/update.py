@@ -189,7 +189,7 @@ class BaseUpdate(QThread):
         """
         # 按 - 分割版本号，取前半部分
         prefix = version.split("-")[0]
-        
+
         return prefix.replace("v", "")
 
     def compare_versions(self, version1: str, version2: str) -> int:
@@ -415,7 +415,7 @@ class BaseUpdate(QThread):
                 "msg": msg_value + "\n" + self.tr("switching to Github download"),
             }
 
-        data:dict = mirror_data.get("data",{})
+        data: dict = mirror_data.get("data", {})
         if data is not None and data.get("version_name") == version:
             return {"status": "no_need", "msg": self.tr("current version is latest")}
         """elif self.compare_versions(version, data.get("version_name","")) < 0:
@@ -927,13 +927,11 @@ class Update(BaseUpdate):
 
             # 版本兼容性检查
             interface_file = os.path.join(folder_to_extract, "interface.json")
-            check_interface = Read_Config(interface_file).get(
-                "MFW_min_req_version", "0.0.0.1"
-            )
+            interface = Read_Config(interface_file)
+            check_interface = interface.get("MFW_min_req_version", "0.0.0.1")
             logger.info(f"最低需求版本: {check_interface} | 当前版本: {version}")
-
             compare_result = self.compare_versions(check_interface, version)
-            if not compare_result:
+            if not compare_result or interface.get("interface_version", 0) <= 2:
                 logger.warning("当前版本过低，已中止更新")
                 signalBus.update_download_finished.emit(
                     {
