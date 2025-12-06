@@ -167,15 +167,20 @@ class MainWindow(MSFluentWindow):
         self.resize(1170, 760)
         self.setMinimumWidth(1170)
         self.setMinimumHeight(760)
-        self.setWindowIcon(QIcon("./app/icons/logo.png"))
         self.set_title()
         self.setMicaEffectEnabled(cfg.get(cfg.micaEnabled))
 
         # 设置图标
         icon_path = self.service_coordinator.task.interface.get(
-            "icon", "./app/icons/logo.png"
+            "icon", "./app/assets/icons/logo.png"
         )
-        self.setWindowIcon(QIcon(icon_path))
+        icon_path = Path(icon_path)
+        if not icon_path.is_absolute():
+            icon_path = Path.cwd() / icon_path
+        if not icon_path.exists():
+            logger.warning(" 配置的图标不存在，使用默认图标：%s", icon_path)
+            icon_path = Path.cwd() / "./app/assets/icons/logo.png"
+        self.setWindowIcon(QIcon(str(icon_path)))
 
         # 创建启动画面
         self.splashScreen = SplashScreen(self.windowIcon(), self)
@@ -329,10 +334,16 @@ class MainWindow(MSFluentWindow):
             more_count = len(errors) - len(errors[:3])
             suffix = ""
             if more_count > 0:
-                suffix = self.tr(", there are ") + str(more_count) + self.tr(" files not added")
+                suffix = (
+                    self.tr(", there are ")
+                    + str(more_count)
+                    + self.tr(" files not added")
+                )
             signalBus.info_bar_requested.emit(
                 "warning",
-                self.tr("Log has been packaged, but some files failed to read:") + preview + suffix,
+                self.tr("Log has been packaged, but some files failed to read:")
+                + preview
+                + suffix,
             )
             return
 
@@ -507,16 +518,11 @@ class MainWindow(MSFluentWindow):
 
     def set_title(self):
         """设置窗口标题"""
-        title = self.service_coordinator.task.interface.get("custom_title", "")
-        if title:
-            self.setWindowTitle(title)
-            return
-        project_name = self.service_coordinator.task.interface.get("name")
-        if project_name:
-            title += f" {project_name}"
-        version = self.service_coordinator.task.interface.get("version")
-        if version:
-            title += f" {version}"
+        title = (
+            self.service_coordinator.task.interface.get("title", "")
+            or self.service_coordinator.task.interface.get("custom_title", "")
+            or f"{self.service_coordinator.task.interface.get("name", "")} {self.service_coordinator.task.interface.get("version", "")}"
+        )
         if self.is_admin():
             title += " " + self.tr("admin")
         logger.info(f" 设置窗口标题：{title}")
