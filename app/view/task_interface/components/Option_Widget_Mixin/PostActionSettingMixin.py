@@ -21,17 +21,19 @@ class PostActionSettingMixin:
     current_config: Dict[str, Any]
 
     def _clear_options(self) -> None: ...
-    def _toggle_description(self, visible: bool|None = None) -> None: ...
-    def tr(self, sourceText: str, /, disambiguation: str | None = ..., n: int = ...) -> str: ...
+    def _toggle_description(self, visible: bool | None = None) -> None: ...
+    def tr(
+        self, sourceText: str, /, disambiguation: str | None = ..., n: int = ...
+    ) -> str: ...
 
     _CONFIG_KEY = "post_action"
-    _ACTION_ORDER: List[Tuple[str, str]] = [
-        ("none", "Do nothing"),
-        ("shutdown", "Shutdown"),
-        ("close_emulator", "Close emulator"),
-        ("close_software", "Close software"),
-        ("run_other", "Run other configuration"),
-        ("run_program", "Run other program"),
+    _ACTION_ORDER: List[str] = [
+        "none",
+        "shutdown",
+        "close_emulator",
+        "close_software",
+        "run_other",
+        "run_program",
     ]
     _PRIMARY_ACTIONS = {"none", "shutdown", "run_other"}
     _SECONDARY_ACTIONS = {"close_emulator", "close_software"}
@@ -53,11 +55,25 @@ class PostActionSettingMixin:
         self._post_action_state: Dict[str, Any] = {}
         self._syncing = False
 
+    def _get_action_label(self, action_key: str) -> str:
+        """返回动作对应的可翻译文案"""
+        mapping = {
+            "none": self.tr("Do nothing"),
+            "shutdown": self.tr("Shutdown"),
+            "close_emulator": self.tr("Close emulator"),
+            "close_software": self.tr("Close software"),
+            "run_other": self.tr("Run other configuration"),
+            "run_program": self.tr("Run other program"),
+        }
+        return mapping.get(action_key, action_key)
+
     # region UI 构建
     def create_post_action_setting(self) -> None:
         """创建完成后操作设置界面"""
         if not isinstance(self.parent_layout, QVBoxLayout):
-            raise ValueError("parent_layout 未设置，无法渲染完成后操作配置")
+            raise ValueError(
+                self.tr("Parent layout is not set, cannot render post action options")
+            )
 
         self._clear_options()
         self._toggle_description(False)
@@ -69,8 +85,8 @@ class PostActionSettingMixin:
         self.parent_layout.addWidget(title)
         self.parent_layout.addSpacing(8)
 
-        for action_key, label in self._ACTION_ORDER:
-            checkbox = CheckBox(self.tr(label))
+        for action_key in self._ACTION_ORDER:
+            checkbox = CheckBox(self._get_action_label(action_key))
             checkbox.toggled.connect(
                 lambda checked, key=action_key: self._on_checkbox_changed(key, checked)
             )
@@ -107,14 +123,19 @@ class PostActionSettingMixin:
 
         merged = dict(self._DEFAULT_STATE)
         merged.update(raw_state)
+        if merged.get("run_program"):
+            merged["none"] = False
+            merged["run_other"] = False
+        if merged.get("none") or merged.get("run_other"):
+            merged["run_program"] = False
         self.current_config[self._CONFIG_KEY] = merged
         self._post_action_state = merged
 
     def _apply_state_to_widgets(self) -> None:
         """同步状态到控件"""
         self._syncing = True
-        for action_key in (
-            self._PRIMARY_ACTIONS.union(self._SECONDARY_ACTIONS).union(self._OPTIONAL_ACTIONS)
+        for action_key in self._PRIMARY_ACTIONS.union(self._SECONDARY_ACTIONS).union(
+            self._OPTIONAL_ACTIONS
         ):
             widget = self.post_action_widgets.get(action_key)
             if isinstance(widget, CheckBox):
@@ -147,10 +168,12 @@ class PostActionSettingMixin:
         if checked:
             if key in self._PRIMARY_ACTIONS:
                 self._set_allowed_actions({key})
+                if key in {"run_other", "none"}:
+                    self._deactivate_run_program_option()
             elif key in self._SECONDARY_ACTIONS:
                 self._set_allowed_actions(self._SECONDARY_ACTIONS)
             elif key == "run_program":
-                self._deactivate_run_other_option()
+                self._deactivate_conflicting_primary_for_program()
 
         self._update_combo_enabled_state()
         self._update_program_inputs_enabled()
@@ -197,13 +220,22 @@ class PostActionSettingMixin:
             combo.blockSignals(False)
             self._post_action_state["target_config"] = ""
 
-    def _deactivate_run_other_option(self) -> None:
-        """运行其他程序被选中时，强制关闭运行其他配置"""
-        run_other_widget = self.post_action_widgets.get("run_other")
-        if isinstance(run_other_widget, CheckBox):
-            run_other_widget.setChecked(False)
-        self._post_action_state["run_other"] = False
+    def _deactivate_conflicting_primary_for_program(self) -> None:
+        """运行其他程序被选中时，关闭与其互斥的主动作（运行其他配置 / 无动作）"""
+        for key in ("run_other", "none"):
+            widget = self.post_action_widgets.get(key)
+            if isinstance(widget, CheckBox):
+                widget.setChecked(False)
+            self._post_action_state[key] = False
         self._update_combo_enabled_state()
+
+    def _deactivate_run_program_option(self) -> None:
+        """主动作（运行其他配置 / 无动作）被选中时，关闭运行其他程序"""
+        run_program_widget = self.post_action_widgets.get("run_program")
+        if isinstance(run_program_widget, CheckBox):
+            run_program_widget.setChecked(False)
+        self._post_action_state["run_program"] = False
+        self._update_program_inputs_enabled()
 
     def _create_program_input_fields(self) -> None:
         """创建运行其他程序的路径与参数输入框"""
@@ -249,7 +281,12 @@ class PostActionSettingMixin:
     def _update_program_inputs_enabled(self) -> None:
         """根据开关控制输入框可用状态"""
         enabled = bool(self._post_action_state.get("run_program"))
-        for key in ("program_path_label", "program_path", "program_args_label", "program_args"):
+        for key in (
+            "program_path_label",
+            "program_path",
+            "program_args_label",
+            "program_args",
+        ):
             widget = self.post_action_widgets.get(key)
             if widget:
                 widget.setEnabled(enabled)
@@ -274,7 +311,7 @@ class PostActionSettingMixin:
                 configs.append(
                     (
                         info.get("item_id", ""),
-                        info.get("name", "Unnamed Configuration"),
+                        info.get("name", "") or self.tr("Unnamed Configuration"),
                     )
                 )
         except Exception as exc:

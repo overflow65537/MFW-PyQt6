@@ -168,7 +168,8 @@ class TaskFlowRunner(QObject):
             signalBus.log_output.emit("INFO", self.tr("Starting to connect device..."))
             connected = await self.connect_device(pre_cfg.task_option)
             if not connected:
-                logger.error("设备连接失败，尝试启动进程")
+                logger.error("设备连接失败")
+
                 send_notice(
                     NoticeTiming.WHEN_CONNECT_FAILED,
                     self.tr("Device Connection Failed"),
@@ -578,7 +579,7 @@ class TaskFlowRunner(QObject):
             ):
                 print("connect adb success")
                 return True
-
+        signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
         return False
 
     async def _connect_win32_controller(self, controller_raw: Dict[str, Any]):
