@@ -1,3 +1,9 @@
+import hashlib
+import re
+import tempfile
+import urllib.parse
+import urllib.request
+from pathlib import Path
 from typing import Dict, Any
 
 from PySide6.QtCore import Qt
@@ -245,6 +251,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self._description_animator.set_max_ratio(new_max_ratio)
 
         html = render_markdown(description)
+        html = self._process_remote_images(html)
         
         # 检查公告是否已经展开
         was_expanded = self._description_animator.is_expanded()
@@ -260,6 +267,52 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             # 如果之前是隐藏的，正常展开
             # 如果没有选项（100%），强制从零开始动画，防止瞬间占满
             self._description_animator.expand(force_from_zero=not has_options)
+
+    def _process_remote_images(self, html: str) -> str:
+        """下载公告中的网络图片到本地缓存，并替换为本地路径以保证可显示/预览。"""
+        if not html:
+            return html
+        
+        urls = set(re.findall(r"https?://[^\s\"'>]+", html))
+        if not urls:
+            return html
+        
+        for url in urls:
+            local_path = self._cache_remote_image(url)
+            if not local_path:
+                continue
+            local_uri = Path(local_path).as_uri()
+            html = html.replace(url, local_uri)
+        return html
+
+    def _cache_remote_image(self, url: str) -> str | None:
+        """缓存网络图片到临时目录，返回本地路径。失败则返回None。"""
+        try:
+            parsed = urllib.parse.urlparse(url)
+            if parsed.scheme not in ("http", "https"):
+                return None
+            
+            cache_dir = Path(tempfile.gettempdir()) / "mfw_remote_images"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            
+            ext = Path(parsed.path).suffix
+            # 简单兜底，避免过长或缺少后缀
+            if not ext or len(ext) > 5:
+                ext = ".img"
+            
+            filename = hashlib.sha1(url.encode("utf-8")).hexdigest() + ext
+            file_path = cache_dir / filename
+            if file_path.exists():
+                return str(file_path)
+            
+            req = urllib.request.Request(url, headers={"User-Agent": "MFW-PyQt6"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = resp.read()
+            file_path.write_bytes(data)
+            return str(file_path)
+        except Exception as e:
+            logger.warning(f"下载网络图片失败: {url}, {e}")
+            return None
 
     
     def _on_link_activated(self, link: str):

@@ -1,5 +1,6 @@
 """图片预览对话框"""
 import re
+import urllib.request
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QSize
@@ -108,10 +109,14 @@ class ImagePreviewDialog(QDialog):
         elif image_path.startswith("file://"):
             image_path = image_path[7:]  # 移除 file://
         
-        # 尝试加载图片
-        pixmap = QPixmap(image_path)
+        # 尝试加载图片（支持本地与 http/https）
+        pixmap = None
+        if image_path.startswith(("http://", "https://")):
+            pixmap = self._load_remote_pixmap(image_path)
+        else:
+            pixmap = QPixmap(image_path)
         
-        if pixmap.isNull():
+        if not pixmap or pixmap.isNull():
             # 如果加载失败，显示错误信息
             self.image_label.setText(f"无法加载图片:\n{self.image_path}")
             self.image_label.setStyleSheet(
@@ -170,4 +175,17 @@ class ImagePreviewDialog(QDialog):
             self.close()
         else:
             super().keyPressEvent(event)
+
+    def _load_remote_pixmap(self, url: str) -> QPixmap | None:
+        """下载网络图片并转换为 QPixmap。失败返回 None。"""
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "MFW-PyQt6"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = resp.read()
+            image = QImage.fromData(data)
+            if image.isNull():
+                return None
+            return QPixmap.fromImage(image)
+        except Exception:
+            return None
 
