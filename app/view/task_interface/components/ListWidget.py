@@ -21,10 +21,15 @@ class BaseListWidget(ListWidget):
     """基础列表组件，所有子类通用拖拽功能"""
 
     item_selected = Signal(str)  # 列表项选择信号
+    _WHEEL_SCROLL_FACTOR = 0.35  # 鼠标滚轮滚动缩放，越小越慢
+    _SCROLL_SINGLE_STEP = 8
 
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         super().__init__(parent)
         self.service_coordinator = service_coordinator
+        # 调低滚动步幅，避免一次滚动移动过多
+        self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.verticalScrollBar().setSingleStep(self._SCROLL_SINGLE_STEP)
         self.currentItemChanged.connect(self._on_item_selected)
 
     def _on_item_selected(self, current, previous):
@@ -46,6 +51,20 @@ class BaseListWidget(ListWidget):
             ):
                 self.setCurrentItem(li)
                 break
+
+    def wheelEvent(self, event):
+        """缩小滚轮滚动幅度，提升细腻度"""
+        delta = event.pixelDelta().y()
+        if delta == 0:
+            delta = event.angleDelta().y()
+        if delta != 0 and self.verticalScrollBar():
+            step = int(delta * self._WHEEL_SCROLL_FACTOR)
+            self.verticalScrollBar().setValue(
+                self.verticalScrollBar().value() - step
+            )
+            event.accept()
+            return
+        super().wheelEvent(event)
 
 
 class SkeletonBar(QWidget):
