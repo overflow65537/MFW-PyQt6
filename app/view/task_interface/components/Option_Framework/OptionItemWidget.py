@@ -145,17 +145,21 @@ class OptionItemWidget(QWidget):
         indicator.setObjectName("OptionDescriptionIndicator")
         indicator.setAlignment(Qt.AlignmentFlag.AlignCenter)
         indicator.setFixedSize(18, 18)
+        border_color = "rgba(255, 255, 255, 0.25)" if isDarkTheme() else "rgba(0, 0, 0, 0.25)"
+        background_color = (
+            "rgba(255, 255, 255, 0.08)" if isDarkTheme() else "rgba(0, 0, 0, 0.04)"
+        )
         indicator.setStyleSheet(
-            """
-            QLabel#OptionDescriptionIndicator {
-                border: 1px solid rgba(0, 0, 0, 0.25);
+            f"""
+            QLabel#OptionDescriptionIndicator {{
+                border: 1px solid {border_color};
                 border-radius: 9px;
                 padding: 0px;
                 font-weight: 600;
                 font-size: 12px;
-                color: rgba(0, 0, 0, 0.7);
-                background-color: rgba(0, 0, 0, 0.04);
-            }
+                color: palette(windowText);
+                background-color: {background_color};
+            }}
             """
         )
         indicator.setCursor(Qt.CursorShape.PointingHandCursor)
