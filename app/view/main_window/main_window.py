@@ -48,7 +48,14 @@ from PySide6.QtGui import (
     QDesktopServices,
     QPixmap,
 )
-from PySide6.QtWidgets import QApplication, QLabel, QGraphicsOpacityEffect
+from PySide6.QtWidgets import (
+    QApplication,
+    QLabel,
+    QGraphicsOpacityEffect,
+    QSizePolicy,
+    QHBoxLayout,
+    QVBoxLayout,
+)
 
 from qfluentwidgets import (
     NavigationItemPosition,
@@ -173,6 +180,7 @@ class MainWindow(MSFluentWindow):
         self.setMinimumHeight(760)
         self.set_title()
         self.setMicaEffectEnabled(cfg.get(cfg.micaEnabled))
+        self._adjust_title_bar_for_macos()
 
         # 设置图标
         icon_path = self.service_coordinator.task.interface.get(
@@ -200,6 +208,58 @@ class MainWindow(MSFluentWindow):
         """在首次展示前恢复之前的窗口几何，或居中显示。"""
         if not self._restore_window_geometry():
             self._center_window()
+
+    def _adjust_title_bar_for_macos(self):
+        """在 macOS 上将窗口按钮移动到左侧并居中标题。"""
+        if sys.platform != "darwin":
+            return
+
+        title_bar = getattr(self, "titleBar", None)
+        if title_bar is None:
+            return
+
+        h_layout = getattr(title_bar, "hBoxLayout", None)
+        btn_layout = getattr(title_bar, "buttonLayout", None)
+        v_layout = getattr(title_bar, "vBoxLayout", None)
+        if not isinstance(h_layout, QHBoxLayout) or not isinstance(
+            btn_layout, QHBoxLayout
+        ) or not isinstance(v_layout, QVBoxLayout):
+            return
+
+        def _clear_layout(layout):
+            while layout.count():
+                item = layout.takeAt(0)
+                if item.layout():
+                    _clear_layout(item.layout())
+
+        # 调整按钮布局为 macOS 顺序：关闭、最小化、最大化
+        _clear_layout(btn_layout)
+        btn_layout.setContentsMargins(4, 6, 4, 6)
+        btn_layout.setSpacing(6)
+        btn_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        for btn in (title_bar.closeBtn, title_bar.minBtn, title_bar.maxBtn):
+            btn_layout.addWidget(btn, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        _clear_layout(v_layout)
+        v_layout.setContentsMargins(0, 0, 0, 0)
+        v_layout.setSpacing(0)
+        v_layout.addLayout(btn_layout)
+        v_layout.addStretch(1)
+
+        _clear_layout(h_layout)
+        h_layout.setContentsMargins(10, 0, 12, 0)
+        h_layout.setSpacing(8)
+        h_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        h_layout.addLayout(v_layout, 0)
+        h_layout.addSpacing(8)
+        h_layout.addWidget(title_bar.iconLabel, 0, Qt.AlignmentFlag.AlignVCenter)
+        h_layout.addStretch(1)
+        title_bar.titleLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_bar.titleLabel.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
+        h_layout.addWidget(title_bar.titleLabel, 0, Qt.AlignmentFlag.AlignCenter)
+        h_layout.addStretch(1)
 
     def _restore_window_geometry(self) -> bool:
         """尝试从配置中恢复上次记录的位置与大小。"""
