@@ -30,6 +30,7 @@ MFW-ChainFlow Assistant 主界面
 """
 
 
+import asyncio
 import shutil
 import sys
 import threading
@@ -67,6 +68,7 @@ from app.view.setting_interface.setting_interface import SettingInterface
 from app.view.test_interface.test_interface import TestInterface
 from app.common.config import cfg
 from app.common.signal_bus import signalBus
+from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.utils.logger import logger
 from app.common.__version__ import __version__
 from app.core.core import ServiceCoordinator
@@ -88,8 +90,9 @@ class MainWindow(MSFluentWindow):
 
     _LOCKED_LOG_NAMES = {"maa.log", "clash.log", "maa.log.bak"}
 
-    def __init__(self):
+    def __init__(self, loop: asyncio.AbstractEventLoop | None = None):
         super().__init__()
+        self._loop = loop
 
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)
@@ -145,6 +148,17 @@ class MainWindow(MSFluentWindow):
 
         # 连接公共信号
         self.connectSignalToSlot()
+        try:
+            event_loop = self._loop or asyncio.get_event_loop()
+        except RuntimeError:
+            event_loop = None
+        self._hotkey_manager = GlobalHotkeyManager(event_loop)
+        self._hotkey_manager.setup(
+            start_factory=lambda: self.service_coordinator.run_tasks_flow(),
+            stop_factory=lambda: self.service_coordinator.stop_task(),
+        )
+        signalBus.hotkey_shortcuts_changed.connect(self._reload_global_hotkeys)
+        self._reload_global_hotkeys()
 
         logger.info(" 主界面初始化完成。")
 
@@ -209,6 +223,11 @@ class MainWindow(MSFluentWindow):
         signalBus.title_changed.connect(self.set_title)
         signalBus.info_bar_requested.connect(self.show_info_bar)
         signalBus.request_log_zip.connect(self._on_request_log_zip)
+
+    def _reload_global_hotkeys(self):
+        """配置变更后重新注册全局快捷键。"""
+        if getattr(self, "_hotkey_manager", None):
+            self._hotkey_manager.reload()
 
     def _on_request_log_zip(self):
         """处理日志打包请求，避免重复执行。"""
@@ -522,6 +541,8 @@ class MainWindow(MSFluentWindow):
     def closeEvent(self, e):
         """关闭事件"""
         self._save_window_geometry_if_needed()
+        if getattr(self, "_hotkey_manager", None):
+            self._hotkey_manager.shutdown()
         self.themeListener.terminate()
         self.themeListener.deleteLater()
         e.accept()

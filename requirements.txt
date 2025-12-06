@@ -5,6 +5,7 @@ requests
 MaaFw 
 psutil
 PySide6-Fluent-Widgets
+keyboard
 wmi
 cryptography
 markdown

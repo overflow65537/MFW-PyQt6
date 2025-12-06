@@ -50,7 +50,11 @@ from app.utils.crypto import crypto_manager
 from app.utils.logger import logger
 from app.utils.update import Update, UpdateCheckTask
 from app.view.setting_interface.widget.ProxySettingCard import ProxySettingCard
-from app.view.setting_interface.widget.LineEditCard import MirrorCdkLineEditCard
+from app.utils.hotkey_manager import GlobalHotkeyManager
+from app.view.setting_interface.widget.LineEditCard import (
+    LineEditCard,
+    MirrorCdkLineEditCard,
+)
 
 _CONTACT_URL_PATTERN = re.compile(r"(?:https?://|www\.)[^\s，,]+")
 
@@ -133,6 +137,7 @@ class SettingInterface(QWidget):
         self.initialize_start_settings()
         self.initialize_notice_settings()
         self.initialize_personalization_settings()
+        self.initialize_hotkey_settings()
         self.initialize_update_settings()
         self._refresh_update_header()
 
@@ -670,6 +675,149 @@ class SettingInterface(QWidget):
         self.personalGroup.addSettingCard(self.remember_geometry_card)
         self.personalGroup.addSettingCard(self.advanced_settings_card)
         self.add_setting_group(self.personalGroup)
+
+    def initialize_hotkey_settings(self):
+        """添加全局快捷键配置入口，可自定义开始/结束任务组合键。"""
+        self.hotkeyGroup = SettingCardGroup(
+            self.tr("Global Shortcuts"), self.Setting_scroll_widget
+        )
+
+        start_value = str(cfg.get(cfg.start_task_shortcut) or "")
+        stop_value = str(cfg.get(cfg.stop_task_shortcut) or "")
+
+        self.start_shortcut_card = LineEditCard(
+            FIF.RIGHT_ARROW,
+            self.tr("Start task shortcut"),
+            holderText=start_value,
+            content=self.tr("默认 Ctrl+`，焦点不在主窗口时也可触发"),
+            parent=self.hotkeyGroup,
+            num_only=False,
+        )
+        self._decorate_shortcut_card(self.start_shortcut_card, self.tr("Ctrl+"))
+        self._set_shortcut_line_text(self.start_shortcut_card, start_value)
+        self.start_shortcut_card.lineEdit.setPlaceholderText(
+            self.tr("Format: Modifier+[Key], e.g. Ctrl+`")
+        )
+        self.start_shortcut_card.lineEdit.editingFinished.connect(
+            lambda: self._on_shortcut_card_edited(
+                cfg.start_task_shortcut,
+                self.start_shortcut_card,
+                required_modifier="ctrl",
+            )
+        )
+
+        self.stop_shortcut_card = LineEditCard(
+            FIF.RIGHT_ARROW,
+            self.tr("Stop task shortcut"),
+            holderText=stop_value,
+            content=self.tr("默认 Alt+`，用于提前中断任务"),
+            parent=self.hotkeyGroup,
+            num_only=False,
+        )
+        self._decorate_shortcut_card(self.stop_shortcut_card, self.tr("Alt+"))
+        self._set_shortcut_line_text(self.stop_shortcut_card, stop_value)
+        self.stop_shortcut_card.lineEdit.setPlaceholderText(
+            self.tr("Format: Modifier+[Key], e.g. Alt+`")
+        )
+        self.stop_shortcut_card.lineEdit.editingFinished.connect(
+            lambda: self._on_shortcut_card_edited(
+                cfg.stop_task_shortcut,
+                self.stop_shortcut_card,
+                required_modifier="alt",
+            )
+        )
+
+        self.hotkeyGroup.addSettingCard(self.start_shortcut_card)
+        self.hotkeyGroup.addSettingCard(self.stop_shortcut_card)
+        self.add_setting_group(self.hotkeyGroup)
+
+    def _on_shortcut_card_edited(
+        self,
+        config_item,
+        card: LineEditCard,
+        required_modifier: str | None = None,
+    ):
+        key_text = card.lineEdit.text().strip()
+        current = cfg.get(config_item)
+        if not key_text:
+            self._set_shortcut_line_text(card, current)
+            signalBus.info_bar_requested.emit(
+                "warning", self.tr("快捷键不能为空，已还原为先前配置。")
+            )
+            return
+
+        raw = (
+            f"{required_modifier}+{key_text}"
+            if required_modifier
+            else key_text
+        )
+        normalized = GlobalHotkeyManager._normalize(raw)
+        if not normalized:
+            self._set_shortcut_line_text(card, current)
+            signalBus.info_bar_requested.emit(
+                "warning", self.tr("快捷键格式无效，已还原为先前配置。")
+            )
+            return
+
+        if required_modifier:
+            modifiers = normalized.split("+")[:-1]
+            if required_modifier not in modifiers:
+                self._set_shortcut_line_text(card, current)
+                modifier_name = (
+                    self.tr("Ctrl")
+                    if required_modifier == "ctrl"
+                    else self.tr("Alt")
+                )
+                action_name = (
+                    self.tr("开始任务")
+                    if required_modifier == "ctrl"
+                    else self.tr("结束任务")
+                )
+                signalBus.info_bar_requested.emit(
+                    "warning",
+                    self.tr("快捷键必须以 %1+ 开头，用于 %2。")
+                    .replace("%1", modifier_name)
+                    .replace("%2", action_name),
+                )
+                return
+
+        if normalized == current:
+            self._set_shortcut_line_text(card, normalized)
+            return
+
+        cfg.set(config_item, normalized)
+        self._set_shortcut_line_text(card, normalized)
+        signalBus.hotkey_shortcuts_changed.emit()
+
+        if normalized == current:
+            self._set_shortcut_line_text(card, normalized)
+            return
+
+        cfg.set(config_item, normalized)
+        self._set_shortcut_line_text(card, normalized)
+        signalBus.hotkey_shortcuts_changed.emit()
+
+    def _set_shortcut_line_text(self, card: LineEditCard, value: str | None):
+        normalized = GlobalHotkeyManager._normalize(str(value or "")) or str(value or "")
+        key_only = normalized.split("+")[-1] if normalized else ""
+        card.lineEdit.blockSignals(True)
+        card.lineEdit.setText(key_only)
+        card.lineEdit.blockSignals(False)
+
+    def _decorate_shortcut_card(self, card: LineEditCard, prefix: str):
+        """在输入框前加上不可编辑的前缀 BodyLabel，例如 Ctrl+ 或 Alt+。"""
+        label = BodyLabel(prefix, card)
+        label.setWordWrap(False)
+        label.setObjectName("shortcutPrefixLabel")
+        label.setAlignment(
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight
+        )
+        label.setFixedWidth(48)
+        layout = card.hBoxLayout
+        idx = layout.indexOf(card.lineEdit)
+        if idx >= 0:
+            layout.insertWidget(idx, label)
+            layout.insertSpacing(idx + 1, 4)
 
     def initialize_notice_settings(self):
         """

@@ -144,7 +144,7 @@ if __name__ == "__main__":
         logger.warning(f"GPU 信息缓存初始化失败，忽略: {e}")
 
     # 创建主窗口
-    w = MainWindow()
+    w = MainWindow(loop=loop)
     w.show()
 
     # 运行事件循环
