@@ -23,6 +23,43 @@ from app.utils.logger import logger
 from app.view.task_interface.components.Option_Framework.animations import HeightAnimator
 
 
+class TooltipComboBox(ComboBox):
+    """继承自 ComboBox 的 tooltip 支持"""
+
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent=parent)
+        self._item_tooltips: List[Optional[str]] = []
+
+    def addItem(
+        self,
+        text: str,
+        icon: Any = None,
+        userData: Any = None,
+        tooltip: Optional[str] = None,
+    ):
+        super().addItem(text, icon, userData)
+        self._item_tooltips.append(tooltip)
+
+    def removeItem(self, index: int):
+        super().removeItem(index)
+        if 0 <= index < len(self._item_tooltips):
+            self._item_tooltips.pop(index)
+
+    def clear(self):
+        super().clear()
+        self._item_tooltips.clear()
+
+    def _showComboMenu(self):
+        super()._showComboMenu()
+        menu = getattr(self, "dropMenu", None)
+        if not menu:
+            return
+
+        for action, tooltip in zip(menu.actions(), self._item_tooltips):
+            if tooltip:
+                action.setToolTip(tooltip)
+
+
 class OptionItemWidget(QWidget):
     """
     选项项组件
@@ -102,10 +139,39 @@ class OptionItemWidget(QWidget):
         layout.addWidget(icon_label)
         return icon_label
 
+    def _create_description_indicator(self, tooltip_text: str) -> BodyLabel:
+        """创建用于展示描述的问号标记"""
+        indicator = BodyLabel("?")
+        indicator.setObjectName("OptionDescriptionIndicator")
+        indicator.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        indicator.setFixedSize(18, 18)
+        indicator.setStyleSheet(
+            """
+            QLabel#OptionDescriptionIndicator {
+                border: 1px solid rgba(0, 0, 0, 0.25);
+                border-radius: 9px;
+                padding: 0px;
+                font-weight: 600;
+                font-size: 12px;
+                color: rgba(0, 0, 0, 0.7);
+                background-color: rgba(0, 0, 0, 0.04);
+            }
+            """
+        )
+        indicator.setCursor(Qt.CursorShape.PointingHandCursor)
+        filter = ToolTipFilter(indicator)
+        indicator.installEventFilter(filter)
+        indicator.setToolTip(tooltip_text)
+        return indicator
+
     def _create_label_with_optional_icon(
-        self, text: str, icon_source: Any, parent_layout: QLayout
+        self,
+        text: str,
+        icon_source: Any,
+        parent_layout: QLayout,
+        description: Optional[str] = None,
     ) -> BodyLabel:
-        """创建带图标的横向布局，并返回 BodyLabel"""
+        """创建带图标和可选描述标记的横向布局，并返回 BodyLabel"""
         container = QWidget()
         container_layout = QHBoxLayout(container)
         container_layout.setContentsMargins(0, 0, 0, 0)
@@ -114,6 +180,11 @@ class OptionItemWidget(QWidget):
 
         label = BodyLabel(text)
         container_layout.addWidget(label)
+
+        if description:
+            indicator = self._create_description_indicator(description)
+            container_layout.addWidget(indicator)
+
         container_layout.addStretch()
         parent_layout.addWidget(container)
         return label
@@ -148,14 +219,11 @@ class OptionItemWidget(QWidget):
             label_text = self.config.get("label", self.key)
             if not self._single_input_mode:
                 self.label = self._create_label_with_optional_icon(
-                    label_text, self.config.get("icon"), self.main_option_layout
+                    label_text,
+                    self.config.get("icon"),
+                    self.main_option_layout,
+                    self.config.get("description"),
                 )
-                
-                # 添加 tooltip
-                if "description" in self.config:
-                    filter = ToolTipFilter(self.label)
-                    self.label.installEventFilter(filter)
-                    self.label.setToolTip(self.config["description"])
             
             # 创建对应的控件
             if self.config_type == "combobox":
@@ -196,7 +264,7 @@ class OptionItemWidget(QWidget):
     
     def _create_combobox(self):
         """创建下拉框"""
-        self.control_widget = ComboBox()
+        self.control_widget = TooltipComboBox()
         
         # 保存选项映射关系 (label -> name 和 name -> label)
         self._option_map = {}  # label -> name
@@ -206,21 +274,27 @@ class OptionItemWidget(QWidget):
         options = self.config.get("options", [])
         for option in options:
             option_icon = None
+            option_description = None
             if isinstance(option, dict):
                 label = option.get("label", "")
                 name = option.get("name", label)
                 option_icon = option.get("icon")
+                option_description = option.get("description")
             else:
                 label = str(option)
                 name = label
-            icon_to_use = self._resolve_icon(option_icon)
-            self.control_widget.addItem(label)
-            if icon_to_use:
-                index = self.control_widget.count() - 1
-                self.control_widget.setItemIcon(index, icon_to_use)
 
-            self._option_map[label] = name
-            self._reverse_option_map[name] = label
+            display_label = f"{label} ?" if option_description else label
+            icon_to_use = self._resolve_icon(option_icon)
+            self.control_widget.addItem(
+                display_label,
+                icon_to_use,
+                None,
+                option_description,
+            )
+
+            self._option_map[display_label] = name
+            self._reverse_option_map[name] = display_label
         
         self.main_option_layout.addWidget(self.control_widget)
         
@@ -242,13 +316,12 @@ class OptionItemWidget(QWidget):
         self._add_icon_to_layout(switch_layout, self.config.get("icon"))
         self.label = BodyLabel(label_text)
         switch_layout.addWidget(self.label)
-        
-        # 添加 tooltip 到标签
-        if "description" in self.config:
-            filter = ToolTipFilter(self.label)
-            self.label.installEventFilter(filter)
-            self.label.setToolTip(self.config["description"])
-        
+
+        description = self.config.get("description")
+        if description:
+            indicator = self._create_description_indicator(description)
+            switch_layout.addWidget(indicator)
+
         # 添加弹性空间，让开关靠右对齐
         switch_layout.addStretch()
         
@@ -263,12 +336,6 @@ class OptionItemWidget(QWidget):
         # 设置开关按钮的文本标签
         self.control_widget.setOnText("是")
         self.control_widget.setOffText("否")
-        
-        # 添加 tooltip 到开关按钮
-        if "description" in self.config:
-            filter = ToolTipFilter(self.control_widget)
-            self.control_widget.installEventFilter(filter)
-            self.control_widget.setToolTip(self.config["description"])
         
         # 将开关按钮添加到水平布局
         switch_layout.addWidget(self.control_widget)
@@ -310,11 +377,13 @@ class OptionItemWidget(QWidget):
             line_edit = LineEdit()
 
             label_text = input_item.get("label") or self.config.get("label", self.key)
+            description = input_item.get("description") or self.config.get("description")
             if label_text:
                 single_label = self._create_label_with_optional_icon(
                     label_text,
                     input_item.get("icon") or self.config.get("icon"),
                     self.main_option_layout,
+                    description,
                 )
 
             # 设置默认值
@@ -333,13 +402,6 @@ class OptionItemWidget(QWidget):
                     "pattern_msg"
                 )
                 self._connect_validator(line_edit, verify_pattern, pattern_msg)
-
-            # 添加 tooltip
-            description = input_item.get("description") or self.config.get("description")
-            if description:
-                filter = ToolTipFilter(line_edit)
-                line_edit.installEventFilter(filter)
-                line_edit.setToolTip(description)
 
             line_edit.textChanged.connect(
                 lambda text, name=input_name: self._on_lineedit_changed(name, text)
@@ -361,7 +423,10 @@ class OptionItemWidget(QWidget):
                 
                 # 创建标签
                 input_label = self._create_label_with_optional_icon(
-                    input_label_text, input_item.get("icon"), input_container
+                    input_label_text,
+                    input_item.get("icon"),
+                    input_container,
+                    input_item.get("description"),
                 )
                 
                 # 创建输入框
@@ -378,12 +443,6 @@ class OptionItemWidget(QWidget):
                         "pattern_msg"
                     )
                     self._connect_validator(line_edit, verify_pattern, pattern_msg)
-                
-                # 添加 tooltip
-                if "description" in input_item:
-                    filter = ToolTipFilter(line_edit)
-                    line_edit.installEventFilter(filter)
-                    line_edit.setToolTip(input_item["description"])
                 
                 input_container.addWidget(line_edit)
                 self.main_option_layout.addLayout(input_container)
@@ -407,12 +466,6 @@ class OptionItemWidget(QWidget):
                 verify_pattern = self.config["verify"]
                 pattern_msg = self.config.get("pattern_msg")
                 self._connect_validator(self.control_widget, verify_pattern, pattern_msg)
-            
-            # 添加 tooltip
-            if "description" in self.config:
-                filter = ToolTipFilter(self.control_widget)
-                self.control_widget.installEventFilter(filter)
-                self.control_widget.setToolTip(self.config["description"])
             
             # 连接信号
             self.control_widget.textChanged.connect(

@@ -95,6 +95,14 @@ class OptionService:
         if icon:
             target["icon"] = icon
 
+    def _copy_description_from_source(
+        self, target: Dict[str, Any], source: Dict[str, Any]
+    ) -> None:
+        """将 source 中的 description/doc 字段复制到 target"""
+        description = source.get("description") or source.get("doc")
+        if description:
+            target["description"] = description
+
     def process_option_def(
         self,
         option_def: Dict[str, Any],
@@ -214,6 +222,7 @@ class OptionService:
 
                 option_entry = {"name": option_name, "label": display_label}
                 self._copy_icon_from_source(option_entry, case)
+                self._copy_description_from_source(option_entry, case)
                 options.append(option_entry)
 
                 # 递归处理cases中的子选项(option参数)

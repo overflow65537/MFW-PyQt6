@@ -962,6 +962,7 @@ class ResourceSettingMixin:
                     res_combo.installEventFilter(ToolTipFilter(res_combo))
                     res_combo.setToolTip(description)
                 self._auto_save_options()
+                break
 
     def _on_search_combo_changed(self, device_name):
         current_controller_name = self.current_config["controller_type"]
