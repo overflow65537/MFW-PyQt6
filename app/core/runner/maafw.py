@@ -6,7 +6,10 @@ MFW-ChainFlow Assistant MaaFW核心
 修改:overflow65537
 """
 
+import json
+import os
 import re
+import importlib.util
 from enum import Enum
 from typing import List, Dict
 import subprocess
@@ -185,6 +188,181 @@ class MaaFW(QObject):
         self.agent_output_thread = None
 
         self.agent_data_raw = None
+        # 控制是否需要向 UI 报告自定义对象注册情况
+        self.need_register_report: bool = False
+        # 记录最近一次自定义对象加载的成功/失败情况
+        self.custom_load_report: Dict[str, Dict[str, List]] = {
+            "actions": {"success": [], "failed": []},
+            "recognitions": {"success": [], "failed": []},
+        }
+
+    def load_custom_objects(self, custom_config_path: str | Path) -> bool:
+        """
+        从 custom.json 加载并注册自定义动作/识别器。
+
+        :param custom_config_path: custom.json 文件路径或包含它的目录
+        :return: 是否成功加载到至少一个自定义对象
+        """
+        project_dir = Path.cwd()
+        config_path = Path(str(custom_config_path).replace("{PROJECT_DIR}", str(project_dir)))
+        if config_path.is_dir():
+            config_path = config_path / "custom.json"
+
+        if not config_path.exists():
+            logger.warning(f"自定义配置文件 {config_path} 不存在")
+            return False
+        if not config_path.is_file():
+            logger.warning(f"自定义配置路径 {config_path} 不是文件")
+            return False
+
+        try:
+            with config_path.open("r", encoding="utf-8") as fp:
+                custom_config: Dict[str, Dict] = json.load(fp)
+        except Exception as exc:
+            logger.error(f"读取自定义配置失败: {exc}")
+            return False
+
+        custom_root = config_path.parent.resolve()
+        resource = self._init_resource()
+        loaded_any = False
+        self.custom_load_report = {
+            "actions": {"success": [], "failed": []},
+            "recognitions": {"success": [], "failed": []},
+        }
+
+        def _get_bucket(type_name: str) -> str | None:
+            if type_name == "action":
+                return "actions"
+            if type_name == "recognition":
+                return "recognitions"
+            return None
+
+        def _record_success(type_name: str, name: str):
+            bucket = _get_bucket(type_name)
+            if bucket:
+                self.custom_load_report[bucket]["success"].append(name)
+
+        def _record_failure(
+            type_name: str, name: str, reason: str, level: str = "warning"
+        ):
+            bucket = _get_bucket(type_name)
+            if bucket:
+                self.custom_load_report[bucket]["failed"].append(
+                    {"name": name, "reason": reason, "level": level}
+                )
+
+        for custom_name, custom in custom_config.items():
+            custom_type: str = (custom.get("type") or "").strip()
+            custom_class_name: str = custom.get("class") or ""
+            custom_file_path: str = custom.get("file_path") or ""
+
+            if not all([custom_type, custom_name, custom_class_name, custom_file_path]):
+                reason = f"配置项 {custom} 缺少必要信息，跳过"
+                logger.warning(reason)
+                _record_failure(custom_type, custom_name, reason)
+                continue
+
+            # 处理占位符与相对路径
+            custom_file_path = custom_file_path.replace("{custom_path}", str(custom_root))
+            custom_file_path = custom_file_path.replace("{PROJECT_DIR}", str(project_dir))
+            if not os.path.isabs(custom_file_path):
+                custom_file_path = os.path.join(custom_root, custom_file_path)
+            custom_file_path = os.path.abspath(custom_file_path)
+
+            if not os.path.isfile(custom_file_path):
+                reason = f"自定义脚本 {custom_file_path} 不存在，跳过 {custom_name}"
+                logger.warning(reason)
+                _record_failure(custom_type, custom_name, reason)
+                continue
+
+            module_name = Path(custom_file_path).stem
+            spec = importlib.util.spec_from_file_location(module_name, custom_file_path)
+            if spec is None or spec.loader is None:
+                reason = f"无法获取模块 {module_name} 的 spec，跳过加载"
+                logger.error(reason)
+                _record_failure(custom_type, custom_name, reason, level="error")
+                continue
+
+            try:
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)  # type: ignore[arg-type]
+
+                class_obj = getattr(module, custom_class_name, None)
+                if class_obj is None:
+                    reason = f"模块 {module_name} 中未找到类 {custom_class_name}，跳过"
+                    logger.error(reason)
+                    _record_failure(custom_type, custom_name, reason, level="error")
+                    continue
+                instance = class_obj()
+            except Exception as exc:
+                reason = f"加载自定义对象 {custom_name} 失败: {exc}"
+                logger.error(reason)
+                _record_failure(custom_type, custom_name, reason, level="error")
+                continue
+
+            if custom_type == "action":
+                if not isinstance(instance, CustomAction):
+                    reason = f"{custom_name} 不是 CustomAction 子类，跳过"
+                    logger.warning(reason)
+                    _record_failure(custom_type, custom_name, reason)
+                    continue
+                if resource.register_custom_action(custom_name, instance):
+                    loaded_any = True
+                    _record_success(custom_type, custom_name)
+                    logger.info(f"加载自定义动作 {custom_name}")
+                    if getattr(self, "need_register_report", False):
+                        custom_signal = getattr(signalBus, "custom_info", None)
+                        if custom_signal:
+                            custom_signal.emit({"type": "action", "name": custom_name})
+                else:
+                    reason = f"自定义动作 {custom_name} 注册失败"
+                    logger.warning(reason)
+                    _record_failure(custom_type, custom_name, reason)
+            elif custom_type == "recognition":
+                if not isinstance(instance, CustomRecognition):
+                    reason = f"{custom_name} 不是 CustomRecognition 子类，跳过"
+                    logger.warning(reason)
+                    _record_failure(custom_type, custom_name, reason)
+                    continue
+                if resource.register_custom_recognition(custom_name, instance):
+                    loaded_any = True
+                    _record_success(custom_type, custom_name)
+                    logger.info(f"加载自定义识别器 {custom_name}")
+                    if getattr(self, "need_register_report", False):
+                        custom_signal = getattr(signalBus, "custom_info", None)
+                        if custom_signal:
+                            custom_signal.emit({"type": "recognition", "name": custom_name})
+                else:
+                    reason = f"自定义识别器 {custom_name} 注册失败"
+                    logger.warning(reason)
+                    _record_failure(custom_type, custom_name, reason)
+            else:
+                logger.warning(f"未知的自定义类型 {custom_type}，跳过 {custom_name}")
+
+        actions_success = self.custom_load_report["actions"]["success"]
+        recognitions_success = self.custom_load_report["recognitions"]["success"]
+        actions_failed = self.custom_load_report["actions"]["failed"]
+        recognitions_failed = self.custom_load_report["recognitions"]["failed"]
+
+        if actions_success:
+            logger.info(f"成功加载自定义动作: {', '.join(actions_success)}")
+        if recognitions_success:
+            logger.info(f"成功加载自定义识别器: {', '.join(recognitions_success)}")
+
+        if actions_failed:
+            for item in actions_failed:
+                log_method = getattr(
+                    logger, item.get("level", "warning"), logger.warning
+                )
+                log_method(f"自定义动作 {item['name']} 加载失败: {item['reason']}")
+        if recognitions_failed:
+            for item in recognitions_failed:
+                log_method = getattr(
+                    logger, item.get("level", "warning"), logger.warning
+                )
+                log_method(f"自定义识别器 {item['name']} 加载失败: {item['reason']}")
+
+        return loaded_any
 
     @staticmethod
     @asyncify

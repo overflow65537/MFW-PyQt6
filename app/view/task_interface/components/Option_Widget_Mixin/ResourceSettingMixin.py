@@ -281,6 +281,8 @@ class ResourceSettingMixin:
             interface.get("controller", [])
         )
         agent_interface_config = interface.get("agent", {})
+        interface_custom = interface.get("custom")
+        self.interface_custom_default = interface_custom if isinstance(interface_custom, str) else ""
         self.current_config = self.service_coordinator.option_service.current_options
         self.current_config.setdefault("gpu", -1)
         agent_timeout_default = self._coerce_int(agent_interface_config.get("timeout"))
@@ -289,6 +291,8 @@ class ResourceSettingMixin:
         self.agent_timeout_default = agent_timeout_default
         self.current_config.setdefault("agent_timeout", self.agent_timeout_default)
         self.current_config.setdefault("gpu", -1)
+        if not isinstance(self.current_config.get("custom"), str):
+            self.current_config["custom"] = self.interface_custom_default
 
         # 构建资源映射表
         self.resource_mapping = {
@@ -326,6 +330,8 @@ class ResourceSettingMixin:
         self._create_gpu_option()
         # 创建 agent 启动超时时间选项
         self._create_agent_timeout_option()
+        # 创建自定义模块路径输入（隐藏选项）
+        self._create_custom_option()
         # 创建ADB和Win32子选项
         self._create_adb_children_option()
         self._create_win32_children_option()
@@ -416,6 +422,16 @@ class ResourceSettingMixin:
         timeout_edit.textChanged.connect(self._on_agent_timeout_changed)
 
         self._toggle_children_visible(["agent_timeout"], self.show_hide_option)
+
+    def _create_custom_option(self):
+        """创建自定义模块路径输入"""
+        self._create_resource_line_edit(
+            self.tr("自定义模块路径"),
+            "custom",
+            self._on_custom_path_changed,
+            True,
+        )
+        self._toggle_children_visible(["custom"], self.show_hide_option)
 
     def _create_gpu_option(self):
         """创建GPU加速下拉框"""
@@ -777,6 +793,7 @@ class ResourceSettingMixin:
                 elif isinstance(widget, ComboBox):
                     target = self.current_config[controller_name][name]
                     widget.setCurrentIndex(self._value_to_index(target))
+        self._fill_custom_option()
         self._fill_gpu_option()
         self._fill_agent_timeout_option()
         # 填充设备名称
@@ -790,6 +807,19 @@ class ResourceSettingMixin:
         search_option.combo_box.blockSignals(True)
         search_option.combo_box.addItem(device_name)
         search_option.combo_box.blockSignals(False)
+
+    def _fill_custom_option(self):
+        custom_edit = self.resource_setting_widgets.get("custom")
+        if isinstance(custom_edit, (LineEdit, PathLineEdit)):
+            custom_edit.blockSignals(True)
+            default_value = self.interface_custom_default
+            current_value = self.current_config.get("custom", default_value)
+            if current_value is None:
+                current_value = default_value
+            normalized_value = str(current_value) if current_value is not None else ""
+            custom_edit.setText(normalized_value)
+            custom_edit.blockSignals(False)
+            self.current_config["custom"] = normalized_value
 
     def _fill_gpu_option(self):
         combo = self.resource_setting_widgets.get("gpu_combo")
@@ -828,6 +858,10 @@ class ResourceSettingMixin:
             )
             timeout_edit.setText(timeout_text)
             timeout_edit.blockSignals(False)
+
+    def _on_custom_path_changed(self, text: str):
+        self.current_config["custom"] = text
+        self._auto_save_options()
 
     def _on_agent_timeout_changed(self, text: str):
         if not text:

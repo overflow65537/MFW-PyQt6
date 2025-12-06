@@ -78,7 +78,6 @@ class TaskFlowRunner(QObject):
             info = info.split("| INFO |")[1]
             signalBus.log_output.emit("INFO", info)
 
-
     def _handle_maafw_custom_info(self, error_code: int):
         try:
             error = MaaFWError(error_code)
@@ -203,6 +202,40 @@ class TaskFlowRunner(QObject):
                     "agent", None
                 )
                 signalBus.log_output.emit("INFO", self.tr("Agent Service Start"))
+
+            if (
+                self.task_service.interface.get("custom", None)
+                or pre_cfg.task_option.get("custom", None)
+            ) and self.maafw.resource:
+                logger.info("开始加载自定义组件...")
+                signalBus.log_output.emit(
+                    "INFO", self.tr("Starting to load custom components...")
+                )
+                self.maafw.resource.clear_custom_recognition()
+                self.maafw.resource.clear_custom_action()
+                result = self.maafw.load_custom_objects(
+                    custom_config_path=pre_cfg.task_option.get("custom", self.task_service.interface.get("custom",""))
+                )
+                if not result:
+                    failed_actions = self.maafw.custom_load_report["actions"]["failed"]
+                    failed_recogs = self.maafw.custom_load_report["recognitions"][
+                        "failed"
+                    ]
+                    detail_parts = [
+                        f"动作 {item.get('name', '')}: {item.get('reason', '')}"
+                        for item in failed_actions
+                    ] + [
+                        f"识别器 {item.get('name', '')}: {item.get('reason', '')}"
+                        for item in failed_recogs
+                    ]
+                    detail_msg = (
+                        "；".join([part for part in detail_parts if part]) or "未知原因"
+                    )
+                    msg = f"自定义组件加载失败，流程终止: {detail_msg}"
+                    logger.error(msg)
+                    signalBus.log_output.emit("ERROR", msg)
+                    await self.stop_task()
+                    return
 
             logger.info("开始执行任务序列...")
             for task in self.task_service.current_tasks:
@@ -396,7 +429,13 @@ class TaskFlowRunner(QObject):
         entry = raw_info.get("entry", "")
         pipeline_override = raw_info.get("pipeline_override", {})
 
-        await self.maafw.run_task(entry, pipeline_override)
+        if not self.maafw.resource:
+            logger.error("资源未初始化，无法执行任务")
+            return
+
+        if not await self.maafw.run_task(entry, pipeline_override):
+            logger.error(f"任务 '{task.name}' 执行失败")
+            return
         self._record_speedrun_runtime(task)
 
     async def stop_task(self):
