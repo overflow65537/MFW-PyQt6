@@ -804,9 +804,18 @@ class ResourceSettingMixin:
         search_option: DeviceFinderWidget = self.resource_setting_widgets[
             "search_combo"
         ]
-        search_option.combo_box.blockSignals(True)
-        search_option.combo_box.addItem(device_name)
-        search_option.combo_box.blockSignals(False)
+        combo_box = search_option.combo_box
+        combo_box.blockSignals(True)
+        # 先尝试定位已有的设备项，避免重复添加
+        target_index = next(
+            (i for i in range(combo_box.count()) if combo_box.itemText(i) == device_name),
+            -1,
+        )
+        if target_index == -1:
+            combo_box.addItem(device_name)
+            target_index = combo_box.count() - 1
+        combo_box.setCurrentIndex(target_index)
+        combo_box.blockSignals(False)
 
     def _fill_custom_option(self):
         custom_edit = self.resource_setting_widgets.get("custom")
