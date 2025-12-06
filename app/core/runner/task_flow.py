@@ -68,6 +68,7 @@ class TaskFlowRunner(QObject):
         self.need_stop = False
         self.monitor_need_stop = False
         self._is_running = False
+        self._next_config_to_run: str | None = None
         self.adb_controller_raw: dict[str, Any] | None = None
         self.adb_activate_controller: str | None = None
         self.adb_controller_config: dict[str, Any] | None = None
@@ -346,6 +347,12 @@ class TaskFlowRunner(QObject):
                 )
 
             self._is_running = False
+
+            next_config = self._next_config_to_run
+            self._next_config_to_run = None
+            if next_config:
+                logger.info(f"完成后自动启动配置: {next_config}")
+                asyncio.create_task(self.run_tasks_flow())
 
     @property
     def is_running(self) -> bool:
@@ -895,6 +902,7 @@ class TaskFlowRunner(QObject):
                 await self._run_other_configuration(target_config)
             else:
                 logger.warning("完成后运行其他配置开关被激活，但未配置目标配置")
+            return
 
         if post_config.get("close_software"):
             await self._close_software()
@@ -957,6 +965,7 @@ class TaskFlowRunner(QObject):
         config_service.current_config_id = config_id
         if config_service.current_config_id == config_id:
             logger.info(f"已切换至完成后指定配置: {config_id}")
+            self._next_config_to_run = config_id
         else:
             logger.warning(f"切换至配置 {config_id} 失败")
 
