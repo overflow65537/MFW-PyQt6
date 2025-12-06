@@ -46,8 +46,9 @@ from PySide6.QtGui import (
     QKeySequence,
     QGuiApplication,
     QDesktopServices,
+    QPixmap,
 )
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QLabel, QGraphicsOpacityEffect
 
 from qfluentwidgets import (
     NavigationItemPosition,
@@ -104,6 +105,9 @@ class MainWindow(MSFluentWindow):
         self._announcement_pending_show = False
         self._log_zip_running = False
         self._log_zip_infobar: InfoBar | None = None
+        self._background_label: QLabel | None = None
+        self._background_pixmap_original: QPixmap | None = None
+        self._background_opacity_effect: QGraphicsOpacityEffect | None = None
         self._init_announcement()
 
         # 初始化窗口
@@ -189,6 +193,7 @@ class MainWindow(MSFluentWindow):
 
         self._set_initial_geometry()
         self.show()
+        self._init_background_layer()
         QApplication.processEvents()
 
     def _set_initial_geometry(self):
@@ -222,12 +227,117 @@ class MainWindow(MSFluentWindow):
         w, h = desktop.width(), desktop.height()
         self.move(w // 2 - self.width() // 2, h // 2 - self.height() // 2)
 
+    def _init_background_layer(self):
+        """创建并应用自定义背景层。"""
+        if self._background_label is not None:
+            return
+
+        self._background_label = QLabel(self)
+        self._background_label.setObjectName("appBackgroundLabel")
+        self._background_label.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
+        )
+        self._background_label.setScaledContents(True)
+        self._background_opacity_effect = QGraphicsOpacityEffect(self._background_label)
+        self._background_label.setGraphicsEffect(self._background_opacity_effect)
+        self._apply_background_from_config()
+        self._update_background_geometry()
+        self._background_label.lower()
+
+    def _apply_background_from_config(self):
+        """根据配置加载背景图与透明度。"""
+        if self._background_label is None:
+            return
+        opacity_value = cfg.get(cfg.background_image_opacity)
+        self._apply_background_opacity(opacity_value)
+        self._load_background_pixmap(cfg.get(cfg.background_image_path))
+
+    def _apply_background_opacity(self, value: int | float | None):
+        """更新背景透明度，传入百分比。"""
+        if self._background_opacity_effect is None:
+            return
+        if value is None:
+            opacity = 100.0
+        else:
+            try:
+                opacity = float(value)
+            except (TypeError, ValueError):
+                opacity = 100.0
+        opacity = max(0.0, min(100.0, opacity))
+        self._background_opacity_effect.setOpacity(opacity / 100.0)
+
+    def _load_background_pixmap(self, path: str | None):
+        """加载并应用背景图，若路径为空或无效则隐藏背景。"""
+        if self._background_label is None:
+            return
+
+        path = str(path or "").strip()
+        if not path:
+            self._background_pixmap_original = None
+            self._background_label.hide()
+            return
+
+        candidate = Path(path)
+        if not candidate.is_file():
+            logger.warning(" 背景图不存在：%s", path)
+            self._background_pixmap_original = None
+            self._background_label.hide()
+            return
+
+        pixmap = QPixmap(str(candidate))
+        if pixmap.isNull():
+            logger.warning(" 无法加载背景图：%s", path)
+            self._background_pixmap_original = None
+            self._background_label.hide()
+            return
+
+        self._background_pixmap_original = pixmap
+        self._background_label.show()
+        self._update_background_pixmap()
+        self._background_label.lower()
+
+    def _update_background_pixmap(self):
+        """缩放并填充背景图。"""
+        if self._background_label is None:
+            return
+
+        self._background_label.setGeometry(self.rect())
+        if not self._background_pixmap_original:
+            self._background_label.clear()
+            return
+
+        scaled = self._background_pixmap_original.scaled(
+            self.size(),
+            Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        self._background_label.setPixmap(scaled)
+        self._background_label.lower()
+
+    def _update_background_geometry(self):
+        """在窗口尺寸变化时同步背景尺寸。"""
+        if self._background_label is None:
+            return
+        self._background_label.setGeometry(self.rect())
+        if self._background_pixmap_original:
+            self._update_background_pixmap()
+
+    def _on_background_image_changed(self, path: str):
+        """响应设置界面的背景图变更。"""
+        self._load_background_pixmap(path)
+
+    def _on_background_opacity_changed(self, value: int):
+        """响应设置界面的背景透明度变更。"""
+        self._apply_background_opacity(value)
+
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
         signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
         signalBus.title_changed.connect(self.set_title)
         signalBus.info_bar_requested.connect(self.show_info_bar)
         signalBus.request_log_zip.connect(self._on_request_log_zip)
+        signalBus.background_image_changed.connect(self._on_background_image_changed)
+        signalBus.background_opacity_changed.connect(self._on_background_opacity_changed)
 
     def _reload_global_hotkeys(self):
         """配置变更后重新注册全局快捷键。"""
@@ -533,6 +643,7 @@ class MainWindow(MSFluentWindow):
         super().resizeEvent(e)
         if hasattr(self, "splashScreen"):
             self.splashScreen.resize(self.size())
+        self._update_background_geometry()
 
     def _save_window_geometry_if_needed(self):
         """在关闭时保存当前窗口的位置与大小，用于下次恢复。"""

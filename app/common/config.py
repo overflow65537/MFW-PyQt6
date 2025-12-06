@@ -24,6 +24,7 @@ MFW-ChainFlow Assistant 配置
 
 
 import sys
+from pathlib import Path
 from enum import Enum
 
 from PySide6.QtCore import QLocale
@@ -52,6 +53,15 @@ class Language(Enum):
 
 def isWin11():
     return sys.platform == "win32" and sys.getwindowsversion().build >= 22000
+
+
+def _detect_default_background_image() -> str:
+    """查找默认背景图，依次尝试 ./background.jpg 与 ./background.png。"""
+    for name in ("background.jpg", "background.png"):
+        candidate = Path(name)
+        if candidate.is_file():
+            return str(candidate)
+    return ""
 
 
 class Config(QConfig):
@@ -184,18 +194,23 @@ class Config(QConfig):
     )
     last_window_geometry = ConfigItem("MainWindow", "LastWindowGeometry", "")
 
-    start_task_shortcut = ConfigItem(
-        "Shortcuts", "start_task_shortcut", "Ctrl+`"
-    )
-    stop_task_shortcut = ConfigItem(
-        "Shortcuts", "stop_task_shortcut", "Alt+`"
-    )
+    start_task_shortcut = ConfigItem("Shortcuts", "start_task_shortcut", "Ctrl+`")
+    stop_task_shortcut = ConfigItem("Shortcuts", "stop_task_shortcut", "Alt+`")
 
     show_advanced_startup_options = ConfigItem(
         "Personalization",
         "show_advanced_startup_options",
         False,
         BoolValidator(),
+    )
+
+    # ===== 背景 =====
+    _default_background = _detect_default_background_image()
+    background_image_path = ConfigItem(
+        "Personalization", "background_image_path", _default_background
+    )
+    background_image_opacity = RangeConfigItem(
+        "Personalization", "background_image_opacity", 80, RangeValidator(0, 100)
     )
 
     # ===== 材质 & 通用界面 =====

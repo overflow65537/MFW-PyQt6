@@ -18,9 +18,7 @@ from qfluentwidgets import FluentIcon as FIF
 from app.view.setting_interface.widget.RightCheckPrimaryPushButton import (
     RightCheckPrimaryPushButton,
 )
-from app.utils.logger import logger
 
-import os
 import time
 
 from typing import Optional, Union

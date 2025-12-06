@@ -1,6 +1,6 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout
 from qfluentwidgets import MessageBoxBase
-from app.utils.widget import CheckBox
+from qfluentwidgets  import CheckBox
 from app.common.config import cfg
 
 

@@ -7,6 +7,7 @@ MFW-ChainFlow Assistant 设置界面
 import re
 from typing import Callable, Optional
 from time import perf_counter
+from pathlib import Path
 
 from PySide6.QtCore import Qt, QSize, QUrl, QTimer, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QDesktopServices, QPixmap
@@ -22,6 +23,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QStackedLayout,
     QGraphicsOpacityEffect,
+    QFileDialog,
 )
 from qfluentwidgets import (
     BodyLabel,
@@ -51,6 +53,7 @@ from app.utils.logger import logger
 from app.utils.update import Update, UpdateCheckTask
 from app.view.setting_interface.widget.ProxySettingCard import ProxySettingCard
 from app.utils.hotkey_manager import GlobalHotkeyManager
+from app.view.setting_interface.widget.SliderSettingCard import SliderSettingCard
 from app.view.setting_interface.widget.LineEditCard import (
     LineEditCard,
     MirrorCdkLineEditCard,
@@ -667,9 +670,47 @@ class SettingInterface(QWidget):
             self.personalGroup,
         )
 
+        background_path_value = cfg.get(cfg.background_image_path) or ""
+        self.background_image_card = LineEditCard(
+            FIF.PHOTO,
+            self.tr("Background Image"),
+            holderText=background_path_value,
+            content=self.tr("Select an image as application background"),
+            parent=self.personalGroup,
+            num_only=False,
+            button=True,
+        )
+        self.background_image_card.lineEdit.setPlaceholderText(
+            self.tr("Choose an image file (png/jpg/webp/bmp)")
+        )
+        self.background_image_card.lineEdit.setText(background_path_value)
+        self.background_image_card.lineEdit.setClearButtonEnabled(True)
+        self.background_image_card.toolbutton.setToolTip(self.tr("Browse image file"))
+        self.background_image_card.toolbutton.clicked.connect(
+            self._choose_background_image
+        )
+        self.background_image_card.lineEdit.editingFinished.connect(
+            self._on_background_path_editing_finished
+        )
+
+        self.background_opacity_card = SliderSettingCard(
+            FIF.TRANSPARENT,
+            self.tr("Background Opacity"),
+            self.tr("Adjust transparency of the background image"),
+            parent=self.personalGroup,
+            minimum=0,
+            maximum=100,
+            step=5,
+            suffix="%",
+            config_item=cfg.background_image_opacity,
+            on_value_changed=self._on_background_opacity_changed,
+        )
+
         self.personalGroup.addSettingCard(self.micaCard)
         self.personalGroup.addSettingCard(self.themeCard)
         self.personalGroup.addSettingCard(self.themeColorCard)
+        self.personalGroup.addSettingCard(self.background_image_card)
+        self.personalGroup.addSettingCard(self.background_opacity_card)
         self.personalGroup.addSettingCard(self.zoomCard)
         self.personalGroup.addSettingCard(self.languageCard)
         self.personalGroup.addSettingCard(self.remember_geometry_card)
@@ -1117,6 +1158,56 @@ class SettingInterface(QWidget):
             base_size = 10
         font.setPointSize(base_size + 2)
         self.setFont(font)
+
+    def _choose_background_image(self):
+        """弹出文件选择器选择背景图。"""
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            self.tr("Select background image"),
+            str(Path.home()),
+            self.tr("Images (*.png *.jpg *.jpeg *.bmp *.webp)"),
+        )
+        if not path:
+            return
+        self._update_background_image(path)
+
+    def _on_background_path_editing_finished(self):
+        """手动输入背景图路径后校验并应用。"""
+        if not hasattr(self, "background_image_card"):
+            return
+        path = self.background_image_card.lineEdit.text().strip()
+        if not path:
+            self._update_background_image("")
+            return
+        self._update_background_image(path, notify_missing=True)
+
+    def _update_background_image(self, path: str, notify_missing: bool = False):
+        """更新配置中的背景图路径并通知主窗口。"""
+        normalized = str(Path(path).expanduser()) if path else ""
+        if normalized and not Path(normalized).is_file():
+            if notify_missing:
+                signalBus.info_bar_requested.emit(
+                    "warning", self.tr("Image file does not exist")
+                )
+            # 回滚到上一次有效的路径
+            previous = cfg.get(cfg.background_image_path) or ""
+            self.background_image_card.lineEdit.setText(previous)
+            self.background_image_card.lineEdit.setToolTip(previous)
+            return
+
+        cfg.set(cfg.background_image_path, normalized)
+        self.background_image_card.lineEdit.setText(normalized)
+        self.background_image_card.lineEdit.setToolTip(normalized)
+        signalBus.background_image_changed.emit(normalized)
+
+    def _on_background_opacity_changed(self, value: int):
+        """调整背景透明度并实时应用。"""
+        try:
+            value_int = int(value)
+        except (TypeError, ValueError):
+            value_int = 80
+        value_int = max(0, min(100, value_int))
+        signalBus.background_opacity_changed.emit(value_int)
 
     def __showRestartTooltip(self):
         """显示重启提示。"""
