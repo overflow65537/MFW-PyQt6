@@ -44,6 +44,8 @@ class SignalBus(QObject):
 
     # 显示 InfoBar 的请求
     info_bar_requested = Signal(str, str)  # (level, message)
+    log_zip_started = Signal()  # 日志打包开始
+    log_zip_finished = Signal()  # 日志打包结束
 
     config_changed = Signal(str)  # (config_id)
     log_clear_requested = Signal()

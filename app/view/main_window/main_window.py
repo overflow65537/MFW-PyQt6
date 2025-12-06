@@ -30,12 +30,22 @@ MFW-ChainFlow Assistant 主界面
 """
 
 
+import shutil
 import sys
+import threading
+import zipfile
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
 
-from PySide6.QtCore import QSize, QTimer, Qt
-from PySide6.QtGui import QIcon, QShortcut, QKeySequence, QGuiApplication
+from PySide6.QtCore import QSize, QTimer, Qt, QUrl
+from PySide6.QtGui import (
+    QIcon,
+    QShortcut,
+    QKeySequence,
+    QGuiApplication,
+    QDesktopServices,
+)
 from PySide6.QtWidgets import QApplication
 
 from qfluentwidgets import (
@@ -76,6 +86,8 @@ ENABLE_TEST_INTERFACE_PAGE = cfg.get(cfg.enable_test_interface_page)
 
 class MainWindow(MSFluentWindow):
 
+    _LOCKED_LOG_NAMES = {"maa.log", "clash.log", "maa.log.bak"}
+
     def __init__(self):
         super().__init__()
 
@@ -87,6 +99,8 @@ class MainWindow(MSFluentWindow):
         self.service_coordinator = ServiceCoordinator(multi_config_path)
 
         self._announcement_pending_show = False
+        self._log_zip_running = False
+        self._log_zip_infobar: InfoBar | None = None
         self._init_announcement()
 
         # 初始化窗口
@@ -194,6 +208,162 @@ class MainWindow(MSFluentWindow):
         signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
         signalBus.title_changed.connect(self.set_title)
         signalBus.info_bar_requested.connect(self.show_info_bar)
+        signalBus.request_log_zip.connect(self._on_request_log_zip)
+
+    def _on_request_log_zip(self):
+        """处理日志打包请求，避免重复执行。"""
+        if self._log_zip_running:
+            signalBus.info_bar_requested.emit(
+                "warning", self.tr("日志正在打包，请稍候...")
+            )
+            return
+
+        self._log_zip_running = True
+        signalBus.log_zip_started.emit()
+        self._show_log_zip_progress_infobar()
+        threading.Thread(target=self._generate_log_zip, daemon=True).start()
+
+    def _generate_log_zip(self):
+        """将 debug 目录打包为 zip，并兼容被占用的日志文件。"""
+        debug_dir = Path.cwd() / "debug"
+        if not debug_dir.exists() or not debug_dir.is_dir():
+            self._close_log_zip_progress()
+            signalBus.info_bar_requested.emit(
+                "error", self.tr("未找到 debug 目录，无法打包日志。")
+            )
+            self._log_zip_running = False
+            signalBus.log_zip_finished.emit()
+            return
+
+        zip_path = self._build_log_zip_path()
+        errors: list[str] = []
+        try:
+            with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                for file_path in debug_dir.rglob("*"):
+                    if file_path.is_dir():
+                        continue
+                    arcname = f"{debug_dir.name}/{file_path.relative_to(debug_dir).as_posix()}"
+                    if file_path.name in self._LOCKED_LOG_NAMES:
+                        self._write_locked_log(zf, file_path, arcname, errors)
+                    else:
+                        self._write_file_to_zip(zf, file_path, arcname, errors)
+
+            self._close_log_zip_progress()
+            self._notify_log_zip_result(zip_path, errors)
+            self._open_debug_dir(debug_dir)
+            logger.info(" 日志压缩包生成完成：%s", zip_path)
+        except Exception as exc:
+            logger.exception("生成日志压缩包失败")
+            self._close_log_zip_progress()
+            signalBus.info_bar_requested.emit(
+                "error", self.tr("日志打包失败：") + str(exc)
+            )
+        finally:
+            self._log_zip_running = False
+            signalBus.log_zip_finished.emit()
+
+    def _write_locked_log(
+        self,
+        zip_file: zipfile.ZipFile,
+        file_path: Path,
+        arcname: str,
+        errors: list[str],
+    ) -> None:
+        """直接读取被占用的日志文件内容后写入压缩包。"""
+        try:
+            data = file_path.read_bytes()
+            zip_file.writestr(arcname, data)
+        except Exception as exc:
+            errors.append(f"{arcname} ({exc})")
+            logger.warning(" 读取占用日志失败：%s (%s)", file_path, exc)
+
+    def _write_file_to_zip(
+        self,
+        zip_file: zipfile.ZipFile,
+        file_path: Path,
+        arcname: str,
+        errors: list[str],
+    ) -> None:
+        """流式复制文件到压缩包，单个文件出错不影响整体。"""
+        try:
+            with file_path.open("rb") as src, zip_file.open(arcname, "w") as dest:
+                shutil.copyfileobj(src, dest, length=1024 * 512)
+        except Exception as exc:
+            errors.append(f"{arcname} ({exc})")
+            logger.warning(" 添加日志文件失败：%s (%s)", file_path, exc)
+
+    def _build_log_zip_path(self) -> Path:
+        """生成日志压缩包路径（放在 debug 目录内），如已存在则删除后重建。"""
+        debug_dir = Path.cwd() / "debug"
+        zip_path = debug_dir / "debug.zip"
+        try:
+            if zip_path.exists():
+                zip_path.unlink()
+        except Exception as exc:
+            logger.warning(" 删除已有 debug.zip 失败：%s", exc)
+        return zip_path
+
+    def _notify_log_zip_result(self, zip_path: Path, errors: list[str]) -> None:
+        """汇报日志打包结果并提示可能跳过的文件。"""
+        if errors:
+            preview = "; ".join(errors[:3])
+            more_count = len(errors) - len(errors[:3])
+            suffix = ""
+            if more_count > 0:
+                suffix = self.tr("，另有 ") + str(more_count) + self.tr(" 个文件未加入")
+            signalBus.info_bar_requested.emit(
+                "warning",
+                self.tr("日志已打包，但部分文件读取失败：") + preview + suffix,
+            )
+            return
+
+        signalBus.info_bar_requested.emit(
+            "info", self.tr("日志已打包：") + str(zip_path.resolve())
+        )
+
+    def _show_log_zip_progress_infobar(self):
+        """显示“正在压缩”提示。"""
+        self._close_log_zip_progress()
+        bar = InfoBar.info(
+            title=self.tr("正在打包日志"),
+            content=self.tr("请稍候..."),
+            orient=Qt.Orientation.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=-1,
+            parent=self,
+        )
+        self._log_zip_infobar = bar
+
+    def _close_log_zip_progress(self):
+        """关闭进度 InfoBar（切回主线程执行）。"""
+        bar = self._log_zip_infobar
+        if not bar:
+            return
+
+        def _close():
+            if bar:
+                bar.close()
+
+        self._invoke_in_ui(_close)
+        self._log_zip_infobar = None
+
+    def _open_debug_dir(self, debug_dir: Path):
+        """压缩完成后打开 debug 目录。"""
+        if not debug_dir.exists():
+            return
+
+        def _open():
+            try:
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(debug_dir.resolve())))
+            except Exception as exc:
+                logger.warning(" 打开 debug 目录失败：%s", exc)
+
+        self._invoke_in_ui(_open)
+
+    def _invoke_in_ui(self, func):
+        """在 UI 线程异步执行回调。"""
+        QTimer.singleShot(0, self, func)
 
     def _init_announcement(self):
         self._announcement_title = self.tr("Announcement")

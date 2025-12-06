@@ -45,6 +45,12 @@ class LogoutputWidget(QWidget):
         signalBus.callback.connect(self._on_maa_callback)
         signalBus.log_output.connect(self._on_log_output)
         signalBus.log_clear_requested.connect(self.clear_log)
+        signalBus.log_zip_started.connect(
+            lambda: self.generate_log_zip_button.setEnabled(False)
+        )
+        signalBus.log_zip_finished.connect(
+            lambda: self.generate_log_zip_button.setEnabled(True)
+        )
 
     def _init_log_output(self):
         """初始化日志输出区域"""
@@ -88,6 +94,7 @@ class LogoutputWidget(QWidget):
 
         # 生成日志压缩包按钮
         self.generate_log_zip_button = ToolButton(FIF.FEEDBACK, self)
+        self.generate_log_zip_button.setToolTip(self.tr("打包调试日志"))
         # 悬浮提示
         self.generate_log_zip_button.installEventFilter(
             ToolTipFilter(self.generate_log_zip_button, 0, ToolTipPosition.TOP)
