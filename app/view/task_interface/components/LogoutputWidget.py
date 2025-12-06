@@ -78,7 +78,7 @@ class LogoutputWidget(QWidget):
         # 日志输出区域总体布局
         self.log_output_widget = QWidget()
         self.log_output_layout = QVBoxLayout(self.log_output_widget)
-        self.log_output_layout.setContentsMargins(0, 6, 0, 10)
+        self.log_output_layout.setContentsMargins(0, 10, 0, 9)
         self.log_output_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.log_output_layout.addLayout(self.log_output_title_layout)
         self.log_output_layout.addWidget(self.log_output_area)
@@ -271,7 +271,7 @@ class LogoutputWidget(QWidget):
         cursor.insertBlock()
 
     def eventFilter(self, obj, event):
-        """拦截鼠标点击和复制快捷键"""
+        """拦截鼠标点击，但保留复制快捷键"""
         if obj is self.log_output_area:
             if event.type() in (
                 QEvent.Type.MouseButtonPress,
@@ -284,10 +284,7 @@ class LogoutputWidget(QWidget):
                 modifiers = key_event.modifiers()
                 if modifiers & Qt.KeyboardModifier.ControlModifier:
                     if key_event.key() in (Qt.Key.Key_C, Qt.Key.Key_Insert):
+                        return False  # 允许复制
+                    if key_event.key() == Qt.Key.Key_A:
                         return True
-                if (
-                    modifiers & Qt.KeyboardModifier.ControlModifier
-                    and key_event.key() == Qt.Key.Key_A
-                ):
-                    return True
         return super().eventFilter(obj, event)

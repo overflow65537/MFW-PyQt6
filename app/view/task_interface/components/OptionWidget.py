@@ -52,7 +52,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         """初始化UI"""
         self.main_layout = QVBoxLayout(self)
 
-        self.title_widget = BodyLabel()
+        self.title_widget = BodyLabel("Options")
         self.title_widget.setStyleSheet("font-size: 20px;")
         self.title_widget.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
@@ -170,7 +170,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self.option_splitter_widget = QWidget()
         self.option_splitter_layout = QVBoxLayout(self.option_splitter_widget)
         self.option_splitter_layout.addWidget(self.option_area_card)
-        self.option_splitter_layout.setContentsMargins(0, 0, 0, 0)
+        self.option_splitter_layout.setContentsMargins(0, 13, 0, 0)
 
         # 创建描述区域容器（仅用于分割器）
         self.description_splitter_widget = QWidget()
