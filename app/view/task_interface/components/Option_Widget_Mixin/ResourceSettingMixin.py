@@ -409,7 +409,7 @@ class ResourceSettingMixin:
         timeout_edit = LineEdit()
         timeout_validator = QIntValidator(-1, 2147483647, timeout_edit)
         timeout_edit.setValidator(timeout_validator)
-        timeout_edit.setPlaceholderText(self.tr("-1 表示无限"))
+        timeout_edit.setPlaceholderText(self.tr("-1 means infinite"))
 
         timeout_layout = QHBoxLayout()
         timeout_layout.addWidget(timeout_label)
@@ -426,7 +426,7 @@ class ResourceSettingMixin:
     def _create_custom_option(self):
         """创建自定义模块路径输入"""
         self._create_resource_line_edit(
-            self.tr("自定义模块路径"),
+            self.tr("Custom Module Path"),
             "custom",
             self._on_custom_path_changed,
             True,

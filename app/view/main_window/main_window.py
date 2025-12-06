@@ -233,7 +233,7 @@ class MainWindow(MSFluentWindow):
         """处理日志打包请求，避免重复执行。"""
         if self._log_zip_running:
             signalBus.info_bar_requested.emit(
-                "warning", self.tr("日志正在打包，请稍候...")
+                "warning", self.tr("Log is being packaged, please wait...")
             )
             return
 
@@ -248,7 +248,7 @@ class MainWindow(MSFluentWindow):
         if not debug_dir.exists() or not debug_dir.is_dir():
             self._close_log_zip_progress()
             signalBus.info_bar_requested.emit(
-                "error", self.tr("未找到 debug 目录，无法打包日志。")
+                "error", self.tr("Debug directory not found, cannot package logs.")
             )
             self._log_zip_running = False
             signalBus.log_zip_finished.emit()
@@ -275,7 +275,7 @@ class MainWindow(MSFluentWindow):
             logger.exception("生成日志压缩包失败")
             self._close_log_zip_progress()
             signalBus.info_bar_requested.emit(
-                "error", self.tr("日志打包失败：") + str(exc)
+                "error", self.tr("Log packaging failed:") + str(exc)
             )
         finally:
             self._log_zip_running = False
@@ -329,23 +329,23 @@ class MainWindow(MSFluentWindow):
             more_count = len(errors) - len(errors[:3])
             suffix = ""
             if more_count > 0:
-                suffix = self.tr("，另有 ") + str(more_count) + self.tr(" 个文件未加入")
+                suffix = self.tr(", there are ") + str(more_count) + self.tr(" files not added")
             signalBus.info_bar_requested.emit(
                 "warning",
-                self.tr("日志已打包，但部分文件读取失败：") + preview + suffix,
+                self.tr("Log has been packaged, but some files failed to read:") + preview + suffix,
             )
             return
 
         signalBus.info_bar_requested.emit(
-            "info", self.tr("日志已打包：") + str(zip_path.resolve())
+            "info", self.tr("Log has been packaged:") + str(zip_path.resolve())
         )
 
     def _show_log_zip_progress_infobar(self):
         """显示“正在压缩”提示。"""
         self._close_log_zip_progress()
         bar = InfoBar.info(
-            title=self.tr("正在打包日志"),
-            content=self.tr("请稍候..."),
+            title=self.tr("Packing logs"),
+            content=self.tr("Please wait..."),
             orient=Qt.Orientation.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP_RIGHT,

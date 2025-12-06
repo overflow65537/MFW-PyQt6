@@ -94,7 +94,7 @@ class LogoutputWidget(QWidget):
 
         # 生成日志压缩包按钮
         self.generate_log_zip_button = ToolButton(FIF.FEEDBACK, self)
-        self.generate_log_zip_button.setToolTip(self.tr("打包调试日志"))
+        self.generate_log_zip_button.setToolTip(self.tr("generate log zip"))
         # 悬浮提示
         self.generate_log_zip_button.installEventFilter(
             ToolTipFilter(self.generate_log_zip_button, 0, ToolTipPosition.TOP)
