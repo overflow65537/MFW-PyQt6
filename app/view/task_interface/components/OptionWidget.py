@@ -46,6 +46,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
         # 连接CoreSignalBus的options_loaded信号
         service_coordinator.signal_bus.options_loaded.connect(self._on_options_loaded)
+        service_coordinator.signal_bus.config_changed.connect(self._on_config_changed)
 
     def _init_ui(self):
         """初始化UI"""
@@ -329,6 +330,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
     def reset(self):
         """重置选项区域和描述区域"""
         self._clear_options()
+        self.description_content.setText("")
         self._toggle_description(visible=False)
         # 显示选项区域，因为已经专门的方法清除选项
         self.option_splitter_widget.show()
