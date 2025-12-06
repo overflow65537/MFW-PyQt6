@@ -156,8 +156,6 @@ class MaaFW(QObject):
     custom_info = Signal(int)
     agent_info = Signal(str)
 
-    embedded_agent_mode: bool = False
-
     # 超时后仍未停止的 agent 进程最长等待时间
     AGENT_TERMINATE_TIMEOUT_SECONDS: float = 5.0
 
@@ -288,14 +286,6 @@ class MaaFW(QObject):
         return self.tasker
 
     def _init_agent(self, agent_data_raw: dict) -> bool:
-        def _is_python_launcher(executable: str) -> bool:
-            """判断是否为 Python 可执行文件"""
-
-            if not executable:
-                return False
-            executable_name = Path(executable).stem.lower()
-            return executable_name.startswith("python")
-
         if not (self.resource and self.controller):
             raise RuntimeError("agent 初始化前必须存在 resource/controller")
         if not self.tasker:
@@ -345,11 +335,7 @@ class MaaFW(QObject):
         ]
         agent_process: subprocess.Popen | None = None
         start_cmd = [child_exec, *child_args, socket_id]
-        if self.embedded_agent_mode and _is_python_launcher(executable=child_exec):
-            import sys
-
-            start_cmd = [sys.executable, *child_args, socket_id]
-        logger.debug(f"启动agent命令: {start_cmd},内置模式: {self.embedded_agent_mode}")
+        logger.debug(f"启动agent命令: {start_cmd}")
         # 如果是打包模式,使用utf8,否则使用gbk
         import os
 
@@ -441,7 +427,6 @@ class MaaFW(QObject):
             try:
                 self.agent.disconnect()
                 self.agent_data_raw = None
-                self.embedded_agent_mode = False
             except Exception as e:
                 logger.error(f"断开agent连接失败: {e}")
             finally:

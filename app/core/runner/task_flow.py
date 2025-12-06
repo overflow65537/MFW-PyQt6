@@ -202,10 +202,6 @@ class TaskFlowRunner(QObject):
                 self.maafw.agent_data_raw = self.task_service.interface.get(
                     "agent", None
                 )
-                self.maafw.embedded_agent_mode = pre_cfg.task_option.get(
-                    "embedded_agent", False
-                )
-                logger.info(f"内嵌Agent模式: {self.maafw.embedded_agent_mode}")
                 signalBus.log_output.emit("INFO", self.tr("Agent Service Start"))
 
             logger.info("开始执行任务序列...")

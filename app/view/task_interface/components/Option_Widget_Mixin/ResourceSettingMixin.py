@@ -7,8 +7,6 @@ from qfluentwidgets import (
     ComboBox,
     LineEdit,
     ToolTipFilter,
-    SwitchButton,
-    IndicatorPosition,
 )
 from pathlib import WindowsPath
 
@@ -69,13 +67,6 @@ class ResourceSettingMixin:
             128: 8,
         }
         return value_mapping.get(value, 0)  # 默认返回0如果值不存在
-
-    def _resolve_agent_embedded_default(self, agent_config: dict) -> bool:
-        """根据 interface 中的 agent 配置解析内置 agent 模式默认值"""
-        embedded = agent_config.get("embedded_mode")
-        if isinstance(embedded, str):
-            return embedded.strip().lower() in {"1", "true", "yes", "on"}
-        return bool(embedded)
 
     def _coerce_int(self, value: Any) -> int | None:
         """尝试将值转换为整数，失败则返回 None"""
@@ -290,12 +281,8 @@ class ResourceSettingMixin:
             interface.get("controller", [])
         )
         agent_interface_config = interface.get("agent", {})
-        self.agent_embedded_default = self._resolve_agent_embedded_default(
-            agent_interface_config
-        )
         self.current_config = self.service_coordinator.option_service.current_options
         self.current_config.setdefault("gpu", -1)
-        self.current_config.setdefault("embedded_agent", self.agent_embedded_default)
         agent_timeout_default = self._coerce_int(agent_interface_config.get("timeout"))
         if agent_timeout_default is None:
             agent_timeout_default = 30
@@ -337,8 +324,8 @@ class ResourceSettingMixin:
         self._create_search_option()
         # 创建GPU加速下拉框
         self._create_gpu_option()
-        # 创建内置 agent 隐藏选项
-        self._create_agent_hidden_options()
+        # 创建 agent 启动超时时间选项
+        self._create_agent_timeout_option()
         # 创建ADB和Win32子选项
         self._create_adb_children_option()
         self._create_win32_children_option()
@@ -410,23 +397,8 @@ class ResourceSettingMixin:
         self.parent_layout.addWidget(search_combo)
         search_combo.combo_box.currentTextChanged.connect(self._on_search_combo_changed)
 
-    def _create_agent_hidden_options(self):
-        """创建内置 agent 模式相关隐藏选项"""
-        embedded_label = BodyLabel(self.tr("Embedded Agent Mode"))
-        embedded_switch = SwitchButton(
-            self.tr("Off"), None, IndicatorPosition.RIGHT
-        )
-        embedded_layout = QHBoxLayout()
-        embedded_layout.addWidget(embedded_label)
-        embedded_layout.addStretch()
-        embedded_layout.addWidget(embedded_switch)
-        self.parent_layout.addLayout(embedded_layout)
-
-        self.resource_setting_widgets["embedded_agent_mode_label"] = embedded_label
-        self.resource_setting_widgets["embedded_agent_mode"] = embedded_switch
-
-        embedded_switch.checkedChanged.connect(self._on_embedded_agent_toggled)
-
+    def _create_agent_timeout_option(self):
+        """创建 Agent 启动超时时间输入"""
         timeout_label = BodyLabel(self.tr("Agent Timeout"))
         timeout_edit = LineEdit()
         timeout_validator = QIntValidator(-1, 2147483647, timeout_edit)
@@ -443,10 +415,7 @@ class ResourceSettingMixin:
         self.resource_setting_widgets["agent_timeout"] = timeout_edit
         timeout_edit.textChanged.connect(self._on_agent_timeout_changed)
 
-        self._fill_agent_hidden_options()
-        self._toggle_children_visible(
-            ["embedded_agent_mode", "agent_timeout"], self.show_hide_option
-        )
+        self._toggle_children_visible(["agent_timeout"], self.show_hide_option)
 
     def _create_gpu_option(self):
         """创建GPU加速下拉框"""
@@ -809,7 +778,7 @@ class ResourceSettingMixin:
                     target = self.current_config[controller_name][name]
                     widget.setCurrentIndex(self._value_to_index(target))
         self._fill_gpu_option()
-        self._fill_agent_hidden_options()
+        self._fill_agent_timeout_option()
         # 填充设备名称
         device_name = self.current_config[controller_name].get(
             "device_name", self.tr("Unknown Device")
@@ -844,19 +813,7 @@ class ResourceSettingMixin:
         combo.setCurrentIndex(target_index)
         combo.blockSignals(False)
 
-    def _fill_agent_hidden_options(self):
-        switch = self.resource_setting_widgets.get("embedded_agent_mode")
-        if isinstance(switch, SwitchButton):
-            switch.blockSignals(True)
-            switch.setChecked(
-                bool(
-                    self.current_config.get(
-                        "embedded_agent", self.agent_embedded_default
-                    )
-                )
-            )
-            switch.blockSignals(False)
-
+    def _fill_agent_timeout_option(self):
         timeout_edit = self.resource_setting_widgets.get("agent_timeout")
         if isinstance(timeout_edit, LineEdit):
             timeout_edit.blockSignals(True)
@@ -871,10 +828,6 @@ class ResourceSettingMixin:
             )
             timeout_edit.setText(timeout_text)
             timeout_edit.blockSignals(False)
-
-    def _on_embedded_agent_toggled(self, checked: bool):
-        self.current_config["embedded_agent"] = bool(checked)
-        self._auto_save_options()
 
     def _on_agent_timeout_changed(self, text: str):
         if not text:
