@@ -524,11 +524,14 @@ class BaseUpdate(QThread):
             Callable[[requests.exceptions.HTTPError], Dict]
         ] = None,
         proxies: Optional[dict] = None,
+        headers: Optional[dict] = None,
     ):
         verify = self._ssl_verify()
         kwargs = {"timeout": 10, "verify": verify}
         if proxies is not None:
             kwargs["proxies"] = proxies
+        if headers is not None:
+            kwargs["headers"] = headers
 
         try:
             response = requests.get(url, **kwargs)
@@ -570,6 +573,19 @@ class BaseUpdate(QThread):
             "msg": self.tr("Github Update check failed HTTP error,code: ") + str(error),
         }
 
+    def _github_request_headers(self) -> dict[str, str] | None:
+        """根据配置构建 GitHub API 请求头以使用授权令牌。"""
+        token = cfg.get(cfg.github_api_key)
+        if not token:
+            return None
+        token_str = str(token).strip()
+        if not token_str:
+            return None
+        return {
+            "Authorization": f"token {token_str}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+
     def _mirror_response(self, url):
         """
         处理镜像源（MirrorChyan）的GET请求并返回响应。
@@ -605,6 +621,7 @@ class BaseUpdate(QThread):
                 "msg": self.tr("Github Update check failed SSL error"),
             },
             http_error_handler=self._github_http_error_handler,
+            headers=self._github_request_headers(),
             conn_result=lambda e: {
                 "status": "failed",
                 "msg": "Github ERROR" + "\n" + str(e),

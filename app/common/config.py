@@ -109,6 +109,7 @@ class Config(QConfig):
     update_ui_failed = ConfigItem("Update", "update_ui_failed", False, BoolValidator())
     force_github = ConfigItem("Update", "force_github", False, BoolValidator())
     start_complete = ConfigItem("Update", "start_complete", False, BoolValidator())
+    github_api_key = ConfigItem("Update", "github_api_key", "")
 
     resource_update_channel = OptionsConfigItem(
         "Update",

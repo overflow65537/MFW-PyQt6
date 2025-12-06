@@ -689,7 +689,7 @@ class SettingInterface(QWidget):
             FIF.RIGHT_ARROW,
             self.tr("Start task shortcut"),
             holderText=start_value,
-            content=self.tr("默认 Ctrl+`，焦点不在主窗口时也可触发"),
+            content=self.tr("Default Ctrl+`, can also trigger when focus is not on the main window"),
             parent=self.hotkeyGroup,
             num_only=False,
         )
@@ -710,7 +710,7 @@ class SettingInterface(QWidget):
             FIF.RIGHT_ARROW,
             self.tr("Stop task shortcut"),
             holderText=stop_value,
-            content=self.tr("默认 Alt+`，用于提前中断任务"),
+            content=self.tr("Default Alt+`, used to interrupt tasks in advance"),
             parent=self.hotkeyGroup,
             num_only=False,
         )
@@ -742,7 +742,7 @@ class SettingInterface(QWidget):
         if not key_text:
             self._set_shortcut_line_text(card, current)
             signalBus.info_bar_requested.emit(
-                "warning", self.tr("快捷键不能为空，已还原为先前配置。")
+                "warning", self.tr("Key cannot be empty")
             )
             return
 
@@ -755,7 +755,7 @@ class SettingInterface(QWidget):
         if not normalized:
             self._set_shortcut_line_text(card, current)
             signalBus.info_bar_requested.emit(
-                "warning", self.tr("快捷键格式无效，已还原为先前配置。")
+                "warning", self.tr("Key format is invalid, restored to previous configuration.")
             )
             return
 
@@ -769,13 +769,13 @@ class SettingInterface(QWidget):
                     else self.tr("Alt")
                 )
                 action_name = (
-                    self.tr("开始任务")
+                    self.tr("Start task")
                     if required_modifier == "ctrl"
-                    else self.tr("结束任务")
+                    else self.tr("Stop task")
                 )
                 signalBus.info_bar_requested.emit(
                     "warning",
-                    self.tr("快捷键必须以 %1+ 开头，用于 %2。")
+                    self.tr("Shortcut must start with %1+, used for %2.")
                     .replace("%1", modifier_name)
                     .replace("%2", action_name),
                 )
@@ -942,6 +942,24 @@ class SettingInterface(QWidget):
             parent=self.updateGroup,
         )
 
+        self.github_api_key_card = LineEditCard(
+            FIF.LINK,
+            self.tr("GitHub API Key"),
+            content=self.tr(
+                "Personal access tokens increase GitHub API rate limits for update checks."
+            ),
+            parent=self.updateGroup,
+            is_passwork=True,
+            num_only=False,
+        )
+        self.github_api_key_card.lineEdit.setPlaceholderText(
+            self.tr("Optional token for authenticated GitHub requests")
+        )
+        self.github_api_key_card.lineEdit.setText(cfg.get(cfg.github_api_key) or "")
+        self.github_api_key_card.lineEdit.textChanged.connect(
+            self._on_github_api_key_change
+        )
+
         self.proxy = ProxySettingCard(
             FIF.GLOBE,
             self.tr("Use Proxy"),
@@ -959,6 +977,7 @@ class SettingInterface(QWidget):
         self.updateGroup.addSettingCard(self.auto_update)
         self.updateGroup.addSettingCard(self.channel_selector)
         self.updateGroup.addSettingCard(self.force_github)
+        self.updateGroup.addSettingCard(self.github_api_key_card)
         self.updateGroup.addSettingCard(self.proxy)
 
         self.add_setting_group(self.updateGroup)
@@ -1031,6 +1050,9 @@ class SettingInterface(QWidget):
         except Exception as exc:
             logger.error("加密 Mirror CDK 失败: %s", exc)
             return
+
+    def _on_github_api_key_change(self, text: str):
+        cfg.set(cfg.github_api_key, str(text).strip())
 
     def _refresh_update_header(self):
         metadata = self.interface_data or {}
