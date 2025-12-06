@@ -1,10 +1,14 @@
 import asyncio
 import calendar
 import os
+import platform
 import shlex
 import subprocess
 import sys
 import time as _time
+import jsonc
+import ctypes
+
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict
@@ -26,6 +30,7 @@ from app.core.runner.maafw import (
     maa_resource_sink,
     maa_tasker_sink,
 )
+from app.utils.emulator_utils import EmulatorHelper
 
 from app.core.Item import FromeServiceCoordinator, TaskItem
 
@@ -63,6 +68,9 @@ class TaskFlowRunner(QObject):
         self.need_stop = False
         self.monitor_need_stop = False
         self._is_running = False
+        self.adb_controller_raw: dict[str, Any] | None = None
+        self.adb_activate_controller: str | None = None
+        self.adb_controller_config: dict[str, Any] | None = None
 
     def _handle_agent_info(self, info: str):
         if "| WARNING |" in info:
@@ -214,7 +222,9 @@ class TaskFlowRunner(QObject):
                 self.maafw.resource.clear_custom_recognition()
                 self.maafw.resource.clear_custom_action()
                 result = self.maafw.load_custom_objects(
-                    custom_config_path=pre_cfg.task_option.get("custom", self.task_service.interface.get("custom",""))
+                    custom_config_path=pre_cfg.task_option.get(
+                        "custom", self.task_service.interface.get("custom", "")
+                    )
                 )
                 if not result:
                     failed_actions = self.maafw.custom_load_report["actions"]["failed"]
@@ -469,32 +479,51 @@ class TaskFlowRunner(QObject):
             logger.error(f"未找到控制器配置: {controller_raw}")
             return False
 
-        adb_path = controller_raw.get(activate_controller, {}).get("adb_path", "")
-        address = controller_raw.get(activate_controller, {}).get("address", "")
+        self.adb_controller_raw = controller_raw
+        self.adb_activate_controller = activate_controller
 
-        # 如果 adb_path 或 address 为空，自动搜索设备
-        if not adb_path or not address:
-            logger.info("ADB 路径或地址为空，开始自动搜索设备...")
-            signalBus.log_output.emit("INFO", self.tr("Auto searching ADB devices..."))
-            found_device = await self._auto_find_adb_device(
-                controller_raw, activate_controller
+        controller_raw.setdefault(activate_controller, {})
+        controller_config = controller_raw[activate_controller]
+        self.adb_controller_config = controller_config
+
+        logger.info("每次连接前自动搜索 ADB 设备...")
+        signalBus.log_output.emit("INFO", self.tr("Auto searching ADB devices..."))
+        found_device = await self._auto_find_adb_device(
+            controller_raw, activate_controller, controller_config
+        )
+        if found_device:
+            logger.info("检测到与配置匹配的 ADB 设备，更新连接参数")
+            self._save_device_to_config(
+                controller_raw, activate_controller, found_device
             )
-            if found_device:
-                adb_path = found_device.get("adb_path", "")
-                address = found_device.get("address", "")
-            else:
-                logger.warning("未找到可用的 ADB 设备")
-                signalBus.log_output.emit("WARNING", self.tr("No ADB device found"))
-                return False
-        input_method = int(
+            controller_config = controller_raw[activate_controller]
+            self.adb_controller_config = controller_config
+        else:
+            logger.debug("未匹配到与配置一致的 ADB 设备，继续使用当前配置")
+
+        adb_path = controller_config.get("adb_path", "")
+        address = controller_config.get("address", "")
+        if not adb_path or not address:
+            logger.warning("未找到可用的 ADB 设备")
+            signalBus.log_output.emit("WARNING", self.tr("No ADB device found"))
+            return False
+        raw_input_method = int(
             controller_raw.get(activate_controller, {}).get("input_methods", -1)
         )
-        if input_method == 18446744073709551615:
-            input_method = -1
 
-        screen_method = int(
+        raw_screen_method = int(
             controller_raw.get(activate_controller, {}).get("screencap_methods", -1)
         )
+
+        def normalize_input_method(value: int) -> int:
+            mask = (1 << 64) - 1
+            value &= mask
+            if value & (1 << 63):
+                value -= 1 << 64
+            return value
+
+        input_method = normalize_input_method(raw_input_method)
+        screen_method = normalize_input_method(raw_screen_method)
         config = controller_raw.get(activate_controller, {}).get("config", {})
         logger.debug(
             (
@@ -552,32 +581,37 @@ class TaskFlowRunner(QObject):
             logger.error(f"未找到控制器配置: {controller_raw}")
             return False
 
-        hwnd = controller_raw.get(activate_controller, {}).get("hwnd", 0)
-        screencap_method: int = controller_raw.get(activate_controller, {}).get(
-            "win32_screencap_methods", 0
-        )
-        mouse_method: int = controller_raw.get(activate_controller, {}).get(
-            "mouse_input_methods", 0
-        )
-        keyboard_method: int = controller_raw.get(activate_controller, {}).get(
-            "keyboard_input_methods", 0
-        )
+        controller_raw.setdefault(activate_controller, {})
+        controller_config = controller_raw[activate_controller]
 
-        # 如果 hwnd 为空，自动搜索窗口
+        hwnd = controller_config.get("hwnd", 0)
+        screencap_method: int = controller_config.get("win32_screencap_methods", 0)
+        mouse_method: int = controller_config.get("mouse_input_methods", 0)
+        keyboard_method: int = controller_config.get("keyboard_input_methods", 0)
+
+        logger.info("每次连接前自动搜索 Win32 窗口...")
+        signalBus.log_output.emit("INFO", self.tr("Auto searching Win32 windows..."))
+        found_device = await self._auto_find_win32_window(
+            controller_raw, activate_controller, controller_config
+        )
+        if found_device:
+            logger.info("检测到与配置匹配的 Win32 窗口，更新连接参数")
+            self._save_device_to_config(
+                controller_raw, activate_controller, found_device
+            )
+            controller_config = controller_raw[activate_controller]
+        else:
+            logger.debug("未匹配到与配置一致的 Win32 窗口，继续使用当前配置")
+
+        hwnd = controller_config.get("hwnd", 0)
+        screencap_method = controller_config.get("win32_screencap_methods", 0)
+        mouse_method = controller_config.get("mouse_input_methods", 0)
+        keyboard_method = controller_config.get("keyboard_input_methods", 0)
+
         if not hwnd:
-            logger.info("HWND 为空，开始自动搜索 Win32 窗口...")
-            signalBus.log_output.emit(
-                "INFO", self.tr("Auto searching Win32 windows...")
-            )
-            found_device = await self._auto_find_win32_window(
-                controller_raw, activate_controller
-            )
-            if found_device:
-                hwnd = found_device.get("hwnd", 0)
-            else:
-                logger.warning("未找到可用的 Win32 窗口")
-                signalBus.log_output.emit("WARNING", self.tr("No Win32 window found"))
-                return False
+            logger.warning("未找到可用的 Win32 窗口")
+            signalBus.log_output.emit("WARNING", self.tr("No Win32 window found"))
+            return False
 
         if await self.maafw.connect_win32hwnd(
             hwnd,
@@ -616,6 +650,60 @@ class TaskFlowRunner(QObject):
         else:
             return False
         return True
+
+    def _parse_address_components(self, address: str | None) -> tuple[str, str | None]:
+        """提取 ADB 地址和端口"""
+        raw_address = (address or "").strip()
+        if not raw_address:
+            return "", None
+        if ":" in raw_address:
+            host, port = raw_address.rsplit(":", 1)
+            return host.strip(), port.strip() or None
+        return raw_address, None
+
+    def _should_use_new_adb_device(
+        self,
+        old_config: Dict[str, Any],
+        new_device: Dict[str, Any] | None,
+    ) -> bool:
+        """判断自动搜索到的 ADB 设备是否和旧配置一致"""
+        if not new_device:
+            return False
+
+        old_name = (old_config.get("device_name") or "").strip()
+        new_name = (new_device.get("device_name") or "").strip()
+        old_host, old_port = self._parse_address_components(old_config.get("address"))
+        new_host, new_port = self._parse_address_components(new_device.get("address"))
+
+        fields_present = sum(bool(value) for value in (old_name, old_host, old_port))
+        if fields_present < 2:
+            return True
+
+        match_count = 0
+        if old_name and new_name and old_name == new_name:
+            match_count += 1
+        if old_host and new_host and old_host == new_host:
+            match_count += 1
+        if old_port and new_port and old_port == new_port:
+            match_count += 1
+
+        return match_count >= 2
+
+    def _should_use_new_win32_window(
+        self,
+        old_config: Dict[str, Any],
+        new_device: Dict[str, Any] | None,
+    ) -> bool:
+        """判断自动搜索到的 Win32 窗口是否属于旧配置"""
+        if not new_device:
+            return False
+
+        old_name = (old_config.get("device_name") or "").strip()
+        new_name = (new_device.get("device_name") or "").strip()
+        if not old_name:
+            return bool(new_name)
+
+        return bool(new_name and old_name == new_name)
 
     def _start_process(
         self, entry: str | Path, argv: list[str] | tuple[str, ...] | str | None = None
@@ -679,90 +767,76 @@ class TaskFlowRunner(QObject):
         raise ValueError(f"未找到控制器类型: {controller_raw}")
 
     async def _auto_find_adb_device(
-        self, controller_raw: Dict[str, Any], activate_controller: str
+        self,
+        controller_raw: Dict[str, Any],
+        activate_controller: str,
+        controller_config: Dict[str, Any],
     ) -> Dict[str, Any] | None:
-        """自动搜索 ADB 设备并保存第一个结果到配置
-
-        Args:
-            controller_raw: 控制器原始配置
-            activate_controller: 当前激活的控制器名称
-
-        Returns:
-            找到的设备信息字典，未找到返回 None
-        """
+        """自动搜索 ADB 设备并找到与旧配置一致的那一项"""
         try:
             devices = Toolkit.find_adb_devices()
             if not devices:
                 logger.warning("未找到任何 ADB 设备")
                 return None
 
-            # 取第一个设备
-            device = devices[0]
-            device_info = {
-                "adb_path": str(device.adb_path),
-                "address": device.address,
-                "screencap_methods": device.screencap_methods,
-                "input_methods": device.input_methods,
-                "config": device.config,
-                "device_name": f"{device.name}({device.address})",
-            }
+            for device in devices:
+                # 优先使用 config 中的雷电 pid，补充给解析函数
+                ld_pid_cfg = (
+                    controller_config.get("config", {})
+                    .get("extras", {})
+                    .get("ld", {})
+                    .get("pid")
+                )
+                device_index = EmulatorHelper.resolve_emulator_index(
+                    device, ld_pid=ld_pid_cfg
+                )
+                display_name = (
+                    f"{device.name}[{device_index}]({device.address})"
+                    if device_index is not None
+                    else f"{device.name}({device.address})"
+                )
 
-            logger.info(f"自动搜索到 ADB 设备: {device_info['device_name']}")
-            signalBus.log_output.emit(
-                "INFO",
-                self.tr("Found ADB device: ") + device_info["device_name"],
-            )
-
-            # 更新配置并保存
-            self._save_device_to_config(
-                controller_raw, activate_controller, device_info
-            )
-
-            return device_info
+                device_info = {
+                    "adb_path": str(device.adb_path),
+                    "address": device.address,
+                    "screencap_methods": device.screencap_methods,
+                    "input_methods": device.input_methods,
+                    "config": device.config,
+                    "device_name": display_name,
+                }
+                if self._should_use_new_adb_device(controller_config, device_info):
+                    return device_info
+            logger.debug("ADB 设备列表均未满足与配置匹配的条件，跳过更新")
+            return None
 
         except Exception as e:
             logger.error(f"自动搜索 ADB 设备时出错: {e}")
             return None
 
     async def _auto_find_win32_window(
-        self, controller_raw: Dict[str, Any], activate_controller: str
+        self,
+        controller_raw: Dict[str, Any],
+        activate_controller: str,
+        controller_config: Dict[str, Any],
     ) -> Dict[str, Any] | None:
-        """自动搜索 Win32 窗口并保存第一个结果到配置
-
-        Args:
-            controller_raw: 控制器原始配置
-            activate_controller: 当前激活的控制器名称
-
-        Returns:
-            找到的窗口信息字典，未找到返回 None
-        """
+        """自动搜索 Win32 窗口并找到与旧配置一致的那一项"""
         try:
             windows = Toolkit.find_desktop_windows()
             if not windows:
                 logger.warning("未找到任何 Win32 窗口")
                 return None
 
-            # 取第一个窗口
-            window = windows[0]
-            window_info = {
-                "hwnd": str(window.hwnd),
-                "window_name": window.window_name,
-                "class_name": window.class_name,
-                "device_name": f"{window.window_name or 'Unknown Window'}({window.hwnd})",
-            }
-
-            logger.info(f"自动搜索到 Win32 窗口: {window_info['device_name']}")
-            signalBus.log_output.emit(
-                "INFO",
-                self.tr("Found Win32 window: ") + window_info["device_name"],
-            )
-
-            # 更新配置并保存
-            self._save_device_to_config(
-                controller_raw, activate_controller, window_info
-            )
-
-            return window_info
+            for window in windows:
+                window_info = {
+                    "hwnd": str(window.hwnd),
+                    "window_name": window.window_name,
+                    "class_name": window.class_name,
+                    "device_name": f"{window.window_name or 'Unknown Window'}({window.hwnd})",
+                }
+                if self._should_use_new_win32_window(controller_config, window_info):
+                    return window_info
+            logger.debug("Win32 窗口列表均未满足与配置匹配的条件，跳过更新")
+            return None
 
         except Exception as e:
             logger.error(f"自动搜索 Win32 窗口时出错: {e}")
@@ -897,8 +971,54 @@ class TaskFlowRunner(QObject):
         app.quit()
 
     def _close_emulator(self) -> None:
-        """关闭模拟器（占位实现，待补充）"""
-        pass
+        """关闭模拟器"""
+        if self.adb_controller_config is None:
+            return
+
+        adb_address = self.adb_controller_config.get("address", "")
+        if ":" in adb_address:
+            adb_port = adb_address.split(":")[-1]
+        elif "-" in adb_address:
+            adb_port = adb_address.split("-")[-1]
+        else:
+            adb_port = None
+        adb_path = self.adb_controller_config.get("adb_path")
+
+        device_name = self.adb_controller_config.get("device_name", "")
+
+        if device_name.lower().startswith("mumu"):
+            EmulatorHelper.close_mumu(adb_path, adb_port)
+            return
+        elif device_name.lower().startswith("ldplayer"):
+            ld_pid_cfg = (
+                self.adb_controller_config.get("config", {})
+                .get("extras", {})
+                .get("ld", {})
+                .get("pid")
+            )
+            EmulatorHelper.close_ldplayer(adb_path, ld_pid_cfg)
+
+            return
+        elif device_name.lower().startswith("bluestacks"):
+            pass
+        elif device_name.lower().startswith("nox"):
+            pass
+        elif device_name.lower().startswith("memu"):
+            pass
+        else:
+            logger.warning("未找到对应的模拟器")
+            return
+
+    def shutdown(self):
+        """
+        关机
+        """
+        shutdown_commands = {
+            "Windows": "shutdown /s /t 1",
+            "Linux": "shutdown now",
+            "Darwin": "sudo shutdown -h now",  # macOS
+        }
+        os.system(shutdown_commands.get(platform.system(), ""))
 
     def _shutdown_system(self) -> None:
         """执行系统关机命令，兼容 Windows/macOS/Linux"""

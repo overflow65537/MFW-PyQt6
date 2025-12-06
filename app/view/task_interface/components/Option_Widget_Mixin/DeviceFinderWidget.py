@@ -10,6 +10,7 @@ from qfluentwidgets import FluentIcon as FIF
 from maa.toolkit import Toolkit
 
 from app.utils.logger import logger
+from app.utils.emulator_utils import EmulatorHelper
 
 
 class DeviceFinderTask(QRunnable):
@@ -27,13 +28,26 @@ class DeviceFinderTask(QRunnable):
             if self.controller_type.lower() == "adb":
                 devices = Toolkit.find_adb_devices()
                 for device in devices:
-                    device_mapping[f"{device.name}({device.address})"] = {
+                    # 尝试从设备 config 中携带的 ld pid 反查雷电序号
+                    ld_pid = (
+                        getattr(device, "config", {}) or {}
+                    ).get("extras", {}).get("ld", {}).get("pid")
+                    device_index = EmulatorHelper.resolve_emulator_index(
+                        device, ld_pid=ld_pid
+                    )
+                    display_name = (
+                        f"{device.name}[{device_index}]({device.address})"
+                        if device_index is not None
+                        else f"{device.name}({device.address})"
+                    )
+                    device_mapping[display_name] = {
                         "name": device.name,
                         "adb_path": device.adb_path,
                         "address": device.address,
                         "screencap_methods": device.screencap_methods,
                         "input_methods": device.input_methods,
                         "config": device.config,
+                        "device_index": device_index,
                     }
 
             elif self.controller_type.lower() == "win32":
