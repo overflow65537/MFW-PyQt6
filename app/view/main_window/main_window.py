@@ -233,9 +233,11 @@ class MainWindow(MSFluentWindow):
         h_layout = getattr(title_bar, "hBoxLayout", None)
         btn_layout = getattr(title_bar, "buttonLayout", None)
         v_layout = getattr(title_bar, "vBoxLayout", None)
-        if not isinstance(h_layout, QHBoxLayout) or not isinstance(
-            btn_layout, QHBoxLayout
-        ) or not isinstance(v_layout, QVBoxLayout):
+        if (
+            not isinstance(h_layout, QHBoxLayout)
+            or not isinstance(btn_layout, QHBoxLayout)
+            or not isinstance(v_layout, QVBoxLayout)
+        ):
             return
 
         def _clear_layout(layout):
@@ -248,7 +250,9 @@ class MainWindow(MSFluentWindow):
         _clear_layout(btn_layout)
         btn_layout.setContentsMargins(4, 6, 4, 6)
         btn_layout.setSpacing(6)
-        btn_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        btn_layout.setAlignment(
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
+        )
         for btn in (title_bar.closeBtn, title_bar.minBtn, title_bar.maxBtn):
             btn_layout.addWidget(btn, 0, Qt.AlignmentFlag.AlignVCenter)
 
@@ -409,7 +413,9 @@ class MainWindow(MSFluentWindow):
         signalBus.info_bar_requested.connect(self.show_info_bar)
         signalBus.request_log_zip.connect(self._on_request_log_zip)
         signalBus.background_image_changed.connect(self._on_background_image_changed)
-        signalBus.background_opacity_changed.connect(self._on_background_opacity_changed)
+        signalBus.background_opacity_changed.connect(
+            self._on_background_opacity_changed
+        )
 
     def _apply_cli_switch_config(self) -> None:
         """处理 CLI 请求的配置切换，在 UI 初始化前执行。"""
@@ -674,7 +680,7 @@ class MainWindow(MSFluentWindow):
 
         return {self.tr("Detail"): str(content)}
 
-    def show_info_bar(self, level: str, message: str):
+    def show_info_bar(self, level: str, message: str, position: int | None = None):
         """根据等级显示 InfoBar 提示。"""
         level_name = (level or "").lower()
         show_method = {
@@ -688,12 +694,15 @@ class MainWindow(MSFluentWindow):
             "error": self.tr("Error"),
         }.get(level_name, self.tr("Info"))
 
+        if position is None:
+            position = InfoBarPosition.TOP_RIGHT.value
+
         show_method(
             title=level_title,
             content=message,
             orient=Qt.Orientation.Horizontal,
             isClosable=True,
-            position=InfoBarPosition.TOP_RIGHT,
+            position=InfoBarPosition(position),
             duration=(
                 -1
                 if level_name == "error"
