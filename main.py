@@ -24,7 +24,6 @@ MFW-ChainFlow Assistant 启动文件
 
 import os
 import sys
-import argparse
 
 from app.utils.logger import logger
 
@@ -63,16 +62,6 @@ if __name__ == "__main__":
     faulthandler.enable(file=crash_log, all_threads=True)
     # 检查并加载密钥
     crypto_manager.ensure_key_exists()
-
-    # 单实例检查
-
-    # 参数解析与配置检查
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-r", "--resource", default=False)
-    parser.add_argument("-c", "--config", default=False)
-    parser.add_argument("-d", "--directly", action="store_true")
-    parser.add_argument("-DEV", "--DEV", action="store_true")
-    args = parser.parse_args()
 
     # 全局异常钩子
     def global_except_hook(exc_type, exc_value, exc_traceback):

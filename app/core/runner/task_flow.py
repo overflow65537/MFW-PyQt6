@@ -106,7 +106,7 @@ class TaskFlowRunner(QObject):
                 "WARNING", self.tr(f"Unknown MaaFW error code: {error_code}")
             )
 
-    async def run_tasks_flow(self):
+    async def run_tasks_flow(self, task_id: str | None = None):
         """任务完整流程：连接设备、加载资源、批量运行任务"""
         if self._is_running:
             logger.warning("任务流已经在运行，忽略新的启动请求")
@@ -115,6 +115,7 @@ class TaskFlowRunner(QObject):
                 return
         self._is_running = True
         self.need_stop = False
+        is_single_task_mode = task_id is not None
         tasks_to_report = [
             task
             for task in self.task_service.current_tasks
@@ -248,67 +249,78 @@ class TaskFlowRunner(QObject):
                     signalBus.log_output.emit("ERROR", msg)
                     await self.stop_task()
                     return
-
-            logger.info("开始执行任务序列...")
-            for task in self.task_service.current_tasks:
-                if task.name in [PRE_CONFIGURATION, POST_ACTION]:
-                    continue
-
+            if task_id:
+                logger.info(f"开始执行任务: {task_id}")
+                task = self.task_service.get_task(task_id)
+                if not task:
+                    logger.error(f"任务 ID '{task_id}' 不存在")
+                    return
                 if not task.is_checked:
-                    continue
-
-                logger.info(f"开始执行任务: {task.name}")
-                record = task_status_by_id.get(task.item_id)
-                try:
-                    task_result = await self.run_task(task.item_id)
-                    if task_result == "skipped":
-                        if record:
-                            record["status"] = self.tr("SKIPPED")
+                    logger.warning(f"任务 '{task.name}' 未被选中，跳过执行")
+                    return
+                await self.run_task(task_id)
+                return
+            else:
+                logger.info("开始执行任务序列...")
+                for task in self.task_service.current_tasks:
+                    if task.name in [PRE_CONFIGURATION, POST_ACTION]:
                         continue
-                    if task_result is False:
+
+                    if not task.is_checked:
+                        continue
+
+                    logger.info(f"开始执行任务: {task.name}")
+                    record = task_status_by_id.get(task.item_id)
+                    try:
+                        task_result = await self.run_task(task.item_id)
+                        if task_result == "skipped":
+                            if record:
+                                record["status"] = self.tr("SKIPPED")
+                            continue
+                        if task_result is False:
+                            if record:
+                                record["status"] = self.tr("FAILED")
+                            logger.error(f"任务执行失败: {task.name}, 返回 False，终止流程")
+                            send_notice(
+                                NoticeTiming.WHEN_TASK_FAILED,
+                                self.tr("Task Failed"),
+                                self.tr("Task ")
+                                + str(task.name)
+                                + self.tr(
+                                    " did not return a successful status, the flow is terminated."
+                                ),
+                            )
+                            await self.stop_task()
+                            break
+
+                        logger.info(f"任务执行完成: {task.name}")
+                        if record:
+                            record["status"] = self.tr("SUCCESS")
+                        send_notice(
+                            NoticeTiming.WHEN_TASK_FINISHED,
+                            self.tr("Task Finished"),
+                            self.tr("Task ")
+                            + str(task.name)
+                            + self.tr(" has been completed."),
+                        )
+
+                    except Exception as exc:
+                        logger.error(f"任务执行失败: {task.name}, 错误: {str(exc)}")
                         if record:
                             record["status"] = self.tr("FAILED")
-                        logger.error(f"任务执行失败: {task.name}, 返回 False，终止流程")
                         send_notice(
                             NoticeTiming.WHEN_TASK_FAILED,
                             self.tr("Task Failed"),
                             self.tr("Task ")
                             + str(task.name)
-                            + self.tr(
-                                " did not return a successful status, the flow is terminated."
-                            ),
+                            + self.tr(" execution failed: ")
+                            + str(exc),
                         )
-                        await self.stop_task()
+
+                    if self.need_stop:
+                        logger.info("收到停止请求，流程终止")
                         break
-
-                    logger.info(f"任务执行完成: {task.name}")
-                    if record:
-                        record["status"] = self.tr("SUCCESS")
-                    send_notice(
-                        NoticeTiming.WHEN_TASK_FINISHED,
-                        self.tr("Task Finished"),
-                        self.tr("Task ")
-                        + str(task.name)
-                        + self.tr(" has been completed."),
-                    )
-
-                except Exception as exc:
-                    logger.error(f"任务执行失败: {task.name}, 错误: {str(exc)}")
-                    if record:
-                        record["status"] = self.tr("FAILED")
-                    send_notice(
-                        NoticeTiming.WHEN_TASK_FAILED,
-                        self.tr("Task Failed"),
-                        self.tr("Task ")
-                        + str(task.name)
-                        + self.tr(" execution failed: ")
-                        + str(exc),
-                    )
-
-                if self.need_stop:
-                    logger.info("收到停止请求，流程终止")
-                    break
-            signalBus.log_output.emit("INFO", self.tr("All tasks have been completed"))
+                signalBus.log_output.emit("INFO", self.tr("All tasks have been completed"))
 
         except Exception as exc:
             logger.error(f"任务流程执行异常: {str(exc)}")
@@ -321,8 +333,12 @@ class TaskFlowRunner(QObject):
 
             logger.critical(traceback.format_exc())
         finally:
+            should_run_post_action = not self.need_stop and not is_single_task_mode
             try:
-                await self._handle_post_action()
+                if should_run_post_action:
+                    await self._handle_post_action()
+                else:
+                    logger.info("跳过完成后操作：手动停止或单任务执行")
             except Exception as exc:
                 logger.error(f"完成后操作执行失败: {exc}")
             await self.stop_task()

@@ -52,7 +52,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         """初始化UI"""
         self.main_layout = QVBoxLayout(self)
 
-        self.title_widget = BodyLabel("Options")
+        self.title_widget = BodyLabel(self.tr("Options"))
         self.title_widget.setStyleSheet("font-size: 20px;")
         self.title_widget.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
@@ -102,7 +102,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self.option_area_card.setLayout(card_layout)
         # ==================== 描述区域 ==================== #
         # 创建描述标题（直接放在主布局中）
-        self.description_title = BodyLabel("功能描述")
+        self.description_title = BodyLabel(self.tr("Function Description"))
         self.description_title.setStyleSheet("font-size: 20px;")
         self.description_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
 

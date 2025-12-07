@@ -31,11 +31,14 @@ from qfluentwidgets import (
     CustomColorSettingCard,
     ExpandLayout,
     FluentIcon as FIF,
+    MessageBoxBase,
     OptionsSettingCard,
     PrimaryPushSettingCard,
     ScrollArea,
     SettingCardGroup,
     SwitchSettingCard,
+    ToolTipFilter,
+    ToolTipPosition,
     setTheme,
     setThemeColor,
     TransparentPushButton,
@@ -91,6 +94,7 @@ class SettingInterface(QWidget):
         self.setObjectName("settingInterface")
         self._service_coordinator = service_coordinator
         self.interface_data = self._service_coordinator.task.interface
+        self._suppress_multi_resource_signal = False
 
         self._license_content = self.interface_data.get("license", "")
         self._github_url = self.interface_data.get(
@@ -143,6 +147,7 @@ class SettingInterface(QWidget):
         self.initialize_personalization_settings()
         self.initialize_hotkey_settings()
         self.initialize_update_settings()
+        self.initialize_compatibility_settings()
         self._refresh_update_header()
 
         self.main_layout.addWidget(self.scroll_area)
@@ -232,7 +237,6 @@ class SettingInterface(QWidget):
         self.detail_progress.setGraphicsEffect(self.detail_progress_effect)
         self.detail_progress_effect.setOpacity(0.0)
 
-
         version_layout = QHBoxLayout()
         version_layout.setSpacing(12)
         version_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
@@ -305,7 +309,9 @@ class SettingInterface(QWidget):
         self.progress_content_layout.setSpacing(8)
         self.progress_content_layout.addWidget(self.progress_bar, 1)
         self.progress_content_layout.addWidget(self.progress_info_label)
-        self.progress_content_effect = QGraphicsOpacityEffect(self.progress_content_widget)
+        self.progress_content_effect = QGraphicsOpacityEffect(
+            self.progress_content_widget
+        )
         self.progress_content_widget.setGraphicsEffect(self.progress_content_effect)
         self.progress_content_effect.setOpacity(0.0)
         self.progress_placeholder = QWidget()
@@ -583,13 +589,6 @@ class SettingInterface(QWidget):
             configItem=cfg.run_after_startup,
             parent=self.start_Setting,
         )
-        self.never_show_notice = SwitchSettingCard(
-            FIF.MEGAPHONE,
-            self.tr("never show notice"),
-            self.tr("Announcements will never pop up regardless of the situation"),
-            configItem=cfg.hide_notice,
-            parent=self.start_Setting,
-        )
         self.speedrun_mode_card = SwitchSettingCard(
             FIF.SPEED_HIGH,
             self.tr("Speedrun Mode"),
@@ -598,7 +597,6 @@ class SettingInterface(QWidget):
             parent=self.start_Setting,
         )
         self.start_Setting.addSettingCard(self.run_after_startup)
-        self.start_Setting.addSettingCard(self.never_show_notice)
         self.start_Setting.addSettingCard(self.speedrun_mode_card)
         self.add_setting_group(self.start_Setting)
 
@@ -686,6 +684,13 @@ class SettingInterface(QWidget):
         )
         self.background_image_card.lineEdit.setText(background_path_value)
         self.background_image_card.lineEdit.setClearButtonEnabled(True)
+        self.background_image_card.toolbutton.installEventFilter(
+            ToolTipFilter(
+                self.background_image_card.toolbutton,
+                0,
+                ToolTipPosition.TOP,
+            )
+        )
         self.background_image_card.toolbutton.setToolTip(self.tr("Browse image file"))
         self.background_image_card.toolbutton.clicked.connect(
             self._choose_background_image
@@ -697,12 +702,15 @@ class SettingInterface(QWidget):
         self.background_image_clear_button = ToolButton(
             FIF.DELETE, self.background_image_card
         )
-        self.background_image_clear_button.setToolTip(
-            self.tr("Clear background image")
+        self.background_image_clear_button.installEventFilter(
+            ToolTipFilter(
+                self.background_image_clear_button,
+                0,
+                ToolTipPosition.TOP,
+            )
         )
-        self.background_image_clear_button.clicked.connect(
-            self._clear_background_image
-        )
+        self.background_image_clear_button.setToolTip(self.tr("Clear background image"))
+        self.background_image_clear_button.clicked.connect(self._clear_background_image)
         clear_insert_index = self.background_image_card.hBoxLayout.count() - 1
         self.background_image_card.hBoxLayout.insertSpacing(clear_insert_index, 8)
         self.background_image_card.hBoxLayout.insertWidget(
@@ -746,7 +754,9 @@ class SettingInterface(QWidget):
             FIF.RIGHT_ARROW,
             self.tr("Start task shortcut"),
             holderText=start_value,
-            content=self.tr("Default Ctrl+`, can also trigger when focus is not on the main window"),
+            content=self.tr(
+                "Default Ctrl+`, can also trigger when focus is not on the main window"
+            ),
             parent=self.hotkeyGroup,
             num_only=False,
         )
@@ -798,21 +808,16 @@ class SettingInterface(QWidget):
         current = cfg.get(config_item)
         if not key_text:
             self._set_shortcut_line_text(card, current)
-            signalBus.info_bar_requested.emit(
-                "warning", self.tr("Key cannot be empty")
-            )
+            signalBus.info_bar_requested.emit("warning", self.tr("Key cannot be empty"))
             return
 
-        raw = (
-            f"{required_modifier}+{key_text}"
-            if required_modifier
-            else key_text
-        )
+        raw = f"{required_modifier}+{key_text}" if required_modifier else key_text
         normalized = GlobalHotkeyManager._normalize(raw)
         if not normalized:
             self._set_shortcut_line_text(card, current)
             signalBus.info_bar_requested.emit(
-                "warning", self.tr("Key format is invalid, restored to previous configuration.")
+                "warning",
+                self.tr("Key format is invalid, restored to previous configuration."),
             )
             return
 
@@ -821,9 +826,7 @@ class SettingInterface(QWidget):
             if required_modifier not in modifiers:
                 self._set_shortcut_line_text(card, current)
                 modifier_name = (
-                    self.tr("Ctrl")
-                    if required_modifier == "ctrl"
-                    else self.tr("Alt")
+                    self.tr("Ctrl") if required_modifier == "ctrl" else self.tr("Alt")
                 )
                 action_name = (
                     self.tr("Start task")
@@ -855,7 +858,9 @@ class SettingInterface(QWidget):
         signalBus.hotkey_shortcuts_changed.emit()
 
     def _set_shortcut_line_text(self, card: LineEditCard, value: str | None):
-        normalized = GlobalHotkeyManager._normalize(str(value or "")) or str(value or "")
+        normalized = GlobalHotkeyManager._normalize(str(value or "")) or str(
+            value or ""
+        )
         key_only = normalized.split("+")[-1] if normalized else ""
         card.lineEdit.blockSignals(True)
         card.lineEdit.setText(key_only)
@@ -866,9 +871,7 @@ class SettingInterface(QWidget):
         label = BodyLabel(prefix, card)
         label.setWordWrap(False)
         label.setObjectName("shortcutPrefixLabel")
-        label.setAlignment(
-            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight
-        )
+        label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
         label.setFixedWidth(48)
         layout = card.hBoxLayout
         idx = layout.indexOf(card.lineEdit)
@@ -1039,6 +1042,34 @@ class SettingInterface(QWidget):
 
         self.add_setting_group(self.updateGroup)
 
+    def initialize_compatibility_settings(self):
+        """添加兼容性/实验功能设置组，默认不推荐开启。"""
+        self.compatibility_group = SettingCardGroup(
+            self.tr("Experimental / Compatibility"), self.Setting_scroll_widget
+        )
+        self.multi_resource_adaptation_card = SwitchSettingCard(
+            FIF.SETTING,
+            self.tr("Multi-resource adaptation"),
+            self.tr(
+                "Experimental. Enable loading multiple resource bundles; may impact stability."
+            ),
+            cfg.multi_resource_adaptation,
+            self.compatibility_group,
+        )
+        self.multi_resource_adaptation_card.setVisible(False)  # 默认隐藏
+
+        self.save_screenshot_card = SwitchSettingCard(
+            FIF.SAVE_AS,
+            self.tr("Save screenshot"),
+            self.tr("Save a screenshot when experimental features run"),
+            cfg.save_screenshot,
+            self.compatibility_group,
+        )
+
+        self.compatibility_group.addSettingCard(self.multi_resource_adaptation_card)
+        self.compatibility_group.addSettingCard(self.save_screenshot_card)
+        self.add_setting_group(self.compatibility_group)
+
     def _initialize_proxy_controls(self):
         """初始化代理控制器展示及默认值。"""
         combox_index = cfg.get(cfg.proxy)
@@ -1193,6 +1224,31 @@ class SettingInterface(QWidget):
             return
         self._update_background_image("")
 
+    def _confirm_enable_multi_resource(self) -> bool:
+        """开启多资源适配前进行二次确认（qfluentwidgets Dialog 风格）。"""
+        confirm_dialog = MessageBoxBase(self)
+        confirm_dialog.widget.setMinimumWidth(420)
+        confirm_dialog.widget.setMinimumHeight(200)
+
+        title = BodyLabel(self.tr("Enable multi-resource adaptation?"), confirm_dialog)
+        title.setStyleSheet("font-weight: 600;")
+        desc = BodyLabel(
+            self.tr(
+                "This feature is experimental and generally not recommended to enable. "
+            ),
+            confirm_dialog,
+        )
+        desc.setWordWrap(True)
+
+        confirm_dialog.viewLayout.addWidget(title)
+        confirm_dialog.viewLayout.addSpacing(6)
+        confirm_dialog.viewLayout.addWidget(desc)
+
+        confirm_dialog.yesButton.setText(self.tr("Enable"))
+        confirm_dialog.cancelButton.setText(self.tr("Cancel"))
+
+        return confirm_dialog.exec() == QDialog.DialogCode.Accepted
+
     def _on_background_path_editing_finished(self):
         """手动输入背景图路径后校验并应用。"""
         if not hasattr(self, "background_image_card"):
@@ -1231,6 +1287,25 @@ class SettingInterface(QWidget):
         value_int = max(0, min(100, value_int))
         signalBus.background_opacity_changed.emit(value_int)
 
+    def _on_multi_resource_adaptation_changed(self, checked: bool):
+        """处理多资源适配开关状态变更，开启前给出二次确认。"""
+        if self._suppress_multi_resource_signal:
+            return
+
+        if checked:
+            if not self._confirm_enable_multi_resource():
+                self._suppress_multi_resource_signal = True
+                self.multi_resource_adaptation_card.setChecked(False)
+                self._suppress_multi_resource_signal = False
+                cfg.set(cfg.multi_resource_adaptation, False)
+                return
+
+        cfg.set(cfg.multi_resource_adaptation, bool(checked))
+
+    def _on_save_screenshot_changed(self, checked: bool):
+        """保存截图开关，无需二次确认。"""
+        cfg.set(cfg.save_screenshot, bool(checked))
+
     def __showRestartTooltip(self):
         """显示重启提示。"""
         signalBus.info_bar_requested.emit(
@@ -1246,6 +1321,12 @@ class SettingInterface(QWidget):
         cfg.themeChanged.connect(setTheme)
         self.themeColorCard.colorChanged.connect(lambda c: setThemeColor(c))
         self.micaCard.checkedChanged.connect(signalBus.micaEnableChanged)
+        self.multi_resource_adaptation_card.checkedChanged.connect(
+            self._on_multi_resource_adaptation_changed
+        )
+        self.save_screenshot_card.checkedChanged.connect(
+            self._on_save_screenshot_changed
+        )
         self._apply_theme_from_config()
 
     def _onRunAfterStartupCardChange(self):

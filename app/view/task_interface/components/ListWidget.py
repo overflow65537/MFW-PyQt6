@@ -249,7 +249,9 @@ class TaskDragListWidget(BaseListWidget):
         if isinstance(placeholder, TaskSkeletonWidget):
             placeholder.deleteLater()
 
-        task_widget = TaskListItem(task, interface=interface)
+        task_widget = TaskListItem(
+            task, interface=interface, service_coordinator=self.service_coordinator
+        )
         task_widget.checkbox_changed.connect(self._on_task_checkbox_changed)
 
         flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
@@ -281,7 +283,9 @@ class TaskDragListWidget(BaseListWidget):
 
         # 否则按原有逻辑新增项
         list_item = QListWidgetItem()
-        task_widget = TaskListItem(task, interface=interface)
+        task_widget = TaskListItem(
+            task, interface=interface, service_coordinator=self.service_coordinator
+        )
         # 复选框状态变更信号
         task_widget.checkbox_changed.connect(self._on_task_checkbox_changed)
         # 基础任务禁止拖动

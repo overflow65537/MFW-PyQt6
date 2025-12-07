@@ -1,3 +1,5 @@
+import asyncio
+
 from PySide6.QtWidgets import (
     QWidget,
     QHBoxLayout,
@@ -5,7 +7,7 @@ from PySide6.QtWidgets import (
 )
 
 from PySide6.QtCore import Signal, Qt
-from PySide6.QtGui import QPalette
+from PySide6.QtGui import QPalette, QGuiApplication
 
 from qfluentwidgets import (
     CheckBox,
@@ -15,9 +17,12 @@ from qfluentwidgets import (
     FluentIcon as FIF,
     isDarkTheme,
     qconfig,
+    RoundMenu,
+    Action,
 )
 from app.core.Item import TaskItem, ConfigItem
 from app.common.constants import PRE_CONFIGURATION, POST_ACTION
+from app.core.core import ServiceCoordinator
 
 
 class ClickableLabel(BodyLabel):
@@ -109,9 +114,16 @@ class BaseListItem(QWidget):
 class TaskListItem(BaseListItem):
     checkbox_changed = Signal(object)  # 发射 TaskItem 对象
 
-    def __init__(self, task: TaskItem, interface: dict | None = None, parent=None):
+    def __init__(
+        self,
+        task: TaskItem,
+        interface: dict | None = None,
+        service_coordinator: ServiceCoordinator | None = None,
+        parent=None,
+    ):
         self.task = task
         self.interface = interface or {}
+        self.service_coordinator = service_coordinator
         super().__init__(task, parent)
 
         self._apply_interface_constraints()
@@ -215,8 +227,42 @@ class TaskListItem(BaseListItem):
         # 发射信号通知父组件更新
         self.checkbox_changed.emit(self.task)
 
+    def contextMenuEvent(self, event):
+        """右键菜单：单独运行任务"""
+        if not self.service_coordinator:
+            return super().contextMenuEvent(event)
+
+        menu = RoundMenu(parent=self)
+        run_action = Action(FIF.PLAY, self.tr("Run this task"))
+        run_action.triggered.connect(self._run_single_task)
+        if self.task.is_base_task():
+            run_action.setEnabled(False)
+        menu.addAction(run_action)
+        menu.popup(event.globalPos())
+        event.accept()
+
+    def _run_single_task(self):
+        if not self.service_coordinator:
+            return
+        asyncio.create_task(self.service_coordinator.run_tasks_flow(self.task.item_id))
+
 
 # 配置列表项组件
 class ConfigListItem(BaseListItem):
     def __init__(self, config: ConfigItem, parent=None):
         super().__init__(config, parent)
+
+    def contextMenuEvent(self, event):
+        """右键菜单：复制配置 ID"""
+        menu = RoundMenu(parent=self)
+        copy_action = Action(FIF.COPY, self.tr("Copy config ID"))
+        copy_action.triggered.connect(self._copy_config_id)
+        menu.addAction(copy_action)
+        menu.popup(event.globalPos())
+        event.accept()
+
+    def _copy_config_id(self):
+        config_id = getattr(self.item, "item_id", "") or ""
+        if not config_id:
+            return
+        QGuiApplication.clipboard().setText(str(config_id))

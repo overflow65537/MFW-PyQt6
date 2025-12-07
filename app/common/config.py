@@ -98,10 +98,7 @@ class Config(QConfig):
     http_proxy = ConfigItem("General", "http_proxy", "")
     socks5_proxy = ConfigItem("General", "socks5_proxy", "")
 
-    hide_notice = ConfigItem("General", "hide_notice", False, BoolValidator())
-    show_agent_cmd = ConfigItem("General", "show_agent_cmd", False, BoolValidator())
     Mcdk = ConfigItem("General", "cdk", "")
-    title = ConfigItem("General", "Title", "")
 
     run_after_startup = ConfigItem(
         "General", "run_after_startup", False, BoolValidator()
@@ -110,15 +107,17 @@ class Config(QConfig):
         "General", "run_after_startup_arg", False, BoolValidator()
     )
     speedrun_mode = ConfigItem("General", "speedrun_mode", False, BoolValidator())
+    multi_resource_adaptation = ConfigItem(
+        "Compatibility", "multi_resource_adaptation", False, BoolValidator()
+    )
+    save_screenshot = ConfigItem(
+        "Compatibility", "save_screenshot", False, BoolValidator()
+    )
 
     announcement = ConfigItem("General", "announcement", "")
 
-    save_draw = ConfigItem("General", "save_draw", False, BoolValidator())
-
     auto_update = ConfigItem("Update", "auto_update", True, BoolValidator())
-    update_ui_failed = ConfigItem("Update", "update_ui_failed", False, BoolValidator())
     force_github = ConfigItem("Update", "force_github", False, BoolValidator())
-    start_complete = ConfigItem("Update", "start_complete", False, BoolValidator())
     github_api_key = ConfigItem("Update", "github_api_key", "")
 
     resource_update_channel = OptionsConfigItem(

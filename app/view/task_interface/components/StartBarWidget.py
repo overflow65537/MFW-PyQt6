@@ -24,7 +24,7 @@ class StartBarWidget(QWidget):
     def _init_start_bar(self):
         """初始化启动栏"""
         # 启动/停止按钮（合并为一个）
-        self.run_button = TransparentPushButton("启动", self, FIF.PLAY)
+        self.run_button = TransparentPushButton(self.tr("Start"), self, FIF.PLAY)
         self._is_running = False
 
 
