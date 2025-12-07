@@ -39,6 +39,7 @@ from qfluentwidgets import (
     setTheme,
     setThemeColor,
     TransparentPushButton,
+    ToolButton,
 )
 
 from app.utils.markdown_helper import render_markdown
@@ -693,6 +694,21 @@ class SettingInterface(QWidget):
             self._on_background_path_editing_finished
         )
 
+        self.background_image_clear_button = ToolButton(
+            FIF.DELETE, self.background_image_card
+        )
+        self.background_image_clear_button.setToolTip(
+            self.tr("Clear background image")
+        )
+        self.background_image_clear_button.clicked.connect(
+            self._clear_background_image
+        )
+        clear_insert_index = self.background_image_card.hBoxLayout.count() - 1
+        self.background_image_card.hBoxLayout.insertSpacing(clear_insert_index, 8)
+        self.background_image_card.hBoxLayout.insertWidget(
+            clear_insert_index + 1, self.background_image_clear_button, 0
+        )
+
         self.background_opacity_card = SliderSettingCard(
             FIF.TRANSPARENT,
             self.tr("Background Opacity"),
@@ -1170,6 +1186,12 @@ class SettingInterface(QWidget):
         if not path:
             return
         self._update_background_image(path)
+
+    def _clear_background_image(self):
+        """清除当前背景图配置并同步到主界面。"""
+        if not hasattr(self, "background_image_card"):
+            return
+        self._update_background_image("")
 
     def _on_background_path_editing_finished(self):
         """手动输入背景图路径后校验并应用。"""
