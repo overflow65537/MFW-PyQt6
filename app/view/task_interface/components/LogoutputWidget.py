@@ -1,15 +1,21 @@
 from datetime import datetime
-import re
-from typing import Optional
 from venv import logger
 
-from PySide6.QtCore import QEvent, Qt
-from PySide6.QtGui import QColor, QPalette, QTextCharFormat, QTextCursor
-
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont, QPalette
+from PySide6.QtWidgets import (
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QSizePolicy,
+    QSpacerItem,
+    QWidget,
+    QVBoxLayout,
+)
 from qfluentwidgets import (
     BodyLabel,
-    TextEdit,
+    ScrollArea,
+    SimpleCardWidget,
     ToolButton,
     ToolTipFilter,
     ToolTipPosition,
@@ -17,7 +23,6 @@ from qfluentwidgets import (
     isDarkTheme,
     qconfig,
 )
-from PySide6.QtGui import QFont
 
 from app.common.signal_bus import signalBus
 
@@ -31,13 +36,19 @@ class LogoutputWidget(QWidget):
         super().__init__(parent)
         # 级别颜色映射（随主题自动更新）
         self._level_color: dict[str, str] = {}
-        self._color_tag_pattern = re.compile(
-            r"\[color:(?P<color>[^\]]+)\](?P<text>.*?)\[/color\]", re.S
-        )
+        self._log_entries: list[tuple[BodyLabel, str]] = []
+        self._log_row_index = 0
+        self._tail_spacer_item: QSpacerItem | None = None
+        self._tail_spacer_row: int | None = None
+        self._init_log_output()
+        self._add_tail_spacer()
         self._apply_theme_colors()
         qconfig.themeChanged.connect(self._apply_theme_colors)
-        self._init_log_output()
         self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 12, 0, 18)
+        self.main_layout.setSpacing(8)
+        self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.main_layout.addLayout(self.log_output_title_layout)
         self.main_layout.addWidget(self.log_output_widget)
 
         # 连接 MAA Sink 回调信号
@@ -68,15 +79,19 @@ class LogoutputWidget(QWidget):
                 "ERROR": "#c62828",
                 "CRITICAL": "#8b1f16",
             }
+        self._refresh_log_colors()
+
+    def _refresh_log_colors(self):
+        """主题变化时刷新已有日志颜色"""
+        fallback = self._level_color.get("INFO", self._resolve_base_text_color())
+        for label, level in self._log_entries:
+            color = self._level_color.get(level, fallback)
+            label.setStyleSheet(f"color: {color};")
 
     def _resolve_base_text_color(self) -> str:
         """获取当前可读的基础文本颜色，亮色主题下避免纯白"""
-        # 优先使用日志区域的调色板，如果不存在则退回自身调色板
-        palette = (
-            self.log_output_area.palette()
-            if hasattr(self, "log_output_area")
-            else self.palette()
-        )
+        # 优先使用日志容器的调色板，如果不存在则退回自身调色板
+        palette = self.log_container.palette() if hasattr(self, "log_container") else self.palette()
         color = palette.color(QPalette.ColorRole.WindowText)
         # 当亮度过高时（接近白色），在浅色主题下使用较深的默认色
         if not isDarkTheme() and color.lightness() > 220:
@@ -86,33 +101,44 @@ class LogoutputWidget(QWidget):
     def _init_log_output(self):
         """初始化日志输出区域"""
         self._log_output_title()
-        # 日志输出区域
-        self.log_output_area = TextEdit()
-        self.log_output_area.setReadOnly(True)
-        self.log_output_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.log_output_area.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
-        self.log_output_area.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextSelectableByMouse
-            | Qt.TextInteractionFlag.TextSelectableByKeyboard
+        self.log_scroll_area = ScrollArea()
+        self.log_scroll_area.setWidgetResizable(True)
+        self.log_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.log_scroll_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.log_scroll_area.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.log_scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.log_scroll_area.setStyleSheet("background: transparent; border: none;")
+        self.log_scroll_area.viewport().setStyleSheet(
+            "background: transparent; border: none;"
         )
-        palette = self.log_output_area.palette()
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(0, 0, 0, 0))
-        palette.setColor(
-            QPalette.ColorRole.HighlightedText,
-            palette.color(QPalette.ColorRole.WindowText),
-        )
-        self.log_output_area.setPalette(palette)
-        self.log_output_area.installEventFilter(self)
-        font = QFont("Microsoft YaHei", 11)
-        self.log_output_area.setFont(font)
 
-        # 日志输出区域总体布局
-        self.log_output_widget = QWidget()
-        self.log_output_layout = QVBoxLayout(self.log_output_widget)
-        self.log_output_layout.setContentsMargins(0, 10, 0, 9)
+        # 容器与表格布局（左侧时间，右侧内容）
+        self.log_container = QWidget()
+        self.log_grid_layout = QGridLayout(self.log_container)
+        self.log_grid_layout.setContentsMargins(0, 0, 0, 0)
+        self.log_grid_layout.setHorizontalSpacing(12)
+        self.log_grid_layout.setVerticalSpacing(6)
+        self.log_grid_layout.setColumnStretch(1, 1)
+        font = QFont("Microsoft YaHei", 11)
+        self.log_container.setFont(font)
+        self.log_scroll_area.setWidget(self.log_container)
+
+        # 日志卡片
+        self.log_output_widget = SimpleCardWidget()
+        self.log_output_widget.setClickEnabled(False)
+        self.log_output_widget.setBorderRadius(8)
+
+        # 卡片内容布局（含标题与滚动区域）
+        content_widget = QWidget()
+        self.log_output_layout = QVBoxLayout(content_widget)
+        self.log_output_layout.setContentsMargins(10, 10, 10, 10)
+        self.log_output_layout.setSpacing(8)
         self.log_output_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.log_output_layout.addLayout(self.log_output_title_layout)
-        self.log_output_layout.addWidget(self.log_output_area)
+        self.log_output_layout.addWidget(self.log_scroll_area)
+
+        card_layout = QVBoxLayout(self.log_output_widget)
+        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.addWidget(content_widget)
 
     def _log_output_title(self):
         """初始化日志输出标题"""
@@ -140,7 +166,16 @@ class LogoutputWidget(QWidget):
         self.generate_log_zip_button.clicked.connect(signalBus.request_log_zip)
 
     def clear_log(self):
-        self.log_output_area.clear()
+        """清空日志内容"""
+        self._remove_tail_spacer()
+        while self.log_grid_layout.count():
+            item = self.log_grid_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+        self._log_entries.clear()
+        self._log_row_index = 0
+        self._add_tail_spacer()
 
     def _on_log_output(self, level: str, text: str):
         self.add_structured_log(level, text)
@@ -222,100 +257,78 @@ class LogoutputWidget(QWidget):
         upper = (level or "INFO").upper()
         if upper not in self._level_color:
             upper = "INFO"
-        color = self._level_color.get(upper, "#eeeeee")
-        self.append_text_to_log(text, color)
+        self.append_text_to_log(text, upper)
         logger.info(f"[{level}] {text}")
 
-    def _normalize_color(self, color: str, fallback: str | None = None) -> str:
-        if isinstance(color, QColor):
-            return color.name()
-        raw = str(color).strip() if color else ""
-        if raw and QColor(raw).isValid():
-            return raw
-        return fallback or self._level_color.get("INFO", "#eeeeee")
-
-    def _parse_color_segments(self, text: str) -> list[tuple[str, Optional[str]]]:
-        """将单行文本拆分为带或不带颜色的片段"""
-        segments: list[tuple[str, Optional[str]]] = []
-        last_end = 0
-        for match in self._color_tag_pattern.finditer(text):
-            if match.start() > last_end:
-                segments.append((text[last_end : match.start()], None))
-            color = match.group("color").strip()
-            inner_text = match.group("text")
-            segments.append((inner_text, color))
-            last_end = match.end()
-        if last_end < len(text):
-            segments.append((text[last_end:], None))
-        if not segments:
-            segments.append((text, None))
-        return segments
-
-    def _extract_color_tag(self, text: str):
-        match = self._color_tag_pattern.search(text)
-        if not match:
-            return None, text
-
-        color = match.group("color")
-        inner_text = match.group("text")
-        cleaned = text[: match.start()] + inner_text + text[match.end() :]
-        return color, cleaned
-
-    def append_text_to_log(self, msg: str, color: str):
-        """通用方法：将彩色文本写入日志面板"""
+    def append_text_to_log(self, msg: str, level: str):
+        """将日志内容追加到滚动区域"""
         raw_text = str(msg)
         timestamp = datetime.now().strftime("%H:%M:%S")
-        default_color = self._normalize_color(color)
-        cursor = self.log_output_area.textCursor()
-        cursor.movePosition(QTextCursor.MoveOperation.End)
-        lines = raw_text.splitlines()
-        if not lines:
-            lines = [""]
+        lines = raw_text.splitlines() or [""]
         for line in lines:
-            segments = self._parse_color_segments(line)
-            self._insert_log_line(cursor, timestamp, segments, default_color)
-        self.log_output_area.setTextCursor(cursor)
-        self.log_output_area.ensureCursorVisible()
+            self._add_log_row(timestamp, line, level)
 
-    def _insert_log_line(
-        self,
-        cursor: QTextCursor,
-        timestamp: str,
-        segments: list[tuple[str, Optional[str]]],
-        default_color: str,
-    ):
-        """按段落将时间戳和颜色片段写入日志"""
-        timestamp_fmt = QTextCharFormat()
-        timestamp_fmt.setForeground(QColor(default_color))
-        cursor.insertText(f"{timestamp} ", timestamp_fmt)
-        for segment_text, tag_color in segments:
-            if not segment_text:
-                continue
-            segment_color = (
-                self._normalize_color(tag_color, fallback=default_color)
-                if tag_color
-                else default_color
-            )
-            segment_fmt = QTextCharFormat()
-            segment_fmt.setForeground(QColor(segment_color))
-            cursor.insertText(segment_text, segment_fmt)
-        cursor.insertBlock()
+    def _add_log_row(self, timestamp: str, text: str, level: str):
+        """新增一行日志（左时间，右内容）"""
+        color = self._level_color.get(level, self._level_color.get("INFO", "#eeeeee"))
 
-    def eventFilter(self, obj, event):
-        """拦截鼠标点击，但保留复制快捷键"""
-        if obj is self.log_output_area:
-            if event.type() in (
-                QEvent.Type.MouseButtonPress,
-                QEvent.Type.MouseButtonDblClick,
-                QEvent.Type.MouseButtonRelease,
-            ):
-                return True
-            if event.type() == QEvent.Type.KeyPress:
-                key_event = event
-                modifiers = key_event.modifiers()
-                if modifiers & Qt.KeyboardModifier.ControlModifier:
-                    if key_event.key() in (Qt.Key.Key_C, Qt.Key.Key_Insert):
-                        return False  # 允许复制
-                    if key_event.key() == Qt.Key.Key_A:
-                        return True
-        return super().eventFilter(obj, event)
+        # 保证底部仅一个填充项，防止行被均分
+        self._remove_tail_spacer()
+
+        time_label = BodyLabel(timestamp)
+        time_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        time_label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+
+        content_label = BodyLabel(text)
+        content_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        content_label.setWordWrap(True)
+        content_label.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
+        content_label.setStyleSheet(f"color: {color};")
+
+        self.log_grid_layout.addWidget(
+            time_label,
+            self._log_row_index,
+            0,
+            alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft,
+        )
+        self.log_grid_layout.addWidget(
+            content_label,
+            self._log_row_index,
+            1,
+            alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft,
+        )
+        self._log_entries.append((content_label, level))
+        self._log_row_index += 1
+        self._add_tail_spacer()
+        self._scroll_to_bottom()
+
+    def _scroll_to_bottom(self):
+        """自动滚动到底部"""
+        v_bar = self.log_scroll_area.verticalScrollBar()
+        if v_bar:
+            v_bar.setValue(v_bar.maximum())
+
+    def _add_tail_spacer(self):
+        """在底部添加占位以吸收剩余空间"""
+        if self._tail_spacer_item:
+            # 已有则先移除，确保放在最后一行（-1 行）
+            self._remove_tail_spacer()
+        self._tail_spacer_row = self._log_row_index
+        self._tail_spacer_item = QSpacerItem(
+            0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding
+        )
+        # 跨两列，确保填充在网格底部
+        self.log_grid_layout.addItem(self._tail_spacer_item, self._tail_spacer_row, 0, 1, 2)
+        self.log_grid_layout.setRowStretch(self._tail_spacer_row, 1)
+
+    def _remove_tail_spacer(self):
+        """移除已有的底部占位"""
+        if self._tail_spacer_item:
+            if self._tail_spacer_row is not None:
+                # 清理旧行拉伸，避免上方日志被平均分散
+                self.log_grid_layout.setRowStretch(self._tail_spacer_row, 0)
+            self.log_grid_layout.removeItem(self._tail_spacer_item)
+            self._tail_spacer_item = None
+            self._tail_spacer_row = None
