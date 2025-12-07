@@ -72,24 +72,13 @@ class BaseUpdate(QThread):
     channel_map = {0: "stable", 1: "beta", 2: "alpha"}
 
     def get_proxy_data(self) -> dict | None:
-        proxy_config = {}
-        if cfg.get(cfg.proxy) == 0:
-            proxy_config["http"] = f"http://{cfg.get(cfg.http_proxy)}"
-            proxy_config["https"] = f"http://{cfg.get(cfg.http_proxy)}"
-        elif cfg.get(cfg.proxy) == 1:
-            proxy_config["http"] = f"socks5://{cfg.get(cfg.http_proxy)}"
-            proxy_config["https"] = f"socks5://{cfg.get(cfg.http_proxy)}"
-
-        proxies: dict = {}
-        for key, value in proxy_config.items():
-            if value:
-                proxies[key] = value
-        if proxies == {"http": "http://", "https": "http://"}:
-            logger.debug("代理配置为空")
+        proxy_value = cfg.get(cfg.http_proxy)
+        scheme = {0: "http", 1: "socks5"}.get(cfg.get(cfg.proxy))
+        if not proxy_value or not scheme:
             return None
-        else:
-            logger.debug(f"使用代理配置: {proxies}")
-            return proxies
+        proxies = {key: f"{scheme}://{proxy_value}" for key in ("http", "https")}
+        logger.debug("使用代理配置: %s", proxies)
+        return proxies
 
     def download_file(
         self, url, file_path, progress_signal: SignalInstance, use_proxies
@@ -960,8 +949,7 @@ class Update(BaseUpdate):
         try:
             if not self.service_coordinator:
                 logger.error("service_coordinator 未初始化，无法执行更新")
-                self.stop_signal.emit(0)
-                return
+                return self._stop_with_notice(0)
 
             # 步骤1: 检查更新
             logger.info("[步骤1] 开始检查更新...")
@@ -970,9 +958,9 @@ class Update(BaseUpdate):
 
             if not download_url:
                 logger.info("[步骤1] 检查完成: 已是最新版本")
-                self._emit_info_bar("info", self.tr("Already latest version"))
-                self.stop_signal.emit(0)
-                return
+                return self._stop_with_notice(
+                    0, "info", self.tr("Already latest version")
+                )
 
             logger.info("[步骤1] 检查完成: 发现新版本 %s", self.latest_update_version)
             logger.info(
@@ -988,8 +976,7 @@ class Update(BaseUpdate):
             )
             if not update_flag_url:
                 logger.info("[步骤2] 无法获取 update_flag URL，跳过热更新")
-                self.stop_signal.emit(2)
-                return
+                return self._stop_with_notice(2)
 
             logger.debug("[步骤2] update_flag URL: %s", update_flag_url)
 
@@ -1015,9 +1002,7 @@ class Update(BaseUpdate):
             download_dir.mkdir(parents=True, exist_ok=True)
             if not download_url:
                 logger.error("[步骤2] 未设置下载地址，无法执行下载")
-                self._emit_info_bar("error", self.tr("Download failed"))
-                self.stop_signal.emit(0)
-                return
+                return self._stop_with_notice(0, "error", self.tr("Download failed"))
             logger.debug("[步骤2] 保存路径: %s", download_dir)
 
             logger.info("[步骤3] 开始下载更新包...")
@@ -1030,9 +1015,7 @@ class Update(BaseUpdate):
             )
             if not downloaded_zip_path:
                 logger.error("[步骤3] 下载失败")
-                self._emit_info_bar("error", self.tr("Download failed"))
-                self.stop_signal.emit(0)
-                return
+                return self._stop_with_notice(0, "error", self.tr("Download failed"))
             zip_file_path = downloaded_zip_path
             logger.debug("[步骤3] 下载文件: %s", zip_file_path)
 
@@ -1045,8 +1028,7 @@ class Update(BaseUpdate):
             # 步骤3: 判断是否可以热更新
             if not hotfix:
                 logger.info("[步骤3] 热更新标志位仍不匹配，转向补丁准备流程")
-                self.stop_signal.emit(2)
-                return
+                return self._stop_with_notice(2)
             logger.info("[步骤4] 开始执行热更新，准备解压更新包...")
             self._emit_info_bar("info", self.tr("Applying hotfix..."))
 
@@ -1055,8 +1037,7 @@ class Update(BaseUpdate):
             hotfix_root = self.extract_zip(zip_file_path, hotfix_dir)
             if not hotfix_root:
                 logger.error("[步骤4] 解压更新包失败")
-                self.stop_signal.emit(2)
-                return
+                return self._stop_with_notice(2)
             logger.info("[步骤4] 更新包解压完成: %s", hotfix_root)
 
             change_data_path = hotfix_root / "changes.json"
@@ -1065,8 +1046,7 @@ class Update(BaseUpdate):
             bundle_path = self._get_bundle_path()
             if not bundle_path:
                 logger.warning("[步骤4] Bundle 配置不存在，跳过热更新")
-                self.stop_signal.emit(2)
-                return
+                return self._stop_with_notice(2)
             bundle_path_obj = Path(bundle_path)
             logger.debug("[步骤4] Bundle 路径: %s", bundle_path_obj)
 
@@ -1114,15 +1094,12 @@ class Update(BaseUpdate):
                 project_path = bundle_path_obj
                 if not hotfix_root or not hotfix_root.exists():
                     logger.error("[步骤5] hotfix 目录不存在，无法覆盖")
-                    self.stop_signal.emit(2)
-                    return
+                    return self._stop_with_notice(2)
 
                 logger.info("[步骤5] 开始安全覆盖项目目录: %s", project_path)
                 if not self._safe_overwrite_project(project_path, hotfix_root):
                     logger.error("[步骤5] 安全覆盖失败")
-
-                    self.stop_signal.emit(2)
-                    return
+                    return self._stop_with_notice(2)
                 logger.info("[步骤5] 安全覆盖操作完成")
             interface_path = [
                 bundle_path_obj / "interface.jsonc",
@@ -1164,8 +1141,7 @@ class Update(BaseUpdate):
                         )
                 deleted_backups.clear()
             logger.exception("更新过程中出现错误: %s", e)
-            self._emit_info_bar("error", self.tr("Failed to update"))
-            self.stop_signal.emit(0)
+            self._stop_with_notice(0, "error", self.tr("Failed to update"))
         finally:
             if backup_dir and backup_dir.exists():
                 try:
@@ -1270,11 +1246,6 @@ class Update(BaseUpdate):
         for assets in github_result.get("assets", []) or []:
             if not isinstance(assets, dict):
                 continue
-            print([
-                f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{self.latest_update_version}.zip",
-                f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{self.latest_update_version}.tar.gz",
-            ]) 
-            print(assets.get("name"))
             if assets.get("name") in [
                 f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{self.latest_update_version}.zip",
                 f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{self.latest_update_version}.tar.gz",
@@ -1314,6 +1285,14 @@ class Update(BaseUpdate):
         """向主界面请求显示 InfoBar 提示"""
         if message:
             self.info_bar_signal.emit(level or "info", message)
+
+    def _stop_with_notice(
+        self, code: int, level: str | None = None, message: str | None = None
+    ) -> None:
+        """统一处理终止信号和可选的 InfoBar 通知。"""
+        if level and message:
+            self._emit_info_bar(level, message)
+        self.stop_signal.emit(code)
 
     def _normalize_last_version(self, fallback: str | None = None) -> str | None:
         version = self.latest_update_version or fallback or self.current_version
