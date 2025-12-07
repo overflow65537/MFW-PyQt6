@@ -98,9 +98,18 @@ class MainWindow(MSFluentWindow):
 
     _LOCKED_LOG_NAMES = {"maa.log", "clash.log", "maa.log.bak"}
 
-    def __init__(self, loop: asyncio.AbstractEventLoop | None = None):
+    def __init__(
+        self,
+        loop: asyncio.AbstractEventLoop | None = None,
+        auto_run: bool = False,
+        switch_config_id: str | None = None,
+        force_enable_test: bool = False,
+    ):
         super().__init__()
         self._loop = loop
+        self._cli_auto_run = bool(auto_run)
+        self._cli_switch_config_id = (switch_config_id or "").strip() or None
+        self._cli_force_enable_test = bool(force_enable_test)
 
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)
@@ -108,6 +117,7 @@ class MainWindow(MSFluentWindow):
         # 初始化配置管理器
         multi_config_path = Path.cwd() / "config" / "multi_config.json"
         self.service_coordinator = ServiceCoordinator(multi_config_path)
+        self._apply_cli_switch_config()
 
         self._announcement_pending_show = False
         self._log_zip_running = False
@@ -134,7 +144,8 @@ class MainWindow(MSFluentWindow):
             FIF.CALENDAR,
             self.tr("Schedule"),
         )
-        if ENABLE_TEST_INTERFACE_PAGE:
+        enable_test_page = self._cli_force_enable_test or ENABLE_TEST_INTERFACE_PAGE
+        if enable_test_page:
             self.TestInterface = TestInterface(self.service_coordinator)
             self.addSubInterface(
                 self.TestInterface,
@@ -170,6 +181,7 @@ class MainWindow(MSFluentWindow):
         )
         signalBus.hotkey_shortcuts_changed.connect(self._reload_global_hotkeys)
         self._reload_global_hotkeys()
+        self._schedule_auto_run()
 
         logger.info(" 主界面初始化完成。")
 
@@ -399,6 +411,16 @@ class MainWindow(MSFluentWindow):
         signalBus.background_image_changed.connect(self._on_background_image_changed)
         signalBus.background_opacity_changed.connect(self._on_background_opacity_changed)
 
+    def _apply_cli_switch_config(self) -> None:
+        """处理 CLI 请求的配置切换，在 UI 初始化前执行。"""
+        if not self._cli_switch_config_id:
+            return
+        target = self._cli_switch_config_id
+        if self.service_coordinator.select_config(target):
+            logger.info("CLI 指定配置已切换: %s", target)
+        else:
+            logger.warning("CLI 指定配置不存在，保持原配置: %s", target)
+
     def _reload_global_hotkeys(self):
         """配置变更后重新注册全局快捷键。"""
         if getattr(self, "_hotkey_manager", None):
@@ -597,6 +619,20 @@ class MainWindow(MSFluentWindow):
         if self._announcement_pending_show:
             self._announcement_pending_show = False
             QTimer.singleShot(0, self._on_announcement_button_clicked)
+
+    def _schedule_auto_run(self) -> None:
+        """根据 CLI 或配置决定是否在启动后自动运行任务。"""
+        should_run = self._cli_auto_run or cfg.get(cfg.run_after_startup)
+        if not should_run:
+            return
+
+        async def _start_flow():
+            try:
+                await self.service_coordinator.run_tasks_flow()
+            except Exception as exc:
+                logger.error("启动后自动运行失败: %s", exc)
+
+        QTimer.singleShot(0, lambda: asyncio.create_task(_start_flow()))
 
     def _on_announcement_button_clicked(self):
         """处理公告按钮点击，弹出公告对话框或提示无内容。"""

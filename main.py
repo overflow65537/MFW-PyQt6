@@ -24,6 +24,7 @@ MFW-ChainFlow Assistant 启动文件
 
 import os
 import sys
+import argparse
 
 from app.utils.logger import logger
 
@@ -63,6 +64,14 @@ if __name__ == "__main__":
     # 检查并加载密钥
     crypto_manager.ensure_key_exists()
 
+    # 启动参数解析
+    parser = argparse.ArgumentParser(description="MFW-ChainFlow Assistant", add_help=True)
+    parser.add_argument("-d", "--direct-run", action="store_true", help="启动后直接运行任务流")
+    parser.add_argument("-c", "--config", dest="config_id", help="启动后切换到指定配置ID")
+    parser.add_argument("-dev", "--dev", dest="enable_dev", action="store_true", help="显示测试页面")
+    args, qt_extra = parser.parse_known_args(sys.argv[1:])
+    qt_argv = [sys.argv[0]] + qt_extra
+
     # 全局异常钩子
     def global_except_hook(exc_type, exc_value, exc_traceback):
         logger.exception(
@@ -82,7 +91,7 @@ if __name__ == "__main__":
     init_language_on_first_run()
 
     # 创建Qt应用实例
-    app = QApplication(sys.argv)
+    app = QApplication(qt_argv)
     app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
 
     # 国际化配置
@@ -133,7 +142,12 @@ if __name__ == "__main__":
         logger.warning(f"GPU 信息缓存初始化失败，忽略: {e}")
 
     # 创建主窗口
-    w = MainWindow(loop=loop)
+    w = MainWindow(
+        loop=loop,
+        auto_run=args.direct_run,
+        switch_config_id=args.config_id,
+        force_enable_test=args.enable_dev,
+    )
     w.show()
 
     # 运行事件循环
