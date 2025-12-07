@@ -1,6 +1,6 @@
 import jsonc
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 
 from app.utils.logger import logger
@@ -118,6 +118,7 @@ class ConfigService:
         self.repo = config_repo
         self.signal_bus = signal_bus
         self._main_config: Optional[Dict[str, Any]] = None
+        self._config_changed_callback: Optional[Callable[[str], None]] = None
 
         # 加载主配置
         self.load_main_config()
@@ -140,6 +141,10 @@ class ConfigService:
             self._main_config["config_list"].append(default_config_item.item_id)
             self._main_config["curr_config_id"] = default_config_item.item_id
             self.current_config_id = self.create_config(default_config_item)
+
+    def register_on_change(self, callback: Callable[[str], None]) -> None:
+        """注册配置变更回调，供服务协调器触发内部同步。"""
+        self._config_changed_callback = callback
 
     def load_main_config(self) -> bool:
         """加载主配置"""
@@ -178,6 +183,11 @@ class ConfigService:
 
         # 保存主配置并发出信号
         if self.save_main_config():
+            if self._config_changed_callback:
+                try:
+                    self._config_changed_callback(value)
+                except Exception as exc:
+                    logger.error(f"配置变更回调执行失败: {exc}")
             self.signal_bus.config_changed.emit(value)
             return True
 

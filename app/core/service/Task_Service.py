@@ -21,16 +21,11 @@ class TaskService:
         self.know_task = []
         self.interface = interface or {}
         self.default_option = {}
-        self._on_config_changed(self.config_service.current_config_id)
-
-        # 连接信号
-        self.signal_bus.config_changed.connect(self._on_config_changed)
-        self.signal_bus.task_updated.connect(self._on_task_updated)
-        self.signal_bus.task_order_updated.connect(self._on_task_order_updated)
+        self.on_config_changed(self.config_service.current_config_id)
         # UI 的任务勾选切换事件现在通过 ServiceCoordinator.modify_task 路径处理
 
-    def _on_config_changed(self, config_id: str):
-        """当配置变化时加载对应任务"""
+    def on_config_changed(self, config_id: str):
+        """当配置变化时加载对应任务（由协调器直接调用）"""
         if config_id:
             config = self.config_service.get_config(config_id)
             if config:
@@ -240,15 +235,15 @@ class TaskService:
 
         return default_option
 
-    def _on_task_updated(self, task_data: TaskItem):
+    def apply_task_update(self, task_data: TaskItem) -> bool:
         """当任务更新时保存到当前配置（接收 TaskItem 或 dict）"""
         config_id = self.config_service.current_config_id
         if not config_id:
-            return
+            return False
 
         config = self.config_service.get_config(config_id)
         if not config:
-            return
+            return False
 
         # Normalize incoming to TaskItem
         if isinstance(task_data, TaskItem):
@@ -273,16 +268,18 @@ class TaskService:
             # 更新本地任务列表并发出对象列表
             self.current_tasks = config.tasks
             self.signal_bus.tasks_loaded.emit(self.current_tasks)
+            return True
+        return False
 
-    def _on_task_order_updated(self, task_order: List[str]):
+    def apply_task_order(self, task_order: List[str]) -> bool:
         """同步最新任务顺序到当前配置并持久化，但不强制刷新UI列表。"""
         config_id = self.config_service.current_config_id
         if not config_id:
-            return
+            return False
 
         config = self.config_service.get_config(config_id)
         if not config:
-            return
+            return False
 
         tasks_by_id = {task.item_id: task for task in config.tasks}
         ordered_tasks: list[TaskItem] = []
@@ -296,12 +293,14 @@ class TaskService:
             ordered_tasks.extend(tasks_by_id.values())
 
         if not ordered_tasks:
-            return
+            return False
 
         config.tasks = ordered_tasks
 
         if self.config_service.update_config(config_id, config):
             self.current_tasks = ordered_tasks
+            return True
+        return False
 
     def get_tasks(self) -> List[TaskItem]:
         """获取当前配置的任务列表"""
@@ -317,9 +316,7 @@ class TaskService:
     def update_task(self, task: TaskItem) -> bool:
         """更新任务"""
 
-        # 发出任务更新信号
-        self._on_task_updated(task)
-        return True
+        return self.apply_task_update(task)
 
     def update_tasks(self, tasks: List[TaskItem]) -> bool:
         """批量更新任务：在当前配置中按 tasks 中的 item_id 替换或添加，最后一次性保存并发送 tasks_loaded 或逐项 task_updated。"""
@@ -395,8 +392,7 @@ class TaskService:
 
     def reorder_tasks(self, task_order: List[str]) -> bool:
         """重新排序任务"""
-        self._on_task_order_updated(task_order)
-        return True
+        return self.apply_task_order(task_order)
 
     def get_task_execution_info(self, task_id: str) -> Optional[Dict[str, Any]]:
         """获取任务的执行信息（entry 和 pipeline_override）

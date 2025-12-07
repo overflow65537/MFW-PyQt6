@@ -14,15 +14,10 @@ class OptionService:
         self.current_options: Dict[str, Any] = {}
         self.form_structure: Optional[Dict[str, Any]] = {}  # 保存当前表单结构
 
-        # 连接信号
-        self.signal_bus.task_selected.connect(self._on_task_selected)
-        self.signal_bus.option_updated.connect(self._on_option_updated)
-
-    def _on_task_selected(self, task_id: str):
+    def select_task(self, task_id: str) -> bool:
         """当任务被选中时加载选项和表单结构"""
         self.current_task_id = task_id
         task = self.task_service.get_task(task_id)
-        print("任务更改")
         if task:
             self.current_options = task.task_option
             from app.common.constants import PRE_CONFIGURATION, POST_ACTION
@@ -36,22 +31,28 @@ class OptionService:
                 self.form_structure = self.get_form_structure_by_task_name(
                     task.name, self.task_service.interface
                 )
-            print(self.form_structure)
             self.signal_bus.options_loaded.emit()
+            return True
+        return False
 
-    def _on_option_updated(self, option_data: Dict[str, Any]):
+    def clear_selection(self) -> None:
+        """重置当前选项状态，用于配置切换等场景。"""
+        self.current_task_id = None
+        self.current_options = {}
+        self.form_structure = {}
+
+    def _on_option_updated(self, option_data: Dict[str, Any]) -> bool:
         """当选项更新时保存到当前任务"""
         if not self.current_task_id:
-            return
+            return False
 
         task = self.task_service.get_task(self.current_task_id)
         if not task:
-            return
+            return False
 
-        # 更新任务中的选项
+        # 更新任务中的选项并持久化
         task.task_option.update(option_data)
-        # 发出任务更新信号（对象形式）
-        self.signal_bus.task_updated.emit(task)
+        return self.task_service.update_task(task)
 
     def get_options(self) -> Dict[str, Any]:
         """获取当前任务的选项"""
@@ -65,17 +66,13 @@ class OptionService:
         """更新选项"""
         # 更新本地选项字典
         self.current_options[option_key] = option_value
-        # 发出选项更新信号
-        self.signal_bus.option_updated.emit({option_key: option_value})
-        return True
+        return self._on_option_updated({option_key: option_value})
 
     def update_options(self, options: Dict[str, Any]) -> bool:
         """批量更新选项"""
         # 批量更新本地选项字典
         self.current_options.update(options)
-        # 发出选项更新信号
-        self.signal_bus.option_updated.emit(options)
-        return True
+        return self._on_option_updated(options)
 
     def get_form_structure(self) -> Optional[Dict[str, Any]]:
         """获取当前表单结构"""

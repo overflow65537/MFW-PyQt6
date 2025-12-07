@@ -42,6 +42,7 @@ class ServiceCoordinator:
             self.config_service, self.signal_bus, self._interface
         )
         self.option_service = OptionService(self.task_service, self.signal_bus)
+        self.config_service.register_on_change(self._on_config_changed)
 
         # 运行器
 
@@ -62,6 +63,13 @@ class ServiceCoordinator:
         self.signal_bus.need_save.connect(self._on_need_save)
         # 热更新完成后重新初始化
         signalBus.fs_reinit_requested.connect(self.reinit)
+
+    def _on_config_changed(self, config_id: str):
+        """配置变化后刷新内部服务状态"""
+        if not config_id:
+            return
+        self.task_service.on_config_changed(config_id)
+        self.option_service.clear_selection()
 
     # region 配置相关方法
     def add_config(self, config_item: ConfigItem) -> str:
@@ -91,20 +99,12 @@ class ServiceCoordinator:
     def select_config(self, config_id: str) -> bool:
         """选择配置，传入 config id"""
         # 验证配置存在
-        config = self.config_service.get_config(config_id)
-        if not config:
+        if not self.config_service.get_config(config_id):
             return False
 
-        # 设置并保存主配置
-        if self.config_service._main_config is None:
-            return False
-
-        self.config_service._main_config["curr_config_id"] = config_id
-        if self.config_service.save_main_config():
-            self.signal_bus.config_changed.emit(config_id)
-            return True
-
-        return False
+        # 使用 ConfigService setter，回调将同步任务和选项
+        self.config_service.current_config_id = config_id
+        return self.config_service.current_config_id == config_id
 
     # endregion
 
@@ -112,73 +112,35 @@ class ServiceCoordinator:
 
     def modify_task(self, task: TaskItem) -> bool:
         """修改或添加任务：传入 TaskItem，如果列表中没有对应 id 的任务，添加到倒数第2位，否则更新对应任务"""
-        config_id = self.config_service.current_config_id
-        if not config_id:
-            return False
-
-        config = self.config_service.get_config(config_id)
-        if not config:
-            return False
-
-        # 查找并更新
-        found = False
-        for i, t in enumerate(config.tasks):
-            if t.item_id == task.item_id:
-                config.tasks[i] = task
-                found = True
-                break
-
-        if not found:
-            # 插入到倒数第二位,确保"完成后操作"始终在最后
-            config.tasks.insert(-1, task)
-
-        # 保存配置
-        ok = self.config_service.update_config(config_id, config)
+        ok = self.task_service.update_task(task)
         if ok:
             self.fs_signal_bus.fs_task_modified.emit(task)
         return ok
 
     def update_task_checked(self, task_id: str, is_checked: bool) -> bool:
-        """仅更新任务的选中状态，不发射信号
-
-        特殊任务互斥规则:
-        - 如果选中的是特殊任务,则自动取消其他特殊任务的选中
-        """
-        config_id = self.config_service.current_config_id
-        if not config_id:
-            return False
-
-        config = self.config_service.get_config(config_id)
-        if not config:
-            return False
-
-        # 查找目标任务
+        """更新任务选中状态并处理特殊任务互斥"""
+        tasks = self.task_service.get_tasks()
         target_task = None
-        for i, t in enumerate(config.tasks):
+        for t in tasks:
             if t.item_id == task_id:
-                config.tasks[i].is_checked = is_checked
-                target_task = config.tasks[i]
+                t.is_checked = is_checked
+                target_task = t
                 break
         else:
             return False
 
-        # 特殊任务互斥逻辑:如果选中的是特殊任务,取消其他特殊任务
         unchecked_tasks = []
-        if target_task and target_task.is_special and is_checked:
-            for i, t in enumerate(config.tasks):
+        if target_task.is_special and is_checked:
+            for t in tasks:
                 if t.item_id != task_id and t.is_special and t.is_checked:
-                    config.tasks[i].is_checked = False
-                    unchecked_tasks.append(config.tasks[i])
+                    t.is_checked = False
+                    unchecked_tasks.append(t)
 
-        # 保存配置
-        ok = self.config_service.update_config(config_id, config)
+        changed_tasks = [target_task] + unchecked_tasks
+        ok = self.task_service.update_tasks(changed_tasks)
         if ok:
-            # 告知任务服务当前任务选中状态已同步，避免缓存旧状态
-            if target_task:
-                self.signal_bus.task_updated.emit(target_task)
-
-            # 如果有其他特殊任务被取消选中,发射信号通知UI更新
-            for task in unchecked_tasks:
+            for task in changed_tasks:
+                # UI 通知：保持与旧行为兼容
                 self.signal_bus.task_updated.emit(task)
                 self.fs_signal_bus.fs_task_modified.emit(task)
 
@@ -214,10 +176,11 @@ class ServiceCoordinator:
             self.fs_signal_bus.fs_task_removed.emit(task_id)
         return ok
 
-    def select_task(self, task_id: str):
+    def select_task(self, task_id: str) -> bool:
         """选中任务，传入 task id，并自动检查已知任务"""
-        self.signal_bus.task_selected.emit(task_id)
+        selected = self.option_service.select_task(task_id)
         self.task_service._check_know_task()
+        return selected
 
     def reorder_tasks(self, new_order: List[str]) -> bool:
         """任务顺序更改，new_order 为 task_id 列表（新顺序）"""
