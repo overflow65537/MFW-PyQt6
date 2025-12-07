@@ -1,28 +1,37 @@
 # 速通模式说明
 
 ## 适用场景
+
 - 想让部分任务**在特定周期内限次数运行**，避免重复浪费资源。
 - 典型用途：每日/每周/每月只运行一次的活动任务或节奏任务。
 - 需要通过 UI/CLI 将 `speedrun_mode` 明确打开，才会启用速通逻辑。
 
 ## 配置位置
+
 在 `interface.json` 中对应任务下添加一个 `speedrun` 块，例如：
 
 ```jsonc
-"speedrun": {
-  "mode": "daily",
-  "trigger": {
-    "daily": {
-      "hour_start": 5
+{
+  "name": "纷争战区",
+  "entry": "纷争战区",
+  "speedrun": {
+    "mode": "weekly",
+    "trigger": {
+      "weekly": {
+        "weekday": [2],
+        "hour_start": 5
+      }
+    },
+    "run": {
+      "count": 2,
+      "min_interval_hours": 24
     }
-  },
-  "run": {
-    "count": 1
   }
 }
 ```
 
 ## 字段说明
+
 - `mode`: 周期类型，支持 `"daily"`、`"weekly"`、`"monthly"`。
 - `trigger`: 触发细节。
   - `"daily"` 只需配置 `hour_start`，即每天几点后刷新次数。
@@ -32,6 +41,7 @@
 - `run.min_interval_hours`（可选）：要求两次运行间隔至少多少小时。
 
 ## 行为流程
+
 1. 任务运行时只在 `speedrun_mode` 打开 && `run.count` 有效（非 `null`/`-1`）时生效。
 2. 读取 `_speedrun_state.last_runtime`（首次缺省为 `1970-01-01T00:00:00`），计算下一个刷新点（例如下一个满足规则的 5 点）。
 3. 当前时间超过刷新点时，会把 `remaining_count` 刷新为 `run.count`；否则继续使用旧值。
@@ -57,4 +67,3 @@
 ```
 
 每天 05:00 后只会运行一次，`count` 重置后会写入 `last_runtime`，下次刷新时刻到达前查到 `remaining_count=0` 就跳过。
-

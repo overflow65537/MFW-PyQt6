@@ -6,7 +6,7 @@
 
 **[简体中文](./README.md) | [English](./README-en.md)**
 
-Universal GUI project for **[MAAFramework](https://github.com/MaaXYZ/MaaFramework)** based on **[PySide6](https://doc.qt.io/qtforpython-6)**
+Cross-platform GUI built with **[PySide6](https://doc.qt.io/qtforpython-6)** and **[MaaFramework](https://github.com/MaaXYZ/MaaFramework)**, fully supporting interface v2 for orchestrating, running, and extending automation flows out of the box.
 </div>
 
 <p align="center">
@@ -16,148 +16,122 @@ Universal GUI project for **[MAAFramework](https://github.com/MaaXYZ/MaaFramewor
   <img alt="commit" src="https://img.shields.io/github/commit-activity/m/overflow65537/MFW-PyQt6">
 </p>
 
-## Development Environment
+## Table of Contents
 
-- Python 3.12
+- [Overview](#overview)
+- [Highlights](#highlights)
+- [Speedrun Mode](#speedrun-mode)
+- [Common CLI Parameters](#common-cli-parameters)
+- [External Notifications](#external-notifications)
+- [Scheduling](#scheduling)
+- [Dynamic Custom Actions/Recognizers](#dynamic-custom-actionsrecognizers)
+- [GitHub Action Build](#github-action-build)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
 
-## Usage
+## Overview
 
-### Direct Usage
+MFW-ChainFlow Assistant provides a ready-to-use visual orchestrator for MaaFramework users, covering configuration management, task scheduling, notifications, and custom extensions to reduce automation development and ops costs.
 
-- `pip install -r requirements.txt`
-- `python main.py`
+## Highlights
 
-### Using GitHub Actions for Auto Deployment
+- Full support for [interface v2](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/3.3-ProjectInterfaceV2%E5%8D%8F%E8%AE%AE.md)
+- Cross-platform: Windows / Linux / macOS
+- Parameterized launch: specify config ID and auto-run tasks
+- External notifications: DingTalk, Lark/Feishu, SMTP, WxPusher, WeCom bot
+- Built-in scheduler: once / daily / weekly / monthly with queue or force run
+- Dynamic custom actions and recognizers, with Agent support for tailored flows
+- Speedrun mode: limit runs per day/week/month with minimal intervals to avoid repeats
 
-- Modify the project name and URL in `deploy/deploy.py` and upload to the GitHub repository root
-- Rename MaaXXX in `deploy/install.yml` to your project name and upload to `.github/workflows` directory
-- Push new releases
+## Speedrun Mode
 
-## Features
+- Add a `speedrun` block under each task in `interface.json` to define period and run limits, then enable speedrun mode via UI/CLI for it to take effect.
+- Supports daily / weekly / monthly cycles with run counts and minimal intervals; will skip when quota is exhausted.
+- Full field reference and examples: `docs/speedrun_mode.md`.
 
-### Multi-configuration Launch
+## Common CLI Parameters
 
-- Click the add button in Scheduled Tasks interface to add resources
-- Each resource can have multiple independent configurations
-- Post-completion actions can trigger configurations from other resources
-- Combined with post-execution tasks to achieve seamless multi-resource startup
+- `-c <config_id>`: start with the specified config ID (works for `python main.py` and packaged `MFW.exe`)
+- `-d`: run tasks immediately after launch (also works for `MFW.exe`)
 
-### Parameter Launch
+## External Notifications
 
-- -r parameter accepts resource names e.g. `python main.py -r resource1` or `MFW.exe -r resource1`
-- -c parameter accepts configuration names e.g. `python main.py -c config1` or `MFW.exe -c config1`
-- -d parameter starts task immediately after launch e.g. `python main.py -d` or `MFW.exe -d`
+Supports DingTalk, Lark/Feishu, SMTP, WxPusher, and WeCom bot; enable as needed in your configuration.
 
-### Version Locking
+## Scheduling
 
-- Add `MFW_min_req_version` key in `interface.json` with MFW version number:
+Run saved configurations on once / daily / weekly / monthly cadence. Choose force start or queued execution; toggle or delete schedules directly in the list.
 
-```json
-"MFW_min_req_version": "1.5.4"
-```
+## Dynamic Custom Actions/Recognizers
 
-- Updates will be blocked if new resources require higher MFW version
+Refer to MaaFramework's [custom action/recognizer guide](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/1.1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md#%E4%BD%BF%E7%94%A8-json-%E4%BD%8E%E4%BB%A3%E7%A0%81%E7%BC%96%E7%A8%8B%E4%BD%86%E5%AF%B9%E5%A4%8D%E6%9D%82%E4%BB%BB%E5%8A%A1%E4%BD%BF%E7%94%A8%E8%87%AA%E5%AE%9A%E4%B9%89%E9%80%BB%E8%BE%91):
 
-### Speedrun Mode
+1. Use Python 3.12 for custom actions/recognizers.
+2. If third-party deps are required, install them into the `_internal` directory.
+3. Declare custom objects in `custom.json`, and point to it via the `custom` key in `interface.json` (`{custom_path}` defaults to the repo's `custom/`).
+4. Reference the custom names in your pipeline.
 
-- Enable in Settings to skip tasks already completed in current cycle
-- Developers can set operation cycles in interface file:
-
-```json
-{
-    "task": [
-        {
-            "name": "Daily Tasks",
-            "entry": "Daily Tasks",
-            "periodic": 1,
-            "daily_start": 4
-        },
-        {
-            "name": "Weekly Tasks",
-            "entry": "Weekly Tasks",
-            "periodic": 2,
-            "weekly_start": 2,
-            "daily_start": 4
-        }
-    ]
-}
-```
-
-### External Notifications
-
-- Currently supports DingTalk, Feishu, SMTP, and WxPusher
-
-### `doc` Protocol
-
-#### Use markup like `[color:red]Text[/color]` for styling
-
-#### Supported Markup
-
-- `[color:color_name]`: Text color
-- `[size:font_size]`: Font size
-- `[b]`: Bold
-- `[i]`: Italic
-- `[u]`: Underline
-- `[s]`: Strikethrough
-- `[align:left/center/right]`: Text alignment (must be used on separate lines)
-
-### Task Notifications
-
-- Requires enabling node's Focus feature
-- Format using doc protocol:
+Example `custom.json` snippet:
 
 ```json
 {
-    "task": {
-        "focus": {
-            "start": "[size:15][color:gray]Task start notification[/color][/size]",
-            "succeeded": "[size:15][color:green]Task success notification[/color][/size]"
-        }
-    }
+  "ActionName1": {
+    "file_path": "{custom_path}/any/path/action1.py",
+    "class": "ActionClass1",
+    "type": "action"
+  },
+  "RecognizerName1": {
+    "file_path": "{custom_path}/any/path/recognizer1.py",
+    "class": "RecognizerClass1",
+    "type": "recognition"
+  }
 }
 ```
 
-### Custom Action/Recognizer Integration
-
-#### Fixed Location Method
-
-- Requires Python 3.12 for custom components
-- Third-party libraries must be installed in `_internal` folder
-- Create `costom.json` in custom folder:
-
-```json
-{
-    "CustomAction1": {
-        "file_path": "{custom_path}/actions/action1.py",
-        "class": "CustomActionClass",
-        "type": "action"
-    }
-}
-```
-
-- Use in pipeline:
+Referencing in pipeline:
 
 ```json
 "MyCustomTask": {
-    "recognition": "Custom",
-    "custom_recognition": "CustomRecognizer1",
-    "action": "Custom",
-    "custom_action": "CustomAction1"
+  "recognition": "Custom",
+  "custom_recognition": "RecognizerName1",
+  "action": "Custom",
+  "custom_action": "ActionName1"
 }
 ```
 
+Custom class example:
+
+```python
+class ActionClass1(CustomAction):
+    def apply(self, context, ...):
+        image = context.tasker.controller.cached_image
+        # process the image and return your result
+```
+
+More examples: [MAA_Punish/assets](https://github.com/overflow65537/MAA_Punish/tree/main/assets).
+
+## GitHub Action Build
+
+1. Replace `MaaXXX` with your project name in `deploy/install.yml`.
+2. Commit and push to `.github/workflows` in your GitHub repo.
+3. Push a new release/tag to trigger the automated build.
+
 ## License
 
-**MFW-PyQt6** is open source under **[GPL-3.0 License](./LICENSE)**
+**MFW-PyQt6** is open source under **[GPL-3.0 License](./LICENSE)**.
 
 ## Acknowledgments
 
 ### Open Source Projects
 
-- **[PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)**
-- **[MaaFramework](https://github.com/MaaAssistantArknights/MaaFramework)**
-- **[MirrorChyan](https://github.com/MirrorChyan/docs)**
-- **[AutoMAA](https://github.com/DLmaster361/AUTO_MAA)**
+- **[PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)**\
+    A fluent design widgets library based on C++ Qt/PyQt/PySide.
+- **[MaaFramework](https://github.com/MaaAssistantArknights/MaaFramework)**\
+    An image-recognition-based automation framework.
+- **[MirrorChyan](https://github.com/MirrorChyan/docs)**\
+    Mirror-chan update service.
+- **[AutoMAA](https://github.com/DLmaster361/AUTO_MAA)**\
+    A MAA plugin for multi-account management and automation.
 
 ### Contributors
 
