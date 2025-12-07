@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, time
 import calendar
 from pathlib import Path
-from typing import Any, Deque, List, Optional, TYPE_CHECKING
+from typing import Any, Callable, Deque, List, Optional, TYPE_CHECKING
 
 import jsonc
 from PySide6.QtCore import QObject, Signal
@@ -98,20 +98,36 @@ class ScheduleEntry:
             next_run=_parse_iso(payload.get("next_run")),
         )
 
-    def describe(self) -> str:
+    def describe(self, tr_func: Optional[Callable[[str], str]] = None) -> str:
+        tr = tr_func or (lambda text: text)
         if self.schedule_type == SCHEDULE_SINGLE:
-            return f"Single at {self._format_datetime(self.params.get('run_at'))}"
+            return tr("Single at {time}").format(
+                time=self._format_datetime(self.params.get("run_at"))
+            )
         if self.schedule_type == SCHEDULE_DAILY:
             interval = max(1, int(self.params.get("interval_days", 1)))
-            return f"Daily every {interval} day(s) at {self._format_time((self.params.get('hour', 0), self.params.get('minute', 0)))}"
+            return tr("Daily every {n} day(s) at {time}").format(
+                n=interval,
+                time=self._format_time(
+                    (self.params.get("hour", 0), self.params.get("minute", 0))
+                ),
+            )
         if self.schedule_type == SCHEDULE_WEEKLY:
-            return f"Weekly at {self._format_time((self.params.get('hour', 0), self.params.get('minute', 0)))}"
+            interval = max(
+                1, int(self.params.get("interval_weeks", 1) or 1)
+            )
+            return tr("Weekly every {n} week(s) at {time}").format(
+                n=interval,
+                time=self._format_time(
+                    (self.params.get("hour", 0), self.params.get("minute", 0))
+                ),
+            )
         if self.schedule_type == SCHEDULE_MONTHLY:
             month_value = int(self.params.get("month", 0))
             month_label = (
-                "Every month"
+                tr("Every month")
                 if month_value == 0
-                else MONTH_NAMES[(month_value - 1) % 12]
+                else tr(MONTH_NAMES[(month_value - 1) % 12])
             )
             hour_minute = self._format_time(
                 (self.params.get("hour", 0), self.params.get("minute", 0))
@@ -120,15 +136,19 @@ class ScheduleEntry:
             weekday = self.params.get("weekday")
             if ordinal is not None and weekday is not None:
                 ordinal_label = (
-                    "Last"
+                    tr("Last")
                     if int(ordinal) >= 4
-                    else ("First", "Second", "Third", "Fourth")[int(ordinal)]
+                    else tr(("First", "Second", "Third", "Fourth")[int(ordinal)])
                 )
-                weekday_label = WEEKDAY_NAMES[int(weekday) % 7]
-                return f"Monthly ({month_label}) on the {ordinal_label} {weekday_label} at {hour_minute}"
+                weekday_label = tr(WEEKDAY_NAMES[int(weekday) % 7])
+                return tr("Monthly ({month}) on the {ordinal} {weekday} at {time}").format(
+                    month=month_label, ordinal=ordinal_label, weekday=weekday_label, time=hour_minute
+                )
             day = int(self.params.get("month_day", 1))
-            return f"Monthly ({month_label}) on day {day} at {hour_minute}"
-        return "Custom"
+            return tr("Monthly ({month}) on day {day} at {time}").format(
+                month=month_label, day=day, time=hour_minute
+            )
+        return tr("Custom")
 
     def _format_datetime(self, value: Optional[str]) -> str:
         parsed = _parse_iso(value) if isinstance(value, str) else None

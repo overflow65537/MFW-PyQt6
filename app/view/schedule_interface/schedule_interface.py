@@ -281,15 +281,15 @@ class ScheduleInterface(QWidget):
         form.setSpacing(8)
         self.weekly_datetime = self._build_datetime_control()
         self.weekly_interval_spin = SpinBox()
-        self.weekly_interval_spin.setRange(0, 52)
-        self.weekly_interval_spin.setValue(0)
+        self.weekly_interval_spin.setRange(1, 52)
+        self.weekly_interval_spin.setValue(1)
         form.addRow(
             self.tr("Start"),
             self._build_date_time_row(self.weekly_datetime),
         )
         interval_layout = QHBoxLayout()
         interval_layout.addWidget(self.weekly_interval_spin)
-        interval_layout.addWidget(BodyLabel(self.tr("weeks (0 = every week)")))
+        interval_layout.addWidget(BodyLabel(self.tr("weeks")))
         interval_layout.addStretch()
         form.addRow(self.tr("Every"), interval_layout)
 
@@ -489,7 +489,7 @@ class ScheduleInterface(QWidget):
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         self.schedule_table.setItem(row, 0, item)
 
-        pattern = QTableWidgetItem(entry.describe())
+        pattern = QTableWidgetItem(entry.describe(self.tr))
         pattern.setFlags(pattern.flags() & ~Qt.ItemFlag.ItemIsEditable)
         self.schedule_table.setItem(row, 1, pattern)
 
@@ -562,7 +562,7 @@ class ScheduleInterface(QWidget):
                 params["interval_days"] = self.daily_interval_spin.value()
             elif schedule_type == SCHEDULE_WEEKLY:
                 start_at = self._compose_datetime(self.weekly_datetime)
-                params["interval_weeks"] = self.weekly_interval_spin.value()
+                params["interval_weeks"] = max(1, self.weekly_interval_spin.value())
                 weekdays = [
                     idx
                     for idx, cb in enumerate(self.weekday_checkboxes)
