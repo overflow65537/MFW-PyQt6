@@ -14,6 +14,8 @@ from qfluentwidgets import (
     ToolTipFilter,
     ToolTipPosition,
     FluentIcon as FIF,
+    isDarkTheme,
+    qconfig,
 )
 from PySide6.QtGui import QFont
 
@@ -27,16 +29,13 @@ class LogoutputWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        # 级别颜色映射
-        self._level_color = {
-            "INFO": "#eeeeee",
-            "WARNING": "#e3b341",
-            "ERROR": "#ff4b42",
-            "CRITICAL": "#b63923",
-        }
+        # 级别颜色映射（随主题自动更新）
+        self._level_color: dict[str, str] = {}
         self._color_tag_pattern = re.compile(
             r"\[color:(?P<color>[^\]]+)\](?P<text>.*?)\[/color\]", re.S
         )
+        self._apply_theme_colors()
+        qconfig.themeChanged.connect(self._apply_theme_colors)
         self._init_log_output()
         self.main_layout = QVBoxLayout(self)
         self.main_layout.addWidget(self.log_output_widget)
@@ -51,6 +50,38 @@ class LogoutputWidget(QWidget):
         signalBus.log_zip_finished.connect(
             lambda: self.generate_log_zip_button.setEnabled(True)
         )
+
+    def _apply_theme_colors(self, *_):
+        """根据当前主题调整日志文本颜色"""
+        base_text_color = self._resolve_base_text_color()
+        if isDarkTheme():
+            self._level_color = {
+                "INFO": base_text_color,
+                "WARNING": "#e3b341",
+                "ERROR": "#ff4b42",
+                "CRITICAL": "#b63923",
+            }
+        else:
+            self._level_color = {
+                "INFO": base_text_color,
+                "WARNING": "#a05a00",
+                "ERROR": "#c62828",
+                "CRITICAL": "#8b1f16",
+            }
+
+    def _resolve_base_text_color(self) -> str:
+        """获取当前可读的基础文本颜色，亮色主题下避免纯白"""
+        # 优先使用日志区域的调色板，如果不存在则退回自身调色板
+        palette = (
+            self.log_output_area.palette()
+            if hasattr(self, "log_output_area")
+            else self.palette()
+        )
+        color = palette.color(QPalette.ColorRole.WindowText)
+        # 当亮度过高时（接近白色），在浅色主题下使用较深的默认色
+        if not isDarkTheme() and color.lightness() > 220:
+            return "#202020"
+        return color.name()
 
     def _init_log_output(self):
         """初始化日志输出区域"""

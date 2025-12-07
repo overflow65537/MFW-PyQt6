@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
 )
 
 from PySide6.QtCore import Signal, Qt
+from PySide6.QtGui import QPalette
 
 from qfluentwidgets import (
     CheckBox,
@@ -12,6 +13,8 @@ from qfluentwidgets import (
     BodyLabel,
     ListWidget,
     FluentIcon as FIF,
+    isDarkTheme,
+    qconfig,
 )
 from app.core.Item import TaskItem, ConfigItem
 from app.common.constants import PRE_CONFIGURATION, POST_ACTION
@@ -32,8 +35,26 @@ class BaseListItem(QWidget):
     def __init__(self, item: ConfigItem | TaskItem, parent=None):
         super().__init__(parent)
         self.item = item
+        # 默认允许的状态（某些子类可能在后续重设）
+        self._interface_allowed: bool = True
 
         self._init_ui()
+        self._apply_theme_colors()
+        qconfig.themeChanged.connect(self._apply_theme_colors)
+
+    def _resolve_text_color(self) -> str:
+        """根据当前主题返回可读的文本颜色"""
+        color = self.palette().color(QPalette.ColorRole.WindowText)
+        if not isDarkTheme() and color.lightness() > 220:
+            return "#202020"
+        return color.name()
+
+    def _apply_theme_colors(self, *_):
+        """应用主题颜色到名称标签"""
+        if hasattr(self, "_interface_allowed") and self._interface_allowed is False:
+            return  # 禁用状态保持红色提示
+        if hasattr(self, "name_label"):
+            self.name_label.setStyleSheet(f"color: {self._resolve_text_color()};")
 
     def _init_ui(self):
         # 基础UI布局设置
@@ -124,7 +145,7 @@ class TaskListItem(BaseListItem):
             # 只有非基础任务才需要解除禁用
             if not self.task.is_base_task():
                 self.checkbox.setDisabled(False)
-            self.name_label.setStyleSheet("")
+            self._apply_theme_colors()
 
     @property
     def interface_allows(self) -> bool:
