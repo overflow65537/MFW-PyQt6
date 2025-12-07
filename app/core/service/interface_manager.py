@@ -33,8 +33,55 @@ class InterfaceManager:
         if not hasattr(self, "_initialized"):
             self._initialized = False
 
+    # 内部工具: 重置状态, 保留当前语言设置
+    def _reset_state(self):
+        self._initialized = False
+        self._original_interface = {}
+        self._translated_interface = {}
+        self._translations = {}
+        self._interface_path = None
+        self._interface_dir = Path.cwd()
+
+    def _normalize_interface_path(
+        self, interface_path: Optional[Path | str]
+    ) -> Optional[Path]:
+        """
+        解析 interface 路径:
+        - 传入路径优先
+        - 其次使用已存在的路径
+        - 否则按默认规则搜索项目根目录
+        """
+        if interface_path:
+            return Path(interface_path)
+        if self._interface_path:
+            return self._interface_path
+
+        interface_path_jsonc = Path.cwd() / "interface.jsonc"
+        logger.debug(f"尝试加载: {interface_path_jsonc}")
+        if interface_path_jsonc.exists():
+            return interface_path_jsonc
+
+        interface_path_json = Path.cwd() / "interface.json"
+        logger.debug(f"尝试加载: {interface_path_json}")
+        return interface_path_json
+
+    def _detect_language_from_config(self) -> str:
+        """根据全局配置推断语言代码"""
+        language_map = {
+            "Chinese (China)": "zh_cn",
+            "Chinese (Hong Kong)": "zh_hk",
+            "English": "en_us",
+        }
+        qt_locale = cfg.get(cfg.language)
+        locale_name = (
+            qt_locale.value.name() if hasattr(qt_locale, "value") else "Chinese (China)"
+        )
+        return language_map.get(locale_name, "zh_cn")
+
     def initialize(
-        self, interface_path: Optional[Path] = None, language: Optional[str] = None
+        self,
+        interface_path: Optional[Path | str] = None,
+        language: Optional[str] = None,
     ):
         """
         初始化 Interface 管理器
@@ -43,32 +90,42 @@ class InterfaceManager:
             interface_path: interface 配置文件路径，默认为项目根目录下的 interface.jsonc 或 interface.json
             language: 语言代码（如 "zh_cn", "en_us", "zh_hk"），默认从配置读取
         """
-        if self._initialized:
+        desired_path = self._normalize_interface_path(interface_path)
+        if language is not None:
+            desired_language = language
+        elif not self._initialized and self._current_language == "zh_cn":
+            # 首次初始化时根据配置自动探测语言
+            desired_language = self._detect_language_from_config()
+        else:
+            # 已有语言设置则沿用
+            desired_language = self._current_language
+
+        # 如果已初始化且路径/语言未变，直接返回；否则重置并重新初始化
+        if (
+            self._initialized
+            and desired_path == self._interface_path
+            and desired_language == self._current_language
+        ):
             return
+        if self._initialized:
+            self._reset_state()
 
-        # 确定 interface 配置文件路径
-        if interface_path is None:
-            # 优先尝试读取 interface.jsonc
-            interface_path_jsonc = Path.cwd() / "interface.jsonc"
-            logger.debug(f"尝试加载: {interface_path_jsonc}")
-            if interface_path_jsonc.exists():
-                interface_path = interface_path_jsonc
-            else:
-                # 如果 interface.jsonc 不存在，再尝试 interface.json
-                interface_path_json = Path.cwd() / "interface.json"
-                logger.debug(f"尝试加载: {interface_path_json}")
-                interface_path = interface_path_json
-
-        self._interface_path = interface_path
-        self._interface_dir = interface_path.parent if interface_path else Path.cwd()
+        self._interface_path = desired_path
+        self._interface_dir = desired_path.parent if desired_path else Path.cwd()
+        self._current_language = desired_language
 
         # 加载原始 interface 配置
+        if self._interface_path is None:
+            logger.error("未指定 interface 配置文件路径")
+            self._original_interface = {}
+            return
+
         try:
-            with open(interface_path, "r", encoding="utf-8") as f:
+            with open(self._interface_path, "r", encoding="utf-8") as f:
                 self._original_interface = jsonc.load(f)
-            logger.debug(f"加载配置文件: {interface_path}")
+            logger.debug(f"加载配置文件: {self._interface_path}")
         except FileNotFoundError:
-            logger.error(f"未找到配置文件: {interface_path}")
+            logger.error(f"未找到配置文件: {self._interface_path}")
             self._original_interface = {}
             return
         except jsonc.JSONDecodeError as e:
@@ -77,26 +134,9 @@ class InterfaceManager:
             return
 
         # 设置当前语言
-        if language:
-            # 直接使用传入的语言代码
-            self._current_language = language
-        else:
-            # 从配置获取语言设置（从 QFluentWidgets 的 language 配置映射）
-            # Language.CHINESE_SIMPLIFIED → "zh_cn"
-            # Language.ENGLISH → "en_us"
-            # Language.CHINESE_TRADITIONAL → "zh_hk"
-            language_map = {
-                "Chinese (China)": "zh_cn",
-                "Chinese (Hong Kong)": "zh_hk",
-                "English": "en_us",
-            }
-            qt_locale = cfg.get(cfg.language)
-            locale_name = (
-                qt_locale.value.name()
-                if hasattr(qt_locale, "value")
-                else "Chinese (China)"
-            )
-            self._current_language = language_map.get(locale_name, "zh_cn")
+        # 如果未显式传入语言且当前语言为默认值，使用配置推断（兼容旧逻辑）
+        if language is None and self._current_language == "zh_cn":
+            self._current_language = self._detect_language_from_config()
 
         # 加载翻译文件
         self._load_translations()
@@ -120,7 +160,7 @@ class InterfaceManager:
             return
 
         # 加载翻译文件
-        translation_path = Path.cwd() / translation_file
+        translation_path = self._interface_dir / translation_file
         try:
             with open(translation_path, "r", encoding="utf-8") as f:
                 self._translations = jsonc.load(f)
@@ -332,22 +372,18 @@ class InterfaceManager:
         self._translate_interface()
         logger.info(f"interface 配置翻译已刷新，当前语言: {self._current_language}")
 
-    def reload(self):
-        """重新加载 interface 配置文件（热更新后调用）"""
+    def reload(
+        self,
+        interface_path: Optional[Path | str] = None,
+        language: Optional[str] = None,
+    ):
+        """重新加载 interface 配置文件（热更新或路径/语言变更后调用）"""
         logger.info("重新加载 interface 配置文件...")
+        desired_path = self._normalize_interface_path(interface_path)
+        desired_language = language or self._current_language
 
-        # 重置初始化标志以允许重新加载
-        self._initialized = False
-
-        # 清空现有数据
-        self._original_interface = {}
-        self._translated_interface = {}
-        self._translations = {}
-        self._interface_path = None
-        self._interface_dir = Path.cwd()
-
-        # 重新初始化
-        self.initialize()
+        self._reset_state()
+        self.initialize(interface_path=desired_path, language=desired_language)
 
         logger.info("interface 配置文件重新加载完成")
 
@@ -356,23 +392,25 @@ class InterfaceManager:
 _interface_manager = InterfaceManager()
 
 
-def get_interface_manager(language: Optional[str] = None) -> InterfaceManager:
+def get_interface_manager(
+    interface_path: Optional[Path | str] = None, language: Optional[str] = None
+) -> InterfaceManager:
     """
     获取 Interface 管理器单例实例
 
     Args:
+        interface_path: interface 配置文件路径（可为 json/jsonc）
         language: 语言代码（如 "zh_cn", "en_us", "zh_hk"），默认从配置读取
 
     Returns:
         InterfaceManager 实例
 
     Example:
-        >>> interface_manager = get_interface_manager("en_us")
+        >>> interface_manager = get_interface_manager("path/to/interface.jsonc", "en_us")
         >>> interface = interface_manager.get_interface()
         >>> print(interface["task"][0]["label"])  # 已翻译的任务标签
     """
-    if not _interface_manager._initialized:
-        _interface_manager.initialize(language=language)
+    _interface_manager.initialize(interface_path=interface_path, language=language)
     return _interface_manager
 
 

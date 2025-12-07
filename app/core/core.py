@@ -20,17 +20,25 @@ from app.common.signal_bus import signalBus
 class ServiceCoordinator:
     """服务协调器，整合配置、任务和选项服务"""
 
-    def __init__(self, main_config_path: Path, configs_dir: Path | None = None):
+    def __init__(
+        self,
+        main_config_path: Path,
+        configs_dir: Path | None = None,
+        interface_path: Path | str | None = None,
+    ):
         # 初始化信号总线
         self.signal_bus = CoreSignalBus()
         self.fs_signal_bus = FromeServiceCoordinator()
+        self._interface_path = Path(interface_path) if interface_path else None
 
         # 确定配置目录
         if configs_dir is None:
             configs_dir = main_config_path.parent / "configs"
 
         # 生成 interface 并传递给服务
-        self.interface_manager: InterfaceManager = get_interface_manager()
+        self.interface_manager: InterfaceManager = get_interface_manager(
+            interface_path=self._interface_path
+        )
         self._interface: Dict = self.interface_manager.get_interface()
 
         # 初始化存储库和服务
@@ -200,7 +208,7 @@ class ServiceCoordinator:
             self.config_repo.load_main_config()
 
             # 刷新 interface 数据
-            self.interface_manager.reload()
+            self.interface_manager.reload(self._interface_path)
             self._interface = self.interface_manager.get_interface()
             self.config_repo.interface = self._interface
 
