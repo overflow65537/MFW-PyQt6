@@ -1181,6 +1181,7 @@ class Update(BaseUpdate):
             "***" if self.mirror_cdk else "无",
         )
         self.download_url = None
+        self.version_name = None
 
         # 尝试 Mirror 源
         logger.info("  [检查更新] 尝试 MirrorChyan 源...")
@@ -1207,6 +1208,10 @@ class Update(BaseUpdate):
 
             cfg.set(cfg.latest_update_version, self.latest_update_version)
             return False
+        elif mirror_status == "failed_info":
+            logger.info("  [检查更新] Mirror 检查失败: %s", mirror_result.get("msg"))
+            self._emit_info_bar("warning", mirror_result.get("msg"))
+
         self.latest_update_version = mirror_version or self.current_version
         cfg.set(cfg.latest_update_version, self.latest_update_version)
 
@@ -1223,13 +1228,11 @@ class Update(BaseUpdate):
                 "info", self.tr("Found update: ") + str(self.latest_update_version)
             )
             return mirror_url
-
-        # Mirror 失败，记录日志
-        if mirror_status == "failed_info":
-            logger.info("  [检查更新] Mirror 检查失败: %s", mirror_result.get("msg"))
-            self._emit_info_bar("warning", mirror_result.get("msg"))
+        elif mirror_result.get("data", {}).get("version_name"):
+            self.version_name = mirror_result.get("data", {}).get("version_name")
         else:
-            logger.info("  [检查更新] Mirror 未返回下载地址，可能未配置 CDK")
+            logger.error(f"  [检查更新] Mirror 未返回下载地址和版本名\n{mirror_result}")
+            return False
 
         # 尝试 GitHub
         logger.info("  [检查更新] 切换到 GitHub 源...")
@@ -1237,7 +1240,12 @@ class Update(BaseUpdate):
             logger.warning("  [检查更新] GitHub: 未配置项目地址")
             return False
 
-        github_api_url = self._form_github_url(self.url, "download")
+        if self.version_name:
+            github_api_url = self._form_github_url(
+                self.url, "download", self.version_name
+            )
+        else:
+            github_api_url = self._form_github_url(self.url, "download")
         if not github_api_url:
             logger.warning("  [检查更新] GitHub: API 地址解析失败")
             return False
@@ -1262,6 +1270,11 @@ class Update(BaseUpdate):
         for assets in github_result.get("assets", []) or []:
             if not isinstance(assets, dict):
                 continue
+            print([
+                f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{self.latest_update_version}.zip",
+                f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{self.latest_update_version}.tar.gz",
+            ]) 
+            print(assets.get("name"))
             if assets.get("name") in [
                 f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{self.latest_update_version}.zip",
                 f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{self.latest_update_version}.tar.gz",
@@ -1331,9 +1344,10 @@ class Update(BaseUpdate):
         if mode == "issue":
             return_url = f"https://github.com/{username}/{repository}/issues"
         elif mode == "download":
-            return_url = (
-                f"https://api.github.com/repos/{username}/{repository}/releases/latest"
-            )
+            if version:
+                return_url = f"https://api.github.com/repos/{username}/{repository}/releases/tags/{version}"
+            else:
+                return_url = f"https://api.github.com/repos/{username}/{repository}/releases/latest"
         elif mode == "about":
             return_url = f"https://github.com/{username}/{repository}"
         elif mode == "update_flag":

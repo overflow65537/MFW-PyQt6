@@ -228,7 +228,10 @@ class ConfigService:
                     name="Pre-Configuration",
                     item_id=PRE_CONFIGURATION,
                     is_checked=True,
-                    task_option={"controller_type": init_controller, "resource": init_resource},
+                    task_option={
+                        "controller_type": init_controller,
+                        "resource": init_resource,
+                    },
                     is_special=False,  # 基础任务，不是特殊任务
                 ),
                 TaskItem(
