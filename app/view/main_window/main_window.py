@@ -51,6 +51,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QApplication,
     QLabel,
+    QWidget,
     QGraphicsOpacityEffect,
     QSizePolicy,
     QHBoxLayout,
@@ -256,26 +257,58 @@ class MainWindow(MSFluentWindow):
         for btn in (title_bar.closeBtn, title_bar.minBtn, title_bar.maxBtn):
             btn_layout.addWidget(btn, 0, Qt.AlignmentFlag.AlignVCenter)
 
+        # 预留一个与按钮区等宽的占位，确保标题区域真正居中
+        mirror_width = max(
+            btn_layout.sizeHint().width(),
+            title_bar.closeBtn.sizeHint().width()
+            + title_bar.minBtn.sizeHint().width()
+            + title_bar.maxBtn.sizeHint().width()
+            + btn_layout.spacing() * 2
+            + btn_layout.contentsMargins().left()
+            + btn_layout.contentsMargins().right(),
+        )
+        mirror_placeholder = QWidget(title_bar)
+        mirror_placeholder.setFixedWidth(mirror_width)
+        mirror_placeholder.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred
+        )
+
         _clear_layout(v_layout)
         v_layout.setContentsMargins(0, 0, 0, 0)
         v_layout.setSpacing(0)
         v_layout.addLayout(btn_layout)
         v_layout.addStretch(1)
 
+        center_layout = QHBoxLayout()
+        center_layout.setContentsMargins(0, 0, 0, 0)
+        center_layout.setSpacing(6)
+        center_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        center_layout.addWidget(
+            title_bar.iconLabel, 0, Qt.AlignmentFlag.AlignVCenter
+        )
+        title_bar.titleLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_bar.titleLabel.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
+        center_layout.addWidget(
+            title_bar.titleLabel, 0, Qt.AlignmentFlag.AlignVCenter
+        )
+
+        center_widget = QWidget(title_bar)
+        center_widget.setLayout(center_layout)
+        center_widget.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
+
         _clear_layout(h_layout)
         h_layout.setContentsMargins(10, 0, 12, 0)
         h_layout.setSpacing(8)
         h_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         h_layout.addLayout(v_layout, 0)
-        h_layout.addSpacing(8)
-        h_layout.addWidget(title_bar.iconLabel, 0, Qt.AlignmentFlag.AlignVCenter)
         h_layout.addStretch(1)
-        title_bar.titleLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_bar.titleLabel.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
-        )
-        h_layout.addWidget(title_bar.titleLabel, 0, Qt.AlignmentFlag.AlignCenter)
+        h_layout.addWidget(center_widget, 0, Qt.AlignmentFlag.AlignCenter)
         h_layout.addStretch(1)
+        h_layout.addWidget(mirror_placeholder, 0, Qt.AlignmentFlag.AlignVCenter)
 
     def _restore_window_geometry(self) -> bool:
         """尝试从配置中恢复上次记录的位置与大小。"""
