@@ -105,6 +105,8 @@ class SettingInterface(QWidget):
         self._update_checker: Optional[UpdateCheckTask] = None
         self._latest_update_check_result: str | bool | None = None
         self._updater_started = False
+        self._local_update_package: Path | None = None
+        self._restart_update_required: bool = False
         self._update_button_handler: Callable | None = None
         self._last_progress_time: float | None = None
         self._last_downloaded_bytes = 0
@@ -115,6 +117,11 @@ class SettingInterface(QWidget):
         self.scroll_area = ScrollArea(self)
         self._setup_ui()
         self._init_updater()
+        self._local_update_package = self._refresh_local_update_package(
+            restart_required=True
+        )
+        if self._local_update_package:
+            logger.info("检测到本地更新包，跳过检查更新流程")
         self._init_update_checker()
 
     def _setup_ui(self):
@@ -1366,12 +1373,92 @@ class SettingInterface(QWidget):
         if not self._service_coordinator:
             logger.warning("service_coordinator 未初始化，跳过更新检查器")
             return
+        skip_checker, reason = self._should_skip_update_checker()
+        if skip_checker:
+            logger.info("跳过更新检查器启动：%s", reason)
+            return
 
         self._update_checker = UpdateCheckTask(
             service_coordinator=self._service_coordinator
         )
         self._update_checker.result_ready.connect(self._on_update_check_result)
         self._update_checker.start()
+
+    def _should_skip_update_checker(self) -> tuple[bool, str]:
+        """根据自动更新和本地包状态决定是否跳过检查线程。"""
+        if self._is_auto_update_enabled():
+            return True, "自动更新已开启"
+        if self._local_update_package:
+            return True, "检测到本地更新包"
+        return False, ""
+
+    def _is_auto_update_enabled(self) -> bool:
+        """读取配置判断是否开启自动更新。"""
+        try:
+            return bool(cfg.get(cfg.auto_update))
+        except Exception:
+            return False
+
+    def _detect_local_update_package(self) -> Path | None:
+        """检查 update/new_version 是否已有更新包。"""
+        target_dir = Path.cwd() / "update" / "new_version"
+        if not target_dir.exists() or not target_dir.is_dir():
+            return None
+        files = [p for p in target_dir.iterdir() if p.is_file()]
+        logger.info("本地更新包检测: 路径=%s, 文件数=%s", target_dir, len(files))
+        if len(files) != 1:
+            return None
+        candidate = files[0]
+        lower_name = candidate.name.lower()
+        if lower_name.endswith(".zip") or lower_name.endswith(".tar.gz"):
+            logger.info("发现本地更新包: %s", candidate)
+            return candidate
+        return None
+
+    def _refresh_local_update_package(self, restart_required: bool = True) -> Path | None:
+        """刷新本地更新包缓存，便于动态响应。"""
+        self._local_update_package = self._detect_local_update_package()
+        if self._local_update_package:
+            self._prepare_instant_update_state(restart_required=restart_required)
+        return self._local_update_package
+
+    def _prepare_instant_update_state(self, restart_required: bool = True) -> None:
+        """准备立即更新状态：按钮直达更新并同步最新版本提示。"""
+        self._restart_update_required = restart_required
+        self._bind_instant_update_button(enable=True)
+        latest_version = cfg.get(cfg.latest_update_version)
+        if latest_version:
+            self._set_last_version_label(str(latest_version))
+
+    def start_auto_update(self) -> bool:
+        """供主窗口调用的自动更新入口，复用设置页的更新器。"""
+        if not self._service_coordinator:
+            logger.warning("service_coordinator 未初始化，跳过自动更新")
+            return False
+
+        if not self._updater:
+            self._init_updater()
+
+        if self._updater and self._updater.isRunning():
+            logger.info("自动更新已在进行，跳过重复启动")
+            return True
+
+        if self._refresh_local_update_package(restart_required=True):
+            logger.info(
+                "自动更新检测到本地更新包，直接进入立即更新确认（auto_accept=True）"
+            )
+            self._handle_instant_update(auto_accept=True, notify_if_cancel=True)
+            return True
+
+        if not self._updater:
+            logger.warning("更新器未初始化，无法自动更新")
+            return False
+
+        self._show_progress_bar()
+        self._bind_stop_button(self.tr("Stop update"), enable=False)
+        self._lock_update_button_temporarily()
+        self._updater.start()
+        return True
 
     def _on_update_check_result(self, result: dict):
         """预留的接口，用于接收后台检查结果"""
@@ -1439,6 +1526,9 @@ class SettingInterface(QWidget):
 
     def _on_update_start_clicked(self):
         """点击开始更新"""
+        if self._refresh_local_update_package(restart_required=True):
+            self._handle_instant_update()
+            return
         if not self._updater:
             logger.warning("更新器未初始化")
             if self._github_url:
@@ -1460,22 +1550,41 @@ class SettingInterface(QWidget):
         """更新器停止信号统一处理 UI"""
         self._hide_progress_indicators()
         self._lock_update_button_temporarily()
-        if status == 2:
-            self._bind_instant_update_button(enable=False)
+        if status in (2, 3):
+            self._restart_update_required = True
+            self._refresh_local_update_package(restart_required=True)
+            self._bind_instant_update_button(enable=True)
             return
+        self._restart_update_required = False
         self._bind_start_button(enable=False)
 
     def _on_instant_update_clicked(self):
         """立即更新"""
-        # 如果已经启动过更新程序，忽略重复调用（幂等保护）
+        self._handle_instant_update()
+
+    def _handle_instant_update(
+        self, *, auto_accept: bool = False, notify_if_cancel: bool = False
+    ) -> None:
+        """弹框确认后启动外部更新器。"""
+        logger.info(
+            "进入立即更新确认，auto_accept=%s，notify_if_cancel=%s，需重启=%s，本地包=%s",
+            auto_accept,
+            notify_if_cancel,
+            self._restart_update_required,
+            bool(self._local_update_package),
+        )
+        confirmed = self._prompt_instant_update(auto_accept=auto_accept)
+        if not confirmed:
+            if notify_if_cancel:
+                signalBus.update_stopped.emit(3)
+            return
+
         if self._updater_started:
             logger.info("更新程序已启动，忽略重复调用。")
             return
 
-        # 标记为已启动，防止并发重复调用
         self._updater_started = True
 
-        # 重命名更新程序防止占用
         import sys
 
         try:
@@ -1484,26 +1593,115 @@ class SettingInterface(QWidget):
             elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
                 self._rename_updater("MFWUpdater", "MFWUpdater1")
         except Exception as e:
-            # 如果重命名失败，重置启动标志并报告错误
             self._updater_started = False
             logger.error(f"重命名更新程序失败: {e}")
             signalBus.info_bar_requested.emit("error", e)
+            if notify_if_cancel:
+                signalBus.update_stopped.emit(3)
             return
 
-        # 启动更新程序（子进程）
         try:
             self._start_updater()
         except Exception as e:
-            # 启动失败则重置标志并报告错误
             self._updater_started = False
             logger.error(f"启动更新程序失败: {e}")
             signalBus.info_bar_requested.emit("error", e)
+            if notify_if_cancel:
+                signalBus.update_stopped.emit(3)
             return
 
-        # 启动成功后退出主程序
         from PySide6.QtWidgets import QApplication
 
         QApplication.quit()
+
+    def trigger_instant_update_prompt(self, auto_accept: bool = False) -> None:
+        """供外部（如自动更新流程）触发的立即更新确认。"""
+        self._restart_update_required = True
+        self._refresh_local_update_package()
+        self._prepare_instant_update_state()
+        logger.info("触发立即更新确认，auto_accept=%s，检测到本地包=%s", auto_accept, bool(self._local_update_package))
+        self._handle_instant_update(auto_accept=auto_accept, notify_if_cancel=True)
+
+    def _prompt_instant_update(self, *, auto_accept: bool = False) -> bool:
+        """显示立即更新确认框，可选自动确认倒计时，父级指向主界面。"""
+        parent = self.window() or self
+        dialog = MessageBoxBase(parent)
+        dialog.widget.setMinimumWidth(420)
+        dialog.yesButton.setText(self.tr("Update now"))
+        dialog.cancelButton.setText(self.tr("Cancel"))
+
+        title_text = (
+            self.tr("Restart required to update")
+            if self._restart_update_required
+            else self.tr("Update package detected")
+        )
+        desc_text = (
+            self.tr(
+                "Hot update is unavailable. A restart update is required. Proceed?"
+            )
+            if self._restart_update_required
+            else self.tr(
+                "Found a downloaded update package. Do you want to launch the updater now?"
+            )
+        )
+
+        title = BodyLabel(title_text, dialog)
+        title.setStyleSheet("font-weight: 600;")
+        desc = BodyLabel(desc_text, dialog)
+        desc.setWordWrap(True)
+
+        dialog.viewLayout.addWidget(title)
+        dialog.viewLayout.addSpacing(6)
+        dialog.viewLayout.addWidget(desc)
+
+        if auto_accept:
+            logger.info("立即更新弹窗启用倒计时 10s（auto_accept=True）")
+            countdown_label = BodyLabel("", dialog)
+            countdown_label.setWordWrap(True)
+            dialog.viewLayout.addSpacing(4)
+            dialog.viewLayout.addWidget(countdown_label)
+            self._start_auto_confirm_countdown(
+                dialog,
+                countdown_label,
+                10,
+                self.tr("Auto updating in %1 s"),
+                dialog.yesButton,
+            )
+
+        result = dialog.exec()
+        return result == QDialog.DialogCode.Accepted
+
+    def _start_auto_confirm_countdown(
+        self,
+        dialog: MessageBoxBase,
+        label: BodyLabel,
+        seconds: int,
+        template: str,
+        yes_button,
+    ) -> None:
+        """通用的自动确认倒计时。"""
+        logger.info("立即更新倒计时开始: %ss", seconds)
+
+        def tick(remaining: int):
+            if not dialog.isVisible():
+                logger.debug("立即更新倒计时终止：对话框已关闭")
+                return
+            label.setText(template.replace("%1", str(remaining)))
+            if yes_button:
+                yes_button.setText(
+                    self.tr("Update now") + f" ({remaining}s)"
+                    if remaining >= 0
+                    else self.tr("Update now")
+                )
+            if remaining <= 0:
+                logger.info("立即更新倒计时结束，自动确认")
+                if yes_button:
+                    yes_button.setText(self.tr("Update now"))
+                dialog.accept()
+                return
+            QTimer.singleShot(1000, lambda: tick(remaining - 1))
+
+        QTimer.singleShot(0, lambda: tick(seconds))
 
     def _rename_updater(self, old_name, new_name):
         """重命名更新程序。"""

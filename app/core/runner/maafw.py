@@ -102,7 +102,7 @@ class MaaControllerEventSink(ControllerEventSink):
         noti_type: NotificationType,
         detail: ControllerEventSink.ControllerActionDetail,
     ):
-        #signalBus.callback.emit({"name": "controller", "status": noti_type.value})
+        # signalBus.callback.emit({"name": "controller", "status": noti_type.value})
         pass
 
 
@@ -204,7 +204,9 @@ class MaaFW(QObject):
         :return: 是否成功加载到至少一个自定义对象
         """
         project_dir = Path.cwd()
-        config_path = Path(str(custom_config_path).replace("{PROJECT_DIR}", str(project_dir)))
+        config_path = Path(
+            str(custom_config_path).replace("{PROJECT_DIR}", str(project_dir))
+        )
         if config_path.is_dir():
             config_path = config_path / "custom.json"
 
@@ -263,8 +265,12 @@ class MaaFW(QObject):
                 continue
 
             # 处理占位符与相对路径
-            custom_file_path = custom_file_path.replace("{custom_path}", str(custom_root))
-            custom_file_path = custom_file_path.replace("{PROJECT_DIR}", str(project_dir))
+            custom_file_path = custom_file_path.replace(
+                "{custom_path}", str(custom_root)
+            )
+            custom_file_path = custom_file_path.replace(
+                "{PROJECT_DIR}", str(project_dir)
+            )
             if not os.path.isabs(custom_file_path):
                 custom_file_path = os.path.join(custom_root, custom_file_path)
             custom_file_path = os.path.abspath(custom_file_path)
@@ -309,7 +315,6 @@ class MaaFW(QObject):
                 if resource.register_custom_action(custom_name, instance):
                     loaded_any = True
                     _record_success(custom_type, custom_name)
-                    logger.info(f"加载自定义动作 {custom_name}")
                     if getattr(self, "need_register_report", False):
                         custom_signal = getattr(signalBus, "custom_info", None)
                         if custom_signal:
@@ -327,11 +332,12 @@ class MaaFW(QObject):
                 if resource.register_custom_recognition(custom_name, instance):
                     loaded_any = True
                     _record_success(custom_type, custom_name)
-                    logger.info(f"加载自定义识别器 {custom_name}")
                     if getattr(self, "need_register_report", False):
                         custom_signal = getattr(signalBus, "custom_info", None)
                         if custom_signal:
-                            custom_signal.emit({"type": "recognition", "name": custom_name})
+                            custom_signal.emit(
+                                {"type": "recognition", "name": custom_name}
+                            )
                 else:
                     reason = f"自定义识别器 {custom_name} 注册失败"
                     logger.warning(reason)

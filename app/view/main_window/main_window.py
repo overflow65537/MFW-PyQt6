@@ -50,6 +50,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QApplication,
+    QDialog,
     QLabel,
     QWidget,
     QGraphicsOpacityEffect,
@@ -66,6 +67,8 @@ from qfluentwidgets import (
     InfoBar,
     InfoBarPosition,
     MSFluentWindow,
+    MessageBoxBase,
+    BodyLabel,
 )
 from qfluentwidgets import FluentIcon as FIF
 
@@ -81,6 +84,7 @@ from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.utils.logger import logger
 from app.common.__version__ import __version__
 from app.core.core import ServiceCoordinator
+from app.utils.update import Update
 from app.widget.notice_message import NoticeMessageBox
 
 
@@ -111,6 +115,12 @@ class MainWindow(MSFluentWindow):
         self._cli_auto_run = bool(auto_run)
         self._cli_switch_config_id = (switch_config_id or "").strip() or None
         self._cli_force_enable_test = bool(force_enable_test)
+        self._auto_update_thread = None
+        self._auto_update_in_progress = False
+        self._auto_update_pending_restart = False
+        self._pending_auto_run = False
+        self._auto_run_scheduled = False
+        self._external_updater_started = False
 
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)
@@ -182,7 +192,8 @@ class MainWindow(MSFluentWindow):
         )
         signalBus.hotkey_shortcuts_changed.connect(self._reload_global_hotkeys)
         self._reload_global_hotkeys()
-        self._schedule_auto_run()
+        self._bootstrap_auto_update_and_run()
+        self._apply_auto_minimize_on_startup()
 
         logger.info(" 主界面初始化完成。")
 
@@ -449,6 +460,7 @@ class MainWindow(MSFluentWindow):
         signalBus.background_opacity_changed.connect(
             self._on_background_opacity_changed
         )
+        signalBus.update_stopped.connect(self._on_update_stopped_main)
 
     def _apply_cli_switch_config(self) -> None:
         """处理 CLI 请求的配置切换，在 UI 初始化前执行。"""
@@ -659,11 +671,60 @@ class MainWindow(MSFluentWindow):
             self._announcement_pending_show = False
             QTimer.singleShot(0, self._on_announcement_button_clicked)
 
+    def _bootstrap_auto_update_and_run(self) -> None:
+        """启动自动更新并串行等待，更新后再执行自动任务。"""
+        self._pending_auto_run = bool(self._cli_auto_run or cfg.get(cfg.run_after_startup))
+        if cfg.get(cfg.auto_update):
+            logger.info("自动更新已开启，准备启动自动更新线程")
+            self._start_auto_update_thread()
+            return
+        logger.info("自动更新未开启，直接检查是否需要自动运行任务")
+        if self._pending_auto_run:
+            self._schedule_auto_run()
+            self._pending_auto_run = False
+
+    def _start_auto_update_thread(self) -> None:
+        """启动自动更新，复用设置页的更新器并避免重复。"""
+        logger.info("进入 _start_auto_update_thread，in_progress=%s", self._auto_update_in_progress)
+        if self._auto_update_in_progress:
+            logger.info("自动更新已在进行，跳过启动")
+            return
+
+        setting_interface = getattr(self, "SettingInterface", None)
+        if not self.service_coordinator or setting_interface is None:
+            logger.warning("自动更新未启动：更新器未就绪")
+            if self._pending_auto_run:
+                self._schedule_auto_run()
+                self._pending_auto_run = False
+            return
+
+        started = False
+        self._auto_update_in_progress = True
+        try:
+            started = setting_interface.start_auto_update()
+        except Exception as exc:
+            logger.error("自动更新启动失败: %s", exc)
+            started = False
+
+        if started:
+            self._auto_update_thread = getattr(setting_interface, "_updater", None)
+            logger.info("自动更新线程已启动，线程对象=%s", self._auto_update_thread)
+            return
+
+        self._auto_update_in_progress = False
+        self._auto_update_thread = None
+        if self._pending_auto_run:
+            self._schedule_auto_run()
+            self._pending_auto_run = False
+
     def _schedule_auto_run(self) -> None:
         """根据 CLI 或配置决定是否在启动后自动运行任务。"""
+        if self._auto_run_scheduled:
+            return
         should_run = self._cli_auto_run or cfg.get(cfg.run_after_startup)
         if not should_run:
             return
+        self._auto_run_scheduled = True
 
         async def _start_flow():
             try:
@@ -672,6 +733,162 @@ class MainWindow(MSFluentWindow):
                 logger.error("启动后自动运行失败: %s", exc)
 
         QTimer.singleShot(0, lambda: asyncio.create_task(_start_flow()))
+
+    def _on_update_stopped_main(self, status: int):
+        """监听更新结束，串行触发自动运行或提示重启。"""
+        logger.info("收到更新结束信号，status=%s，pending_auto_run=%s", status, self._pending_auto_run)
+        self._auto_update_in_progress = False
+        self._auto_update_thread = None
+        if status == 1:
+            if self._pending_auto_run:
+                self._schedule_auto_run()
+            self._pending_auto_run = False
+            return
+        if status == 2:
+            self._auto_update_pending_restart = True
+            self._pending_auto_run = False
+            setting_interface = getattr(self, "SettingInterface", None)
+            logger.info(
+                "检测到需要重启完成更新，auto_update=%s，设置页存在=%s",
+                cfg.get(cfg.auto_update),
+                bool(setting_interface),
+            )
+            if setting_interface:
+                setting_interface.trigger_instant_update_prompt(
+                    auto_accept=cfg.get(cfg.auto_update)
+                )
+            else:
+                self._show_restart_prompt(auto_accept=cfg.get(cfg.auto_update))
+            return
+        if self._pending_auto_run:
+            self._schedule_auto_run()
+        self._pending_auto_run = False
+
+    def _show_restart_prompt(self, auto_accept: bool) -> None:
+        """非热更新完成后弹出重启确认，支持自动确认。"""
+        dialog = MessageBoxBase(self)
+        dialog.widget.setMinimumWidth(420)
+        dialog.yesButton.setText(self.tr("Restart now"))
+        dialog.cancelButton.setText(self.tr("Later"))
+
+        title = BodyLabel(self.tr("Restart required to finish update"), dialog)
+        title.setStyleSheet("font-weight: 600;")
+        desc = BodyLabel(
+            self.tr("Update package downloaded. Restart to apply changes."),
+            dialog,
+        )
+        desc.setWordWrap(True)
+
+        dialog.viewLayout.addWidget(title)
+        dialog.viewLayout.addSpacing(6)
+        dialog.viewLayout.addWidget(desc)
+
+        if auto_accept:
+            logger.info("自动更新场景：启动重启确认倒计时 10s")
+            countdown_label = BodyLabel("", dialog)
+            countdown_label.setWordWrap(True)
+            dialog.viewLayout.addSpacing(4)
+            dialog.viewLayout.addWidget(countdown_label)
+            self._start_auto_confirm_countdown(
+                dialog,
+                countdown_label,
+                10,
+                dialog.yesButton,
+                self.tr("Auto restarting in %1 s"),
+            )
+
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
+            self._start_external_updater()
+
+    def _start_auto_confirm_countdown(
+        self,
+        dialog: MessageBoxBase,
+        label: BodyLabel,
+        seconds: int,
+        yes_button,
+        template: str,
+    ) -> None:
+        """自动确认倒计时，用于自动更新场景。"""
+
+        base_yes_text = yes_button.text() if yes_button else ""
+        logger.info("倒计时开始: %ss, 文案模板=%s", seconds, template)
+
+        def tick(remaining: int):
+            if not dialog.isVisible():
+                logger.debug("倒计时终止：对话框已关闭")
+                return
+            label.setText(template.replace("%1", str(remaining)))
+            if yes_button:
+                yes_button.setText(
+                    f"{base_yes_text} ({remaining}s)" if remaining >= 0 else base_yes_text
+                )
+            if remaining <= 0:
+                if yes_button:
+                    yes_button.setText(base_yes_text)
+                logger.info("倒计时结束，自动点击确认")
+                dialog.accept()
+                return
+            QTimer.singleShot(1000, lambda: tick(remaining - 1))
+
+        QTimer.singleShot(0, lambda: tick(seconds))
+
+    def _start_external_updater(self) -> None:
+        """调用外部更新器完成非热更新并退出主程序。"""
+        if self._external_updater_started:
+            return
+        self._external_updater_started = True
+        try:
+            if sys.platform.startswith("win32"):
+                self._rename_updater("MFWUpdater.exe", "MFWUpdater1.exe")
+            elif sys.platform.startswith(("darwin", "linux")):
+                self._rename_updater("MFWUpdater", "MFWUpdater1")
+        except Exception as exc:
+            self._external_updater_started = False
+            logger.error("重命名更新程序失败: %s", exc)
+            signalBus.info_bar_requested.emit("error", str(exc))
+            return
+
+        try:
+            self._launch_updater_process()
+        except Exception as exc:
+            self._external_updater_started = False
+            logger.error("启动更新程序失败: %s", exc)
+            signalBus.info_bar_requested.emit("error", str(exc))
+            return
+
+        QApplication.quit()
+
+    def _rename_updater(self, old_name: str, new_name: str) -> None:
+        """重命名更新器以避免占用。"""
+        import os
+
+        if os.path.exists(old_name) and os.path.exists(new_name):
+            os.remove(new_name)
+        if os.path.exists(old_name):
+            os.rename(old_name, new_name)
+
+    def _launch_updater_process(self) -> None:
+        """启动外部更新器进程。"""
+        import subprocess
+
+        if sys.platform.startswith("win32"):
+            from subprocess import CREATE_NEW_PROCESS_GROUP, DETACHED_PROCESS
+
+            subprocess.Popen(
+                ["./MFWUpdater1.exe", "-update"],
+                creationflags=CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS,
+            )
+        elif sys.platform.startswith(("darwin", "linux")):
+            subprocess.Popen(["./MFWUpdater1", "-update"], start_new_session=True)
+        else:
+            raise NotImplementedError("Unsupported platform")
+
+    def _apply_auto_minimize_on_startup(self) -> None:
+        """在启动完成后根据配置自动最小化窗口。"""
+        if not cfg.get(cfg.auto_minimize_on_startup):
+            return
+        QTimer.singleShot(0, self.showMinimized)
 
     def _on_announcement_button_clicked(self):
         """处理公告按钮点击，弹出公告对话框或提示无内容。"""

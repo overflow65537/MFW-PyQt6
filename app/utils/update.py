@@ -956,11 +956,6 @@ class Update(BaseUpdate):
             self._emit_info_bar("info", self.tr("Checking for updates..."))
             update_info = self.check_update()
 
-            if not update_info:
-                logger.info("[步骤1] 检查完成: 已是最新版本")
-                return self._stop_with_notice(
-                    0, "info", self.tr("Already latest version")
-                )
 
             download_url = (
                 update_info.get("url") if isinstance(update_info, dict) else None
@@ -1240,11 +1235,19 @@ class Update(BaseUpdate):
         github_result = self.github_check(github_api_url, version=self.current_version)
 
         if not isinstance(github_result, dict):
+            self._emit_info_bar("warning", self.tr("GitHub update check failed"))
             return False
 
         if github_result.get("status"):
             status = github_result.get("status")
             logger.info("  [检查更新] GitHub 返回状态: %s", status)
+            if status == "failed":
+                raw_msg = github_result.get("msg")
+                msg = str(raw_msg) if raw_msg is not None else self.tr(
+                    "GitHub update check failed"
+                )
+                self._emit_info_bar("error", msg)
+                return False
             if status == "no_need":
                 logger.info("  [检查更新] GitHub: 当前已是最新版本")
                 self.latest_update_version = self.current_version
