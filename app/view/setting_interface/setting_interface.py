@@ -1181,9 +1181,6 @@ class SettingInterface(QWidget):
         self.resource_name_label.setText(name)
         self.version_label.setText(self.tr("Version:") + " " + version)
         self._set_last_version_label(last_version)
-        self.license_button.setToolTip(self.tr("License:") + " " + license_value)
-        self.update_button.setToolTip(self.tr("Check for resource updates"))
-        self.update_log_button.setToolTip(self.tr("View update log"))
         self._apply_markdown_to_label(self.description_label, description)
         self._apply_markdown_to_label(
             self.contact_label, self._linkify_contact_urls(contact)
