@@ -954,23 +954,33 @@ class Update(BaseUpdate):
             # 步骤1: 检查更新
             logger.info("[步骤1] 开始检查更新...")
             self._emit_info_bar("info", self.tr("Checking for updates..."))
-            download_url = self.check_update()
+            update_info = self.check_update()
 
-            if not download_url:
+            if not update_info:
                 logger.info("[步骤1] 检查完成: 已是最新版本")
                 return self._stop_with_notice(
                     0, "info", self.tr("Already latest version")
                 )
 
-            logger.info("[步骤1] 检查完成: 发现新版本 %s", self.latest_update_version)
-            logger.info(
-                "[步骤1] 下载地址: %s",
-                str(download_url)[:100] if download_url else "N/A",
+            download_url = (
+                update_info.get("url") if isinstance(update_info, dict) else None
             )
+            download_source = (
+                update_info.get("source")
+                if isinstance(update_info, dict)
+                else "unknown"
+            )
+
+            if not download_url:
+                logger.error("[步骤1] 检查完成但未获取到下载地址")
+                return self._stop_with_notice(0, "error", self.tr("Download failed"))
+
+            logger.info("[步骤1] 检查完成: 发现新版本 %s", self.latest_update_version)
+            logger.info("[步骤1] 下载来源: %s", download_source)
+            logger.info("[步骤1] 下载地址: %s", str(download_url)[:100])
 
             # 步骤2: 检查是否支持热更新
             logger.info("[步骤2] 开始判断热更新支持...")
-            hotfix = False
             update_flag_url = self._form_github_url(
                 self.url, "update_flag", str(self.latest_update_version)
             )
@@ -981,20 +991,14 @@ class Update(BaseUpdate):
             logger.debug("[步骤2] update_flag URL: %s", update_flag_url)
 
             # 获取更新标志位判断是否可以热更新
-            remote_flag = self.check_for_hotfix(update_flag_url) or "1"
-            local_flag = self._read_local_update_flag() or "0"
-            logger.info(
-                "[步骤2] 远程标志位: %s, 本地标志位: %s", remote_flag, local_flag
-            )
+            hotfix = self.check_for_hotfix(update_flag_url)
+            logger.info("[步骤2]热更新支持: %s", hotfix)
+            if hotfix and download_source == "github":
+                download_url = self._form_github_url(
+                    self.url, "hotfix", str(self.latest_update_version)
+                )
 
-            try:
-                hotfix = int(local_flag) == int(remote_flag)
-            except (ValueError, TypeError):
-                logger.warning("[步骤2] 标志位比较失败，跳过热更新")
-                hotfix = False
-            if not hotfix:
-                logger.info("[步骤2] 标志位不匹配，热更新不可用")
-                hotfix = False
+                logger.info("[步骤2] 热更新支持，更换下载地址: %s", download_url)
 
             self._emit_info_bar("info", self.tr("Preparing to download update..."))
 
@@ -1149,7 +1153,7 @@ class Update(BaseUpdate):
                 except Exception as cleanup_err:
                     logger.debug("[步骤5] 清理删除备份目录失败: %s", cleanup_err)
 
-    def check_update(self) -> str | bool:
+    def check_update(self) -> dict | bool:
         logger.info("  [检查更新] 开始检查...")
         logger.debug(
             "  [检查更新] 资源ID: %s, CDK: %s",
@@ -1203,7 +1207,11 @@ class Update(BaseUpdate):
             self._emit_info_bar(
                 "info", self.tr("Found update: ") + str(self.latest_update_version)
             )
-            return mirror_url
+            return {
+                "url": mirror_url,
+                "source": "mirror",
+                "version": self.latest_update_version,
+            }
         elif mirror_result.get("data", {}).get("version_name"):
             self.version_name = mirror_result.get("data", {}).get("version_name")
         else:
@@ -1269,7 +1277,14 @@ class Update(BaseUpdate):
         self._emit_info_bar(
             "info", self.tr("Found update: ") + str(self.latest_update_version)
         )
-        return download_url
+        result_data = {
+            "url": download_url,
+            "source": "github",
+            "version": self.latest_update_version,
+        }
+        if self.release_note:
+            result_data["release_note"] = self.release_note
+        return result_data
 
     def download_update(self):
         pass
@@ -1351,7 +1366,7 @@ class UpdateCheckTask(QThread):
     """
     在后台检查更新但不触发完整更新流程的线程。
 
-    结果会通过 `result_ready` 以下载地址（str）或 `False` 的形式返回。
+    结果会通过 `result_ready` 以包含下载信息的字典或 `False` 的形式返回。
     """
 
     result_ready = Signal(dict)
@@ -1381,8 +1396,11 @@ class UpdateCheckTask(QThread):
             info_bar_signal=self._info_bar_signal,
         )
         result = updater.check_update()
+        result_info = result if isinstance(result, dict) else {}
         result_data: dict = {
             "enable": bool(result),
+            "source": result_info.get("source", ""),
+            "download_url": result_info.get("url", ""),
             "release_note": updater.release_note or "",
             "latest_update_version": updater.latest_update_version or "",
         }
