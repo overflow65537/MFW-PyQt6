@@ -589,6 +589,13 @@ class SettingInterface(QWidget):
             configItem=cfg.run_after_startup,
             parent=self.start_Setting,
         )
+        self.auto_minimize_card = SwitchSettingCard(
+            FIF.MINIMIZE,
+            self.tr("Start minimized"),
+            self.tr("Automatically minimize the window right after launch"),
+            configItem=cfg.auto_minimize_on_startup,
+            parent=self.start_Setting,
+        )
         self.speedrun_mode_card = SwitchSettingCard(
             FIF.SPEED_HIGH,
             self.tr("Speedrun Mode"),
@@ -597,6 +604,7 @@ class SettingInterface(QWidget):
             parent=self.start_Setting,
         )
         self.start_Setting.addSettingCard(self.run_after_startup)
+        self.start_Setting.addSettingCard(self.auto_minimize_card)
         self.start_Setting.addSettingCard(self.speedrun_mode_card)
         self.add_setting_group(self.start_Setting)
 

@@ -65,10 +65,18 @@ if __name__ == "__main__":
     crypto_manager.ensure_key_exists()
 
     # 启动参数解析
-    parser = argparse.ArgumentParser(description="MFW-ChainFlow Assistant", add_help=True)
-    parser.add_argument("-d", "--direct-run", action="store_true", help="启动后直接运行任务流")
-    parser.add_argument("-c", "--config", dest="config_id", help="启动后切换到指定配置ID")
-    parser.add_argument("-dev", "--dev", dest="enable_dev", action="store_true", help="显示测试页面")
+    parser = argparse.ArgumentParser(
+        description="MFW-ChainFlow Assistant", add_help=True
+    )
+    parser.add_argument(
+        "-d", "--direct-run", action="store_true", help="启动后直接运行任务流"
+    )
+    parser.add_argument(
+        "-c", "--config", dest="config_id", help="启动后切换到指定配置ID"
+    )
+    parser.add_argument(
+        "-dev", "--dev", dest="enable_dev", action="store_true", help="显示测试页面"
+    )
     args, qt_extra = parser.parse_known_args(sys.argv[1:])
     qt_argv = [sys.argv[0]] + qt_extra
 

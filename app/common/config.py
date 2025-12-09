@@ -103,6 +103,9 @@ class Config(QConfig):
     run_after_startup = ConfigItem(
         "General", "run_after_startup", False, BoolValidator()
     )
+    auto_minimize_on_startup = ConfigItem(
+        "General", "auto_minimize_on_startup", False, BoolValidator()
+    )
     run_after_startup_arg = ConfigItem(
         "General", "run_after_startup_arg", False, BoolValidator()
     )
