@@ -733,13 +733,14 @@ class TaskFlowRunner(QObject):
         self, entry: str | Path, argv: list[str] | tuple[str, ...] | str | None = None
     ) -> subprocess.Popen:
         """根据入口路径/命令开启子进程，返回 Popen 对象"""
-
         command = [str(entry)]
         if argv is not None:
+            import shlex
             if isinstance(argv, (list, tuple)):
-                command.extend(str(arg) for arg in argv)
+                for arg in argv:
+                    command.extend(shlex.split(str(arg)))
             else:
-                command.append(str(argv))
+                command.extend(shlex.split(str(argv)))
 
         logger.debug(f"准备启动子进程: {command}")
         return subprocess.Popen(command)
