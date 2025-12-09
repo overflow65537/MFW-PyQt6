@@ -21,6 +21,7 @@ from app.view.task_interface.components.ListWidget import TaskDragListWidget, Co
 from app.view.task_interface.components.AddTaskMessageBox import AddConfigDialog, AddTaskDialog
 from app.core.core import ServiceCoordinator
 from app.view.task_interface.components.ListItem import TaskListItem, ConfigListItem
+from app.common.signal_bus import signalBus
 
 
 class BaseListToolBarWidget(QWidget):
@@ -177,9 +178,19 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
 
 class TaskListToolBarWidget(BaseListToolBarWidget):
 
-    def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
+    def __init__(
+        self,
+        service_coordinator: ServiceCoordinator,
+        parent=None,
+        task_filter_mode: str = "all",
+    ):
+        self._task_filter_mode = (
+            task_filter_mode if task_filter_mode in ("all", "normal", "special") else "all"
+        )
         super().__init__(service_coordinator=service_coordinator, parent=parent)
         self.core_signalBus = self.service_coordinator.signal_bus
+        if self._task_filter_mode == "special":
+            self._apply_special_mode_ui()
         # 选择全部按钮
         self.select_all_button.clicked.connect(self.select_all)
         # 取消选择全部按钮
@@ -198,7 +209,9 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
     def _init_task_list(self):
         """初始化任务列表"""
         self.task_list = TaskDragListWidget(
-            service_coordinator=self.service_coordinator, parent=self
+            service_coordinator=self.service_coordinator,
+            parent=self,
+            filter_mode=self._task_filter_mode,
         )
 
     def select_all(self):
@@ -214,14 +227,54 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         # 打开添加任务对话框
         task_map = getattr(self.service_coordinator.task, "default_option", {})
         interface = getattr(self.service_coordinator.task, "interface", {})
+        filtered_task_map = self._filter_task_map_by_mode(task_map, interface)
+        if not filtered_task_map:
+            signalBus.info_bar_requested.emit(
+                "warning", self.tr("No available tasks to add.")
+            )
+            return
         dlg = AddTaskDialog(
-            task_map=task_map, interface=interface, parent=self.window()
+            task_map=filtered_task_map, interface=interface, parent=self.window()
         )
         if dlg.exec():
             new_task = dlg.get_task_item()
             if new_task:
                 # 持久化到服务层
                 self.service_coordinator.modify_task(new_task)
+
+    def _filter_task_map_by_mode(
+        self, task_map: dict[str, dict], interface: dict | None
+    ) -> dict[str, dict]:
+        """根据当前任务过滤模式筛选可添加的任务."""
+        if not isinstance(task_map, dict):
+            return {}
+
+        interface = interface or {}
+        task_special_map: dict[str, bool] = {}
+        for task_def in interface.get("task", []):
+            name = task_def.get("name")
+            if name:
+                task_special_map[name] = task_def.get("spt", False)
+
+        def _include(task_name: str) -> bool:
+            is_special = task_special_map.get(task_name, False)
+            if self._task_filter_mode == "special":
+                return is_special
+            if self._task_filter_mode == "normal":
+                return not is_special
+            return True
+
+        return {name: opts for name, opts in task_map.items() if _include(name)}
+
+    def _apply_special_mode_ui(self):
+        """特殊任务界面隐藏批量与增删按钮"""
+        for btn in (
+            self.select_all_button,
+            self.deselect_all_button,
+            self.add_button,
+            self.delete_button,
+        ):
+            btn.hide()
 
     def remove_selected_task(self):
         cur = self.task_list.currentItem()

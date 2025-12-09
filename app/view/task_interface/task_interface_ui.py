@@ -67,7 +67,8 @@ class UI_TaskInterface(object):
         self.control_panel_layout = QVBoxLayout(self.control_panel)
         # 控制面板总体布局
         self.task_info = TaskListToolBarWidget(
-            service_coordinator=self.service_coordinator
+            service_coordinator=self.service_coordinator,
+            task_filter_mode="normal",
         )
         self.task_info.setFixedWidth(344)
 

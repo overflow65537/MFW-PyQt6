@@ -98,8 +98,18 @@ class TaskDragListWidget(BaseListWidget):
 
     _TASK_ITEM_HEIGHT = 44
 
-    def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
+    def __init__(
+        self,
+        service_coordinator: ServiceCoordinator,
+        parent=None,
+        filter_mode: str = "all",
+    ):
         super().__init__(service_coordinator, parent)
+        # 过滤模式：all(默认)、normal(排除特殊任务)、special(仅特殊任务)
+        self._filter_mode = (
+            filter_mode if filter_mode in ("all", "normal", "special") else "all"
+        )
+        self._persist_changes = True  # 特殊任务也保存状态
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
@@ -149,6 +159,14 @@ class TaskDragListWidget(BaseListWidget):
     def _on_item_selected_to_service(self, item_id: str):
         self.service_coordinator.select_task(item_id)
 
+    def _should_include(self, task: TaskItem) -> bool:
+        """根据过滤模式判断任务是否应显示在当前列表。"""
+        if self._filter_mode == "special":
+            return task.is_special
+        if self._filter_mode == "normal":
+            return not task.is_special
+        return True
+
     def dropEvent(self, event):
         # 拖动前收集任务和保护位置
         previous_tasks = self._collect_task_items()
@@ -168,7 +186,9 @@ class TaskDragListWidget(BaseListWidget):
             self._restore_order([task.item_id for task in previous_tasks])
             event.ignore()
             return
-        self.service_coordinator.reorder_tasks([task.item_id for task in current_tasks])
+        full_tasks = self.service_coordinator.task.get_tasks()
+        reorder_seq = self._build_reorder_sequence(full_tasks, current_tasks)
+        self.service_coordinator.reorder_tasks(reorder_seq)
 
     def _on_config_changed(self, config_id: str) -> None:
         """Reload tasks when user switches configuration."""
@@ -201,7 +221,17 @@ class TaskDragListWidget(BaseListWidget):
         self.setCurrentRow(-1)
         self._task_widgets.clear()
         self._skeleton_items.clear()
-        task_list = self.service_coordinator.task.get_tasks()
+        all_tasks = self.service_coordinator.task.get_tasks()
+        task_list = [t for t in all_tasks if self._should_include(t)]
+        if self._filter_mode == "special":
+            # 特殊任务仅允许单选，若有多个选中则只保留第一个
+            first_checked = False
+            for t in task_list:
+                if t.is_checked and not first_checked:
+                    first_checked = True
+                    continue
+                if t.is_checked:
+                    t.is_checked = False
         self._pending_tasks = task_list
         self._render_index = 0
         self._loading_tasks = bool(task_list)
@@ -266,6 +296,8 @@ class TaskDragListWidget(BaseListWidget):
 
     def modify_task(self, task: TaskItem):
         """添加或更新任务项到列表（如果存在同 id 的任务则更新，否则新增）。"""
+        if not self._should_include(task):
+            return
         # 获取 interface 配置
         interface = getattr(self.service_coordinator.task, "interface", None)
         # 先尝试查找是否已有同 id 的项，若有则进行更新
@@ -376,6 +408,31 @@ class TaskDragListWidget(BaseListWidget):
                 return row
         return -1
 
+    def _build_reorder_sequence(
+        self, full_tasks: list[TaskItem], visible_tasks: list[TaskItem]
+    ) -> list[str]:
+        """
+        根据当前可见任务的顺序生成完整的任务排序。
+        隐藏的任务保持原位置，可见任务按照拖拽后的顺序填充。
+        """
+        if self._filter_mode == "all":
+            return [task.item_id for task in visible_tasks]
+
+        visible_ids = iter([task.item_id for task in visible_tasks])
+        ordered: list[str] = []
+        for task in full_tasks:
+            if self._should_include(task):
+                try:
+                    ordered.append(next(visible_ids))
+                except StopIteration:
+                    # 理论上不会发生，兜底保护
+                    continue
+            else:
+                ordered.append(task.item_id)
+
+        ordered.extend(list(visible_ids))
+        return ordered
+
     def _init_loading_overlay(self) -> None:
         self._loading_overlay = QWidget(self)
         self._loading_overlay.setAttribute(
@@ -414,27 +471,46 @@ class TaskDragListWidget(BaseListWidget):
         """复选框状态变更信号转发"""
         if task.is_base_task():
             return
+        if self._filter_mode == "special" and task.is_checked:
+            # 单选：取消其它特殊任务的勾选
+            for item_id, widget in list(self._task_widgets.items()):
+                if item_id == task.item_id:
+                    continue
+                if widget.checkbox.isChecked():
+                    widget.checkbox.blockSignals(True)
+                    widget.checkbox.setChecked(False)
+                    widget.checkbox.blockSignals(False)
+                    widget.task.is_checked = False
         self.service_coordinator.update_task_checked(task.item_id, task.is_checked)
 
     def select_all(self) -> None:
-        """选择全部任务(排除基础任务和特殊任务)"""
+        """批量勾选当前列表中的任务（基础任务除外）。"""
         steps: list[tuple[TaskListItem, bool]] = []
         for i in range(self.count()):
             item = self.item(i)
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem):
-                if not widget.task.is_base_task() and not widget.task.is_special:
-                    steps.append((widget, True))
+                if self._filter_mode == "special":
+                    if not widget.task.is_base_task() and widget.task.is_special:
+                        steps.append((widget, True))
+                else:
+                    if not widget.task.is_base_task() and not widget.task.is_special:
+                        steps.append((widget, True))
         self._enqueue_bulk_toggle(steps)
 
     def deselect_all(self) -> None:
-        """取消选择全部任务(排除基础任务,但包含特殊任务)"""
+        """批量取消当前列表中的任务勾选（基础任务除外）。"""
         steps: list[tuple[TaskListItem, bool]] = []
         for i in range(self.count()):
             item = self.item(i)
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem):
-                if not widget.task.is_base_task():
+                if widget.task.is_base_task():
+                    continue
+                if self._filter_mode == "special":
+                    if widget.task.is_special:
+                        steps.append((widget, False))
+                else:
                     steps.append((widget, False))
         self._enqueue_bulk_toggle(steps)
 

@@ -74,6 +74,9 @@ from qfluentwidgets import FluentIcon as FIF
 
 
 from app.view.task_interface.task_interface_logic import TaskInterface
+from app.view.special_task_interface.special_task_interface import (
+    SpecialTaskInterface,
+)
 from app.view.monitor_interface import MonitorInterface
 from app.view.schedule_interface.schedule_interface import ScheduleInterface
 from app.view.setting_interface.setting_interface import SettingInterface
@@ -143,6 +146,12 @@ class MainWindow(MSFluentWindow):
         # 创建子界面
         self.TaskInterface = TaskInterface(self.service_coordinator)
         self.addSubInterface(self.TaskInterface, FIF.CHECKBOX, self.tr("Task"))
+        self.SpecialTaskInterface = SpecialTaskInterface(self.service_coordinator)
+        self.addSubInterface(
+            self.SpecialTaskInterface,
+            FIF.CHECKBOX,
+            self.tr("Special Task"),
+        )
         self.MonitorInterface = MonitorInterface(self.service_coordinator)
         self.addSubInterface(
             self.MonitorInterface,
