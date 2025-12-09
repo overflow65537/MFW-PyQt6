@@ -280,7 +280,9 @@ class TaskFlowRunner(QObject):
                         if task_result is False:
                             if record:
                                 record["status"] = self.tr("FAILED")
-                            logger.error(f"任务执行失败: {task.name}, 返回 False，终止流程")
+                            logger.error(
+                                f"任务执行失败: {task.name}, 返回 False，终止流程"
+                            )
                             send_notice(
                                 NoticeTiming.WHEN_TASK_FAILED,
                                 self.tr("Task Failed"),
@@ -320,7 +322,9 @@ class TaskFlowRunner(QObject):
                     if self.need_stop:
                         logger.info("收到停止请求，流程终止")
                         break
-                signalBus.log_output.emit("INFO", self.tr("All tasks have been completed"))
+                signalBus.log_output.emit(
+                    "INFO", self.tr("All tasks have been completed")
+                )
 
         except Exception as exc:
             logger.error(f"任务流程执行异常: {str(exc)}")

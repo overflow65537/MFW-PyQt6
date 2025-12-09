@@ -70,6 +70,16 @@ def _process_option_recursive(
         option_value: 选项值（可能是字符串、字典或包含 value/children 的复杂格式）
         merged_override: 合并结果字典（会被修改）
     """
+    # 跳过内部状态/临时字段
+    if option_name.startswith("_"):
+        logger.debug(f"跳过内部选项: {option_name}")
+        return
+
+    # 如果选项本身被标记为隐藏，直接跳过
+    if isinstance(option_value, dict) and option_value.get("hidden", False):
+        logger.debug(f"跳过隐藏的选项: {option_name}")
+        return
+
     # 提取实际的选项值和子选项
     actual_value, children = _extract_option_value_and_children(option_value)
 

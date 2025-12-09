@@ -833,31 +833,54 @@ class OptionItemWidget(QWidget):
         
         # 递归获取子选项的配置
         children_config = {}
+        active_child_keys = set()
+        if self.config_type in ["combobox", "switch"]:
+            # 记录当前选中值对应的子选项键，用于后续判断隐藏状态
+            children_def = self.config.get("children", {})
+            selected_str = str(self.current_value) if self.current_value is not None else ""
+            matched_key = self._match_child_key(
+                children_def,
+                self.current_value,
+                selected_str,
+                selected_str.strip(),
+            )
+            if matched_key:
+                active_child_keys = set(self._child_value_map.get(matched_key, []))
         
         # 对于 combobox 和 switch 类型，需要获取所有已创建的子选项配置
         if self.config_type in ["combobox", "switch"]:
-            for option_value, child_widget in self.child_options.items():
+            for child_key, child_widget in self.child_options.items():
                 if child_widget:
                     # 获取子选项的配置
                     child_option = child_widget.get_option()
                     
                     # 获取子选项的 name（从结构字典中获取）
-                    child_structure = self.config.get("children", {}).get(option_value, {})
-                    child_name = child_structure.get("name", "")
+                    child_name = ""
+                    for option_value, child_keys in self._child_value_map.items():
+                        if child_key in child_keys:
+                            child_structure = self.config.get("children", {}).get(option_value, {})
+                            if isinstance(child_structure, dict):
+                                child_name = child_structure.get("name", "")
+                            elif isinstance(child_structure, list) and child_structure:
+                                first_child = child_structure[0]
+                                if isinstance(first_child, dict):
+                                    child_name = first_child.get("name", "")
+                            break
                     
                     # 检查子选项是否被隐藏（当前选中值不等于此子选项的键值时，该子选项被隐藏）
-                    is_hidden = not child_widget.isVisible()
+                    is_active_child = child_key in active_child_keys
+                    is_hidden = not (is_active_child and child_widget.isVisible())
                     
                     # 对于 lineedit 类型的子选项，如果只有 value，直接使用值
                     if child_widget.config_type == "lineedit" and "children" not in child_option:
                         # lineedit 类型保持简单值，但如果被隐藏需要转换为字典格式
                         if is_hidden:
-                            children_config[option_value] = {
+                            children_config[child_key] = {
                                 "value": child_option.get("value", ""),
-                                "hidden": True
+                                "hidden": True,
                             }
                         else:
-                            children_config[option_value] = child_option.get("value", "")
+                            children_config[child_key] = child_option.get("value", "")
                     else:
                         # 将子选项的 name 添加到配置中（用于从接口文件中获取具体选项）
                         if child_name:
@@ -865,7 +888,7 @@ class OptionItemWidget(QWidget):
                         # 添加隐藏属性（用于 runner 跳过已隐藏的配置）
                         if is_hidden:
                             child_option["hidden"] = True
-                        children_config[option_value] = child_option
+                        children_config[child_key] = child_option
         
         # 如果有子选项配置，添加到结果中
         if children_config:
