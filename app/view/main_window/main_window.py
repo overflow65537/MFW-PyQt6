@@ -125,6 +125,8 @@ class MainWindow(MSFluentWindow):
         self._auto_run_scheduled = False
         self._external_updater_started = False
 
+        cfg.set(cfg.save_screenshot,False)
+
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)
 
