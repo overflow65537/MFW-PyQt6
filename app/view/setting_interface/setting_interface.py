@@ -1367,19 +1367,25 @@ class SettingInterface(QWidget):
 
     def _on_update_check_result(self, result: dict):
         """预留的接口，用于接收后台检查结果"""
-        if result.get("enable"):
-            release_note = result.get("release_note", "")
-            latest_version = result.get("latest_update_version", "")
-            if latest_version:
-                # 更新设置页面的最新版本号显示
-                self._set_last_version_label(latest_version)
-                # 发送 InfoBar 通知用户有新版本
-                signalBus.info_bar_requested.emit(
-                    "info", self.tr("New version available: ") + latest_version
-                )
-                logger.info(f"检测到新版本: {latest_version}")
-            if release_note and latest_version:
-                self._save_release_note(latest_version, release_note)
+        latest_version = result.get("latest_update_version") or cfg.get(
+            cfg.latest_update_version
+        )
+        if latest_version:
+            # 无论是否发现新版本，都同步显示最新的版本号
+            self._set_last_version_label(str(latest_version))
+
+        if not result.get("enable"):
+            return
+
+        release_note = result.get("release_note", "")
+        if latest_version:
+            # 发送 InfoBar 通知用户有新版本
+            signalBus.info_bar_requested.emit(
+                "info", self.tr("New version available: ") + str(latest_version)
+            )
+            logger.info(f"检测到新版本: {latest_version}")
+        if release_note and latest_version:
+            self._save_release_note(str(latest_version), release_note)
 
     def _save_release_note(self, version: str, content: str):
         """保存更新日志到文件"""
