@@ -1,4 +1,6 @@
 from datetime import datetime
+from html import escape
+import re
 from venv import logger
 
 from PySide6.QtCore import Qt
@@ -36,7 +38,7 @@ class LogoutputWidget(QWidget):
         super().__init__(parent)
         # 级别颜色映射（随主题自动更新）
         self._level_color: dict[str, str] = {}
-        self._log_entries: list[tuple[BodyLabel, str]] = []
+        self._log_entries: list[tuple[BodyLabel, str, bool]] = []
         self._log_row_index = 0
         self._tail_spacer_item: QSpacerItem | None = None
         self._tail_spacer_row: int | None = None
@@ -84,9 +86,13 @@ class LogoutputWidget(QWidget):
     def _refresh_log_colors(self):
         """主题变化时刷新已有日志颜色"""
         fallback = self._level_color.get("INFO", self._resolve_base_text_color())
-        for label, level in self._log_entries:
-            color = self._level_color.get(level, fallback)
-            label.setStyleSheet(f"color: {color};")
+        base_color = self._resolve_base_text_color()
+        for label, level, has_custom_color in self._log_entries:
+            if has_custom_color:
+                label.setStyleSheet(f"color: {base_color};")
+            else:
+                color = self._level_color.get(level, fallback)
+                label.setStyleSheet(f"color: {color};")
 
     def _resolve_base_text_color(self) -> str:
         """获取当前可读的基础文本颜色，亮色主题下避免纯白"""
@@ -270,7 +276,9 @@ class LogoutputWidget(QWidget):
 
     def _add_log_row(self, timestamp: str, text: str, level: str):
         """新增一行日志（左时间，右内容）"""
-        color = self._level_color.get(level, self._level_color.get("INFO", "#eeeeee"))
+        formatted_text, has_custom_color = self._format_colored_text(text)
+        base_color = self._resolve_base_text_color()
+        color = self._level_color.get(level, base_color)
 
         # 保证底部仅一个填充项，防止行被均分
         self._remove_tail_spacer()
@@ -279,13 +287,18 @@ class LogoutputWidget(QWidget):
         time_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         time_label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
 
-        content_label = BodyLabel(text)
+        content_label = BodyLabel(formatted_text)
+        content_label.setTextFormat(Qt.TextFormat.RichText)
         content_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         content_label.setWordWrap(True)
         content_label.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
         )
-        content_label.setStyleSheet(f"color: {color};")
+        if has_custom_color:
+            # 忽略日志级别颜色，按自定义颜色渲染
+            content_label.setStyleSheet(f"color: {base_color};")
+        else:
+            content_label.setStyleSheet(f"color: {color};")
 
         self.log_grid_layout.addWidget(
             time_label,
@@ -299,10 +312,48 @@ class LogoutputWidget(QWidget):
             1,
             alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft,
         )
-        self._log_entries.append((content_label, level))
+        self._log_entries.append((content_label, level, has_custom_color))
         self._log_row_index += 1
         self._add_tail_spacer()
         self._scroll_to_bottom()
+
+    def _sanitize_color(self, raw: str) -> str:
+        """过滤颜色字符串，防止注入并保留常见格式"""
+        color = (raw or "").strip()
+        if re.fullmatch(r"[#a-zA-Z0-9(),.%/\s-]{1,64}", color):
+            return color
+        return self._resolve_base_text_color()
+
+    def _format_colored_text(self, text: str) -> tuple[str, bool]:
+        """
+        解析 [color:xxx]...[/color] 结构，生成富文本以支持多色展示
+        返回 (富文本字符串, 是否包含自定义颜色)
+        """
+        pattern = re.compile(r"\[color:([^\]]+)\](.*?)\[/color\]", re.IGNORECASE | re.DOTALL)
+        has_custom_color = False
+        parts: list[str] = []
+        last_index = 0
+
+        for match in pattern.finditer(text):
+            has_custom_color = True
+            # 处理前置纯文本
+            prefix = text[last_index:match.start()]
+            if prefix:
+                parts.append(escape(prefix))
+
+            color = self._sanitize_color(match.group(1))
+            content = escape(match.group(2))
+            parts.append(f'<span style="color: {color};">{content}</span>')
+            last_index = match.end()
+
+        if not has_custom_color:
+            return escape(text), False
+
+        # 追加剩余纯文本
+        if last_index < len(text):
+            parts.append(escape(text[last_index:]))
+
+        return "".join(parts), True
 
     def _scroll_to_bottom(self):
         """自动滚动到底部"""
