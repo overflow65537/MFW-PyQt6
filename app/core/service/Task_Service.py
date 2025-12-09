@@ -65,6 +65,18 @@ class TaskService:
         # Regenerate default options
         self.default_option = self.gen_default_option()
 
+        # 重置任务列表，仅保留基础任务，防止重复追加
+        config_id = self.config_service.current_config_id
+        if not config_id:
+            return
+        config = self.config_service.get_config(config_id)
+        if not config:
+            return
+        base_tasks = [t for t in config.tasks if t.is_base_task()]
+        config.tasks = base_tasks
+        self.config_service.update_config(config_id, config)
+        self.current_tasks = base_tasks
+
         # Reset know_task and add all tasks from interface
         self.know_task = []
         self._check_know_task()
