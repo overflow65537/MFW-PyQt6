@@ -1017,6 +1017,14 @@ class SettingInterface(QWidget):
             parent=self.updateGroup,
         )
 
+        self.reset_resource_card = PrimaryPushSettingCard(
+            text=self.tr("Reset"),
+            icon=FIF.SYNC,
+            title=self.tr("Reset resource"),
+            content=self.tr("Redownload resource package without version/tag check"),
+            parent=self.updateGroup,
+        )
+
         self.github_api_key_card = LineEditCard(
             FIF.LINK,
             self.tr("GitHub API Key"),
@@ -1047,11 +1055,13 @@ class SettingInterface(QWidget):
         self._initialize_proxy_controls()
         self._configure_mirror_card()
         self.MirrorCard.lineEdit.textChanged.connect(self._onMirrorCardChange)
+        self.reset_resource_card.clicked.connect(self._on_reset_resource_clicked)
 
         self.updateGroup.addSettingCard(self.MirrorCard)
         self.updateGroup.addSettingCard(self.auto_update)
         self.updateGroup.addSettingCard(self.channel_selector)
         self.updateGroup.addSettingCard(self.force_github)
+        self.updateGroup.addSettingCard(self.reset_resource_card)
         self.updateGroup.addSettingCard(self.github_api_key_card)
         self.updateGroup.addSettingCard(self.proxy)
 
@@ -1562,6 +1572,36 @@ class SettingInterface(QWidget):
         """立即更新"""
         self._handle_instant_update()
 
+    def _on_reset_resource_clicked(self):
+        """重置资源：强制重新下载最新资源包（跳过版本/热更新判断）。"""
+        if self._updater and self._updater.isRunning():
+            signalBus.info_bar_requested.emit(
+                "warning", self.tr("Update is already running")
+            )
+            return
+
+        if not self._service_coordinator:
+            signalBus.info_bar_requested.emit(
+                "error", self.tr("Service is not ready, cannot reset resource")
+            )
+            return
+
+        self._restart_update_required = True
+        self._show_progress_bar()
+        self._bind_stop_button(self.tr("Stop update"), enable=False)
+        self._lock_update_button_temporarily()
+        logger.info("触发资源重置，强制全量下载最新资源包（跳过 update_flag/hotfix）")
+
+        # 创建强制全量下载的更新器实例
+        self._updater = Update(
+            service_coordinator=self._service_coordinator,
+            stop_signal=signalBus.update_stopped,
+            progress_signal=signalBus.update_progress,
+            info_bar_signal=signalBus.info_bar_requested,
+            force_full_download=True,
+        )
+        self._updater.start()
+
     def _handle_instant_update(
         self, *, auto_accept: bool = False, notify_if_cancel: bool = False
     ) -> None:
@@ -1751,9 +1791,14 @@ class SettingInterface(QWidget):
 
     def _update_progress_info_label(self, downloaded: int, total: int) -> None:
         """更新进度信息标签（显示当前大小、总大小和速度）。"""
-        previous_time = self._last_progress_time
         now = perf_counter()
-        elapsed = None if previous_time is None else now - previous_time
+        elapsed = (
+            None if self._last_progress_time is None else now - self._last_progress_time
+        )
+        # 节流刷新，减少速度抖动
+        if elapsed is not None and elapsed < 0.5 and downloaded < total:
+            return
+
         delta_bytes = max(downloaded - self._last_downloaded_bytes, 0)
         self._last_progress_time = now
         self._last_downloaded_bytes = downloaded
