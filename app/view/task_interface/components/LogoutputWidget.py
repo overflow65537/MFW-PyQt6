@@ -285,15 +285,22 @@ class LogoutputWidget(QWidget):
 
         time_label = BodyLabel(timestamp)
         time_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        time_label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        time_policy = time_label.sizePolicy()
+        time_policy.setHorizontalPolicy(QSizePolicy.Policy.Minimum)
+        time_policy.setVerticalPolicy(QSizePolicy.Policy.Minimum)
+        time_label.setSizePolicy(time_policy)
 
         content_label = BodyLabel(formatted_text)
-        content_label.setTextFormat(Qt.TextFormat.RichText)
+        content_label.setTextFormat(
+            Qt.TextFormat.RichText if has_custom_color else Qt.TextFormat.PlainText
+        )
         content_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         content_label.setWordWrap(True)
-        content_label.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
-        )
+        content_policy = content_label.sizePolicy()
+        content_policy.setHorizontalPolicy(QSizePolicy.Policy.Expanding)
+        content_policy.setVerticalPolicy(QSizePolicy.Policy.Minimum)
+        content_policy.setHeightForWidth(True)
+        content_label.setSizePolicy(content_policy)
         if has_custom_color:
             # 忽略日志级别颜色，按自定义颜色渲染
             content_label.setStyleSheet(f"color: {base_color};")
@@ -315,7 +322,13 @@ class LogoutputWidget(QWidget):
         self._log_entries.append((content_label, level, has_custom_color))
         self._log_row_index += 1
         self._add_tail_spacer()
+        self._sync_row_heights()
         self._scroll_to_bottom()
+
+    def resizeEvent(self, event):
+        """在尺寸变化时重新计算每行高度，避免文本被截断"""
+        super().resizeEvent(event)
+        self._sync_row_heights()
 
     def _sanitize_color(self, raw: str) -> str:
         """过滤颜色字符串，防止注入并保留常见格式"""
@@ -383,3 +396,36 @@ class LogoutputWidget(QWidget):
             self.log_grid_layout.removeItem(self._tail_spacer_item)
             self._tail_spacer_item = None
             self._tail_spacer_row = None
+
+    def _sync_row_heights(self):
+        """根据可用宽度调整每行内容标签的最小高度，防止换行被裁剪"""
+        viewport_width = self.log_scroll_area.viewport().width()
+        spacing = self.log_grid_layout.horizontalSpacing()
+        if viewport_width <= 0:
+            return
+
+        for row in range(self._log_row_index):
+            content_item = self.log_grid_layout.itemAtPosition(row, 1)
+            time_item = self.log_grid_layout.itemAtPosition(row, 0)
+            content_label = content_item.widget() if content_item else None
+            time_label = time_item.widget() if time_item else None
+            if not content_label:
+                continue
+
+            available_width = viewport_width - spacing
+            if time_label:
+                available_width -= time_label.sizeHint().width()
+            if available_width <= 0:
+                continue
+
+            # 强制内容列占满可用宽度，避免被压缩后文字被裁剪
+            if content_label.minimumWidth() != available_width:
+                content_label.setMinimumWidth(available_width)
+
+            if content_label.hasHeightForWidth():
+                required_height = content_label.heightForWidth(available_width)
+            else:
+                required_height = content_label.sizeHint().height()
+
+            if content_label.minimumHeight() != required_height:
+                content_label.setMinimumHeight(required_height)
