@@ -303,16 +303,12 @@ class MainWindow(MSFluentWindow):
         center_layout.setContentsMargins(0, 0, 0, 0)
         center_layout.setSpacing(6)
         center_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        center_layout.addWidget(
-            title_bar.iconLabel, 0, Qt.AlignmentFlag.AlignVCenter
-        )
+        center_layout.addWidget(title_bar.iconLabel, 0, Qt.AlignmentFlag.AlignVCenter)
         title_bar.titleLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_bar.titleLabel.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
         )
-        center_layout.addWidget(
-            title_bar.titleLabel, 0, Qt.AlignmentFlag.AlignVCenter
-        )
+        center_layout.addWidget(title_bar.titleLabel, 0, Qt.AlignmentFlag.AlignVCenter)
 
         center_widget = QWidget(title_bar)
         center_widget.setLayout(center_layout)
@@ -682,7 +678,9 @@ class MainWindow(MSFluentWindow):
 
     def _bootstrap_auto_update_and_run(self) -> None:
         """启动自动更新并串行等待，更新后再执行自动任务。"""
-        self._pending_auto_run = bool(self._cli_auto_run or cfg.get(cfg.run_after_startup))
+        self._pending_auto_run = bool(
+            self._cli_auto_run or cfg.get(cfg.run_after_startup)
+        )
         if cfg.get(cfg.auto_update):
             logger.info("自动更新已开启，准备启动自动更新线程")
             self._start_auto_update_thread()
@@ -694,7 +692,10 @@ class MainWindow(MSFluentWindow):
 
     def _start_auto_update_thread(self) -> None:
         """启动自动更新，复用设置页的更新器并避免重复。"""
-        logger.info("进入 _start_auto_update_thread，in_progress=%s", self._auto_update_in_progress)
+        logger.info(
+            "进入 _start_auto_update_thread，in_progress=%s",
+            self._auto_update_in_progress,
+        )
         if self._auto_update_in_progress:
             logger.info("自动更新已在进行，跳过启动")
             return
@@ -745,7 +746,11 @@ class MainWindow(MSFluentWindow):
 
     def _on_update_stopped_main(self, status: int):
         """监听更新结束，串行触发自动运行或提示重启。"""
-        logger.info("收到更新结束信号，status=%s，pending_auto_run=%s", status, self._pending_auto_run)
+        logger.info(
+            "收到更新结束信号，status=%s，pending_auto_run=%s",
+            status,
+            self._pending_auto_run,
+        )
         self._auto_update_in_progress = False
         self._auto_update_thread = None
         if status == 1:
@@ -830,7 +835,9 @@ class MainWindow(MSFluentWindow):
             label.setText(template.replace("%1", str(remaining)))
             if yes_button:
                 yes_button.setText(
-                    f"{base_yes_text} ({remaining}s)" if remaining >= 0 else base_yes_text
+                    f"{base_yes_text} ({remaining}s)"
+                    if remaining >= 0
+                    else base_yes_text
                 )
             if remaining <= 0:
                 if yes_button:
@@ -1027,6 +1034,7 @@ class MainWindow(MSFluentWindow):
         self.themeListener.terminate()
         self.themeListener.deleteLater()
         e.accept()
+        QTimer.singleShot(0, self.clear_thread_async)
         super().closeEvent(e)
 
     def _onThemeChangedFinished(self):
@@ -1039,3 +1047,146 @@ class MainWindow(MSFluentWindow):
                 100,
                 lambda: self.windowEffect.setMicaEffect(self.winId(), isDarkTheme()),
             )
+
+    def clear_thread_async(self):
+        """异步清理线程和资源"""
+        send_thread = getattr(
+            self.service_coordinator.task_runner, "send_thread", None
+        )
+        try:
+
+            self._clear_maafw_sync()
+            self._stop_notice_thread(send_thread)
+            self._stop_update_workers()
+            self._terminate_child_processes()
+        except Exception as e:
+            logger.exception("异步清理失败", exc_info=e)
+
+    def _clear_maafw_sync(self):
+        """同步清理 maafw（回退逻辑）"""
+        maafw = self.service_coordinator.task_runner.maafw
+        try:
+            if maafw.tasker and maafw.tasker.running:
+                logger.debug("停止任务线程")
+                maafw.tasker.post_stop().wait()
+                logger.debug("停止任务线程完成")
+            maafw.tasker = None
+            if maafw.resource:
+                maafw.resource.clear()
+            maafw.resource = None
+            maafw.controller = None
+            if maafw.agent:
+                maafw.agent.disconnect()
+            maafw.agent = None
+            agent_proc = getattr(maafw, "agent_thread", None)
+            if agent_proc:
+                try:
+                    agent_proc.terminate()
+                    try:
+                        agent_proc.wait(timeout=5)
+                    except Exception:
+                        agent_proc.kill()
+                    logger.debug("终止 maafw agent 子进程")
+                except Exception as agent_err:
+                    logger.warning("终止 maafw agent 失败: %s", agent_err)
+                finally:
+                    maafw.agent_thread = None
+        except Exception as e:
+            logger.exception("清理 maafw 失败", exc_info=e)
+
+    def _stop_notice_thread(self, send_thread):
+        """关闭通知线程，确保队列循环退出。"""
+        if not send_thread:
+            return
+        try:
+            stop_fn = getattr(send_thread, "stop", None)
+            if callable(stop_fn):
+                stop_fn()
+            else:
+                send_thread.quit()
+                if not send_thread.wait(5000):
+                    send_thread.terminate()
+            logger.debug("关闭发送线程")
+        except Exception as e:
+            logger.exception("关闭发送线程失败", exc_info=e)
+
+    def _stop_update_workers(self):
+        """停止更新相关线程/进程，避免退出时残留。"""
+        setting_interface = getattr(self, "settingInterface", None)
+        if not setting_interface:
+            return
+
+        updater = getattr(setting_interface, "_updater", None)
+        if updater and updater.isRunning():
+            try:
+                if hasattr(updater, "stop"):
+                    updater.stop()
+                if not updater.wait(5000):
+                    updater.terminate()
+                logger.debug("关闭资源更新线程")
+            except Exception as e:
+                logger.exception("关闭资源更新线程失败", exc_info=e)
+
+        checker = getattr(setting_interface, "_update_checker", None)
+        if checker and checker.isRunning():
+            try:
+                checker.requestInterruption()
+                checker.quit()
+                if not checker.wait(3000):
+                    checker.terminate()
+                logger.debug("关闭更新检查线程")
+            except Exception as e:
+                logger.exception("关闭更新检查线程失败", exc_info=e)
+
+        legacy_updater = getattr(setting_interface, "Updatethread", None)
+        if legacy_updater:
+            try:
+                legacy_updater.quit()
+                if hasattr(legacy_updater, "wait") and not legacy_updater.wait(5000):
+                    legacy_updater.terminate()
+                logger.debug("关闭更新线程")
+            except Exception as e:
+                logger.exception("关闭更新线程失败", exc_info=e)
+
+        legacy_self = getattr(setting_interface, "update_self", None)
+        if legacy_self:
+            try:
+                quit_fn = getattr(legacy_self, "quit", None)
+                if callable(quit_fn):
+                    quit_fn()
+                term_fn = getattr(legacy_self, "terminate", None)
+                wait_fn = getattr(legacy_self, "wait", None)
+                if callable(wait_fn) and not wait_fn(5000) and callable(term_fn):
+                    term_fn()
+                elif callable(term_fn) and not callable(wait_fn):
+                    term_fn()
+                logger.debug("关闭更新自身进程")
+            except Exception as e:
+                logger.exception("关闭更新自身进程失败", exc_info=e)
+
+    def _terminate_child_processes(self):
+        """终止所有子进程，防止主程序退出后残留。"""
+        try:
+            import os
+            import psutil
+
+            current = psutil.Process(os.getpid())
+            children = current.children(recursive=True)
+            if not children:
+                return
+            logger.debug("检测到 %d 个子进程，正在关闭", len(children))
+            for proc in children:
+                try:
+                    proc.terminate()
+                except Exception:
+                    logger.debug("发送终止信号失败: pid=%s", proc.pid)
+            gone, alive = psutil.wait_procs(children, timeout=3)
+            for proc in alive:
+                try:
+                    proc.kill()
+                except Exception:
+                    logger.debug("强制结束子进程失败: pid=%s", proc.pid)
+        except ImportError:
+            logger.debug("未安装 psutil，跳过子进程强制终止")
+        except Exception as e:
+            logger.exception("终止子进程时出错", exc_info=e)
