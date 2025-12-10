@@ -747,9 +747,11 @@ class TaskFlowRunner(QObject):
             import shlex
 
             if isinstance(argv, (list, tuple)):
-                for arg in argv:
-                    command.extend(shlex.split(str(arg)))
+                # If argv is already a list/tuple, just append the arguments directly
+                # Don't split them again as they're already parsed
+                command.extend(str(arg) for arg in argv)
             else:
+                # If argv is a string, split it properly
                 command.extend(shlex.split(str(argv)))
 
         logger.debug(f"准备启动子进程: {command}")
