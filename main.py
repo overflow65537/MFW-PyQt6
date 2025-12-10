@@ -159,8 +159,23 @@ if __name__ == "__main__":
     )
     w.show()
 
+    # 连接应用退出信号到事件循环停止
+    app.aboutToQuit.connect(loop.stop)
+
     # 运行事件循环
     with loop:
         loop.run_forever()
     logger.debug("关闭异步任务完成")
+    
+    # Cancel all pending tasks before closing the loop
+    try:
+        pending = asyncio.all_tasks(loop)
+        for task in pending:
+            task.cancel()
+        # Wait for all tasks to be cancelled
+        if pending:
+            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+    except Exception as e:
+        logger.warning(f"取消待处理任务时出错: {e}")
+    
     loop.close()

@@ -1031,10 +1031,22 @@ class MainWindow(MSFluentWindow):
     def closeEvent(self, e):
         """关闭事件"""
         self._save_window_geometry_if_needed()
+        
+        # Shutdown hotkey manager first to unhook keyboard listeners
         if getattr(self, "_hotkey_manager", None):
             self._hotkey_manager.shutdown()
-        self.themeListener.terminate()
-        self.themeListener.deleteLater()
+        
+        # Terminate and wait for theme listener thread to finish
+        try:
+            if hasattr(self, 'themeListener') and self.themeListener.isRunning():
+                self.themeListener.terminate()
+                # Wait for the thread to finish with a timeout
+                if not self.themeListener.wait(2000):  # 2 second timeout
+                    logger.warning("主题监听器线程未在超时时间内终止")
+                self.themeListener.deleteLater()
+        except Exception as ex:
+            logger.warning(f"终止主题监听器时出错: {ex}")
+        
         e.accept()
         QTimer.singleShot(0, self.clear_thread_async)
         super().closeEvent(e)
