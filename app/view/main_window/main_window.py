@@ -105,6 +105,7 @@ ENABLE_TEST_INTERFACE_PAGE = cfg.get(cfg.enable_test_interface_page)
 class MainWindow(MSFluentWindow):
 
     _LOCKED_LOG_NAMES = {"maa.log", "clash.log", "maa.log.bak"}
+    _THEME_LISTENER_TIMEOUT_MS = 2000  # 2 seconds timeout for theme listener thread termination
 
     def __init__(
         self,
@@ -1038,12 +1039,12 @@ class MainWindow(MSFluentWindow):
         
         # Terminate and wait for theme listener thread to finish
         try:
-            if hasattr(self, 'themeListener') and self.themeListener.isRunning():
+            if self.themeListener.isRunning():
                 self.themeListener.terminate()
                 # Wait for the thread to finish with a timeout
-                if not self.themeListener.wait(2000):  # 2 second timeout
+                if not self.themeListener.wait(self._THEME_LISTENER_TIMEOUT_MS):
                     logger.warning("主题监听器线程未在超时时间内终止")
-                self.themeListener.deleteLater()
+            self.themeListener.deleteLater()
         except Exception as ex:
             logger.warning(f"终止主题监听器时出错: {ex}")
         

@@ -169,12 +169,22 @@ if __name__ == "__main__":
     
     # Cancel all pending tasks before closing the loop
     try:
+        # Get and cancel all pending tasks
         pending = asyncio.all_tasks(loop)
         for task in pending:
             task.cancel()
-        # Wait for all tasks to be cancelled
+        
+        # Wait for all tasks to be cancelled (gather handles empty list safely)
         if pending:
             loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+        
+        # Double-check for any remaining tasks created during cancellation
+        remaining = asyncio.all_tasks(loop)
+        if remaining:
+            logger.warning(f"发现 {len(remaining)} 个未取消的任务，正在强制取消")
+            for task in remaining:
+                task.cancel()
+            loop.run_until_complete(asyncio.gather(*remaining, return_exceptions=True))
     except Exception as e:
         logger.warning(f"取消待处理任务时出错: {e}")
     
