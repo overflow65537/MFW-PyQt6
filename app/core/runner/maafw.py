@@ -16,6 +16,7 @@ import subprocess
 import threading
 from pathlib import Path
 import numpy
+import asyncio
 from asyncify import asyncify
 
 import maa
@@ -388,8 +389,7 @@ class MaaFW(QObject):
 
         return result
 
-    @asyncify
-    def connect_adb(
+    async def connect_adb(
         self,
         adb_path: str,
         address: str,
@@ -401,19 +401,21 @@ class MaaFW(QObject):
 
         input_method = MaaAdbInputMethodEnum(input_method)
 
-        controller = AdbController(
-            adb_path, address, screencap_method, input_method, config
-        )
-        controller = self._init_controller(controller)
-        connected = controller.post_connection().wait().succeeded
-        if not connected:
-            print(f"Failed to connect {adb_path} {address}")
-            return False
+        def _do_connect():
+            controller = AdbController(
+                adb_path, address, screencap_method, input_method, config
+            )
+            controller = self._init_controller(controller)
+            connected = controller.post_connection().wait().succeeded
+            if not connected:
+                print(f"Failed to connect {adb_path} {address}")
+                return False
+            return True
 
-        return True
+        # Run the blocking connection in a thread to avoid access violations
+        return await asyncio.to_thread(_do_connect)
 
-    @asyncify
-    def connect_win32hwnd(
+    async def connect_win32hwnd(
         self,
         hwnd: int | str,
         screencap_method: int = MaaWin32ScreencapMethodEnum.DXGI_DesktopDup,
@@ -427,20 +429,23 @@ class MaaFW(QObject):
         )
         mouse_method = mouse_method or MaaWin32InputMethodEnum.Seize
         keyboard_method = keyboard_method or MaaWin32InputMethodEnum.Seize
-        controller = Win32Controller(
-            hwnd,
-            screencap_method=screencap_method,
-            mouse_method=mouse_method,
-            keyboard_method=keyboard_method,
-        )
-        controller = self._init_controller(controller)
+        
+        def _do_connect():
+            controller = Win32Controller(
+                hwnd,
+                screencap_method=screencap_method,
+                mouse_method=mouse_method,
+                keyboard_method=keyboard_method,
+            )
+            controller = self._init_controller(controller)
+            connected = controller.post_connection().wait().succeeded
+            if not connected:
+                print(f"Failed to connect {hwnd}")
+                return False
+            return True
 
-        connected = controller.post_connection().wait().succeeded
-        if not connected:
-            print(f"Failed to connect {hwnd}")
-            return False
-
-        return True
+        # Run the blocking connection in a thread to avoid access violations
+        return await asyncio.to_thread(_do_connect)
 
     def _init_controller(
         self, controller: AdbController | Win32Controller
