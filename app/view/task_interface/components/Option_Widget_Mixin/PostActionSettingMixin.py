@@ -29,11 +29,11 @@ class PostActionSettingMixin:
     _CONFIG_KEY = "post_action"
     _ACTION_ORDER: List[str] = [
         "none",
-        "shutdown",
         "close_emulator",
-        "close_software",
         "run_other",
         "run_program",
+        "close_software",
+        "shutdown",
     ]
     _PRIMARY_ACTIONS = {"none", "shutdown", "run_other"}
     _SECONDARY_ACTIONS = {"close_emulator", "close_software"}
@@ -123,11 +123,27 @@ class PostActionSettingMixin:
 
         merged = dict(self._DEFAULT_STATE)
         merged.update(raw_state)
-        if merged.get("run_program"):
-            merged["none"] = False
-            merged["run_other"] = False
-        if merged.get("none") or merged.get("run_other"):
-            merged["run_program"] = False
+        
+        # "关机"和"退出软件"互斥（优先级：如果两者都选中，保留关机）
+        if merged.get("shutdown") and merged.get("close_software"):
+            merged["close_software"] = False
+        
+        # 新的互斥逻辑：只有"无动作"与其他选项互斥
+        if merged.get("none"):
+            # 如果"无动作"被选中，其他选项都设为False
+            for action_key in self._PRIMARY_ACTIONS.union(self._SECONDARY_ACTIONS).union(self._OPTIONAL_ACTIONS):
+                if action_key != "none":
+                    merged[action_key] = False
+        else:
+            # 如果有其他选项被选中，确保"无动作"为False
+            has_other_selected = any(
+                merged.get(action_key, False) 
+                for action_key in self._PRIMARY_ACTIONS.union(self._SECONDARY_ACTIONS).union(self._OPTIONAL_ACTIONS)
+                if action_key != "none"
+            )
+            if has_other_selected:
+                merged["none"] = False
+        
         self.current_config[self._CONFIG_KEY] = merged
         self._post_action_state = merged
 
@@ -166,14 +182,27 @@ class PostActionSettingMixin:
         self._post_action_state[key] = checked
 
         if checked:
-            if key in self._PRIMARY_ACTIONS:
-                self._set_allowed_actions({key})
-                if key in {"run_other", "none"}:
-                    self._deactivate_run_program_option()
-            elif key in self._SECONDARY_ACTIONS:
-                self._set_allowed_actions(self._SECONDARY_ACTIONS)
-            elif key == "run_program":
-                self._deactivate_conflicting_primary_for_program()
+            if key == "none":
+                # 选中"无动作"时，取消所有其他选项
+                self._deactivate_all_actions_except_none()
+            else:
+                # 选中其他任何选项时，取消"无动作"
+                self._deactivate_none_action()
+                # "关机"和"退出软件"互斥
+                if key == "shutdown":
+                    self._deactivate_close_software()
+                elif key == "close_software":
+                    self._deactivate_shutdown()
+        else:
+            # 取消选择后，检查是否所有动作选项都未选中
+            all_action_keys = self._PRIMARY_ACTIONS.union(self._SECONDARY_ACTIONS).union(self._OPTIONAL_ACTIONS)
+            has_any_selected = any(self._post_action_state.get(action_key, False) for action_key in all_action_keys)
+            if not has_any_selected:
+                # 如果什么都没选，自动勾选"无动作"
+                self._post_action_state["none"] = True
+                none_widget = self.post_action_widgets.get("none")
+                if isinstance(none_widget, CheckBox):
+                    none_widget.setChecked(True)
 
         self._update_combo_enabled_state()
         self._update_program_inputs_enabled()
@@ -189,6 +218,39 @@ class PostActionSettingMixin:
             if isinstance(widget, CheckBox):
                 widget.setChecked(False)
             self._post_action_state[action_key] = False
+
+    def _deactivate_all_actions_except_none(self) -> None:
+        """取消除"无动作"外的所有选项"""
+        all_other_actions = self._PRIMARY_ACTIONS.union(self._SECONDARY_ACTIONS).union(self._OPTIONAL_ACTIONS) - {"none"}
+        for action_key in all_other_actions:
+            widget = self.post_action_widgets.get(action_key)
+            if isinstance(widget, CheckBox):
+                widget.setChecked(False)
+            self._post_action_state[action_key] = False
+        # 更新相关UI状态
+        self._update_combo_enabled_state()
+        self._update_program_inputs_enabled()
+
+    def _deactivate_none_action(self) -> None:
+        """取消"无动作"选项"""
+        none_widget = self.post_action_widgets.get("none")
+        if isinstance(none_widget, CheckBox):
+            none_widget.setChecked(False)
+        self._post_action_state["none"] = False
+
+    def _deactivate_shutdown(self) -> None:
+        """取消"关机"选项"""
+        shutdown_widget = self.post_action_widgets.get("shutdown")
+        if isinstance(shutdown_widget, CheckBox):
+            shutdown_widget.setChecked(False)
+        self._post_action_state["shutdown"] = False
+
+    def _deactivate_close_software(self) -> None:
+        """取消"退出软件"选项"""
+        close_software_widget = self.post_action_widgets.get("close_software")
+        if isinstance(close_software_widget, CheckBox):
+            close_software_widget.setChecked(False)
+        self._post_action_state["close_software"] = False
 
     def _on_other_config_changed(self, combo: ComboBox, index: int) -> None:
         if self._syncing:

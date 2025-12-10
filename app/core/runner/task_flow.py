@@ -909,7 +909,7 @@ class TaskFlowRunner(QObject):
             logger.error(f"保存设备配置时出错: {e}")
 
     async def _handle_post_action(self) -> None:
-        """统一处理完成后操作顺序"""
+        """统一处理完成后操作顺序，按选项顺序执行，支持多个动作"""
         post_task = self.task_service.get_task(POST_ACTION)
         if not post_task:
             return
@@ -918,27 +918,42 @@ class TaskFlowRunner(QObject):
         if not isinstance(post_config, dict):
             return
 
+        # 按照界面定义的顺序执行动作
+        # 1. 如果选择了"无动作"，直接返回（不会与其他选项同时存在）
+        if post_config.get("none"):
+            logger.info("完成后操作: 无动作")
+            return
+
+        # 2. 如果选择了"关闭模拟器"，执行关闭模拟器
+        if post_config.get("close_emulator"):
+            logger.info("完成后操作: 关闭模拟器")
+            self._close_emulator()
+
+        # 3. 如果选择了"运行其他程序"，执行并等待程序退出
         if post_config.get("run_program"):
+            logger.info("完成后操作: 运行其他程序")
             await self._run_program_from_post_action(
                 post_config.get("program_path", ""),
                 post_config.get("program_args", ""),
             )
 
+        # 4. 如果选择了"运行其他配置"，切换配置（继续执行后续操作）
         if post_config.get("run_other"):
             target_config = (post_config.get("target_config") or "").strip()
             if target_config:
                 await self._run_other_configuration(target_config)
             else:
                 logger.warning("完成后运行其他配置开关被激活，但未配置目标配置")
-            return
 
+        # 5. 如果选择了"退出软件"，执行退出软件（这会退出应用）
         if post_config.get("close_software"):
+            logger.info("完成后操作: 退出软件")
             await self._close_software()
+            return  # 退出软件后不再执行后续操作
 
-        if post_config.get("close_emulator"):
-            self._close_emulator()
-
+        # 6. 如果选择了"关机"，执行关机（这会关闭系统）
         if post_config.get("shutdown"):
+            logger.info("完成后操作: 关机")
             self._shutdown_system()
 
     async def _run_program_from_post_action(
