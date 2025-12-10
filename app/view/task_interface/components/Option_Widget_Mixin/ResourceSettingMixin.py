@@ -255,6 +255,7 @@ class ResourceSettingMixin:
 
     def __init__(self):
         """初始化资源设置Mixin"""
+        self._syncing = False  # 初始化/填充时屏蔽自动保存
         self.show_hide_option = bool(cfg.get(cfg.show_advanced_startup_options))
         self.resource_setting_widgets = {}
 
@@ -316,52 +317,56 @@ class ResourceSettingMixin:
     def create_resource_settings(self):
         """创建固定的资源设置UI"""
         logger.info("Creating resource settings UI...")
-        self._clear_options()
-        self._toggle_description(False)
-        self.show_hide_option = bool(cfg.get(cfg.show_advanced_startup_options))
+        self._syncing = True
+        try:
+            self._clear_options()
+            self._toggle_description(False)
+            self.show_hide_option = bool(cfg.get(cfg.show_advanced_startup_options))
 
-        # 创建控制器选择下拉框
-        self._create_controller_combobox()
-        # 创建资源选择下拉框
-        self._create_resource_option()
-        # 创建搜索设备下拉框
-        self._create_search_option()
-        # 创建GPU加速下拉框
-        self._create_gpu_option()
-        # 创建 agent 启动超时时间选项
-        self._create_agent_timeout_option()
-        # 创建自定义模块路径输入（隐藏选项）
-        self._create_custom_option()
-        # 创建ADB和Win32子选项
-        self._create_adb_children_option()
-        self._create_win32_children_option()
-        # 默认隐藏所有子选项
-        self._toggle_win32_children_option(False)
-        self._toggle_adb_children_option(False)
-        # 设置初始值为当前配置中的控制器类型
-        if self.current_config == {}:
-            for key, value in self.controller_type_mapping.items():
-                self.current_config["controller_type"] = value["name"]
-                break
+            # 创建控制器选择下拉框
+            self._create_controller_combobox()
+            # 创建资源选择下拉框
+            self._create_resource_option()
+            # 创建搜索设备下拉框
+            self._create_search_option()
+            # 创建GPU加速下拉框
+            self._create_gpu_option()
+            # 创建 agent 启动超时时间选项
+            self._create_agent_timeout_option()
+            # 创建自定义模块路径输入（隐藏选项）
+            self._create_custom_option()
+            # 创建ADB和Win32子选项
+            self._create_adb_children_option()
+            self._create_win32_children_option()
+            # 默认隐藏所有子选项
+            self._toggle_win32_children_option(False)
+            self._toggle_adb_children_option(False)
+            # 设置初始值为当前配置中的控制器类型
+            if self.current_config == {}:
+                for key, value in self.controller_type_mapping.items():
+                    self.current_config["controller_type"] = value["name"]
+                    break
 
-        for idx, label in enumerate(list(self.controller_type_mapping)):
-            if self.controller_type_mapping[label]["name"] == self.current_config.get(
-                "controller_type", ""
-            ):
-                # 更新当前控制器信息变量
-                self.current_controller_label = label
-                self.current_controller_info = self.controller_type_mapping[label]
-                self.current_controller_name = self.current_controller_info["name"]
-                self.current_controller_type = self.current_controller_info[
-                    "type"
-                ].lower()
+            for idx, label in enumerate(list(self.controller_type_mapping)):
+                if self.controller_type_mapping[label]["name"] == self.current_config.get(
+                    "controller_type", ""
+                ):
+                    # 更新当前控制器信息变量
+                    self.current_controller_label = label
+                    self.current_controller_info = self.controller_type_mapping[label]
+                    self.current_controller_name = self.current_controller_info["name"]
+                    self.current_controller_type = self.current_controller_info[
+                        "type"
+                    ].lower()
 
-                # 填充信息
-                ctrl_combo: ComboBox = self.resource_setting_widgets["ctrl_combo"]
-                ctrl_combo.setCurrentIndex(idx)
-                self._on_controller_type_changed(label)  # 立即显示对应的子选项
+                    # 填充信息
+                    ctrl_combo: ComboBox = self.resource_setting_widgets["ctrl_combo"]
+                    ctrl_combo.setCurrentIndex(idx)
+                    self._on_controller_type_changed(label)  # 立即显示对应的子选项
 
-                # 更换搜索设备类型
+                    # 更换搜索设备类型
+        finally:
+            self._syncing = False
 
     def _create_controller_combobox(self):
         """创建控制器类型下拉框"""
@@ -662,6 +667,8 @@ class ResourceSettingMixin:
 
     def _on_child_option_changed(self, key: str, value: Any):
         """子选项变化处理"""
+        if self._syncing:
+            return
         # 确保当前控制器信息已初始化
         if not self.current_controller_name or not self.current_controller_type:
             # 从配置中重新获取控制器信息作为 fallback
@@ -722,8 +729,24 @@ class ResourceSettingMixin:
 
     def _auto_save_options(self):
         """自动保存当前选项"""
+        if self._syncing:
+            return
         try:
-            self.service_coordinator.option_service.update_options(self.current_config)
+            option_service = self.service_coordinator.option_service
+            ok = option_service.update_options(self.current_config)
+            # 强制同步到预配置任务，确保落盘
+            from app.common.constants import PRE_CONFIGURATION
+
+            task = option_service.task_service.get_task(PRE_CONFIGURATION)
+            if task:
+                task.task_option = self.current_config
+                if not option_service.task_service.update_task(task):
+                    logger.warning("资源设置强制保存失败")
+            else:
+                logger.warning("未找到 Pre-Configuration 任务，无法保存资源设置")
+
+            if not ok:
+                logger.warning("资源设置保存返回 False（已尝试强制保存）")
             logger.info(f"选项自动保存成功: {self.current_config}")
         except Exception as e:
             logger.error(f"自动保存选项失败: {e}")
@@ -960,6 +983,8 @@ class ResourceSettingMixin:
 
     def _on_resource_combox_changed(self, new_resource):
         """资源变化时的处理函数"""
+        if self._syncing:
+            return
         # 更新当前资源信息变量
         self.current_resource = new_resource
 
@@ -974,6 +999,8 @@ class ResourceSettingMixin:
                 break
 
     def _on_search_combo_changed(self, device_name):
+        if self._syncing:
+            return
         current_controller_name = self.current_config["controller_type"]
         current_controller_config = self.current_config[current_controller_name]
         find_device_info = self.resource_setting_widgets[
@@ -1034,3 +1061,19 @@ class ResourceSettingMixin:
             icon = resource.get("icon", "")
             resource_label = resource.get("label", resource.get("name", ""))
             resource_combo.addItem(resource_label, icon)
+
+        # 根据 current_config 中的 resource 选择对应项
+        target = self.current_config.get("resource", "")
+        target_label = None
+        for resource in curren_config:
+            name = resource.get("name", "")
+            label = resource.get("label", name)
+            if target and target in (name, label):
+                target_label = label
+                break
+        resource_combo.blockSignals(True)
+        if target_label:
+            idx = resource_combo.findText(target_label)
+            if idx >= 0:
+                resource_combo.setCurrentIndex(idx)
+        resource_combo.blockSignals(False)

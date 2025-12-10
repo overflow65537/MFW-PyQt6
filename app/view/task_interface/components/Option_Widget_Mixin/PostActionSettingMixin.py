@@ -320,7 +320,22 @@ class PostActionSettingMixin:
 
     def _save_state(self) -> None:
         try:
-            self.service_coordinator.option_service.update_options(self.current_config)
+            # 仅写入 post_action 片段，避免携带无关键导致覆盖
+            payload = dict(self._post_action_state)
+            self.current_config[self._CONFIG_KEY] = payload
+            option_service = self.service_coordinator.option_service
+            ok = option_service.update_option(self._CONFIG_KEY, payload)
+            if not ok:
+                # 兜底：直接更新 POST_ACTION 任务后再持久化
+                from app.common.constants import POST_ACTION
+
+                task = option_service.task_service.get_task(POST_ACTION)
+                if task:
+                    task.task_option[self._CONFIG_KEY] = payload
+                    if not option_service.task_service.update_task(task):
+                        logger.warning("完成后操作配置兜底保存失败")
+                else:
+                    logger.warning("未找到 Post-Action 任务，无法保存完成后操作配置")
         except Exception as exc:
             logger.error(f"保存完成后操作配置失败: {exc}")
 
