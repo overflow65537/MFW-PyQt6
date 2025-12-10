@@ -26,15 +26,15 @@ import os
 import sys
 import argparse
 
-from app.utils.logger import logger
 
 # 设置工作目录为运行方式位置
 if getattr(sys, "frozen", False):
     os.chdir(os.path.dirname(sys.executable))
     os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
-    logger.info(f"打包状态下，MAAFW_BINARY_PATH: {os.environ['MAAFW_BINARY_PATH']}")
+
 else:
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+from app.utils.logger import logger
 import maa
 from maa.context import Context
 from maa.custom_action import CustomAction
@@ -54,6 +54,7 @@ from app.utils.crypto import crypto_manager
 
 if __name__ == "__main__":
     logger.info(f"MFW 版本:{__version__}")
+    logger.info(f"打包状态下，MAAFW_BINARY_PATH: {os.environ['MAAFW_BINARY_PATH']}")
     import faulthandler
     from pathlib import Path
 
