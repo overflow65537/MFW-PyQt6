@@ -109,7 +109,6 @@ class Config(QConfig):
     run_after_startup_arg = ConfigItem(
         "General", "run_after_startup_arg", False, BoolValidator()
     )
-    speedrun_mode = ConfigItem("General", "speedrun_mode", False, BoolValidator())
     multi_resource_adaptation = ConfigItem(
         "Compatibility", "multi_resource_adaptation", False, BoolValidator()
     )

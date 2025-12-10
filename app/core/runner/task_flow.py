@@ -244,9 +244,15 @@ class TaskFlowRunner(QObject):
                     detail_msg = (
                         "；".join([part for part in detail_parts if part]) or "未知原因"
                     )
-                    msg = f"自定义组件加载失败，流程终止: {detail_msg}"
-                    logger.error(msg)
-                    signalBus.log_output.emit("ERROR", msg)
+
+                    logger.error(f"自定义组件加载失败，流程终止: {detail_msg}")
+                    signalBus.log_output.emit(
+                        "ERROR",
+                        self.tr(
+                            "Custom components loading failed, the flow is terminated: "
+                            + detail_msg
+                        ),
+                    )
                     await self.stop_task()
                     return
             if task_id:
@@ -258,7 +264,7 @@ class TaskFlowRunner(QObject):
                 if not task.is_checked:
                     logger.warning(f"任务 '{task.name}' 未被选中，跳过执行")
                     return
-                await self.run_task(task_id)
+                await self.run_task(task_id, skip_speedrun=True)
                 return
             else:
                 logger.info("开始执行任务序列...")
@@ -280,9 +286,8 @@ class TaskFlowRunner(QObject):
                         if task_result is False:
                             if record:
                                 record["status"] = self.tr("FAILED")
-                            logger.error(
-                                f"任务执行失败: {task.name}, 返回 False，终止流程"
-                            )
+                            msg = f"任务执行失败: {task.name}, 返回 False，终止流程"
+                            logger.error(msg)
                             send_notice(
                                 NoticeTiming.WHEN_TASK_FAILED,
                                 self.tr("Task Failed"),
@@ -431,7 +436,7 @@ class TaskFlowRunner(QObject):
             logger.debug(f"资源加载完成: {resource}")
         return True
 
-    async def run_task(self, task_id: str):
+    async def run_task(self, task_id: str, skip_speedrun: bool = False):
         """执行指定任务"""
         task = self.task_service.get_task(task_id)
         if not task:
@@ -442,8 +447,8 @@ class TaskFlowRunner(QObject):
             return
 
         speedrun_cfg = self._resolve_speedrun_config(task)
-        # 仅依据任务自身的速通开关，不再依赖全局 speedrun_mode
-        if speedrun_cfg and speedrun_cfg.get("enabled", False):
+        # 仅依据任务自身的速通开关，不再依赖全局 speedrun_mode；单任务执行可跳过校验
+        if (not skip_speedrun) and speedrun_cfg and speedrun_cfg.get("enabled", False):
             allowed, reason = self._evaluate_speedrun(task, speedrun_cfg)
             if not allowed:
                 logger.info(
@@ -744,6 +749,7 @@ class TaskFlowRunner(QObject):
         command = [str(entry)]
         if argv is not None:
             import shlex
+
             if isinstance(argv, (list, tuple)):
                 for arg in argv:
                     command.extend(shlex.split(str(arg)))
