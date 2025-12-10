@@ -1564,6 +1564,9 @@ class SettingInterface(QWidget):
             return
         self._restart_update_required = False
         self._bind_start_button(enable=False)
+        # 同步最新版本显示（即便无更新也刷新）
+        latest_version = cfg.get(cfg.latest_update_version)
+        self._set_last_version_label(str(latest_version) if latest_version else None)
 
     def _on_instant_update_clicked(self):
         """立即更新"""
