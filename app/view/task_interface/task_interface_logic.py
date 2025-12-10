@@ -59,9 +59,6 @@ class TaskInterface(UI_TaskInterface, QWidget):
             self.start_bar.run_button.setText(self.tr("Stop"))
             self.start_bar.run_button.setIcon(FIF.CLOSE)
         else:
-            self.service_coordinator.task_runner.speedrun_mode = cfg.get(
-                cfg.speedrun_mode
-            )
             self.start_bar.run_button.setText(self.tr("Start"))
             self.start_bar.run_button.setIcon(FIF.PLAY)
 
