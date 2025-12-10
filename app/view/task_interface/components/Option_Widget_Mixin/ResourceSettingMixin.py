@@ -696,7 +696,7 @@ class ResourceSettingMixin:
                     "address": "",
                     "emulator_path": "",
                     "emulator_params": "",
-                    "wait_time": "0",
+                    "wait_time": "30",  # 默认等待模拟器启动 30s
                     "screencap_methods": 1,
                     "input_methods": 1,
                     "config": "{}",
@@ -710,7 +710,7 @@ class ResourceSettingMixin:
                     "hwnd": "",
                     "program_path": "",
                     "program_params": "",
-                    "wait_launch_time": "0",
+                    "wait_launch_time": "30",  # 默认等待程序启动 30s
                     "mouse_input_methods": 0,
                     "keyboard_input_methods": 0,
                     "win32_screencap_methods": 0,
@@ -786,7 +786,7 @@ class ResourceSettingMixin:
                 "address": "",
                 "emulator_path": "",
                 "emulator_params": "",
-                "wait_time": "0",
+                "wait_time": "30",  # 默认等待模拟器启动 30s
                 "screencap_methods": 0,
                 "input_methods": 0,
                 "config": "{}",
@@ -797,7 +797,7 @@ class ResourceSettingMixin:
                 "hwnd": "",
                 "program_path": "",
                 "program_params": "",
-                "wait_launch_time": "0",
+                "wait_launch_time": "30",  # 默认等待程序启动 30s
             }
             self._ensure_defaults(controller_cfg, win32_defaults)
             self._ensure_win32_input_defaults(controller_cfg, controller_name)
