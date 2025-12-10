@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Dict, Any
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QSplitter, QWidget, QVBoxLayout
-from qfluentwidgets import BodyLabel, ScrollArea, SimpleCardWidget
+from PySide6.QtWidgets import QSplitter, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget
+from qfluentwidgets import BodyLabel, ScrollArea, SimpleCardWidget, SegmentedWidget
 
 from app.utils.logger import logger
 from app.utils.markdown_helper import render_markdown
@@ -17,7 +17,10 @@ from app.view.task_interface.animations.optionwidget import (
     OptionTransitionAnimator,
 )
 from app.view.task_interface.components.ImagePreviewDialog import ImagePreviewDialog
-from app.view.task_interface.components.Option_Framework import OptionFormWidget
+from app.view.task_interface.components.Option_Framework import (
+    OptionFormWidget,
+    SpeedrunConfigWidget,
+)
 from app.view.task_interface.components.Option_Widget_Mixin.PostActionSettingMixin import (
     PostActionSettingMixin,
 )
@@ -43,6 +46,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 初始化UI组件
         self._init_ui()
         self._toggle_description(visible=False, animate=False)
+        self.speedrun_widget.config_changed.connect(self._on_speedrun_changed)
 
         # 连接CoreSignalBus的options_loaded信号
         service_coordinator.signal_bus.options_loaded.connect(self._on_options_loaded)
@@ -83,12 +87,45 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self.option_area_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.option_area_layout.setContentsMargins(10, 10, 10, 10)  # 添加内边距
 
+        # 堆叠页面：0 选项；1 速通规则
+        self.option_stack = QStackedWidget()
+        self.option_area_layout.addWidget(self.option_stack)
+
+        # 选项页
+        self.option_page = QWidget()
+        self.option_page_layout = QVBoxLayout(self.option_page)
+        self.option_page_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.option_page_layout.setContentsMargins(0, 0, 0, 0)
+
         # 保存布局引用（某些 Mixin 可能需要）
-        self.parent_layout = self.option_area_layout
+        self.parent_layout = self.option_page_layout
 
         # 创建新的选项表单组件
         self.option_form_widget = OptionFormWidget()
-        self.option_area_layout.addWidget(self.option_form_widget)
+        self.option_page_layout.addWidget(self.option_form_widget)
+
+        # 速通配置页
+        self.speedrun_widget = SpeedrunConfigWidget()
+        speedrun_page = QWidget()
+        speedrun_layout = QVBoxLayout(speedrun_page)
+        speedrun_layout.setContentsMargins(0, 0, 0, 0)
+        speedrun_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        speedrun_layout.addWidget(self.speedrun_widget)
+        speedrun_layout.addStretch()
+
+        self.option_stack.addWidget(self.option_page)
+        self.option_stack.addWidget(speedrun_page)
+        self.option_stack.setCurrentIndex(0)
+
+        # 底部分段切换（不再使用下拉框）
+        self.segmented_switcher = SegmentedWidget(self)
+        self.segmented_switcher.addItem(routeKey="options", text=self.tr("Options"))
+        self.segmented_switcher.addItem(routeKey="speedrun", text=self.tr("Speedrun"))
+        self.segmented_switcher.currentItemChanged.connect(self._on_segmented_changed)
+        self.option_area_layout.addWidget(self.segmented_switcher, alignment=Qt.AlignmentFlag.AlignBottom)
+        self.segmented_switcher.setCurrentItem("options")
+        # 初始化时隐藏，待任务加载后按需显示
+        self.segmented_switcher.setVisible(False)
 
         # 将容器widget设置到滚动区域
         self.option_area_widget.setWidget(option_container)
@@ -224,6 +261,68 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             else:
                 self._description_animator.set_visible_immediate(False)
 
+    def _on_segmented_changed(self, key: str) -> None:
+        """通过分段控件切换主选项/速通页"""
+        if key == "speedrun":
+            self.option_stack.setCurrentIndex(1)
+        else:
+            self.option_stack.setCurrentIndex(0)
+
+    def _set_speedrun_visible(self, visible: bool) -> None:
+        """控制速通页显隐（资源/完成后任务隐藏）"""
+        self.segmented_switcher.setVisible(visible)
+        if not visible:
+            # 只显示常规选项页
+            self.option_stack.setCurrentIndex(0)
+            self.segmented_switcher.setCurrentItem("options")
+            self.speedrun_widget.set_config(None, emit=False)
+
+    def _apply_speedrun_config(self) -> None:
+        """加载当前任务的速通配置到 UI"""
+        option_service = self.service_coordinator.option
+        task_service = self.service_coordinator.task
+        task_id = getattr(option_service, "current_task_id", None)
+        task = task_service.get_task(task_id) if task_id else None
+        if not task:
+            self.speedrun_widget.set_config(None, emit=False)
+            return
+
+        existing_cfg = (
+            task.task_option.get("_speedrun_config")
+            if isinstance(task.task_option, dict)
+            else None
+        )
+        merged_cfg = task_service.build_speedrun_config(task.name, existing_cfg)
+
+        # 如果缺失或需要修正，持久化到任务
+        if not isinstance(task.task_option, dict):
+            task.task_option = {}
+        if task.task_option.get("_speedrun_config") != merged_cfg:
+            task.task_option["_speedrun_config"] = merged_cfg
+            task_service.update_task(task)
+
+        try:
+            option_service.current_options["_speedrun_config"] = merged_cfg
+        except Exception:
+            pass
+
+        state = {}
+        if isinstance(task.task_option, dict):
+            state = task.task_option.get("_speedrun_state", {}) or {}
+
+        self.speedrun_widget.set_config(merged_cfg, emit=False)
+        try:
+            self.speedrun_widget.set_runtime_state(state, merged_cfg)
+        except Exception as exc:
+            logger.warning(f"设置速通运行时信息失败: {exc}")
+
+    def _on_speedrun_changed(self, config: Dict[str, Any]) -> None:
+        """速通配置修改后立即保存到当前任务"""
+        try:
+            self.service_coordinator.option.update_option("_speedrun_config", config)
+        except Exception as exc:
+            logger.error(f"保存速通配置失败: {exc}")
+
     def set_description(self, description: str, has_options: bool = True):
         """设置描述内容
         
@@ -332,6 +431,10 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self._clear_options()
         self.description_content.setText("")
         self._toggle_description(visible=False)
+        self.segmented_switcher.setCurrentItem("options")
+        self.segmented_switcher.setVisible(False)
+        self.option_stack.setCurrentIndex(0)
+        self.speedrun_widget.set_config(None, emit=False)
         # 显示选项区域，因为已经专门的方法清除选项
         self.option_splitter_widget.show()
 
@@ -357,54 +460,39 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 使用新框架清空选项
         self.option_form_widget._clear_options()
 
-        # 移除布局中所有不是 option_form_widget 的项（包括控件、间距、子布局等）
-        # 从后往前遍历，避免索引变化
+        # 移除选项页中除 option_form_widget 之外的控件/布局
         items_to_remove = []
-        for i in reversed(range(self.option_area_layout.count())):
-            item = self.option_area_layout.itemAt(i)
-            if item:
-                # 保留 option_form_widget
-                if item.widget() == self.option_form_widget:
-                    continue
-                # 移除其他所有项
-                items_to_remove.append(i)
+        for i in reversed(range(self.option_page_layout.count())):
+            item = self.option_page_layout.itemAt(i)
+            if not item:
+                continue
+            if item.widget() == self.option_form_widget:
+                continue
+            items_to_remove.append(i)
 
-        # 移除所有找到的项
         for i in items_to_remove:
-            item = self.option_area_layout.takeAt(i)
-            if item:
-                if item.widget():
-                    widget = item.widget()
-                    widget.hide()
-                    widget.setParent(None)
-                    widget.deleteLater()
-                elif item.layout():
-                    # 如果有子布局，递归清理
-                    layout = item.layout()
-                    while layout.count() > 0:
-                        child_item = layout.takeAt(0)
-                        if child_item.widget():
-                            child_widget = child_item.widget()
-                            child_widget.hide()
-                            child_widget.setParent(None)
-                            child_widget.deleteLater()
-                    layout.deleteLater()
-                # 间距项会被 takeAt 自动清理
-        
-        # 确保布局只包含 option_form_widget
-        while self.option_area_layout.count() > 1:
-            item = self.option_area_layout.itemAt(0)
-            if item and item.widget() == self.option_form_widget:
-                break
-            item = self.option_area_layout.takeAt(0)
-            if item and item.widget():
+            item = self.option_page_layout.takeAt(i)
+            if not item:
+                continue
+            if item.widget():
                 widget = item.widget()
                 widget.hide()
                 widget.setParent(None)
                 widget.deleteLater()
-        
+            elif item.layout():
+                layout = item.layout()
+                while layout and layout.count() > 0:
+                    child_item = layout.takeAt(0)
+                    if child_item and child_item.widget():
+                        child_widget = child_item.widget()
+                        child_widget.hide()
+                        child_widget.setParent(None)
+                        child_widget.deleteLater()
+                if layout:
+                    layout.deleteLater()
+
         # 强制更新布局和几何结构
-        self.option_area_layout.update()
+        self.option_page_layout.update()
         self.updateGeometry()
 
     def update_form_from_structure(self, form_structure, config=None):
@@ -521,7 +609,11 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             logger.info(f"选项加载完成，共 {len(self.current_config)} 个选项")
 
             # 判断是否为资源类型的配置
-            if form_structure.get("type") == "resource":
+            form_type = form_structure.get("type")
+            is_resource = form_type == "resource"
+            is_post_action = form_type == "post_action"
+
+            if is_resource:
                 # 前置配置 - 使用动画过渡
                 self._option_animator.play(
                     lambda: self._apply_resource_settings_with_animation()
@@ -529,7 +621,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
                 # 资源类型没有公告，隐藏公告区域
                 self.set_description("", has_options=True)
 
-            elif form_structure.get("type") == "post_action":
+            elif is_post_action:
                 # 完成后操作 - 使用动画过渡
                 self._option_animator.play(
                     lambda: self._apply_post_action_settings_with_animation()
@@ -544,6 +636,43 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             # 没有表单时清除界面
             self.reset()
             logger.info("没有提供form_structure，已清除界面")
+
+        # 同步速通配置到堆叠页（资源/完成后任务隐藏速通页）
+        speedrun_visible = not (
+            form_structure and form_structure.get("type") in ["resource", "post_action"]
+        )
+
+        if not speedrun_visible:
+            # 资源/完成后：隐藏分段与速通
+            self._set_speedrun_visible(False)
+            self.segmented_switcher.setVisible(False)
+            self.option_stack.setCurrentIndex(0)
+            self.segmented_switcher.setCurrentItem("options")
+            return
+
+        # 普通任务：根据是否有选项决定是否显示分段控件
+        has_valid_options = False
+        if isinstance(form_structure, dict):
+            for k, v in form_structure.items():
+                if k == "description":
+                    continue
+                if isinstance(v, dict) and ("type" in v):
+                    has_valid_options = True
+                    break
+
+        if has_valid_options:
+            # 有选项：显示分段，默认落在选项页
+            self.segmented_switcher.setVisible(True)
+            self._set_speedrun_visible(True)
+            self._apply_speedrun_config()
+            self.option_stack.setCurrentIndex(0)
+            self.segmented_switcher.setCurrentItem("options")
+        else:
+            # 无选项：隐藏分段，直接展示速通配置
+            self.segmented_switcher.setVisible(False)
+            self.option_stack.setCurrentIndex(1)
+            self._apply_speedrun_config()
+            self.segmented_switcher.setCurrentItem("speedrun")
 
     def _apply_resource_settings_with_animation(self):
         """在动画回调中应用资源设置"""

@@ -441,8 +441,9 @@ class TaskFlowRunner(QObject):
             logger.warning(f"任务 '{task.name}' 未被选中，跳过执行")
             return
 
-        speedrun_cfg = self._get_task_by_name(task.name).get("speedrun", None)
-        if speedrun_cfg and self.speedrun_mode:
+        speedrun_cfg = self._resolve_speedrun_config(task)
+        # 仅依据任务自身的速通开关，不再依赖全局 speedrun_mode
+        if speedrun_cfg and speedrun_cfg.get("enabled", False):
             allowed, reason = self._evaluate_speedrun(task, speedrun_cfg)
             if not allowed:
                 logger.info(
@@ -456,7 +457,10 @@ class TaskFlowRunner(QObject):
                     + reason,
                 )
                 return "skipped"
-            signalBus.log_output.emit("INFO", self.tr("Speedrun rule allows execution"))
+            else:
+                signalBus.log_output.emit(
+                    "INFO", self.tr("Speedrun rule allows execution")
+                )
 
         raw_info = self.task_service.get_task_execution_info(task_id)
         logger.info(f"任务 '{task.name}' 的执行信息: {raw_info}")
@@ -1064,11 +1068,37 @@ class TaskFlowRunner(QObject):
         except Exception as exc:
             logger.error(f"执行关机命令失败: {exc}")
 
+    def _resolve_speedrun_config(self, task: TaskItem) -> Dict[str, Any] | None:
+        """优先使用任务保存的速通配置，其次使用 interface，最终回落默认值"""
+        try:
+            if not isinstance(task.task_option, dict):
+                task.task_option = {}
+
+            existing_cfg = task.task_option.get("_speedrun_config")
+            merged_cfg = self.task_service.build_speedrun_config(
+                task.name, existing_cfg
+            )
+            if task.task_option.get("_speedrun_config") != merged_cfg:
+                task.task_option["_speedrun_config"] = merged_cfg
+                self.task_service.update_task(task)
+            return merged_cfg if isinstance(merged_cfg, dict) else {}
+        except Exception as exc:
+            logger.warning(f"合成速通配置失败，使用 interface 数据: {exc}")
+            interface_task = self._get_task_by_name(task.name)
+            return (
+                interface_task.get("speedrun")
+                if interface_task and isinstance(interface_task, dict)
+                else {}
+            )
+
     def _evaluate_speedrun(
         self, task: TaskItem, speedrun: Dict[str, Any]
     ) -> tuple[bool, str]:
         """校验 speedrun 限制"""
         if not speedrun or not isinstance(speedrun, dict):
+            return True, ""
+
+        if speedrun.get("enabled") is False:
             return True, ""
 
         run_cfg = speedrun.get("run") or {}
@@ -1150,12 +1180,14 @@ class TaskFlowRunner(QObject):
             entries = [entries]
 
         parsed: list[datetime] = []
+        epoch = datetime(1970, 1, 1)
+
         for entry in entries:
             parsed_entry: datetime | None = None
             if isinstance(entry, (int, float)):
                 try:
                     parsed_entry = datetime.fromtimestamp(entry)
-                except OverflowError:
+                except (OverflowError, OSError):
                     parsed_entry = None
             elif isinstance(entry, str):
                 try:
@@ -1163,10 +1195,11 @@ class TaskFlowRunner(QObject):
                 except ValueError:
                     try:
                         parsed_entry = datetime.fromtimestamp(float(entry))
-                    except (TypeError, ValueError, OverflowError):
+                    except (TypeError, ValueError, OverflowError, OSError):
                         parsed_entry = None
-            if parsed_entry:
-                parsed.append(parsed_entry)
+
+            # 对不合法时间回退到 epoch
+            parsed.append(parsed_entry if parsed_entry else epoch)
 
         parsed.sort()
         return parsed

@@ -5,6 +5,19 @@ from app.utils.logger import logger
 from app.core.service.Config_Service import ConfigService
 from app.core.Item import TaskItem, CoreSignalBus
 
+# 速通配置默认值
+DEFAULT_SPEEDRUN_CONFIG: Dict[str, Any] = {
+    "enabled": False,
+    "force": False,
+    "mode": "daily",
+    "trigger": {
+        "daily": {"hour_start": 0},
+        "weekly": {"weekday": [1], "hour_start": 0},
+        "monthly": {"day": [1], "hour_start": 0},
+    },
+    "run": {"count": 1, "min_interval_hours": 0},
+}
+
 
 class TaskService:
     """任务服务实现"""
@@ -95,6 +108,47 @@ class TaskService:
         self._check_know_task()
 
         logger.info("interface 数据重新加载完成")
+
+    def _get_interface_speedrun(self, task_name: str) -> Dict[str, Any]:
+        """从 interface 中获取任务的 speedrun 配置"""
+        if not self.interface:
+            return {}
+        for task in self.interface.get("task", []):
+            if task.get("name") == task_name:
+                speedrun_cfg = task.get("speedrun")
+                return deepcopy(speedrun_cfg) if isinstance(speedrun_cfg, dict) else {}
+        return {}
+
+    def build_speedrun_config(
+        self, task_name: str, existing: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        合成 speedrun 配置：默认值 <- interface 配置 <- 已保存配置
+        """
+        config: Dict[str, Any] = deepcopy(DEFAULT_SPEEDRUN_CONFIG)
+        interface_cfg = self._get_interface_speedrun(task_name)
+        if interface_cfg:
+            self._deep_merge_dict(config, interface_cfg)
+        if isinstance(existing, dict):
+            self._deep_merge_dict(config, deepcopy(existing))
+        return config
+
+    def ensure_speedrun_config_for_task(
+        self, task: TaskItem, persist: bool = False
+    ) -> Dict[str, Any]:
+        """
+        确保任务包含标准化的 speedrun 配置；可选持久化
+        """
+        if not isinstance(task.task_option, dict):
+            task.task_option = {}
+
+        existing = task.task_option.get("_speedrun_config")
+        normalized = self.build_speedrun_config(task.name, existing)
+        if existing != normalized:
+            task.task_option["_speedrun_config"] = normalized
+            if persist:
+                self.update_task(task)
+        return normalized
 
     def add_task(self, task_name: str, is_special: bool = False) -> bool:
         """添加任务
@@ -231,6 +285,9 @@ class TaskService:
             if option_template:
                 option_defaults = _gen_option_defaults_recursive(option, option_template)
                 task_default_option[option] = option_defaults
+
+        # 追加速通配置（使用 interface 或默认值）
+        task_default_option["_speedrun_config"] = self.build_speedrun_config(task_name)
 
         return task_default_option
 

@@ -4,6 +4,7 @@
 """
 from .OptionItemWidget import OptionItemWidget
 from .OptionFormWidget import OptionFormWidget
+from .SpeedrunConfigWidget import SpeedrunConfigWidget
 
-__all__ = ["OptionItemWidget", "OptionFormWidget"]
+__all__ = ["OptionItemWidget", "OptionFormWidget", "SpeedrunConfigWidget"]
 

@@ -19,6 +19,11 @@ class OptionService:
         self.current_task_id = task_id
         task = self.task_service.get_task(task_id)
         if task:
+            # 确保速通配置存在并与 interface 对齐
+            try:
+                self.task_service.ensure_speedrun_config_for_task(task, persist=True)
+            except Exception:
+                pass
             self.current_options = task.task_option
             from app.common.constants import PRE_CONFIGURATION, POST_ACTION
 
