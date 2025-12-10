@@ -31,7 +31,6 @@ import argparse
 if getattr(sys, "frozen", False):
     os.chdir(os.path.dirname(sys.executable))
     os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
-
 else:
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 from app.utils.logger import logger
@@ -54,7 +53,8 @@ from app.utils.crypto import crypto_manager
 
 if __name__ == "__main__":
     logger.info(f"MFW 版本:{__version__}")
-    logger.info(f"打包状态下，MAAFW_BINARY_PATH: {os.environ['MAAFW_BINARY_PATH']}")
+    logger.info(f"当前工作目录: {os.getcwd()}")
+
     import faulthandler
     from pathlib import Path
 

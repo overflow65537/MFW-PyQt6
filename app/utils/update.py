@@ -82,12 +82,13 @@ class BaseUpdate(QThread):
 
     def download_file(
         self, url, file_path, progress_signal: SignalInstance, use_proxies
-    ) -> Path | None:
+    ) -> tuple[Path | None, str | None]:
         logger.info("  [下载] 开始下载文件...")
         logger.debug("  [下载] URL: %s", url[:100] if url else "N/A")
         logger.debug("  [下载] 保存路径: %s", file_path)
 
         need_clear_update = False
+        error_message: str | None = None
         response = None
         final_path: Path | None = None
         if use_proxies:
@@ -162,6 +163,7 @@ class BaseUpdate(QThread):
                     if self.stop_flag:
                         logger.warning("  [下载] 收到停止信号，中断下载")
                         response.close()
+                        error_message = self.tr("User cancelled")
                         if final_path and final_path.exists():
                             need_clear_update = True
                         break
@@ -179,15 +181,20 @@ class BaseUpdate(QThread):
 
             if not need_clear_update and not self.stop_flag:
                 logger.info("  [下载] 下载完成，共 %d 字节", downloaded_size)
-                return final_path
+                return final_path, None
+            if not error_message and self.stop_flag:
+                error_message = self.tr("User cancelled")
+            if not error_message and need_clear_update:
+                error_message = self.tr("Download interrupted")
             if final_path and final_path.exists():
                 final_path.unlink()
-            return None
+            return None, error_message
         except Exception as e:
             logger.exception(f"下载文件时出错{url} -> {file_path}\n{e}")
+            error_message = f"{type(e).__name__}: {e}"
             if final_path and final_path.exists():
                 final_path.unlink()
-            return None
+            return None, error_message
         finally:
             if response:
                 response.close()
@@ -1012,13 +1019,20 @@ class Update(BaseUpdate):
 
             logger.info("[步骤3] 开始下载更新包...")
             logger.debug("[步骤3] 下载地址: %s", download_url)
-            downloaded_zip_path = self.download_file(
+            downloaded_zip_path, download_error = self.download_file(
                 download_url,
                 download_dir,
                 self.progress_signal,
                 use_proxies=self.get_proxy_data(),
             )
             if not downloaded_zip_path:
+                if download_error:
+                    logger.error("[步骤3] 下载失败: %s", download_error)
+                    return self._stop_with_notice(
+                        0,
+                        "error",
+                        f"{self.tr('Download failed')}: {download_error}",
+                    )
                 logger.error("[步骤3] 下载失败")
                 return self._stop_with_notice(0, "error", self.tr("Download failed"))
             zip_file_path = downloaded_zip_path
