@@ -976,6 +976,11 @@ class Update(BaseUpdate):
             )
 
             if not download_url:
+                if update_info is False:
+                    logger.info("[步骤1] 当前已是最新版本，无需下载")
+                    return self._stop_with_notice(
+                        0, "info", self.tr("Already up to date")
+                    )
                 logger.error("[步骤1] 检查完成但未获取到下载地址")
                 return self._stop_with_notice(0, "error", self.tr("Download failed"))
 
