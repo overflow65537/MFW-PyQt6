@@ -287,6 +287,11 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             self.speedrun_widget.set_config(None, emit=False)
             return
 
+        # 特殊任务不显示速通配置
+        if getattr(task, "is_special", False):
+            self._set_speedrun_visible(False)
+            return
+
         existing_cfg = (
             task.task_option.get("_speedrun_config")
             if isinstance(task.task_option, dict)
@@ -637,13 +642,19 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             self.reset()
             logger.info("没有提供form_structure，已清除界面")
 
-        # 同步速通配置到堆叠页（资源/完成后任务隐藏速通页）
+        # 同步速通配置到堆叠页（资源/完成后/特殊任务隐藏速通页）
+        option_service = self.service_coordinator.option
+        task_service = self.service_coordinator.task
+        task_id = getattr(option_service, "current_task_id", None)
+        task = task_service.get_task(task_id) if task_id else None
+        is_special_task = getattr(task, "is_special", False) if task else False
+        
         speedrun_visible = not (
             form_structure and form_structure.get("type") in ["resource", "post_action"]
-        )
+        ) and not is_special_task
 
         if not speedrun_visible:
-            # 资源/完成后：隐藏分段与速通
+            # 资源/完成后/特殊任务：隐藏分段与速通
             self._set_speedrun_visible(False)
             self.segmented_switcher.setVisible(False)
             self.option_stack.setCurrentIndex(0)

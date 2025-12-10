@@ -61,10 +61,6 @@ class TaskFlowRunner(QObject):
         self.maafw.agent_info.connect(self._handle_agent_info)
         self.process = None
 
-        self.speedrun_mode = (
-            False  # 速通模式,这个状态需要通过UI或者cli的开始方法进行更改
-        )
-
         self.need_stop = False
         self.monitor_need_stop = False
         self._is_running = False
