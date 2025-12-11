@@ -757,6 +757,8 @@ class MainWindow(MSFluentWindow):
         self._auto_update_in_progress = False
         self._auto_update_thread = None
         if status == 1:
+            # 热更新完成后，重新设置窗口标题（延迟到下一个事件循环，确保 reinit 完成）
+            QTimer.singleShot(0, self.set_title)
             if self._pending_auto_run:
                 self._schedule_auto_run()
             self._pending_auto_run = False
