@@ -464,6 +464,41 @@ class BaseUpdate(QThread):
         except Exception as restore_err:
             logger.exception(f"备份恢复失败: {restore_err}")
 
+    def _backup_model_dir(self, project_path: Path) -> Path | None:
+        """
+        备份项目内的 model 目录到临时位置，用于全量覆盖前的保留。
+        """
+        model_dir = project_path / "model"
+        if not model_dir.exists() or not model_dir.is_dir():
+            return None
+        try:
+            backup_root = Path.cwd() / "update"
+            backup_root.mkdir(parents=True, exist_ok=True)
+            backup_dir = backup_root / ".model_backup"
+            if backup_dir.exists():
+                shutil.rmtree(backup_dir)
+            shutil.copytree(model_dir, backup_dir, dirs_exist_ok=True)
+            logger.info("已备份 model 目录到临时位置: %s", backup_dir)
+            return backup_dir
+        except Exception as backup_err:
+            logger.warning("备份 model 目录失败: %s", backup_err)
+            return None
+
+    def _restore_model_dir(self, project_path: Path, backup_dir: Path | None) -> None:
+        """
+        将备份的 model 目录还原到项目路径，若备份不存在则忽略。
+        """
+        if not backup_dir or not backup_dir.exists():
+            return
+        target = project_path / "model"
+        try:
+            if target.exists():
+                shutil.rmtree(target)
+            shutil.copytree(backup_dir, target, dirs_exist_ok=True)
+            logger.info("已将 model 目录恢复到: %s", target)
+        except Exception as restore_err:
+            logger.warning("恢复 model 目录失败: %s", restore_err)
+
     def _cleanup_paths(self, paths: list[Path]) -> None:
         for path in paths:
             if not path.exists():
@@ -965,7 +1000,6 @@ class Update(BaseUpdate):
             self._emit_info_bar("info", self.tr("Checking for updates..."))
             update_info = self.check_update()
 
-
             download_url = (
                 update_info.get("url") if isinstance(update_info, dict) else None
             )
@@ -1120,10 +1154,21 @@ class Update(BaseUpdate):
                     logger.error("[步骤5] hotfix 目录不存在，无法覆盖")
                     return self._stop_with_notice(2)
 
+                model_backup_dir: Path | None = None
+                if download_source == "github":
+                    model_backup_dir = self._backup_model_dir(project_path)
+
                 logger.info("[步骤5] 开始安全覆盖项目目录: %s", project_path)
                 if not self._safe_overwrite_project(project_path, hotfix_root):
                     logger.error("[步骤5] 安全覆盖失败")
+                    if model_backup_dir:
+                        self._cleanup_paths([model_backup_dir])
                     return self._stop_with_notice(2)
+
+                if download_source == "github":
+                    self._restore_model_dir(project_path, model_backup_dir)
+                    if model_backup_dir:
+                        self._cleanup_paths([model_backup_dir])
                 logger.info("[步骤5] 安全覆盖操作完成")
             interface_path = [
                 bundle_path_obj / "interface.jsonc",
@@ -1211,7 +1256,9 @@ class Update(BaseUpdate):
                 cfg.set(cfg.latest_update_version, self.latest_update_version)
                 return False
             elif mirror_status == "failed_info":
-                logger.info("  [检查更新] Mirror 检查失败: %s", mirror_result.get("msg"))
+                logger.info(
+                    "  [检查更新] Mirror 检查失败: %s", mirror_result.get("msg")
+                )
                 self._emit_info_bar("warning", mirror_result.get("msg"))
 
             # 记录 Mirror 返回的版本，用于后续逻辑或 GitHub 回退
@@ -1260,7 +1307,9 @@ class Update(BaseUpdate):
             else:
                 logger.info("  [检查更新] Mirror 未提供版本号，回退 GitHub 检查")
         else:
-            logger.info("  [检查更新] 强制下载模式：跳过 Mirror 源，直接使用 GitHub 最新版本")
+            logger.info(
+                "  [检查更新] 强制下载模式：跳过 Mirror 源，直接使用 GitHub 最新版本"
+            )
 
         # 尝试 GitHub
         logger.info("  [检查更新] 切换到 GitHub 源...")
@@ -1295,8 +1344,10 @@ class Update(BaseUpdate):
             logger.info("  [检查更新] GitHub 返回状态: %s", status)
             if status == "failed":
                 raw_msg = github_result.get("msg")
-                msg = str(raw_msg) if raw_msg is not None else self.tr(
-                    "GitHub update check failed"
+                msg = (
+                    str(raw_msg)
+                    if raw_msg is not None
+                    else self.tr("GitHub update check failed")
                 )
                 self._emit_info_bar("error", msg)
                 return False
