@@ -1173,7 +1173,7 @@ class Update(BaseUpdate):
                 except Exception as cleanup_err:
                     logger.debug("[步骤5] 清理删除备份目录失败: %s", cleanup_err)
 
-    def check_update(self) -> dict | bool:
+    def check_update(self, fetch_download_url: bool = True) -> dict | bool:
         logger.info("  [检查更新] 开始检查...")
         logger.debug(
             "  [检查更新] 资源ID: %s, CDK: %s",
@@ -1182,6 +1182,7 @@ class Update(BaseUpdate):
         )
         self.download_url = None
         self.version_name = None
+        self.release_note = ""
 
         # 尝试 Mirror 源（强制下载模式跳过）
         if not self.force_full_download:
@@ -1200,44 +1201,64 @@ class Update(BaseUpdate):
             mirror_data = mirror_result.get("data", {})
             mirror_url = mirror_data.get("url")
             mirror_version = mirror_data.get("version_name")
+            self.release_note = mirror_data.get("release_note", "")
             logger.debug("  [检查更新] Mirror 返回状态: %s", mirror_result.get("msg"))
 
             # Mirror 检查表示当前版本已是最新
             if mirror_status == "no_need":
                 logger.info("  [检查更新] Mirror: 当前已是最新版本")
                 self.latest_update_version = self.current_version
-
                 cfg.set(cfg.latest_update_version, self.latest_update_version)
                 return False
             elif mirror_status == "failed_info":
                 logger.info("  [检查更新] Mirror 检查失败: %s", mirror_result.get("msg"))
                 self._emit_info_bar("warning", mirror_result.get("msg"))
 
-            self.latest_update_version = mirror_version or self.current_version
-            cfg.set(cfg.latest_update_version, self.latest_update_version)
+            # 记录 Mirror 返回的版本，用于后续逻辑或 GitHub 回退
+            if mirror_version:
+                self.version_name = mirror_version
+                self.latest_update_version = mirror_version
+                cfg.set(cfg.latest_update_version, self.latest_update_version)
+                if not fetch_download_url:
+                    # 只需要版本信息就提前返回
+                    self._emit_info_bar(
+                        "info",
+                        self.tr("Found update: ") + str(self.latest_update_version),
+                    )
+                    result_data = {
+                        "source": "mirror",
+                        "version": self.latest_update_version,
+                    }
+                    if self.release_note:
+                        result_data["release_note"] = self.release_note
+                    if mirror_url:
+                        result_data["url"] = mirror_url
+                    return result_data
 
-            # Mirror 成功返回下载地址，直接使用
-            if isinstance(mirror_url, str) and mirror_url:
-                logger.info("  [检查更新] Mirror: 找到新版本 %s", mirror_version)
-                logger.debug(
-                    "  [检查更新] Mirror 下载地址: %s",
-                    mirror_url[:80] if mirror_url else "N/A",
-                )
-                self.release_note = mirror_data.get("release_note", "")
-                self.download_url = mirror_url
-                self._emit_info_bar(
-                    "info", self.tr("Found update: ") + str(self.latest_update_version)
-                )
-                return {
-                    "url": mirror_url,
-                    "source": "mirror",
-                    "version": self.latest_update_version,
-                }
-            elif mirror_result.get("data", {}).get("version_name"):
-                self.version_name = mirror_result.get("data", {}).get("version_name")
+                # 下载模式下，Mirror 有直链则直接返回，否则继续 GitHub 获取下载
+                if isinstance(mirror_url, str) and mirror_url:
+                    logger.info("  [检查更新] Mirror: 找到新版本 %s", mirror_version)
+                    logger.debug(
+                        "  [检查更新] Mirror 下载地址: %s",
+                        mirror_url[:80] if mirror_url else "N/A",
+                    )
+                    self.download_url = mirror_url
+                    self._emit_info_bar(
+                        "info",
+                        self.tr("Found update: ") + str(self.latest_update_version),
+                    )
+                    return {
+                        "url": mirror_url,
+                        "source": "mirror",
+                        "version": self.latest_update_version,
+                    }
+                else:
+                    logger.info(
+                        "  [检查更新] Mirror 返回版本 %s 但无下载地址，回退 GitHub 获取包",
+                        mirror_version,
+                    )
             else:
-                logger.error(f"  [检查更新] Mirror 未返回下载地址和版本名\n{mirror_result}")
-                return False
+                logger.info("  [检查更新] Mirror 未提供版本号，回退 GitHub 检查")
         else:
             logger.info("  [检查更新] 强制下载模式：跳过 Mirror 源，直接使用 GitHub 最新版本")
 
@@ -1284,13 +1305,32 @@ class Update(BaseUpdate):
                 self.latest_update_version = self.current_version
                 cfg.set(cfg.latest_update_version, self.latest_update_version)
                 return False
+
+        tag_name = github_result.get("tag_name") or github_result.get("name")
+        target_version = tag_name or self.latest_update_version or self.current_version
+        self.release_note = github_result.get("body", "")
+
+        if not fetch_download_url:
+            self.latest_update_version = target_version
+            cfg.set(cfg.latest_update_version, self.latest_update_version)
+            self._emit_info_bar(
+                "info", self.tr("Found update: ") + str(self.latest_update_version)
+            )
+            result_data = {
+                "source": "github",
+                "version": self.latest_update_version,
+            }
+            if self.release_note:
+                result_data["release_note"] = self.release_note
+            return result_data
+
         download_url = None
         for assets in github_result.get("assets", []) or []:
             if not isinstance(assets, dict):
                 continue
             if assets.get("name") in [
-                f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{self.latest_update_version}.zip",
-                f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{self.latest_update_version}.tar.gz",
+                f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{target_version}.zip",
+                f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{target_version}.tar.gz",
             ]:
                 download_url = assets.get("browser_download_url")
                 break
@@ -1298,15 +1338,13 @@ class Update(BaseUpdate):
         if not download_url:
             logger.warning("  [检查更新] GitHub: 未找到下载地址")
             return False
-        tag_name = github_result.get("tag_name") or github_result.get("name")
         logger.info("  [检查更新] GitHub: 找到新版本 %s", tag_name)
         logger.debug(
             "  [检查更新] GitHub 下载地址: %s",
             download_url[:80] if download_url else "N/A",
         )
-        self.release_note = github_result.get("body", "")
         self.download_url = download_url
-        self.latest_update_version = tag_name or self.current_version
+        self.latest_update_version = target_version
         cfg.set(cfg.latest_update_version, self.latest_update_version)
         self._emit_info_bar(
             "info", self.tr("Found update: ") + str(self.latest_update_version)
@@ -1429,7 +1467,7 @@ class UpdateCheckTask(QThread):
             progress_signal=self._progress_signal,
             info_bar_signal=self._info_bar_signal,
         )
-        result = updater.check_update()
+        result = updater.check_update(fetch_download_url=False)
         result_info = result if isinstance(result, dict) else {}
         result_data: dict = {
             "enable": bool(result),
