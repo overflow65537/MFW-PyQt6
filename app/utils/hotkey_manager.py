@@ -98,6 +98,13 @@ class GlobalHotkeyManager:
     def shutdown(self) -> None:
         """卸载所有注册的快捷键。"""
         self._clear()
+        # Unhook all keyboard hooks to prevent access violations on Windows
+        if self._keyboard:
+            try:
+                self._keyboard.unhook_all()
+                logger.debug("已卸载所有 keyboard 钩子")
+            except Exception as exc:  # pragma: no cover
+                logger.warning("卸载 keyboard 钩子失败: %s", exc)
 
     def _clear(self) -> None:
         if not self._keyboard:
