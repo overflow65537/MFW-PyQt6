@@ -12,14 +12,15 @@ from qfluentwidgets import (
     CheckBox,
 )
 
-
 from app.utils.logger import logger
 from app.common.config import cfg
 from app.utils.crypto import crypto_manager
 from app.utils.notice import send_thread
 
 
-class NoticeType(MessageBoxBase):
+class BaseNoticeType(MessageBoxBase):
+    """通知类型配置对话框的基类，包含公共方法"""
+    
     def __init__(self, parent=None, notice_type: str = ""):
         super().__init__(parent)
         self.notice_type = notice_type
@@ -31,8 +32,6 @@ class NoticeType(MessageBoxBase):
         self.buttonLayout.setStretch(2, 1)
         self.widget.setMinimumWidth(350)
         self.widget.setMinimumHeight(100)
-
-        self.init_noticetype(notice_type)
 
         self.yesButton.clicked.connect(self.on_yes)
         self.testButton.clicked.connect(self.on_test)
@@ -49,6 +48,417 @@ class NoticeType(MessageBoxBase):
 
     def notice_send_finished(self):
         self.testButton.setEnabled(True)
+
+    def encrypt_key(self, obj):
+        """加密密钥"""
+        value = obj() if callable(obj) else obj
+        if value is None:
+            return ""
+
+        secret = str(value)
+        if not secret:
+            return ""
+
+        encrypted = crypto_manager.encrypt_payload(secret)
+        return encrypted.decode("utf-8")
+
+    def decode_key(self, key_name) -> str:
+        """解密密钥"""
+        mapping = {
+            "dingtalk": cfg.Notice_DingTalk_secret,
+            "lark": cfg.Notice_Lark_secret,
+            "smtp": cfg.Notice_SMTP_password,
+            "wxpusher": cfg.Notice_WxPusher_SPT_token,
+            "qmsg": cfg.Notice_Qmsg_key,
+            "QYWX": cfg.Notice_QYWX_key,
+        }
+        cfg_key = mapping.get(key_name)
+        if cfg_key is None:
+            logger.warning("未找到密钥配置: %s", key_name)
+            return ""
+
+        encrypted_value = cfg.get(cfg_key)
+        if not encrypted_value:
+            return ""
+
+        try:
+            decrypted = crypto_manager.decrypt_payload(encrypted_value)
+            return decrypted.decode("utf-8")
+        except InvalidToken:
+            logger.exception("密钥解密失败: %s", key_name)
+        except Exception:
+            logger.exception("解析密钥时发生错误: %s", key_name)
+        return ""
+
+    def on_yes(self):
+        self.save_fields()
+        logger.info(f"保存{self.notice_type}设置")
+        self.accept()
+
+    def on_cancel(self):
+        logger.info("关闭通知设置对话框")
+        self.close()
+
+    def save_fields(self):
+        """子类需要实现此方法来保存字段"""
+        raise NotImplementedError("子类必须实现 save_fields 方法")
+
+
+class DingTalkNoticeType(BaseNoticeType):
+    """钉钉通知配置对话框"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent, "DingTalk")
+        self.add_fields()
+
+    def add_fields(self):
+        """添加钉钉相关的输入框"""
+        dingtalk_url_title = BodyLabel(self)
+        dingtalk_secret_title = BodyLabel(self)
+        dingtalk_status_title = BodyLabel(self)
+        self.dingtalk_url_input = LineEdit(self)
+        self.dingtalk_secret_input = PasswordLineEdit(self)
+        self.dingtalk_status_switch = SwitchButton(self)
+
+        dingtalk_url_title.setText(self.tr("DingTalk Webhook URL:"))
+        dingtalk_secret_title.setText(self.tr("DingTalk Secret:"))
+        dingtalk_status_title.setText(self.tr("DingTalk Status:"))
+
+        self.dingtalk_url_input.setText(cfg.get(cfg.Notice_DingTalk_url))
+        self.dingtalk_secret_input.setText(self.decode_key("dingtalk"))
+        self.dingtalk_status_switch.setChecked(cfg.get(cfg.Notice_DingTalk_status))
+
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
+
+        col1.addWidget(dingtalk_url_title)
+        col1.addWidget(dingtalk_secret_title)
+        col1.addWidget(dingtalk_status_title)
+
+        col2.addWidget(self.dingtalk_url_input)
+        col2.addWidget(self.dingtalk_secret_input)
+        col2.addWidget(self.dingtalk_status_switch)
+
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(col1)
+        mainLayout.addLayout(col2)
+        self.viewLayout.addLayout(mainLayout)
+        self.dingtalk_url_input.textChanged.connect(self.save_fields)
+        self.dingtalk_secret_input.textChanged.connect(self.save_fields)
+
+    def save_fields(self):
+        """保存钉钉相关的输入框"""
+        cfg.set(cfg.Notice_DingTalk_url, self.dingtalk_url_input.text())
+        cfg.set(
+            cfg.Notice_DingTalk_secret,
+            self.encrypt_key(self.dingtalk_secret_input.text),
+        )
+        cfg.set(cfg.Notice_DingTalk_status, self.dingtalk_status_switch.isChecked())
+
+
+class LarkNoticeType(BaseNoticeType):
+    """飞书通知配置对话框"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent, "Lark")
+        self.add_fields()
+
+    def add_fields(self):
+        """添加飞书相关的输入框"""
+        lark_url_title = BodyLabel(self)
+        lark_secret_title = BodyLabel(self)
+        lark_status_title = BodyLabel(self)
+        self.lark_url_input = LineEdit(self)
+        self.lark_secret_input = PasswordLineEdit(self)
+        self.lark_status_switch = SwitchButton(self)
+
+        lark_url_title.setText(self.tr("Lark Webhook URL:"))
+        lark_secret_title.setText(self.tr("Lark App Key:"))
+        lark_status_title.setText(self.tr("Lark Status:"))
+
+        self.lark_url_input.setText(cfg.get(cfg.Notice_Lark_url))
+        self.lark_secret_input.setText(self.decode_key("lark"))
+        self.lark_status_switch.setChecked(cfg.get(cfg.Notice_Lark_status))
+
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
+
+        col1.addWidget(lark_url_title)
+        col1.addWidget(lark_secret_title)
+        col1.addWidget(lark_status_title)
+
+        col2.addWidget(self.lark_url_input)
+        col2.addWidget(self.lark_secret_input)
+        col2.addWidget(self.lark_status_switch)
+
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(col1)
+        mainLayout.addLayout(col2)
+        self.viewLayout.addLayout(mainLayout)
+
+        self.lark_url_input.textChanged.connect(self.save_fields)
+        self.lark_secret_input.textChanged.connect(self.save_fields)
+
+    def save_fields(self):
+        """保存飞书相关的输入框"""
+        cfg.set(cfg.Notice_Lark_url, self.lark_url_input.text())
+        cfg.set(cfg.Notice_Lark_secret, self.encrypt_key(self.lark_secret_input.text))
+        cfg.set(cfg.Notice_Lark_status, self.lark_status_switch.isChecked())
+
+
+class QmsgNoticeType(BaseNoticeType):
+    """Qmsg 通知配置对话框"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent, "Qmsg")
+        self.add_fields()
+
+    def add_fields(self):
+        """添加 Qmsg 相关的输入框"""
+        sever_title = BodyLabel(self)
+        key_title = BodyLabel(self)
+        user_qq_title = BodyLabel(self)
+        robot_qq_title = BodyLabel(self)
+        qmsg_status_title = BodyLabel(self)
+
+        self.sever_input = LineEdit(self)
+        self.key_input = PasswordLineEdit(self)
+        self.user_qq_input = LineEdit(self)
+        self.robot_qq_input = LineEdit(self)
+        self.qmsg_status_switch = SwitchButton(self)
+
+        sever_title.setText(self.tr("Server:"))
+        key_title.setText(self.tr("Key:"))
+        user_qq_title.setText(self.tr("User QQ:"))
+        robot_qq_title.setText(self.tr("Robot QQ:"))
+        qmsg_status_title.setText(self.tr("Qmsg Status:"))
+
+        self.sever_input.setText(cfg.get(cfg.Notice_Qmsg_sever))
+        self.key_input.setText(self.decode_key("qmsg"))
+        self.user_qq_input.setText(cfg.get(cfg.Notice_Qmsg_user_qq))
+        self.robot_qq_input.setText(cfg.get(cfg.Notice_Qmsg_robot_qq))
+        self.qmsg_status_switch.setChecked(cfg.get(cfg.Notice_Qmsg_status))
+
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
+
+        col1.addWidget(sever_title)
+        col1.addWidget(key_title)
+        col1.addWidget(user_qq_title)
+        col1.addWidget(robot_qq_title)
+        col1.addWidget(qmsg_status_title)
+
+        col2.addWidget(self.sever_input)
+        col2.addWidget(self.key_input)
+        col2.addWidget(self.user_qq_input)
+        col2.addWidget(self.robot_qq_input)
+        col2.addWidget(self.qmsg_status_switch)
+
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(col1)
+        mainLayout.addLayout(col2)
+        self.viewLayout.addLayout(mainLayout)
+
+        self.sever_input.textChanged.connect(self.save_fields)
+        self.key_input.textChanged.connect(self.save_fields)
+        self.user_qq_input.textChanged.connect(self.save_fields)
+        self.robot_qq_input.textChanged.connect(self.save_fields)
+
+    def save_fields(self):
+        """保存 Qmsg 相关的输入框"""
+        cfg.set(cfg.Notice_Qmsg_sever, self.sever_input.text())
+        cfg.set(cfg.Notice_Qmsg_key, self.encrypt_key(self.key_input.text))
+        cfg.set(cfg.Notice_Qmsg_user_qq, self.user_qq_input.text())
+        cfg.set(cfg.Notice_Qmsg_robot_qq, self.robot_qq_input.text())
+        cfg.set(cfg.Notice_Qmsg_status, self.qmsg_status_switch.isChecked())
+
+
+class SMTPNoticeType(BaseNoticeType):
+    """SMTP 通知配置对话框"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent, "SMTP")
+        self.add_fields()
+
+    def add_fields(self):
+        """添加 SMTP 相关的输入框"""
+        server_address_title = BodyLabel(self)
+        server_port_title = BodyLabel(self)
+        user_name_title = BodyLabel(self)
+        password_title = BodyLabel(self)
+        receive_mail_title = BodyLabel(self)
+        smtp_status_title = BodyLabel(self)
+
+        self.server_address_input = LineEdit(self)
+        self.server_port_input = LineEdit(self)
+        self.used_ssl = CheckBox(self.tr("Use SSL"), self)
+        self.user_name_input = LineEdit(self)
+        self.password_input = PasswordLineEdit(self)
+        self.receive_mail_input = LineEdit(self)
+        self.smtp_status_switch = SwitchButton(self)
+
+        server_address_title.setText(self.tr("Server Address:"))
+        server_port_title.setText(self.tr("Server Port:"))
+        user_name_title.setText(self.tr("User Name:"))
+        password_title.setText(self.tr("Password:"))
+        receive_mail_title.setText(self.tr("Receive Mail:"))
+        smtp_status_title.setText(self.tr("SMTP Status:"))
+
+        self.server_address_input.setText(cfg.get(cfg.Notice_SMTP_sever_address))
+        self.server_port_input.setText(cfg.get(cfg.Notice_SMTP_sever_port))
+        self.used_ssl.setChecked(cfg.get(cfg.Notice_SMTP_used_ssl))
+        self.user_name_input.setText(cfg.get(cfg.Notice_SMTP_user_name))
+        self.password_input.setText(self.decode_key("smtp"))
+        self.receive_mail_input.setText(cfg.get(cfg.Notice_SMTP_receive_mail))
+        self.smtp_status_switch.setChecked(cfg.get(cfg.Notice_SMTP_status))
+
+        self.port_field = QHBoxLayout()
+        self.port_field.addWidget(self.server_port_input)
+        self.port_field.addWidget(self.used_ssl)
+
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
+
+        col1.addWidget(server_address_title)
+        col1.addWidget(server_port_title)
+        col1.addWidget(user_name_title)
+        col1.addWidget(password_title)
+        col1.addWidget(receive_mail_title)
+        col1.addWidget(smtp_status_title)
+
+        col2.addWidget(self.server_address_input)
+        col2.addLayout(self.port_field)
+        col2.addWidget(self.user_name_input)
+        col2.addWidget(self.password_input)
+        col2.addWidget(self.receive_mail_input)
+        col2.addWidget(self.smtp_status_switch)
+
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(col1)
+        mainLayout.addLayout(col2)
+
+        self.viewLayout.addLayout(mainLayout)
+
+        self.server_address_input.textChanged.connect(self.save_fields)
+        self.server_port_input.textChanged.connect(self.save_fields)
+        self.used_ssl.stateChanged.connect(self.save_fields)
+        self.user_name_input.textChanged.connect(self.save_fields)
+        self.password_input.textChanged.connect(self.save_fields)
+        self.receive_mail_input.textChanged.connect(self.save_fields)
+
+    def save_fields(self):
+        """保存 SMTP 相关的输入框"""
+        cfg.set(cfg.Notice_SMTP_sever_address, self.server_address_input.text())
+        cfg.set(cfg.Notice_SMTP_sever_port, self.server_port_input.text())
+        cfg.set(cfg.Notice_SMTP_used_ssl, self.used_ssl.isChecked())
+        cfg.set(cfg.Notice_SMTP_user_name, self.user_name_input.text())
+        cfg.set(cfg.Notice_SMTP_password, self.encrypt_key(self.password_input.text))
+        cfg.set(cfg.Notice_SMTP_receive_mail, self.receive_mail_input.text())
+        cfg.set(cfg.Notice_SMTP_status, self.smtp_status_switch.isChecked())
+
+
+class WxPusherNoticeType(BaseNoticeType):
+    """WxPusher 通知配置对话框"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent, "WxPusher")
+        self.add_fields()
+
+    def add_fields(self):
+        """添加 WxPusher 相关的输入框"""
+        wxpusher_spt_title = BodyLabel(self)
+        wxpusher_status_title = BodyLabel(self)
+
+        self.wxpusher_spt_input = PasswordLineEdit(self)
+        self.wxpusher_status_switch = SwitchButton(self)
+
+        wxpusher_spt_title.setText(self.tr("WxPusher Spt:"))
+        wxpusher_status_title.setText(self.tr("WxPusher Status:"))
+
+        self.wxpusher_spt_input.setText(self.decode_key("wxpusher"))
+        self.wxpusher_status_switch.setChecked(cfg.get(cfg.Notice_WxPusher_status))
+
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
+
+        col1.addWidget(wxpusher_spt_title)
+        col1.addWidget(wxpusher_status_title)
+
+        col2.addWidget(self.wxpusher_spt_input)
+        col2.addWidget(self.wxpusher_status_switch)
+
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(col1)
+        mainLayout.addLayout(col2)
+
+        self.viewLayout.addLayout(mainLayout)
+        self.wxpusher_spt_input.textChanged.connect(self.save_fields)
+
+    def save_fields(self):
+        """保存 WxPusher 相关的输入框"""
+        cfg.set(
+            cfg.Notice_WxPusher_SPT_token,
+            self.encrypt_key(self.wxpusher_spt_input.text),
+        )
+        cfg.set(cfg.Notice_WxPusher_status, self.wxpusher_status_switch.isChecked())
+
+
+class QYWXNoticeType(BaseNoticeType):
+    """企业微信机器人通知配置对话框"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent, "QYWX")
+        self.add_fields()
+
+    def add_fields(self):
+        """添加 企业微信机器人 相关的输入框"""
+        qywx_key_title = BodyLabel(self)
+        qywx_status_title = BodyLabel(self)
+
+        self.qywx_key_input = PasswordLineEdit(self)
+        self.qywx_status_switch = SwitchButton(self)
+
+        qywx_key_title.setText(self.tr("QYWXbot Key:"))
+        qywx_status_title.setText(self.tr("QYWXbot Status:"))
+
+        self.qywx_key_input.setText(self.decode_key("QYWX"))
+        self.qywx_status_switch.setChecked(cfg.get(cfg.Notice_QYWX_status))
+
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
+
+        col1.addWidget(qywx_key_title)
+        col1.addWidget(qywx_status_title)
+
+        col2.addWidget(self.qywx_key_input)
+        col2.addWidget(self.qywx_status_switch)
+
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(col1)
+        mainLayout.addLayout(col2)
+
+        self.viewLayout.addLayout(mainLayout)
+        self.qywx_key_input.textChanged.connect(self.save_fields)
+
+    def save_fields(self):
+        """保存 QYWX 相关的输入框"""
+        cfg.set(cfg.Notice_QYWX_key, self.encrypt_key(self.qywx_key_input.text))
+        cfg.set(cfg.Notice_QYWX_status, self.qywx_status_switch.isChecked())
+
+
+# 保留原有的 NoticeType 类以保持向后兼容，但标记为已弃用
+class NoticeType(BaseNoticeType):
+    """已弃用：请使用具体的通知类型类（如 DingTalkNoticeType, LarkNoticeType 等）"""
+    
+    def __init__(self, parent=None, notice_type: str = ""):
+        import warnings
+        warnings.warn(
+            "NoticeType 类已弃用，请直接使用具体的通知类型类（如 DingTalkNoticeType, LarkNoticeType 等）",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        super().__init__(parent, notice_type)
+        self.init_noticetype(notice_type)
 
     def init_noticetype(self, notice_type):
         """根据通知类型初始化界面元素"""
@@ -82,91 +492,9 @@ class NoticeType(MessageBoxBase):
             case "QYWX":
                 self.save_qywx_fields()
 
-    def encrypt_key(self, obj):
-        """加密密钥"""
-        value = obj() if callable(obj) else obj
-        if value is None:
-            return ""
-
-        secret = str(value)
-        if not secret:
-            return ""
-
-        encrypted = crypto_manager.encrypt_payload(secret)
-        return encrypted.decode("utf-8")
-
-    def decode_key(self, key_name) -> str:
-        """解密密钥"""
-        mapping = {
-            "dingtalk": cfg.Notice_DingTalk_secret,
-            "lark": cfg.Notice_Lark_secret,
-            "smtp": cfg.Notice_SMTP_password,
-            "wxpusher": cfg.Notice_WxPusher_SPT_token,
-            "QYWX": cfg.Notice_QYWX_key,
-        }
-        cfg_key = mapping.get(key_name)
-        if cfg_key is None:
-            logger.warning("未找到密钥配置: %s", key_name)
-            return ""
-
-        encrypted_value = cfg.get(cfg_key)
-        if not encrypted_value:
-            return ""
-
-        try:
-            decrypted = crypto_manager.decrypt_payload(encrypted_value)
-            return decrypted.decode("utf-8")
-        except InvalidToken:
-            logger.exception("密钥解密失败: %s", key_name)
-        except Exception:
-            logger.exception("解析密钥时发生错误: %s", key_name)
-        return ""
-
-    def save_dingtalk_fields(self):
-        """保存钉钉相关的输入框"""
-        cfg.set(cfg.Notice_DingTalk_url, self.dingtalk_url_input.text())
-        cfg.set(
-            cfg.Notice_DingTalk_secret,
-            self.encrypt_key(self.dingtalk_secret_input.text),
-        )
-        cfg.set(cfg.Notice_DingTalk_status, self.dingtalk_status_switch.isChecked())
-
-    def save_lark_fields(self):
-        """保存飞书相关的输入框"""
-        cfg.set(cfg.Notice_Lark_url, self.lark_url_input.text())
-        cfg.set(cfg.Notice_Lark_secret, self.encrypt_key(self.lark_secret_input.text))
-        cfg.set(cfg.Notice_Lark_status, self.lark_status_switch.isChecked())
-
-    def save_qmsg_fields(self):
-        """保存 Qmsg 相关的输入框"""
-        cfg.set(cfg.Notice_Qmsg_sever, self.sever_input.text())
-        cfg.set(cfg.Notice_Qmsg_key, self.encrypt_key(self.key_input.text))
-        cfg.set(cfg.Notice_Qmsg_user_qq, self.user_qq_input.text())
-        cfg.set(cfg.Notice_Qmsg_robot_qq, self.robot_qq_input.text())
-        cfg.set(cfg.Notice_Qmsg_status, self.qmsg_status_switch.isChecked())
-
-    def save_smtp_fields(self):
-        """保存 SMTP 相关的输入框"""
-        cfg.set(cfg.Notice_SMTP_sever_address, self.server_address_input.text())
-        cfg.set(cfg.Notice_SMTP_sever_port, self.server_port_input.text())
-        cfg.set(cfg.Notice_SMTP_used_ssl, self.used_ssl.isChecked())
-        cfg.set(cfg.Notice_SMTP_user_name, self.user_name_input.text())
-        cfg.set(cfg.Notice_SMTP_password, self.encrypt_key(self.password_input.text))
-        cfg.set(cfg.Notice_SMTP_receive_mail, self.receive_mail_input.text())
-        cfg.set(cfg.Notice_SMTP_status, self.smtp_status_switch.isChecked())
-
-    def save_wxpusher_fields(self):
-        """保存 WxPusher 相关的输入框"""
-        cfg.set(
-            cfg.Notice_WxPusher_SPT_token,
-            self.encrypt_key(self.wxpusher_spt_input.text),
-        )
-        cfg.set(cfg.Notice_WxPusher_status, self.wxpusher_status_switch.isChecked())
-
-    def save_qywx_fields(self):
-        """保存 QYWX 相关的输入框"""
-        cfg.set(cfg.Notice_QYWX_key, self.encrypt_key(self.qywx_key_input.text))
-        cfg.set(cfg.Notice_QYWX_status, self.qywx_status_switch.isChecked())
+    def save_fields(self):
+        """保存通知类型"""
+        self.save_noticetype(self.notice_type)
 
     def add_dingtalk_fields(self):
         """添加钉钉相关的输入框"""
@@ -203,6 +531,15 @@ class NoticeType(MessageBoxBase):
         self.dingtalk_url_input.textChanged.connect(self.save_dingtalk_fields)
         self.dingtalk_secret_input.textChanged.connect(self.save_dingtalk_fields)
 
+    def save_dingtalk_fields(self):
+        """保存钉钉相关的输入框"""
+        cfg.set(cfg.Notice_DingTalk_url, self.dingtalk_url_input.text())
+        cfg.set(
+            cfg.Notice_DingTalk_secret,
+            self.encrypt_key(self.dingtalk_secret_input.text),
+        )
+        cfg.set(cfg.Notice_DingTalk_status, self.dingtalk_status_switch.isChecked())
+
     def add_lark_fields(self):
         """添加飞书相关的输入框"""
         lark_url_title = BodyLabel(self)
@@ -238,6 +575,12 @@ class NoticeType(MessageBoxBase):
 
         self.lark_url_input.textChanged.connect(self.save_lark_fields)
         self.lark_secret_input.textChanged.connect(self.save_lark_fields)
+
+    def save_lark_fields(self):
+        """保存飞书相关的输入框"""
+        cfg.set(cfg.Notice_Lark_url, self.lark_url_input.text())
+        cfg.set(cfg.Notice_Lark_secret, self.encrypt_key(self.lark_secret_input.text))
+        cfg.set(cfg.Notice_Lark_status, self.lark_status_switch.isChecked())
 
     def add_qmsg_fields(self):
         """添加 Qmsg 相关的输入框"""
@@ -289,6 +632,14 @@ class NoticeType(MessageBoxBase):
         self.key_input.textChanged.connect(self.save_qmsg_fields)
         self.user_qq_input.textChanged.connect(self.save_qmsg_fields)
         self.robot_qq_input.textChanged.connect(self.save_qmsg_fields)
+
+    def save_qmsg_fields(self):
+        """保存 Qmsg 相关的输入框"""
+        cfg.set(cfg.Notice_Qmsg_sever, self.sever_input.text())
+        cfg.set(cfg.Notice_Qmsg_key, self.encrypt_key(self.key_input.text))
+        cfg.set(cfg.Notice_Qmsg_user_qq, self.user_qq_input.text())
+        cfg.set(cfg.Notice_Qmsg_robot_qq, self.robot_qq_input.text())
+        cfg.set(cfg.Notice_Qmsg_status, self.qmsg_status_switch.isChecked())
 
     def add_smtp_fields(self):
         """添加 SMTP 相关的输入框"""
@@ -356,6 +707,16 @@ class NoticeType(MessageBoxBase):
         self.password_input.textChanged.connect(self.save_smtp_fields)
         self.receive_mail_input.textChanged.connect(self.save_smtp_fields)
 
+    def save_smtp_fields(self):
+        """保存 SMTP 相关的输入框"""
+        cfg.set(cfg.Notice_SMTP_sever_address, self.server_address_input.text())
+        cfg.set(cfg.Notice_SMTP_sever_port, self.server_port_input.text())
+        cfg.set(cfg.Notice_SMTP_used_ssl, self.used_ssl.isChecked())
+        cfg.set(cfg.Notice_SMTP_user_name, self.user_name_input.text())
+        cfg.set(cfg.Notice_SMTP_password, self.encrypt_key(self.password_input.text))
+        cfg.set(cfg.Notice_SMTP_receive_mail, self.receive_mail_input.text())
+        cfg.set(cfg.Notice_SMTP_status, self.smtp_status_switch.isChecked())
+
     def add_wxpusher_fields(self):
         """添加 WxPusher 相关的输入框"""
         wxpusher_spt_title = BodyLabel(self)
@@ -385,6 +746,14 @@ class NoticeType(MessageBoxBase):
 
         self.viewLayout.addLayout(mainLayout)
         self.wxpusher_spt_input.textChanged.connect(self.save_wxpusher_fields)
+
+    def save_wxpusher_fields(self):
+        """保存 WxPusher 相关的输入框"""
+        cfg.set(
+            cfg.Notice_WxPusher_SPT_token,
+            self.encrypt_key(self.wxpusher_spt_input.text),
+        )
+        cfg.set(cfg.Notice_WxPusher_status, self.wxpusher_status_switch.isChecked())
 
     def add_qywx_fields(self):
         """添加 企业微信机器人 相关的输入框"""
@@ -416,11 +785,7 @@ class NoticeType(MessageBoxBase):
         self.viewLayout.addLayout(mainLayout)
         self.qywx_key_input.textChanged.connect(self.save_qywx_fields)
 
-    def on_yes(self):
-        self.save_noticetype(self.notice_type)
-        logger.info(f"保存{self.notice_type}设置")
-        self.accept()
-
-    def on_cancel(self):
-        logger.info("关闭通知设置对话框")
-        self.close()
+    def save_qywx_fields(self):
+        """保存 QYWX 相关的输入框"""
+        cfg.set(cfg.Notice_QYWX_key, self.encrypt_key(self.qywx_key_input.text))
+        cfg.set(cfg.Notice_QYWX_status, self.qywx_status_switch.isChecked())

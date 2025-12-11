@@ -62,6 +62,8 @@ from app.view.setting_interface.widget.LineEditCard import (
     LineEditCard,
     MirrorCdkLineEditCard,
 )
+from app.view.setting_interface.widget.NoticeType import NoticeType
+from app.view.setting_interface.widget.SendSettingCard import SendSettingCard
 
 _CONTACT_URL_PATTERN = re.compile(r"(?:https?://|www\.)[^\s，,]+")
 
@@ -967,6 +969,14 @@ class SettingInterface(QWidget):
         self.noticeGroup.addSettingCard(self.QYWX_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.send_settingCard)
         self.add_setting_group(self.noticeGroup)
+        
+        # 连接通知卡片的点击事件
+        self.dingtalk_noticeTypeCard.clicked.connect(self._on_dingtalk_notice_clicked)
+        self.lark_noticeTypeCard.clicked.connect(self._on_lark_notice_clicked)
+        self.SMTP_noticeTypeCard.clicked.connect(self._on_smtp_notice_clicked)
+        self.WxPusher_noticeTypeCard.clicked.connect(self._on_wxpusher_notice_clicked)
+        self.QYWX_noticeTypeCard.clicked.connect(self._on_qywx_notice_clicked)
+        self.send_settingCard.clicked.connect(self._on_send_setting_clicked)
 
     def initialize_update_settings(self):
         """插入更新设置卡片组（跟原先的 UpdateSettingsSection 等价）。"""
@@ -1319,6 +1329,87 @@ class SettingInterface(QWidget):
     def _on_save_screenshot_changed(self, checked: bool):
         """保存截图开关，无需二次确认。"""
         cfg.set(cfg.save_screenshot, bool(checked))
+
+    def _update_notice_card_status(self, notice_type: str):
+        """更新通知卡片的状态显示"""
+        if notice_type == "DingTalk":
+            if cfg.get(cfg.Notice_DingTalk_status):
+                content = self.tr("DingTalk Notification Enabled")
+            else:
+                content = self.tr("DingTalk Notification Disabled")
+            self.dingtalk_noticeTypeCard.setContent(content)
+        elif notice_type == "Lark":
+            if cfg.get(cfg.Notice_Lark_status):
+                content = self.tr("Lark Notification Enabled")
+            else:
+                content = self.tr("Lark Notification Disabled")
+            self.lark_noticeTypeCard.setContent(content)
+        elif notice_type == "SMTP":
+            if cfg.get(cfg.Notice_SMTP_status):
+                content = self.tr("SMTP Notification Enabled")
+            else:
+                content = self.tr("SMTP Notification Disabled")
+            self.SMTP_noticeTypeCard.setContent(content)
+        elif notice_type == "WxPusher":
+            if cfg.get(cfg.Notice_WxPusher_status):
+                content = self.tr("WxPusher Notification Enabled")
+            else:
+                content = self.tr("WxPusher Notification Disabled")
+            self.WxPusher_noticeTypeCard.setContent(content)
+        elif notice_type == "QYWX":
+            if cfg.get(cfg.Notice_QYWX_status):
+                content = self.tr("QYWX Notification Enabled")
+            else:
+                content = self.tr("QYWX Notification Disabled")
+            self.QYWX_noticeTypeCard.setContent(content)
+
+    def _on_dingtalk_notice_clicked(self):
+        """处理钉钉通知卡片点击事件"""
+        parent = self.window() or self
+        dialog = NoticeType(parent, "DingTalk")
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._update_notice_card_status("DingTalk")
+
+    def _on_lark_notice_clicked(self):
+        """处理飞书通知卡片点击事件"""
+        parent = self.window() or self
+        dialog = NoticeType(parent, "Lark")
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._update_notice_card_status("Lark")
+
+    def _on_smtp_notice_clicked(self):
+        """处理 SMTP 通知卡片点击事件"""
+        parent = self.window() or self
+        dialog = NoticeType(parent, "SMTP")
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._update_notice_card_status("SMTP")
+
+    def _on_wxpusher_notice_clicked(self):
+        """处理 WxPusher 通知卡片点击事件"""
+        parent = self.window() or self
+        dialog = NoticeType(parent, "WxPusher")
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._update_notice_card_status("WxPusher")
+
+    def _on_qywx_notice_clicked(self):
+        """处理企业微信通知卡片点击事件"""
+        parent = self.window() or self
+        dialog = NoticeType(parent, "QYWX")
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._update_notice_card_status("QYWX")
+
+    def _on_send_setting_clicked(self):
+        """处理发送设置卡片点击事件"""
+        parent = self.window() or self
+        dialog = SendSettingCard(parent)
+        # 连接确认按钮的点击事件以保存设置
+        original_accept = dialog.accept
+        def save_and_accept():
+            dialog.save_setting()
+            original_accept()
+        dialog.yesButton.clicked.disconnect()
+        dialog.yesButton.clicked.connect(save_and_accept)
+        dialog.exec()
 
     def __showRestartTooltip(self):
         """显示重启提示。"""
