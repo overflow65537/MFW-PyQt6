@@ -123,13 +123,6 @@ class BaseUpdate(QThread):
             return None
 
         def _derive_filename(resp: Response) -> str:
-            name = _format_filename_from_headers(resp)
-            if name:
-                return name
-            parsed = urlparse(url)
-            fallback = Path(parsed.path).name
-            if fallback:
-                return unquote(fallback)
             return "update.zip"
 
         def _resolve_target_location(base_path: Path, filename: str) -> Path:
@@ -511,7 +504,9 @@ class BaseUpdate(QThread):
             except Exception as cleanup_err:
                 logger.warning(f"清理 {path} 时失败: {cleanup_err}")
 
-    def _cleanup_update_artifacts(self, download_dir: Path, zip_file_path: Path) -> None:
+    def _cleanup_update_artifacts(
+        self, download_dir: Path, zip_file_path: Path
+    ) -> None:
         metadata_path = download_dir / "update_metadata.json"
         for path in (metadata_path, zip_file_path):
             try:

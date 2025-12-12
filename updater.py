@@ -3,6 +3,7 @@ import logging
 import os
 import random
 import shutil
+import subprocess
 import sys
 import tempfile
 import time
@@ -145,101 +146,91 @@ def extract_zip_file_with_validation(update_file_path):
     """
     import zipfile
 
-    current_dir = os.getcwd()
-
-    try:
-        print(f"开始解压文件: {update_file_path}")
-        print(f"解压目标目录: {current_dir}")
-
-        # 创建备份并移动当前文件（只备份更新包中会覆盖的文件）
-        backup_dir, moved_files, failed_files = move_specific_files_to_temp_backup(
-            update_file_path
-        )
-
-        # 如果有文件备份失败，记录日志并恢复
-        if failed_files:
-            error_msg = f"备份文件失败，无法继续更新。失败的文件: {failed_files}"
-            log_error(error_msg)
-
-            # 恢复已备份的文件
-            restore_files_from_backup(backup_dir)
-            return False
-
-        try:
-            # 尝试解压zip文件
-            if update_file_path.endswith(".zip"):
-                with zipfile.ZipFile(update_file_path, "r") as zip_ref:
-                    file_list = zip_ref.namelist()
-                    print(f"找到 {len(file_list)} 个文件需要解压")
-
-                    # 逐个文件解压
-                    for file_info in file_list:
-                        try:
-                            # 解压单个文件
-                            zip_ref.extract(file_info, current_dir)
-                            extracted_path = os.path.join(current_dir, file_info)
-                            # 如果解压的文件名是MFW或者MFWUpdater,添加可执行权限
-                            if sys.platform != "win32" and (
-                                file_info == "MFW" or file_info == "MFWUpdater"
-                            ):
-                                os.chmod(extracted_path, 0o755)
-
-                            # 验证文件是否成功解压
-                            if os.path.exists(extracted_path):
-                                print(f"✓ 已解压: {file_info}")
-                            else:
-                                raise Exception(f"文件解压后不存在: {file_info}")
-
-                        except Exception as e:
-                            error_msg = f"解压文件失败: {file_info} - {e}"
-                            log_error(error_msg)
-
-                            # 恢复备份文件
-                            restore_files_from_backup(backup_dir)
-                            return False
-
-            else:
-                error_msg = f"不支持的文件格式: {update_file_path}"
-                log_error(error_msg)
-                restore_files_from_backup(backup_dir)
-                return False
-
-            # 解压成功，清理备份目录
-            if os.path.exists(backup_dir):
-                shutil.rmtree(backup_dir)
-                print("解压完成，备份目录已清理")
-
-            return True
-
-        except Exception as e:
-            error_msg = f"解压过程出错: {e}"
-            log_error(error_msg)
-
-            # 恢复备份文件
-            restore_files_from_backup(backup_dir)
-            return False
-
-    except Exception as e:
-        error_msg = f"解压准备过程出错: {e}"
-        log_error(error_msg)
+    if not update_file_path.lower().endswith(".zip"):
+        log_error(f"不支持的文件格式: {update_file_path}")
         return False
+
+    current_dir = os.getcwd()
+    extract_dir = Path(tempfile.mkdtemp(prefix="mfw_unpack_"))
+    try:
+        with zipfile.ZipFile(update_file_path, "r") as archive:
+            file_list = archive.namelist()
+            print(f"找到 {len(file_list)} 个文件需要解压")
+            for file_info in file_list:
+                try:
+                    archive.extract(file_info, extract_dir)
+                    extracted_path = extract_dir / file_info
+                    if not extracted_path.exists():
+                        raise Exception(f"文件解压后不存在: {file_info}")
+                    if sys.platform != "win32" and file_info in {"MFW", "MFWUpdater"}:
+                        os.chmod(extracted_path, 0o755)
+                    print(f"✓ 已解压: {file_info}")
+                except Exception as exc:
+                    raise Exception(f"提取 {file_info} 失败: {exc}") from exc
+        for root, dirs, files in os.walk(extract_dir):
+            rel_root = os.path.relpath(root, extract_dir)
+            dest_root = (
+                os.path.join(current_dir, rel_root)
+                if rel_root not in (".", "")
+                else current_dir
+            )
+            os.makedirs(dest_root, exist_ok=True)
+            for d in dirs:
+                os.makedirs(os.path.join(dest_root, d), exist_ok=True)
+            for file in files:
+                src_file = os.path.join(root, file)
+                dest_file = os.path.join(dest_root, file)
+                os.makedirs(os.path.dirname(dest_file), exist_ok=True)
+                shutil.copy2(src_file, dest_file)
+                if sys.platform != "win32" and os.path.basename(dest_file) in {
+                    "MFW",
+                    "MFWUpdater",
+                }:
+                    os.chmod(dest_file, 0o755)
+                print(f"✓ 已复制: {dest_file}")
+        return True
+    except Exception as exc:
+        log_error(f"解压过程出错: {exc}")
+        cleanup_update_artifacts(update_file_path)
+        start_mfw_process()
+        return False
+    finally:
+        shutil.rmtree(extract_dir, ignore_errors=True)
 
 
 def log_error(error_message):
     """
-    记录错误日志
+    记录错误日志。
 
-    Args:
-        error_message: 错误信息
+    仅使用 update_logger 记录即可，无需手动写文件。
     """
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    log_entry = f"[{timestamp}] {error_message}\n"
-
-    with open("UPDATE_ERROR.log", "a", encoding="utf-8") as log_file:
-        log_file.write(log_entry)
-
     print(f"错误已记录: {error_message}")
     update_logger.error(error_message)
+
+
+def start_mfw_process():
+    try:
+        if sys.platform.startswith("win32"):
+            subprocess.Popen(".\\MFW.exe")
+        else:
+            subprocess.Popen("./MFW")
+    except Exception as exc:
+        log_error(f"启动MFW程序失败: {exc}")
+
+
+def cleanup_update_artifacts(update_file_path, metadata_path=None):
+    target_files = [Path(update_file_path)]
+    if metadata_path:
+        target_files.append(Path(metadata_path))
+    else:
+        target_files.append(Path(update_file_path).parent / "update_metadata.json")
+    for path in target_files:
+        try:
+            if path.exists():
+                path.unlink()
+                update_logger.info("已清理更新 artifacts: %s", path)
+        except Exception as exc:
+            log_error(f"清理更新 artifacts 失败: {path} -> {exc}")
 
 
 def ensure_update_directories():
@@ -323,6 +314,14 @@ def load_update_metadata(update_dir):
         return {}
 
 
+def save_update_metadata(metadata_path: str, metadata: dict) -> None:
+    try:
+        with open(metadata_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+    except Exception as exc:
+        log_error(f"写入更新元数据失败: {exc}")
+
+
 def read_file_list(file_list_path):
     entries = []
     if not os.path.exists(file_list_path):
@@ -339,19 +338,62 @@ def read_file_list(file_list_path):
     return entries
 
 
+def _copy_to_backup(abs_path, backup_root, root):
+    if not os.path.exists(abs_path):
+        return None
+    rel = os.path.relpath(abs_path, root)
+    backup_path = os.path.join(backup_root, rel)
+    os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+    if os.path.isdir(abs_path):
+        if os.path.exists(backup_path):
+            shutil.rmtree(backup_path)
+        shutil.copytree(abs_path, backup_path)
+    else:
+        shutil.copy2(abs_path, backup_path)
+    return abs_path, backup_path
+
+
+def _restore_from_backup(backups):
+    for src, backup in reversed(backups):
+        try:
+            if not os.path.exists(backup):
+                continue
+            if os.path.isdir(backup):
+                if os.path.exists(src):
+                    shutil.rmtree(src)
+                shutil.copytree(backup, src, dirs_exist_ok=False)
+            else:
+                os.makedirs(os.path.dirname(src), exist_ok=True)
+                if os.path.exists(src):
+                    os.remove(src)
+                shutil.copy2(backup, src)
+        except Exception as exc:
+            log_error(f"恢复 {src} 失败: {exc}")
+
+
 def safe_delete_paths(relative_paths):
     root = os.getcwd()
-    for rel_path in relative_paths:
-        abs_path = os.path.abspath(os.path.join(root, rel_path))
-        if not abs_path.startswith(root):
-            continue
-        try:
+    backup_dir = tempfile.mkdtemp(prefix="mfw_delete_backup_")
+    backups = []
+    try:
+        for rel_path in relative_paths:
+            abs_path = os.path.abspath(os.path.join(root, rel_path))
+            if not abs_path.startswith(root) or not os.path.exists(abs_path):
+                continue
+            backup_entry = _copy_to_backup(abs_path, backup_dir, root)
+            if backup_entry:
+                backups.append(backup_entry)
             if os.path.isdir(abs_path):
                 shutil.rmtree(abs_path)
-            elif os.path.exists(abs_path):
+            else:
                 os.remove(abs_path)
-        except Exception as exc:
-            log_error(f"删除 {abs_path} 失败: {exc}")
+        shutil.rmtree(backup_dir, ignore_errors=True)
+        return True
+    except Exception as exc:
+        log_error(f"删除失败: {exc}")
+        _restore_from_backup(backups)
+        shutil.rmtree(backup_dir, ignore_errors=True)
+        return False
 
 
 def safe_delete_except(keep_relative_paths, skip_paths=None, extra_keep=None):
@@ -369,6 +411,8 @@ def safe_delete_except(keep_relative_paths, skip_paths=None, extra_keep=None):
         if os.path.isdir(abs_path):
             keep_abs.add(os.path.abspath(abs_path))
     skip_abs = {os.path.abspath(path) for path in (skip_paths or [])}
+
+    delete_candidates = []
     for entry in os.listdir(root):
         abs_entry = os.path.abspath(os.path.join(root, entry))
         if abs_entry in skip_abs:
@@ -379,13 +423,31 @@ def safe_delete_except(keep_relative_paths, skip_paths=None, extra_keep=None):
             if keep_path
         ):
             continue
-        try:
+        delete_candidates.append(abs_entry)
+
+    backup_dir = tempfile.mkdtemp(prefix="mfw_delete_backup_")
+    backups = []
+    try:
+        for abs_entry in delete_candidates:
+            if not os.path.exists(abs_entry):
+                continue
+            backup_entry = _copy_to_backup(abs_entry, backup_dir, root)
+            if backup_entry:
+                backups.append(backup_entry)
+        for abs_entry in delete_candidates:
+            if not os.path.exists(abs_entry):
+                continue
             if os.path.isdir(abs_entry):
                 shutil.rmtree(abs_entry)
             else:
                 os.remove(abs_entry)
-        except Exception as exc:
-            log_error(f"安全删除 {abs_entry} 失败: {exc}")
+        shutil.rmtree(backup_dir, ignore_errors=True)
+        return True
+    except Exception as exc:
+        log_error(f"安全删除失败: {exc}")
+        _restore_from_backup(backups)
+        shutil.rmtree(backup_dir, ignore_errors=True)
+        return False
 
 
 def backup_model_dir():
@@ -486,7 +548,14 @@ def load_change_entries(zip_path):
                 return None
             with zf.open(candidate) as change_file:
                 data = json.load(change_file)
-                return data.get("deleted", [])
+                deleted = data.get("deleted", [])
+                modified = data.get("modified", [])
+                entries: list[str] = []
+                if isinstance(deleted, list):
+                    entries.extend(deleted)
+                if isinstance(modified, list):
+                    entries.extend(modified)
+                return entries
     except Exception as exc:
         log_error(f"读取 change.json 失败: {exc}")
         return None
@@ -503,12 +572,15 @@ def apply_github_hotfix(package_path, keep_list):
         os.path.abspath(package_path),
         os.path.abspath(os.path.join(repo_root, "update_back")),
     }
-    safe_delete_except(
+    success = False
+    if safe_delete_except(
         keep_list,
         skip_paths,
         extra_keep=["config", "update", "debug"],
-    )
-    success = extract_interface_folder(package_path)
+    ):
+        success = extract_interface_folder(package_path)
+    else:
+        log_error("执行 GitHub 热更新的安全删除阶段失败")
     restore_model_dir(model_backup)
     return success
 
@@ -517,7 +589,9 @@ def apply_mirror_hotfix(package_path):
     deletes = load_change_entries(package_path)
     if deletes is None:
         return False
-    safe_delete_paths(deletes)
+    if not safe_delete_paths(deletes):
+        log_error("执行镜像热更新的安全删除阶段失败")
+        return False
     return extract_zip_file_with_validation(package_path)
 
 
@@ -592,7 +666,11 @@ def standard_update():
         sys.exit(error_message)
 
     new_version_dir, update_back_dir = ensure_update_directories()
+    metadata_path = os.path.join(new_version_dir, "update_metadata.json")
     metadata = load_update_metadata(new_version_dir)
+    if metadata:
+        metadata["attempts"] = metadata.get("attempts", 0) + 1
+        save_update_metadata(metadata_path, metadata)
     file_list_path = os.path.join(os.getcwd(), "file_list.txt")
     file_list = read_file_list(file_list_path)
     update_logger.info(
@@ -614,6 +692,16 @@ def standard_update():
         print("未找到更新文件")
         sys.exit("未找到更新文件")
 
+    if metadata and metadata.get("attempts", 0) > 3:
+        update_logger.warning(
+            "更新尝试次数已大于3次，清理更新包与元数据"
+        )
+        if package_path and os.path.exists(package_path):
+            os.remove(package_path)
+        if os.path.exists(metadata_path):
+            os.remove(metadata_path)
+        sys.exit("更新尝试次数超过限制，已清理旧更新包")
+
     source = metadata.get("source", "unknown") if metadata else "unknown"
     mode = metadata.get("mode", "full") if metadata else "full"
     version = metadata.get("version", "")
@@ -626,14 +714,20 @@ def standard_update():
     if metadata:
         if source == "github":
             if mode == "full":
-                safe_delete_paths(file_list)
-                success = extract_zip_file_with_validation(package_path)
+                success = (
+                    extract_zip_file_with_validation(package_path)
+                    if safe_delete_paths(file_list)
+                    else False
+                )
             else:
                 success = apply_github_hotfix(package_path, file_list)
         elif source == "mirror":
             if mode == "full":
-                safe_delete_paths(file_list)
-                success = extract_zip_file_with_validation(package_path)
+                success = (
+                    extract_zip_file_with_validation(package_path)
+                    if safe_delete_paths(file_list)
+                    else False
+                )
             else:
                 success = apply_mirror_hotfix(package_path)
         else:
