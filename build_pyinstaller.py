@@ -47,7 +47,6 @@ with open(os.path.join(os.getcwd(), "app", "common", "__version__.py"), "w") as 
     from datetime import datetime
 
     f.write(f'__version__ = "{version}"')
-    f.write(f'__build_time__ = "{datetime.now().strftime("%Y-%m-%d %H:%M")}"')
 
 
 # === 依赖包路径发现 ===
