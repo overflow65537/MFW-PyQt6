@@ -1,6 +1,8 @@
+import json
 import os
-import sys
 import shutil
+import sys
+import tempfile
 import time
 
 
@@ -246,6 +248,208 @@ def ensure_update_directories():
     return new_version_dir, update_back_dir
 
 
+def load_update_metadata(update_dir):
+    metadata_path = os.path.join(update_dir, "update_metadata.json")
+    if not os.path.exists(metadata_path):
+        return {}
+    try:
+        with open(metadata_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as exc:
+        log_error(f"读取更新元数据失败: {exc}")
+        return {}
+
+
+def read_file_list(file_list_path):
+    entries = []
+    if not os.path.exists(file_list_path):
+        return entries
+    try:
+        with open(file_list_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                entries.append(line)
+    except Exception as exc:
+        log_error(f"读取 file_list.txt 失败: {exc}")
+    return entries
+
+
+def safe_delete_paths(relative_paths):
+    root = os.getcwd()
+    for rel_path in relative_paths:
+        abs_path = os.path.abspath(os.path.join(root, rel_path))
+        if not abs_path.startswith(root):
+            continue
+        try:
+            if os.path.isdir(abs_path):
+                shutil.rmtree(abs_path)
+            elif os.path.exists(abs_path):
+                os.remove(abs_path)
+        except Exception as exc:
+            log_error(f"删除 {abs_path} 失败: {exc}")
+
+
+def safe_delete_except(keep_relative_paths, skip_paths=None):
+    root = os.getcwd()
+    keep_abs = set()
+    for rel_path in keep_relative_paths:
+        abs_path = os.path.abspath(os.path.join(root, rel_path))
+        keep_abs.add(abs_path)
+        dirname = os.path.abspath(os.path.dirname(abs_path))
+        if dirname and dirname != root:
+            keep_abs.add(dirname)
+    skip_abs = {os.path.abspath(path) for path in (skip_paths or [])}
+    for entry in os.listdir(root):
+        abs_entry = os.path.abspath(os.path.join(root, entry))
+        if abs_entry in skip_abs:
+            continue
+        if any(
+            abs_entry == keep_path or abs_entry.startswith(keep_path + os.sep)
+            for keep_path in keep_abs
+            if keep_path
+        ):
+            continue
+        try:
+            if os.path.isdir(abs_entry):
+                shutil.rmtree(abs_entry)
+            else:
+                os.remove(abs_entry)
+        except Exception as exc:
+            log_error(f"安全删除 {abs_entry} 失败: {exc}")
+
+
+def backup_model_dir():
+    repo_root = os.getcwd()
+    model_path = os.path.join(repo_root, "model")
+    if not os.path.isdir(model_path):
+        return None
+    backup_root = tempfile.mkdtemp(prefix="mfw_model_backup_")
+    backup_model = os.path.join(backup_root, "model")
+    try:
+        shutil.copytree(model_path, backup_model)
+        return backup_root
+    except Exception as exc:
+        log_error(f"备份 model 目录失败: {exc}")
+        shutil.rmtree(backup_root, ignore_errors=True)
+        return None
+
+
+def restore_model_dir(backup_root):
+    if not backup_root or not os.path.isdir(backup_root):
+        return
+    backup_model = os.path.join(backup_root, "model")
+    if not os.path.isdir(backup_model):
+        shutil.rmtree(backup_root, ignore_errors=True)
+        return
+    target = os.path.join(os.getcwd(), "model")
+    if os.path.exists(target):
+        shutil.rmtree(target)
+    try:
+        shutil.copytree(backup_model, target)
+    except Exception as exc:
+        log_error(f"恢复 model 目录失败: {exc}")
+    finally:
+        shutil.rmtree(backup_root, ignore_errors=True)
+
+
+def extract_interface_folder(zip_path):
+    import zipfile
+
+    repo_root = os.getcwd()
+    try:
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            interface_member = next(
+                (
+                    name
+                    for name in zf.namelist()
+                    if os.path.basename(name).lower()
+                    in {"interface.json", "interface.jsonc"}
+                ),
+                None,
+            )
+            if not interface_member:
+                log_error("未在更新包中找到 interface.json/ interface.jsonc")
+                return False
+
+            interface_dir = os.path.dirname(interface_member)
+            prefix = f"{interface_dir.rstrip('/')}/" if interface_dir else ""
+
+            for member in zf.namelist():
+                if prefix and not member.startswith(prefix):
+                    continue
+                relative_path = member[len(prefix) :] if prefix else member
+                if not relative_path:
+                    continue
+                target_path = os.path.join(repo_root, relative_path)
+                if member.endswith("/"):
+                    os.makedirs(target_path, exist_ok=True)
+                    continue
+                os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                with zf.open(member) as source, open(target_path, "wb") as target:
+                    shutil.copyfileobj(source, target)
+                if (
+                    sys.platform != "win32"
+                    and relative_path in {"MFW", "MFWUpdater"}
+                ):
+                    os.chmod(target_path, 0o755)
+        return True
+    except Exception as exc:
+        log_error(f"解压 interface 文件夹失败: {exc}")
+        return False
+
+
+def load_change_entries(zip_path):
+    import zipfile
+
+    try:
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            candidate = next(
+                (
+                    name
+                    for name in zf.namelist()
+                    if os.path.basename(name).lower() in {"change.json", "changes.json"}
+                ),
+                None,
+            )
+            if not candidate:
+                log_error("更新包中未包含 change.json/changes.json")
+                return None
+            with zf.open(candidate) as change_file:
+                data = json.load(change_file)
+                return data.get("deleted", [])
+    except Exception as exc:
+        log_error(f"读取 change.json 失败: {exc}")
+        return None
+
+
+def apply_github_hotfix(package_path, keep_list):
+    repo_root = os.getcwd()
+    model_backup = backup_model_dir()
+    skip_paths = {
+        os.path.abspath(__file__),
+        os.path.abspath(os.path.join(repo_root, "update")),
+        os.path.abspath(os.path.join(repo_root, "file_list.txt")),
+        os.path.abspath(os.path.join(repo_root, "UPDATE_ERROR.log")),
+        os.path.abspath(package_path),
+        os.path.abspath(os.path.join(repo_root, "update_back")),
+    }
+    safe_delete_except(keep_list, skip_paths)
+    success = extract_interface_folder(package_path)
+    restore_model_dir(model_backup)
+    return success
+
+
+def apply_mirror_hotfix(package_path):
+    deletes = load_change_entries(package_path)
+    if deletes is None:
+        return False
+    safe_delete_paths(deletes)
+    return extract_zip_file_with_validation(package_path)
+
+
+
 def find_latest_zip_file(directory):
     """
     查找目录中最新的 zip 包
@@ -311,18 +515,60 @@ def standard_update():
         sys.exit(error_message)
 
     new_version_dir, update_back_dir = ensure_update_directories()
-    update_file = find_latest_zip_file(new_version_dir)
+    metadata = load_update_metadata(new_version_dir)
+    file_list_path = os.path.join(os.getcwd(), "file_list.txt")
+    file_list = read_file_list(file_list_path)
 
-    if update_file:
-        if extract_zip_file_with_validation(update_file):
-            print("更新文件解压成功")
-            move_update_archive_to_backup(update_file, update_back_dir)
-        else:
-            error_message = "更新文件解压失败，更新已中止"
-            log_error(error_message)
-            sys.exit(error_message)
-    else:
+    package_name = metadata.get("package_name") if metadata else None
+    package_path = (
+        os.path.join(new_version_dir, package_name)
+        if package_name
+        else None
+    )
+    if not package_path or not os.path.isfile(package_path):
+        package_path = find_latest_zip_file(new_version_dir)
+
+    if not package_path:
         print("未找到更新文件")
+        sys.exit("未找到更新文件")
+
+    source = metadata.get("source", "unknown") if metadata else "unknown"
+    mode = metadata.get("mode", "full") if metadata else "full"
+    version = metadata.get("version", "")
+    print(
+        f"检测到更新包: {os.path.basename(package_path)} "
+        f"来源: {source} 模式: {mode} 版本: {version}"
+    )
+
+    success = False
+    if metadata:
+        if source == "github":
+            if mode == "full":
+                safe_delete_paths(file_list)
+                success = extract_zip_file_with_validation(package_path)
+            else:
+                success = apply_github_hotfix(package_path, file_list)
+        elif source == "mirror":
+            if mode == "full":
+                safe_delete_paths(file_list)
+                success = extract_zip_file_with_validation(package_path)
+            else:
+                success = apply_mirror_hotfix(package_path)
+        else:
+            success = extract_zip_file_with_validation(package_path)
+    else:
+        success = extract_zip_file_with_validation(package_path)
+
+    if success:
+        print("更新文件处理完成")
+        move_update_archive_to_backup(package_path, update_back_dir)
+        metadata_path = os.path.join(new_version_dir, "update_metadata.json")
+        if os.path.exists(metadata_path):
+            os.remove(metadata_path)
+    else:
+        error_message = "更新文件处理失败"
+        log_error(error_message)
+        sys.exit(error_message)
 
     # 重启程序
     print("重启MFW程序...")

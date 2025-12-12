@@ -24,6 +24,7 @@ MFW-ChainFlow Assistant 更新单元
 
 from PySide6.QtCore import QThread, SignalInstance, QObject, Signal
 from enum import Enum
+from datetime import datetime
 
 import requests
 from requests import Response, HTTPError
@@ -511,6 +512,31 @@ class BaseUpdate(QThread):
             except Exception as cleanup_err:
                 logger.warning(f"清理 {path} 时失败: {cleanup_err}")
 
+    def _write_update_metadata(
+        self,
+        download_dir: Path,
+        source: str,
+        mode: str,
+        version: str | None,
+        attempts: int,
+        package_name: str,
+    ) -> None:
+        data = {
+            "source": source,
+            "mode": mode,
+            "version": str(version) if version else "",
+            "package_name": package_name,
+            "download_time": datetime.utcnow().isoformat() + "Z",
+            "attempts": attempts,
+        }
+        metadata_path = download_dir / "update_metadata.json"
+        try:
+            with open(metadata_path, "w", encoding="utf-8") as f:
+                jsonc.dump(data, f, indent=2, ensure_ascii=False)
+            logger.info("已写入更新元数据: %s", metadata_path)
+        except Exception as exc:
+            logger.warning("记录更新元数据失败: %s", exc)
+
     def _is_under_any(self, relative: Path, parents: list[Path]) -> bool:
         for parent in parents:
             if len(parent.parts) > len(relative.parts):
@@ -666,15 +692,15 @@ class BaseUpdate(QThread):
         version: str,
         os_type: Optional[str] = None,
         arch: Optional[str] = None,
-        multiplatform: Optional[bool] = False,
         channel: Optional[str] = "stable",
     ) -> Dict:
-
-        if multiplatform is True:
+        """if multiplatform is True:
             logger.debug("检查到agent字段,使用多平台更新")
             url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&os={os_type}&arch={arch}&channel={channel}&user_agent=MFW_PyQt6"
         else:
-            url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&channel={channel}&user_agent=MFW_PyQt6"
+            url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&channel={channel}&user_agent=MFW_PyQt6
+        """
+        url = f"https://mirrorchyan.com/api/resources/{res_id}/latest?current_version={version}&cdk={cdk}&os={os_type}&arch={arch}&channel={channel}&user_agent=MFW_PyQt6"
 
         response = self._mirror_response(url)
         if isinstance(response, dict):
@@ -929,7 +955,6 @@ class Update(BaseUpdate):
         self.current_version = task_interface.get("version", "v1.0.0")
         self.url = task_interface.get("github", task_interface.get("url", ""))
         self.current_res_id = task_interface.get("mirrorchyan_rid", "")
-        self.multiplatform = task_interface.get("mirrorchyan_multiplatform", False)
 
         self.mirror_cdk = self.Mirror_ckd()
 
@@ -944,6 +969,7 @@ class Update(BaseUpdate):
         )
         self.download_url = None
         self.release_note = ""
+        self.download_attempts = 0
 
     def _normalize_channel(self, value) -> Config.UpdateChannel:
         """Convert stored channel value into a valid UpdateChannel enum."""
@@ -1058,6 +1084,7 @@ class Update(BaseUpdate):
 
             logger.info("[步骤3] 开始下载更新包...")
             logger.debug("[步骤3] 下载地址: %s", download_url)
+            self.download_attempts += 1
             downloaded_zip_path, download_error = self.download_file(
                 download_url,
                 download_dir,
@@ -1082,6 +1109,24 @@ class Update(BaseUpdate):
                 zip_file_path.stat().st_size / (1024 * 1024),
             )
             self._emit_info_bar("success", self.tr("Download complete"))
+
+            self._write_update_metadata(
+                download_dir,
+                str(download_source),
+                "hotfix" if hotfix and download_source == "github" else "full",
+                str(self.latest_update_version or ""),
+                self.download_attempts,
+                zip_file_path.name,
+            )
+
+            # Mirror 下载不执行热更新，直接提示用户重启
+            if download_source == "mirror":
+                logger.info("[步骤3] Mirror 下载完成，需重启应用更新，结束流程")
+                return self._stop_with_notice(
+                    1,
+                    "info",
+                    self.tr("Download complete, please restart to apply update"),
+                )
 
             # 步骤3: 判断是否可以热更新
             if not hotfix:
@@ -1239,7 +1284,6 @@ class Update(BaseUpdate):
                 channel=self.current_channel,
                 os_type=self.current_os_type,
                 arch=self.current_arch,
-                multiplatform=self.multiplatform,
             )
 
             mirror_status = mirror_result.get("status")
