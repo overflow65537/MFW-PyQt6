@@ -26,6 +26,7 @@ from PySide6.QtCore import QThread, SignalInstance, QObject, Signal
 from enum import Enum
 from datetime import datetime
 
+import io
 import requests
 from requests import Response, HTTPError
 import jsonc
@@ -1115,7 +1116,15 @@ class Update(BaseUpdate):
             self._emit_info_bar("success", self.tr("Download complete"))
 
             mode_label = "full"
-            if download_source != "mirror" and hotfix:
+            if download_source == "mirror":
+                mirror_mode = self._detect_mirror_archive_mode(zip_file_path)
+                if mirror_mode is None:
+                    message = self.tr("Failed to read Mirror update package")
+                    logger.error("[步骤3] 读取镜像更新包失败: %s", zip_file_path)
+                    return self._stop_with_notice(0, "error", message)
+                mode_label = mirror_mode
+                logger.info("[步骤3] 镜像更新包检测到模式: %s", mode_label)
+            elif hotfix:
                 mode_label = "hotfix"
             self._write_update_metadata(
                 download_dir,
@@ -1474,6 +1483,79 @@ class Update(BaseUpdate):
         if level and message:
             self._emit_info_bar(level, message)
         self.stop_signal.emit(code)
+
+    def _detect_mirror_archive_mode(self, archive_path: Path) -> str | None:
+        """尝试以 zip/tar 圆方式识别镜像更新包并推断模式。"""
+        try:
+            change_data = self._read_changes_json_from_zip(archive_path)
+        except (zipfile.BadZipFile, zipfile.LargeZipFile, OSError) as exc:
+            logger.debug("尝试以 zip 读取镜像包失败: %s -> %s", archive_path, exc)
+        else:
+            return self._mirror_mode_from_change_data(change_data)
+        try:
+            change_data = self._read_changes_json_from_tar(archive_path)
+        except (tarfile.TarError, OSError) as exc:
+            logger.debug("尝试以 tar.gz 读取镜像包失败: %s -> %s", archive_path, exc)
+        else:
+            return self._mirror_mode_from_change_data(change_data)
+        return None
+
+    def _read_changes_json_from_zip(self, archive_path: Path) -> Dict | None:
+        with zipfile.ZipFile(archive_path, "r", metadata_encoding="utf-8") as archive:
+            candidate = next(
+                (
+                    name
+                    for name in archive.namelist()
+                    if os.path.basename(name).lower() == "changes.json"
+                ),
+                None,
+            )
+            if not candidate:
+                return {}
+            with archive.open(candidate) as raw:
+                try:
+                    with io.TextIOWrapper(raw, encoding="utf-8") as reader:
+                        return jsonc.load(reader)
+                except jsonc.JSONDecodeError as exc:
+                    logger.warning(
+                        "解析镜像包中的 changes.json 失败: %s", exc
+                    )
+                    return {}
+
+    def _read_changes_json_from_tar(self, archive_path: Path) -> Dict | None:
+        with tarfile.open(archive_path, "r:*") as archive:
+            for member in archive.getmembers():
+                if os.path.basename(member.name).lower() != "changes.json":
+                    continue
+                file_obj = archive.extractfile(member)
+                if not file_obj:
+                    return {}
+                with file_obj:
+                    try:
+                        with io.TextIOWrapper(file_obj, encoding="utf-8") as reader:
+                            return jsonc.load(reader)
+                    except jsonc.JSONDecodeError as exc:
+                        logger.warning(
+                            "解析镜像包中的 changes.json 失败: %s", exc
+                        )
+                        return {}
+        return {}
+
+    def _mirror_mode_from_change_data(self, change_data: Dict | None) -> str:
+        if not isinstance(change_data, dict):
+            return "full"
+        if "type" not in change_data:
+            return "full"
+        type_value = change_data.get("type")
+        normalized = (
+            str(type_value).strip().lower()
+            if isinstance(type_value, str)
+            else ""
+        )
+        if normalized == "full":
+            return "full"
+        logger.debug("镜像包 changes.json 指定的 type: %s", type_value)
+        return "hotfix"
 
     def _normalize_last_version(self, fallback: str | None = None) -> str | None:
         version = self.latest_update_version or fallback or self.current_version
