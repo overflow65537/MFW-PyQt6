@@ -218,11 +218,11 @@ def generate_file_list(input_dir, output_file=None):
 
     # 检查输入路径是否存在
     if not input_path.exists():
-        print(f"错误：输入路径 '{input_dir}' 不存在")
+        print(f"Error: '{input_dir}' not found")
         return False
 
     if not input_path.is_dir():
-        print(f"错误：输入路径 '{input_dir}' 不是文件夹")
+        print(f"Error: '{input_dir}' is not a directory")
         return False
 
     # 如果没有指定输出文件，使用默认名称
@@ -252,14 +252,14 @@ def generate_file_list(input_dir, output_file=None):
 
                     f.write(file_path + "\n")
 
-        print(f"文件列表已生成：{output_file}")
+        print(f"File list generated: {output_file}")
         print(
-            f"共处理了 {sum([len(files) for _, _, files in os.walk(input_path)])} 个文件"
+            f"Processed {sum([len(files) for _, _, files in os.walk(input_path)])} files"
         )
         return True
 
     except Exception as e:
-        print(f"生成文件列表时出错：{e}")
+        print(f"Error generating file list: {e}")
         return False
 
 
