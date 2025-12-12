@@ -26,6 +26,7 @@ import os
 import site
 import shutil
 import sys
+from pathlib import Path
 
 # 删除dist
 if os.path.exists(os.path.join(os.getcwd(), "dist", "MFW")):
@@ -43,7 +44,10 @@ version = sys.argv[3]
 
 # 写入版本号
 with open(os.path.join(os.getcwd(), "app", "common", "__version__.py"), "w") as f:
+    from datetime import datetime
+
     f.write(f'__version__ = "{version}"')
+    f.write(f'__build_time__ = "{datetime.now().strftime("%Y-%m-%d %H:%M")}"')
 
 
 # === 依赖包路径发现 ===
@@ -198,3 +202,68 @@ updater_command = [
     os.path.join("dist", "MFW"),
 ]
 PyInstaller.__main__.run(updater_command)
+
+
+def generate_file_list(input_dir, output_file=None):
+    """
+    生成文件夹内所有文件的列表
+
+    Args:
+        input_dir (str): 输入文件夹路径
+        output_file (str, optional): 输出文件路径，如果不提供则使用默认名称
+    """
+    # 转换为Path对象
+
+    input_path = Path(input_dir)
+
+    # 检查输入路径是否存在
+    if not input_path.exists():
+        print(f"错误：输入路径 '{input_dir}' 不存在")
+        return False
+
+    if not input_path.is_dir():
+        print(f"错误：输入路径 '{input_dir}' 不是文件夹")
+        return False
+
+    # 如果没有指定输出文件，使用默认名称
+    if output_file is None:
+        output_file = f"{input_path.name}_file_list.txt"
+
+    try:
+        with open(output_file, "w", encoding="utf-8") as f:
+            # 遍历目录树
+            for root, dirs, files in os.walk(input_path):
+                # 计算相对路径
+                rel_root = os.path.relpath(root, input_path.parent)
+
+                # 写入所有文件
+                for file in files:
+                    # 构建以./开头的相对路径
+                    if rel_root == input_path.name:
+                        # 如果是根目录，直接使用./文件名
+                        file_path = f"./{file}"
+                    else:
+                        # 否则使用./目录/文件名
+                        rel_dir = os.path.relpath(root, input_path)
+                        if rel_dir == ".":
+                            file_path = f"./{file}"
+                        else:
+                            file_path = f"./{rel_dir}/{file}"
+
+                    f.write(file_path + "\n")
+
+        print(f"文件列表已生成：{output_file}")
+        print(
+            f"共处理了 {sum([len(files) for _, _, files in os.walk(input_path)])} 个文件"
+        )
+        return True
+
+    except Exception as e:
+        print(f"生成文件列表时出错：{e}")
+        return False
+
+
+# 生成包含文件列表
+generate_file_list(
+    os.path.join("dist", "MFW"), os.path.join("dist", "MFW", "file_list.txt")
+)
