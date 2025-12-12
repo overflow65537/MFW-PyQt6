@@ -321,7 +321,7 @@ def safe_delete_paths(relative_paths):
             log_error(f"删除 {abs_path} 失败: {exc}")
 
 
-def safe_delete_except(keep_relative_paths, skip_paths=None):
+def safe_delete_except(keep_relative_paths, skip_paths=None, extra_keep=None):
     root = os.getcwd()
     keep_abs = set()
     for rel_path in keep_relative_paths:
@@ -330,6 +330,11 @@ def safe_delete_except(keep_relative_paths, skip_paths=None):
         dirname = os.path.abspath(os.path.dirname(abs_path))
         if dirname and dirname != root:
             keep_abs.add(dirname)
+    for rel_path in extra_keep or []:
+        abs_path = os.path.abspath(os.path.join(root, rel_path))
+        keep_abs.add(abs_path)
+        if os.path.isdir(abs_path):
+            keep_abs.add(os.path.abspath(abs_path))
     skip_abs = {os.path.abspath(path) for path in (skip_paths or [])}
     for entry in os.listdir(root):
         abs_entry = os.path.abspath(os.path.join(root, entry))
@@ -465,7 +470,11 @@ def apply_github_hotfix(package_path, keep_list):
         os.path.abspath(package_path),
         os.path.abspath(os.path.join(repo_root, "update_back")),
     }
-    safe_delete_except(keep_list, skip_paths)
+    safe_delete_except(
+        keep_list,
+        skip_paths,
+        extra_keep=["config", "update", "debug"],
+    )
     success = extract_interface_folder(package_path)
     restore_model_dir(model_backup)
     return success
@@ -501,7 +510,7 @@ def find_latest_zip_file(directory):
         return None
 
 
-def move_update_archive_to_backup(src_path, backup_dir):
+def move_update_archive_to_backup(src_path, backup_dir, metadata_path=None):
     """
     将更新包移动到备份目录，避免名称冲突
     """
@@ -516,6 +525,10 @@ def move_update_archive_to_backup(src_path, backup_dir):
     try:
         shutil.move(src_path, dest_path)
         print(f"更新包已移入备份目录: {dest_path}")
+        if metadata_path and os.path.exists(metadata_path):
+            metadata_dest = os.path.join(backup_dir, f"{base_name}.metadata.json")
+            shutil.move(metadata_path, metadata_dest)
+            print(f"更新元数据已随包移动: {metadata_dest}")
     except Exception as e:
         log_error(f"移动更新包到备份目录失败: {e}")
 
@@ -597,10 +610,10 @@ def standard_update():
 
     if success:
         print("更新文件处理完成")
-        move_update_archive_to_backup(package_path, update_back_dir)
         metadata_path = os.path.join(new_version_dir, "update_metadata.json")
-        if os.path.exists(metadata_path):
-            os.remove(metadata_path)
+        move_update_archive_to_backup(
+            package_path, update_back_dir, metadata_path=metadata_path
+        )
     else:
         error_message = "更新文件处理失败"
         log_error(error_message)
