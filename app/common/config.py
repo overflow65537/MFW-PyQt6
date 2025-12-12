@@ -38,8 +38,7 @@ from qfluentwidgets import (
     RangeConfigItem,
     RangeValidator,
     Theme,
-    ConfigSerializer,
-    __version__,
+    ConfigSerializer
 )
 
 
