@@ -1,11 +1,14 @@
 import json
 import logging
 import os
+import random
 import shutil
 import sys
 import tempfile
 import time
+from datetime import datetime
 from pathlib import Path
+from uuid import uuid4
 
 
 def is_mfw_running():
@@ -249,6 +252,36 @@ def ensure_update_directories():
     os.makedirs(new_version_dir, exist_ok=True)
     os.makedirs(update_back_dir, exist_ok=True)
     return new_version_dir, update_back_dir
+
+
+def generate_metadata_samples(target_dir: str | Path | None = None):
+    if target_dir is None:
+        target_dir = os.path.join(os.getcwd(), "update", "new_version")
+    os.makedirs(target_dir, exist_ok=True)
+    combos = [
+        ("github", "full"),
+        ("github", "hotfix"),
+        ("mirror", "full"),
+        ("mirror", "hotfix"),
+    ]
+    for source, mode in combos:
+        package_name = f"{source}_{mode}_{uuid4().hex[:8]}.zip"
+        metadata = {
+            "source": source,
+            "mode": mode,
+            "version": f"v{uuid4().hex[:6]}",
+            "package_name": package_name,
+            "download_time": datetime.utcnow().isoformat() + "Z",
+            "attempts": random.randint(1, 3),
+        }
+        file_name = f"metadata_{uuid4().hex}.json"
+        path = os.path.join(target_dir, file_name)
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(metadata, f, indent=2, ensure_ascii=False)
+            print(f"生成元数据: {path}")
+        except Exception as exc:
+            log_error(f"写入元数据失败: {exc}")
 
 
 def setup_update_logger():
@@ -696,8 +729,23 @@ if __name__ == "__main__":
         pass  # 如果无法写入日志文件，继续执行
 
     try:
-        if len(sys.argv) > 1 and sys.argv[1] == "-update":
-            standard_update()
+        if len(sys.argv) > 1:
+            if sys.argv[1] == "-update":
+                standard_update()
+            elif sys.argv[1] == "-generate-metadata":
+                target = sys.argv[2] if len(sys.argv) > 2 else None
+                generate_metadata_samples(target)
+            else:
+                mode = input(
+                    "1. 更新模式 / Standard update\n2. 恢复模式 / Recovery update\n"
+                )
+                if mode == "1":
+                    standard_update()
+                elif mode == "2":
+                    recovery_mode()
+                else:
+                    print("无效输入 / Invalid input")
+                    input("按回车键继续... / Press Enter to continue...")
         else:
             mode = input(
                 "1. 更新模式 / Standard update\n2. 恢复模式 / Recovery update\n"

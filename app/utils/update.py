@@ -511,6 +511,16 @@ class BaseUpdate(QThread):
             except Exception as cleanup_err:
                 logger.warning(f"清理 {path} 时失败: {cleanup_err}")
 
+    def _cleanup_update_artifacts(self, download_dir: Path, zip_file_path: Path) -> None:
+        metadata_path = download_dir / "update_metadata.json"
+        for path in (metadata_path, zip_file_path):
+            try:
+                if path.exists():
+                    path.unlink()
+                    logger.info("[步骤5] 清理更新数据: %s", path)
+            except Exception as err:
+                logger.debug("[步骤5] 清理更新数据失败: %s -> %s", path, err)
+
     def _write_update_metadata(
         self,
         download_dir: Path,
@@ -1109,23 +1119,17 @@ class Update(BaseUpdate):
             )
             self._emit_info_bar("success", self.tr("Download complete"))
 
+            mode_label = "full"
+            if download_source != "mirror" and hotfix:
+                mode_label = "hotfix"
             self._write_update_metadata(
                 download_dir,
                 str(download_source),
-                "hotfix" if hotfix and download_source == "github" else "full",
+                mode_label,
                 str(self.latest_update_version or ""),
                 self.download_attempts,
                 zip_file_path.name,
             )
-
-            # Mirror 下载不执行热更新，直接提示用户重启
-            if download_source == "mirror":
-                logger.info("[步骤3] Mirror 下载完成，需重启应用更新，结束流程")
-                return self._stop_with_notice(
-                    1,
-                    "info",
-                    self.tr("Download complete, please restart to apply update"),
-                )
 
             # 步骤3: 判断是否可以热更新
             if not hotfix:
@@ -1233,6 +1237,7 @@ class Update(BaseUpdate):
             logger.info("[步骤5] 热更新成功完成!")
             logger.info("=" * 50)
             self._emit_info_bar("success", self.tr("Update applied successfully"))
+            self._cleanup_update_artifacts(download_dir, zip_file_path)
             # 触发服务协调器重新初始化
             signalBus.fs_reinit_requested.emit()
             self.stop_signal.emit(1)

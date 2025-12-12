@@ -4,10 +4,11 @@ MFW-ChainFlow Assistant 设置界面
 作者:overflow65537
 """
 
+import json
 import re
-from typing import Callable, Optional
 from time import perf_counter
 from pathlib import Path
+from typing import Any, Callable, Dict, Optional
 
 from PySide6.QtCore import Qt, QSize, QUrl, QTimer, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QDesktopServices, QPixmap
@@ -106,6 +107,7 @@ class SettingInterface(QWidget):
         self._latest_update_check_result: str | bool | None = None
         self._updater_started = False
         self._local_update_package: Path | None = None
+        self._local_update_metadata: Dict[str, Any] | None = None
         self._restart_update_required: bool = False
         self._update_button_handler: Callable | None = None
         self._last_progress_time: float | None = None
@@ -1503,11 +1505,36 @@ class SettingInterface(QWidget):
             return candidate
         return None
 
+
+    def _load_local_update_metadata(self) -> Dict[str, Any] | None:
+        metadata_path = Path.cwd() / "update" / "new_version" / "update_metadata.json"
+        if not metadata_path.exists():
+            return None
+        try:
+            with open(metadata_path, "r", encoding="utf-8") as stream:
+                metadata = json.load(stream)
+            logger.info("本地更新元数据: %s", metadata_path)
+            return metadata
+        except Exception as exc:
+            logger.warning("加载本地更新元数据失败: %s", exc)
+            return None
+
+
     def _refresh_local_update_package(self, restart_required: bool = True) -> Path | None:
         """刷新本地更新包缓存，便于动态响应。"""
         self._local_update_package = self._detect_local_update_package()
+        self._local_update_metadata = (
+            self._load_local_update_metadata() if self._local_update_package else None
+        )
         if self._local_update_package:
-            self._prepare_instant_update_state(restart_required=restart_required)
+            hotfix_mode = (
+                self._local_update_metadata
+                and self._local_update_metadata.get("mode") == "hotfix"
+            )
+            self._prepare_instant_update_state(
+                restart_required=restart_required and not hotfix_mode
+            )
+            logger.info("本地包模式=%s", "hotfix" if hotfix_mode else "full")
         return self._local_update_package
 
     def _prepare_instant_update_state(self, restart_required: bool = True) -> None:
@@ -1517,6 +1544,27 @@ class SettingInterface(QWidget):
         latest_version = cfg.get(cfg.latest_update_version)
         if latest_version:
             self._set_last_version_label(str(latest_version))
+
+    def _is_local_update_hotfix(self) -> bool:
+        return bool(
+            self._local_update_metadata
+            and self._local_update_metadata.get("mode") == "hotfix"
+        )
+
+    def _start_hotfix_update(self) -> bool:
+        if not self._updater:
+            self._init_updater()
+        if not self._updater:
+            logger.warning("更新器未初始化，无法执行热更新")
+            return False
+        if self._updater.isRunning():
+            logger.info("更新器已在运行")
+            return True
+        self._show_progress_bar()
+        self._bind_stop_button(self.tr("Stop update"), enable=False)
+        self._lock_update_button_temporarily()
+        self._updater.start()
+        return True
 
     def start_auto_update(self) -> bool:
         """供主窗口调用的自动更新入口，复用设置页的更新器。"""
@@ -1532,6 +1580,11 @@ class SettingInterface(QWidget):
             return True
 
         if self._refresh_local_update_package(restart_required=True):
+            if self._is_local_update_hotfix():
+                logger.info(
+                    "自动更新检测到热更新包，直接启动热更新流程（auto_accept=True）"
+                )
+                return self._start_hotfix_update()
             logger.info(
                 "自动更新检测到本地更新包，直接进入立即更新确认（auto_accept=True）"
             )
