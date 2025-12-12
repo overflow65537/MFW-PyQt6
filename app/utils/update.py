@@ -25,8 +25,6 @@ MFW-ChainFlow Assistant 更新单元
 from PySide6.QtCore import QThread, SignalInstance, QObject, Signal
 from enum import Enum
 from datetime import datetime
-
-import io
 import requests
 from requests import Response, HTTPError
 import jsonc
@@ -1485,77 +1483,34 @@ class Update(BaseUpdate):
         self.stop_signal.emit(code)
 
     def _detect_mirror_archive_mode(self, archive_path: Path) -> str | None:
-        """尝试以 zip/tar 圆方式识别镜像更新包并推断模式。"""
+        """根据镜像包内是否存在 changes.json 决定模式。"""
         try:
-            change_data = self._read_changes_json_from_zip(archive_path)
+            if self._has_changes_json_in_zip(archive_path):
+                return "hotfix"
+            return "full"
         except (zipfile.BadZipFile, zipfile.LargeZipFile, OSError) as exc:
             logger.debug("尝试以 zip 读取镜像包失败: %s -> %s", archive_path, exc)
-        else:
-            return self._mirror_mode_from_change_data(change_data)
         try:
-            change_data = self._read_changes_json_from_tar(archive_path)
+            if self._has_changes_json_in_tar(archive_path):
+                return "hotfix"
+            return "full"
         except (tarfile.TarError, OSError) as exc:
             logger.debug("尝试以 tar.gz 读取镜像包失败: %s -> %s", archive_path, exc)
-        else:
-            return self._mirror_mode_from_change_data(change_data)
         return None
 
-    def _read_changes_json_from_zip(self, archive_path: Path) -> Dict | None:
+    def _has_changes_json_in_zip(self, archive_path: Path) -> bool:
         with zipfile.ZipFile(archive_path, "r", metadata_encoding="utf-8") as archive:
-            candidate = next(
-                (
-                    name
-                    for name in archive.namelist()
-                    if os.path.basename(name).lower() == "changes.json"
-                ),
-                None,
+            return any(
+                os.path.basename(name).lower() == "changes.json"
+                for name in archive.namelist()
             )
-            if not candidate:
-                return {}
-            with archive.open(candidate) as raw:
-                try:
-                    with io.TextIOWrapper(raw, encoding="utf-8") as reader:
-                        return jsonc.load(reader)
-                except jsonc.JSONDecodeError as exc:
-                    logger.warning(
-                        "解析镜像包中的 changes.json 失败: %s", exc
-                    )
-                    return {}
 
-    def _read_changes_json_from_tar(self, archive_path: Path) -> Dict | None:
+    def _has_changes_json_in_tar(self, archive_path: Path) -> bool:
         with tarfile.open(archive_path, "r:*") as archive:
-            for member in archive.getmembers():
-                if os.path.basename(member.name).lower() != "changes.json":
-                    continue
-                file_obj = archive.extractfile(member)
-                if not file_obj:
-                    return {}
-                with file_obj:
-                    try:
-                        with io.TextIOWrapper(file_obj, encoding="utf-8") as reader:
-                            return jsonc.load(reader)
-                    except jsonc.JSONDecodeError as exc:
-                        logger.warning(
-                            "解析镜像包中的 changes.json 失败: %s", exc
-                        )
-                        return {}
-        return {}
-
-    def _mirror_mode_from_change_data(self, change_data: Dict | None) -> str:
-        if not isinstance(change_data, dict):
-            return "full"
-        if "type" not in change_data:
-            return "full"
-        type_value = change_data.get("type")
-        normalized = (
-            str(type_value).strip().lower()
-            if isinstance(type_value, str)
-            else ""
-        )
-        if normalized == "full":
-            return "full"
-        logger.debug("镜像包 changes.json 指定的 type: %s", type_value)
-        return "hotfix"
+            return any(
+                os.path.basename(member.name).lower() == "changes.json"
+                for member in archive.getmembers()
+            )
 
     def _normalize_last_version(self, fallback: str | None = None) -> str | None:
         version = self.latest_update_version or fallback or self.current_version

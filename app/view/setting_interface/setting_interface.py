@@ -1527,10 +1527,7 @@ class SettingInterface(QWidget):
             self._load_local_update_metadata() if self._local_update_package else None
         )
         if self._local_update_package:
-            hotfix_mode = (
-                self._local_update_metadata
-                and self._local_update_metadata.get("mode") == "hotfix"
-            )
+            hotfix_mode = self._is_local_update_hotfix()
             self._prepare_instant_update_state(
                 restart_required=restart_required and not hotfix_mode
             )
@@ -1549,6 +1546,7 @@ class SettingInterface(QWidget):
         return bool(
             self._local_update_metadata
             and self._local_update_metadata.get("mode") == "hotfix"
+            and self._local_update_metadata.get("source") != "mirror"
         )
 
     def _start_hotfix_update(self) -> bool:
