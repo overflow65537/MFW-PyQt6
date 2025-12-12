@@ -7,9 +7,13 @@ import subprocess
 import sys
 import tempfile
 import time
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import List, Tuple
 from uuid import uuid4
+
+FULL_UPDATE_EXCLUDES = ["config", "debug", "update", "MFWUpdater.exe", "MFWUpdate"]
 
 
 def is_mfw_running():
@@ -338,6 +342,13 @@ def read_file_list(file_list_path):
     return entries
 
 
+@dataclass
+class SafeDeleteResult:
+    success: bool
+    backups: List[Tuple[str, str]]
+    backup_dir: str | None
+
+
 def _copy_to_backup(abs_path, backup_root, root):
     if not os.path.exists(abs_path):
         return None
@@ -369,6 +380,156 @@ def _restore_from_backup(backups):
                 shutil.copy2(backup, src)
         except Exception as exc:
             log_error(f"恢复 {src} 失败: {exc}")
+
+
+def _cleanup_root_except(exclude_relatives):
+    root = os.getcwd()
+    exclude_abs = {
+        os.path.abspath(os.path.join(root, rel)) for rel in exclude_relatives if rel
+    }
+    for entry in os.listdir(root):
+        abs_entry = os.path.abspath(os.path.join(root, entry))
+        if any(
+            abs_entry == ex or abs_entry.startswith(ex + os.sep)
+            for ex in exclude_abs
+        ):
+            continue
+        if os.path.isdir(abs_entry):
+            shutil.rmtree(abs_entry, ignore_errors=True)
+        else:
+            try:
+                os.remove(abs_entry)
+            except FileNotFoundError:
+                pass
+
+
+def safe_delete_all_except(exclude_relatives):
+    root = os.getcwd()
+    exclude_abs = {
+        os.path.abspath(os.path.join(root, rel)) for rel in exclude_relatives if rel
+    }
+    delete_candidates = []
+    for entry in os.listdir(root):
+        abs_entry = os.path.abspath(os.path.join(root, entry))
+        if any(
+            abs_entry == ex or abs_entry.startswith(ex + os.sep)
+            for ex in exclude_abs
+        ):
+            continue
+        delete_candidates.append(abs_entry)
+
+    backup_dir = tempfile.mkdtemp(prefix="mfw_delete_backup_")
+    backups: List[Tuple[str, str]] = []
+    try:
+        for abs_entry in delete_candidates:
+            if not os.path.exists(abs_entry):
+                continue
+            backup_entry = _copy_to_backup(abs_entry, backup_dir, root)
+            if backup_entry:
+                backups.append(backup_entry)
+        for abs_entry in delete_candidates:
+            if not os.path.exists(abs_entry):
+                continue
+            if os.path.isdir(abs_entry):
+                shutil.rmtree(abs_entry)
+            else:
+                os.remove(abs_entry)
+        return SafeDeleteResult(True, backups, backup_dir)
+    except Exception as exc:
+        log_error(f"安全删除失败: {exc}")
+        _restore_from_backup(backups)
+        shutil.rmtree(backup_dir, ignore_errors=True)
+        return SafeDeleteResult(False, [], None)
+
+
+def _extract_zip_to_temp(zip_path: Path):
+    import zipfile
+
+    temp_dir = Path(tempfile.mkdtemp(prefix="mfw_full_extract_"))
+    try:
+        with zipfile.ZipFile(zip_path, "r", metadata_encoding="utf-8") as archive:
+            archive.extractall(temp_dir)
+        return temp_dir
+    except Exception as exc:
+        log_error(f"解压更新包到临时目录失败: {exc}")
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        return None
+
+
+def _copy_temp_to_root(temp_dir: Path):
+    current_dir = os.getcwd()
+    for root_dir, dirs, files in os.walk(temp_dir):
+        rel_root = os.path.relpath(root_dir, temp_dir)
+        dest_root = (
+            os.path.join(current_dir, rel_root)
+            if rel_root not in (".", "")
+            else current_dir
+        )
+        os.makedirs(dest_root, exist_ok=True)
+        for d in dirs:
+            os.makedirs(os.path.join(dest_root, d), exist_ok=True)
+        for file in files:
+            src_file = os.path.join(root_dir, file)
+            dest_file = os.path.join(dest_root, file)
+            os.makedirs(os.path.dirname(dest_file), exist_ok=True)
+            shutil.copy2(src_file, dest_file)
+            if sys.platform != "win32" and os.path.basename(dest_file) in {
+                "MFW",
+                "MFWUpdater",
+            }:
+                os.chmod(dest_file, 0o755)
+
+
+def _increment_attempts(metadata: dict, metadata_path: str):
+    metadata["attempts"] = metadata.get("attempts", 0) + 1
+    try:
+        save_update_metadata(metadata_path, metadata)
+    except Exception as exc:
+        log_error(f"更新尝试次数记录失败: {exc}")
+
+
+def _handle_full_update_failure(
+    package_path: str,
+    metadata_path: str,
+    metadata: dict,
+    backups: List[Tuple[str, str]] | None = None,
+):
+    if backups:
+        _cleanup_root_except(FULL_UPDATE_EXCLUDES)
+        _restore_from_backup(backups)
+    _increment_attempts(metadata, metadata_path)
+    start_mfw_process()
+
+
+def perform_full_update(package_path: str, metadata_path: str, metadata: dict) -> bool:
+    metadata = metadata or {}
+    temp_dir = _extract_zip_to_temp(Path(package_path))
+    if not temp_dir:
+        _handle_full_update_failure(package_path, metadata_path, metadata)
+        return False
+
+    delete_result = safe_delete_all_except(FULL_UPDATE_EXCLUDES)
+    if not delete_result.success:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        _handle_full_update_failure(package_path, metadata_path, metadata)
+        return False
+
+    try:
+        _copy_temp_to_root(temp_dir)
+    except Exception as exc:
+        log_error(f"覆盖目录失败: {exc}")
+        _handle_full_update_failure(
+            package_path, metadata_path, metadata, delete_result.backups
+        )
+        if delete_result.backup_dir:
+            shutil.rmtree(delete_result.backup_dir, ignore_errors=True)
+        return False
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    if delete_result.backup_dir:
+        shutil.rmtree(delete_result.backup_dir, ignore_errors=True)
+    return True
 
 
 def safe_delete_paths(relative_paths):
@@ -714,19 +875,15 @@ def standard_update():
     if metadata:
         if source == "github":
             if mode == "full":
-                success = (
-                    extract_zip_file_with_validation(package_path)
-                    if safe_delete_paths(file_list)
-                    else False
+                success = perform_full_update(
+                    package_path, metadata_path, metadata
                 )
             else:
                 success = apply_github_hotfix(package_path, file_list)
         elif source == "mirror":
             if mode == "full":
-                success = (
-                    extract_zip_file_with_validation(package_path)
-                    if safe_delete_paths(file_list)
-                    else False
+                success = perform_full_update(
+                    package_path, metadata_path, metadata
                 )
             else:
                 success = apply_mirror_hotfix(package_path)
