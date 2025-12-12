@@ -44,7 +44,7 @@ from PySide6.QtCore import Qt, QTranslator
 from PySide6.QtWidgets import QApplication
 
 
-from app.common.__version__ import __version__, __build_time__
+from app.common.__version__ import __version__
 from app.common.config import cfg
 from app.view.main_window.main_window import MainWindow
 from app.common.config import Language
@@ -54,7 +54,6 @@ from app.utils.crypto import crypto_manager
 
 if __name__ == "__main__":
     logger.info(f"MFW 版本:{__version__}")
-    logger.info(f"构建时间: {__build_time__}")
     logger.info(f"当前工作目录: {os.getcwd()}")
 
     import faulthandler

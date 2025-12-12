@@ -44,8 +44,6 @@ version = sys.argv[3]
 
 # 写入版本号
 with open(os.path.join(os.getcwd(), "app", "common", "__version__.py"), "w") as f:
-    from datetime import datetime
-
     f.write(f'__version__ = "{version}"')
 
 
