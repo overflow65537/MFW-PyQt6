@@ -43,10 +43,11 @@ from qfluentwidgets import ConfigItem, FluentTranslator
 from PySide6.QtCore import Qt, QTranslator
 from PySide6.QtWidgets import QApplication
 
+
+from app.common.__version__ import __version__, __build_time__
 from app.common.config import cfg
 from app.view.main_window.main_window import MainWindow
 from app.common.config import Language
-from app.common.__version__ import __version__, __build_time__
 from app.core.service.interface_manager import get_interface_manager
 from app.utils.crypto import crypto_manager
 

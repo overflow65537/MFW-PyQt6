@@ -35,7 +35,7 @@ import shutil
 import sys
 import threading
 import zipfile
-from datetime import datetime
+
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -85,9 +85,7 @@ from app.common.config import cfg
 from app.common.signal_bus import signalBus
 from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.utils.logger import logger
-from app.common.__version__ import __version__
 from app.core.core import ServiceCoordinator
-from app.utils.update import Update
 from app.widget.notice_message import NoticeMessageBox
 
 
