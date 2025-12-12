@@ -47,8 +47,6 @@ from qfluentwidgets import (
 
 from app.utils.markdown_helper import render_markdown
 from app.widget.notice_message import NoticeMessageBox
-
-from app.common.__version__ import __version__
 from app.common.config import cfg, isWin11
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
