@@ -1,9 +1,11 @@
 import json
+import logging
 import os
 import shutil
 import sys
 import tempfile
 import time
+from pathlib import Path
 
 
 def is_mfw_running():
@@ -234,6 +236,7 @@ def log_error(error_message):
         log_file.write(log_entry)
 
     print(f"错误已记录: {error_message}")
+    update_logger.error(error_message)
 
 
 def ensure_update_directories():
@@ -246,6 +249,33 @@ def ensure_update_directories():
     os.makedirs(new_version_dir, exist_ok=True)
     os.makedirs(update_back_dir, exist_ok=True)
     return new_version_dir, update_back_dir
+
+
+def setup_update_logger():
+    debug_dir = Path("debug")
+    debug_dir.mkdir(exist_ok=True)
+    index_file = debug_dir / "run_index.txt"
+    try:
+        current = int(index_file.read_text().strip() or "0")
+    except Exception:
+        current = 0
+    current = (current % 5) + 1
+    index_file.write_text(str(current))
+    log_path = debug_dir / f"updater_{current}.log"
+    if log_path.exists():
+        log_path.unlink()
+    logger = logging.getLogger("updater")
+    logger.setLevel(logging.DEBUG)
+    logger.handlers.clear()
+    handler = logging.FileHandler(log_path, encoding="utf-8")
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    return logger
+
+
+update_logger = setup_update_logger()
 
 
 def load_update_metadata(update_dir):
@@ -496,6 +526,7 @@ def standard_update():
     """
     import subprocess
 
+    update_logger.info("标准更新模式开始")
     # 检查MFW是否在运行
     max_checks = 3
     check_count = 0
@@ -518,6 +549,11 @@ def standard_update():
     metadata = load_update_metadata(new_version_dir)
     file_list_path = os.path.join(os.getcwd(), "file_list.txt")
     file_list = read_file_list(file_list_path)
+    update_logger.info(
+        "读取更新信息：metadata=%s, file_list=%s",
+        metadata,
+        file_list,
+    )
 
     package_name = metadata.get("package_name") if metadata else None
     package_path = (
@@ -601,6 +637,8 @@ def recovery_mode():
     _, update_back_dir = ensure_update_directories()
     update_file = find_latest_zip_file(update_back_dir)
 
+    update_logger.info("恢复模式开始, update_file=%s", update_file)
+
     if update_file:
         if extract_zip_file_with_validation(update_file):
             print("恢复更新成功")
@@ -637,6 +675,7 @@ if __name__ == "__main__":
     log_entry = (
         f"\n{'='*60}\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] 更新程序启动\n{'='*60}\n"
     )
+    update_logger.info("更新程序启动, argv=%s", sys.argv)
     try:
         with open("UPDATE_ERROR.log", "a", encoding="utf-8") as log_file:
             log_file.write(log_entry)
