@@ -737,7 +737,7 @@ def apply_github_hotfix(package_path, keep_list):
     if safe_delete_except(
         keep_list,
         skip_paths,
-        extra_keep=["config", "update", "debug"],
+        extra_keep=["config", "update", "debug", "file_list.txt"],
     ):
         success = extract_interface_folder(package_path)
     else:
