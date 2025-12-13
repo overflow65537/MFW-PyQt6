@@ -723,7 +723,20 @@ class OptionItemWidget(QWidget):
 
         child_widgets = self.get_child_widgets_for_value(option_value)
         return child_widgets[0] if child_widgets else None
+
+    def get_option_value_for_child_key(self, child_key: str) -> Optional[str]:
+        """根据 child_key 判断该子选项归属哪个 option_value"""
+        for option_value, child_keys in self._child_value_map.items():
+            if child_key in child_keys:
+                return option_value
+        return None
     
+    def _unwrap_lineedit_value(self, value: Any) -> Any:
+        """如果是字典格式（包含 value 字段），提取真正的输入值。"""
+        if isinstance(value, dict) and "value" in value:
+            return value["value"]
+        return value
+
     def set_value(self, value: Any, skip_animation: bool = True):
         """
         设置选项的值
@@ -798,10 +811,12 @@ class OptionItemWidget(QWidget):
             else:
                 logger.warning("switch 控件未准备好，无法设置值")
         elif self.config_type == "lineedit":
+            lineedit_value = self._unwrap_lineedit_value(value)
+
             if isinstance(self.control_widget, dict):
-                # 多输入框类型
-                if isinstance(value, dict):
-                    for input_name, input_value in value.items():
+                # 多输入框类型（包含 single_input 模式）
+                if isinstance(lineedit_value, dict):
+                    for input_name, input_value in lineedit_value.items():
                         if input_name in self.control_widget:
                             widget = self.control_widget[input_name]
                             widget.blockSignals(True)
@@ -810,12 +825,29 @@ class OptionItemWidget(QWidget):
                                 self.current_value[input_name] = str(input_value)
                             finally:
                                 widget.blockSignals(False)
+                elif self._single_input_mode and self.control_widget:
+                    # 单输入模式：直接映射到唯一的输入框
+                    input_name = next(iter(self.control_widget))
+                    widget = self.control_widget[input_name]
+                    widget.blockSignals(True)
+                    try:
+                        text_value = "" if lineedit_value is None else str(lineedit_value)
+                        widget.setText(text_value)
+                        self.current_value[input_name] = text_value
+                    finally:
+                        widget.blockSignals(False)
             elif isinstance(self.control_widget, LineEdit):
                 # 单个输入框
+                text_value = ""
+                if isinstance(lineedit_value, dict):
+                    if lineedit_value:
+                        text_value = str(next(iter(lineedit_value.values())))
+                elif lineedit_value is not None:
+                    text_value = str(lineedit_value)
                 self.control_widget.blockSignals(True)
                 try:
-                    self.control_widget.setText(str(value))
-                    self.current_value = str(value)
+                    self.control_widget.setText(text_value)
+                    self.current_value = text_value
                 finally:
                     self.control_widget.blockSignals(False)
             else:

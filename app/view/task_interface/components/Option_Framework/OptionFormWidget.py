@@ -192,13 +192,7 @@ class OptionFormWidget(QWidget):
                         
                         # 如果有 children 配置，在设置完值后应用当前选中值的子选项
                         if children_config:
-                            # 获取当前选中值（set_value 后已更新）
-                            current_value = option_item.current_value
-                            if current_value and current_value in children_config:
-                                # 只应用当前选中值的子选项配置
-                                child_config = children_config[current_value]
-                                if child_config:
-                                    self._apply_single_child_config(option_item, current_value, child_config)
+                            self._apply_children_config(option_item, children_config)
                     else:
                         # 直接使用字典作为值
                         option_item.set_value(value)
@@ -268,14 +262,25 @@ class OptionFormWidget(QWidget):
     
     def _apply_children_config(self, option_item: OptionItemWidget, children_config: Dict[str, Any]):
         """
-        递归应用子选项配置（已废弃，请使用 _apply_single_child_config）
-        
-        :param option_item: 选项项组件
-        :param children_config: 子选项配置字典
+        应用子选项配置，兼容 children 中以 option_value 或 child_key 为键的情况。
         """
-        # 这个方法保留用于向后兼容，但实际逻辑应该通过 set_value 触发 _update_children_visibility
-        # 然后在需要时调用 _apply_single_child_config
-        pass
+        if not children_config:
+            return
+
+        child_definitions = option_item.config.get("children", {})
+
+        for config_key, child_cfg in children_config.items():
+            option_value = config_key if config_key in child_definitions else None
+
+            if not option_value:
+                option_value = option_item.get_option_value_for_child_key(config_key)
+
+            if option_value and child_cfg:
+                self._apply_single_child_config(option_item, option_value, child_cfg)
+            else:
+                logger.debug(
+                    f"跳过无效的子选项配置: option_key={option_item.key}, config_key={config_key}"
+                )
     
     def get_options(self) -> Dict[str, Any]:
         """
