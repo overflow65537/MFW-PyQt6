@@ -248,6 +248,8 @@ def generate_file_list(input_dir, output_file=None):
                             file_path = f"./{rel_dir}/{file}"
 
                     f.write(file_path + "\n")
+            # 写入file_list.txt自身的路径，保持格式一致
+            f.write("./file_list.txt" + "\n")
 
         print(f"File list generated: {output_file}")
         print(
