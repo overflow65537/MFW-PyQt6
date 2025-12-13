@@ -152,6 +152,7 @@ class SettingInterface(QWidget):
         self.scroll_area.setWidget(self.scroll_content)
 
         self.initialize_start_settings()
+        self.initialize_task_settings()
         self.initialize_notice_settings()
         self.initialize_personalization_settings()
         self.initialize_hotkey_settings()
@@ -970,6 +971,64 @@ class SettingInterface(QWidget):
         self.noticeGroup.addSettingCard(self.send_settingCard)
         self.add_setting_group(self.noticeGroup)
         
+    def initialize_task_settings(self):
+        """Task settings"""
+        self.taskGroup = SettingCardGroup(
+            self.tr("Task Settings"), self.Setting_scroll_widget
+        )
+        
+        # 任务超时时间
+        self.task_timeout_card = LineEditCard(
+            FIF.SETTING,
+            self.tr("Task Timeout"),
+            holderText=str(cfg.get(cfg.task_timeout)),
+            content=self.tr("Set the maximum time allowed for a task to run (in seconds)"),
+            parent=self.taskGroup,
+            num_only=True,
+            button=False,
+        )
+        self.task_timeout_card.lineEdit.editingFinished.connect(
+            lambda: self._on_task_timeout_edited()
+        )
+        
+        # 任务超时后动作
+        self.task_timeout_action_card = ComboBoxSettingCard(
+            cfg.task_timeout_action,
+            FIF.SETTING,
+            self.tr("Task Timeout Action"),
+            self.tr("Set the action to take when a task times out"),
+            texts=[
+                self.tr("No Action"),  # 0
+                self.tr("Restart"),  # 1
+                self.tr("Stop"),  # 2
+                self.tr("Skip"),  # 3
+                self.tr("Skip and Run Error Handling")  # 4
+            ],
+            parent=self.taskGroup,
+        )
+        
+        self.taskGroup.addSettingCard(self.task_timeout_card)
+        self.taskGroup.addSettingCard(self.task_timeout_action_card)
+        self.taskGroup.setVisible(False)  # 默认隐藏任务设置选项组
+        self.add_setting_group(self.taskGroup)
+    
+    def _on_task_timeout_edited(self):
+        """处理任务超时时间编辑完成事件"""
+        value = self.task_timeout_card.lineEdit.text().strip()
+        if not value:
+            # 若输入为空，恢复默认值
+            self.task_timeout_card.lineEdit.setText(str(cfg.get(cfg.task_timeout)))
+            return
+        
+        try:
+            timeout = int(value)
+            if timeout <= 0:
+                raise ValueError("Timeout must be a positive integer")
+            cfg.set(cfg.task_timeout, timeout)
+        except ValueError:
+            # 若输入无效，恢复默认值
+            self.task_timeout_card.lineEdit.setText(str(cfg.get(cfg.task_timeout)))
+
         # 连接通知卡片的点击事件
         self.dingtalk_noticeTypeCard.clicked.connect(self._on_dingtalk_notice_clicked)
         self.lark_noticeTypeCard.clicked.connect(self._on_lark_notice_clicked)
@@ -1146,9 +1205,14 @@ class SettingInterface(QWidget):
             return ""
         try:
             decrypted = crypto_manager.decrypt_payload(encrypted)
+            # 确保返回的是字符串
             if isinstance(decrypted, bytes):
-                decrypted = decrypted.decode("utf-8", errors="ignore")
-            return decrypted
+                return decrypted.decode("utf-8", errors="ignore")
+            elif isinstance(decrypted, bytearray):
+                return decrypted.decode("utf-8", errors="ignore")
+            elif isinstance(decrypted, memoryview):
+                return bytes(decrypted).decode("utf-8", errors="ignore")
+            return str(decrypted)
         except Exception as exc:
             logger.warning("解密 Mirror CDK 失败: %s", exc)
             return ""

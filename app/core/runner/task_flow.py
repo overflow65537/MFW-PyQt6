@@ -6,8 +6,6 @@ import shlex
 import subprocess
 import sys
 import time as _time
-import jsonc
-import ctypes
 
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -441,7 +439,6 @@ class TaskFlowRunner(QObject):
         elif not task.is_checked:
             logger.warning(f"任务 '{task.name}' 未被选中，跳过执行")
             return
-
         speedrun_cfg = self._resolve_speedrun_config(task)
         # 仅依据任务自身的速通开关，不再依赖全局 speedrun_mode；单任务执行可跳过校验
         if (not skip_speedrun) and speedrun_cfg and speedrun_cfg.get("enabled", False):

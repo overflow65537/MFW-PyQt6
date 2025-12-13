@@ -38,7 +38,7 @@ from qfluentwidgets import (
     RangeConfigItem,
     RangeValidator,
     Theme,
-    ConfigSerializer
+    ConfigSerializer,
 )
 
 
@@ -126,6 +126,28 @@ class Config(QConfig):
         "resource_update_channel",
         UpdateChannel.STABLE.value,
         _update_channel_validator,
+    )
+
+    # ===== 任务设置 =====
+    task_timeout = ConfigItem("Task", "task_timeout", 600)  # 默认600秒
+
+    # 任务超时后动作
+    class TaskTimeoutAction(Enum):
+        """Task timeout action options."""
+
+        NO_ACTION = 0
+        RESTART = 1
+        STOP = 2
+        SKIP = 3
+        SKIP_AND_RUN_ERROR_HANDLING = 4
+
+    _task_timeout_action_validator = OptionsValidator([item.value for item in TaskTimeoutAction])
+    
+    task_timeout_action = OptionsConfigItem(
+        "Task",
+        "task_timeout_action",
+        TaskTimeoutAction.NO_ACTION.value,
+        _task_timeout_action_validator,
     )
 
     # ===== 通知 =====
