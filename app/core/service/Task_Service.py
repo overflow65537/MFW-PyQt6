@@ -167,10 +167,17 @@ class TaskService:
                 # 为当前任务动态生成默认选项
                 task_default_option = self.gen_single_task_default_option(task)
 
+                # 任务是否默认选中
+                default_check = False
+                for task in self.interface.get("task", []):
+                    if task["name"] == task_name:
+                        default_check = task.get("default_check", False)
+                        break
+
                 new_task = TaskItem(
                     name=task["name"],
                     item_id=TaskItem.generate_id(is_special=task_is_special),
-                    is_checked=not task_is_special,  # 特殊任务默认不选中
+                    is_checked=default_check,
                     task_option=task_default_option,
                     is_special=task_is_special,
                 )
@@ -283,7 +290,9 @@ class TaskService:
         for option in task.get("option", []):
             option_template = interface_options.get(option)
             if option_template:
-                option_defaults = _gen_option_defaults_recursive(option, option_template)
+                option_defaults = _gen_option_defaults_recursive(
+                    option, option_template
+                )
                 task_default_option[option] = option_defaults
 
         # 追加速通配置（使用 interface 或默认值）
@@ -502,7 +511,9 @@ class TaskService:
             logger.warning(f"任务 '{task.name}' 在 interface 中未找到 entry")
             return None
 
-        from app.core.utils.pipeline_helper import get_pipeline_override_from_task_option
+        from app.core.utils.pipeline_helper import (
+            get_pipeline_override_from_task_option,
+        )
 
         option_pipeline_override = get_pipeline_override_from_task_option(
             self.interface, task.task_option
