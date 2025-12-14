@@ -146,9 +146,14 @@ class TaskFlowRunner(QObject):
 
         selected_task_count = sum(1 for task in tasks_to_report if task.is_checked)
         post_task_event_pending = bool(task_status_records)
-        config_label = self.config_service.current_config_id or self.tr(
-            "Unknown Config"
+        current_config = self.config_service.get_config(
+            self.config_service.current_config_id
         )
+        config_label = ""
+        if not current_config:
+            config_label = self.tr("Unknown Config")
+        else:
+            config_label = current_config.name
         try:
             if self.fs_signal_bus:
                 self.fs_signal_bus.fs_start_button_status.emit(

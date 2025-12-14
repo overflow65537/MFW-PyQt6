@@ -587,6 +587,7 @@ def send_notice(event: NoticeTiming, title: str, text: str) -> None:
     if not should_send_notice(event):
         logger.debug("跳过通知 %s (%s)，未启用对应的发送时机", event.name, int(event))
         return
+    logger.debug(f"发送通知 {event.name} ({int(event)}): {title} - {text}")
     broadcast_enabled_notices(title, text)
 
 
