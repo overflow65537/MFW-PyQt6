@@ -16,6 +16,7 @@ from app.utils.logger import logger
 from app.common.config import cfg
 from app.utils.crypto import crypto_manager
 from app.utils.notice import send_thread
+from app.common.signal_bus import signalBus
 
 
 class BaseNoticeType(MessageBoxBase):
@@ -36,6 +37,7 @@ class BaseNoticeType(MessageBoxBase):
         self.yesButton.clicked.connect(self.on_yes)
         self.testButton.clicked.connect(self.on_test)
         self.cancelButton.clicked.connect(self.on_cancel)
+        signalBus.notice_finished.connect(self.notice_send_finished)
 
     def on_test(self):
         test_msg = {"title": "Test Title", "text": "Test Text"}

@@ -97,6 +97,7 @@ class NoticeTiming(IntEnum):
     WHEN_POST_TASK = 8
     WHEN_TASK_FAILED = 16
     WHEN_TASK_FINISHED = 32
+    WHEN_TASK_TIMEOUT = 64
 
 
 class DingTalk:
@@ -341,6 +342,68 @@ class NoticeSendThread(QThread):
                 try:
                     result = send_func(msg_dict, status)
                     signalBus.notice_finished.emit(int(result), send_func.__name__)
+                    # 根据枚举类型显示不同的提示
+                    match result:
+                        case NoticeErrorCode.SUCCESS:
+                            signalBus.info_bar_requested.emit(
+                                "success",
+                                send_func.__name__
+                                + self.tr("notification test sent successfully."),
+                            )
+                        case NoticeErrorCode.DISABLED:
+                            signalBus.info_bar_requested.emit(
+                                "warning",
+                                send_func.__name__
+                                + self.tr("notification test disabled."),
+                            )
+                        case NoticeErrorCode.PARAM_EMPTY:
+                            signalBus.info_bar_requested.emit(
+                                "warning",
+                                send_func.__name__
+                                + self.tr("notification test param empty."),
+                            )
+                        case NoticeErrorCode.PARAM_INVALID:
+                            signalBus.info_bar_requested.emit(
+                                "warning",
+                                send_func.__name__
+                                + self.tr("notification test param invalid."),
+                            )
+                        case NoticeErrorCode.NETWORK_ERROR:
+                            signalBus.info_bar_requested.emit(
+                                "warning",
+                                send_func.__name__
+                                + self.tr("notification test network error."),
+                            )
+                        case NoticeErrorCode.RESPONSE_ERROR:
+                            signalBus.info_bar_requested.emit(
+                                "warning",
+                                send_func.__name__
+                                + self.tr("notification test response error."),
+                            )
+                        case NoticeErrorCode.UNKNOWN_ERROR:
+                            signalBus.info_bar_requested.emit(
+                                "warning",
+                                send_func.__name__
+                                + self.tr("notification test unknown error."),
+                            )
+                        case NoticeErrorCode.SMTP_PORT_INVALID:
+                            signalBus.info_bar_requested.emit(
+                                "warning",
+                                send_func.__name__
+                                + self.tr("notification test smtp port invalid."),
+                            )
+                        case NoticeErrorCode.SMTP_CONNECT_FAILED:
+                            signalBus.info_bar_requested.emit(
+                                "warning",
+                                send_func.__name__
+                                + self.tr("notification test smtp connect failed."),
+                            )
+                        case _:
+                            signalBus.info_bar_requested.emit(
+                                "warning",
+                                send_func.__name__
+                                + self.tr("notification test unknown error."),
+                            )
                 except Exception as e:
                     logger.error(f"通知线程 {send_func.__name__} 执行异常: {str(e)}")
                     signalBus.notice_finished.emit(
@@ -501,6 +564,7 @@ NOTICE_EVENT_CONFIG = {
     NoticeTiming.WHEN_POST_TASK: cfg.when_post_task,
     NoticeTiming.WHEN_TASK_FAILED: cfg.when_task_failed,
     NoticeTiming.WHEN_TASK_FINISHED: cfg.when_task_finished,
+    NoticeTiming.WHEN_TASK_TIMEOUT: cfg.task_timeout_action,
 }
 
 
