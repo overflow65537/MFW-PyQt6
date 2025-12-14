@@ -494,12 +494,13 @@ class TaskFlowRunner(QObject):
             return
         self._record_speedrun_runtime(task)
 
-    async def _run_task_with_timeout(self, task_id: str, task_name: str):
+    async def _run_task_with_timeout(self, task_id: str, task_name: str, retry_count: int = 0):
         """执行任务并应用超时控制
         
         Args:
             task_id: 任务ID
             task_name: 任务名称（用于日志）
+            retry_count: 重试次数（用于防止无限递归）
             
         Returns:
             任务执行结果，或在超时时根据配置返回相应结果
@@ -507,6 +508,9 @@ class TaskFlowRunner(QObject):
         # 获取超时配置
         timeout_seconds = cfg.get(cfg.task_timeout_seconds)
         timeout_action = cfg.get(cfg.task_timeout_action)
+        
+        # 防止无限递归：最多重试3次
+        max_retries = 3
         
         try:
             # 使用asyncio.wait_for添加超时控制
@@ -517,49 +521,74 @@ class TaskFlowRunner(QObject):
             return task_result
         except asyncio.TimeoutError:
             # 任务超时处理
-            logger.warning(
-                f"任务 '{task_name}' 执行超时 ({timeout_seconds}秒)"
-            )
+            timeout_msg = f"任务 '{task_name}' 执行超时 ({timeout_seconds}秒)"
+            logger.warning(timeout_msg)
+            
+            # 使用格式化字符串改善翻译
             signalBus.log_output.emit(
                 "WARNING",
-                self.tr("Task ")
-                + task_name
-                + self.tr(" execution timeout (")
-                + str(timeout_seconds)
-                + self.tr(" seconds)"),
+                self.tr("Task {0} execution timeout ({1} seconds)").format(
+                    task_name, timeout_seconds
+                ),
             )
             
             # 根据超时动作配置处理
             if timeout_action == "notify":
-                # 仅提醒，继续执行
-                logger.info(f"任务 '{task_name}' 超时后继续执行（仅提醒模式）")
+                # 仅提醒，任务视为失败但继续流程
+                logger.info(f"任务 '{task_name}' 超时，仅提醒模式，继续执行下一个任务")
                 send_notice(
                     NoticeTiming.WHEN_TASK_FAILED,
                     self.tr("Task Timeout"),
-                    self.tr("Task ")
-                    + task_name
-                    + self.tr(" execution timeout, timeout action: notify only"),
+                    self.tr("Task {0} execution timeout, timeout action: notify only").format(
+                        task_name
+                    ),
                 )
-                # 返回 None 表示继续执行
-                return None
+                # 返回 True 表示继续执行流程（虽然任务超时了）
+                return True
             elif timeout_action == "restart":
+                # 检查是否超过最大重试次数
+                if retry_count >= max_retries:
+                    logger.error(
+                        f"任务 '{task_name}' 超时后重启失败，已达最大重试次数 ({max_retries})"
+                    )
+                    signalBus.log_output.emit(
+                        "ERROR",
+                        self.tr("Task timeout restart failed, max retries reached ({0})").format(
+                            max_retries
+                        ),
+                    )
+                    send_notice(
+                        NoticeTiming.WHEN_TASK_FAILED,
+                        self.tr("Task Timeout"),
+                        self.tr("Task {0} timeout restart failed after {1} retries").format(
+                            task_name, max_retries
+                        ),
+                    )
+                    return False
+                
                 # 重启任务
-                logger.info(f"任务 '{task_name}' 超时，准备重启任务")
+                logger.info(
+                    f"任务 '{task_name}' 超时，准备重启任务（第 {retry_count + 1} 次重试）"
+                )
                 signalBus.log_output.emit(
                     "INFO",
-                    self.tr("Task timeout, restarting task..."),
+                    self.tr("Task timeout, restarting task (retry {0}/{1})...").format(
+                        retry_count + 1, max_retries
+                    ),
                 )
                 send_notice(
                     NoticeTiming.WHEN_TASK_FAILED,
                     self.tr("Task Timeout"),
-                    self.tr("Task ")
-                    + task_name
-                    + self.tr(" execution timeout, restarting task..."),
+                    self.tr("Task {0} execution timeout, restarting task (retry {1}/{2})...").format(
+                        task_name, retry_count + 1, max_retries
+                    ),
                 )
                 # 先停止当前任务
                 await self.maafw.stop_task()
-                # 重新执行任务
-                return await self.run_task(task_id)
+                # 等待一小段时间让任务完全停止
+                await asyncio.sleep(1)
+                # 递归调用，增加重试计数
+                return await self._run_task_with_timeout(task_id, task_name, retry_count + 1)
             else:
                 # 未知的超时动作，记录警告并返回失败
                 logger.warning(
