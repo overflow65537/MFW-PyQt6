@@ -571,9 +571,7 @@ class TaskFlowRunner(QObject):
             send_notice(
                 NoticeTiming.WHEN_TASK_TIMEOUT,
                 self.tr("Task Timeout"),
-                self.tr("Task entry {} timed out after {} seconds.").format(
-                    entry_text, timeout_seconds
-                ),
+                timeout_message,
             )
             return
 

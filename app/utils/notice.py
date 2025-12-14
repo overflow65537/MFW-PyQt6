@@ -348,61 +348,61 @@ class NoticeSendThread(QThread):
                             signalBus.info_bar_requested.emit(
                                 "success",
                                 send_func.__name__
-                                + self.tr("notification test sent successfully."),
+                                + self.tr(" sent successfully."),
                             )
                         case NoticeErrorCode.DISABLED:
                             signalBus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
-                                + self.tr("notification test disabled."),
+                                + self.tr(" disabled."),
                             )
                         case NoticeErrorCode.PARAM_EMPTY:
                             signalBus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
-                                + self.tr("notification test param empty."),
+                                + self.tr(" param empty."),
                             )
                         case NoticeErrorCode.PARAM_INVALID:
                             signalBus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
-                                + self.tr("notification test param invalid."),
+                                + self.tr(" param invalid."),
                             )
                         case NoticeErrorCode.NETWORK_ERROR:
                             signalBus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
-                                + self.tr("notification test network error."),
+                                + self.tr(" network error."),
                             )
                         case NoticeErrorCode.RESPONSE_ERROR:
                             signalBus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
-                                + self.tr("notification test response error."),
+                                + self.tr(" response error."),
                             )
                         case NoticeErrorCode.UNKNOWN_ERROR:
                             signalBus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
-                                + self.tr("notification test unknown error."),
+                                + self.tr(" unknown error."),
                             )
                         case NoticeErrorCode.SMTP_PORT_INVALID:
                             signalBus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
-                                + self.tr("notification test smtp port invalid."),
+                                + self.tr(" smtp port invalid."),
                             )
                         case NoticeErrorCode.SMTP_CONNECT_FAILED:
                             signalBus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
-                                + self.tr("notification test smtp connect failed."),
+                                + self.tr(" smtp connect failed."),
                             )
                         case _:
                             signalBus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
-                                + self.tr("notification test unknown error."),
+                                + self.tr(" unknown error."),
                             )
                 except Exception as e:
                     logger.error(f"通知线程 {send_func.__name__} 执行异常: {str(e)}")
