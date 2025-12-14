@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import List, Tuple
 from uuid import uuid4
 
-FULL_UPDATE_EXCLUDES = ["config", "debug", "update", "MFWUpdater.exe", "MFWUpdate"]
+FULL_UPDATE_EXCLUDES = ["config", "debug", "update", "MFWUpdater1.exe", "MFWUpdate1"]
 
 
 def is_mfw_running():
