@@ -61,7 +61,15 @@ from app.view.setting_interface.widget.LineEditCard import (
     LineEditCard,
     MirrorCdkLineEditCard,
 )
-from app.view.setting_interface.widget.NoticeType import NoticeType
+from app.view.setting_interface.widget.NoticeType import (
+    QYWXNoticeType,
+    DingTalkNoticeType,
+    LarkNoticeType,
+    QmsgNoticeType,
+    SMTPNoticeType,
+    WxPusherNoticeType,
+)
+
 from app.view.setting_interface.widget.SendSettingCard import SendSettingCard
 
 _CONTACT_URL_PATTERN = re.compile(r"(?:https?://|www\.)[^\s，,]+")
@@ -118,14 +126,23 @@ class SettingInterface(QWidget):
         self.Setting_expand_layout = ExpandLayout(self.Setting_scroll_widget)
         self.scroll_area = ScrollArea(self)
         self._setup_ui()
+        self.connect_notice_card_clicked()
         self._init_updater()
+
         self._local_update_package = self._refresh_local_update_package(
             restart_required=True
         )
         if self._local_update_package:
             logger.info("检测到本地更新包，跳过检查更新流程")
         self._init_update_checker()
-
+    def connect_notice_card_clicked(self):
+        # 连接通知卡片的点击事件
+        self.dingtalk_noticeTypeCard.clicked.connect(self._on_dingtalk_notice_clicked)
+        self.lark_noticeTypeCard.clicked.connect(self._on_lark_notice_clicked)
+        self.SMTP_noticeTypeCard.clicked.connect(self._on_smtp_notice_clicked)
+        self.WxPusher_noticeTypeCard.clicked.connect(self._on_wxpusher_notice_clicked)
+        self.QYWX_noticeTypeCard.clicked.connect(self._on_qywx_notice_clicked)
+        self.send_settingCard.clicked.connect(self._on_send_setting_clicked)
     def _setup_ui(self):
         """搭建整体结构：标题 + 更新详情 + 滚动区域 + ExpandLayout。"""
         self.main_layout = QVBoxLayout(self)
@@ -970,7 +987,7 @@ class SettingInterface(QWidget):
         self.noticeGroup.addSettingCard(self.QYWX_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.send_settingCard)
         self.add_setting_group(self.noticeGroup)
-        
+
     def initialize_task_settings(self):
         """Task settings"""
         self.taskGroup = SettingCardGroup(
@@ -991,7 +1008,9 @@ class SettingInterface(QWidget):
             FIF.SETTING,
             self.tr("Task Timeout"),
             holderText=str(cfg.get(cfg.task_timeout)),
-            content=self.tr("Set the maximum time allowed for a task to run (in seconds)"),
+            content=self.tr(
+                "Set the maximum time allowed for a task to run (in seconds)"
+            ),
             parent=self.taskGroup,
             num_only=True,
             button=False,
@@ -1017,7 +1036,7 @@ class SettingInterface(QWidget):
         self.taskGroup.addSettingCard(self.task_timeout_card)
         self.taskGroup.addSettingCard(self.task_timeout_action_card)
         self.add_setting_group(self.taskGroup)
-    
+
     def _on_task_timeout_edited(self):
         """处理任务超时时间编辑完成事件"""
         value = self.task_timeout_card.lineEdit.text().strip()
@@ -1025,7 +1044,7 @@ class SettingInterface(QWidget):
             # 若输入为空，恢复默认值
             self.task_timeout_card.lineEdit.setText(str(cfg.get(cfg.task_timeout)))
             return
-        
+
         try:
             timeout = int(value)
             if timeout <= 0:
@@ -1035,13 +1054,7 @@ class SettingInterface(QWidget):
             # 若输入无效，恢复默认值
             self.task_timeout_card.lineEdit.setText(str(cfg.get(cfg.task_timeout)))
 
-        # 连接通知卡片的点击事件
-        self.dingtalk_noticeTypeCard.clicked.connect(self._on_dingtalk_notice_clicked)
-        self.lark_noticeTypeCard.clicked.connect(self._on_lark_notice_clicked)
-        self.SMTP_noticeTypeCard.clicked.connect(self._on_smtp_notice_clicked)
-        self.WxPusher_noticeTypeCard.clicked.connect(self._on_wxpusher_notice_clicked)
-        self.QYWX_noticeTypeCard.clicked.connect(self._on_qywx_notice_clicked)
-        self.send_settingCard.clicked.connect(self._on_send_setting_clicked)
+
 
     def initialize_update_settings(self):
         """插入更新设置卡片组（跟原先的 UpdateSettingsSection 等价）。"""
@@ -1436,35 +1449,36 @@ class SettingInterface(QWidget):
     def _on_dingtalk_notice_clicked(self):
         """处理钉钉通知卡片点击事件"""
         parent = self.window() or self
-        dialog = NoticeType(parent, "DingTalk")
+        dialog = DingTalkNoticeType(parent)
+        print("AAAAAAAAAAAA")
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._update_notice_card_status("DingTalk")
 
     def _on_lark_notice_clicked(self):
         """处理飞书通知卡片点击事件"""
         parent = self.window() or self
-        dialog = NoticeType(parent, "Lark")
+        dialog = LarkNoticeType(parent)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._update_notice_card_status("Lark")
 
     def _on_smtp_notice_clicked(self):
         """处理 SMTP 通知卡片点击事件"""
         parent = self.window() or self
-        dialog = NoticeType(parent, "SMTP")
+        dialog = SMTPNoticeType(parent)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._update_notice_card_status("SMTP")
 
     def _on_wxpusher_notice_clicked(self):
         """处理 WxPusher 通知卡片点击事件"""
         parent = self.window() or self
-        dialog = NoticeType(parent, "WxPusher")
+        dialog = WxPusherNoticeType(parent)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._update_notice_card_status("WxPusher")
 
     def _on_qywx_notice_clicked(self):
         """处理企业微信通知卡片点击事件"""
         parent = self.window() or self
-        dialog = NoticeType(parent, "QYWX")
+        dialog = QYWXNoticeType(parent)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._update_notice_card_status("QYWX")
 
@@ -1474,9 +1488,11 @@ class SettingInterface(QWidget):
         dialog = SendSettingCard(parent)
         # 连接确认按钮的点击事件以保存设置
         original_accept = dialog.accept
+
         def save_and_accept():
             dialog.save_setting()
             original_accept()
+
         dialog.yesButton.clicked.disconnect()
         dialog.yesButton.clicked.connect(save_and_accept)
         dialog.exec()
@@ -1575,7 +1591,6 @@ class SettingInterface(QWidget):
             return candidate
         return None
 
-
     def _load_local_update_metadata(self) -> Dict[str, Any] | None:
         metadata_path = Path.cwd() / "update" / "new_version" / "update_metadata.json"
         if not metadata_path.exists():
@@ -1589,8 +1604,9 @@ class SettingInterface(QWidget):
             logger.warning("加载本地更新元数据失败: %s", exc)
             return None
 
-
-    def _refresh_local_update_package(self, restart_required: bool = True) -> Path | None:
+    def _refresh_local_update_package(
+        self, restart_required: bool = True
+    ) -> Path | None:
         """刷新本地更新包缓存，便于动态响应。"""
         self._local_update_package = self._detect_local_update_package()
         self._local_update_metadata = (
@@ -1861,7 +1877,11 @@ class SettingInterface(QWidget):
         self._restart_update_required = True
         self._refresh_local_update_package()
         self._prepare_instant_update_state()
-        logger.info("触发立即更新确认，auto_accept=%s，检测到本地包=%s", auto_accept, bool(self._local_update_package))
+        logger.info(
+            "触发立即更新确认，auto_accept=%s，检测到本地包=%s",
+            auto_accept,
+            bool(self._local_update_package),
+        )
         self._handle_instant_update(auto_accept=auto_accept, notify_if_cancel=True)
 
     def _prompt_instant_update(self, *, auto_accept: bool = False) -> bool:
@@ -1878,9 +1898,7 @@ class SettingInterface(QWidget):
             else self.tr("Update package detected")
         )
         desc_text = (
-            self.tr(
-                "Hot update is unavailable. A restart update is required. Proceed?"
-            )
+            self.tr("Hot update is unavailable. A restart update is required. Proceed?")
             if self._restart_update_required
             else self.tr(
                 "Found a downloaded update package. Do you want to launch the updater now?"
