@@ -976,7 +976,16 @@ class SettingInterface(QWidget):
         self.taskGroup = SettingCardGroup(
             self.tr("Task Settings"), self.Setting_scroll_widget
         )
-        
+
+        # 开启任务超时设置
+        self.task_timeout_enable_card = SwitchSettingCard(
+            FIF.SETTING,
+            self.tr("Enable Task Timeout"),
+            self.tr("Enable or disable task timeout settings"),
+            configItem=cfg.task_timeout_enable,
+            parent=self.taskGroup,
+        )
+
         # 任务超时时间
         self.task_timeout_card = LineEditCard(
             FIF.SETTING,
@@ -990,7 +999,7 @@ class SettingInterface(QWidget):
         self.task_timeout_card.lineEdit.editingFinished.connect(
             lambda: self._on_task_timeout_edited()
         )
-        
+
         # 任务超时后动作
         self.task_timeout_action_card = ComboBoxSettingCard(
             cfg.task_timeout_action,
@@ -998,18 +1007,15 @@ class SettingInterface(QWidget):
             self.tr("Task Timeout Action"),
             self.tr("Set the action to take when a task times out"),
             texts=[
-                self.tr("No Action"),  # 0
-                self.tr("Restart"),  # 1
-                self.tr("Stop"),  # 2
-                self.tr("Skip"),  # 3
-                self.tr("Skip and Run Error Handling")  # 4
+                self.tr("Notify Only"),  # 0
+                self.tr("Restart and Notify"),  # 1
             ],
             parent=self.taskGroup,
         )
-        
+
+        self.taskGroup.addSettingCard(self.task_timeout_enable_card)
         self.taskGroup.addSettingCard(self.task_timeout_card)
         self.taskGroup.addSettingCard(self.task_timeout_action_card)
-        self.taskGroup.setVisible(False)  # 默认隐藏任务设置选项组
         self.add_setting_group(self.taskGroup)
     
     def _on_task_timeout_edited(self):

@@ -10,9 +10,10 @@ import time as _time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict
-from PySide6.QtCore import QCoreApplication, QObject
+from PySide6.QtCore import QCoreApplication, QObject, Signal, QTimer
 from app.common.constants import POST_ACTION, PRE_CONFIGURATION
 from app.common.signal_bus import signalBus
+from app.common.config import cfg, Config
 
 from maa.toolkit import Toolkit
 from app.utils.notice import NoticeTiming, send_notice
@@ -36,12 +37,15 @@ from app.core.Item import FromeServiceCoordinator, TaskItem
 class TaskFlowRunner(QObject):
     """负责执行任务流的运行时组件"""
 
+    task_timeout_restart_requested = Signal()  # 任务超时需要重启
+
     def __init__(
         self,
         task_service: TaskService,
         config_service: ConfigService,
         fs_signal_bus: FromeServiceCoordinator | None = None,
     ):
+        super().__init__()
         self.task_service = task_service
         self.config_service = config_service
         if fs_signal_bus:
@@ -66,6 +70,14 @@ class TaskFlowRunner(QObject):
         self.adb_controller_raw: dict[str, Any] | None = None
         self.adb_activate_controller: str | None = None
         self.adb_controller_config: dict[str, Any] | None = None
+
+        # 任务超时相关
+        self._timeout_timer = QTimer(self)
+        self._timeout_timer.setSingleShot(True)
+        self._timeout_timer.timeout.connect(self._on_task_timeout)
+        self._timeout_active_entry = ""
+        self._timeout_restart_attempts = 0
+        self._is_timeout_restart = False
 
     def _handle_agent_info(self, info: str):
         if "| WARNING |" in info:
@@ -100,7 +112,7 @@ class TaskFlowRunner(QObject):
                 "WARNING", self.tr(f"Unknown MaaFW error code: {error_code}")
             )
 
-    async def run_tasks_flow(self, task_id: str | None = None):
+    async def run_tasks_flow(self, task_id: str | None = None, is_timeout_restart: bool = False):
         """任务完整流程：连接设备、加载资源、批量运行任务"""
         if self._is_running:
             logger.warning("任务流已经在运行，忽略新的启动请求")
@@ -109,6 +121,10 @@ class TaskFlowRunner(QObject):
                 return
         self._is_running = True
         self.need_stop = False
+        self._is_timeout_restart = is_timeout_restart
+        # 如果不是超时重启，重置超时状态
+        if not is_timeout_restart:
+            self._reset_task_timeout_state()
         is_single_task_mode = task_id is not None
         tasks_to_report = [
             task
@@ -466,16 +482,20 @@ class TaskFlowRunner(QObject):
             logger.error(f"无法获取任务 '{task.name}' 的执行信息")
             return
 
-        entry = raw_info.get("entry", "")
+        entry = raw_info.get("entry", "") or ""
         pipeline_override = raw_info.get("pipeline_override", {})
 
         if not self.maafw.resource:
             logger.error("资源未初始化，无法执行任务")
             return
 
+        self._start_task_timeout(entry)
+
         if not await self.maafw.run_task(entry, pipeline_override):
             logger.error(f"任务 '{task.name}' 执行失败")
+            self._stop_task_timeout()
             return
+        self._stop_task_timeout()
         self._record_speedrun_runtime(task)
 
     async def stop_task(self):
@@ -483,6 +503,7 @@ class TaskFlowRunner(QObject):
         if self.need_stop:
             return
         self.need_stop = True
+        self._stop_task_timeout()
         if self.fs_signal_bus:
             signalBus.log_output.emit("INFO", self.tr("Stopping task..."))
             self.fs_signal_bus.fs_start_button_status.emit(
@@ -495,6 +516,72 @@ class TaskFlowRunner(QObject):
             )
         self._is_running = False
         logger.info("任务流停止")
+
+    def _start_task_timeout(self, entry: str):
+        """开始任务超时计时"""
+        if not cfg.get(cfg.task_timeout_enable):
+            self._reset_task_timeout_state()
+            return
+
+        timeout_seconds = int(cfg.get(cfg.task_timeout) or 0)
+        if timeout_seconds <= 0:
+            self._reset_task_timeout_state()
+            return
+
+        entry_text = (entry or "").strip() or self.tr("Unknown Task Entry")
+        # 如果entry不同，或者不是超时重启，重置计数器
+        if entry_text != self._timeout_active_entry or not self._is_timeout_restart:
+            self._timeout_active_entry = entry_text
+            self._timeout_restart_attempts = 0
+
+        self._timeout_timer.stop()
+        self._timeout_timer.start(timeout_seconds * 1000)
+
+    def _stop_task_timeout(self):
+        """停止任务超时计时"""
+        self._timeout_timer.stop()
+
+    def _reset_task_timeout_state(self):
+        """重置任务超时状态"""
+        self._timeout_timer.stop()
+        self._timeout_active_entry = ""
+        self._timeout_restart_attempts = 0
+
+    def _on_task_timeout(self):
+        """任务超时处理"""
+        self._timeout_timer.stop()
+        timeout_seconds = int(cfg.get(cfg.task_timeout) or 0)
+        entry_text = self._timeout_active_entry or self.tr("Unknown Task Entry")
+        timeout_message = self.tr("Task entry {} timed out after {} seconds.").format(entry_text, timeout_seconds)
+        logger.warning(timeout_message)
+        signalBus.log_output.emit("WARNING", timeout_message)
+
+        action_value = cfg.get(cfg.task_timeout_action)
+        try:
+            action = Config.TaskTimeoutAction(action_value)
+        except ValueError:
+            action = Config.TaskTimeoutAction.NOTIFY_ONLY
+
+        if action == Config.TaskTimeoutAction.NOTIFY_ONLY:
+            self._reset_task_timeout_state()
+            return
+
+        # 重启并通知
+        if self._timeout_restart_attempts < 3:
+            self._timeout_restart_attempts += 1
+            restart_message = self.tr("Task entry {} timed out, restarting attempt {}/3.").format(entry_text, self._timeout_restart_attempts)
+            logger.info(restart_message)
+            signalBus.log_output.emit("WARNING", restart_message)
+            # 通过信号通知外部需要重启
+            self.task_timeout_restart_requested.emit()
+            return
+
+        # 超过3次重启，停止任务
+        stop_message = self.tr("Task entry {} timed out after {} restarts, stopping flow.").format(entry_text, self._timeout_restart_attempts)
+        logger.error(stop_message)
+        signalBus.log_output.emit("ERROR", stop_message)
+        asyncio.create_task(self.stop_task())
+        self._reset_task_timeout_state()
 
     async def _connect_adb_controller(self, controller_raw: Dict[str, Any]):
         """连接 ADB 控制器"""

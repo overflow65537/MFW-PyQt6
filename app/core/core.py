@@ -224,8 +224,8 @@ class ServiceCoordinator:
         except Exception as e:
             logger.error(f"重新初始化服务协调器失败: {e}")
 
-    async def run_tasks_flow(self, task_id: str | None = None):
-        return await self.task_runner.run_tasks_flow(task_id)
+    async def run_tasks_flow(self, task_id: str | None = None, is_timeout_restart: bool = False):
+        return await self.task_runner.run_tasks_flow(task_id, is_timeout_restart=is_timeout_restart)
 
     async def stop_task(self):
         return await self.task_runner.stop_task()
