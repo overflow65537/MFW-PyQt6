@@ -850,8 +850,18 @@ def standard_update():
         package_path = find_latest_zip_file(new_version_dir)
 
     if not package_path:
-        print("未找到更新文件")
-        sys.exit("未找到更新文件")
+        print("未找到更新文件，清理元数据并启动MFW")
+        # 删除元数据文件
+        if os.path.exists(metadata_path):
+            try:
+                os.remove(metadata_path)
+                update_logger.info("已删除元数据文件: %s", metadata_path)
+            except Exception as exc:
+                log_error(f"删除元数据文件失败: {exc}")
+        # 启动MFW程序
+        start_mfw_process()
+        # 自身退出
+        sys.exit(0)
 
     if metadata and metadata.get("attempts", 0) > 3:
         update_logger.warning(

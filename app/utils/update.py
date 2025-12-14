@@ -1480,6 +1480,15 @@ class Update(BaseUpdate):
         """统一处理终止信号和可选的 InfoBar 通知。"""
         if level and message:
             self._emit_info_bar(level, message)
+        # 停止更新后，删除元数据
+        download_dir = Path.cwd() / "update" / "new_version"
+        metadata_path = download_dir / "update_metadata.json"
+        if metadata_path.exists():
+            try:
+                metadata_path.unlink()
+                logger.info("停止更新，已删除元数据文件: %s", metadata_path)
+            except Exception as err:
+                logger.debug("删除元数据文件失败: %s -> %s", metadata_path, err)
         self.stop_signal.emit(code)
 
     def _detect_mirror_archive_mode(self, archive_path: Path) -> str | None:
