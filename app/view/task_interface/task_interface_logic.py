@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QApplication,
 )
+from PySide6.QtGui import QShowEvent
 from qfluentwidgets import (
     FluentIcon as FIF,
 )
@@ -14,7 +15,7 @@ from app.utils.logger import logger
 
 
 class TaskInterface(UI_TaskInterface, QWidget):
-
+    
     def __init__(self, service_coordinator=None, parent=None):
         QWidget.__init__(self, parent=parent)
         UI_TaskInterface.__init__(
@@ -131,3 +132,9 @@ class TaskInterface(UI_TaskInterface, QWidget):
         elif button.text() == self.tr("Start") and button.isEnabled():
             # 如果已经是"Start"状态且可用，直接点击
             button.click()
+
+    def showEvent(self, event: QShowEvent):
+        """界面显示时自动选中第0个任务"""
+        super().showEvent(event)
+        # 使用定时器延迟执行，确保任务列表已经加载完成
+        QTimer.singleShot(50, lambda: self.option_panel.reset())

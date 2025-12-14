@@ -1,7 +1,8 @@
 import asyncio
 
-from PySide6.QtCore import QMetaObject, QCoreApplication
+from PySide6.QtCore import QMetaObject, QCoreApplication, QTimer
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget
+from PySide6.QtGui import QShowEvent
 from qfluentwidgets import FluentIcon as FIF
 
 from app.core.core import ServiceCoordinator
@@ -129,9 +130,9 @@ class SpecialTaskInterface(UI_SpecialTaskInterface, QWidget):
                     isinstance(widget, type(None))
                 ):  # 防御性，避免 None
                     continue
-                checkbox = getattr(widget, "checkbox", None)
                 task = getattr(widget, "task", None)
-                if task and task.is_special and checkbox and checkbox.isChecked():
+                # 直接检查task.is_checked，不依赖checkbox的可见性
+                if task and task.is_special and task.is_checked:
                     return task
         except Exception:
             pass
@@ -148,4 +149,44 @@ class SpecialTaskInterface(UI_SpecialTaskInterface, QWidget):
             self.start_bar.run_button.setIcon(FIF.PLAY)
 
         self.start_bar.run_button.setEnabled(status.get("status") != "disabled")
+
+    def showEvent(self, event: QShowEvent):
+        """界面显示时自动选中第0个任务"""
+        super().showEvent(event)
+        # 使用定时器延迟执行，确保任务列表已经加载完成
+        QTimer.singleShot(50, self._auto_select_first_task)
+
+    def _auto_select_first_task(self):
+        """自动选中第0个任务"""
+        task_list_widget = getattr(self.task_info, "task_list", None)
+        if not task_list_widget:
+            return
+        
+        # 检查任务列表是否有任务，如果没有任务就跳过
+        if task_list_widget.count() == 0:
+            return
+        
+        try:
+            # 获取第0个任务项
+            first_item = task_list_widget.item(0)
+            if not first_item:
+                return
+            
+            widget = task_list_widget.itemWidget(first_item)
+            if not widget:
+                return
+            
+            # 检查是否是SpecialTaskListItem
+            from app.view.task_interface.components.ListItem import SpecialTaskListItem
+            if isinstance(widget, SpecialTaskListItem):
+                # 如果任务未选中，则触发点击逻辑（相当于点击item）
+                if not widget.task.is_checked:
+                    widget._on_item_clicked()
+                else:
+                    # 如果已经选中，仍然切换到任务设置
+                    if self.service_coordinator:
+                        self.service_coordinator.select_task(widget.task.item_id)
+                    widget._select_in_parent_list()
+        except Exception:
+            pass
 

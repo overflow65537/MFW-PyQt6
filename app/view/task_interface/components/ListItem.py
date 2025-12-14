@@ -247,6 +247,63 @@ class TaskListItem(BaseListItem):
         asyncio.create_task(self.service_coordinator.run_tasks_flow(self.task.item_id))
 
 
+# 特殊任务列表项组件
+class SpecialTaskListItem(TaskListItem):
+    """特殊任务列表项：隐藏checkbox，点击整个item相当于点击checkbox，并切换到任务设置"""
+
+    def __init__(
+        self,
+        task: TaskItem,
+        interface: dict | None = None,
+        service_coordinator: ServiceCoordinator | None = None,
+        parent=None,
+    ):
+        # 先调用父类初始化，创建checkbox等UI元素
+        super().__init__(task, interface, service_coordinator, parent)
+        
+        # 隐藏checkbox
+        self.checkbox.hide()
+        
+        # 将整个item的点击事件绑定到checkbox逻辑
+        # 点击name_label时触发选择
+        self.name_label.clicked.connect(self._on_item_clicked)
+        
+        # 设置整个widget可点击
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def _on_item_clicked(self):
+        """处理item点击事件：相当于点击checkbox，并切换到任务设置"""
+        if not self._interface_allowed or self.task.is_base_task():
+            return
+        
+        # 如果当前未选中，则选中（相当于点击checkbox）
+        # 这会触发checkbox状态改变，发射checkbox_changed信号，进而触发单选逻辑
+        if not self.task.is_checked:
+            # 触发checkbox状态改变，这会发射checkbox_changed信号
+            # 单选逻辑会在_on_task_checkbox_changed中处理
+            self.checkbox.setChecked(True)
+        
+        # 无论是否已选中，都切换到对应的任务设置（触发任务选择）
+        if self.service_coordinator:
+            self.service_coordinator.select_task(self.task.item_id)
+        
+        # 在父列表中选择当前项
+        self._select_in_parent_list()
+
+    def mousePressEvent(self, event):
+        """重写鼠标点击事件，使整个widget可点击"""
+        if event.button() == Qt.MouseButton.LeftButton:
+            # 如果点击的不是设置按钮，则触发item点击逻辑
+            if not self.setting_button.geometry().contains(event.pos()):
+                self._on_item_clicked()
+        super().mousePressEvent(event)
+
+    def contextMenuEvent(self, event):
+        """重写右键菜单事件：特殊任务不显示右键菜单"""
+        # 特殊任务不需要右键菜单，直接忽略事件
+        event.ignore()
+
+
 # 配置列表项组件
 class ConfigListItem(BaseListItem):
     def __init__(self, config: ConfigItem, parent=None):

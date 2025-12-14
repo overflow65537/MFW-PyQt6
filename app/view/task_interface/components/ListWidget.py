@@ -12,7 +12,7 @@ from qfluentwidgets import ListWidget, IndeterminateProgressRing, SimpleCardWidg
 
 from app.core.core import  ServiceCoordinator
 from app.core.Item import TaskItem, ConfigItem
-from app.view.task_interface.components.ListItem import TaskListItem, ConfigListItem
+from app.view.task_interface.components.ListItem import TaskListItem, ConfigListItem, SpecialTaskListItem
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
 
@@ -279,9 +279,15 @@ class TaskDragListWidget(BaseListWidget):
         if isinstance(placeholder, TaskSkeletonWidget):
             placeholder.deleteLater()
 
-        task_widget = TaskListItem(
-            task, interface=interface, service_coordinator=self.service_coordinator
-        )
+        # 根据过滤模式选择使用哪个任务项类
+        if self._filter_mode == "special":
+            task_widget = SpecialTaskListItem(
+                task, interface=interface, service_coordinator=self.service_coordinator
+            )
+        else:
+            task_widget = TaskListItem(
+                task, interface=interface, service_coordinator=self.service_coordinator
+            )
         task_widget.checkbox_changed.connect(self._on_task_checkbox_changed)
 
         flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
@@ -315,9 +321,15 @@ class TaskDragListWidget(BaseListWidget):
 
         # 否则按原有逻辑新增项
         list_item = QListWidgetItem()
-        task_widget = TaskListItem(
-            task, interface=interface, service_coordinator=self.service_coordinator
-        )
+        # 根据过滤模式选择使用哪个任务项类
+        if self._filter_mode == "special":
+            task_widget = SpecialTaskListItem(
+                task, interface=interface, service_coordinator=self.service_coordinator
+            )
+        else:
+            task_widget = TaskListItem(
+                task, interface=interface, service_coordinator=self.service_coordinator
+            )
         # 复选框状态变更信号
         task_widget.checkbox_changed.connect(self._on_task_checkbox_changed)
         # 基础任务禁止拖动
