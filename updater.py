@@ -33,6 +33,32 @@ def is_mfw_running():
         return False
 
 
+def ensure_mfw_not_running():
+    """
+    确保MFW不在运行，如果正在运行则等待或退出
+    返回True表示可以继续，False表示应该退出
+    """
+    max_checks = 3
+    check_count = 0
+    while check_count < max_checks:
+        if not is_mfw_running():
+            return True
+        print("MFW仍在运行，5秒后重新检查...")
+        for sec in range(5, 0, -1):
+            print(f"{sec}秒后重新检查...")
+            time.sleep(1)
+        check_count += 1
+
+    # 如果MFW仍在运行，记录错误并退出
+    if is_mfw_running():
+        error_message = "更新失败：多次检查后MFW仍在运行"
+        log_error(error_message)
+        print(error_message)
+        sys.exit(error_message)
+    
+    return True
+
+
 def move_specific_files_to_temp_backup(update_file_path):
     """
     只将更新包中会覆盖的文件移动到临时备份目录
@@ -149,6 +175,10 @@ def extract_zip_file_with_validation(update_file_path):
         bool: 解压是否成功
     """
     import zipfile
+
+    # 检查MFW是否在运行
+    if not ensure_mfw_not_running():
+        return False
 
     if not update_file_path.lower().endswith(".zip"):
         log_error(f"不支持的文件格式: {update_file_path}")
@@ -502,6 +532,10 @@ def _handle_full_update_failure(
 
 
 def perform_full_update(package_path: str, metadata_path: str, metadata: dict) -> bool:
+    # 检查MFW是否在运行
+    if not ensure_mfw_not_running():
+        return False
+    
     metadata = metadata or {}
     temp_dir = _extract_zip_to_temp(Path(package_path))
     if not temp_dir:
@@ -723,13 +757,16 @@ def load_change_entries(zip_path):
 
 
 def apply_github_hotfix(package_path, keep_list):
+    # 检查MFW是否在运行
+    if not ensure_mfw_not_running():
+        return False
+    
     repo_root = os.getcwd()
     model_backup = backup_model_dir()
     skip_paths = {
         os.path.abspath(__file__),
         os.path.abspath(os.path.join(repo_root, "update")),
         os.path.abspath(os.path.join(repo_root, "file_list.txt")),
-        os.path.abspath(os.path.join(repo_root, "UPDATE_ERROR.log")),
         os.path.abspath(package_path),
         os.path.abspath(os.path.join(repo_root, "update_back")),
     }
@@ -747,6 +784,10 @@ def apply_github_hotfix(package_path, keep_list):
 
 
 def apply_mirror_hotfix(package_path):
+    # 检查MFW是否在运行
+    if not ensure_mfw_not_running():
+        return False
+    
     deletes = load_change_entries(package_path)
     if deletes is None:
         return False
@@ -809,22 +850,8 @@ def standard_update():
 
     update_logger.info("标准更新模式开始")
     # 检查MFW是否在运行
-    max_checks = 3
-    check_count = 0
-    while check_count < max_checks:
-        if not is_mfw_running():
-            break
-        print("MFW仍在运行，5秒后重新检查...")
-        for sec in range(5, 0, -1):
-            print(f"{sec}秒后重新检查...")
-            time.sleep(1)
-        check_count += 1
-
-    # 如果MFW仍在运行，记录错误并退出
-    if is_mfw_running():
-        error_message = "更新失败：多次检查后MFW仍在运行"
-        log_error(error_message)
-        sys.exit(error_message)
+    if not ensure_mfw_not_running():
+        return
 
     new_version_dir, update_back_dir = ensure_update_directories()
     metadata_path = os.path.join(new_version_dir, "update_metadata.json")
@@ -939,6 +966,11 @@ def recovery_mode():
     """
     import subprocess
 
+    update_logger.info("恢复模式开始")
+    # 检查MFW是否在运行
+    if not ensure_mfw_not_running():
+        return
+
     input("按回车键开始恢复更新...")
 
     _, update_back_dir = ensure_update_directories()
@@ -983,11 +1015,6 @@ if __name__ == "__main__":
         f"\n{'='*60}\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] 更新程序启动\n{'='*60}\n"
     )
     update_logger.info("更新程序启动, argv=%s", sys.argv)
-    try:
-        with open("UPDATE_ERROR.log", "a", encoding="utf-8") as log_file:
-            log_file.write(log_entry)
-    except Exception:
-        pass  # 如果无法写入日志文件，继续执行
 
     try:
         if len(sys.argv) > 1:
@@ -1023,6 +1050,6 @@ if __name__ == "__main__":
         error_message = f"更新程序发生未捕获的异常: {type(e).__name__}: {e}"
         log_error(error_message)
         print(f"\n{error_message}")
-        print("\n更新失败，请查看 UPDATE_ERROR.log 了解详情")
+    
         input("按回车键退出... / Press Enter to exit...")
         sys.exit(1)
