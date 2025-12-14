@@ -13,7 +13,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict
 from PySide6.QtCore import QCoreApplication, QObject
-from app.common.constants import POST_ACTION, PRE_CONFIGURATION
+from app.common.constants import (
+    POST_ACTION,
+    PRE_CONFIGURATION,
+    TASK_TIMEOUT_ENABLED,
+    TASK_TIMEOUT_SECONDS,
+    TASK_TIMEOUT_ACTION,
+)
+from app.common.config import cfg
 from app.common.signal_bus import signalBus
 
 from maa.toolkit import Toolkit
@@ -274,7 +281,13 @@ class TaskFlowRunner(QObject):
                     logger.info(f"开始执行任务: {task.name}")
                     record = task_status_by_id.get(task.item_id)
                     try:
-                        task_result = await self.run_task(task.item_id)
+                        # 执行任务，可能带超时控制
+                        if cfg.get(cfg.task_timeout_enabled):
+                            task_result = await self._run_task_with_timeout(
+                                task.item_id, task.name
+                            )
+                        else:
+                            task_result = await self.run_task(task.item_id)
                         if task_result == "skipped":
                             if record:
                                 record["status"] = self.tr("SKIPPED")
@@ -480,6 +493,79 @@ class TaskFlowRunner(QObject):
             logger.error(f"任务 '{task.name}' 执行失败")
             return
         self._record_speedrun_runtime(task)
+
+    async def _run_task_with_timeout(self, task_id: str, task_name: str):
+        """执行任务并应用超时控制
+        
+        Args:
+            task_id: 任务ID
+            task_name: 任务名称（用于日志）
+            
+        Returns:
+            任务执行结果，或在超时时根据配置返回相应结果
+        """
+        # 获取超时配置
+        timeout_seconds = cfg.get(cfg.task_timeout_seconds)
+        timeout_action = cfg.get(cfg.task_timeout_action)
+        
+        try:
+            # 使用asyncio.wait_for添加超时控制
+            task_result = await asyncio.wait_for(
+                self.run_task(task_id),
+                timeout=timeout_seconds
+            )
+            return task_result
+        except asyncio.TimeoutError:
+            # 任务超时处理
+            logger.warning(
+                f"任务 '{task_name}' 执行超时 ({timeout_seconds}秒)"
+            )
+            signalBus.log_output.emit(
+                "WARNING",
+                self.tr("Task ")
+                + task_name
+                + self.tr(" execution timeout (")
+                + str(timeout_seconds)
+                + self.tr(" seconds)"),
+            )
+            
+            # 根据超时动作配置处理
+            if timeout_action == "notify":
+                # 仅提醒，继续执行
+                logger.info(f"任务 '{task_name}' 超时后继续执行（仅提醒模式）")
+                send_notice(
+                    NoticeTiming.WHEN_TASK_FAILED,
+                    self.tr("Task Timeout"),
+                    self.tr("Task ")
+                    + task_name
+                    + self.tr(" execution timeout, timeout action: notify only"),
+                )
+                # 返回 None 表示继续执行
+                return None
+            elif timeout_action == "restart":
+                # 重启任务
+                logger.info(f"任务 '{task_name}' 超时，准备重启任务")
+                signalBus.log_output.emit(
+                    "INFO",
+                    self.tr("Task timeout, restarting task..."),
+                )
+                send_notice(
+                    NoticeTiming.WHEN_TASK_FAILED,
+                    self.tr("Task Timeout"),
+                    self.tr("Task ")
+                    + task_name
+                    + self.tr(" execution timeout, restarting task..."),
+                )
+                # 先停止当前任务
+                await self.maafw.stop_task()
+                # 重新执行任务
+                return await self.run_task(task_id)
+            else:
+                # 未知的超时动作，记录警告并返回失败
+                logger.warning(
+                    f"未知的超时动作配置: {timeout_action}，任务视为失败"
+                )
+                return False
 
     async def stop_task(self):
         """停止当前正在运行的任务"""

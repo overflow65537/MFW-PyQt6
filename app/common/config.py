@@ -117,6 +117,20 @@ class Config(QConfig):
 
     announcement = ConfigItem("General", "announcement", "")
 
+    # ===== 任务超时设置 =====
+    task_timeout_enabled = ConfigItem(
+        "TaskExecution", "task_timeout_enabled", False, BoolValidator()
+    )
+    task_timeout_seconds = RangeConfigItem(
+        "TaskExecution", "task_timeout_seconds", 300, RangeValidator(10, 3600)
+    )
+    task_timeout_action = OptionsConfigItem(
+        "TaskExecution",
+        "task_timeout_action",
+        "notify",
+        OptionsValidator(["notify", "restart"]),
+    )
+
     auto_update = ConfigItem("Update", "auto_update", True, BoolValidator())
     force_github = ConfigItem("Update", "force_github", False, BoolValidator())
     github_api_key = ConfigItem("Update", "github_api_key", "")
