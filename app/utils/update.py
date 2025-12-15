@@ -44,19 +44,6 @@ if TYPE_CHECKING:
     from app.core.core import ServiceCoordinator
     from app.common.config import QConfig
 
-
-class UpdateState(Enum):
-    """更新状态枚举"""
-
-    IDLE = "idle"  # 空闲状态
-    CHECKING = "checking"  # 正在检查更新
-    AVAILABLE = "available"  # 有可用更新
-    DOWNLOADING = "downloading"  # 正在下载
-    DOWNLOADED = "downloaded"  # 下载完成
-    APPLYING = "applying"  # 正在应用更新
-    FAILED = "failed"  # 更新失败
-
-
 from app.utils.logger import logger
 from app.common.config import cfg, Config
 from app.utils.crypto import crypto_manager
@@ -101,25 +88,6 @@ class BaseUpdate(QThread):
             logger.debug("  [下载] 检测到NO_SSL文件，跳过SSL验证")
         else:
             verify = True
-
-        def _format_filename_from_headers(resp: Response) -> str | None:
-            cd_header = resp.headers.get("content-disposition", "")
-            if cd_header:
-                match = re.search(
-                    r"filename\*\s*=\s*(?:UTF-8'')?([^;]+)",
-                    cd_header,
-                    flags=re.IGNORECASE,
-                )
-                if match:
-                    return unquote(match.group(1).strip().strip('"'))
-                match = re.search(
-                    r'filename\s*=\s*"?([^";]+)"?',
-                    cd_header,
-                    flags=re.IGNORECASE,
-                )
-                if match:
-                    return match.group(1)
-            return None
 
         def _derive_filename(resp: Response) -> str:
             return "update.zip"
@@ -1038,6 +1006,12 @@ class Update(BaseUpdate):
                 else "unknown"
             )
 
+            hotfix = (
+                update_info.get("update_type") == "incremental"
+                if isinstance(update_info, dict)
+                else None
+            )
+
             if not download_url:
                 if update_info is False:
                     logger.info("[步骤1] 当前已是最新版本，无需下载")
@@ -1054,9 +1028,8 @@ class Update(BaseUpdate):
             # 步骤2: 检查是否支持热更新
             if self.force_full_download:
                 logger.info("[步骤2] 强制下载模式，跳过 update_flag/hotfix 检查")
-                hotfix = False
-            else:
-                logger.info("[步骤2] 开始判断热更新支持...")
+            elif download_source == "github":
+                logger.info("[步骤2] 开始判断Github热更新支持...")
                 update_flag_url = self._form_github_url(
                     self.url, "update_flag", str(self.latest_update_version)
                 )
@@ -1073,7 +1046,6 @@ class Update(BaseUpdate):
                     download_url = self._form_github_url(
                         self.url, "hotfix", str(self.latest_update_version)
                     )
-
                     logger.info("[步骤2] 热更新支持，更换下载地址: %s", download_url)
 
             self._emit_info_bar("info", self.tr("Preparing to download update..."))
@@ -1113,17 +1085,8 @@ class Update(BaseUpdate):
             )
             self._emit_info_bar("success", self.tr("Download complete"))
 
-            mode_label = "full"
-            if download_source == "mirror":
-                mirror_mode = self._detect_mirror_archive_mode(zip_file_path)
-                if mirror_mode is None:
-                    message = self.tr("Failed to read Mirror update package")
-                    logger.error("[步骤3] 读取镜像更新包失败: %s", zip_file_path)
-                    return self._stop_with_notice(0, "error", message)
-                mode_label = mirror_mode
-                logger.info("[步骤3] 镜像更新包检测到模式: %s", mode_label)
-            elif hotfix:
-                mode_label = "hotfix"
+            mode_label = "hotfix" if hotfix else "full"
+
             self._write_update_metadata(
                 download_dir,
                 str(download_source),
@@ -1132,6 +1095,10 @@ class Update(BaseUpdate):
                 self.download_attempts,
                 zip_file_path.name,
             )
+
+            if download_source == "mirror":
+                logger.info("[步骤3] 准备重启以进行镜像更新")
+                return self._stop_with_notice(2)
 
             # 步骤3: 判断是否可以热更新
             if not hotfix:
@@ -1148,8 +1115,6 @@ class Update(BaseUpdate):
                 return self._stop_with_notice(2)
             logger.info("[步骤4] 更新包解压完成: %s", hotfix_root)
 
-            change_data_path = hotfix_root / "changes.json"
-
             # 获取 bundle 路径
             bundle_path = self._get_bundle_path()
             if not bundle_path:
@@ -1158,68 +1123,26 @@ class Update(BaseUpdate):
             bundle_path_obj = Path(bundle_path)
             logger.debug("[步骤4] Bundle 路径: %s", bundle_path_obj)
 
-            if change_data_path.exists():
-                logger.info("[步骤4] 使用 changes.json 进行增量更新")
-                change_data = self._read_config(str(change_data_path)).get(
-                    "deleted", []
-                )
-                logger.debug("[步骤4] 需要删除 %d 个文件", len(change_data))
+            logger.info("[步骤5] 使用安全覆盖模式进行热更新")
+            project_path = bundle_path_obj
+            if not hotfix_root or not hotfix_root.exists():
+                logger.error("[步骤5] hotfix 目录不存在，无法覆盖")
+                return self._stop_with_notice(2)
 
-                backup_dir = bundle_path_obj / ".update_delete_backup"
-                backup_dir.mkdir(parents=True, exist_ok=True)
+            model_backup_dir: Path | None = self._backup_model_dir(project_path)
 
-                def _backup_and_delete(target: Path) -> None:
-                    try:
-                        relative_target = target.relative_to(bundle_path_obj)
-                    except ValueError:
-                        relative_target = Path(target.name)
-                    backup_target = backup_dir / relative_target
-                    backup_target.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(target, backup_target)
-                    deleted_backups.append((target, backup_target))
-                    target.unlink()
-                    logger.debug("[步骤4] 删除文件: %s", target)
+            logger.info("[步骤5] 开始安全覆盖项目目录: %s", project_path)
+            if not self._safe_overwrite_project(project_path, hotfix_root):
+                logger.error("[步骤5] 安全覆盖失败")
+                if model_backup_dir:
+                    self._cleanup_paths([model_backup_dir])
+                return self._stop_with_notice(2)
 
-                for file in change_data:
-                    if file.startswith("install"):
-                        file_path = Path(
-                            file.replace("install", str(bundle_path_obj), 1)
-                        )
-                    elif file.startswith("resource"):
-                        file_path = Path(
-                            file.replace(
-                                "resource", str(bundle_path_obj / "resource"), 1
-                            )
-                        )
-                    else:
-                        logger.warning("[步骤4] 未知文件格式: %s", file)
-                        continue
+            self._restore_model_dir(project_path, model_backup_dir)
+            if model_backup_dir:
+                self._cleanup_paths([model_backup_dir])
+            logger.info("[步骤5] 安全覆盖操作完成")
 
-                    if file_path.exists() and file_path.is_file():
-                        _backup_and_delete(file_path)
-            else:
-                logger.info("[步骤5] 使用安全覆盖模式进行全量更新")
-                project_path = bundle_path_obj
-                if not hotfix_root or not hotfix_root.exists():
-                    logger.error("[步骤5] hotfix 目录不存在，无法覆盖")
-                    return self._stop_with_notice(2)
-
-                model_backup_dir: Path | None = None
-                if download_source == "github":
-                    model_backup_dir = self._backup_model_dir(project_path)
-
-                logger.info("[步骤5] 开始安全覆盖项目目录: %s", project_path)
-                if not self._safe_overwrite_project(project_path, hotfix_root):
-                    logger.error("[步骤5] 安全覆盖失败")
-                    if model_backup_dir:
-                        self._cleanup_paths([model_backup_dir])
-                    return self._stop_with_notice(2)
-
-                if download_source == "github":
-                    self._restore_model_dir(project_path, model_backup_dir)
-                    if model_backup_dir:
-                        self._cleanup_paths([model_backup_dir])
-                logger.info("[步骤5] 安全覆盖操作完成")
             interface_path = [
                 bundle_path_obj / "interface.jsonc",
                 bundle_path_obj / "interface.json",
@@ -1325,6 +1248,7 @@ class Update(BaseUpdate):
                     result_data = {
                         "source": "mirror",
                         "version": self.latest_update_version,
+                        "update_type": mirror_data.get("update_type"),
                     }
                     if self.release_note:
                         result_data["release_note"] = self.release_note
@@ -1459,15 +1383,9 @@ class Update(BaseUpdate):
             result_data["release_note"] = self.release_note
         return result_data
 
-    def download_update(self):
-        pass
-
     def stop(self):
         self.stop_flag = True
         self.stop_signal.emit(0)
-
-    def special_update(self):
-        pass
 
     def _emit_info_bar(self, level: str, message: str | None):
         """向主界面请求显示 InfoBar 提示"""
@@ -1480,32 +1398,7 @@ class Update(BaseUpdate):
         """统一处理终止信号和可选的 InfoBar 通知。"""
         if level and message:
             self._emit_info_bar(level, message)
-        # 停止更新后，删除元数据
-        download_dir = Path.cwd() / "update" / "new_version"
-        metadata_path = download_dir / "update_metadata.json"
-        if metadata_path.exists():
-            try:
-                metadata_path.unlink()
-                logger.info("停止更新，已删除元数据文件: %s", metadata_path)
-            except Exception as err:
-                logger.debug("删除元数据文件失败: %s -> %s", metadata_path, err)
         self.stop_signal.emit(code)
-
-    def _detect_mirror_archive_mode(self, archive_path: Path) -> str | None:
-        """根据镜像包内是否存在 changes.json 决定模式。"""
-        try:
-            if self._has_changes_json_in_zip(archive_path):
-                return "hotfix"
-            return "full"
-        except (zipfile.BadZipFile, zipfile.LargeZipFile, OSError) as exc:
-            logger.debug("尝试以 zip 读取镜像包失败: %s -> %s", archive_path, exc)
-        try:
-            if self._has_changes_json_in_tar(archive_path):
-                return "hotfix"
-            return "full"
-        except (tarfile.TarError, OSError) as exc:
-            logger.debug("尝试以 tar.gz 读取镜像包失败: %s -> %s", archive_path, exc)
-        return None
 
     def _has_changes_json_in_zip(self, archive_path: Path) -> bool:
         with zipfile.ZipFile(archive_path, "r", metadata_encoding="utf-8") as archive:

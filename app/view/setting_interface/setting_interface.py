@@ -135,6 +135,7 @@ class SettingInterface(QWidget):
         if self._local_update_package:
             logger.info("检测到本地更新包，跳过检查更新流程")
         self._init_update_checker()
+
     def connect_notice_card_clicked(self):
         # 连接通知卡片的点击事件
         self.dingtalk_noticeTypeCard.clicked.connect(self._on_dingtalk_notice_clicked)
@@ -143,6 +144,7 @@ class SettingInterface(QWidget):
         self.WxPusher_noticeTypeCard.clicked.connect(self._on_wxpusher_notice_clicked)
         self.QYWX_noticeTypeCard.clicked.connect(self._on_qywx_notice_clicked)
         self.send_settingCard.clicked.connect(self._on_send_setting_clicked)
+
     def _setup_ui(self):
         """搭建整体结构：标题 + 更新详情 + 滚动区域 + ExpandLayout。"""
         self.main_layout = QVBoxLayout(self)
@@ -1054,8 +1056,6 @@ class SettingInterface(QWidget):
             # 若输入无效，恢复默认值
             self.task_timeout_card.lineEdit.setText(str(cfg.get(cfg.task_timeout)))
 
-
-
     def initialize_update_settings(self):
         """插入更新设置卡片组（跟原先的 UpdateSettingsSection 等价）。"""
         self.updateGroup = SettingCardGroup(
@@ -1607,17 +1607,98 @@ class SettingInterface(QWidget):
     def _refresh_local_update_package(
         self, restart_required: bool = True
     ) -> Path | None:
-        """刷新本地更新包缓存，便于动态响应。"""
-        self._local_update_package = self._detect_local_update_package()
-        self._local_update_metadata = (
-            self._load_local_update_metadata() if self._local_update_package else None
-        )
-        if self._local_update_package:
-            hotfix_mode = self._is_local_update_hotfix()
-            self._prepare_instant_update_state(
-                restart_required=restart_required and not hotfix_mode
+        """刷新本地更新包缓存，基于本地元数据决定是否提示更新。
+
+        逻辑调整：
+        - 仅依赖 update/new_version/update_metadata.json 判断是否存在可用更新
+        - 不再区分热更新 / 全量更新，本地包一律视为需重启安装
+        - 如果元数据中声明的包文件不存在，则删除元数据
+        - 如果 attempts > 3，则通过 InfoBar 提示并删除更新包与元数据
+        """
+        target_dir = Path.cwd() / "update" / "new_version"
+        metadata_path = target_dir / "update_metadata.json"
+
+        # 默认清空缓存
+        self._local_update_package = None
+        self._local_update_metadata = None
+
+        if not metadata_path.exists():
+            logger.info("本地更新元数据不存在，跳过本地包刷新")
+            return None
+
+        metadata = self._load_local_update_metadata()
+        if not metadata:
+            # 元数据损坏或加载失败，尝试清理
+            try:
+                metadata_path.unlink()
+                logger.info("已删除损坏的本地更新元数据: %s", metadata_path)
+            except Exception as exc:
+                logger.warning("删除损坏的本地更新元数据失败: %s", exc)
+            return None
+
+        attempts = int(metadata.get("attempts", 0) or 0)
+        package_name = metadata.get("package_name") or "update.zip"
+        package_path = target_dir / package_name
+
+        # 如果尝试次数过多，提示并清理
+        if attempts > 3:
+            logger.warning(
+                "本地更新尝试次数超过限制(%s)，清理更新包与元数据: %s", attempts, package_path
             )
-            logger.info("本地包模式=%s", "hotfix" if hotfix_mode else "full")
+            try:
+                from app.common.signal_bus import signalBus
+
+                signalBus.info_bar_requested.emit(
+                    "warning",
+                    self.tr(
+                        "Update failed too many times, local update package has been cleared."
+                    ),
+                )
+            except Exception as exc:  # 信号发送失败不应中断清理
+                logger.warning("发送 InfoBar 提示失败: %s", exc)
+
+            # 删除更新包与元数据
+            try:
+                if package_path.exists():
+                    package_path.unlink()
+                    logger.info("已删除本地更新包: %s", package_path)
+            except Exception as exc:
+                logger.warning("删除本地更新包失败: %s", exc)
+
+            try:
+                if metadata_path.exists():
+                    metadata_path.unlink()
+                    logger.info("已删除本地更新元数据: %s", metadata_path)
+            except Exception as exc:
+                logger.warning("删除本地更新元数据失败: %s", exc)
+
+            return None
+
+        # 检查元数据中声明的更新包是否存在
+        if not package_path.exists():
+            logger.warning(
+                "本地更新元数据存在但文件缺失，删除元数据: %s（期望文件: %s）",
+                metadata_path,
+                package_path,
+            )
+            try:
+                metadata_path.unlink()
+                logger.info("已删除失效的本地更新元数据: %s", metadata_path)
+            except Exception as exc:
+                logger.warning("删除失效的本地更新元数据失败: %s", exc)
+            return None
+
+        # 元数据与更新包均有效，准备立即更新状态（统一视为需重启安装）
+        self._local_update_package = package_path
+        self._local_update_metadata = metadata
+        self._prepare_instant_update_state(restart_required=True)
+        logger.info(
+            "检测到本地更新包（基于元数据）: %s, attempts=%s, mode=%s, source=%s",
+            package_path,
+            attempts,
+            metadata.get("mode"),
+            metadata.get("source"),
+        )
         return self._local_update_package
 
     def _prepare_instant_update_state(self, restart_required: bool = True) -> None:
