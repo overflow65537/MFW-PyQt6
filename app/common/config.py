@@ -129,8 +129,8 @@ class Config(QConfig):
     )
 
     # ===== 任务设置 =====
-    task_timeout_enable = ConfigItem("Task", "task_timeout_enable", True)  # 是否开启任务超时设置
-    task_timeout = ConfigItem("Task", "task_timeout", 600)  # 默认600秒
+    task_timeout_enable = ConfigItem("Task", "task_timeout_enable", False)  # 是否开启任务超时设置
+    task_timeout = ConfigItem("Task", "task_timeout", 900)  # 默认900秒
 
     # 任务超时后动作
     class TaskTimeoutAction(Enum):
