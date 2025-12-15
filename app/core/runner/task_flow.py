@@ -289,7 +289,10 @@ class TaskFlowRunner(QObject):
                     if task.name in [PRE_CONFIGURATION, POST_ACTION]:
                         continue
 
-                    if not task.is_checked:
+                    elif not task.is_checked:
+                        continue
+
+                    elif task.is_special:
                         continue
 
                     logger.info(f"开始执行任务: {task.name}")
