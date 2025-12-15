@@ -25,6 +25,7 @@ MFW-ChainFlow Assistant 更新单元
 from PySide6.QtCore import QThread, SignalInstance, QObject, Signal
 from enum import Enum
 from datetime import datetime
+from time import perf_counter
 import requests
 from requests import Response, HTTPError
 import jsonc
@@ -113,6 +114,9 @@ class BaseUpdate(QThread):
 
             downloaded_size = 0
             last_log_percent = 0
+            # 进度信号节流，减少 UI 重绘频率
+            last_emit_time = perf_counter()
+            last_emit_percent = 0
             if not final_path:
                 filename = _derive_filename(response)
                 target_path = Path(file_path)
@@ -130,7 +134,19 @@ class BaseUpdate(QThread):
 
                     downloaded_size += len(data)
                     file.write(data)
-                    progress_signal.emit(downloaded_size, total_size)
+                    # 仅在百分比变化或间隔足够时才发射进度信号，避免过于频繁的 UI 更新
+                    now = perf_counter()
+                    percent = (
+                        int(downloaded_size * 100 / total_size) if total_size > 0 else 0
+                    )
+                    if (
+                        total_size == 0
+                        or percent > last_emit_percent
+                        or now - last_emit_time >= 0.25
+                    ):
+                        progress_signal.emit(downloaded_size, total_size)
+                        last_emit_time = now
+                        last_emit_percent = percent
 
                     # 每 10% 记录一次日志
                     if total_size > 0:
@@ -340,51 +356,6 @@ class BaseUpdate(QThread):
         except Exception as e:
             logger.exception(f"移动文件时出错{src} -> {dst}")
             return False
-
-    def _safe_overwrite_project(self, project_path: Path, hotfix_root: Path) -> bool:
-        """
-        安全覆盖 project_path 中和 hotfix_root 中对应的内容。
-        """
-        backup_root = Path.cwd() / "backup"
-        project_path.mkdir(parents=True, exist_ok=True)
-        backup_root.mkdir(parents=True, exist_ok=True)
-
-        entries = []
-        for path in hotfix_root.glob("**/*"):
-            if path == hotfix_root:
-                continue
-            relative = path.relative_to(hotfix_root)
-            entries.append((relative, path))
-        entries.sort(
-            key=lambda item: (len(item[0].parts), 0 if item[1].is_dir() else 1)
-        )
-
-        handled_dirs: list[Path] = []
-        affected_relatives: list[Path] = []
-        try:
-            for relative, src in entries:
-                if self._is_under_any(relative, handled_dirs):
-                    continue
-                target = project_path / relative
-                if not target.exists():
-                    continue
-                affected_relatives.append(relative)
-                backup_target = backup_root / relative
-                if src.is_dir():
-                    self._backup_directory(target, backup_target)
-                    handled_dirs.append(relative)
-                else:
-                    self._backup_file(target, backup_target)
-
-            shutil.copytree(hotfix_root, project_path, dirs_exist_ok=True)
-        except Exception as exc:
-            logger.exception(f"安全覆盖失败: {exc}")
-            self._cleanup_targets(project_path, affected_relatives)
-            self._restore_from_backup(project_path, backup_root)
-            return False
-        else:
-            self._cleanup_paths([hotfix_root, backup_root])
-            return True
 
     def _backup_file(self, target: Path, backup_target: Path) -> None:
         backup_target.parent.mkdir(parents=True, exist_ok=True)
@@ -921,11 +892,11 @@ class Update(BaseUpdate):
         self.info_bar_signal = info_bar_signal
         self.force_full_download = force_full_download
 
-        task_interface = self.service_coordinator.task.interface
-        self.project_name = task_interface.get("name", "")
-        self.current_version = task_interface.get("version", "v1.0.0")
-        self.url = task_interface.get("github", task_interface.get("url", ""))
-        self.current_res_id = task_interface.get("mirrorchyan_rid", "")
+        self.interface = self.service_coordinator.task.interface
+        self.project_name = self.interface.get("name", "")
+        self.current_version = self.interface.get("version", "v1.0.0")
+        self.url = self.interface.get("github", self.interface.get("url", ""))
+        self.current_res_id = self.interface.get("mirrorchyan_rid", "")
 
         self.mirror_cdk = self.Mirror_ckd()
 
@@ -985,7 +956,9 @@ class Update(BaseUpdate):
         logger.info("=" * 50)
         self.stop_flag = False
         deleted_backups: list[tuple[Path, Path]] = []
-        backup_dir: Path | None = None
+        # 资源目录热更新时使用的备份信息，用于异常时整体回滚
+        resource_backup_dir: Path | None = None
+        resource_backups: list[tuple[Path, Path]] = []
 
         try:
             if not self.service_coordinator:
@@ -1129,19 +1102,50 @@ class Update(BaseUpdate):
                 logger.error("[步骤5] hotfix 目录不存在，无法覆盖")
                 return self._stop_with_notice(2)
 
-            model_backup_dir: Path | None = self._backup_model_dir(project_path)
+            # 备份并删除资源文件中的 pipeline 目录，以供后续无损覆盖
+            resource_backup_dir = Path.cwd() / "backup" / "resource"
+            resource_backup_dir.mkdir(parents=True, exist_ok=True)
+            resource_list = self.interface.get("resource", [])
+            known_resources: list[str] = []
+            resource_backups.clear()
+            for resource in resource_list:
+                for resource_path_str in resource.get("path", []):
+                    resource_path = Path(
+                        resource_path_str.replace("{PROJECT_DIR}", ".")
+                    )
+                    if resource_path.is_dir() and (
+                        resource_path_str not in known_resources
+                    ):
+                        backup_target = resource_backup_dir / resource_path.name
+                        try:
+                            # 先备份资源
+                            if backup_target.is_dir():
+                                shutil.rmtree(backup_target)
+                            shutil.copytree(str(resource_path), str(backup_target))
+                            logger.debug("[步骤5] 已备份资源目录: %s", resource_path)
 
-            logger.info("[步骤5] 开始安全覆盖项目目录: %s", project_path)
-            if not self._safe_overwrite_project(project_path, hotfix_root):
-                logger.error("[步骤5] 安全覆盖失败")
-                if model_backup_dir:
-                    self._cleanup_paths([model_backup_dir])
-                return self._stop_with_notice(2)
+                            resource_backups.append((resource_path, backup_target))
+                            known_resources.append(resource_path_str)
 
-            self._restore_model_dir(project_path, model_backup_dir)
-            if model_backup_dir:
-                self._cleanup_paths([model_backup_dir])
-            logger.info("[步骤5] 安全覆盖操作完成")
+                            # 再删除旧的 pipeline 目录，避免影响后续覆盖
+                            pipeline_path = resource_path / "pipeline"
+                            if pipeline_path.exists():
+                                shutil.rmtree(str(pipeline_path))
+                                logger.debug(
+                                    "[步骤5] 已删除旧 pipeline 目录: %s", pipeline_path
+                                )
+                        except Exception as backup_err:
+                            logger.exception(
+                                "[步骤5] 备份或清理资源目录时出错: %s -> %s",
+                                resource_path,
+                                backup_err,
+                            )
+                            raise
+
+            logger.info("[步骤5] 开始覆盖项目目录: %s", project_path)
+            # 允许目标目录已存在（Python 3.8+ 支持 dirs_exist_ok）
+            # 这样在 bundle 目录本身已存在时不会因 WinError 183 直接失败
+            shutil.copytree(hotfix_root, project_path, dirs_exist_ok=True)
 
             interface_path = [
                 bundle_path_obj / "interface.jsonc",
@@ -1168,6 +1172,34 @@ class Update(BaseUpdate):
             self.stop_signal.emit(1)
 
         except Exception as e:
+            # 资源目录异常回滚
+            if resource_backups:
+                logger.warning("[步骤5] 更新失败，正在恢复资源备份目录...")
+                for original_path, backup_path in reversed(resource_backups):
+                    try:
+                        if not backup_path.exists():
+                            continue
+                        # 清理已被部分覆盖/删除的原目录
+                        if original_path.exists():
+                            if original_path.is_file():
+                                original_path.unlink()
+                            else:
+                                shutil.rmtree(original_path)
+                        # 使用备份进行还原
+                        if backup_path.is_dir():
+                            shutil.copytree(backup_path, original_path)
+                        else:
+                            original_path.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copy2(backup_path, original_path)
+                        logger.debug("[步骤5] 已恢复资源目录: %s", original_path)
+                    except Exception as restore_err:
+                        logger.exception(
+                            "[步骤5] 恢复资源目录失败: %s -> %s",
+                            original_path,
+                            restore_err,
+                        )
+                resource_backups.clear()
+
             if deleted_backups:
                 logger.warning("[步骤5] 更新失败，正在恢复已删除文件...")
                 for original_path, backup_path in reversed(deleted_backups):
@@ -1186,11 +1218,12 @@ class Update(BaseUpdate):
             logger.exception("更新过程中出现错误: %s", e)
             self._stop_with_notice(0, "error", self.tr("Failed to update"))
         finally:
-            if backup_dir and backup_dir.exists():
+            # 清理资源备份目录
+            if resource_backup_dir and resource_backup_dir.exists():
                 try:
-                    shutil.rmtree(backup_dir)
+                    shutil.rmtree(resource_backup_dir)
                 except Exception as cleanup_err:
-                    logger.debug("[步骤5] 清理删除备份目录失败: %s", cleanup_err)
+                    logger.debug("[步骤5] 清理资源备份目录失败: %s", cleanup_err)
 
     def check_update(self, fetch_download_url: bool = True) -> dict | bool:
         logger.info("  [检查更新] 开始检查...")

@@ -49,6 +49,7 @@ from qfluentwidgets import (
 from app.utils.markdown_helper import render_markdown
 from app.widget.notice_message import NoticeMessageBox
 from app.common.config import cfg, isWin11
+from app.common.__version__ import __version__ as UI_VERSION
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
 from app.utils.crypto import crypto_manager
@@ -249,13 +250,9 @@ class SettingInterface(QWidget):
         top_row.addLayout(info_column)
         header_layout.addLayout(top_row)
 
-        self.version_label = BodyLabel(
-            self.tr("Version:") + " " + self.interface_data.get("version", "0.0.1"),
-            self,
-        )
+        # 版本信息统一放到一行里展示：当前版本 / 最新版本 / UI版本 / MaaFW版本
+        self.version_label = BodyLabel("", self)
         self.version_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
-        self.last_version_label = BodyLabel("", self)
-        self.last_version_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
 
         self.detail_progress = QProgressBar(self)
         self.detail_progress.setRange(0, 100)
@@ -272,7 +269,6 @@ class SettingInterface(QWidget):
         version_column = QVBoxLayout()
         version_column.setSpacing(4)
         version_column.addWidget(self.version_label)
-        version_column.addWidget(self.last_version_label)
         version_layout.addLayout(version_column)
         self.detail_progress_placeholder = QWidget(self)
         self.detail_progress_placeholder.setSizePolicy(
@@ -1253,19 +1249,36 @@ class SettingInterface(QWidget):
         cfg.set(cfg.github_api_key, str(text).strip())
 
     def _refresh_update_header(self):
+        # 每次刷新时都从服务协调器重新获取一次最新的 interface 数据，避免使用旧缓存
+        latest_metadata = self._get_interface_metadata()
+        if latest_metadata:
+            self.interface_data = latest_metadata
         metadata = self.interface_data or {}
         icon_path = metadata.get("icon", "")
         name = metadata.get("name", "")
-        version = metadata.get("version", "0.0.1")
-        last_version = cfg.get(cfg.latest_update_version)
+        current_version = metadata.get("version", "0.0.1")
+        last_version = cfg.get(cfg.latest_update_version) or current_version
         license_value = metadata.get("license", "None License")
         github = metadata.get("github", metadata.get("url", ""))
         description = metadata.get("description", "")
         contact = metadata.get("contact", "")
 
         self.resource_name_label.setText(name)
-        self.version_label.setText(self.tr("Version:") + " " + version)
-        self._set_last_version_label(last_version)
+        # 当前版本 / 最新版本 / UI版本 / MaaFW版本 水平展示
+        maafw_version = "N/A"
+        self.version_label.setText(
+            self.tr("Current version: ")
+            + str(current_version)
+            + "    "
+            + self.tr("Latest version: ")
+            + str(last_version)
+            + "    "
+            + self.tr("UI version: ")
+            + str(UI_VERSION)
+            + "    "
+            + self.tr("MaaFW version: ")
+            + maafw_version
+        )
         self._apply_markdown_to_label(self.description_label, description)
         self._apply_markdown_to_label(
             self.contact_label, self._linkify_contact_urls(contact)
@@ -1274,10 +1287,6 @@ class SettingInterface(QWidget):
         self._license_content = license_value
         self.license_button.setText(self.tr("License"))
         self._apply_header_icon(icon_path)
-
-    def _set_last_version_label(self, version: str | None):
-        version_text = version or self.tr("N/A")
-        self.last_version_label.setText(self.tr("Last version:") + " " + version_text)
 
     def _get_interface_metadata(self):
         """从服务协调器的任务服务获取 interface 数据。"""
@@ -1643,7 +1652,9 @@ class SettingInterface(QWidget):
         # 如果尝试次数过多，提示并清理
         if attempts > 3:
             logger.warning(
-                "本地更新尝试次数超过限制(%s)，清理更新包与元数据: %s", attempts, package_path
+                "本地更新尝试次数超过限制(%s)，清理更新包与元数据: %s",
+                attempts,
+                package_path,
             )
             try:
                 from app.common.signal_bus import signalBus
@@ -1707,7 +1718,8 @@ class SettingInterface(QWidget):
         self._bind_instant_update_button(enable=True)
         latest_version = cfg.get(cfg.latest_update_version)
         if latest_version:
-            self._set_last_version_label(str(latest_version))
+            # 刷新头部版本展示行
+            self._refresh_update_header()
 
     def _is_local_update_hotfix(self) -> bool:
         return bool(
@@ -1773,7 +1785,7 @@ class SettingInterface(QWidget):
         )
         if latest_version:
             # 无论是否发现新版本，都同步显示最新的版本号
-            self._set_last_version_label(str(latest_version))
+            self._refresh_update_header()
 
         if not result.get("enable"):
             return
@@ -1863,9 +1875,8 @@ class SettingInterface(QWidget):
             return
         self._restart_update_required = False
         self._bind_start_button(enable=False)
-        # 同步最新版本显示（即便无更新也刷新）
-        latest_version = cfg.get(cfg.latest_update_version)
-        self._set_last_version_label(str(latest_version) if latest_version else None)
+        # 同步当前/最新版本显示（即便无更新也刷新）
+        self._refresh_update_header()
 
     def _on_instant_update_clicked(self):
         """立即更新"""
