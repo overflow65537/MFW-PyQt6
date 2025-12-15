@@ -1265,7 +1265,8 @@ class SettingInterface(QWidget):
 
         self.resource_name_label.setText(name)
         # 当前版本 / 最新版本 / UI版本 / MaaFW版本 水平展示
-        maafw_version = "N/A"
+        from maa.library import Library
+        maafw_version = Library.version()
         self.version_label.setText(
             self.tr("Current version: ")
             + str(current_version)
