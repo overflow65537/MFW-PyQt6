@@ -79,7 +79,12 @@ from app.view.special_task_interface.special_task_interface import (
 )
 from app.view.monitor_interface import MonitorInterface
 from app.view.schedule_interface.schedule_interface import ScheduleInterface
-from app.view.setting_interface.setting_interface import SettingInterface
+from app.view.setting_interface.setting_interface import (
+    SettingInterface,
+    start_auto_confirm_countdown,
+    rename_updater_binary,
+    launch_updater_process,
+)
 from app.view.test_interface.test_interface import TestInterface
 from app.common.config import cfg
 from app.common.signal_bus import signalBus
@@ -103,7 +108,9 @@ ENABLE_TEST_INTERFACE_PAGE = cfg.get(cfg.enable_test_interface_page)
 class MainWindow(MSFluentWindow):
 
     _LOCKED_LOG_NAMES = {"maa.log", "clash.log", "maa.log.bak"}
-    _THEME_LISTENER_TIMEOUT_MS = 2000  # 2 seconds timeout for theme listener thread termination
+    _THEME_LISTENER_TIMEOUT_MS = (
+        2000  # 2 seconds timeout for theme listener thread termination
+    )
 
     def __init__(
         self,
@@ -121,10 +128,9 @@ class MainWindow(MSFluentWindow):
         self._auto_update_in_progress = False
         self._auto_update_pending_restart = False
         self._pending_auto_run = False
-        self._auto_run_scheduled = False
         self._external_updater_started = False
 
-        cfg.set(cfg.save_screenshot,False)
+        cfg.set(cfg.save_screenshot, False)
 
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)
@@ -826,31 +832,15 @@ class MainWindow(MSFluentWindow):
         yes_button,
         template: str,
     ) -> None:
-        """自动确认倒计时，用于自动更新场景。"""
-
-        base_yes_text = yes_button.text() if yes_button else ""
-        logger.info("倒计时开始: %ss, 文案模板=%s", seconds, template)
-
-        def tick(remaining: int):
-            if not dialog.isVisible():
-                logger.debug("倒计时终止：对话框已关闭")
-                return
-            label.setText(template.replace("%1", str(remaining)))
-            if yes_button:
-                yes_button.setText(
-                    f"{base_yes_text} ({remaining}s)"
-                    if remaining >= 0
-                    else base_yes_text
-                )
-            if remaining <= 0:
-                if yes_button:
-                    yes_button.setText(base_yes_text)
-                logger.info("倒计时结束，自动点击确认")
-                dialog.accept()
-                return
-            QTimer.singleShot(1000, lambda: tick(remaining - 1))
-
-        QTimer.singleShot(0, lambda: tick(seconds))
+        """自动确认倒计时，用于自动更新场景，复用设置页的通用工具函数。"""
+        start_auto_confirm_countdown(
+            dialog,
+            label,
+            seconds,
+            yes_button,
+            template,
+            logger_prefix="自动更新",
+        )
 
     def _start_external_updater(self) -> None:
         """调用外部更新器完成非热更新并退出主程序。"""
@@ -859,9 +849,9 @@ class MainWindow(MSFluentWindow):
         self._external_updater_started = True
         try:
             if sys.platform.startswith("win32"):
-                self._rename_updater("MFWUpdater.exe", "MFWUpdater1.exe")
+                rename_updater_binary("MFWUpdater.exe", "MFWUpdater1.exe")
             elif sys.platform.startswith(("darwin", "linux")):
-                self._rename_updater("MFWUpdater", "MFWUpdater1")
+                rename_updater_binary("MFWUpdater", "MFWUpdater1")
         except Exception as exc:
             self._external_updater_started = False
             logger.error("重命名更新程序失败: %s", exc)
@@ -869,7 +859,7 @@ class MainWindow(MSFluentWindow):
             return
 
         try:
-            self._launch_updater_process()
+            launch_updater_process()
         except Exception as exc:
             self._external_updater_started = False
             logger.error("启动更新程序失败: %s", exc)
@@ -877,31 +867,6 @@ class MainWindow(MSFluentWindow):
             return
 
         QApplication.quit()
-
-    def _rename_updater(self, old_name: str, new_name: str) -> None:
-        """重命名更新器以避免占用。"""
-        import os
-
-        if os.path.exists(old_name) and os.path.exists(new_name):
-            os.remove(new_name)
-        if os.path.exists(old_name):
-            os.rename(old_name, new_name)
-
-    def _launch_updater_process(self) -> None:
-        """启动外部更新器进程。"""
-        import subprocess
-
-        if sys.platform.startswith("win32"):
-            from subprocess import CREATE_NEW_PROCESS_GROUP, DETACHED_PROCESS
-
-            subprocess.Popen(
-                ["./MFWUpdater1.exe", "-update"],
-                creationflags=CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS,
-            )
-        elif sys.platform.startswith(("darwin", "linux")):
-            subprocess.Popen(["./MFWUpdater1", "-update"], start_new_session=True)
-        else:
-            raise NotImplementedError("Unsupported platform")
 
     def _apply_auto_minimize_on_startup(self) -> None:
         """在启动完成后根据配置自动最小化窗口。"""
@@ -1032,11 +997,11 @@ class MainWindow(MSFluentWindow):
     def closeEvent(self, e):
         """关闭事件"""
         self._save_window_geometry_if_needed()
-        
+
         # Shutdown hotkey manager first to unhook keyboard listeners
         if getattr(self, "_hotkey_manager", None):
             self._hotkey_manager.shutdown()
-        
+
         # Terminate and wait for theme listener thread to finish
         try:
             if self.themeListener.isRunning():
@@ -1047,7 +1012,7 @@ class MainWindow(MSFluentWindow):
             self.themeListener.deleteLater()
         except Exception as ex:
             logger.warning(f"终止主题监听器时出错: {ex}")
-        
+
         e.accept()
         QTimer.singleShot(0, self.clear_thread_async)
         super().closeEvent(e)
@@ -1065,9 +1030,7 @@ class MainWindow(MSFluentWindow):
 
     def clear_thread_async(self):
         """异步清理线程和资源"""
-        send_thread = getattr(
-            self.service_coordinator.task_runner, "send_thread", None
-        )
+        send_thread = getattr(self.service_coordinator.task_runner, "send_thread", None)
         try:
 
             self._clear_maafw_sync()
@@ -1186,7 +1149,7 @@ class MainWindow(MSFluentWindow):
             import psutil
 
             # 不要误杀正在执行更新的外部更新器
-            UPDATER_NAMES = {"MFWUpdater.exe", "MFWUpdater1.exe", "MFWUpdater"}
+            UPDATER_NAMES = {"MFWUpdater.exe", "MFWUpdater1.exe", "MFWUpdater","MFWUpdater1"}
 
             current = psutil.Process(os.getpid())
             children = current.children(recursive=True)
@@ -1201,7 +1164,9 @@ class MainWindow(MSFluentWindow):
                         up.lower() in cmdline for up in UPDATER_NAMES
                     ):
                         logger.debug(
-                            "检测到更新器进程，跳过终止: pid=%s, name=%s", proc.pid, proc.name()
+                            "检测到更新器进程，跳过终止: pid=%s, name=%s",
+                            proc.pid,
+                            proc.name(),
                         )
                         continue
                     proc.terminate()

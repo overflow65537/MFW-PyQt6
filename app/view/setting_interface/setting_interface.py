@@ -76,6 +76,68 @@ from app.view.setting_interface.widget.SendSettingCard import SendSettingCard
 _CONTACT_URL_PATTERN = re.compile(r"(?:https?://|www\.)[^\s，,]+")
 
 
+def start_auto_confirm_countdown(
+    dialog: MessageBoxBase,
+    label: BodyLabel,
+    seconds: int,
+    yes_button,
+    template: str,
+    *,
+    logger_prefix: str = "",
+) -> None:
+    """通用的自动确认倒计时工具函数。
+
+    由设置页与主界面复用，避免重复实现。
+    """
+    base_yes_text = yes_button.text() if yes_button else ""
+    prefix = f"{logger_prefix} " if logger_prefix else ""
+    logger.info("%s倒计时开始: %ss, 文案模板=%s", prefix.strip(), seconds, template)
+
+    def tick(remaining: int):
+        if not dialog.isVisible():
+            logger.debug("%s倒计时终止：对话框已关闭", prefix.strip())
+            return
+        label.setText(template.replace("%1", str(remaining)))
+        if yes_button:
+            yes_button.setText(
+                f"{base_yes_text} ({remaining}s)" if remaining >= 0 else base_yes_text
+            )
+        if remaining <= 0:
+            if yes_button:
+                yes_button.setText(base_yes_text)
+            logger.info("%s倒计时结束，自动确认/点击", prefix.strip())
+            dialog.accept()
+            return
+        QTimer.singleShot(1000, lambda: tick(remaining - 1))
+
+    QTimer.singleShot(0, lambda: tick(seconds))
+
+
+def rename_updater_binary(old_name: str, new_name: str) -> None:
+    """重命名更新器二进制文件，供各界面复用。"""
+    import os
+
+    if os.path.exists(old_name) and os.path.exists(new_name):
+        os.remove(new_name)
+    if os.path.exists(old_name):
+        os.rename(old_name, new_name)
+
+
+def launch_updater_process() -> None:
+    """启动更新器进程的底层实现，由调用方负责异常处理/提示。"""
+    import sys
+    import subprocess
+
+    if sys.platform.startswith("win32"):
+        logger.info("启动更新程序: ./MFWUpdater1.exe -update")
+        subprocess.Popen(["./MFWUpdater1.exe", "-update"])
+    elif sys.platform.startswith(("darwin", "linux")):
+        logger.info("启动更新程序: ./MFWUpdater1 -update")
+        subprocess.Popen(["./MFWUpdater1", "-update"])
+    else:
+        raise NotImplementedError("Unsupported platform")
+
+
 class SettingInterface(QWidget):
     """
     设置界面，用于配置应用程序设置，主体以滚动区域 + ExpandLayout。
@@ -2033,54 +2095,24 @@ class SettingInterface(QWidget):
         template: str,
         yes_button,
     ) -> None:
-        """通用的自动确认倒计时。"""
-        logger.info("立即更新倒计时开始: %ss", seconds)
-
-        def tick(remaining: int):
-            if not dialog.isVisible():
-                logger.debug("立即更新倒计时终止：对话框已关闭")
-                return
-            label.setText(template.replace("%1", str(remaining)))
-            if yes_button:
-                yes_button.setText(
-                    self.tr("Update now") + f" ({remaining}s)"
-                    if remaining >= 0
-                    else self.tr("Update now")
-                )
-            if remaining <= 0:
-                logger.info("立即更新倒计时结束，自动确认")
-                if yes_button:
-                    yes_button.setText(self.tr("Update now"))
-                dialog.accept()
-                return
-            QTimer.singleShot(1000, lambda: tick(remaining - 1))
-
-        QTimer.singleShot(0, lambda: tick(seconds))
+        """通用的自动确认倒计时，委托给模块级工具函数实现。"""
+        start_auto_confirm_countdown(
+            dialog,
+            label,
+            seconds,
+            yes_button,
+            template,
+            logger_prefix="立即更新",
+        )
 
     def _rename_updater(self, old_name, new_name):
-        """重命名更新程序。"""
-        import os
-
-        if os.path.exists(old_name) and os.path.exists(new_name):
-            os.remove(new_name)
-        if os.path.exists(old_name):
-            os.rename(old_name, new_name)
+        """重命名更新程序，复用模块级工具函数。"""
+        rename_updater_binary(str(old_name), str(new_name))
 
     def _start_updater(self):
         """启动更新程序（允许更新器自行显示界面）。"""
-        import sys
-        import subprocess
-
         try:
-            if sys.platform.startswith("win32"):
-                logger.info("启动更新程序: ./MFWUpdater1.exe -update")
-                # 不再使用 DETACHED_PROCESS，允许更新器自行展示控制台/GUI
-                subprocess.Popen(["./MFWUpdater1.exe", "-update"])
-            elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
-                logger.info("启动更新程序: ./MFWUpdater1 -update")
-                subprocess.Popen(["./MFWUpdater1", "-update"])
-            else:
-                raise NotImplementedError("Unsupported platform")
+            launch_updater_process()
         except Exception as e:
             logger.error(f"启动更新程序失败: {e}")
             signalBus.info_bar_requested.emit("error", str(e))
