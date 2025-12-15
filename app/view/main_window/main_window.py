@@ -1185,6 +1185,9 @@ class MainWindow(MSFluentWindow):
             import os
             import psutil
 
+            # 不要误杀正在执行更新的外部更新器
+            UPDATER_NAMES = {"MFWUpdater.exe", "MFWUpdater1.exe", "MFWUpdater"}
+
             current = psutil.Process(os.getpid())
             children = current.children(recursive=True)
             if not children:
@@ -1192,6 +1195,15 @@ class MainWindow(MSFluentWindow):
             logger.debug("检测到 %d 个子进程，正在关闭", len(children))
             for proc in children:
                 try:
+                    name = (proc.name() or "").lower()
+                    cmdline = " ".join(proc.cmdline()).lower()
+                    if any(up.lower() in name for up in UPDATER_NAMES) or any(
+                        up.lower() in cmdline for up in UPDATER_NAMES
+                    ):
+                        logger.debug(
+                            "检测到更新器进程，跳过终止: pid=%s, name=%s", proc.pid, proc.name()
+                        )
+                        continue
                     proc.terminate()
                 except Exception:
                     logger.debug("发送终止信号失败: pid=%s", proc.pid)

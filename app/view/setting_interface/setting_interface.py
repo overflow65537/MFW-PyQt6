@@ -1266,6 +1266,7 @@ class SettingInterface(QWidget):
         self.resource_name_label.setText(name)
         # 当前版本 / 最新版本 / UI版本 / MaaFW版本 水平展示
         from maa.library import Library
+
         maafw_version = Library.version()
         self.version_label.setText(
             self.tr("Current version: ")
@@ -2066,28 +2067,24 @@ class SettingInterface(QWidget):
             os.rename(old_name, new_name)
 
     def _start_updater(self):
-        """启动更新程序。"""
+        """启动更新程序（允许更新器自行显示界面）。"""
         import sys
         import subprocess
 
         try:
             if sys.platform.startswith("win32"):
-                from subprocess import CREATE_NEW_PROCESS_GROUP, DETACHED_PROCESS
-
-                subprocess.Popen(
-                    ["./MFWUpdater1.exe", "-update"],
-                    creationflags=CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS,
-                )
+                logger.info("启动更新程序: ./MFWUpdater1.exe -update")
+                # 不再使用 DETACHED_PROCESS，允许更新器自行展示控制台/GUI
+                subprocess.Popen(["./MFWUpdater1.exe", "-update"])
             elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
-                subprocess.Popen(["./MFWUpdater1", "-update"], start_new_session=True)
+                logger.info("启动更新程序: ./MFWUpdater1 -update")
+                subprocess.Popen(["./MFWUpdater1", "-update"])
             else:
                 raise NotImplementedError("Unsupported platform")
         except Exception as e:
             logger.error(f"启动更新程序失败: {e}")
-            signalBus.info_bar_requested.emit("error", e)
+            signalBus.info_bar_requested.emit("error", str(e))
             return
-
-        logger.info("正在启动更新程序")
 
     def _on_download_progress(self, downloaded: int, total: int):
         """下载进度回调"""
