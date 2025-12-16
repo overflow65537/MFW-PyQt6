@@ -2024,9 +2024,9 @@ class SettingInterface(QWidget):
                 signalBus.update_stopped.emit(3)
             return
 
-        from PySide6.QtWidgets import QApplication
+        signalBus.stop_ui.emit()
 
-        QApplication.quit()
+
 
     def trigger_instant_update_prompt(self, auto_accept: bool = False) -> None:
         """供外部（如自动更新流程）触发的立即更新确认。"""

@@ -42,9 +42,6 @@ from typing import Dict, Optional
 from PySide6.QtCore import QSize, QTimer, Qt, QUrl
 from PySide6.QtGui import (
     QIcon,
-    QShortcut,
-    QKeySequence,
-    QGuiApplication,
     QDesktopServices,
     QPixmap,
 )
@@ -210,6 +207,8 @@ class MainWindow(MSFluentWindow):
         self._reload_global_hotkeys()
         self._bootstrap_auto_update_and_run()
         self._apply_auto_minimize_on_startup()
+
+        signalBus.stop_ui.connect(self.closeEvent)
 
         logger.info(" 主界面初始化完成。")
 
@@ -866,7 +865,7 @@ class MainWindow(MSFluentWindow):
             signalBus.info_bar_requested.emit("error", str(exc))
             return
 
-        QApplication.quit()
+        self.closeEvent(None)
 
     def _apply_auto_minimize_on_startup(self) -> None:
         """在启动完成后根据配置自动最小化窗口。"""
