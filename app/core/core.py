@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import List, Dict, Any
 
+import jsonc
+
 from app.core.Item import (
     CoreSignalBus,
     FromeServiceCoordinator,
@@ -29,13 +31,17 @@ class ServiceCoordinator:
         # 初始化信号总线
         self.signal_bus = CoreSignalBus()
         self.fs_signal_bus = FromeServiceCoordinator()
-        self._interface_path = Path(interface_path) if interface_path else None
+
+        # 根据传入参数或主配置中的 bundle.path 解析 interface 路径
+        self._interface_path = self._resolve_interface_path(
+            main_config_path, interface_path
+        )
 
         # 确定配置目录
         if configs_dir is None:
             configs_dir = main_config_path.parent / "configs"
 
-        # 生成 interface 并传递给服务
+        # 先基于解析出的 interface 初始化管理器与数据，再交给仓库与服务使用
         self.interface_manager: InterfaceManager = get_interface_manager(
             interface_path=self._interface_path
         )
@@ -64,6 +70,60 @@ class ServiceCoordinator:
 
         # 连接信号
         self._connect_signals()
+
+    def _resolve_interface_path(
+        self, main_config_path: Path, interface_path: Path | str | None
+    ) -> Path | None:
+        """根据传入路径或主配置中的 bundle.path 决定 interface 配置文件位置。
+
+        优先级：
+        1. 调用方显式传入的 interface_path
+        2. main_config.json(multi_config) 中第一个 bundle 的 path 下的 interface.jsonc/interface.json
+        3. 返回 None，交由 InterfaceManager 自行在 CWD 下探测
+        """
+        # 1. 显式传入时直接使用
+        if interface_path:
+            return Path(interface_path)
+
+        # 2. 从主配置读取 bundle.path
+        try:
+            if not main_config_path.exists():
+                return None
+
+            with open(main_config_path, "r", encoding="utf-8") as f:
+                main_cfg: Dict[str, Any] = jsonc.load(f)
+
+            bundle = main_cfg.get("bundle")
+            if not isinstance(bundle, dict) or not bundle:
+                return None
+
+            # 取第一个 bundle 作为当前使用的资源包
+            first_bundle_name = next(iter(bundle.keys()))
+            bundle_info = bundle.get(first_bundle_name, {})
+            bundle_path_str = bundle_info.get("path")
+            if not bundle_path_str:
+                return None
+
+            base_dir = Path(bundle_path_str)
+            if not base_dir.is_absolute():
+                base_dir = Path.cwd() / base_dir
+
+            # 优先使用 interface.jsonc，其次 interface.json
+            candidate = base_dir / "interface.jsonc"
+            if not candidate.exists():
+                candidate = base_dir / "interface.json"
+
+            if not candidate.exists():
+                logger.warning(
+                    f"在 bundle 路径 {base_dir} 下未找到 interface.jsonc/interface.json"
+                )
+                return None
+
+            logger.info(f"从主配置解析到 interface 路径: {candidate}")
+            return candidate
+        except Exception as e:
+            logger.warning(f"从主配置解析 interface 路径失败: {e}")
+            return None
 
     def _connect_signals(self):
         """连接所有信号"""

@@ -39,6 +39,7 @@ from maa.context import Context
 from maa.custom_action import CustomAction
 from maa.custom_recognition import CustomRecognition
 from qasync import QEventLoop, asyncio
+
 # 应用qasync Windows平台补丁
 import app.utils.qasync_patch
 from qfluentwidgets import ConfigItem, FluentTranslator
@@ -127,13 +128,6 @@ if __name__ == "__main__":
     app.installTranslator(translator)
     app.installTranslator(galleryTranslator)
 
-    # 初始化 interface i18n
-    try:
-        interface_i18n = get_interface_manager(language=language_code)
-        logger.info(f"Interface i18n 初始化完成，语言: {language_code}")
-    except Exception as e:
-        logger.warning(f"Interface i18n 初始化失败: {e}")
-
     # 异步事件循环初始化
     loop = QEventLoop(app)
 
@@ -169,24 +163,28 @@ if __name__ == "__main__":
     with loop:
         loop.run_forever()
         logger.debug("关闭异步任务完成")
-    
+
         # Cancel all pending tasks before closing the loop
         try:
             # Get and cancel all pending tasks
             pending = asyncio.all_tasks(loop)
             for task in pending:
                 task.cancel()
-            
+
             # Wait for all tasks to be cancelled (gather handles empty list safely)
             if pending:
-                loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-            
+                loop.run_until_complete(
+                    asyncio.gather(*pending, return_exceptions=True)
+                )
+
             # Double-check for any remaining tasks created during cancellation
             remaining = asyncio.all_tasks(loop)
             if remaining:
                 logger.warning(f"发现 {len(remaining)} 个未取消的任务，正在强制取消")
                 for task in remaining:
                     task.cancel()
-                loop.run_until_complete(asyncio.gather(*remaining, return_exceptions=True))
+                loop.run_until_complete(
+                    asyncio.gather(*remaining, return_exceptions=True)
+                )
         except Exception as e:
             logger.warning(f"取消待处理任务时出错: {e}")
