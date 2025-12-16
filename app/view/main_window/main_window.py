@@ -208,8 +208,6 @@ class MainWindow(MSFluentWindow):
         self._bootstrap_auto_update_and_run()
         self._apply_auto_minimize_on_startup()
 
-        signalBus.stop_ui.connect(self.closeEvent)
-
         logger.info(" 主界面初始化完成。")
 
     def initWindow(self):
@@ -865,7 +863,9 @@ class MainWindow(MSFluentWindow):
             signalBus.info_bar_requested.emit("error", str(exc))
             return
 
-        self.closeEvent(None)
+        app = QApplication.instance()
+        if app is not None:
+            QTimer.singleShot(0, app.quit)
 
     def _apply_auto_minimize_on_startup(self) -> None:
         """在启动完成后根据配置自动最小化窗口。"""
@@ -1001,16 +1001,8 @@ class MainWindow(MSFluentWindow):
         if getattr(self, "_hotkey_manager", None):
             self._hotkey_manager.shutdown()
 
-        # Terminate and wait for theme listener thread to finish
-        try:
-            if self.themeListener.isRunning():
-                self.themeListener.terminate()
-                # Wait for the thread to finish with a timeout
-                if not self.themeListener.wait(self._THEME_LISTENER_TIMEOUT_MS):
-                    logger.warning("主题监听器线程未在超时时间内终止")
-            self.themeListener.deleteLater()
-        except Exception as ex:
-            logger.warning(f"终止主题监听器时出错: {ex}")
+        self.themeListener.terminate()
+        self.themeListener.deleteLater()
 
         e.accept()
         QTimer.singleShot(0, self.clear_thread_async)
@@ -1035,7 +1027,7 @@ class MainWindow(MSFluentWindow):
             self._clear_maafw_sync()
             self._stop_notice_thread(send_thread)
             self._stop_update_workers()
-            #self._terminate_child_processes()
+            # self._terminate_child_processes()
         except Exception as e:
             logger.exception("异步清理失败", exc_info=e)
 
@@ -1148,7 +1140,12 @@ class MainWindow(MSFluentWindow):
             import psutil
 
             # 不要误杀正在执行更新的外部更新器
-            UPDATER_NAMES = {"MFWUpdater.exe", "MFWUpdater1.exe", "MFWUpdater","MFWUpdater1"}
+            UPDATER_NAMES = {
+                "MFWUpdater.exe",
+                "MFWUpdater1.exe",
+                "MFWUpdater",
+                "MFWUpdater1",
+            }
 
             current = psutil.Process(os.getpid())
             children = current.children(recursive=True)
