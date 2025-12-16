@@ -462,6 +462,8 @@ class BaseUpdate(QThread):
         version: str | None,
         attempts: int,
         package_name: str,
+        target_object_name: str,
+        multi_resource_adaptation: bool,
     ) -> None:
         data = {
             "source": source,
@@ -470,6 +472,8 @@ class BaseUpdate(QThread):
             "package_name": package_name,
             "download_time": datetime.utcnow().isoformat() + "Z",
             "attempts": attempts,
+            "target_object_name": target_object_name,
+            "multi_resource_adaptation": multi_resource_adaptation,
         }
         metadata_path = download_dir / "update_metadata.json"
         try:
@@ -1067,6 +1071,8 @@ class Update(BaseUpdate):
                 str(self.latest_update_version or ""),
                 self.download_attempts,
                 zip_file_path.name,
+                self.project_name,
+                cfg.get(cfg.multi_resource_adaptation),
             )
 
             if download_source == "mirror":

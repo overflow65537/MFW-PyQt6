@@ -164,7 +164,7 @@ def restore_files_from_backup(backup_dir):
         print(f"恢复文件时出错: {e}")
 
 
-def extract_zip_file_with_validation(update_file_path):
+def extract_zip_file_with_validation(update_file_path, target_root: str | None = None):
     """
     解压指定的压缩文件，使用循环逐个文件解压并验证
 
@@ -184,7 +184,8 @@ def extract_zip_file_with_validation(update_file_path):
         log_error(f"不支持的文件格式: {update_file_path}")
         return False
 
-    current_dir = os.getcwd()
+    # 如果指定了目标根目录，则优先使用；否则使用当前工作目录
+    current_dir = os.path.abspath(target_root) if target_root else os.getcwd()
     extract_dir = Path(tempfile.mkdtemp(prefix="mfw_unpack_"))
     try:
         with zipfile.ZipFile(update_file_path, "r") as archive:
@@ -486,8 +487,8 @@ def _extract_zip_to_temp(zip_path: Path):
         return None
 
 
-def _copy_temp_to_root(temp_dir: Path):
-    current_dir = os.getcwd()
+def _copy_temp_to_root(temp_dir: Path, target_root: str | None = None):
+    current_dir = os.path.abspath(target_root) if target_root else os.getcwd()
     for root_dir, dirs, files in os.walk(temp_dir):
         rel_root = os.path.relpath(root_dir, temp_dir)
         dest_root = (
@@ -531,7 +532,7 @@ def _handle_full_update_failure(
     start_mfw_process()
 
 
-def perform_full_update(package_path: str, metadata_path: str, metadata: dict) -> bool:
+def perform_full_update(package_path: str, metadata_path: str, metadata: dict, target_root: str | None = None) -> bool:
     # 检查MFW是否在运行
     if not ensure_mfw_not_running():
         return False
@@ -542,6 +543,19 @@ def perform_full_update(package_path: str, metadata_path: str, metadata: dict) -
         _handle_full_update_failure(package_path, metadata_path, metadata)
         return False
 
+    # 如果指定了目标根目录（多资源适配），则不需要删除现有文件，直接解压到目标目录
+    if target_root:
+        try:
+            _copy_temp_to_root(temp_dir, target_root=target_root)
+        except Exception as exc:
+            log_error(f"覆盖目录失败: {exc}")
+            _handle_full_update_failure(package_path, metadata_path, metadata)
+            return False
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        return True
+
+    # 原有逻辑：删除现有文件后覆盖
     delete_result = safe_delete_all_except(FULL_UPDATE_EXCLUDES)
     if not delete_result.success:
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -679,10 +693,10 @@ def restore_model_dir(backup_root):
         shutil.rmtree(backup_root, ignore_errors=True)
 
 
-def extract_interface_folder(zip_path):
+def extract_interface_folder(zip_path, target_root: str | None = None):
     import zipfile
 
-    repo_root = os.getcwd()
+    repo_root = os.path.abspath(target_root) if target_root else os.getcwd()
     try:
         with zipfile.ZipFile(zip_path, "r") as zf:
             interface_member = next(
@@ -756,13 +770,18 @@ def load_change_entries(zip_path):
         return None
 
 
-def apply_github_hotfix(package_path, keep_list):
+def apply_github_hotfix(package_path, keep_list, target_root: str | None = None):
     # 检查MFW是否在运行
     if not ensure_mfw_not_running():
         return False
     
     repo_root = os.getcwd()
     model_backup = backup_model_dir()
+    
+    # 如果指定了目标根目录（多资源适配），则不需要删除现有文件，直接解压到目标目录
+    if target_root:
+        return extract_interface_folder(package_path, target_root=target_root)
+    
     skip_paths = {
         os.path.abspath(__file__),
         os.path.abspath(os.path.join(repo_root, "update")),
@@ -783,10 +802,14 @@ def apply_github_hotfix(package_path, keep_list):
     return success
 
 
-def apply_mirror_hotfix(package_path):
+def apply_mirror_hotfix(package_path, target_root: str | None = None):
     # 检查MFW是否在运行
     if not ensure_mfw_not_running():
         return False
+    
+    # 如果指定了目标根目录（多资源适配），则不需要删除现有文件，直接解压到目标目录
+    if target_root:
+        return extract_zip_file_with_validation(package_path, target_root=target_root)
     
     deletes = load_change_entries(package_path)
     if deletes is None:
@@ -903,31 +926,59 @@ def standard_update():
     source = metadata.get("source", "unknown") if metadata else "unknown"
     mode = metadata.get("mode", "full") if metadata else "full"
     version = metadata.get("version", "")
+    update_type = (metadata.get("type") or "").lower() if metadata else ""
     print(
         f"检测到更新包: {os.path.basename(package_path)} "
         f"来源: {source} 模式: {mode} 版本: {version}"
     )
+
+    # 多资源适配：如果标记为多资源适配，则根据 target_object_name 计算解压根目录
+    # 对于 type == "ui" 的更新，始终固定在 ./，不使用多资源目录
+    multi_resource_adaptation = False
+    target_object_name = None
+    if metadata and update_type != "ui":
+        multi_resource_adaptation = bool(
+            metadata.get("multi_resource_adaptation")
+        )
+        target_object_name = metadata.get("target_object_name")
+    target_root_dir: str | None = None
+    if multi_resource_adaptation and target_object_name:
+        # 目标目录: ./bundle/<target_object_name>
+        target_root_dir = os.path.join(os.getcwd(), "bundle", target_object_name)
+        try:
+            os.makedirs(target_root_dir, exist_ok=True)
+            update_logger.info("多资源适配启用，解压根目录: %s", target_root_dir)
+        except Exception as exc:
+            log_error(f"创建多资源适配目录失败: {exc}")
+            target_root_dir = None
 
     success = False
     if metadata:
         if source == "github":
             if mode == "full":
                 success = perform_full_update(
-                    package_path, metadata_path, metadata
+                    package_path, metadata_path, metadata, target_root=target_root_dir
                 )
             else:
-                success = apply_github_hotfix(package_path, file_list)
+                success = apply_github_hotfix(
+                    package_path, file_list, target_root=target_root_dir
+                )
         elif source == "mirror":
             if mode == "full":
                 success = perform_full_update(
-                    package_path, metadata_path, metadata
+                    package_path, metadata_path, metadata, target_root=target_root_dir
                 )
             else:
-                success = apply_mirror_hotfix(package_path)
+                success = apply_mirror_hotfix(
+                    package_path, target_root=target_root_dir
+                )
         else:
-            success = extract_zip_file_with_validation(package_path)
+            # 其他来源：如果开启多资源适配，则解压到 ./bundle/target_object_name
+            success = extract_zip_file_with_validation(
+                package_path, target_root=target_root_dir
+            )
     else:
-        success = extract_zip_file_with_validation(package_path)
+        success = extract_zip_file_with_validation(package_path, target_root=None)
 
     if success:
         print("更新文件处理完成")
