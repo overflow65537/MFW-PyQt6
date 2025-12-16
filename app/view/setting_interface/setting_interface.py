@@ -66,7 +66,6 @@ from app.view.setting_interface.widget.NoticeType import (
     QYWXNoticeType,
     DingTalkNoticeType,
     LarkNoticeType,
-    QmsgNoticeType,
     SMTPNoticeType,
     WxPusherNoticeType,
 )
@@ -202,7 +201,12 @@ class SettingInterface(QWidget):
             # 如果自动更新打开，自动触发"立刻更新"
             if self._is_auto_update_enabled():
                 logger.info("自动更新已开启，自动触发立即更新")
-                QTimer.singleShot(0, lambda: self._handle_instant_update(auto_accept=True, notify_if_cancel=True))
+                QTimer.singleShot(
+                    0,
+                    lambda: self._handle_instant_update(
+                        auto_accept=True, notify_if_cancel=True
+                    ),
+                )
             else:
                 # 如果自动更新关闭，发送信号给 main_window 检查是否需要立刻运行
                 logger.info("自动更新未开启，通知 main_window 检查是否需要自动运行")
@@ -1229,7 +1233,6 @@ class SettingInterface(QWidget):
             cfg.multi_resource_adaptation,
             self.compatibility_group,
         )
-        self.multi_resource_adaptation_card.setVisible(False)  # 默认隐藏
 
         self.save_screenshot_card = SwitchSettingCard(
             FIF.SAVE_AS,
@@ -1415,7 +1418,7 @@ class SettingInterface(QWidget):
         self._update_background_image("")
 
     def _confirm_enable_multi_resource(self) -> bool:
-        """开启多资源适配前进行二次确认（qfluentwidgets Dialog 风格）。"""
+        """开启多资源适配前进行二次确认"""
         confirm_dialog = MessageBoxBase(self)
         confirm_dialog.widget.setMinimumWidth(420)
         confirm_dialog.widget.setMinimumHeight(200)
@@ -1424,7 +1427,9 @@ class SettingInterface(QWidget):
         title.setStyleSheet("font-weight: 600;")
         desc = BodyLabel(
             self.tr(
-                "This feature is experimental and generally not recommended to enable. "
+                "After enabling the multi-configuration feature, the resource "
+                "directories will be reconfigured. This operation is irreversible; "
+                "please proceed with caution."
             ),
             confirm_dialog,
         )
@@ -1434,8 +1439,27 @@ class SettingInterface(QWidget):
         confirm_dialog.viewLayout.addSpacing(6)
         confirm_dialog.viewLayout.addWidget(desc)
 
-        confirm_dialog.yesButton.setText(self.tr("Enable"))
+        wait_seconds = 5
+        base_yes_text = self.tr("Enable")
+        confirm_dialog.yesButton.setText(f"{base_yes_text} ({wait_seconds}s)")
         confirm_dialog.cancelButton.setText(self.tr("Cancel"))
+
+        # 在 5 秒倒计时结束前禁用确认按钮，防止误触
+        confirm_dialog.yesButton.setEnabled(False)
+
+        def _unlock_yes_button(remaining: int):
+            # 对话框已关闭则不再更新
+            if not confirm_dialog.isVisible():
+                return
+
+            if remaining > 0:
+                confirm_dialog.yesButton.setText(f"{base_yes_text} ({remaining}s)")
+                QTimer.singleShot(1000, lambda: _unlock_yes_button(remaining - 1))
+            else:
+                confirm_dialog.yesButton.setText(base_yes_text)
+                confirm_dialog.yesButton.setEnabled(True)
+
+        QTimer.singleShot(0, lambda: _unlock_yes_button(wait_seconds - 1))
 
         return confirm_dialog.exec() == QDialog.DialogCode.Accepted
 
@@ -1831,7 +1855,10 @@ class SettingInterface(QWidget):
             return True
 
         # 如果已经有本地更新包（初始化时已检测），且已经准备好立即更新状态，则不再重复处理
-        if self._local_update_package and self._update_button_handler == self._on_instant_update_clicked:
+        if (
+            self._local_update_package
+            and self._update_button_handler == self._on_instant_update_clicked
+        ):
             logger.info("本地更新包已在初始化时处理，跳过重复处理")
             return True
 
