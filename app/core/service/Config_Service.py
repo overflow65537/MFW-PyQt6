@@ -312,3 +312,8 @@ class ConfigService:
             if isinstance(bundle, dict):
                 return list(bundle.keys())
         return []
+
+
+    def get_current_bundle(self) -> dict:
+        """获取当前bundle"""
+        return self.get_bundle(self.current_config_id)

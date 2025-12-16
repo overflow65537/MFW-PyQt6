@@ -441,13 +441,31 @@ class TaskFlowRunner(QObject):
             return False
 
         for path_item in resource_path:
-            cwd = Path.cwd()
-            path_str = str(path_item.replace("{PROJECT_DIR}", ""))
-            if len(path_str) >= 2 and path_str[1] == ":" and path_str[0].isalpha():
-                resource = Path(path_str).resolve()
-            else:
-                normalized = path_str.lstrip("\\/")
-                resource = (cwd / normalized).resolve()
+            # 所有资源路径均为相对路径：优先相对于当前 bundle.path，再回落到项目根目录
+            bundle_path_str = self.config_service.get_current_bundle().get("path", "./")
+
+            # 先解析 bundle 基础目录为绝对路径
+            bundle_base = Path(bundle_path_str)
+            if not bundle_base.is_absolute():
+                bundle_base = (Path.cwd() / bundle_base).resolve()
+
+            # 兼容旧格式：移除占位符 {PROJECT_DIR}，并清理前导分隔符
+            raw = str(path_item)
+            raw = raw.replace("{PROJECT_DIR}", "")
+            normalized = raw.lstrip("\\/")
+
+            # 资源实际路径 = bundle 基础目录 / 相对资源路径
+            resource = (bundle_base / normalized).resolve()
+            if not resource.exists():
+                logger.error(f"资源不存在: {resource}")
+                signalBus.log_output.emit(
+                    "ERROR",
+                    self.tr("Resource ")
+                    + path_item
+                    + self.tr(" not found in bundle: ")
+                    + bundle_path_str,
+                )
+                return False
 
             logger.debug(f"加载资源: {resource}")
             res_cfg = self.task_service.get_task(PRE_CONFIGURATION)
