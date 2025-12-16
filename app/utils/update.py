@@ -917,6 +917,24 @@ class Update(BaseUpdate):
         self.release_note = ""
         self.download_attempts = 0
 
+    def _run_legacy_update(self) -> None:
+        """
+        运行旧版资源更新逻辑（使用新版架构的 LegacyResourceUpdate 类）。
+
+        仅在 multi_resource_adaptation=True 时调用，用于兼容旧资源结构。
+        """
+        if not self.service_coordinator:
+            logger.error("service_coordinator 未初始化，无法执行旧版更新")
+            return
+        legacy_updater = LegacyResourceUpdate(
+            service_coordinator=self.service_coordinator,
+            stop_signal=self.stop_signal,
+            progress_signal=self.progress_signal,
+            info_bar_signal=self.info_bar_signal,
+        )
+        logger.info("开始执行旧版资源更新流程（LegacyResourceUpdate）")
+        legacy_updater.run()
+
     def _normalize_channel(self, value) -> Config.UpdateChannel:
         """Convert stored channel value into a valid UpdateChannel enum."""
         try:
@@ -952,8 +970,29 @@ class Update(BaseUpdate):
         return "x86_64"
 
     def run(self):
+        """
+        资源更新主流程。
+
+        当开启 multi_resource_adaptation（兼容模式）时，使用旧版更新逻辑；
+        否则使用新版多资源感知的更新流程。
+        """
+        # 兼容模式：走旧版 update.old.py 中的 Update 逻辑
+        if cfg.get(cfg.multi_resource_adaptation):
+            logger.info("=" * 50)
+            logger.info("检测到 multi_resource_adaptation=True，使用旧版资源更新逻辑")
+            logger.info("当前版本: %s", self.current_version)
+            logger.info("资源ID: %s", self.current_res_id)
+            logger.info("=" * 50)
+            try:
+                self._run_legacy_update()
+            except Exception as exc:
+                logger.exception("旧版资源更新流程执行失败，回退到新版逻辑: %s", exc)
+                # 回退到新版逻辑
+            else:
+                return
+
         logger.info("=" * 50)
-        logger.info("开始更新流程")
+        logger.info("开始新版资源更新流程")
         logger.info("当前版本: %s", self.current_version)
         logger.info("资源ID: %s", self.current_res_id)
         logger.info("GitHub URL: %s", self.url)
@@ -1549,3 +1588,999 @@ class UpdateCheckTask(QThread):
             "latest_update_version": updater.latest_update_version or "",
         }
         self.result_ready.emit(result_data)
+
+
+# region 旧版更新逻辑（兼容模式）
+
+
+class LegacyResourceUpdate(BaseUpdate):
+    """
+    旧版资源更新逻辑，用于 multi_resource_adaptation=True 时的兼容模式。
+    将旧版 update.old.py::Update 的逻辑迁移到新版架构。
+    """
+
+    def __init__(
+        self,
+        service_coordinator: ServiceCoordinator,
+        stop_signal: SignalInstance,
+        progress_signal: SignalInstance,
+        info_bar_signal: SignalInstance,
+    ):
+        super().__init__()
+        self.service_coordinator = service_coordinator
+        self.stop_signal = stop_signal
+        self.progress_signal = progress_signal
+        self.info_bar_signal = info_bar_signal
+
+        self.interface = self.service_coordinator.task.interface
+        self.project_name = self.interface.get("name", "")
+        self.current_version = self.interface.get("version", "v1.0.0")
+        self.url = self.interface.get("github", self.interface.get("url", ""))
+        self.current_res_id = self.interface.get("mirrorchyan_rid", "")
+
+        self.mirror_cdk = self.Mirror_ckd()
+
+        channel_value = cfg.get(cfg.resource_update_channel)
+        self.current_channel_enum = self._normalize_channel(channel_value)
+        self.current_channel = self.current_channel_enum.name.lower()
+        self.current_os_type = self._normalize_os_type(sys.platform)
+        self.current_arch = self._normalize_arch(platform.machine())
+
+    def _normalize_channel(self, value) -> Config.UpdateChannel:
+        """Convert stored channel value into a valid UpdateChannel enum."""
+        try:
+            return cfg.UpdateChannel(int(value))
+        except (ValueError, TypeError):
+            logger.warning("配置的更新通道非法，默认降级为 stable。value=%s", value)
+            return cfg.UpdateChannel.STABLE
+
+    def _normalize_os_type(self, value: Optional[str]) -> str:
+        normalized = (value or "").lower()
+        if normalized.startswith("win"):
+            return "win"
+        if normalized.startswith("linux"):
+            return "linux"
+        if normalized.startswith("darwin") or normalized.startswith("mac"):
+            return "macos"
+        logger.warning(
+            "检测到未知操作系统标识 %s，默认归类为 linux",
+            value,
+        )
+        return "linux"
+
+    def _normalize_arch(self, value: Optional[str]) -> str:
+        normalized = (value or "").lower()
+        if normalized in {"x86_64", "amd64"}:
+            return "x86_64"
+        if normalized in {"aarch64", "arm64"}:
+            return "aarch64"
+        logger.warning(
+            "检测到未知架构标识 %s，默认归类为 x86_64",
+            value,
+        )
+        return "x86_64"
+
+    def _get_resource_path(self) -> str | None:
+        """获取资源路径（兼容旧版 maa_config_data.resource_path）"""
+        bundle_path = self._get_bundle_path()
+        if not bundle_path:
+            return None
+        return bundle_path
+
+    def _get_bundle_path(self) -> str | None:
+        """安全获取当前 bundle 路径"""
+        if not self.service_coordinator:
+            logger.error("service_coordinator 未初始化")
+            return None
+        try:
+            config = self.service_coordinator.config_service.get_current_config()
+            bundle = config.bundle
+            bundle_path: str = ""
+            if isinstance(bundle, dict):
+                bundle_path = cast(Dict[str, str], bundle).get("path", "")
+            elif isinstance(bundle, str):
+                bundle_path = bundle
+            else:
+                bundle_path = ""
+            if not bundle_path:
+                logger.error("未能获取当前 bundle 路径")
+                return None
+            return bundle_path
+        except FileNotFoundError as e:
+            logger.warning(f"当前 bundle 配置不存在: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"获取 bundle 路径失败: {e}")
+            return None
+
+    def _read_legacy_config(self, path: str) -> dict:
+        """读取配置文件（兼容旧版 Read_Config）"""
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return jsonc.load(f)
+        except Exception as e:
+            logger.exception(f"读取配置文件失败: {path}")
+            return {}
+
+    def _save_config(self, path: str, data: dict) -> bool:
+        """保存配置文件（兼容旧版 Save_Config）"""
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                jsonc.dump(data, f, indent=2, ensure_ascii=False)
+            return True
+        except Exception as e:
+            logger.exception(f"保存配置文件失败: {path}")
+            return False
+
+    def _write_legacy_resource_metadata(
+        self, package_path: Path, source: str, version: str
+    ) -> None:
+        """为旧版资源更新生成元数据"""
+        download_dir = Path.cwd() / "update" / "new_version"
+        download_dir.mkdir(parents=True, exist_ok=True)
+
+        # 把已经下载好的 zip 复制一份到 new_version 目录
+        dest_path = download_dir / package_path.name
+        try:
+            shutil.copy2(package_path, dest_path)
+            logger.info("已复制更新包到: %s", dest_path)
+        except Exception as e:
+            logger.warning("复制更新包失败: %s", e)
+            return
+
+        # 旧版资源更新没有热更/全量区分，统一使用 "full"
+        mode = "full"
+        target_object_name = self.project_name or "resource"
+        multi_resource = bool(cfg.get(cfg.multi_resource_adaptation))
+
+        self._write_update_metadata(
+            download_dir,
+            source=source,  # "github" 或 "mirror"
+            mode=mode,
+            version=version,
+            attempts=1,  # 旧版没重试统计，先写 1
+            package_name=dest_path.name,
+            target_object_name=target_object_name,
+            multi_resource_adaptation=multi_resource,
+        )
+        logger.info("已生成旧版资源更新元数据")
+
+    def _emit_status(self, status: str, msg: str):
+        """发送状态更新（兼容旧版 signalBus.update_download_finished）"""
+        if status == "success":
+            self.info_bar_signal.emit("success", msg)
+            self.stop_signal.emit(1)  # 热更新完成
+        elif status == "failed" or status == "failed_info":
+            self.info_bar_signal.emit("error", msg)
+            self.stop_signal.emit(0)  # 失败
+        elif status == "info":
+            self.info_bar_signal.emit("info", msg)
+        elif status == "no_need":
+            self.info_bar_signal.emit("info", msg)
+            self.stop_signal.emit(0)
+
+    def compare_versions(self, version1: str, version2: str) -> bool:
+        """
+        比较两个版本号的大小（兼容旧版逻辑）。
+        返回 True 表示 version1 <= version2（当前版本满足最低需求）
+        """
+        try:
+            # 去掉v前缀并按-分割
+            def get_version_prefix(v: str) -> str:
+                prefix = v.split("-")[0]
+                return prefix.replace("v", "")
+
+            v1 = get_version_prefix(version1)
+            v2 = get_version_prefix(version2)
+
+            v1_parts = [int(part) for part in v1.split(".")]
+            v2_parts = [int(part) for part in v2.split(".")]
+
+            max_length = max(len(v1_parts), len(v2_parts))
+            v1_parts.extend([0] * (max_length - len(v1_parts)))
+            v2_parts.extend([0] * (max_length - len(v2_parts)))
+
+            for i in range(max_length):
+                if v1_parts[i] > v2_parts[i]:
+                    return False  # version1 > version2
+                elif v1_parts[i] < v2_parts[i]:
+                    return True  # version1 < version2
+            return True  # version1 == version2
+        except Exception as e:
+            logger.exception(f"比较版本号时出错: {e}")
+            return False
+
+    def _read_update_flag(self, flag_path: str) -> str | None:
+        """读取 update_flag.txt 文件内容"""
+        try:
+            if not os.path.exists(flag_path):
+                return None
+            with open(flag_path, "r", encoding="utf-8") as f:
+                return f.read().strip()
+        except Exception as e:
+            logger.warning(f"读取 update_flag.txt 失败: {flag_path}, {e}")
+            return None
+
+    def _check_update_flag_compatibility(
+        self, new_flag_path: str, current_resource_path: str
+    ) -> bool:
+        """
+        检查 update_flag.txt 兼容性。
+        读取新版本和当前资源目录中的 update_flag.txt，比较是否兼容。
+        返回 True 表示兼容，可以更新。
+        """
+        new_flag = self._read_update_flag(new_flag_path)
+        if new_flag is None:
+            logger.warning("新版本 update_flag.txt 不存在，跳过兼容性检查")
+            return True  # 如果新版本没有 update_flag.txt，允许更新
+
+        current_flag_path = os.path.join(current_resource_path, "update_flag.txt")
+        current_flag = self._read_update_flag(current_flag_path)
+        if current_flag is None:
+            logger.warning("当前资源目录 update_flag.txt 不存在，允许更新")
+            return True  # 如果当前版本没有 update_flag.txt，允许更新
+
+        # 比较两个 update_flag 内容
+        if new_flag != current_flag:
+            logger.warning(
+                f"update_flag 不匹配 - 新版本: {new_flag}, 当前: {current_flag}"
+            )
+            return False
+
+        logger.info(f"update_flag 检查通过: {new_flag}")
+        return True
+
+    def extract_zip_legacy(self, zip_file_path, extract_to):
+        """解压zip文件（兼容旧版逻辑，返回主文件夹名）"""
+        actual_main_folder = None
+        try:
+            with zipfile.ZipFile(
+                zip_file_path, "r", metadata_encoding="utf-8"
+            ) as zip_ref:
+                all_members = zip_ref.namelist()
+                if all_members:
+                    actual_main_folder = all_members[0].split("/")[0]
+                zip_ref.extractall(extract_to)
+            return actual_main_folder
+        except zipfile.BadZipFile:
+            tar_file_path = zip_file_path.replace(".zip", ".tar.gz")
+            if os.path.exists(zip_file_path):
+                os.rename(zip_file_path, tar_file_path)
+            with tarfile.open(tar_file_path, "r") as tar_ref:
+                members = tar_ref.getmembers()
+                if members:
+                    actual_main_folder = members[0].name.split("/")[0]
+                tar_ref.extractall(extract_to)
+            return actual_main_folder
+        except Exception as e:
+            logger.exception(f"解压文件时出错 {e}")
+            return None
+
+    def run(self):
+        """旧版资源更新主流程"""
+        import time
+
+        time.sleep(0.5)
+        parts = self.url.split("/")
+        try:
+            username = parts[3]
+            repository = parts[4]
+        except IndexError:
+            logger.error("URL 格式错误，无法进行 GitHub 检查")
+            self._emit_status("failed", self.tr("No valid URL found"))
+            return
+
+        url = f"https://api.github.com/repos/{username}/{repository}/releases/latest"
+        cdk = self.mirror_cdk
+        res_id = self.current_res_id
+        version = self.current_version
+        channel = self.current_channel
+
+        if not url:
+            logger.error("URL 为 None，无法进行 GitHub 检查")
+            self._emit_status("failed", self.tr("No URL found"))
+            return
+
+        if not version:
+            logger.error("版本号为空，无法进行 MirrorChyan 和 GitHub 检查")
+            self._emit_status("failed", self.tr("No version found"))
+            return
+
+        if res_id and (not cfg.get(cfg.force_github)):
+            mirror_data: Dict[str, Any] = self.mirror_check(
+                res_id=res_id,
+                version=version,
+                cdk=cdk,
+                channel=channel,
+                os_type=self.current_os_type,
+                arch=self.current_arch,
+            )
+            if mirror_data.get("status") == "failed_info":  # mirror检查失败
+                msg = mirror_data.get("msg", "")
+                self._emit_status(
+                    "failed_info", msg if isinstance(msg, str) else str(msg)
+                )
+                github_dict = self.github_check(url, version=version)
+                if github_dict.get("status") in ["failed", "success", "no_need"]:
+                    status = github_dict.get("status", "failed")
+                    msg = github_dict.get("msg", "")
+                    self._emit_status(
+                        status if isinstance(status, str) else "failed",
+                        msg if isinstance(msg, str) else str(msg),
+                    )
+                    return
+                else:
+                    self.github_download(github_dict)
+                    return
+            elif mirror_data.get("status") == "no_need":  # 无需更新
+                msg = mirror_data.get("msg", "")
+                self._emit_status("no_need", msg if isinstance(msg, str) else str(msg))
+                return
+
+            if mirror_data.get("data", {}).get("url"):
+                self._emit_status(
+                    "info",
+                    self.tr("MirrorChyan update check successful, starting download"),
+                )
+                self.mirror_download(res_id, mirror_data)
+                return
+            else:
+                self._emit_status(
+                    "info",
+                    self.tr(
+                        "MirrorChyan update check successful, but no CDK found, switching to Github download"
+                    ),
+                )
+                mirror_version = mirror_data.get("data", {}).get("version_name")
+                if mirror_version:
+                    url = f"https://api.github.com/repos/{username}/{repository}/releases/tags/{mirror_version}"
+
+                github_dict = self.github_check(url, version=version)
+                if github_dict.get("status") in ["failed", "success", "no_need"]:
+                    status = github_dict.get("status", "failed")
+                    msg = github_dict.get("msg", "")
+                    self._emit_status(
+                        status if isinstance(status, str) else "failed",
+                        msg if isinstance(msg, str) else str(msg),
+                    )
+                    return
+                self.github_download(github_dict)
+                return
+        else:
+            github_dict = self.github_check(url, version=version)
+            if github_dict.get("status") in ["failed", "success", "no_need"]:
+                status = github_dict.get("status", "failed")
+                msg = github_dict.get("msg", "")
+                self._emit_status(
+                    status if isinstance(status, str) else "failed",
+                    msg if isinstance(msg, str) else str(msg),
+                )
+                return
+
+            self.github_download(github_dict)
+
+    def mirror_download(self, res_id, mirror_data: Dict[str, dict]):
+        """mirror下载更新"""
+        from app.common.__version__ import __version__
+
+        version = __version__
+
+        self.stop_flag = False
+        try:
+            # 下载过程
+            download_url: str = mirror_data["data"].get("url", "")
+            logger.info(f"开始下载镜像资源 [URL: {download_url}]")
+
+            hotfix_directory = os.path.join(os.getcwd(), "hotfix")
+            os.makedirs(hotfix_directory, exist_ok=True)
+            zip_file_path = os.path.join(hotfix_directory, f"{res_id}.zip")
+
+            downloaded_path, error = self.download_file(
+                download_url,
+                zip_file_path,
+                self.progress_signal,
+                use_proxies=False,
+            )
+            if not downloaded_path:
+                logger.error(f"镜像下载失败 [URL: {download_url}]")
+                self._emit_status("failed_info", self.tr("Download failed"))
+                return False
+
+            # 生成更新元数据
+            mirror_version_name: str = mirror_data["data"].get("version_name", "v0.0.1")
+            self._write_legacy_resource_metadata(
+                package_path=Path(downloaded_path),
+                source="mirror",
+                version=mirror_version_name,
+            )
+
+            # 解压过程
+            target_path = os.path.join(os.getcwd(), "hotfix", "assets")
+            logger.info(f"开始解压文件到: {target_path}")
+            if not self.extract_zip_legacy(downloaded_path, target_path):
+                logger.error(f"解压失败 [路径: {downloaded_path}]")
+                self._emit_status("failed_info", self.tr("Extraction failed"))
+                return False
+
+            # 获取资源路径
+            resource_path = self._get_resource_path()
+            if not resource_path:
+                logger.error("无法获取资源路径")
+                self._emit_status("failed_info", "Resource path not found")
+                return False
+
+            # update_flag.txt 兼容性检查
+            new_flag_path = os.path.join(target_path, "update_flag.txt")
+            if not self._check_update_flag_compatibility(new_flag_path, resource_path):
+                logger.warning("update_flag.txt 不兼容，已中止更新")
+                self._emit_status(
+                    "failed_info",
+                    self.tr("Update flag mismatch, update aborted"),
+                )
+                return False
+
+            # 清理旧文件
+            change_data_path = os.path.join(target_path, "changes.json")
+
+            if os.path.exists(change_data_path):
+                try:
+                    change_data = self._read_legacy_config(change_data_path).get(
+                        "deleted", []
+                    )
+                    logger.info(f"需要清理 {len(change_data)} 个文件")
+
+                    for file in change_data:
+                        if "install" in file[:10]:
+                            file_path = file.replace("install", resource_path, 1)
+                        elif "resource" in file[:10]:
+                            file_path = file.replace(
+                                "resource", f"{resource_path}/resource", 1
+                            )
+                        else:
+                            logger.error(f"未知文件格式: {file}")
+                            continue
+
+                        logger.debug(f"尝试删除: {file_path}")
+                        if os.path.exists(file_path):
+                            try:
+                                if os.path.isdir(file_path):
+                                    shutil.rmtree(file_path)
+                                else:
+                                    os.remove(file_path)
+                            except Exception as e:
+                                logger.error(f"删除失败 [{file_path}]: {str(e)}")
+                except Exception as e:
+                    logger.exception("清理旧文件时发生错误")
+                    self._emit_status(
+                        "failed_info", self.tr("Failed to clean up temporary files")
+                    )
+                    return False
+
+            # 保存更新日志
+            changelog = mirror_data.get("data", {}).get("release_note", "")
+            if changelog:
+                changelog_path = os.path.join(resource_path, "resource_changelog.md")
+                with open(changelog_path, "w", encoding="utf-8") as f:
+                    f.write(changelog)
+
+            # 移动文件
+            logger.info(f"移动文件到资源目录: {resource_path}")
+            if not self.move_files(target_path, resource_path):
+                logger.error(f"文件移动失败: {target_path} -> {resource_path}")
+                self._emit_status("failed_info", self.tr("Move file failed"))
+                return False
+
+            # 更新配置
+            version_name: str = mirror_data["data"].get("version_name", "v0.0.1")
+            # 更新 interface 中的版本号
+            interface_config_path = os.path.join(resource_path, "interface.json")
+            if os.path.exists(interface_config_path):
+                interface_data = self._read_config(interface_config_path)
+                interface_data["version"] = version_name
+                self._save_config(interface_config_path, interface_data)
+            logger.info(f"版本号更新为: {version_name}")
+
+            # 清理临时文件
+            self.remove_temp_files(os.path.join(os.getcwd(), "hotfix"))
+            logger.debug("临时文件清理完成")
+
+            self._emit_status(
+                "success",
+                self.tr("update success")
+                + "\n"
+                + mirror_data.get("data", {}).get("release_note", ""),
+            )
+            return True
+
+        except KeyError as e:
+            logger.exception(f"数据字段缺失: {str(e)}")
+            self._emit_status("failed_info", self.tr("incomplete update data"))
+        except Exception as e:
+            logger.exception(f"未预期的错误: {str(e)}")
+            self._emit_status("failed_info", self.tr("unexpected error during update"))
+            return False
+
+    def github_download(self, update_dict: Dict):
+        """github下载更新"""
+        from app.common.__version__ import __version__
+
+        version = __version__
+        self.stop_flag = False
+        download_url = None
+        try:
+            # 下载过程
+            if self.interface.get("agent", False):
+                project_name_number = 4
+                self._emit_status(
+                    "info", self.tr("Updating the Agent may take a long time.")
+                )
+                for release in update_dict.get("assets", []):
+                    if (
+                        self.current_os_type in release["name"]
+                        and self.current_arch in release["name"]
+                    ):
+                        download_url = release["browser_download_url"]
+                        logger.info(f"找到下载更新包: {download_url}")
+                        break
+            else:
+                project_name_number = 5
+                if update_dict.get("status"):
+                    self._emit_status(
+                        update_dict.get("status", "failed"),
+                        update_dict.get("msg", ""),
+                    )
+                    return
+                download_url = update_dict.get("zipball_url")
+
+            if not download_url:
+                logger.warning("未找到匹配的资源")
+                self._emit_status("failed", self.tr("No matching resource found"))
+                return
+
+            logger.info(f"开始下载更新包: {download_url}")
+
+            hotfix_directory = os.path.join(os.getcwd(), "hotfix")
+            os.makedirs(hotfix_directory, exist_ok=True)
+            logger.debug(f"创建临时目录: {hotfix_directory}")
+
+            project_name = download_url.split("/")[project_name_number]
+            zip_file_path = os.path.join(
+                hotfix_directory, f"{project_name}-{update_dict['tag_name']}.zip"
+            )
+            logger.debug(f"压缩文件保存路径: {zip_file_path}")
+
+            downloaded_path, error = self.download_file(
+                download_url,
+                zip_file_path,
+                self.progress_signal,
+                use_proxies=True,
+            )
+            if not downloaded_path:
+                logger.error("下载更新包失败")
+                self._emit_status("failed", self.tr("Download failed"))
+                return
+
+            # 生成更新元数据
+            version_tag = update_dict.get("tag_name", "unknown")
+            self._write_legacy_resource_metadata(
+                package_path=Path(downloaded_path),
+                source="github",
+                version=version_tag,
+            )
+
+            # 解压过程
+            logger.info("开始解压更新包")
+            main_folder = self.extract_zip_legacy(
+                downloaded_path, os.path.join(os.getcwd(), "hotfix")
+            )
+            if not main_folder:
+                logger.error("解压失败，未找到主目录")
+                self._emit_status("failed", self.tr("Extraction failed"))
+                return
+
+            if self.interface.get("agent", False):
+                # 修正路径处理：代理包直接解压到hotfix目录
+                main_folder = os.path.join(os.getcwd(), "hotfix")
+                files_to_keep = [
+                    "python",
+                    "resource",
+                    "interface.json",
+                    "custom",
+                    "agent",
+                    "requirements.txt",
+                ]
+
+                # 添加路径有效性检查
+                if not os.path.isdir(main_folder):
+                    logger.error(f"无效的目录路径: {main_folder}")
+                    return
+
+                for item in os.listdir(main_folder):
+                    item_path = os.path.join(main_folder, item)
+                    # 添加路径类型检查
+                    if os.path.isfile(item_path) and item not in files_to_keep:
+                        os.remove(item_path)
+                    elif os.path.isdir(item_path) and item not in files_to_keep:
+                        shutil.rmtree(item_path)
+                folder_to_extract = main_folder
+
+            else:
+                folder_to_extract = os.path.join(
+                    os.getcwd(), "hotfix", main_folder, "assets"
+                )
+            logger.debug(f"资源解压路径: {folder_to_extract}")
+
+            # 获取资源路径
+            resource_path = self._get_resource_path()
+            if not resource_path:
+                logger.error("无法获取资源路径")
+                self._emit_status("failed", "Resource path not found")
+                return
+
+            # update_flag.txt 兼容性检查
+            new_flag_path = os.path.join(folder_to_extract, "update_flag.txt")
+            if not self._check_update_flag_compatibility(new_flag_path, resource_path):
+                logger.warning("update_flag.txt 不兼容，已中止更新")
+                self._emit_status(
+                    "failed",
+                    self.tr("Update flag mismatch, update aborted"),
+                )
+                return
+
+            # 清理旧资源
+
+            if os.path.exists(resource_path):
+                logger.info("开始清理旧资源")
+                try:
+                    for dir_name in ["python", "custom", "agent", "resource"]:
+                        dir_path = os.path.join(resource_path, dir_name)
+                        if os.path.exists(dir_path):
+                            shutil.rmtree(dir_path)
+                            logger.debug(f"成功删除 {dir_name} 目录")
+
+                    interface_json_path = os.path.join(resource_path, "interface.json")
+                    if os.path.exists(interface_json_path):
+                        os.remove(interface_json_path)
+                        logger.debug("成功删除 interface.json")
+
+                except Exception as e:
+                    logger.error(f"清理旧资源失败: {str(e)}")
+                    self._emit_status("failed", self.tr("Clean up failed"))
+                    return
+
+            changelog = update_dict.get("body", "")
+            if changelog:
+                changelog_path = os.path.join(resource_path, "resource_changelog.md")
+                with open(changelog_path, "w", encoding="utf-8") as f:
+                    f.write(changelog)
+
+            # 移动新文件
+            logger.info(f"开始移动文件到目标路径: {resource_path}")
+            if not self.move_files(folder_to_extract, resource_path):
+                logger.error(f"文件移动失败: {folder_to_extract} -> {resource_path}")
+                self._emit_status("failed", self.tr("Move file failed"))
+                return
+
+            # 更新配置
+            interface_config_path = os.path.join(resource_path, "interface.json")
+            if os.path.exists(interface_config_path):
+                interface_data = self._read_config(interface_config_path)
+                interface_data["version"] = update_dict["tag_name"]
+                self._save_config(interface_config_path, interface_data)
+
+            # 清理临时文件
+            logger.debug("清理临时文件")
+            self.remove_temp_files(os.path.join(os.getcwd(), "hotfix"))
+
+            logger.info("更新流程完成")
+            self._emit_status(
+                "success",
+                self.tr("update success") + "\n" + str(update_dict.get("body", "")),
+            )
+        except requests.exceptions.RequestException as e:
+            logger.exception(f"GitHub请求失败: {str(e)}")
+            self._emit_status(
+                "failed",
+                f"{self.tr('GitHub request failed')}\n{self.tr('HTTP error') + str(e)}",
+            )
+        except KeyError as e:
+            logger.exception(f"关键数据缺失: {str(e)}")
+            self._emit_status("failed", self.tr("Incomplete update data"))
+        except Exception as e:
+            logger.exception(f"未预期的错误: {str(e)}")
+            self._emit_status("failed", self.tr("Unexpected error during update"))
+
+
+class LegacyUIUpdate(BaseUpdate):
+    """
+    旧版UI更新逻辑，用于更新MFW自身。
+    将旧版 update.old.py::UpdateSelf 的逻辑迁移到新版架构。
+    """
+
+    def __init__(
+        self,
+        stop_signal: SignalInstance,
+        progress_signal: SignalInstance,
+        info_bar_signal: SignalInstance,
+    ):
+        super().__init__()
+        self.stop_signal = stop_signal
+        self.progress_signal = progress_signal
+        self.info_bar_signal = info_bar_signal
+
+    def _normalize_os_type(self, value: Optional[str]) -> str:
+        normalized = (value or "").lower()
+        if normalized.startswith("win"):
+            return "win"
+        if normalized.startswith("linux"):
+            return "linux"
+        if normalized.startswith("darwin") or normalized.startswith("mac"):
+            return "macos"
+        return "linux"
+
+    def _normalize_arch(self, value: Optional[str]) -> str:
+        normalized = (value or "").lower()
+        if normalized in {"x86_64", "amd64"}:
+            return "x86_64"
+        if normalized in {"aarch64", "arm64"}:
+            return "aarch64"
+        return "x86_64"
+
+    def assemble_gitHub_url(self, target_version: str) -> str:
+        """
+        输入版本号，返回GitHub项目发布包下载地址
+        """
+        os_type = self._normalize_os_type(sys.platform)
+        arch = self._normalize_arch(platform.machine())
+        url = f"https://github.com/overflow65537/MFW-PyQt6/releases/download/{target_version}/MFW-PyQt6-{os_type}-{arch}-{target_version}.zip"
+        return url
+
+    def _write_legacy_ui_metadata(
+        self, package_path: Path, source: str, version: str
+    ) -> None:
+        """为旧版UI更新生成元数据"""
+        download_dir = Path.cwd() / "update" / "new_version"
+        download_dir.mkdir(parents=True, exist_ok=True)
+
+        # 把已经下载好的 zip 复制一份到 new_version 目录
+        dest_path = download_dir / package_path.name
+        try:
+            shutil.copy2(package_path, dest_path)
+            logger.info("已复制UI更新包到: %s", dest_path)
+        except Exception as e:
+            logger.warning("复制UI更新包失败: %s", e)
+            return
+
+        # UI 更新：source 固定为 "ui"，mode 固定为 full，target_object_name 固定为 "MFW"
+        self._write_update_metadata(
+            download_dir,
+            source="ui",  # UI 更新统一使用 "ui"
+            mode="full",
+            version=version,
+            attempts=1,
+            package_name=dest_path.name,
+            target_object_name="MFW",
+            multi_resource_adaptation=False,
+        )
+
+        # 为 UI 更新添加 type 字段，方便 updater.py 识别
+        metadata_path = download_dir / "update_metadata.json"
+        try:
+            with open(metadata_path, "r", encoding="utf-8") as f:
+                data = jsonc.load(f)
+            data["type"] = "ui"
+            with open(metadata_path, "w", encoding="utf-8") as f:
+                jsonc.dump(data, f, indent=2, ensure_ascii=False)
+            logger.info("已生成旧版UI更新元数据（type=ui）")
+        except Exception as e:
+            logger.warning("为UI更新元数据追加type字段失败: %s", e)
+
+    def _emit_status(self, status: str, msg: str):
+        """发送状态更新（兼容旧版 signalBus.download_self_finished）"""
+        if status == "success":
+            self.info_bar_signal.emit("success", msg)
+        elif status == "failed" or status == "failed_info":
+            self.info_bar_signal.emit("error", msg)
+        elif status == "info":
+            self.info_bar_signal.emit("info", msg)
+        elif status == "no_need":
+            self.info_bar_signal.emit("info", msg)
+
+    def run(self):
+        """旧版UI更新主流程"""
+        from app.common.__version__ import __version__
+
+        os_type = self._normalize_os_type(sys.platform)
+        arch = self._normalize_arch(platform.machine())
+        version = __version__
+
+        # 使用 resource_update_channel 作为 UI 更新的通道（如果没有专门的 MFW_update_channel）
+        channel_value = cfg.get(cfg.resource_update_channel)
+        try:
+            channel_enum = cfg.UpdateChannel(int(channel_value))
+        except (ValueError, TypeError):
+            channel_enum = cfg.UpdateChannel.STABLE
+        channel = self.channel_map.get(channel_enum.value, "stable")
+
+        cdk = self.Mirror_ckd()
+        if cdk:
+            logger.debug(f"获取到CDK: {cdk[:4]}****")
+        else:
+            logger.warning("未获取到CDK")
+            cdk = ""
+
+        mirror_data: Dict[str, Any] = self.mirror_check(
+            res_id="MFW_PyQt6",
+            cdk=cdk,
+            version=version,
+            os_type=os_type,
+            channel=channel,
+            arch=arch,
+        )
+        logger.debug(f"镜像检查结果: {mirror_data}")
+
+        if mirror_data.get("status") == "failed_info":  # mirror检查失败
+            self._emit_status("failed_info", mirror_data.get("msg", ""))
+            update_url = (
+                f"https://api.github.com/repos/overflow65537/MFW-PyQt6/releases/latest"
+            )
+            github_dict = self.github_check(update_url, version)
+            if github_dict.get("status") in ["failed", "success", "no_need"]:
+                status = github_dict.get("status", "failed")
+                msg = github_dict.get("msg", "")
+                self._emit_status(
+                    status if isinstance(status, str) else "failed",
+                    msg if isinstance(msg, str) else str(msg),
+                )
+                return
+            try:
+                changelog = github_dict.get("body", "")
+                if changelog and isinstance(changelog, str):
+                    changelog_path = os.path.join(os.getcwd(), "MFW_changelog.md")
+                    with open(changelog_path, "w", encoding="utf-8") as f:
+                        f.write(changelog)
+                download_url = None
+                for i in github_dict.get("assets", []) or []:
+                    if not isinstance(i, dict):
+                        logger.error(f"assets 内部不是字典: {github_dict}")
+                        raise Exception("assets inside is not a dict")
+                    if (
+                        i.get("name")
+                        == f"MFW-PyQt6-{os_type}-{arch}-{github_dict.get('tag_name')}.zip"
+                    ):
+                        download_url = i.get("browser_download_url")
+                        break
+                if not download_url:
+                    logger.error(f"未找到下载地址: {github_dict}")
+                    raise Exception("download url not found")
+                logger.debug(f"github开始下载: {download_url}")
+            except Exception as e:
+                logger.exception(f"获取下载地址失败{e}")
+                self._emit_status("failed", self.tr("Failed to get download address"))
+                return
+
+            # 获取版本号用于元数据
+            github_version = github_dict.get("tag_name", __version__)
+            github_version_str = (
+                github_version if isinstance(github_version, str) else str(__version__)
+            )
+            if not self._download(
+                download_url,
+                use_proxies=True,
+                source="github",
+                version=github_version_str,
+            ):
+                self._emit_status("failed", self.tr("Failed to get download address"))
+                return
+        elif mirror_data.get("status") == "no_need":
+            msg = mirror_data.get("msg", "")
+            self._emit_status("no_need", msg if isinstance(msg, str) else str(msg))
+            return
+
+        if mirror_data.get("code") is not None and mirror_data.get("code") != 0:
+            logger.warning(f"更新检查失败: {mirror_data.get('msg')}")
+            self._emit_status(
+                "failed",
+                str(mirror_data.get("msg", ""))
+                + "\n"
+                + self.tr("switching to Github download"),
+            )
+            return
+        elif mirror_data.get("data", {}).get("url"):
+            logger.info(f"开始镜像下载: {mirror_data['data']['url']}")
+            self._emit_status(
+                "info",
+                self.tr("MirrorChyan update check successful, starting download"),
+            )
+
+            try:
+                # 获取版本号用于元数据
+                mirror_version_str = mirror_data.get("data", {}).get(
+                    "version_name", version
+                )
+                if not isinstance(mirror_version_str, str):
+                    mirror_version_str = version
+                if not self._download(
+                    mirror_data["data"]["url"],
+                    use_proxies=False,
+                    source="mirror",
+                    version=mirror_version_str,
+                ):
+                    logger.error("镜像下载失败")
+                    return
+            except Exception as e:
+                logger.exception("镜像下载过程中发生未预期错误")
+                self._emit_status("failed", self.tr("Unexpected error during download"))
+                return
+            changelog = mirror_data.get("data", {}).get("release_note", "")
+            if changelog and isinstance(changelog, str):
+                changelog_path = os.path.join(os.getcwd(), "MFW_changelog.md")
+                with open(changelog_path, "w", encoding="utf-8") as f:
+                    f.write(changelog)
+            return
+        else:
+            logger.warning("镜像检查成功但未找到CDK，切换到GitHub下载")
+            self._emit_status(
+                "info",
+                self.tr(
+                    "MirrorChyan update check successful, but no CDK found, switching to Github download"
+                ),
+            )
+
+            try:
+                target_version = mirror_data["data"].get(
+                    "version_name", "default_version"
+                )
+                github_url = self.assemble_gitHub_url(target_version)
+                logger.debug(f"GitHub下载地址: {github_url}")
+
+                if not self._download(
+                    github_url,
+                    use_proxies=False,
+                    source="github",
+                    version=target_version,
+                ):
+                    logger.error("GitHub下载失败")
+                    return
+            except KeyError as e:
+                logger.error(f"构造GitHub URL参数缺失: {str(e)}")
+                self._emit_status("failed", self.tr("GitHub URL construction failed"))
+                return
+            return
+
+    def _download(
+        self,
+        download_url,
+        use_proxies,
+        source: str = "unknown",
+        version: str | None = None,
+    ):
+        """下载更新包"""
+        from app.common.__version__ import __version__
+
+        self.stop_flag = False
+
+        zip_file_path = os.path.join(os.getcwd(), "update.zip")
+        downloaded_path, error = self.download_file(
+            download_url,
+            zip_file_path,
+            self.progress_signal,
+            use_proxies=use_proxies,
+        )
+        if not downloaded_path:
+            self._emit_status("failed", self.tr("Download failed"))
+            return False
+
+        # 生成更新元数据（UI 更新 source 固定为 "ui"）
+        update_version = version or __version__
+        self._write_legacy_ui_metadata(
+            package_path=Path(downloaded_path),
+            source="ui",  # UI 更新统一使用 "ui"，忽略传入的 source 参数
+            version=update_version,
+        )
+
+        self._emit_status("success", self.tr("Download successful"))
+        return True
+
+
+# endregion
