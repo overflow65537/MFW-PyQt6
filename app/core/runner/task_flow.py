@@ -1159,10 +1159,10 @@ class TaskFlowRunner(QObject):
 
         device_name = self.adb_controller_config.get("device_name", "")
 
-        if "mumuplayer12" in device_name.lower():
+        if device_name.lower().startswith("mumu"):
             EmulatorHelper.close_mumu(adb_path, adb_port)
             return
-        elif "ldplayer" in device_name.lower():
+        elif device_name.lower().startswith("ldplayer"):
             ld_pid_cfg = (
                 self.adb_controller_config.get("config", {})
                 .get("extras", {})
@@ -1172,14 +1172,14 @@ class TaskFlowRunner(QObject):
             EmulatorHelper.close_ldplayer(adb_path, ld_pid_cfg)
 
             return
-        elif "bluestacks" in device_name.lower():
+        elif device_name.lower().startswith("bluestacks"):
             pass
-        elif "nox" in device_name.lower():
+        elif device_name.lower().startswith("nox"):
             pass
-        elif "memu" in device_name.lower():
+        elif device_name.lower().startswith("memu"):
             pass
         else:
-            logger.warning(f"未找到对应的模拟器: {device_name}")
+            logger.warning("未找到对应的模拟器")
             return
 
     def shutdown(self):
