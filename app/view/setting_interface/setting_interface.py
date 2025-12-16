@@ -1231,6 +1231,14 @@ class SettingInterface(QWidget):
         self.compatibility_group = SettingCardGroup(
             self.tr("Experimental / Compatibility"), self.Setting_scroll_widget
         )
+
+        self.save_screenshot_card = SwitchSettingCard(
+            FIF.SAVE_AS,
+            self.tr("Save screenshot"),
+            self.tr("Save a screenshot when experimental features run"),
+            cfg.save_screenshot,
+            self.compatibility_group,
+        )
         self.multi_resource_adaptation_card = SwitchSettingCard(
             FIF.SETTING,
             self.tr("Multi-resource adaptation"),
@@ -1241,16 +1249,8 @@ class SettingInterface(QWidget):
             self.compatibility_group,
         )
 
-        self.save_screenshot_card = SwitchSettingCard(
-            FIF.SAVE_AS,
-            self.tr("Save screenshot"),
-            self.tr("Save a screenshot when experimental features run"),
-            cfg.save_screenshot,
-            self.compatibility_group,
-        )
-
-        self.compatibility_group.addSettingCard(self.multi_resource_adaptation_card)
         self.compatibility_group.addSettingCard(self.save_screenshot_card)
+        self.compatibility_group.addSettingCard(self.multi_resource_adaptation_card)
         self.add_setting_group(self.compatibility_group)
 
     def _initialize_proxy_controls(self):
@@ -1437,10 +1437,9 @@ class SettingInterface(QWidget):
 
         当前仅作为占位，后续可在此实现多配置资源目录重建等逻辑。
         """
-        # 启用多资源适配后，显示“更新 UI”按钮，并通知主界面刷新标题等信息，
-        # 同时隐藏多资源适配开关，避免重复误操作。
         self.update_ui_button.setVisible(True)
         self.multi_resource_adaptation_card.setVisible(False)
+
         signalBus.title_changed.emit()
 
     def _confirm_enable_multi_resource(self) -> bool:
@@ -1938,7 +1937,11 @@ class SettingInterface(QWidget):
         """保存更新日志到文件"""
         import os
 
-        release_notes_dir = "./release_notes"
+        release_notes_base_dir = "./release_notes"
+        object_name = self.interface_data.get("name")
+        if object_name is None:
+            raise ValueError("interface 中没有 name 字段")
+        release_notes_dir = os.path.join(release_notes_base_dir, object_name)
         os.makedirs(release_notes_dir, exist_ok=True)
 
         # 清理版本号中的非法字符作为文件名
@@ -1956,7 +1959,12 @@ class SettingInterface(QWidget):
         """加载所有已保存的更新日志"""
         import os
 
-        release_notes_dir = "./release_notes"
+        release_notes_base_dir = "./release_notes"
+        object_name = self.interface_data.get("name")
+        if object_name is None:
+            raise ValueError("interface 中没有 name 字段")
+        release_notes_dir = os.path.join(release_notes_base_dir, object_name)
+        os.makedirs(release_notes_dir, exist_ok=True)
         notes = {}
 
         if not os.path.exists(release_notes_dir):
