@@ -71,6 +71,9 @@ class TaskFlowRunner(QObject):
         self.adb_activate_controller: str | None = None
         self.adb_controller_config: dict[str, Any] | None = None
 
+        # bundle 相关：在任务流开始时根据当前配置初始化
+        self.bundle_path: str = "./"
+
         # 任务超时相关
         self._timeout_timer = QTimer(self)
         self._timeout_timer.setSingleShot(True)
@@ -152,8 +155,15 @@ class TaskFlowRunner(QObject):
         config_label = ""
         if not current_config:
             config_label = self.tr("Unknown Config")
+            # 保持 bundle_path 的安全默认值
+            self.bundle_path = "./"
         else:
             config_label = current_config.name
+            # 从当前配置的 bundle 中初始化 bundle_path
+            bundle_data = getattr(current_config, "bundle", {}) or {}
+            bundle_path_str = str(bundle_data.get("path", "./"))
+
+            self.bundle_path = bundle_path_str
         try:
             if self.fs_signal_bus:
                 self.fs_signal_bus.fs_start_button_status.emit(
@@ -241,10 +251,25 @@ class TaskFlowRunner(QObject):
                 )
                 self.maafw.resource.clear_custom_recognition()
                 self.maafw.resource.clear_custom_action()
+
+                # 先从预配置中读 custom 路径，若为空则退回 interface 中的默认 custom 路径
+                custom_config_path = pre_cfg.task_option.get("custom")
+                if not custom_config_path:
+                    custom_config_path = self.task_service.interface.get("custom", "")
+
+                # 将 custom 路径视为相对 bundle.path 的路径，组合为绝对路径
+                if custom_config_path:
+                    bundle_path_str = self.bundle_path or "./"
+                    base_dir = Path(bundle_path_str)
+                    if not base_dir.is_absolute():
+                        base_dir = (Path.cwd() / base_dir).resolve()
+
+                    raw_custom = str(custom_config_path).replace("{PROJECT_DIR}", "")
+                    normalized_custom = raw_custom.lstrip("\\/")
+                    custom_config_path = (base_dir / normalized_custom).resolve()
+
                 result = self.maafw.load_custom_objects(
-                    custom_config_path=pre_cfg.task_option.get(
-                        "custom", self.task_service.interface.get("custom", "")
-                    )
+                    custom_config_path=custom_config_path
                 )
                 if not result:
                     failed_actions = self.maafw.custom_load_report["actions"]["failed"]
@@ -442,7 +467,7 @@ class TaskFlowRunner(QObject):
 
         for path_item in resource_path:
             # 所有资源路径均为相对路径：优先相对于当前 bundle.path，再回落到项目根目录
-            bundle_path_str = self.config_service.get_current_bundle().get("path", "./")
+            bundle_path_str = self.bundle_path or "./"
 
             # 先解析 bundle 基础目录为绝对路径
             bundle_base = Path(bundle_path_str)
