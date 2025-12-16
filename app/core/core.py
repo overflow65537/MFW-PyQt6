@@ -287,7 +287,7 @@ class ServiceCoordinator:
     async def run_tasks_flow(self, task_id: str | None = None, is_timeout_restart: bool = False):
         return await self.task_runner.run_tasks_flow(task_id, is_timeout_restart=is_timeout_restart)
 
-    async def stop_task(self):
+    async def stop_task_flow(self):
         return await self.task_runner.stop_task()
 
     @property

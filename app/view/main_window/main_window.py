@@ -197,7 +197,7 @@ class MainWindow(MSFluentWindow):
         self._hotkey_manager = GlobalHotkeyManager(event_loop)
         self._hotkey_manager.setup(
             start_factory=lambda: self.service_coordinator.run_tasks_flow(),
-            stop_factory=lambda: self.service_coordinator.stop_task(),
+            stop_factory=lambda: self.service_coordinator.stop_task_flow(),
         )
         signalBus.hotkey_shortcuts_changed.connect(self._reload_global_hotkeys)
         self._reload_global_hotkeys()
