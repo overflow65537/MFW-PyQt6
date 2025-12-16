@@ -285,9 +285,17 @@ class ServiceCoordinator:
             logger.error(f"重新初始化服务协调器失败: {e}")
 
     async def run_tasks_flow(self, task_id: str | None = None, is_timeout_restart: bool = False):
-        return await self.task_runner.run_tasks_flow(task_id, is_timeout_restart=is_timeout_restart)
+        """运行任务流的对外封装。
+
+        :param task_id: 指定只运行某个任务（可选）
+        :param is_timeout_restart: 是否为超时重启触发
+        """
+        return await self.task_runner.run_tasks_flow(
+            task_id, is_timeout_restart=is_timeout_restart
+        )
 
     async def stop_task_flow(self):
+        """停止当前任务流（向下转发到 TaskFlowRunner）。"""
         return await self.task_runner.stop_task()
 
     @property

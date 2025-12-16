@@ -57,7 +57,7 @@ class TaskInterface(UI_TaskInterface, QWidget):
     def _on_stop_button_clicked(self):
         """处理停止按钮点击事件"""
         # 停止任务流
-        asyncio.create_task(self.service_coordinator.stop_task())
+        asyncio.create_task(self.service_coordinator.stop_task_flow())
 
     def _on_run_button_clicked(self):
         """处理启动/停止按钮点击事件"""
@@ -83,7 +83,7 @@ class TaskInterface(UI_TaskInterface, QWidget):
             QApplication.processEvents()
             
             def _stop_task():
-                asyncio.create_task(self.service_coordinator.stop_task())
+                asyncio.create_task(self.service_coordinator.stop_task_flow())
             
             # 使用 QTimer 延迟执行
             QTimer.singleShot(0, _stop_task)
