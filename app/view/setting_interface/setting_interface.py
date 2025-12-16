@@ -196,7 +196,17 @@ class SettingInterface(QWidget):
             restart_required=True
         )
         if self._local_update_package:
-            logger.info("检测到本地更新包，跳过检查更新流程")
+            logger.info("检测到本地更新包，准备立即更新状态")
+            # 准备立即更新状态：将更新按钮改为"立刻更新"
+            self._prepare_instant_update_state(restart_required=True)
+            # 如果自动更新打开，自动触发"立刻更新"
+            if self._is_auto_update_enabled():
+                logger.info("自动更新已开启，自动触发立即更新")
+                QTimer.singleShot(0, lambda: self._handle_instant_update(auto_accept=True, notify_if_cancel=True))
+            else:
+                # 如果自动更新关闭，发送信号给 main_window 检查是否需要立刻运行
+                logger.info("自动更新未开启，通知 main_window 检查是否需要自动运行")
+                signalBus.check_auto_run_after_update_cancel.emit()
         self._init_update_checker()
 
     def connect_notice_card_clicked(self):
@@ -1820,6 +1830,11 @@ class SettingInterface(QWidget):
             logger.info("自动更新已在进行，跳过重复启动")
             return True
 
+        # 如果已经有本地更新包（初始化时已检测），且已经准备好立即更新状态，则不再重复处理
+        if self._local_update_package and self._update_button_handler == self._on_instant_update_clicked:
+            logger.info("本地更新包已在初始化时处理，跳过重复处理")
+            return True
+
         if self._refresh_local_update_package(restart_required=True):
             if self._is_local_update_hotfix():
                 logger.info(
@@ -1991,6 +2006,8 @@ class SettingInterface(QWidget):
         if not confirmed:
             if notify_if_cancel:
                 signalBus.update_stopped.emit(3)
+            # 用户取消更新，通知 main_window 检查是否需要自动运行
+            signalBus.check_auto_run_after_update_cancel.emit()
             return
 
         if self._updater_started:

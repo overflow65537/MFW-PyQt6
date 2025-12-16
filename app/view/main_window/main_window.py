@@ -78,9 +78,6 @@ from app.view.monitor_interface import MonitorInterface
 from app.view.schedule_interface.schedule_interface import ScheduleInterface
 from app.view.setting_interface.setting_interface import (
     SettingInterface,
-    start_auto_confirm_countdown,
-    rename_updater_binary,
-    launch_updater_process,
 )
 from app.view.test_interface.test_interface import TestInterface
 from app.common.config import cfg
@@ -125,7 +122,6 @@ class MainWindow(MSFluentWindow):
         self._auto_update_in_progress = False
         self._auto_update_pending_restart = False
         self._pending_auto_run = False
-        self._external_updater_started = False
 
         cfg.set(cfg.save_screenshot, False)
 
@@ -470,6 +466,7 @@ class MainWindow(MSFluentWindow):
             self._on_background_opacity_changed
         )
         signalBus.update_stopped.connect(self._on_update_stopped_main)
+        signalBus.check_auto_run_after_update_cancel.connect(self._on_check_auto_run_after_update_cancel)
 
     def _apply_cli_switch_config(self) -> None:
         """处理 CLI 请求的配置切换，在 UI 初始化前执行。"""
@@ -748,6 +745,14 @@ class MainWindow(MSFluentWindow):
 
         QTimer.singleShot(0, lambda: asyncio.create_task(_start_flow()))
 
+    def _on_check_auto_run_after_update_cancel(self) -> None:
+        """当更新被取消后，检查是否需要自动运行任务。"""
+        logger.info("收到更新取消信号，检查是否需要自动运行任务")
+        should_run = self._cli_auto_run or cfg.get(cfg.run_after_startup)
+        if should_run:
+            logger.info("检测到需要自动运行任务，开始调度")
+            self._schedule_auto_run()
+
     def _on_update_stopped_main(self, status: int):
         """监听更新结束，串行触发自动运行或提示重启。"""
         logger.info(
@@ -778,94 +783,12 @@ class MainWindow(MSFluentWindow):
                     auto_accept=cfg.get(cfg.auto_update)
                 )
             else:
-                self._show_restart_prompt(auto_accept=cfg.get(cfg.auto_update))
+                logger.warning("SettingInterface 不存在，无法触发立即更新提示")
             return
         if self._pending_auto_run:
             self._schedule_auto_run()
         self._pending_auto_run = False
 
-    def _show_restart_prompt(self, auto_accept: bool) -> None:
-        """非热更新完成后弹出重启确认，支持自动确认。"""
-        dialog = MessageBoxBase(self)
-        dialog.widget.setMinimumWidth(420)
-        dialog.yesButton.setText(self.tr("Restart now"))
-        dialog.cancelButton.setText(self.tr("Later"))
-
-        title = BodyLabel(self.tr("Restart required to finish update"), dialog)
-        title.setStyleSheet("font-weight: 600;")
-        desc = BodyLabel(
-            self.tr("Update package downloaded. Restart to apply changes."),
-            dialog,
-        )
-        desc.setWordWrap(True)
-
-        dialog.viewLayout.addWidget(title)
-        dialog.viewLayout.addSpacing(6)
-        dialog.viewLayout.addWidget(desc)
-
-        if auto_accept:
-            logger.info("自动更新场景：启动重启确认倒计时 10s")
-            countdown_label = BodyLabel("", dialog)
-            countdown_label.setWordWrap(True)
-            dialog.viewLayout.addSpacing(4)
-            dialog.viewLayout.addWidget(countdown_label)
-            self._start_auto_confirm_countdown(
-                dialog,
-                countdown_label,
-                10,
-                dialog.yesButton,
-                self.tr("Auto restarting in %1 s"),
-            )
-
-        result = dialog.exec()
-        if result == QDialog.DialogCode.Accepted:
-            self._start_external_updater()
-
-    def _start_auto_confirm_countdown(
-        self,
-        dialog: MessageBoxBase,
-        label: BodyLabel,
-        seconds: int,
-        yes_button,
-        template: str,
-    ) -> None:
-        """自动确认倒计时，用于自动更新场景，复用设置页的通用工具函数。"""
-        start_auto_confirm_countdown(
-            dialog,
-            label,
-            seconds,
-            yes_button,
-            template,
-            logger_prefix="自动更新",
-        )
-
-    def _start_external_updater(self) -> None:
-        """调用外部更新器完成非热更新并退出主程序。"""
-        if self._external_updater_started:
-            return
-        self._external_updater_started = True
-        try:
-            if sys.platform.startswith("win32"):
-                rename_updater_binary("MFWUpdater.exe", "MFWUpdater1.exe")
-            elif sys.platform.startswith(("darwin", "linux")):
-                rename_updater_binary("MFWUpdater", "MFWUpdater1")
-        except Exception as exc:
-            self._external_updater_started = False
-            logger.error("重命名更新程序失败: %s", exc)
-            signalBus.info_bar_requested.emit("error", str(exc))
-            return
-
-        try:
-            launch_updater_process()
-        except Exception as exc:
-            self._external_updater_started = False
-            logger.error("启动更新程序失败: %s", exc)
-            signalBus.info_bar_requested.emit("error", str(exc))
-            return
-
-        app = QApplication.instance()
-        if app is not None:
-            QTimer.singleShot(0, app.quit)
 
     def _apply_auto_minimize_on_startup(self) -> None:
         """在启动完成后根据配置自动最小化窗口。"""
