@@ -376,6 +376,11 @@ class SettingInterface(QWidget):
             self.tr("GitHub URL"), FIF.GITHUB
         )
         self.update_button = self._create_detail_button(self.tr("Update"), FIF.UPDATE)
+        self.update_ui_button = self._create_detail_button(
+            self.tr("Update UI"), FIF.LAYOUT
+        )
+        # 默认隐藏“更新 UI”按钮，仅在启用多资源适配后显示
+        self.update_ui_button.setVisible(False)
         self.update_log_button = self._create_detail_button(
             self.tr("Open update log"), FIF.QUICK_NOTE
         )
@@ -426,12 +431,14 @@ class SettingInterface(QWidget):
 
         self.license_button.clicked.connect(self._open_license_dialog)
         self.github_button.clicked.connect(self._open_github_home)
+        self.update_ui_button.clicked.connect(self._on_update_ui_clicked)
         self.update_log_button.clicked.connect(self._open_update_log)
         self._bind_start_button(enable=True)
 
         detail_row.addWidget(self.license_button)
         detail_row.addWidget(self.github_button)
         detail_row.addWidget(self.update_button)
+        detail_row.addWidget(self.update_ui_button)
         detail_row.addWidget(self.update_log_button)
         detail_row.addWidget(self.progress_container, 1)
         header_layout.addLayout(detail_row)
@@ -1417,6 +1424,25 @@ class SettingInterface(QWidget):
             return
         self._update_background_image("")
 
+    def _on_update_ui_clicked(self) -> None:
+        """更新 UI 按钮点击回调，占位接口，后续可在此实现 UI 更新逻辑。"""
+        # TODO: 在此处实现 UI 更新的具体行为（如检查并更新前端资源等）
+        signalBus.info_bar_requested.emit(
+            "info",
+            self.tr("UI update feature is not implemented yet."),
+        )
+
+    def run_multi_resource_post_enable_tasks(self) -> None:
+        """开启多资源适配后执行的后续操作占位方法。
+
+        当前仅作为占位，后续可在此实现多配置资源目录重建等逻辑。
+        """
+        # 启用多资源适配后，显示“更新 UI”按钮，并通知主界面刷新标题等信息，
+        # 同时隐藏多资源适配开关，避免重复误操作。
+        self.update_ui_button.setVisible(True)
+        self.multi_resource_adaptation_card.setVisible(False)
+        signalBus.title_changed.emit()
+
     def _confirm_enable_multi_resource(self) -> bool:
         """开启多资源适配前进行二次确认"""
         confirm_dialog = MessageBoxBase(self)
@@ -1513,6 +1539,8 @@ class SettingInterface(QWidget):
                 self._suppress_multi_resource_signal = False
                 cfg.set(cfg.multi_resource_adaptation, False)
                 return
+            # 二次确认通过后，执行多资源适配启用后的后续操作
+            self.run_multi_resource_post_enable_tasks()
 
         cfg.set(cfg.multi_resource_adaptation, bool(checked))
 

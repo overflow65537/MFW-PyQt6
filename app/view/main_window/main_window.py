@@ -204,6 +204,13 @@ class MainWindow(MSFluentWindow):
         self._bootstrap_auto_update_and_run()
         self._apply_auto_minimize_on_startup()
 
+        # 程序启动并完成主界面初始化后，如果已开启多资源适配，则执行一次后续操作钩子
+        try:
+            if cfg.get(cfg.multi_resource_adaptation):
+                self.SettingInterface.run_multi_resource_post_enable_tasks()
+        except Exception as exc:
+            logger.warning(f"运行多资源适配启动钩子失败: {exc}")
+
         logger.info(" 主界面初始化完成。")
 
     def initWindow(self):
@@ -466,7 +473,9 @@ class MainWindow(MSFluentWindow):
             self._on_background_opacity_changed
         )
         signalBus.update_stopped.connect(self._on_update_stopped_main)
-        signalBus.check_auto_run_after_update_cancel.connect(self._on_check_auto_run_after_update_cancel)
+        signalBus.check_auto_run_after_update_cancel.connect(
+            self._on_check_auto_run_after_update_cancel
+        )
 
     def _apply_cli_switch_config(self) -> None:
         """处理 CLI 请求的配置切换，在 UI 初始化前执行。"""
@@ -789,7 +798,6 @@ class MainWindow(MSFluentWindow):
             self._schedule_auto_run()
         self._pending_auto_run = False
 
-
     def _apply_auto_minimize_on_startup(self) -> None:
         """在启动完成后根据配置自动最小化窗口。"""
         if not cfg.get(cfg.auto_minimize_on_startup):
@@ -889,11 +897,22 @@ class MainWindow(MSFluentWindow):
 
     def set_title(self):
         """设置窗口标题"""
-        title = (
-            self.service_coordinator.task.interface.get("title", "")
-            or self.service_coordinator.task.interface.get("custom_title", "")
-            or f"{self.service_coordinator.task.interface.get("name", "")} {self.service_coordinator.task.interface.get("version", "")}"
+        meta = self.service_coordinator.task.interface or {}
+        base_title = (
+            meta.get("title", "")
+            or meta.get("custom_title", "")
+            or f"{meta.get('name', '')} {meta.get('version', '')}".strip()
         )
+
+        if cfg.get(cfg.multi_resource_adaptation):
+            from app.common.__version__ import __version__
+
+            # 多资源模式下：显示应用名 + 应用版本 + 资源标题
+            prefix = f"{self.tr('MFW-ChainFlow Assistant')} {__version__}"
+            title = f"{prefix} {base_title}".strip()
+        else:
+            title = base_title
+
         if self.is_admin():
             title += " " + self.tr("admin")
         logger.info(f" 设置窗口标题：{title}")
