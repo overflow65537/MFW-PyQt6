@@ -1035,7 +1035,7 @@ class MainWindow(MSFluentWindow):
             self._clear_maafw_sync()
             self._stop_notice_thread(send_thread)
             self._stop_update_workers()
-            self._terminate_child_processes()
+            #self._terminate_child_processes()
         except Exception as e:
             logger.exception("异步清理失败", exc_info=e)
 
