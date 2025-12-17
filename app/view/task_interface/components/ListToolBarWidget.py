@@ -157,7 +157,12 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
                 elif isinstance(bundle_source, list):
                     bundles = bundle_source
 
-        dlg = AddConfigDialog(resource_bundles=bundles, parent=self.window(), interface=self.service_coordinator.interface)
+        dlg = AddConfigDialog(
+            resource_bundles=bundles,
+            parent=self.window(),
+            interface=self.service_coordinator.interface,
+            service_coordinator=self.service_coordinator,
+        )
         if dlg.exec():
             cfg = dlg.get_config_item()
             if cfg:
