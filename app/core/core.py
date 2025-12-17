@@ -74,18 +74,19 @@ class ServiceCoordinator:
     def _resolve_interface_path(
         self, main_config_path: Path, interface_path: Path | str | None
     ) -> Path | None:
-        """根据传入路径或主配置中的 bundle.path 决定 interface 配置文件位置。
+        """根据传入路径或“当前激活配置”的 bundle.path 决定 interface 配置文件位置。
 
         优先级：
         1. 调用方显式传入的 interface_path
-        2. main_config.json(multi_config) 中第一个 bundle 的 path 下的 interface.jsonc/interface.json
-        3. 返回 None，交由 InterfaceManager 自行在 CWD 下探测
+        2. multi_config.json 中 curr_config_id 对应配置文件里的 bundle.path
+        3. multi_config.json 中第一个 bundle 的 path 下的 interface.jsonc/interface.json（兼容旧逻辑）
+        4. 返回 None，交由 InterfaceManager 自行在 CWD 下探测
         """
         # 1. 显式传入时直接使用
         if interface_path:
             return Path(interface_path)
 
-        # 2. 从主配置读取 bundle.path
+        # 2. 从主配置和“当前激活配置”解析 bundle.path
         try:
             if not main_config_path.exists():
                 return None
@@ -93,37 +94,154 @@ class ServiceCoordinator:
             with open(main_config_path, "r", encoding="utf-8") as f:
                 main_cfg: Dict[str, Any] = jsonc.load(f)
 
+            # 2.1 优先使用当前激活配置（curr_config_id）对应配置里的 bundle
+            curr_config_id = main_cfg.get("curr_config_id")
+            if curr_config_id:
+                configs_dir = main_config_path.parent / "configs"
+                curr_config_path = configs_dir / f"{curr_config_id}.json"
+                if curr_config_path.exists():
+                    try:
+                        with open(curr_config_path, "r", encoding="utf-8") as cf:
+                            curr_cfg: Dict[str, Any] = jsonc.load(cf)
+                        raw_bundle = curr_cfg.get("bundle")
+                        bundle_name = self._normalize_bundle_name(raw_bundle)
+                        candidate = self._resolve_interface_path_from_bundle(
+                            bundle_name
+                        )
+                        if candidate:
+                            logger.info(
+                                f"从当前激活配置 {curr_config_id} 解析到 interface 路径: {candidate}"
+                            )
+                            return candidate
+                    except Exception as e:
+                        logger.warning(
+                            f"从当前配置 {curr_config_id} 解析 interface 路径失败: {e}"
+                        )
+
+            # 2.2 兜底：使用 multi_config.json 里的第一个 bundle（兼容旧行为）
             bundle = main_cfg.get("bundle")
-            if not isinstance(bundle, dict) or not bundle:
-                return None
+            if isinstance(bundle, dict) and bundle:
+                first_bundle_name = next(iter(bundle.keys()))
+                bundle_info = bundle.get(first_bundle_name, {})
+                bundle_path_str = bundle_info.get("path")
+                if bundle_path_str:
+                    base_dir = Path(bundle_path_str)
+                    if not base_dir.is_absolute():
+                        base_dir = Path.cwd() / base_dir
 
-            # 取第一个 bundle 作为当前使用的资源包
-            first_bundle_name = next(iter(bundle.keys()))
-            bundle_info = bundle.get(first_bundle_name, {})
-            bundle_path_str = bundle_info.get("path")
-            if not bundle_path_str:
-                return None
+                    # 优先使用 interface.jsonc，其次 interface.json
+                    candidate = base_dir / "interface.jsonc"
+                    if not candidate.exists():
+                        candidate = base_dir / "interface.json"
 
-            base_dir = Path(bundle_path_str)
-            if not base_dir.is_absolute():
-                base_dir = Path.cwd() / base_dir
+                    if not candidate.exists():
+                        logger.warning(
+                            f"在 bundle 路径 {base_dir} 下未找到 interface.jsonc/interface.json"
+                        )
+                        return None
 
-            # 优先使用 interface.jsonc，其次 interface.json
-            candidate = base_dir / "interface.jsonc"
-            if not candidate.exists():
-                candidate = base_dir / "interface.json"
+                    logger.info(f"从主配置解析到 interface 路径: {candidate}")
+                    return candidate
 
-            if not candidate.exists():
-                logger.warning(
-                    f"在 bundle 路径 {base_dir} 下未找到 interface.jsonc/interface.json"
-                )
-                return None
-
-            logger.info(f"从主配置解析到 interface 路径: {candidate}")
-            return candidate
+            return None
         except Exception as e:
             logger.warning(f"从主配置解析 interface 路径失败: {e}")
             return None
+
+    def _normalize_bundle_name(self, raw_bundle: Any) -> str | None:
+        """从配置中的 bundle 字段推断 bundle 名称。
+
+        兼容多种旧格式：
+        - 新格式："MPA"
+        - 旧格式1：{"MPA": {"name": "MPA", "path": "..."}}
+        - 旧格式2：{"path": "..."} 或 {"name": "MPA", "path": "..."}
+        """
+        if isinstance(raw_bundle, str):
+            return raw_bundle or None
+        if isinstance(raw_bundle, dict):
+            if not raw_bundle:
+                return None
+            first_key = next(iter(raw_bundle.keys()))
+            first_val = raw_bundle[first_key]
+            if isinstance(first_val, dict) and "path" in first_val:
+                return first_key
+            return str(raw_bundle.get("name") or first_key)
+        return None
+
+    def _resolve_interface_path_from_bundle(
+        self, bundle_name: str | None
+    ) -> Path | None:
+        """根据 bundle 名称解析 interface 路径。"""
+        if not bundle_name:
+            return None
+
+        try:
+            bundle_info = self.config_service.get_bundle(bundle_name)
+        except FileNotFoundError:
+            logger.warning(f"未在主配置中找到 bundle: {bundle_name}")
+            return None
+
+        bundle_path_str = str(bundle_info.get("path", ""))
+        if not bundle_path_str:
+            return None
+
+        base_dir = Path(bundle_path_str)
+        if not base_dir.is_absolute():
+            base_dir = Path.cwd() / base_dir
+
+        # 优先使用 interface.jsonc，其次 interface.json
+        candidate = base_dir / "interface.jsonc"
+        if not candidate.exists():
+            candidate = base_dir / "interface.json"
+
+        if not candidate.exists():
+            logger.warning(
+                f"在 bundle 路径 {base_dir} 下未找到 interface.jsonc/interface.json"
+            )
+            return None
+
+        return candidate
+
+    def _update_interface_path_for_config(self, config_id: str):
+        """根据配置的 bundle 更新 interface 路径（如果需要）。
+
+        Args:
+            config_id: 配置ID
+        """
+        if not config_id:
+            return
+
+        config = self.config_service.get_config(config_id)
+        if not config or not getattr(config, "bundle", None):
+            return
+
+        # 根据配置的 bundle 名称解析新的 interface 路径
+        new_interface_path = self._resolve_interface_path_from_bundle(config.bundle)
+
+        # 如果路径发生变化，需要重新加载 interface
+        if new_interface_path and new_interface_path != self._interface_path:
+            logger.info(
+                f"检测到配置 {config_id} 的 bundle 路径变化，"
+                f"从 {self._interface_path} 切换到 {new_interface_path}"
+            )
+            self._reload_interface(new_interface_path)
+
+    def _reload_interface(self, interface_path: Path | str | None):
+        """重新加载 interface 并更新相关服务。
+
+        Args:
+            interface_path: 新的 interface 文件路径
+        """
+        # 更新保存的路径
+        self._interface_path = interface_path
+
+        # 重新加载 interface
+        self.interface_manager.reload(interface_path=self._interface_path)
+        self._interface = self.interface_manager.get_interface()
+
+        # 更新相关服务的 interface 数据
+        self.config_repo.interface = self._interface
+        self.task_service.reload_interface(self._interface)
 
     def _connect_signals(self):
         """连接所有信号"""
@@ -136,6 +254,10 @@ class ServiceCoordinator:
         """配置变化后刷新内部服务状态"""
         if not config_id:
             return
+
+        # 检查并更新 interface 路径（如果配置的 bundle 发生变化）
+        self._update_interface_path_for_config(config_id)
+
         self.task_service.on_config_changed(config_id)
         self.option_service.clear_selection()
 
@@ -284,7 +406,9 @@ class ServiceCoordinator:
         except Exception as e:
             logger.error(f"重新初始化服务协调器失败: {e}")
 
-    async def run_tasks_flow(self, task_id: str | None = None, is_timeout_restart: bool = False):
+    async def run_tasks_flow(
+        self, task_id: str | None = None, is_timeout_restart: bool = False
+    ):
         """运行任务流的对外封装。
 
         :param task_id: 指定只运行某个任务（可选）

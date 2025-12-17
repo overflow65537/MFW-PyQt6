@@ -159,11 +159,10 @@ class TaskFlowRunner(QObject):
             self.bundle_path = "./"
         else:
             config_label = current_config.name
-            # 从当前配置的 bundle 中初始化 bundle_path
-            bundle_data = getattr(current_config, "bundle", {}) or {}
-            bundle_path_str = str(bundle_data.get("path", "./"))
-
-            self.bundle_path = bundle_path_str
+            # 使用 ConfigService 统一获取 bundle 路径
+            self.bundle_path = self.config_service.get_bundle_path_for_config(
+                current_config
+            )
         try:
             if self.fs_signal_bus:
                 self.fs_signal_bus.fs_start_button_status.emit(
