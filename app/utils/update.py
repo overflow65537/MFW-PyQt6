@@ -1485,26 +1485,6 @@ class Update(BaseUpdate):
             self._emit_info_bar(level, message)
         self.stop_signal.emit(code)
 
-    def _has_changes_json_in_zip(self, archive_path: Path) -> bool:
-        with zipfile.ZipFile(archive_path, "r", metadata_encoding="utf-8") as archive:
-            return any(
-                os.path.basename(name).lower() == "changes.json"
-                for name in archive.namelist()
-            )
-
-    def _has_changes_json_in_tar(self, archive_path: Path) -> bool:
-        with tarfile.open(archive_path, "r:*") as archive:
-            return any(
-                os.path.basename(member.name).lower() == "changes.json"
-                for member in archive.getmembers()
-            )
-
-    def _normalize_last_version(self, fallback: str | None = None) -> str | None:
-        version = self.latest_update_version or fallback or self.current_version
-        if version is None:
-            return None
-        return str(version)
-
     def _form_github_url(
         self, url: str, mode: str, version: str | None = None
     ) -> str | None:
@@ -1543,10 +1523,3 @@ class Update(BaseUpdate):
                 return None
             return_url = f"https://api.github.com/repos/{username}/{repository}/zipball/{version}"
         return return_url
-
-
-class _NullSignal:
-    """Simple fallback signal implementation (保留以防后续需要轻量级信号占位符)。"""
-
-    def emit(self, *args, **kwargs):
-        return None
