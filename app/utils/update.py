@@ -967,36 +967,46 @@ class Update(BaseUpdate):
         - 正常模式: 执行完整更新流程。
         - 仅检查模式: 只检查是否有更新，并通过 check_result_ready 返回结果。
         """
-        # 仅检查模式：不执行下载与热更新，只调用 check_update 并返回结果
         if self.check_only:
-            logger.info("以仅检查模式运行更新器（check_only=True）")
-            if not self.service_coordinator:
-                logger.warning("service_coordinator 未初始化，无法执行更新检查")
-                self.check_result_ready.emit(
-                    {
-                        "enable": False,
-                        "source": "",
-                        "download_url": "",
-                        "release_note": "",
-                        "latest_update_version": "",
-                    }
-                )
-                return
+            self._run_check_only()
+        else:
+            self._run_normal()
 
-            # fetch_download_url=False 只检查版本/元数据，不解析完整下载资源
-            result = self.check_update(fetch_download_url=False)
-            result_info = result if isinstance(result, dict) else {}
-            result_data: dict = {
-                "enable": bool(result),
-                "source": result_info.get("source", ""),
-                "download_url": result_info.get("url", ""),
-                "release_note": self.release_note or "",
-                "latest_update_version": self.latest_update_version or "",
-            }
-            self.check_result_ready.emit(result_data)
+    def _run_check_only(self) -> None:
+        """
+        仅检查更新，不执行任何下载或热更新操作。
+        检查结果通过 `check_result_ready` 信号返回。
+        """
+        logger.info("以仅检查模式运行更新器（check_only=True）")
+        if not self.service_coordinator:
+            logger.warning("service_coordinator 未初始化，无法执行更新检查")
+            self.check_result_ready.emit(
+                {
+                    "enable": False,
+                    "source": "",
+                    "download_url": "",
+                    "release_note": "",
+                    "latest_update_version": "",
+                }
+            )
             return
 
-        # 正常模式：完整更新流程
+        # fetch_download_url=False 只检查版本/元数据，不解析完整下载资源
+        result = self.check_update(fetch_download_url=False)
+        result_info = result if isinstance(result, dict) else {}
+        result_data: dict = {
+            "enable": bool(result),
+            "source": result_info.get("source", ""),
+            "download_url": result_info.get("url", ""),
+            "release_note": self.release_note or "",
+            "latest_update_version": self.latest_update_version or "",
+        }
+        self.check_result_ready.emit(result_data)
+
+    def _run_normal(self) -> None:
+        """
+        正常更新流程：检查更新、下载更新包并执行热更新/重启流程。
+        """
         logger.info("=" * 50)
         logger.info("开始更新流程")
         logger.info("当前版本: %s", self.current_version)
