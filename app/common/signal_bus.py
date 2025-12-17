@@ -34,7 +34,7 @@ class SignalBus(QObject):
     change_task_flow = Signal(dict)  # 切换任务列表
     show_option = Signal(dict)  # 显示选项
     agent_info = Signal(dict)  # 智能体信息
-    title_changed = Signal(str)  # 窗口标题改变
+    title_changed = Signal()  # 窗口标题改变
 
     # maa sink 发送信号
     callback = Signal(dict)
