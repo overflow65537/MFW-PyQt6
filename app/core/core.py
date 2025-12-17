@@ -71,6 +71,9 @@ class ServiceCoordinator:
         # 连接信号
         self._connect_signals()
 
+        # 在主要内容初始化完毕后，清理无效的 bundle 索引（不删除配置）
+        self._cleanup_invalid_bundles()
+
     def _resolve_interface_path(
         self, main_config_path: Path, interface_path: Path | str | None
     ) -> Path | None:
@@ -201,6 +204,52 @@ class ServiceCoordinator:
             return None
 
         return candidate
+
+    def _cleanup_invalid_bundles(self) -> None:
+        """检查 bundle.path 对应的 interface.json 是否存在，不存在则仅删除主配置中的 bundle 索引。
+
+        注意：不会删除引用这些 bundle 的配置，交由后续逻辑按需处理。
+        """
+        try:
+            bundle_names = self.config_service.list_bundles()
+        except Exception as exc:
+            logger.warning(f"读取 bundle 列表失败，跳过清理: {exc}")
+            return
+
+        if not bundle_names:
+            return
+
+        invalid_bundles: list[str] = []
+        for name in bundle_names:
+            iface_path = self._resolve_interface_path_from_bundle(name)
+            if iface_path is None:
+                logger.warning(
+                    f"Bundle '{name}' 的 interface.json/interface.jsonc 未找到，将从主配置中移除索引"
+                )
+                invalid_bundles.append(name)
+
+        if not invalid_bundles:
+            return
+
+        main_cfg = getattr(self.config_service, "_main_config", None)
+        if not isinstance(main_cfg, dict):
+            logger.warning("主配置结构缺失或损坏，跳过无效 bundle 清理")
+            return
+
+        bundle_dict = main_cfg.get("bundle") or {}
+        if not isinstance(bundle_dict, dict):
+            bundle_dict = {}
+
+        for name in invalid_bundles:
+            if name in bundle_dict:
+                logger.info(f"从主配置中移除无效 bundle 索引: {name}")
+                bundle_dict.pop(name, None)
+
+        main_cfg["bundle"] = bundle_dict
+        try:
+            self.config_service.save_main_config()
+        except Exception as exc:
+            logger.warning(f"保存主配置时出错（清理无效 bundle 索引后）: {exc}")
 
     def _update_interface_path_for_config(self, config_id: str):
         """根据配置的 bundle 更新 interface 路径（如果需要）。
