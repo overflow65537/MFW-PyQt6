@@ -215,8 +215,6 @@ class SettingInterface(QWidget):
                 logger.info("自动更新未开启，通知 main_window 检查是否需要自动运行")
                 signalBus.check_auto_run_after_update_cancel.emit()
         self._init_update_checker()
-        if cfg.get(cfg.multi_resource_adaptation):
-            self._refresh_update_header
 
     def connect_notice_card_clicked(self):
         # 连接通知卡片的点击事件
@@ -259,6 +257,7 @@ class SettingInterface(QWidget):
         self.initialize_hotkey_settings()
         self.initialize_update_settings()
         self.initialize_compatibility_settings()
+        # 初次进入时根据当前配置刷新一次头部信息
         self._refresh_update_header()
 
         self.main_layout.addWidget(self.scroll_area)
@@ -284,7 +283,7 @@ class SettingInterface(QWidget):
     def _linkify_contact_urls(self, contact: str) -> str:
         """
         把联系方式中的网址转换成 Markdown 超链接。
-        
+
         如果文本中已经包含 Markdown 链接格式（如 [text](url)），则跳过这些部分，
         只对剩余的裸 URL 进行自动转换。
         """
@@ -530,7 +529,7 @@ class SettingInterface(QWidget):
 
     def _open_update_log(self):
         """打开更新日志对话框"""
-        release_notes = self._load_release_notes()
+        release_notes = self._load_release_notes(self.name)
 
         if not release_notes:
             # 如果没有本地更新日志，显示提示信息
@@ -1339,15 +1338,58 @@ class SettingInterface(QWidget):
     def _on_github_api_key_change(self, text: str):
         cfg.set(cfg.github_api_key, str(text).strip())
 
-    def _refresh_update_header(self):
+    def _refresh_header_from_interface(self) -> None:
         """
-        刷新顶部更新区域的展示信息。
+        使用当前任务的 interface 数据刷新头部展示（资源信息视角）。
+        """
+        # 每次刷新时都从服务协调器重新获取一次最新的 interface 数据，避免使用旧缓存
+        latest_metadata = self._get_interface_metadata()
+        if latest_metadata:
+            self.interface_data = latest_metadata
+        metadata = self.interface_data or {}
+        icon_path = metadata.get("icon", "")
+        name = metadata.get("name", "")
+        current_version = metadata.get("version", "0.0.1")
+        last_version = cfg.get(cfg.latest_update_version) or current_version
+        license_value = metadata.get("license", "None License")
+        github = metadata.get("github", metadata.get("url", ""))
+        description = metadata.get("description", "")
+        contact = metadata.get("contact", "")
 
-        这里固定展示「MFW-ChainFlow Assistant」本体的信息，而不是当前任务的 interface 信息，
-        以确保无论加载哪个项目/资源，设置页都清晰地反映宿主应用自身的版本与元数据。
+        self.resource_name_label.setText(name)
+        # 当前版本 / 最新版本 / UI版本 / MaaFW版本 水平展示
+        from maa.library import Library
+
+        maafw_version = Library.version()
+        self.version_label.setText(
+            self.tr("Current version: ")
+            + str(current_version)
+            + "    "
+            + self.tr("Latest version: ")
+            + str(last_version)
+            + "    "
+            + self.tr("UI version: ")
+            + str(UI_VERSION)
+            + "    "
+            + self.tr("MaaFW version: ")
+            + maafw_version
+        )
+        self._apply_markdown_to_label(self.description_label, description)
+        self._apply_markdown_to_label(
+            self.contact_label, self._linkify_contact_urls(contact)
+        )
+        self._github_url = github
+        self._license_content = license_value
+        self.license_button.setText(self.tr("License"))
+        self._apply_header_icon(icon_path)
+
+    def _refresh_header_as_mfw(self) -> None:
+        """
+        使用「MFW-ChainFlow Assistant」本体的信息刷新头部展示（宿主应用视角）。
         """
         icon_path = "app/assets/icons/logo.png"
         name = self.tr("MFW-ChainFlow Assistant")
+        self.name = "MFW_CFA"
         # 当前版本使用 UI 本体版本号
         current_version = UI_VERSION
         license_value = "GNU General Public License v3.0"
@@ -1389,6 +1431,18 @@ class SettingInterface(QWidget):
         self._license_content = license_value
         self.license_button.setText(self.tr("License"))
         self._apply_header_icon(icon_path)
+
+    def _refresh_update_header(self) -> None:
+        """
+        根据多资源适配开关，在「资源信息」与「MFW 信息」之间切换头部展示。
+
+        - multi_resource_adaptation = False: 显示当前任务资源的 interface 信息
+        - multi_resource_adaptation = True: 显示 MFW-ChainFlow Assistant 本体信息
+        """
+        if cfg.get(cfg.multi_resource_adaptation):
+            self._refresh_header_as_mfw()
+        else:
+            self._refresh_header_from_interface()
 
     def _get_interface_metadata(self):
         """从服务协调器的任务服务获取 interface 数据。"""
@@ -1460,6 +1514,104 @@ class SettingInterface(QWidget):
         self.multi_resource_adaptation_card.setVisible(False)
         signalBus.title_changed.emit()
         self._refresh_update_header()
+        self._move_bundle()
+        self._update_bundle_config()
+
+    def _update_bundle_config(self):
+        """更新 bundle 配置"""
+        pass
+
+
+    def _move_bundle(self):
+        """
+        移动指定文件到 bundle 目录。
+
+        将当前目录下不在排除列表中的文件移动到 bundle/{name}/ 目录。
+        - 排除列表包括：bundle、release_notes、update、config、debug 等系统目录
+        - 以及 file_list.txt 中列出的文件（这些是 MFW 本体文件，不应移动）
+        """
+        import shutil
+
+        # 排除目标（系统目录和关键文件）
+        exclude_names = {
+            "bundle",
+            "release_notes",
+            "update",
+            "config",
+            "debug",
+            "MFW_Updater1.exe",
+            "MFW_Updater1",
+            "file_list.txt",  # 排除列表文件本身
+        }
+
+        # 读取 interface.json 获取项目名称
+        interface_file = Path.cwd() / "interface.json"
+        if not interface_file.exists():
+            logger.error("未找到 interface.json，无法确定 bundle 目录名称")
+            return
+
+        try:
+            with open(interface_file, "r", encoding="utf-8") as f:
+                interface = json.load(f)
+        except Exception as e:
+            logger.error(f"读取 interface.json 失败: {e}")
+            return
+
+        name = interface.get("name", "")
+        if not name:
+            logger.error("interface.json 中未找到 name 字段")
+            return
+
+        bundle_dir = Path.cwd() / "bundle" / name
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"准备将文件移动到: {bundle_dir}")
+
+        # 读取 file_list.txt，将其中的文件也加入排除列表
+        file_list_path = Path.cwd() / "file_list.txt"
+        if file_list_path.exists():
+            try:
+                with open(file_list_path, "r", encoding="utf-8") as f:
+                    file_list = [line.strip() for line in f.readlines() if line.strip()]
+                for file_path_str in file_list:
+                    file_path = Path(file_path_str)
+                    # 只排除实际存在的文件，避免路径问题
+                    if file_path.exists() and file_path.is_file():
+                        exclude_names.add(file_path.name)
+                        logger.debug(f"排除文件: {file_path.name}")
+            except Exception as e:
+                logger.warning(f"读取 file_list.txt 失败: {e}，继续执行")
+
+        # 遍历当前目录下的所有文件和目录
+        moved_count = 0
+        for item in Path.cwd().iterdir():
+            # 跳过排除列表中的项目
+            if item.name in exclude_names:
+                logger.debug(f"跳过排除项: {item.name}")
+                continue
+
+            # 跳过目录（如果需要移动目录，可以在这里修改逻辑）
+            if item.is_dir():
+                logger.debug(f"跳过目录: {item.name}")
+                continue
+
+            # 移动文件到 bundle 目录
+            try:
+                target_path = bundle_dir / item.name
+                # 如果目标已存在，先删除或重命名
+                if target_path.exists():
+                    logger.warning(f"目标文件已存在: {target_path}，将被覆盖")
+                    if target_path.is_file():
+                        target_path.unlink()
+                    else:
+                        shutil.rmtree(target_path)
+
+                shutil.move(str(item), str(bundle_dir))
+                moved_count += 1
+                logger.info(f"已移动: {item.name} -> {bundle_dir}")
+            except Exception as e:
+                logger.error(f"移动文件失败 {item.name}: {e}")
+
+        logger.info(f"文件移动完成，共移动 {moved_count} 个文件到 {bundle_dir}")
 
     def _confirm_enable_multi_resource(self) -> bool:
         """开启多资源适配前进行二次确认"""
@@ -1977,11 +2129,11 @@ class SettingInterface(QWidget):
         except Exception as e:
             logger.error(f"保存更新日志失败: {e}")
 
-    def _load_release_notes(self) -> dict:
+    def _load_release_notes(self, name: str) -> dict:
         """加载所有已保存的更新日志"""
         import os
 
-        release_notes_dir = "./release_notes"
+        release_notes_dir = f"./release_notes/{name}"
         notes = {}
 
         if not os.path.exists(release_notes_dir):

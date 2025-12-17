@@ -908,6 +908,7 @@ class MainWindow(MSFluentWindow):
             # 多资源模式下：显示应用名 + 应用版本 + 资源标题
             prefix = f"{self.tr('MFW-ChainFlow Assistant')} {__version__}"
             title = f"{prefix} {base_title}".strip()
+            self.setWindowIcon(QIcon("./app/assets/icons/logo.png"))
         else:
             title = base_title
 
