@@ -918,6 +918,8 @@ class Update(BaseUpdate):
         self.release_note: str = ""
         self.download_attempts: int = 0
         self.version_name: str | None = None
+        # 防止重复运行的标记
+        self._is_running: bool = False
 
     def _normalize_channel(self, value) -> Config.UpdateChannel:
         """Convert stored channel value into a valid UpdateChannel enum."""
@@ -1016,17 +1018,26 @@ class Update(BaseUpdate):
         - 正常模式: 执行完整更新流程。
         - 仅检查模式: 只检查是否有更新，并通过 check_result_ready 返回结果。
         """
-        # 每次运行前按当前配置初始化上下文（包括 interface / 频道 / 版本 等）
-        self._init_run_context()
-        if self.check_only:
-            logger.info("以仅检查模式运行更新器（check_only=True）")
-            self._run_check_only()
-        elif cfg.get(cfg.multi_resource_adaptation):
-            logger.info("以多资源适配模式运行更新器")
-            self._run_multi_resource_update()
-        else:
-            logger.info("以正常模式运行更新器")
-            self._run_normal()
+        # 防止多次重复运行（包括误调用 run 或多次 start）
+        if self._is_running:
+            logger.warning("检测到更新线程重复运行请求，本次调用将被忽略")
+            return
+
+        self._is_running = True
+        try:
+            # 每次运行前按当前配置初始化上下文（包括 interface / 频道 / 版本 等）
+            self._init_run_context()
+            if self.check_only:
+                logger.info("以仅检查模式运行更新器（check_only=True）")
+                self._run_check_only()
+            elif cfg.get(cfg.multi_resource_adaptation):
+                logger.info("以多资源适配模式运行更新器")
+                self._run_multi_resource_update()
+            else:
+                logger.info("以正常模式运行更新器")
+                self._run_normal()
+        finally:
+            self._is_running = False
 
     def _run_check_only(self) -> None:
         """
