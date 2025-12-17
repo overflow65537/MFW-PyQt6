@@ -730,12 +730,9 @@ class MainWindow(MSFluentWindow):
 
     def _schedule_auto_run(self) -> None:
         """根据 CLI 或配置决定是否在启动后自动运行任务。"""
-        if self._auto_run_scheduled:
-            return
         should_run = self._cli_auto_run or cfg.get(cfg.run_after_startup)
         if not should_run:
             return
-        self._auto_run_scheduled = True
 
         async def _start_flow():
             try:
