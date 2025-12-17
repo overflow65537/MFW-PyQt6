@@ -1518,8 +1518,49 @@ class SettingInterface(QWidget):
         self._update_bundle_config()
 
     def _update_bundle_config(self):
-        """更新 bundle 配置"""
-        pass
+        """
+        更新 multi_config.json 中的 bundle 配置。
+
+        在文件移动到 bundle 目录后，更新主配置文件中对应 bundle 的路径。
+        """
+        if not self._service_coordinator:
+            logger.error("service_coordinator 未初始化，无法更新 bundle 配置")
+            return
+
+        # 读取 interface.json 获取项目名称
+        interface_file = Path.cwd() / "interface.json"
+        if not interface_file.exists():
+            logger.error("未找到 interface.json，无法确定 bundle 名称")
+            return
+
+        try:
+            with open(interface_file, "r", encoding="utf-8") as f:
+                interface = json.load(f)
+        except Exception as e:
+            logger.error(f"读取 interface.json 失败: {e}")
+            return
+
+        name = interface.get("name", "")
+        if not name:
+            logger.error("interface.json 中未找到 name 字段")
+            return
+
+        # 构建新的 bundle 路径（相对于项目根目录）
+        bundle_path = f"./bundle/{name}"
+
+        # 更新 multi_config.json 中的 bundle 配置
+        success = self._service_coordinator.update_bundle_path(
+            bundle_name=name,
+            new_path=bundle_path,
+            bundle_display_name=name,
+        )
+
+        if success:
+            logger.info(
+                f"已更新 bundle 配置: {name} -> {bundle_path}"
+            )
+        else:
+            logger.error(f"更新 bundle 配置失败: {name}")
 
 
     def _move_bundle(self):
