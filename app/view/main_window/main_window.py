@@ -78,6 +78,7 @@ from app.view.setting_interface.setting_interface import (
     SettingInterface,
 )
 from app.view.test_interface.test_interface import TestInterface
+from app.view.bundle_interface.bundle_interface import BundleInterface
 from app.common.config import cfg
 from app.common.signal_bus import signalBus
 from app.utils.hotkey_manager import GlobalHotkeyManager
@@ -120,6 +121,7 @@ class MainWindow(MSFluentWindow):
         self._auto_update_in_progress = False
         self._auto_update_pending_restart = False
         self._pending_auto_run = False
+        self._bundle_interface_added_to_nav = False  # 标记 BundleInterface 是否已添加到导航栏
 
         cfg.set(cfg.save_screenshot, False)
 
@@ -171,6 +173,16 @@ class MainWindow(MSFluentWindow):
                 self.tr("test_interface"),
             )
         self._insert_announcement_nav_item()
+
+        # 总是初始化 BundleInterface，但不添加到导航栏（除非多资源适配已开启）
+        try:
+            logger.info("初始化 BundleInterface...")
+            self.BundleInterface = BundleInterface(self.service_coordinator)
+            logger.info("BundleInterface 创建成功")
+        except Exception as exc:
+            logger.error(f"创建 BundleInterface 失败: {exc}", exc_info=True)
+            self.BundleInterface = None
+        
         self.SettingInterface = SettingInterface(self.service_coordinator)
         self.addSubInterface(
             self.SettingInterface,
@@ -178,8 +190,21 @@ class MainWindow(MSFluentWindow):
             self.tr("Setting"),
             position=NavigationItemPosition.BOTTOM,
         )
+        
         # 添加导航项
         self.splashScreen.finish()
+        
+        # 如果多资源适配已开启，则将 BundleInterface 添加到导航栏
+        # 注意：必须在 SettingInterface 之后添加，以确保在设置和公告之间显示
+        # 延迟到 splashScreen.finish() 之后，确保导航栏完全初始化
+        multi_res_enabled = cfg.get(cfg.multi_resource_adaptation)
+        logger.info(f"检查多资源适配状态（启动时）: {multi_res_enabled}")
+        if multi_res_enabled:
+            logger.info("多资源适配已开启，尝试添加 BundleInterface 到导航栏")
+            # 延迟一帧，确保导航栏完全初始化
+            QTimer.singleShot(0, self._add_bundle_interface_to_navigation)
+        else:
+            logger.info("多资源适配未开启，BundleInterface 不会显示在导航栏")
         self._maybe_show_pending_announcement()
         QTimer.singleShot(0, self.service_coordinator.schedule_service.start)
 
@@ -210,6 +235,45 @@ class MainWindow(MSFluentWindow):
             logger.warning(f"运行多资源适配启动钩子失败: {exc}")
 
         logger.info(" 主界面初始化完成。")
+
+    def _add_bundle_interface_to_navigation(self) -> None:
+        """将 BundleInterface 添加到导航栏。
+
+        如果已经添加过，则不会重复添加。
+        """
+        try:
+            logger.info("_add_bundle_interface_to_navigation 被调用")
+            
+            if not hasattr(self, "BundleInterface") or self.BundleInterface is None:
+                logger.warning("BundleInterface 未初始化，无法添加到导航栏")
+                return
+
+            # 检查是否已经添加到导航栏
+            if self._bundle_interface_added_to_nav:
+                logger.info("BundleInterface 已存在于导航栏，跳过重复添加")
+                return
+
+            logger.info("开始调用 addSubInterface 添加 BundleInterface 到导航栏...")
+            logger.info(f"BundleInterface 对象: {self.BundleInterface}")
+            logger.info(f"导航栏对象: {self.navigationInterface}")
+            
+            self.addSubInterface(
+                self.BundleInterface,
+                FIF.FOLDER,
+                self.tr("Bundle"),
+                position=NavigationItemPosition.BOTTOM,
+            )
+            
+            self._bundle_interface_added_to_nav = True
+            logger.info("✓ BundleInterface 已成功添加到导航栏！")
+            
+            # 验证是否真的添加成功
+            if hasattr(self.navigationInterface, "items"):
+                logger.info(f"导航栏当前有 {len(self.navigationInterface.items)} 个项目")
+        except Exception as exc:
+            logger.error(f"添加 BundleInterface 到导航栏失败: {exc}", exc_info=True)
+            import traceback
+            logger.error(f"详细错误信息: {traceback.format_exc()}")
 
     def initWindow(self):
         """初始化窗口设置。"""
@@ -474,6 +538,14 @@ class MainWindow(MSFluentWindow):
         signalBus.check_auto_run_after_update_cancel.connect(
             self._on_check_auto_run_after_update_cancel
         )
+        # 多资源适配启用后，将 BundleInterface 添加到导航栏
+        signalBus.multi_resource_adaptation_enabled.connect(
+            self._on_multi_resource_adaptation_enabled
+        )
+
+    def _on_multi_resource_adaptation_enabled(self) -> None:
+        """响应设置页开启多资源适配的信号，将 BundleInterface 添加到导航栏。"""
+        self._add_bundle_interface_to_navigation()
 
     def _apply_cli_switch_config(self) -> None:
         """处理 CLI 请求的配置切换，在 UI 初始化前执行。"""

@@ -1752,6 +1752,11 @@ class SettingInterface(QWidget):
                 return
             # 二次确认通过后，执行多资源适配启用后的后续操作
             self.run_multi_resource_post_enable_tasks()
+            # 通知主界面等组件：多资源适配已启用，可初始化相关界面
+            try:
+                signalBus.multi_resource_adaptation_enabled.emit()
+            except Exception as exc:
+                logger.warning(f"发射 multi_resource_adaptation_enabled 信号失败: {exc}")
 
         cfg.set(cfg.multi_resource_adaptation, bool(checked))
 
