@@ -64,8 +64,6 @@ from qfluentwidgets import (
     InfoBar,
     InfoBarPosition,
     MSFluentWindow,
-    MessageBoxBase,
-    BodyLabel,
 )
 from qfluentwidgets import FluentIcon as FIF
 

@@ -73,6 +73,8 @@ from app.view.setting_interface.widget.NoticeType import (
 from app.view.setting_interface.widget.SendSettingCard import SendSettingCard
 
 _CONTACT_URL_PATTERN = re.compile(r"(?:https?://|www\.)[^\s，,]+")
+# 检测已经是 Markdown 链接格式的文本： [text](url)
+_MARKDOWN_LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
 
 def start_auto_confirm_countdown(
@@ -213,6 +215,8 @@ class SettingInterface(QWidget):
                 logger.info("自动更新未开启，通知 main_window 检查是否需要自动运行")
                 signalBus.check_auto_run_after_update_cancel.emit()
         self._init_update_checker()
+        if cfg.get(cfg.multi_resource_adaptation):
+            self._refresh_update_header
 
     def connect_notice_card_clicked(self):
         # 连接通知卡片的点击事件
@@ -278,10 +282,20 @@ class SettingInterface(QWidget):
         label.setText(render_markdown(content))
 
     def _linkify_contact_urls(self, contact: str) -> str:
-        """把联系方式中的网址转换成 Markdown 超链接。"""
+        """
+        把联系方式中的网址转换成 Markdown 超链接。
+        
+        如果文本中已经包含 Markdown 链接格式（如 [text](url)），则跳过这些部分，
+        只对剩余的裸 URL 进行自动转换。
+        """
         if not contact:
             return contact
 
+        # 如果文本中已经包含 Markdown 链接格式，直接返回（避免重复处理）
+        if _MARKDOWN_LINK_PATTERN.search(contact):
+            return contact
+
+        # 否则，对裸 URL 进行自动转换
         def replace(match: re.Match[str]) -> str:
             url = match.group(0)
             href = url if url.startswith(("http://", "https://")) else f"http://{url}"
@@ -377,11 +391,6 @@ class SettingInterface(QWidget):
             self.tr("GitHub URL"), FIF.GITHUB
         )
         self.update_button = self._create_detail_button(self.tr("Update"), FIF.UPDATE)
-        self.update_ui_button = self._create_detail_button(
-            self.tr("Update UI"), FIF.LAYOUT
-        )
-        # 默认隐藏“更新 UI”按钮，仅在启用多资源适配后显示
-        self.update_ui_button.setVisible(False)
         self.update_log_button = self._create_detail_button(
             self.tr("Open update log"), FIF.QUICK_NOTE
         )
@@ -432,14 +441,12 @@ class SettingInterface(QWidget):
 
         self.license_button.clicked.connect(self._open_license_dialog)
         self.github_button.clicked.connect(self._open_github_home)
-        self.update_ui_button.clicked.connect(self._on_update_ui_clicked)
         self.update_log_button.clicked.connect(self._open_update_log)
         self._bind_start_button(enable=True)
 
         detail_row.addWidget(self.license_button)
         detail_row.addWidget(self.github_button)
         detail_row.addWidget(self.update_button)
-        detail_row.addWidget(self.update_ui_button)
         detail_row.addWidget(self.update_log_button)
         detail_row.addWidget(self.progress_container, 1)
         header_layout.addLayout(detail_row)
@@ -499,9 +506,10 @@ class SettingInterface(QWidget):
         dialog.exec()
 
     def _open_github_home(self):
-        if not self._github_url:
-            return
-        QDesktopServices.openUrl(QUrl(self._github_url))
+        """
+        打开 MFW-ChainFlow Assistant 的 GitHub 仓库（固定地址，与当前 interface 无关）。
+        """
+        QDesktopServices.openUrl(QUrl("https://github.com/overflow65537/MFW-PyQt6"))
 
     def _apply_header_icon(self, icon_path: Optional[str] = None) -> None:
         """加载 interface 中提供的图标路径，失败时回退到默认 logo。"""
@@ -1332,19 +1340,34 @@ class SettingInterface(QWidget):
         cfg.set(cfg.github_api_key, str(text).strip())
 
     def _refresh_update_header(self):
-        # 每次刷新时都从服务协调器重新获取一次最新的 interface 数据，避免使用旧缓存
-        latest_metadata = self._get_interface_metadata()
-        if latest_metadata:
-            self.interface_data = latest_metadata
-        metadata = self.interface_data or {}
-        icon_path = metadata.get("icon", "")
-        name = metadata.get("name", "")
-        current_version = metadata.get("version", "0.0.1")
-        last_version = cfg.get(cfg.latest_update_version) or current_version
-        license_value = metadata.get("license", "None License")
-        github = metadata.get("github", metadata.get("url", ""))
-        description = metadata.get("description", "")
-        contact = metadata.get("contact", "")
+        """
+        刷新顶部更新区域的展示信息。
+
+        这里固定展示「MFW-ChainFlow Assistant」本体的信息，而不是当前任务的 interface 信息，
+        以确保无论加载哪个项目/资源，设置页都清晰地反映宿主应用自身的版本与元数据。
+        """
+        icon_path = "app/assets/icons/logo.png"
+        name = self.tr("MFW-ChainFlow Assistant")
+        # 当前版本使用 UI 本体版本号
+        current_version = UI_VERSION
+        license_value = "GNU General Public License v3.0"
+        for license in ["MFW_LICENSE", "LICENSE"]:
+            if Path(license).is_file():
+                with open(license, "r", encoding="utf-8") as f:
+                    license_value = f.read()
+                break
+
+        github = "https://github.com/overflow65537/MFW-PyQt6"
+        description = self.tr(
+            "MFW-ChainFlow Assistant provides a visual orchestrator for MaaFramework "
+            "users, covering configuration management, scheduling, notifications and "
+            "custom extensions."
+        )
+        # 使用 html 格式化的联系方式，方便点击跳转
+        contact = (
+            "[GitHub](https://github.com/overflow65537/MFW-PyQt6)  ·  "
+            "[Issues](https://github.com/overflow65537/MFW-PyQt6/issues)"
+        )
 
         self.resource_name_label.setText(name)
         # 当前版本 / 最新版本 / UI版本 / MaaFW版本 水平展示
@@ -1354,12 +1377,6 @@ class SettingInterface(QWidget):
         self.version_label.setText(
             self.tr("Current version: ")
             + str(current_version)
-            + "    "
-            + self.tr("Latest version: ")
-            + str(last_version)
-            + "    "
-            + self.tr("UI version: ")
-            + str(UI_VERSION)
             + "    "
             + self.tr("MaaFW version: ")
             + maafw_version
@@ -1440,9 +1457,9 @@ class SettingInterface(QWidget):
         """
         # 启用多资源适配后，显示“更新 UI”按钮，并通知主界面刷新标题等信息，
         # 同时隐藏多资源适配开关，避免重复误操作。
-        self.update_ui_button.setVisible(True)
         self.multi_resource_adaptation_card.setVisible(False)
         signalBus.title_changed.emit()
+        self._refresh_update_header()
 
     def _confirm_enable_multi_resource(self) -> bool:
         """开启多资源适配前进行二次确认"""
@@ -1654,8 +1671,6 @@ class SettingInterface(QWidget):
         self.save_screenshot_card.checkedChanged.connect(
             self._on_save_screenshot_changed
         )
-        # 当需要刷新设置信息（名称、版本、描述、联系方式等）时，重新从最新 interface 数据更新头部信息
-        signalBus.need_update_setting_info.connect(self._refresh_update_header)
         self._apply_theme_from_config()
 
     def _onRunAfterStartupCardChange(self):

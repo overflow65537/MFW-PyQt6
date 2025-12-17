@@ -150,7 +150,9 @@ class AddConfigDialog(BaseAddDialog):
         new_info = {"name": bundle_name, "path": bundle_path}
 
         # 去重后追加
-        existing_names = {b.get("name") for b in self.resource_bundles if isinstance(b, dict)}
+        existing_names = {
+            b.get("name") for b in self.resource_bundles if isinstance(b, dict)
+        }
         if bundle_name not in existing_names:
             self.resource_bundles.append(new_info)
 
@@ -190,7 +192,9 @@ class AddConfigDialog(BaseAddDialog):
             raise ValueError("resource_bundles is None")
 
         # 验证所选资源包在可用列表中存在
-        valid_bundle_names = {b.get("name") for b in self.resource_bundles if isinstance(b, dict)}
+        valid_bundle_names = {
+            b.get("name") for b in self.resource_bundles if isinstance(b, dict)
+        }
         if self.resource_name not in valid_bundle_names:
             self.show_error(self.tr("Resource bundle not found"))
             return
