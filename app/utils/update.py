@@ -779,14 +779,12 @@ class BaseUpdate(QThread):
             return None
         try:
             config = self.service_coordinator.config_service.get_current_config()
-            bundle = config.bundle
-            bundle_path: str = ""
-            if isinstance(bundle, dict):
-                bundle_path = cast(Dict[str, str], bundle).get("path", "")
-            elif isinstance(bundle, str):
-                bundle_path = bundle
-            else:
-                bundle_path = ""
+            bundle_path = (
+                self.service_coordinator.config_service.get_bundle_path_for_config(
+                    config
+                )
+                or ""
+            )
             if not bundle_path:
                 logger.error("未能获取当前 bundle 路径")
                 return None
@@ -904,27 +902,22 @@ class Update(BaseUpdate):
         self.info_bar_signal = info_bar_signal
         self.force_full_download = force_full_download
         self.check_only = check_only
-
-        self.interface = self.service_coordinator.task.interface
-        self.project_name = self.interface.get("name", "")
-        self.current_version = self.interface.get("version", "v1.0.0")
-        self.url = self.interface.get("github", self.interface.get("url", ""))
-        self.current_res_id = self.interface.get("mirrorchyan_rid", "")
-
-        self.mirror_cdk = self.Mirror_ckd()
-
-        channel_value = cfg.get(cfg.resource_update_channel)
-        self.current_channel_enum = self._normalize_channel(channel_value)
-        self.current_channel = self.current_channel_enum.name.lower()
-        self.current_os_type = self._normalize_os_type(sys.platform)
-        self.current_arch = self._normalize_arch(platform.machine())
-
-        self.latest_update_version = (
-            cfg.get(cfg.latest_update_version) or self.current_version
-        )
-        self.download_url = None
-        self.release_note = ""
-        self.download_attempts = 0
+        # 运行期上下文参数，在 run/_run_* 中按当前配置动态初始化
+        self.interface: dict[str, Any] = {}
+        self.project_name: str = ""
+        self.current_version: str = "v1.0.0"
+        self.url: str = ""
+        self.current_res_id: str = ""
+        self.mirror_cdk: str = ""
+        self.current_channel_enum: Config.UpdateChannel = cfg.UpdateChannel.STABLE
+        self.current_channel: str = "stable"
+        self.current_os_type: str = self._normalize_os_type(sys.platform)
+        self.current_arch: str = self._normalize_arch(platform.machine())
+        self.latest_update_version: str | None = None
+        self.download_url: str | None = None
+        self.release_note: str = ""
+        self.download_attempts: int = 0
+        self.version_name: str | None = None
 
     def _normalize_channel(self, value) -> Config.UpdateChannel:
         """Convert stored channel value into a valid UpdateChannel enum."""
@@ -960,6 +953,62 @@ class Update(BaseUpdate):
         )
         return "x86_64"
 
+    def _init_run_context(self) -> None:
+        """
+        根据当前 service_coordinator / 配置，初始化一次本次 run 所需的上下文参数。
+
+        注意：不要在 __init__ 里固化这些值，以便支持运行时切换配置、多资源适配等场景。
+        """
+        if not self.service_coordinator:
+            logger.warning("service_coordinator 未初始化，使用空更新上下文")
+            self.interface = {}
+            self.project_name = ""
+            self.current_version = "v1.0.0"
+            self.url = ""
+            self.current_res_id = ""
+            self.mirror_cdk = ""
+            channel_value = cfg.get(cfg.resource_update_channel)
+            self.current_channel_enum = self._normalize_channel(channel_value)
+            self.current_channel = self.current_channel_enum.name.lower()
+            self.current_os_type = self._normalize_os_type(sys.platform)
+            self.current_arch = self._normalize_arch(platform.machine())
+            self.latest_update_version = self.current_version
+            self.download_url = None
+            self.release_note = ""
+            self.download_attempts = 0
+            self.version_name = None
+            return
+
+        # 从当前任务 interface 以及配置中刷新上下文
+        self.interface = self.service_coordinator.task.interface or {}
+        self.project_name = self.interface.get("name", "")
+        self.current_version = self.interface.get("version", "v1.0.0")
+        self.url = self.interface.get("github", self.interface.get("url", ""))
+        self.current_res_id = self.interface.get("mirrorchyan_rid", "")
+
+        self.mirror_cdk = self.Mirror_ckd()
+
+        channel_value = cfg.get(cfg.resource_update_channel)
+        self.current_channel_enum = self._normalize_channel(channel_value)
+        self.current_channel = self.current_channel_enum.name.lower()
+        self.current_os_type = self._normalize_os_type(sys.platform)
+        self.current_arch = self._normalize_arch(platform.machine())
+
+        self.latest_update_version = (
+            cfg.get(cfg.latest_update_version) or self.current_version
+        )
+        self.download_url = None
+        self.release_note = ""
+        self.download_attempts = 0
+        self.version_name = None
+        # 打印本次更新/检查使用的关键上下文信息
+        logger.info("=" * 50)
+        logger.info("开始更新流程")
+        logger.info("当前版本: %s", self.current_version)
+        logger.info("资源ID: %s", self.current_res_id)
+        logger.info("GitHub URL: %s", self.url)
+        logger.info("=" * 50)
+
     def run(self):
         """
         线程入口。
@@ -967,14 +1016,20 @@ class Update(BaseUpdate):
         - 正常模式: 执行完整更新流程。
         - 仅检查模式: 只检查是否有更新，并通过 check_result_ready 返回结果。
         """
+        # 每次运行前按当前配置初始化上下文（包括 interface / 频道 / 版本 等）
+        self._init_run_context()
         if self.check_only:
+            logger.info("以仅检查模式运行更新器（check_only=True）")
             self._run_check_only()
+        elif cfg.get(cfg.multi_resource_adaptation):
+            logger.info("以多资源适配模式运行更新器")
+            self._run_multi_resource_update()
         else:
+            logger.info("以正常模式运行更新器")
             self._run_normal()
 
     def _run_check_only(self) -> None:
         """
-        仅检查更新，不执行任何下载或热更新操作。
         检查结果通过 `check_result_ready` 信号返回。
         """
         logger.info("以仅检查模式运行更新器（check_only=True）")
@@ -1003,16 +1058,248 @@ class Update(BaseUpdate):
         }
         self.check_result_ready.emit(result_data)
 
+    def _run_multi_resource_update(self) -> None:
+        """
+        多资源适配模式更新流程：检查更新、下载更新包并执行热更新流程。
+        """
+        self.stop_flag = False
+
+        deleted_backups: list[tuple[Path, Path]] = []
+        # 资源目录热更新时使用的备份信息，用于异常时整体回滚
+        resource_backup_dir: Path | None = None
+        resource_backups: list[tuple[Path, Path]] = []
+
+        try:
+            if not self.service_coordinator:
+                logger.error("service_coordinator 未初始化，无法执行更新")
+                return self._stop_with_notice(0)
+
+            # 步骤1: 检查更新
+            logger.info("[步骤1] 开始检查更新...")
+            self._emit_info_bar("info", self.tr("Checking for updates..."))
+            update_info = self.check_update()
+
+            download_url = (
+                update_info.get("url") if isinstance(update_info, dict) else None
+            )
+            download_source = (
+                update_info.get("source")
+                if isinstance(update_info, dict)
+                else "unknown"
+            )
+            if download_source == "github" and not self.interface.get(
+                "mirrorchyan_multiplatform", False
+            ):
+                download_url = self._form_github_url(
+                    self.url, "hotfix", str(self.latest_update_version)
+                )
+
+            if not download_url:
+                if update_info is False:
+                    logger.info("[步骤1] 当前已是最新版本，无需下载")
+                    return self._stop_with_notice(
+                        0, "info", self.tr("Already up to date")
+                    )
+                logger.error("[步骤1] 检查完成但未获取到下载地址")
+                return self._stop_with_notice(0, "error", self.tr("Download failed"))
+
+            logger.info("[步骤1] 检查完成: 发现新版本 %s", self.latest_update_version)
+            logger.info("[步骤1] 下载来源: %s", download_source)
+            logger.info("[步骤1] 下载地址: %s", str(download_url)[:100])
+
+            self._emit_info_bar("info", self.tr("Preparing to download update..."))
+
+            download_dir = Path.cwd() / "update" / "new_version"
+            download_dir.mkdir(parents=True, exist_ok=True)
+            if not download_url:
+                logger.error("[步骤2] 未设置下载地址，无法执行下载")
+                return self._stop_with_notice(0, "error", self.tr("Download failed"))
+            logger.debug("[步骤2] 保存路径: %s", download_dir)
+
+            logger.info("[步骤3] 开始下载更新包...")
+            logger.debug("[步骤3] 下载地址: %s", download_url)
+            self.download_attempts += 1
+            downloaded_zip_path, download_error = self.download_file(
+                download_url,
+                download_dir,
+                self.progress_signal,
+                use_proxies=self.get_proxy_data(),
+            )
+            if not downloaded_zip_path:
+                if download_error:
+                    logger.error("[步骤3] 下载失败: %s", download_error)
+                    return self._stop_with_notice(
+                        0,
+                        "error",
+                        f"{self.tr('Download failed')}: {download_error}",
+                    )
+                logger.error("[步骤3] 下载失败")
+                return self._stop_with_notice(0, "error", self.tr("Download failed"))
+            zip_file_path = downloaded_zip_path
+            logger.debug("[步骤3] 下载文件: %s", zip_file_path)
+
+            logger.info(
+                "[步骤3] 下载完成，大小: %.2f MB",
+                zip_file_path.stat().st_size / (1024 * 1024),
+            )
+            self._emit_info_bar("success", self.tr("Download complete"))
+
+            logger.info("[步骤4] 开始执行热更新，准备解压更新包...")
+            self._emit_info_bar("info", self.tr("Applying hotfix..."))
+
+            logger.debug("[步骤4] 解压更新包到 hotfix 目录")
+            hotfix_dir = Path.cwd() / "hotfix"
+            hotfix_root = self.extract_zip(zip_file_path, hotfix_dir)
+            if not hotfix_root:
+                logger.error("[步骤4] 解压更新包失败")
+                return self._stop_with_notice(2)
+            logger.info("[步骤4] 更新包解压完成: %s", hotfix_root)
+
+            # 获取 bundle 路径
+            bundle_path = self._get_bundle_path()
+            if not bundle_path:
+                logger.warning("[步骤4] Bundle 配置不存在，跳过热更新")
+                return self._stop_with_notice(2)
+            bundle_path_obj = Path(bundle_path)
+            logger.debug("[步骤4] Bundle 路径: %s", bundle_path_obj)
+
+            logger.info("[步骤5] 使用安全覆盖模式进行热更新")
+
+            project_path = bundle_path_obj
+            if not hotfix_root or not hotfix_root.exists():
+                logger.error("[步骤5] hotfix 目录不存在，无法覆盖")
+                return self._stop_with_notice(2)
+
+            # 备份并删除资源文件中的 pipeline 目录，以供后续无损覆盖
+            resource_backup_dir = Path.cwd() / "backup" / "resource"
+            resource_backup_dir.mkdir(parents=True, exist_ok=True)
+            resource_list = self.interface.get("resource", [])
+            known_resources: list[str] = []
+            resource_backups.clear()
+            for resource in resource_list:
+                logger.debug("[步骤5] 处理资源: %s", resource.get("name", ""))
+
+                for resource_path_str in resource.get("path", []):
+                    logger.debug("[步骤5] 处理资源路径: %s", resource_path_str)
+                    resource_path = Path(resource_path_str.replace("{PROJECT_DIR}", ""))
+                    if resource_path.is_dir() and (
+                        resource_path_str not in known_resources
+                    ):
+                        backup_target = resource_backup_dir / resource_path.name
+                        try:
+                            # 先备份资源
+                            if backup_target.is_dir():
+                                shutil.rmtree(backup_target)
+                            shutil.copytree(str(resource_path), str(backup_target))
+                            logger.debug("[步骤5] 已备份资源目录: %s", resource_path)
+
+                            resource_backups.append((resource_path, backup_target))
+                            known_resources.append(resource_path_str)
+
+                            # 再删除旧的 pipeline 目录，避免影响后续覆盖
+                            pipeline_path = resource_path / "pipeline"
+                            if pipeline_path.exists():
+                                shutil.rmtree(str(pipeline_path))
+                                logger.debug(
+                                    "[步骤5] 已删除旧 pipeline 目录: %s",
+                                    pipeline_path,
+                                )
+                        except Exception as backup_err:
+                            logger.exception(
+                                "[步骤5] 备份或清理资源目录时出错: %s -> %s",
+                                resource_path,
+                                backup_err,
+                            )
+                            raise
+
+            logger.info("[步骤5] 开始覆盖项目目录: %s", project_path)
+            # 允许目标目录已存在（Python 3.8+ 支持 dirs_exist_ok）
+            # 这样在 bundle 目录本身已存在时不会因 WinError 183 直接失败
+            shutil.copytree(hotfix_root, project_path, dirs_exist_ok=True)
+
+            interface_path = [
+                bundle_path_obj / "interface.jsonc",
+                bundle_path_obj / "interface.json",
+            ]
+
+            for path in interface_path:
+                if path.exists():
+                    interface = self._read_config(str(path))
+                    if interface:
+                        interface["version"] = self.latest_update_version
+                        with open(path, "w", encoding="utf-8") as f:
+                            jsonc.dump(interface, f, indent=4, ensure_ascii=False)
+                        logger.info("[步骤5] 更新 interface.jsonc 成功")
+                        break
+            logger.info("[步骤5] interface 配置同步完毕")
+
+            # 步骤5: 完成
+            logger.info("[步骤5] 热更新成功完成!")
+            logger.info("=" * 50)
+            self._emit_info_bar("success", self.tr("Update applied successfully"))
+            self._cleanup_update_artifacts(download_dir, zip_file_path)
+            # 触发服务协调器重新初始化
+            signalBus.fs_reinit_requested.emit()
+            self.stop_signal.emit(1)
+
+        except Exception as e:
+            # 资源目录异常回滚
+            if resource_backups:
+                logger.warning("[步骤5] 更新失败，正在恢复资源备份目录...")
+                for original_path, backup_path in reversed(resource_backups):
+                    try:
+                        if not backup_path.exists():
+                            continue
+                        # 清理已被部分覆盖/删除的原目录
+                        if original_path.exists():
+                            if original_path.is_file():
+                                original_path.unlink()
+                            else:
+                                shutil.rmtree(original_path)
+                        # 使用备份进行还原
+                        if backup_path.is_dir():
+                            shutil.copytree(backup_path, original_path)
+                        else:
+                            original_path.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copy2(backup_path, original_path)
+                        logger.debug("[步骤5] 已恢复资源目录: %s", original_path)
+                    except Exception as restore_err:
+                        logger.exception(
+                            "[步骤5] 恢复资源目录失败: %s -> %s",
+                            original_path,
+                            restore_err,
+                        )
+                resource_backups.clear()
+
+            if deleted_backups:
+                logger.warning("[步骤5] 更新失败，正在恢复已删除文件...")
+                for original_path, backup_path in reversed(deleted_backups):
+                    try:
+                        if backup_path.exists():
+                            original_path.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copy2(backup_path, original_path)
+                            logger.debug("[步骤5] 已恢复文件: %s", original_path)
+                    except Exception as restore_err:
+                        logger.exception(
+                            "[步骤5] 恢复文件失败: %s -> %s",
+                            original_path,
+                            restore_err,
+                        )
+                deleted_backups.clear()
+            logger.exception("更新过程中出现错误: %s", e)
+            self._stop_with_notice(0, "error", self.tr("Failed to update"))
+        finally:
+            # 清理资源备份目录
+            if resource_backup_dir and resource_backup_dir.exists():
+                try:
+                    shutil.rmtree(resource_backup_dir)
+                except Exception as cleanup_err:
+                    logger.debug("[步骤5] 清理资源备份目录失败: %s", cleanup_err)
+
     def _run_normal(self) -> None:
         """
         正常更新流程：检查更新、下载更新包并执行热更新/重启流程。
         """
-        logger.info("=" * 50)
-        logger.info("开始更新流程")
-        logger.info("当前版本: %s", self.current_version)
-        logger.info("资源ID: %s", self.current_res_id)
-        logger.info("GitHub URL: %s", self.url)
-        logger.info("=" * 50)
         self.stop_flag = False
         deleted_backups: list[tuple[Path, Path]] = []
         # 资源目录热更新时使用的备份信息，用于异常时整体回滚
@@ -1285,6 +1572,8 @@ class Update(BaseUpdate):
                     logger.debug("[步骤5] 清理资源备份目录失败: %s", cleanup_err)
 
     def check_update(self, fetch_download_url: bool = True) -> dict | bool:
+        # 防止外部直接调用 check_update 时上下文未初始化
+        self._init_run_context()
         logger.info("  [检查更新] 开始检查...")
         logger.debug(
             "  [检查更新] 资源ID: %s, CDK: %s",
@@ -1424,11 +1713,14 @@ class Update(BaseUpdate):
                 return False
 
         tag_name = github_result.get("tag_name") or github_result.get("name")
-        target_version = tag_name or self.latest_update_version or self.current_version
-        self.release_note = github_result.get("body", "")
+        target_version = str(
+            tag_name or self.latest_update_version or self.current_version
+        )
+        body = github_result.get("body", "")
+        self.release_note = str(body) if body is not None else ""
 
         if not fetch_download_url:
-            self.latest_update_version = target_version
+            self.latest_update_version = str(target_version)
             cfg.set(cfg.latest_update_version, self.latest_update_version)
             self._emit_info_bar(
                 "info", self.tr("Found update: ") + str(self.latest_update_version)
@@ -1461,7 +1753,7 @@ class Update(BaseUpdate):
             download_url[:80] if download_url else "N/A",
         )
         self.download_url = download_url
-        self.latest_update_version = target_version
+        self.latest_update_version = str(target_version)
         cfg.set(cfg.latest_update_version, self.latest_update_version)
         self._emit_info_bar(
             "info", self.tr("Found update: ") + str(self.latest_update_version)

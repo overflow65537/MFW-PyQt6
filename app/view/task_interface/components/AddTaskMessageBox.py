@@ -132,15 +132,13 @@ class AddConfigDialog(BaseAddDialog):
             self.show_error(self.tr("Cannot use 'default' as config name"))
             return
 
-        # 创建 ConfigItem 对象，使用新的 core.model 数据结构
+        # 创建 ConfigItem 对象
         if self.resource_bundles is None:
             raise ValueError("resource_bundles is None")
-        bundle_path = ""
-        for bundle in self.resource_bundles:
-            if bundle["name"] == self.resource_name:
-                bundle_path = bundle["path"]
-                break
-        if not bundle_path:
+
+        # 验证所选资源包在可用列表中存在
+        valid_bundle_names = {b.get("name") for b in self.resource_bundles if isinstance(b, dict)}
+        if self.resource_name not in valid_bundle_names:
             self.show_error(self.tr("Resource bundle not found"))
             return
         init_controller = self.interface["controller"][0]["name"]
@@ -166,15 +164,13 @@ class AddConfigDialog(BaseAddDialog):
             ),
         ]
 
-        # bundle 字段期望为 Dict[str, Dict[str, Any]]，这里使用 resource_name 作为 key
+        # bundle 字段现在仅保存 bundle 名称字符串，由 ConfigService 通过主配置解析详情
         self.item = ConfigItem(
             name=self.config_name,
             item_id=ConfigItem.generate_id(),
             tasks=default_tasks,
             know_task=[],
-            bundle={
-                self.resource_name: {"name": self.resource_name, "path": bundle_path}
-            },
+            bundle=self.resource_name,
         )
 
         # 接受对话框
