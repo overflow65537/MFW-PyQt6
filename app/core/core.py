@@ -311,6 +311,74 @@ class ServiceCoordinator:
         self.option_service.clear_selection()
 
     # region 配置相关方法
+    def update_bundle_path(
+        self, bundle_name: str, new_path: str, bundle_display_name: str | None = None
+    ) -> bool:
+        """
+        更新 multi_config.json 中指定 bundle 的路径。
+
+        Args:
+            bundle_name: bundle 的名称（作为字典的 key）
+            new_path: 新的路径（相对路径或绝对路径）
+            bundle_display_name: bundle 的显示名称（可选，如果提供会更新 name 字段）
+
+        Returns:
+            是否更新成功
+        """
+        main_config_path = self.config_repo.main_config_path
+        if not main_config_path.exists():
+            logger.error(f"主配置文件不存在: {main_config_path}")
+            return False
+
+        try:
+            # 读取当前配置
+            with open(main_config_path, "r", encoding="utf-8") as f:
+                config_data: Dict[str, Any] = jsonc.load(f)
+
+            # 确保 bundle 字段存在且为字典
+            if "bundle" not in config_data:
+                config_data["bundle"] = {}
+            if not isinstance(config_data["bundle"], dict):
+                config_data["bundle"] = {}
+
+            # 更新或创建 bundle 信息
+            if bundle_name not in config_data["bundle"]:
+                config_data["bundle"][bundle_name] = {}
+
+            bundle_info = config_data["bundle"][bundle_name]
+            if not isinstance(bundle_info, dict):
+                bundle_info = {}
+
+            # 更新路径
+            bundle_info["path"] = new_path
+            # 如果提供了显示名称，也更新 name 字段
+            if bundle_display_name is not None:
+                bundle_info["name"] = bundle_display_name
+            # 如果 name 字段不存在，使用 bundle_name 作为默认值
+            elif "name" not in bundle_info:
+                bundle_info["name"] = bundle_name
+
+            config_data["bundle"][bundle_name] = bundle_info
+
+            # 保存回文件
+            with open(main_config_path, "w", encoding="utf-8") as f:
+                jsonc.dump(config_data, f, indent=4, ensure_ascii=False)
+
+            logger.info(
+                f"已更新 bundle '{bundle_name}' 的路径为: {new_path} "
+                f"(显示名称: {bundle_info.get('name', bundle_name)})"
+            )
+
+            # 如果当前激活配置使用的是这个 bundle，可能需要重新解析 interface 路径
+            # 这里可以选择性地触发重新加载，但为了安全，先不自动触发
+            # 调用方可以根据需要手动调用相关刷新方法
+
+            return True
+
+        except Exception as e:
+            logger.error(f"更新 bundle 路径失败: {e}")
+            return False
+
     def add_config(self, config_item: ConfigItem) -> str:
         """添加配置，传入 ConfigItem 对象，返回新配置ID"""
         new_id = self.config_service.create_config(config_item)
