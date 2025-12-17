@@ -54,7 +54,7 @@ from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
 from app.utils.crypto import crypto_manager
 from app.utils.logger import logger
-from app.utils.update import Update, UpdateCheckTask
+from app.utils.update import Update
 from app.view.setting_interface.widget.ProxySettingCard import ProxySettingCard
 from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.view.setting_interface.widget.SliderSettingCard import SliderSettingCard
@@ -173,7 +173,8 @@ class SettingInterface(QWidget):
         )
         self.description = self.interface_data.get("description", "")
         self._updater: Optional[Update] = None
-        self._update_checker: Optional[UpdateCheckTask] = None
+        # 使用 Update 本身作为“仅检查更新”的线程对象（check_only=True）
+        self._update_checker: Optional[Update] = None
         self._latest_update_check_result: str | bool | None = None
         self._updater_started = False
         self._local_update_package: Path | None = None
@@ -1688,11 +1689,18 @@ class SettingInterface(QWidget):
         if skip_checker:
             logger.info("跳过更新检查器启动：%s", reason)
             return
-
-        self._update_checker = UpdateCheckTask(
-            service_coordinator=self._service_coordinator
+        # 使用 Update 本身的仅检查模式进行后台检查，不触发下载与热更新流程
+        self._update_checker = Update(
+            service_coordinator=self._service_coordinator,
+            stop_signal=signalBus.update_stopped,
+            progress_signal=signalBus.update_progress,
+            info_bar_signal=signalBus.info_bar_requested,
+            force_full_download=False,
+            check_only=True,
         )
-        self._update_checker.result_ready.connect(self._on_update_check_result)
+        # 仅检查模式下，Update 不会发出 InfoBar / 进度相关信号，只通过 check_result_ready 返回结果
+        self._update_checker.check_result_ready.connect(self._on_update_check_result)
+        self._update_checker.finished.connect(self._update_checker.deleteLater)
         self._update_checker.start()
 
     def _should_skip_update_checker(self) -> tuple[bool, str]:

@@ -877,6 +877,9 @@ class BaseUpdate(QThread):
 
 class Update(BaseUpdate):
 
+    # 当以“仅检查更新”模式运行时，用于在检查完成后返回结果
+    check_result_ready = Signal(dict)
+
     def __init__(
         self,
         service_coordinator: ServiceCoordinator,
@@ -884,13 +887,23 @@ class Update(BaseUpdate):
         progress_signal: SignalInstance,
         info_bar_signal: SignalInstance,
         force_full_download: bool = False,
+        *,
+        check_only: bool = False,
     ):
+        """
+        更新器核心对象。
+
+        - 正常模式（check_only=False）: 调用 start()/run() 会执行完整更新流程。
+        - 仅检查模式（check_only=True）: 调用 start()/run() 只会检查是否有更新，
+          不会下载或应用更新，结果通过 check_result_ready 信号返回。
+        """
         super().__init__()
         self.service_coordinator = service_coordinator
         self.stop_signal = stop_signal
         self.progress_signal = progress_signal
         self.info_bar_signal = info_bar_signal
         self.force_full_download = force_full_download
+        self.check_only = check_only
 
         self.interface = self.service_coordinator.task.interface
         self.project_name = self.interface.get("name", "")
@@ -948,6 +961,42 @@ class Update(BaseUpdate):
         return "x86_64"
 
     def run(self):
+        """
+        线程入口。
+
+        - 正常模式: 执行完整更新流程。
+        - 仅检查模式: 只检查是否有更新，并通过 check_result_ready 返回结果。
+        """
+        # 仅检查模式：不执行下载与热更新，只调用 check_update 并返回结果
+        if self.check_only:
+            logger.info("以仅检查模式运行更新器（check_only=True）")
+            if not self.service_coordinator:
+                logger.warning("service_coordinator 未初始化，无法执行更新检查")
+                self.check_result_ready.emit(
+                    {
+                        "enable": False,
+                        "source": "",
+                        "download_url": "",
+                        "release_note": "",
+                        "latest_update_version": "",
+                    }
+                )
+                return
+
+            # fetch_download_url=False 只检查版本/元数据，不解析完整下载资源
+            result = self.check_update(fetch_download_url=False)
+            result_info = result if isinstance(result, dict) else {}
+            result_data: dict = {
+                "enable": bool(result),
+                "source": result_info.get("source", ""),
+                "download_url": result_info.get("url", ""),
+                "release_note": self.release_note or "",
+                "latest_update_version": self.latest_update_version or "",
+            }
+            self.check_result_ready.emit(result_data)
+            return
+
+        # 正常模式：完整更新流程
         logger.info("=" * 50)
         logger.info("开始更新流程")
         logger.info("当前版本: %s", self.current_version)
@@ -1422,6 +1471,9 @@ class Update(BaseUpdate):
 
     def _emit_info_bar(self, level: str, message: str | None):
         """向主界面请求显示 InfoBar 提示"""
+        # 在仅检查模式下不打扰用户界面，避免弹出 InfoBar 提示
+        if self.check_only:
+            return
         if message:
             self.info_bar_signal.emit(level or "info", message)
 
@@ -1494,52 +1546,7 @@ class Update(BaseUpdate):
 
 
 class _NullSignal:
-    """Simple fallback signal implementation used by the lightweight checker."""
+    """Simple fallback signal implementation (保留以防后续需要轻量级信号占位符)。"""
 
     def emit(self, *args, **kwargs):
         return None
-
-
-class UpdateCheckTask(QThread):
-    """
-    在后台检查更新但不触发完整更新流程的线程。
-
-    结果会通过 `result_ready` 以包含下载信息的字典或 `False` 的形式返回。
-    """
-
-    result_ready = Signal(dict)
-
-    def __init__(
-        self,
-        service_coordinator: ServiceCoordinator,
-        parent=None,
-    ):
-        super().__init__(parent)
-        self._service_coordinator = service_coordinator
-        self._stop_signal: SignalInstance = cast(SignalInstance, _NullSignal())
-        self._progress_signal: SignalInstance = cast(SignalInstance, _NullSignal())
-        self._info_bar_signal: SignalInstance = cast(SignalInstance, _NullSignal())
-        self.finished.connect(self.deleteLater)
-
-    def run(self):
-        self.stop_flag = True
-        if not self._service_coordinator:
-            self.result_ready.emit(False)
-            return
-
-        updater = Update(
-            service_coordinator=self._service_coordinator,
-            stop_signal=self._stop_signal,
-            progress_signal=self._progress_signal,
-            info_bar_signal=self._info_bar_signal,
-        )
-        result = updater.check_update(fetch_download_url=False)
-        result_info = result if isinstance(result, dict) else {}
-        result_data: dict = {
-            "enable": bool(result),
-            "source": result_info.get("source", ""),
-            "download_url": result_info.get("url", ""),
-            "release_note": updater.release_note or "",
-            "latest_update_version": updater.latest_update_version or "",
-        }
-        self.result_ready.emit(result_data)
