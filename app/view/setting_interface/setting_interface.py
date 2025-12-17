@@ -1654,6 +1654,8 @@ class SettingInterface(QWidget):
         self.save_screenshot_card.checkedChanged.connect(
             self._on_save_screenshot_changed
         )
+        # 当需要刷新设置信息（名称、版本、描述、联系方式等）时，重新从最新 interface 数据更新头部信息
+        signalBus.need_update_setting_info.connect(self._refresh_update_header)
         self._apply_theme_from_config()
 
     def _onRunAfterStartupCardChange(self):

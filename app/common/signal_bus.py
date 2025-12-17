@@ -36,6 +36,8 @@ class SignalBus(QObject):
     agent_info = Signal(dict)  # 智能体信息
     title_changed = Signal()  # 窗口标题改变
 
+    need_update_setting_info = Signal()  # 需要更新设置页面信息
+
     # maa sink 发送信号
     callback = Signal(dict)
 

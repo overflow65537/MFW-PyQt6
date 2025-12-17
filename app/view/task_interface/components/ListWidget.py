@@ -605,6 +605,9 @@ class ConfigListWidget(BaseListWidget):
     def _on_config_changed(self, config_id: str):
         """服务层配置切换时同步高亮配置项。"""
         self._select_config_by_id(config_id, emit_signal=False)
+        signalBus.title_changed.emit()
+        #更新设置页面信息
+        signalBus.need_update_setting_info.emit()
 
     def add_config(self, config: ConfigItem):
         """添加配置项到列表"""
