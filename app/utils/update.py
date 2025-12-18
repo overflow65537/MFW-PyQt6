@@ -1662,6 +1662,7 @@ class Update(BaseUpdate):
         mirror_id = "MFW-PyQt6"
         fixed_version = __version__
         url = "https://github.com/overflow65537/MFW-PyQt6"
+        ui_name = "MFW-PyQt6"
         self.release_note = ""
 
         # 将当前版本也同步为固定版本，避免与多资源上下文的版本不一致
@@ -1762,9 +1763,7 @@ class Update(BaseUpdate):
             return False
 
         if self.version_name and not self.force_full_download:
-            github_api_url = self._form_github_url(
-                url, "download", self.version_name
-            )
+            github_api_url = self._form_github_url(url, "download", self.version_name)
         else:
             github_api_url = self._form_github_url(url, "download")
         if not github_api_url:
@@ -1827,8 +1826,8 @@ class Update(BaseUpdate):
             if not isinstance(assets, dict):
                 continue
             if assets.get("name") in [
-                f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{target_version}.zip",
-                f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{target_version}.tar.gz",
+                f"{ui_name}-{self.current_os_type}-{self.current_arch}-{target_version}.zip",
+                f"{ui_name}-{self.current_os_type}-{self.current_arch}-{target_version}.tar.gz",
             ]:
                 download_url = assets.get("browser_download_url")
                 break
