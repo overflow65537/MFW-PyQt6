@@ -233,11 +233,19 @@ class MaaFW(QObject):
             "recognitions": {"success": [], "failed": []},
         }
         
-        # 将custom_root添加到sys.path，以便模块可以导入同文件夹下的其他模块
-        # 这样custom代码中的相对导入就能正确工作，而不需要改变工作目录
+        # 将custom_root的父目录添加到sys.path，以便模块可以使用绝对导入
+        # 例如：from MPAcustom.action.tool.LoadSetting 需要 MPAcustom 的父目录在 sys.path 中
+        # 同时也要添加custom_root本身，以便相对导入也能工作
+        custom_root_parent = str(custom_root.parent)
         custom_root_str = str(custom_root)
+        
+        # 添加父目录到sys.path（用于绝对导入，如 from MPAcustom.xxx）
+        if custom_root_parent not in sys.path:
+            sys.path.insert(0, custom_root_parent)
+            logger.debug(f"已将父目录 {custom_root_parent} 添加到 sys.path")
+        
+        # 添加custom_root本身到sys.path（用于相对导入）
         if custom_root_str not in sys.path:
-            # 添加到sys.path的开头，确保优先使用当前custom文件夹的模块
             sys.path.insert(0, custom_root_str)
             logger.debug(f"已将 {custom_root_str} 添加到 sys.path")
 
