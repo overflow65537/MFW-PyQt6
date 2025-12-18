@@ -152,15 +152,65 @@ class AddConfigDialog(BaseAddDialog):
         if self.resource_bundles is None:
             raise ValueError("resource_bundles is None")
 
-        # 验证所选资源包在可用列表中存在
-        valid_bundle_names = {
-            b.get("name") for b in self.resource_bundles if isinstance(b, dict)
-        }
-        if self.resource_name not in valid_bundle_names:
+        # 验证所选资源包在可用列表中存在，并获取 bundle 信息
+        selected_bundle = None
+        for bundle in self.resource_bundles:
+            if isinstance(bundle, dict) and bundle.get("name") == self.resource_name:
+                selected_bundle = bundle
+                break
+        
+        if not selected_bundle:
             self.show_error(self.tr("Resource bundle not found"))
             return
-        init_controller = self.interface["controller"][0]["name"]
-        init_resource = self.interface["resource"][0]["name"]
+        
+        # 根据选中的 bundle 路径加载对应的 interface
+        bundle_path = selected_bundle.get("path", "./")
+        if not bundle_path:
+            bundle_path = "./"
+        
+        # 解析 bundle 路径（可能是相对路径或绝对路径）
+        from pathlib import Path
+        from app.utils.logger import logger
+        
+        if Path(bundle_path).is_absolute():
+            interface_dir = Path(bundle_path)
+        else:
+            interface_dir = Path.cwd() / bundle_path
+        
+        # 查找 interface.json 或 interface.jsonc
+        interface_path = None
+        for candidate in [interface_dir / "interface.jsonc", interface_dir / "interface.json"]:
+            if candidate.exists():
+                interface_path = candidate
+                break
+        
+        if not interface_path:
+            self.show_error(
+                self.tr("Interface file not found in bundle: {}").format(bundle_path)
+            )
+            return
+        
+        # 加载 interface 配置
+        try:
+            with open(interface_path, "r", encoding="utf-8") as f:
+                bundle_interface = jsonc.load(f)
+        except Exception as e:
+            logger.error(f"加载 bundle interface 失败: {e}")
+            self.show_error(
+                self.tr("Failed to load interface from bundle: {}").format(str(e))
+            )
+            return
+        
+        # 从 bundle interface 中获取 controller 和 resource
+        if "controller" not in bundle_interface or not bundle_interface["controller"]:
+            self.show_error(self.tr("Controller not found in bundle interface"))
+            return
+        if "resource" not in bundle_interface or not bundle_interface["resource"]:
+            self.show_error(self.tr("Resource not found in bundle interface"))
+            return
+        
+        init_controller = bundle_interface["controller"][0]["name"]
+        init_resource = bundle_interface["resource"][0]["name"]
         # 仅为配置创建所需的基础任务:资源 与 完成后操作
         default_tasks = [
             TaskItem(
