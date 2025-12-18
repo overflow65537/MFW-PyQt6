@@ -895,7 +895,7 @@ class Update(BaseUpdate):
         - 正常模式（check_only=False）: 调用 start()/run() 会执行完整更新流程。
         - 仅检查模式（check_only=True）: 调用 start()/run() 只会检查是否有更新，
           不会下载或应用更新，结果通过 check_result_ready 信号返回。
-        
+
         Args:
             service_coordinator: 服务协调器（可选，用于获取 bundle 路径等）
             stop_signal: 停止信号
@@ -912,26 +912,26 @@ class Update(BaseUpdate):
         self.info_bar_signal = info_bar_signal
         self.force_full_download = force_full_download
         self.check_only = check_only
-        
+
         # 从 interface 中获取参数
         self.interface = interface or {}
         self.project_name = self.interface.get("name", "")
         self.current_version = self.interface.get("version", "v1.0.0")
         self.url = self.interface.get("github", self.interface.get("url", ""))
         self.current_res_id = self.interface.get("mirrorchyan_rid", "")
-        
+
         # 从配置中获取 mirror_cdk
         self.mirror_cdk = self.Mirror_ckd()
-        
+
         # 从配置中获取更新通道
         channel_value = cfg.get(cfg.resource_update_channel)
         self.current_channel_enum = self._normalize_channel(channel_value)
         self.current_channel = self.current_channel_enum.name.lower()
-        
+
         # 从系统自动检测操作系统和架构
         self.current_os_type = self._normalize_os_type(sys.platform)
         self.current_arch = self._normalize_arch(platform.machine())
-        
+
         # 其他运行时参数
         self.latest_update_version = self.current_version
         self.download_url: str | None = None
@@ -978,7 +978,7 @@ class Update(BaseUpdate):
     def _init_run_context(self) -> None:
         """
         初始化一次本次 run 所需的运行时上下文参数。
-        
+
         注意：主要参数已在 __init__ 中初始化，此方法仅重置运行时状态。
         """
         # 重置运行时状态
@@ -989,7 +989,7 @@ class Update(BaseUpdate):
         self.release_note = ""
         self.download_attempts = 0
         self.version_name = None
-        
+
         # 打印本次更新/检查使用的关键上下文信息
         logger.info("=" * 50)
         logger.info("开始更新流程")
@@ -1014,18 +1014,49 @@ class Update(BaseUpdate):
         try:
             # 每次运行前按当前配置初始化上下文（包括 interface / 频道 / 版本 等）
             self._init_run_context()
-            if self.check_only:
+            if self.check_only and not cfg.get(cfg.multi_resource_adaptation):
+                logger.info("以仅检查模式运行更新器（check_only=True）")
+                self._run_check_only()
+            elif self.check_only:
                 logger.info("以仅检查模式运行更新器（check_only=True）")
                 self._run_check_only()
             elif cfg.get(cfg.multi_resource_adaptation):
-                logger.info("以多资源适配模式运行更新器")
-                # 多资源更新已移至 MultiResourceUpdate 子类，这里改为 UI 更新占位
-                self._run_multi_resource_ui_update()
+                logger.info("运行UI更新")
+                self._run_ui_update()
             else:
                 logger.info("以正常模式运行更新器")
                 self._run_normal()
         finally:
             self._is_running = False
+
+    def _run_check_only_ui(self) -> None:
+        """
+        仅检查模式UI更新。
+        """
+        logger.info("以仅检查模式运行更新器（check_only=True）")
+        if not self.service_coordinator:
+            logger.warning("service_coordinator 未初始化，无法执行更新检查")
+            self.check_result_ready.emit(
+                {
+                    "enable": False,
+                    "source": "",
+                    "download_url": "",
+                    "release_note": "",
+                    "latest_update_version": "",
+                }
+            )
+            return
+        # fetch_download_url=False 只检查版本/元数据，不解析完整下载资源
+        result = self.check_ui_update(fetch_download_url=False)
+        result_info = result if isinstance(result, dict) else {}
+        result_data: dict = {
+            "enable": bool(result),
+            "source": result_info.get("source", ""),
+            "download_url": result_info.get("url", ""),
+            "release_note": self.release_note or "",
+            "latest_update_version": self.latest_update_version or "",
+        }
+        self.check_result_ready.emit(result_data)
 
     def _run_check_only(self) -> None:
         """
@@ -1057,16 +1088,92 @@ class Update(BaseUpdate):
         }
         self.check_result_ready.emit(result_data)
 
-    def _run_multi_resource_ui_update(self) -> None:
+    def _run_ui_update(self) -> None:
         """
-        多资源适配模式 UI 更新占位方法。
-        
-        注意：实际的多资源更新逻辑已移至 MultiResourceUpdate 子类。
-        此方法用于在设置界面检测到多资源更新时更新 UI。
+        多资源适配模式 UI 更新。
         """
-        logger.info("多资源适配模式：UI 更新占位（实际更新由 MultiResourceUpdate 子类处理）")
-        # TODO: 实现多资源更新的 UI 更新逻辑
-        self._stop_with_notice(0, "info", self.tr("Multi-resource update UI placeholder"))
+        self.stop_flag = False
+        if not self.service_coordinator:
+            logger.error("service_coordinator 未初始化，无法执行更新")
+            return self._stop_with_notice(0)
+
+        # 步骤1: 检查更新
+        logger.info("[步骤1] 开始检查更新...")
+        self._emit_info_bar("info", self.tr("Checking for updates..."))
+        update_info = self.check_ui_update()
+
+        download_url = update_info.get("url") if isinstance(update_info, dict) else None
+        download_source = (
+            update_info.get("source") if isinstance(update_info, dict) else "unknown"
+        )
+
+        hotfix = (
+            update_info.get("update_type") == "incremental"
+            if isinstance(update_info, dict)
+            else None
+        )
+
+        if not download_url:
+            if update_info is False:
+                logger.info("[步骤1] 当前已是最新版本，无需下载")
+                return self._stop_with_notice(0, "info", self.tr("Already up to date"))
+            logger.error("[步骤1] 检查完成但未获取到下载地址")
+            return self._stop_with_notice(0, "error", self.tr("Download failed"))
+
+        logger.info("[步骤1] 检查完成: 发现新版本 %s", self.latest_update_version)
+        logger.info("[步骤1] 下载来源: %s", download_source)
+        logger.info("[步骤1] 下载地址: %s", str(download_url)[:100])
+
+        self._emit_info_bar("info", self.tr("Preparing to download update..."))
+
+        download_dir = Path.cwd() / "update" / "new_version"
+        download_dir.mkdir(parents=True, exist_ok=True)
+        if not download_url:
+            logger.error("[步骤2] 未设置下载地址，无法执行下载")
+            return self._stop_with_notice(0, "error", self.tr("Download failed"))
+        logger.debug("[步骤2] 保存路径: %s", download_dir)
+
+        logger.info("[步骤3] 开始下载更新包...")
+        logger.debug("[步骤3] 下载地址: %s", download_url)
+        self.download_attempts += 1
+        downloaded_zip_path, download_error = self.download_file(
+            download_url,
+            download_dir,
+            self.progress_signal,
+            use_proxies=self.get_proxy_data(),
+        )
+        if not downloaded_zip_path:
+            if download_error:
+                logger.error("[步骤3] 下载失败: %s", download_error)
+                return self._stop_with_notice(
+                    0,
+                    "error",
+                    f"{self.tr('Download failed')}: {download_error}",
+                )
+            logger.error("[步骤3] 下载失败")
+            return self._stop_with_notice(0, "error", self.tr("Download failed"))
+        zip_file_path = downloaded_zip_path
+        logger.debug("[步骤3] 下载文件: %s", zip_file_path)
+
+        logger.info(
+            "[步骤3] 下载完成，大小: %.2f MB",
+            zip_file_path.stat().st_size / (1024 * 1024),
+        )
+        self._emit_info_bar("success", self.tr("Download complete"))
+
+        mode_label = "hotfix" if hotfix else "full"
+
+        self._write_update_metadata(
+            download_dir,
+            str(download_source),
+            mode_label,
+            str(self.latest_update_version or ""),
+            self.download_attempts,
+            zip_file_path.name,
+        )
+
+        logger.info("[步骤3] 准备重启以进行更新")
+        return self._stop_with_notice(2)
 
     def _run_normal(self) -> None:
         """
@@ -1539,6 +1646,215 @@ class Update(BaseUpdate):
             result_data["release_note"] = self.release_note
         return result_data
 
+    def check_ui_update(self, fetch_download_url: bool = True) -> dict | bool:
+        """
+        检查 UI 更新：
+        - 资源 ID 固定为 UI 程序自身（MFW-PyQt6）
+        - 版本号固定使用应用的 __version__
+        - 逻辑整体与 check_update 保持一致（Mirror 优先，其次 GitHub）
+        """
+        # 保证运行环境（os_type / arch / current_version 等）已初始化
+        self._init_run_context()
+
+        logger.info("  [检查更新] 开始检查...")
+        from app.common.__version__ import __version__
+
+        mirror_id = "MFW-PyQt6"
+        fixed_version = __version__
+        self.release_note = ""
+
+        # 将当前版本也同步为固定版本，避免与多资源上下文的版本不一致
+        self.current_version = fixed_version
+
+        logger.debug(
+            "  [检查更新] 资源ID: %s, CDK: %s",
+            mirror_id,
+            "***" if self.mirror_cdk else "无",
+        )
+
+        # 尝试 Mirror 源（强制下载模式跳过）
+        if not self.force_full_download:
+            logger.info("  [检查更新] 尝试 MirrorChyan 源...")
+            mirror_result = self.mirror_check(
+                res_id=mirror_id,
+                cdk=self.mirror_cdk,
+                version=fixed_version,
+                channel="stable",
+                os_type=self.current_os_type,
+                arch=self.current_arch,
+            )
+
+            mirror_status = mirror_result.get("status")
+            mirror_data = mirror_result.get("data", {})
+            mirror_url = mirror_data.get("url")
+            mirror_version = mirror_data.get("version_name")
+            self.release_note = mirror_data.get("release_note", "")
+            logger.debug("  [检查更新] Mirror 返回状态: %s", mirror_result.get("msg"))
+
+            # Mirror 检查表示当前版本已是最新
+            if mirror_status == "no_need":
+                logger.info("  [检查更新] Mirror: 当前已是最新版本")
+                self.latest_update_version = self.current_version
+                cfg.set(cfg.latest_update_version, self.latest_update_version)
+                return False
+            elif mirror_status == "failed_info":
+                logger.info(
+                    "  [检查更新] Mirror 检查失败: %s", mirror_result.get("msg")
+                )
+                self._emit_info_bar("warning", mirror_result.get("msg"))
+
+            # 记录 Mirror 返回的版本，用于后续逻辑或 GitHub 回退
+            if mirror_version:
+                self.version_name = mirror_version
+                self.latest_update_version = mirror_version
+                cfg.set(cfg.latest_update_version, self.latest_update_version)
+                if not fetch_download_url:
+                    # 只需要版本信息就提前返回
+                    self._emit_info_bar(
+                        "info",
+                        self.tr("Found update: ") + str(self.latest_update_version),
+                    )
+                    result_data = {
+                        "source": "mirror",
+                        "version": self.latest_update_version,
+                        "update_type": mirror_data.get("update_type"),
+                    }
+                    if self.release_note:
+                        result_data["release_note"] = self.release_note
+                    if mirror_url:
+                        result_data["url"] = mirror_url
+                    return result_data
+
+                # 下载模式下，Mirror 有直链则直接返回，否则继续 GitHub 获取下载
+                if isinstance(mirror_url, str) and mirror_url:
+                    logger.info("  [检查更新] Mirror: 找到新版本 %s", mirror_version)
+                    logger.debug(
+                        "  [检查更新] Mirror 下载地址: %s",
+                        mirror_url[:80] if mirror_url else "N/A",
+                    )
+                    self.download_url = mirror_url
+                    self._emit_info_bar(
+                        "info",
+                        self.tr("Found update: ") + str(self.latest_update_version),
+                    )
+                    return {
+                        "url": mirror_url,
+                        "source": "mirror",
+                        "version": self.latest_update_version,
+                    }
+                else:
+                    logger.info(
+                        "  [检查更新] Mirror 返回版本 %s 但无下载地址，回退 GitHub 获取包",
+                        mirror_version,
+                    )
+            else:
+                logger.info("  [检查更新] Mirror 未提供版本号，回退 GitHub 检查")
+        else:
+            logger.info(
+                "  [检查更新] 强制下载模式：跳过 Mirror 源，直接使用 GitHub 最新版本"
+            )
+
+        # 尝试 GitHub
+        logger.info("  [检查更新] 切换到 GitHub 源...")
+        if not self.url:
+            logger.warning("  [检查更新] GitHub: 未配置项目地址")
+            return False
+
+        if self.version_name and not self.force_full_download:
+            github_api_url = self._form_github_url(
+                self.url, "download", self.version_name
+            )
+        else:
+            github_api_url = self._form_github_url(self.url, "download")
+        if not github_api_url:
+            logger.warning("  [检查更新] GitHub: API 地址解析失败")
+            return False
+
+        logger.debug("  [检查更新] GitHub API: %s", github_api_url)
+
+        # 调用 GitHub 接口查询最新 release
+        github_result = self.github_check(
+            github_api_url,
+            version="" if self.force_full_download else fixed_version,
+        )
+
+        if not isinstance(github_result, dict):
+            self._emit_info_bar("warning", self.tr("GitHub update check failed"))
+            return False
+
+        if github_result.get("status"):
+            status = github_result.get("status")
+            logger.info("  [检查更新] GitHub 返回状态: %s", status)
+            if status == "failed":
+                raw_msg = github_result.get("msg")
+                msg = (
+                    str(raw_msg)
+                    if raw_msg is not None
+                    else self.tr("GitHub update check failed")
+                )
+                self._emit_info_bar("error", msg)
+                return False
+            if status == "no_need" and not self.force_full_download:
+                logger.info("  [检查更新] GitHub: 当前已是最新版本")
+                self.latest_update_version = self.current_version
+                cfg.set(cfg.latest_update_version, self.latest_update_version)
+                return False
+
+        tag_name = github_result.get("tag_name") or github_result.get("name")
+        target_version = str(
+            tag_name or self.latest_update_version or self.current_version
+        )
+        body = github_result.get("body", "")
+        self.release_note = str(body) if body is not None else ""
+
+        if not fetch_download_url:
+            self.latest_update_version = str(target_version)
+            cfg.set(cfg.latest_update_version, self.latest_update_version)
+            self._emit_info_bar(
+                "info", self.tr("Found update: ") + str(self.latest_update_version)
+            )
+            result_data = {
+                "source": "github",
+                "version": self.latest_update_version,
+            }
+            if self.release_note:
+                result_data["release_note"] = self.release_note
+            return result_data
+
+        download_url = None
+        for assets in github_result.get("assets", []) or []:
+            if not isinstance(assets, dict):
+                continue
+            if assets.get("name") in [
+                f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{target_version}.zip",
+                f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{target_version}.tar.gz",
+            ]:
+                download_url = assets.get("browser_download_url")
+                break
+
+        if not download_url:
+            logger.warning("  [检查更新] GitHub: 未找到下载地址")
+            return False
+        logger.info("  [检查更新] GitHub: 找到新版本 %s", tag_name)
+        logger.debug(
+            "  [检查更新] GitHub 下载地址: %s",
+            download_url[:80] if download_url else "N/A",
+        )
+        self.download_url = download_url
+        self.latest_update_version = str(target_version)
+        cfg.set(cfg.latest_update_version, self.latest_update_version)
+        self._emit_info_bar(
+            "info", self.tr("Found update: ") + str(self.latest_update_version)
+        )
+        result_data = {
+            "url": download_url,
+            "source": "github",
+            "version": self.latest_update_version,
+        }
+        if self.release_note:
+            result_data["release_note"] = self.release_note
+        return result_data
+
     def stop(self):
         self.stop_flag = True
         self.stop_signal.emit(0)
@@ -1610,27 +1926,29 @@ class MultiResourceUpdate(Update):
         if not self.service_coordinator:
             logger.error("service_coordinator 未初始化")
             return None
-        
+
         # 从 interface 中获取 bundle 名称
         bundle_name = self.interface.get("name", "")
         if not bundle_name:
             logger.error("interface 中未找到 bundle 名称")
             return None
-        
+
         try:
             # 根据 bundle 名称获取 bundle 信息
-            bundle_info = self.service_coordinator.config_service.get_bundle(bundle_name)
+            bundle_info = self.service_coordinator.config_service.get_bundle(
+                bundle_name
+            )
             bundle_path = bundle_info.get("path", "")
-            
+
             if not bundle_path:
                 logger.error(f"Bundle '{bundle_name}' 没有路径信息")
                 return None
-            
+
             # 处理相对路径
             bundle_path_obj = Path(bundle_path)
             if not bundle_path_obj.is_absolute():
                 bundle_path_obj = Path.cwd() / bundle_path_obj
-            
+
             logger.debug(f"获取到 bundle '{bundle_name}' 的路径: {bundle_path_obj}")
             return str(bundle_path_obj)
         except FileNotFoundError as e:
@@ -1661,7 +1979,7 @@ class MultiResourceUpdate(Update):
                 self._run_multi_resource_update()
         finally:
             self._is_running = False
-    
+
     def _run_multi_resource_update(self) -> None:
         """
         多资源适配模式更新流程：检查更新、下载更新包并执行热更新流程。
