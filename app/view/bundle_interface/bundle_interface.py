@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QLabel,
     QSizePolicy,
+    QFileDialog,
 )
 
 from qfluentwidgets import (
@@ -32,6 +33,9 @@ from qfluentwidgets import (
     ToolTipPosition,
     FluentIcon as FIF,
     TogglePushButton,
+    MessageBoxBase,
+    LineEdit,
+    SubtitleLabel,
 )
 
 from app.core.core import ServiceCoordinator
@@ -40,6 +44,8 @@ from app.utils.logger import logger
 from app.utils.update import Update, MultiResourceUpdate
 from app.common.signal_bus import signalBus
 from app.utils.markdown_helper import render_markdown
+import jsonc
+import os
 
 
 class BundleListItem(QWidget):
@@ -272,6 +278,16 @@ class UI_BundleInterface(object):
         self.auto_update_switch.setChecked(auto_update_enabled)
         self.list_title_layout.addWidget(self.auto_update_switch)
 
+        # 添加bundle按钮
+        self.add_bundle_button = ToolButton(FIF.FOLDER_ADD, parent)
+        self.add_bundle_button.installEventFilter(
+            ToolTipFilter(self.add_bundle_button, 0, ToolTipPosition.TOP)
+        )
+        self.add_bundle_button.setToolTip(
+            _translate("BundleInterface", "Add Bundle")
+        )
+        self.list_title_layout.addWidget(self.add_bundle_button)
+
         # 更新所有bundle按钮
         self.update_all_button = ToolButton(FIF.SYNC, parent)
         self.update_all_button.installEventFilter(
@@ -385,6 +401,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
         # 连接信号
         self.list_widget.currentItemChanged.connect(self._on_bundle_selected)
+        self.add_bundle_button.clicked.connect(self._on_add_bundle_clicked)
         self.update_all_button.clicked.connect(self._on_update_all_bundles)
         self.auto_update_switch.toggled.connect(self._on_auto_update_changed)
         
@@ -394,8 +411,9 @@ class BundleInterface(UI_BundleInterface, QWidget):
         # 加载 bundle 列表
         self._load_bundles()
         
-        # 启动时自动检查所有资源的更新
-        self._check_all_updates()
+        # 启动时自动检查所有资源的更新（仅在多资源适配开启时）
+        if self._is_multi_resource_enabled():
+            self._check_all_updates()
 
     def _load_bundles(self, force_refresh: bool = False):
         """从 service_coordinator 加载所有 bundle
@@ -619,8 +637,18 @@ class BundleInterface(UI_BundleInterface, QWidget):
         self.detail_layout.addWidget(detail)
         self.detail_layout.addStretch()
 
+    def _is_multi_resource_enabled(self) -> bool:
+        """检查多资源适配是否已开启"""
+        from app.common.config import cfg
+        return bool(cfg.get(cfg.multi_resource_adaptation))
+
     def _check_all_updates(self):
         """检查所有bundle的更新"""
+        # 检查多资源适配是否开启
+        if not self._is_multi_resource_enabled():
+            logger.debug("多资源适配未开启，跳过检查bundle更新")
+            return
+        
         try:
             bundle_names = self.service_coordinator.config.list_bundles()
             if not bundle_names:
@@ -689,6 +717,12 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
     def start_auto_update_all(self):
         """供主界面调用的自动更新所有bundle入口"""
+        # 检查多资源适配是否开启
+        if not self._is_multi_resource_enabled():
+            logger.warning("多资源适配未开启，无法自动更新bundle")
+            signalBus.all_updates_completed.emit()
+            return
+        
         if self._current_updater:
             logger.warning("已有更新任务正在进行中")
             return
@@ -733,6 +767,15 @@ class BundleInterface(UI_BundleInterface, QWidget):
     
     def _on_update_all_bundles(self):
         """更新所有bundle按钮点击事件"""
+        # 检查多资源适配是否开启
+        if not self._is_multi_resource_enabled():
+            signalBus.info_bar_requested.emit(
+                "warning", 
+                self.tr("Multi-resource adaptation is not enabled. Please enable it in Settings first.")
+            )
+            logger.warning("多资源适配未开启，无法更新bundle")
+            return
+        
         if self._current_updater:
             logger.warning("已有更新任务正在进行中")
             return
@@ -772,6 +815,15 @@ class BundleInterface(UI_BundleInterface, QWidget):
     
     def _on_single_bundle_update(self, bundle_name: str):
         """处理单个bundle的更新"""
+        # 检查多资源适配是否开启
+        if not self._is_multi_resource_enabled():
+            signalBus.info_bar_requested.emit(
+                "warning", 
+                self.tr("Multi-resource adaptation is not enabled. Please enable it in Settings first.")
+            )
+            logger.warning("多资源适配未开启，无法更新bundle")
+            return
+        
         if self._current_updater:
             logger.warning("已有更新任务正在进行中")
             return
@@ -798,9 +850,10 @@ class BundleInterface(UI_BundleInterface, QWidget):
             QCoreApplication.processEvents()  # 确保UI更新
             # 重新加载bundles以刷新版本信息（强制刷新）
             self._load_bundles(force_refresh=True)
-            # 重新检查更新以获取最新的版本信息
-            QCoreApplication.processEvents()  # 确保UI更新
-            self._check_all_updates()
+            # 重新检查更新以获取最新的版本信息（仅在多资源适配开启时）
+            if self._is_multi_resource_enabled():
+                QCoreApplication.processEvents()  # 确保UI更新
+                self._check_all_updates()
             
             # 如果是自动更新所有模式，发送所有更新完成信号
             if is_auto_update_all:
@@ -895,3 +948,228 @@ class BundleInterface(UI_BundleInterface, QWidget):
             logger.info(f"Bundle 自动更新设置已更新: {'开启' if checked else '关闭'}")
         except Exception as e:
             logger.error(f"更新 Bundle 自动更新设置失败: {e}", exc_info=True)
+
+    def _on_add_bundle_clicked(self):
+        """打开添加 bundle 对话框"""
+        # 检查多资源适配是否开启
+        if not self._is_multi_resource_enabled():
+            signalBus.info_bar_requested.emit(
+                "warning",
+                self.tr("Multi-resource adaptation is not enabled. Please enable it in Settings first.")
+            )
+            logger.warning("多资源适配未开启，无法添加bundle")
+            return
+
+        dialog = AddBundleDialog(
+            service_coordinator=self.service_coordinator,
+            parent=self
+        )
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            return
+
+        bundle_name, bundle_path = dialog.get_bundle_info()
+        if not bundle_name or not bundle_path:
+            return
+
+        # 重新加载 bundle 列表以显示新添加的 bundle
+        self._load_bundles()
+        logger.info(f"已添加新 bundle: {bundle_name} -> {bundle_path}")
+
+
+class AddBundleDialog(MessageBoxBase):
+    """添加 Bundle 对话框"""
+
+    def __init__(
+        self, service_coordinator: ServiceCoordinator | None = None, parent=None
+    ) -> None:
+        super().__init__(parent)
+        self._service_coordinator = service_coordinator
+        self.setWindowTitle(self.tr("Add Resource Bundle"))
+        self.widget.setMinimumWidth(420)
+        self.widget.setMinimumHeight(200)
+
+        self.titleLabel = SubtitleLabel(self.tr("Add Resource Bundle"), self)
+        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addSpacing(8)
+
+        # 资源名称
+        self.name_layout = QVBoxLayout()
+        self.name_label = BodyLabel(self.tr("Bundle Name:"), self)
+        self.name_edit = LineEdit(self)
+        self.name_edit.setPlaceholderText(self.tr("Enter the name of the bundle"))
+        self.name_edit.setClearButtonEnabled(True)
+        self.name_layout.addWidget(self.name_label)
+        self.name_layout.addWidget(self.name_edit)
+
+        # 资源路径 + 选择按钮
+        self.path_layout = QHBoxLayout()
+        self.path_label = BodyLabel(self.tr("Bundle Path:"), self)
+        self.path_edit = LineEdit(self)
+        self.path_edit.setPlaceholderText(
+            self.tr("Select folder containing interface.json and resource/")
+        )
+        self.path_edit.setClearButtonEnabled(True)
+        self.path_button = ToolButton(FIF.FOLDER, self)
+        self.path_button.setSizePolicy(
+            QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed
+        )
+        self.path_button.clicked.connect(self._choose_folder)
+
+        self.path_layout.addWidget(self.path_edit)
+        self.path_layout.addWidget(self.path_button)
+
+        # 名称行：标签+输入框
+        self.viewLayout.addLayout(self.name_layout)
+        self.viewLayout.addSpacing(4)
+        # 路径行：标签+输入框+按钮
+        self.viewLayout.addWidget(self.path_label)
+        self.viewLayout.addLayout(self.path_layout)
+
+        self.yesButton.setText(self.tr("Confirm"))
+        self.cancelButton.setText(self.tr("Cancel"))
+        self.yesButton.clicked.connect(self._on_confirm)
+
+        self._bundle_name: str = ""
+        self._bundle_path: str = ""
+
+    def _choose_folder(self) -> None:
+        """精准选择 interface.json 文件，并预填路径和名称。"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            self.tr("Choose interface.json"),
+            "./",
+            self.tr("Interface (interface.json);;All Files (*)"),
+        )
+        if not file_path:
+            return
+
+        p = Path(file_path)
+        # 仅接受名为 interface.json 的文件，其它选择直接忽略（不弹错误）
+        if not p.is_file() or p.name.lower() != "interface.json":
+            return
+
+        base_dir = p.parent
+        self.path_edit.setText(str(base_dir))
+
+        # 读取 interface.json 的 name 字段以预填 bundle 名称
+        interface_name = ""
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                data = jsonc.load(f)
+            iface_name = data.get("name")
+            if isinstance(iface_name, str) and iface_name.strip():
+                interface_name = iface_name.strip()
+        except Exception:
+            interface_name = ""
+
+        current_name = self.name_edit.text().strip()
+        if not current_name:
+            if interface_name:
+                self.name_edit.setText(interface_name)
+            else:
+                self.name_edit.setText("Default Bundle")
+
+    def _on_confirm(self) -> None:
+        name = self.name_edit.text().strip()
+        path = self.path_edit.text().strip()
+
+        def _show_error(msg: str) -> None:
+            # 通过信号总线发送 InfoBar 通知，由主窗口统一处理
+            signalBus.info_bar_requested.emit("error", msg)
+
+        if not path:
+            _show_error(self.tr("Bundle path cannot be empty"))
+            return
+
+        base = Path(path)
+        if not base.exists() or not base.is_dir():
+            # 选择错误：静默忽略，不弹出 InfoBar，只记录日志
+            logger.warning("Bundle path is not a valid directory: %s", base)
+            return
+
+        # 目录：默认视为 bundle 根目录，要求其下存在 interface.json
+        interface_path = base / "interface.json"
+        if not interface_path.exists():
+            # 选择错误：静默忽略，不弹出 InfoBar
+            logger.warning(
+                "Bundle directory does not contain interface.json: %s", base
+            )
+            return
+
+        # 读取 interface.json 的 name 字段，如果存在则用于填充 bundle 名称
+        interface_name = ""
+        try:
+            with open(interface_path, "r", encoding="utf-8") as f:
+                data = jsonc.load(f)
+            iface_name = data.get("name")
+            if isinstance(iface_name, str) and iface_name.strip():
+                interface_name = iface_name.strip()
+        except Exception:
+            interface_name = ""
+
+        # 如果当前名称为空，则使用 interface.json 中的 name 或默认值
+        if not name:
+            if interface_name:
+                name = interface_name
+            else:
+                name = "Default Bundle"
+            self.name_edit.setText(name)
+
+        # 统一将路径转换为相对当前工作目录的形式（尽量保持与 multi_config 中一致）
+        try:
+            rel = base.resolve().relative_to(Path.cwd().resolve())
+            normalized = f"./{rel.as_posix()}"
+        except Exception:
+            normalized = os.path.abspath(str(base))
+
+        # 通过服务层接口写入 bundle，避免直接操作私有 _main_config
+        if not self._service_coordinator:
+            _show_error(self.tr("Service is not ready, cannot save bundle"))
+            return
+
+        coordinator = self._service_coordinator
+        config_service = coordinator.config_service
+
+        # 检查是否已存在同名或同路径的 bundle
+        try:
+            existing_bundles = config_service.list_bundles()
+            for exist_name in existing_bundles:
+                # 检查名称是否重复
+                if exist_name == name:
+                    _show_error(self.tr("Bundle name already exists"))
+                    return
+
+                # 检查路径是否重复
+                try:
+                    exist_bundle = config_service.get_bundle(exist_name)
+                    exist_path = str(exist_bundle.get("path", ""))
+                    if exist_path and exist_path == normalized:
+                        _show_error(self.tr("Bundle path already exists"))
+                        return
+                except FileNotFoundError:
+                    # 如果获取失败，跳过这个 bundle
+                    continue
+        except Exception as exc:
+            _show_error(self.tr("Failed to check existing bundles: {}").format(exc))
+            return
+
+        # 使用 ServiceCoordinator 的更新接口，避免在 UI 中维护主配置结构
+        try:
+            success = coordinator.update_bundle_path(
+                bundle_name=name,
+                new_path=normalized,
+                bundle_display_name=name,
+            )
+            if not success:
+                _show_error(self.tr("Failed to update bundle path"))
+                return
+        except Exception as exc:
+            _show_error(self.tr("Failed to update bundle path: {}").format(exc))
+            return
+
+        self._bundle_name = name
+        self._bundle_path = normalized
+        self.accept()
+
+    def get_bundle_info(self) -> tuple[str, str]:
+        return self._bundle_name, self._bundle_path

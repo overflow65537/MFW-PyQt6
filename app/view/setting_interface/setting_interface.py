@@ -1625,8 +1625,8 @@ class SettingInterface(QWidget):
         更新 multi_config.json 中的 bundle 配置。
 
         在文件移动到 bundle 目录后，更新主配置文件中对应 bundle 的路径。
-
-        注意：此方法具有幂等性，如果配置已存在且正确，则不会重复更新。
+        
+        注意：如果当前路径是 "./"，会强制更新为 "./bundle/{name}"，因为这是一次性迁移操作。
         """
         if not self._service_coordinator:
             logger.error("service_coordinator 未初始化，无法更新 bundle 配置")
@@ -1650,25 +1650,41 @@ class SettingInterface(QWidget):
             logger.error("interface.json 中未找到 name 字段")
             return
 
-        # 检查配置是否已更新，避免重复更新
-        if self._is_bundle_config_updated(name):
-            logger.info(f"bundle 配置已存在且正确，跳过更新: {name}")
-            return
+        # 检查当前配置中的路径
+        current_path = None
+        try:
+            bundle_info = self._service_coordinator.config_service.get_bundle(name)
+            current_path = bundle_info.get("path", "")
+        except (FileNotFoundError, Exception) as e:
+            logger.debug(f"获取当前 bundle 配置失败（可能不存在）: {e}")
 
         # 构建新的 bundle 路径（相对于项目根目录）
         bundle_path = f"./bundle/{name}"
 
-        # 更新 multi_config.json 中的 bundle 配置
-        success = self._service_coordinator.update_bundle_path(
-            bundle_name=name,
-            new_path=bundle_path,
-            bundle_display_name=name,
-        )
-
-        if success:
-            logger.info(f"已更新 bundle 配置: {name} -> {bundle_path}")
+        # 如果当前路径是 "./" 或空，或者路径不正确，则强制更新
+        needs_update = False
+        if not current_path or current_path == "./" or current_path == ".":
+            logger.info(f"检测到 bundle 路径为 '{current_path}'，需要更新为 '{bundle_path}'")
+            needs_update = True
+        elif current_path != bundle_path and not current_path.endswith(f"/bundle/{name}"):
+            logger.info(f"检测到 bundle 路径不正确 '{current_path}'，需要更新为 '{bundle_path}'")
+            needs_update = True
         else:
-            logger.error(f"更新 bundle 配置失败: {name}")
+            logger.info(f"bundle 配置已正确，跳过更新: {name} -> {current_path}")
+            return
+
+        if needs_update:
+            # 更新 multi_config.json 中的 bundle 配置
+            success = self._service_coordinator.update_bundle_path(
+                bundle_name=name,
+                new_path=bundle_path,
+                bundle_display_name=name,
+            )
+
+            if success:
+                logger.info(f"已更新 bundle 配置: {name} -> {bundle_path}")
+            else:
+                logger.error(f"更新 bundle 配置失败: {name}")
 
     def _move_bundle(self):
         """
