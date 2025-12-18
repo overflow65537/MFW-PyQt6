@@ -478,3 +478,4 @@ runtime
 custom
 update/new_version/update_metadata.json
 update_flag.txt
+bundle/*

@@ -127,21 +127,42 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
         """添加配置项。"""
         # 通过对话框创建新配置
         bundles = []
-        main_cfg = getattr(self.service_coordinator.config, "_main_config", None)
-        if main_cfg:
-            bundle_source = main_cfg.get("bundle", [])
-            if isinstance(bundle_source, dict):
-                for name, value in bundle_source.items():
-                    bundle_info = {"name": name}
-                    if isinstance(value, dict):
-                        bundle_info["path"] = value.get("path", "")
-                    else:
-                        bundle_info["path"] = str(value)
-                    bundles.append(bundle_info)
-            elif isinstance(bundle_source, list):
-                bundles = bundle_source
+        config_service = self.service_coordinator.config
+        try:
+            # 优先通过 ConfigService 的接口获取 bundle 列表，避免直接依赖内部结构
+            bundle_names = config_service.list_bundles()
+            for name in bundle_names:
+                try:
+                    info = config_service.get_bundle(name)
+                except FileNotFoundError:
+                    continue
+                bundle_info = {
+                    "name": str(info.get("name", name)),
+                    "path": str(info.get("path", "")),
+                }
+                bundles.append(bundle_info)
+        except Exception:
+            # 回退：尝试从 _main_config 读取（兼容旧数据/异常场景）
+            main_cfg = getattr(config_service, "_main_config", None)
+            if main_cfg:
+                bundle_source = main_cfg.get("bundle", [])
+                if isinstance(bundle_source, dict):
+                    for name, value in bundle_source.items():
+                        bundle_info = {"name": name}
+                        if isinstance(value, dict):
+                            bundle_info["path"] = value.get("path", "")
+                        else:
+                            bundle_info["path"] = str(value)
+                        bundles.append(bundle_info)
+                elif isinstance(bundle_source, list):
+                    bundles = bundle_source
 
-        dlg = AddConfigDialog(resource_bundles=bundles, parent=self.window(), interface=self.service_coordinator.interface)
+        dlg = AddConfigDialog(
+            resource_bundles=bundles,
+            parent=self.window(),
+            interface=self.service_coordinator.interface,
+            service_coordinator=self.service_coordinator,
+        )
         if dlg.exec():
             cfg = dlg.get_config_item()
             if cfg:

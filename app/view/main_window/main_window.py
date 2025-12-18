@@ -64,8 +64,6 @@ from qfluentwidgets import (
     InfoBar,
     InfoBarPosition,
     MSFluentWindow,
-    MessageBoxBase,
-    BodyLabel,
 )
 from qfluentwidgets import FluentIcon as FIF
 
@@ -80,6 +78,7 @@ from app.view.setting_interface.setting_interface import (
     SettingInterface,
 )
 from app.view.test_interface.test_interface import TestInterface
+from app.view.bundle_interface.bundle_interface import BundleInterface
 from app.common.config import cfg
 from app.common.signal_bus import signalBus
 from app.utils.hotkey_manager import GlobalHotkeyManager
@@ -122,6 +121,10 @@ class MainWindow(MSFluentWindow):
         self._auto_update_in_progress = False
         self._auto_update_pending_restart = False
         self._pending_auto_run = False
+        self._auto_run_scheduled = False  # 标记是否已调度过启动后自动运行，避免重复触发
+        self._bundle_interface_added_to_nav = False  # 标记 BundleInterface 是否已添加到导航栏
+        self._setting_update_completed = False  # 设置更新是否完成
+        self._bundle_update_in_progress = False  # bundle 更新是否正在进行
 
         cfg.set(cfg.save_screenshot, False)
 
@@ -172,14 +175,48 @@ class MainWindow(MSFluentWindow):
                 FIF.MEGAPHONE,
                 self.tr("test_interface"),
             )
-        self._insert_announcement_nav_item()
+        # 总是初始化 BundleInterface，但不添加到导航栏（除非多资源适配已开启）
+        try:
+            logger.info("初始化 BundleInterface...")
+            self.BundleInterface = BundleInterface(self.service_coordinator)
+            logger.info("BundleInterface 创建成功")
+        except Exception as exc:
+            logger.error(f"创建 BundleInterface 失败: {exc}", exc_info=True)
+            self.BundleInterface = None
+        
         self.SettingInterface = SettingInterface(self.service_coordinator)
+        
+        # 如果多资源适配已开启，先添加 BundleInterface，再添加 SettingInterface
+        # 这样 Bundle 会在 Setting 之前，而 Announcement 会在最前面（通过 insertItem(0)）
+        multi_res_enabled = cfg.get(cfg.multi_resource_adaptation)
+        logger.info(f"检查多资源适配状态（启动时）: {multi_res_enabled}")
+        if multi_res_enabled:
+            logger.info("多资源适配已开启，添加 BundleInterface 到导航栏")
+            # 先添加 Bundle，确保它在 Setting 之前
+            if hasattr(self, "BundleInterface") and self.BundleInterface is not None:
+                self.addSubInterface(
+                    self.BundleInterface,
+                    FIF.FOLDER,
+                    self.tr("Bundle"),
+                    position=NavigationItemPosition.BOTTOM,
+                )
+                self._bundle_interface_added_to_nav = True
+                logger.info("✓ BundleInterface 已添加到导航栏")
+        else:
+            logger.info("多资源适配未开启，BundleInterface 不会显示在导航栏")
+        
+        # 添加 SettingInterface（在 Bundle 之后，这样 Bundle 会在 Setting 之前）
         self.addSubInterface(
             self.SettingInterface,
             FIF.SETTING,
             self.tr("Setting"),
             position=NavigationItemPosition.BOTTOM,
         )
+        
+        # 最后插入 Announcement（使用 insertItem(0) 确保它在最前面）
+        # 最终顺序：Announcement (索引 0), Bundle, Setting
+        self._insert_announcement_nav_item()
+        
         # 添加导航项
         self.splashScreen.finish()
         self._maybe_show_pending_announcement()
@@ -197,14 +234,79 @@ class MainWindow(MSFluentWindow):
         self._hotkey_manager = GlobalHotkeyManager(event_loop)
         self._hotkey_manager.setup(
             start_factory=lambda: self.service_coordinator.run_tasks_flow(),
-            stop_factory=lambda: self.service_coordinator.stop_task(),
+            stop_factory=lambda: self.service_coordinator.stop_task_flow(),
         )
         signalBus.hotkey_shortcuts_changed.connect(self._reload_global_hotkeys)
         self._reload_global_hotkeys()
         self._bootstrap_auto_update_and_run()
         self._apply_auto_minimize_on_startup()
 
+        # 程序启动并完成主界面初始化后，如果已开启多资源适配，则执行一次后续操作钩子
+        try:
+            if cfg.get(cfg.multi_resource_adaptation):
+                self.SettingInterface.run_multi_resource_post_enable_tasks()
+        except Exception as exc:
+            logger.warning(f"运行多资源适配启动钩子失败: {exc}")
+
         logger.info(" 主界面初始化完成。")
+
+    def _add_bundle_interface_to_navigation(self) -> None:
+        """将 BundleInterface 添加到导航栏。
+
+        如果已经添加过，则不会重复添加。
+        当用户动态启用多资源适配时，会调用此方法添加 Bundle。
+        注意：在初始化时，如果多资源适配已开启，Bundle 会在 Setting 之前自动添加。
+        """
+        try:
+            logger.info("_add_bundle_interface_to_navigation 被调用")
+            
+            if not hasattr(self, "BundleInterface") or self.BundleInterface is None:
+                logger.warning("BundleInterface 未初始化，无法添加到导航栏")
+                return
+
+            # 检查是否已经添加到导航栏
+            if self._bundle_interface_added_to_nav:
+                logger.info("BundleInterface 已存在于导航栏，跳过重复添加")
+                return
+
+            logger.info("开始添加 BundleInterface 到导航栏（动态启用多资源适配）...")
+            logger.info(f"BundleInterface 对象: {self.BundleInterface}")
+            
+            # 首先确保 BundleInterface 被添加到 stackedWidget
+            if self.stackedWidget.indexOf(self.BundleInterface) == -1:
+                self.stackedWidget.addWidget(self.BundleInterface)
+                logger.info("BundleInterface 已添加到 stackedWidget")
+            
+            # 使用 insertItem 在公告和设置之间插入 Bundle
+            # 公告在索引 0，Setting 在索引 1（如果没有 Bundle），
+            # 所以我们在索引 1 位置插入 Bundle，使顺序变为：Announcement (0), Bundle (1), Setting (2)
+            try:
+                self.navigationInterface.insertItem(
+                    1,
+                    "bundle_interface",
+                    FIF.FOLDER,
+                    self.tr("Bundle"),
+                    onClick=lambda: self.stackedWidget.setCurrentWidget(self.BundleInterface),
+                    selectable=True,
+                    position=NavigationItemPosition.BOTTOM,
+                )
+                logger.info("使用 insertItem 在公告和设置之间插入 Bundle")
+            except Exception as insert_exc:
+                # 如果 insertItem 失败，回退到 addSubInterface（虽然顺序可能不对）
+                logger.warning(f"insertItem 失败，使用 addSubInterface: {insert_exc}")
+                self.addSubInterface(
+                    self.BundleInterface,
+                    FIF.FOLDER,
+                    self.tr("Bundle"),
+                    position=NavigationItemPosition.BOTTOM,
+                )
+            
+            self._bundle_interface_added_to_nav = True
+            logger.info("✓ BundleInterface 已成功添加到导航栏！")
+        except Exception as exc:
+            logger.error(f"添加 BundleInterface 到导航栏失败: {exc}", exc_info=True)
+            import traceback
+            logger.error(f"详细错误信息: {traceback.format_exc()}")
 
     def initWindow(self):
         """初始化窗口设置。"""
@@ -466,7 +568,18 @@ class MainWindow(MSFluentWindow):
             self._on_background_opacity_changed
         )
         signalBus.update_stopped.connect(self._on_update_stopped_main)
-        signalBus.check_auto_run_after_update_cancel.connect(self._on_check_auto_run_after_update_cancel)
+        signalBus.check_auto_run_after_update_cancel.connect(
+            self._on_check_auto_run_after_update_cancel
+        )
+        signalBus.all_updates_completed.connect(self._on_all_updates_completed)
+        # 多资源适配启用后，将 BundleInterface 添加到导航栏
+        signalBus.multi_resource_adaptation_enabled.connect(
+            self._on_multi_resource_adaptation_enabled
+        )
+
+    def _on_multi_resource_adaptation_enabled(self) -> None:
+        """响应设置页开启多资源适配的信号，将 BundleInterface 添加到导航栏。"""
+        self._add_bundle_interface_to_navigation()
 
     def _apply_cli_switch_config(self) -> None:
         """处理 CLI 请求的配置切换，在 UI 初始化前执行。"""
@@ -686,10 +799,9 @@ class MainWindow(MSFluentWindow):
             logger.info("自动更新已开启，准备启动自动更新线程")
             self._start_auto_update_thread()
             return
-        logger.info("自动更新未开启，直接检查是否需要自动运行任务")
-        if self._pending_auto_run:
-            self._schedule_auto_run()
-            self._pending_auto_run = False
+        # 未开启 UI 自动更新时，直接进入下一步：检查是否需要执行 bundle 自动更新
+        logger.info("自动更新未开启，改为检查并执行 bundle 自动更新")
+        self._check_and_start_bundle_update()
 
     def _start_auto_update_thread(self) -> None:
         """启动自动更新，复用设置页的更新器并避免重复。"""
@@ -703,10 +815,9 @@ class MainWindow(MSFluentWindow):
 
         setting_interface = getattr(self, "SettingInterface", None)
         if not self.service_coordinator or setting_interface is None:
-            logger.warning("自动更新未启动：更新器未就绪")
-            if self._pending_auto_run:
-                self._schedule_auto_run()
-                self._pending_auto_run = False
+            logger.warning("自动更新未启动：更新器未就绪，改为检查并执行 bundle 自动更新")
+            # UI 自动更新无法启动时，直接进入 bundle 自动更新阶段
+            self._check_and_start_bundle_update()
             return
 
         started = False
@@ -724,9 +835,9 @@ class MainWindow(MSFluentWindow):
 
         self._auto_update_in_progress = False
         self._auto_update_thread = None
-        if self._pending_auto_run:
-            self._schedule_auto_run()
-            self._pending_auto_run = False
+        # UI 自动更新未成功启动，继续检查 bundle 自动更新
+        logger.info("自动更新未成功启动，改为检查并执行 bundle 自动更新")
+        self._check_and_start_bundle_update()
 
     def _schedule_auto_run(self) -> None:
         """根据 CLI 或配置决定是否在启动后自动运行任务。"""
@@ -743,20 +854,62 @@ class MainWindow(MSFluentWindow):
         QTimer.singleShot(0, lambda: asyncio.create_task(_start_flow()))
 
     def _on_check_auto_run_after_update_cancel(self) -> None:
-        """当更新被取消后，检查是否需要自动运行任务。"""
-        logger.info("收到更新取消信号，检查是否需要自动运行任务")
+        """当更新被取消后，按统一流水线继续后续任务（bundle 更新 → 自动运行）。"""
+        logger.info(
+            "收到更新取消信号，auto_update_in_progress=%s, bundle_update_in_progress=%s, pending_auto_run=%s",
+            self._auto_update_in_progress,
+            self._bundle_update_in_progress,
+            self._pending_auto_run,
+        )
+        # 如果配置/CLI 不需要启动后自动运行，则仅保证更新状态收尾即可
         should_run = self._cli_auto_run or cfg.get(cfg.run_after_startup)
-        if should_run:
-            logger.info("检测到需要自动运行任务，开始调度")
+        if not should_run:
+            logger.info("未开启启动后自动运行，取消更新后不再调度后续任务")
+            return
+
+        # 标记后续需要自动运行，让统一更新流水线在合适时机调度
+        self._pending_auto_run = True
+
+        # 如果当前没有任何 UI/bundle 更新在进行，则可以直接调度自动运行
+        if not self._auto_update_in_progress and not self._bundle_update_in_progress:
+            logger.info("当前无进行中的更新任务，取消后直接调度自动运行")
             self._schedule_auto_run()
+            self._pending_auto_run = False
 
     def _on_update_stopped_main(self, status: int):
         """监听更新结束，串行触发自动运行或提示重启。"""
         logger.info(
-            "收到更新结束信号，status=%s，pending_auto_run=%s",
+            "收到更新结束信号，status=%s，pending_auto_run=%s，setting_update_completed=%s，bundle_update_in_progress=%s",
             status,
             self._pending_auto_run,
+            self._setting_update_completed,
+            self._bundle_update_in_progress,
         )
+        
+        # 判断是设置更新还是 bundle 更新
+        if self._auto_update_in_progress and not self._bundle_update_in_progress:
+            # 这是设置更新完成
+            logger.info("设置更新完成，status=%s", status)
+            self._setting_update_completed = True
+            self._auto_update_in_progress = False
+            self._auto_update_thread = None
+            
+            if status == 1:
+                # 热更新完成后，重新设置窗口标题（延迟到下一个事件循环，确保 reinit 完成）
+                QTimer.singleShot(0, self.set_title)
+            
+            # 检查是否需要启动 bundle 更新
+            self._check_and_start_bundle_update()
+            return
+        
+        if self._bundle_update_in_progress:
+            # 这是 bundle 更新完成（单个bundle）
+            logger.info("Bundle 更新完成（单个），status=%s", status)
+            # 注意：所有bundle更新完成信号由 bundle_interface 的 _start_next_update 发送
+            # 这里不需要发送 all_updates_completed 信号
+            return
+        
+        # 其他情况（可能是手动触发的更新）
         self._auto_update_in_progress = False
         self._auto_update_thread = None
         if status == 1:
@@ -785,7 +938,52 @@ class MainWindow(MSFluentWindow):
         if self._pending_auto_run:
             self._schedule_auto_run()
         self._pending_auto_run = False
-
+    
+    def _check_and_start_bundle_update(self):
+        """检查并启动 bundle 更新"""
+        # 检查 bundle 自动更新是否开启
+        bundle_auto_update_enabled = cfg.get(cfg.bundle_auto_update)
+        
+        if not bundle_auto_update_enabled:
+            logger.info("Bundle 自动更新未开启，直接发送所有更新完成信号")
+            signalBus.all_updates_completed.emit()
+            # 处理自动运行
+            if self._pending_auto_run:
+                self._schedule_auto_run()
+            self._pending_auto_run = False
+            return
+        
+        # 检查是否有 bundle 需要更新
+        bundle_interface = getattr(self, "BundleInterface", None)
+        if not bundle_interface:
+            logger.warning("BundleInterface 不存在，无法启动 bundle 更新")
+            signalBus.all_updates_completed.emit()
+            if self._pending_auto_run:
+                self._schedule_auto_run()
+            self._pending_auto_run = False
+            return
+        
+        # 启动 bundle 自动更新
+        logger.info("Bundle 自动更新已开启，开始更新所有 bundle")
+        self._bundle_update_in_progress = True
+        try:
+            bundle_interface.start_auto_update_all()
+        except Exception as e:
+            logger.error(f"启动 bundle 自动更新失败: {e}", exc_info=True)
+            self._bundle_update_in_progress = False
+            signalBus.all_updates_completed.emit()
+            if self._pending_auto_run:
+                self._schedule_auto_run()
+            self._pending_auto_run = False
+    
+    def _on_all_updates_completed(self):
+        """所有更新完成回调"""
+        logger.info("收到所有更新完成信号")
+        # 所有更新（UI + bundle）完成后，如果还有待执行的自动运行，则在此统一调度
+        if self._pending_auto_run:
+            logger.info("所有更新已完成，开始执行启动后自动运行任务")
+            self._schedule_auto_run()
+            self._pending_auto_run = False
 
     def _apply_auto_minimize_on_startup(self) -> None:
         """在启动完成后根据配置自动最小化窗口。"""
@@ -886,11 +1084,23 @@ class MainWindow(MSFluentWindow):
 
     def set_title(self):
         """设置窗口标题"""
-        title = (
-            self.service_coordinator.task.interface.get("title", "")
-            or self.service_coordinator.task.interface.get("custom_title", "")
-            or f"{self.service_coordinator.task.interface.get("name", "")} {self.service_coordinator.task.interface.get("version", "")}"
+        meta = self.service_coordinator.task.interface or {}
+        base_title = (
+            meta.get("title", "")
+            or meta.get("custom_title", "")
+            or f"{meta.get('name', '')} {meta.get('version', '')}".strip()
         )
+
+        if cfg.get(cfg.multi_resource_adaptation):
+            from app.common.__version__ import __version__
+
+            # 多资源模式下：显示应用名 + 应用版本 + 资源标题
+            prefix = f"{self.tr('MFW-ChainFlow Assistant')} {__version__}"
+            title = f"{prefix} {base_title}".strip()
+            self.setWindowIcon(QIcon("./app/assets/icons/logo.png"))
+        else:
+            title = base_title
+
         if self.is_admin():
             title += " " + self.tr("admin")
         logger.info(f" 设置窗口标题：{title}")

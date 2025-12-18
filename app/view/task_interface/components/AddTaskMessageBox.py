@@ -1,13 +1,22 @@
-from PySide6.QtWidgets import QVBoxLayout
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QFileDialog, QSizePolicy
+from PySide6.QtCore import Qt
 from qfluentwidgets import (
     MessageBoxBase,
     LineEdit,
     ComboBox,
     SubtitleLabel,
     BodyLabel,
+    ToolButton,
+    FluentIcon as FIF,
+    InfoBar,
+    InfoBarPosition,
 )
+import jsonc
 from app.core.Item import TaskItem, ConfigItem
 from app.common.constants import PRE_CONFIGURATION, POST_ACTION
+from app.common.config import cfg
+from app.core.core import ServiceCoordinator
+from app.common.signal_bus import signalBus
 
 
 class BaseAddDialog(MessageBoxBase):
@@ -47,9 +56,7 @@ class BaseAddDialog(MessageBoxBase):
 
     def show_error(self, message):
         """显示错误信息"""
-        from qfluentwidgets import InfoBar, InfoBarPosition
-        from PySide6.QtCore import Qt
-
+        # 仍保留局部弹出的错误 InfoBar，供通用对话框使用
         InfoBar.error(
             title=self.tr("Error"),
             content=message,
@@ -67,12 +74,14 @@ class AddConfigDialog(BaseAddDialog):
         resource_bundles: list | None = None,
         default_resource: str | None = None,
         interface: dict | None = None,
+        service_coordinator: ServiceCoordinator | None = None,
         parent=None,
     ):
         # 调用基类构造函数，设置标题
         super().__init__(self.tr("Add New Config"), parent)
 
         self.interface = interface or {}
+        self._service_coordinator = service_coordinator
         # 配置名输入框
         self.name_layout = QVBoxLayout()
         self.name_label = BodyLabel(self.tr("Config Name:"), self)
@@ -88,12 +97,18 @@ class AddConfigDialog(BaseAddDialog):
         self.resource_label = BodyLabel(self.tr("Resource Bundle:"), self)
         self.resource_combo = ComboBox(self)
 
+        # 组合行：下拉框 + （可选）多资源按钮
+        self.resource_row_layout = QHBoxLayout()
+        self.resource_row_layout.addWidget(self.resource_combo)
+
+        # 注意：添加 bundle 功能已移至 Bundle 管理界面
+
         # 加载可用的资源包
-        self.resource_bundles = resource_bundles
-        self.load_resource_bundles(resource_bundles, default_resource)
+        self.resource_bundles = resource_bundles or []
+        self.load_resource_bundles(self.resource_bundles, default_resource)
 
         self.resource_layout.addWidget(self.resource_label)
-        self.resource_layout.addWidget(self.resource_combo)
+        self.resource_layout.addLayout(self.resource_row_layout)
 
         # 将布局添加到对话框
         self.viewLayout.addLayout(self.name_layout)
@@ -103,6 +118,7 @@ class AddConfigDialog(BaseAddDialog):
         # 存储数据的变量
         self.config_name = ""
         self.resource_name = ""
+
 
     def load_resource_bundles(self, resource_bundles, default_resource):
         """加载可用的资源包到下拉框"""
@@ -132,19 +148,69 @@ class AddConfigDialog(BaseAddDialog):
             self.show_error(self.tr("Cannot use 'default' as config name"))
             return
 
-        # 创建 ConfigItem 对象，使用新的 core.model 数据结构
+        # 创建 ConfigItem 对象
         if self.resource_bundles is None:
             raise ValueError("resource_bundles is None")
-        bundle_path = ""
+
+        # 验证所选资源包在可用列表中存在，并获取 bundle 信息
+        selected_bundle = None
         for bundle in self.resource_bundles:
-            if bundle["name"] == self.resource_name:
-                bundle_path = bundle["path"]
+            if isinstance(bundle, dict) and bundle.get("name") == self.resource_name:
+                selected_bundle = bundle
                 break
-        if not bundle_path:
+        
+        if not selected_bundle:
             self.show_error(self.tr("Resource bundle not found"))
             return
-        init_controller = self.interface["controller"][0]["name"]
-        init_resource = self.interface["resource"][0]["name"]
+        
+        # 根据选中的 bundle 路径加载对应的 interface
+        bundle_path = selected_bundle.get("path", "./")
+        if not bundle_path:
+            bundle_path = "./"
+        
+        # 解析 bundle 路径（可能是相对路径或绝对路径）
+        from pathlib import Path
+        from app.utils.logger import logger
+        
+        if Path(bundle_path).is_absolute():
+            interface_dir = Path(bundle_path)
+        else:
+            interface_dir = Path.cwd() / bundle_path
+        
+        # 查找 interface.json 或 interface.jsonc
+        interface_path = None
+        for candidate in [interface_dir / "interface.jsonc", interface_dir / "interface.json"]:
+            if candidate.exists():
+                interface_path = candidate
+                break
+        
+        if not interface_path:
+            self.show_error(
+                self.tr("Interface file not found in bundle: {}").format(bundle_path)
+            )
+            return
+        
+        # 加载 interface 配置
+        try:
+            with open(interface_path, "r", encoding="utf-8") as f:
+                bundle_interface = jsonc.load(f)
+        except Exception as e:
+            logger.error(f"加载 bundle interface 失败: {e}")
+            self.show_error(
+                self.tr("Failed to load interface from bundle: {}").format(str(e))
+            )
+            return
+        
+        # 从 bundle interface 中获取 controller 和 resource
+        if "controller" not in bundle_interface or not bundle_interface["controller"]:
+            self.show_error(self.tr("Controller not found in bundle interface"))
+            return
+        if "resource" not in bundle_interface or not bundle_interface["resource"]:
+            self.show_error(self.tr("Resource not found in bundle interface"))
+            return
+        
+        init_controller = bundle_interface["controller"][0]["name"]
+        init_resource = bundle_interface["resource"][0]["name"]
         # 仅为配置创建所需的基础任务:资源 与 完成后操作
         default_tasks = [
             TaskItem(
@@ -166,15 +232,13 @@ class AddConfigDialog(BaseAddDialog):
             ),
         ]
 
-        # bundle 字段期望为 Dict[str, Dict[str, Any]]，这里使用 resource_name 作为 key
+        # bundle 字段现在仅保存 bundle 名称字符串，由 ConfigService 通过主配置解析详情
         self.item = ConfigItem(
             name=self.config_name,
             item_id=ConfigItem.generate_id(),
             tasks=default_tasks,
             know_task=[],
-            bundle={
-                self.resource_name: {"name": self.resource_name, "path": bundle_path}
-            },
+            bundle=self.resource_name,
         )
 
         # 接受对话框
@@ -286,3 +350,5 @@ class AddTaskDialog(BaseAddDialog):
     def get_task_item(self):
         """获取创建的任务项对象"""
         return self.item
+
+

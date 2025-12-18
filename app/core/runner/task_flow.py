@@ -71,6 +71,9 @@ class TaskFlowRunner(QObject):
         self.adb_activate_controller: str | None = None
         self.adb_controller_config: dict[str, Any] | None = None
 
+        # bundle 相关：在任务流开始时根据当前配置初始化
+        self.bundle_path: str = "./"
+
         # 任务超时相关
         self._timeout_timer = QTimer(self)
         self._timeout_timer.setSingleShot(True)
@@ -152,8 +155,14 @@ class TaskFlowRunner(QObject):
         config_label = ""
         if not current_config:
             config_label = self.tr("Unknown Config")
+            # 保持 bundle_path 的安全默认值
+            self.bundle_path = "./"
         else:
             config_label = current_config.name
+            # 使用 ConfigService 统一获取 bundle 路径
+            self.bundle_path = self.config_service.get_bundle_path_for_config(
+                current_config
+            )
         try:
             if self.fs_signal_bus:
                 self.fs_signal_bus.fs_start_button_status.emit(
@@ -241,10 +250,33 @@ class TaskFlowRunner(QObject):
                 )
                 self.maafw.resource.clear_custom_recognition()
                 self.maafw.resource.clear_custom_action()
+
+                # 先从预配置中读 custom 路径，若为空则退回 interface 中的默认 custom 路径
+                custom_config_path = pre_cfg.task_option.get("custom")
+                if not custom_config_path:
+                    custom_config_path = self.task_service.interface.get("custom", "")
+
+                # 兼容绝对路径与相对 bundle.path 的自定义配置路径
+                if custom_config_path:
+                    bundle_path_str = self.bundle_path or "./"
+                    base_dir = Path(bundle_path_str)
+                    if not base_dir.is_absolute():
+                        base_dir = (Path.cwd() / base_dir).resolve()
+
+                    # 先处理占位符与前导分隔符
+                    raw_custom = str(custom_config_path).replace("{PROJECT_DIR}", "")
+                    normalized_custom = raw_custom.lstrip("\\/")
+                    custom_path_obj = Path(normalized_custom)
+
+                    # 绝对路径：直接使用，保持兼容已有配置
+                    if custom_path_obj.is_absolute():
+                        custom_config_path = custom_path_obj
+                    else:
+                        # 相对路径：视为相对 bundle.path 的路径
+                        custom_config_path = (base_dir / normalized_custom).resolve()
+
                 result = self.maafw.load_custom_objects(
-                    custom_config_path=pre_cfg.task_option.get(
-                        "custom", self.task_service.interface.get("custom", "")
-                    )
+                    custom_config_path=custom_config_path
                 )
                 if not result:
                     failed_actions = self.maafw.custom_load_report["actions"]["failed"]
@@ -441,13 +473,31 @@ class TaskFlowRunner(QObject):
             return False
 
         for path_item in resource_path:
-            cwd = Path.cwd()
-            path_str = str(path_item.replace("{PROJECT_DIR}", ""))
-            if len(path_str) >= 2 and path_str[1] == ":" and path_str[0].isalpha():
-                resource = Path(path_str).resolve()
-            else:
-                normalized = path_str.lstrip("\\/")
-                resource = (cwd / normalized).resolve()
+            # 所有资源路径均为相对路径：优先相对于当前 bundle.path，再回落到项目根目录
+            bundle_path_str = self.bundle_path or "./"
+
+            # 先解析 bundle 基础目录为绝对路径
+            bundle_base = Path(bundle_path_str)
+            if not bundle_base.is_absolute():
+                bundle_base = (Path.cwd() / bundle_base).resolve()
+
+            # 兼容旧格式：移除占位符 {PROJECT_DIR}，并清理前导分隔符
+            raw = str(path_item)
+            raw = raw.replace("{PROJECT_DIR}", "")
+            normalized = raw.lstrip("\\/")
+
+            # 资源实际路径 = bundle 基础目录 / 相对资源路径
+            resource = (bundle_base / normalized).resolve()
+            if not resource.exists():
+                logger.error(f"资源不存在: {resource}")
+                signalBus.log_output.emit(
+                    "ERROR",
+                    self.tr("Resource ")
+                    + path_item
+                    + self.tr(" not found in bundle: ")
+                    + bundle_path_str,
+                )
+                return False
 
             logger.debug(f"加载资源: {resource}")
             res_cfg = self.task_service.get_task(PRE_CONFIGURATION)
