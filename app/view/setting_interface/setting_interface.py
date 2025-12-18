@@ -1736,6 +1736,7 @@ class SettingInterface(QWidget):
 
         # 读取 file_list.txt，构建排除文件路径集合
         # file_list.txt 中包含的是文件路径（相对或绝对），需要转换为规范化的路径集合
+        # 注意：只排除 file_list.txt 中列出的确切路径，不排除同名文件
         excluded_file_paths = set()
         file_list_path = Path.cwd() / "file_list.txt"
         if file_list_path.exists():
@@ -1750,18 +1751,16 @@ class SettingInterface(QWidget):
                     # 规范化路径并添加到排除集合
                     if file_path.exists() and file_path.is_file():
                         excluded_file_paths.add(file_path.resolve())
-                        # 同时将文件名也加入排除列表（用于快速检查）
-                        exclude_names.add(file_path.name)
-                        logger.debug(f"排除文件: {file_path}")
+                        logger.debug(f"排除文件（完整路径）: {file_path.resolve()}")
             except Exception as e:
                 logger.warning(f"读取 file_list.txt 失败: {e}，继续执行")
 
         def _should_exclude_path(path: Path) -> bool:
             """检查路径是否应该被排除"""
-            # 检查文件名是否在排除列表中
+            # 首先检查文件名是否在系统排除列表中（系统目录和关键文件）
             if path.name in exclude_names:
                 return True
-            # 检查完整路径是否在 file_list.txt 中
+            # 然后检查完整路径是否在 file_list.txt 中（只排除确切路径，不排除同名文件）
             resolved_path = path.resolve()
             if resolved_path in excluded_file_paths:
                 return True

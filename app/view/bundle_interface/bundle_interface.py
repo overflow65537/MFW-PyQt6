@@ -687,6 +687,46 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 
         except Exception as e:
             logger.error(f"检查所有bundle更新失败: {e}", exc_info=True)
+
+    def _check_single_bundle_update(self, bundle_name: str):
+        """检查单个 bundle 的更新"""
+        # 检查多资源适配是否开启
+        if not self._is_multi_resource_enabled():
+            return
+        
+        try:
+            bundle_data = self._bundle_data.get(bundle_name)
+            if not bundle_data:
+                logger.warning(f"Bundle '{bundle_name}' 数据不存在，无法检查更新")
+                return
+            
+            interface_data = bundle_data.get("interface", {})
+            if not interface_data:
+                logger.warning(f"Bundle '{bundle_name}' interface 数据不存在，无法检查更新")
+                return
+            
+            # 创建更新检查器
+            checker = Update(
+                service_coordinator=self.service_coordinator,
+                stop_signal=signalBus.update_stopped,
+                progress_signal=signalBus.update_progress,
+                info_bar_signal=signalBus.info_bar_requested,
+                interface=interface_data,
+                check_only=True,
+            )
+            
+            # 连接检查结果信号
+            checker.check_result_ready.connect(
+                lambda result, name=bundle_name: self._on_update_check_result(name, result)
+            )
+            checker.finished.connect(checker.deleteLater)
+            
+            self._update_checkers[bundle_name] = checker
+            checker.start()
+            logger.info(f"开始检查新添加的 bundle '{bundle_name}' 的更新")
+            
+        except Exception as e:
+            logger.error(f"检查 bundle '{bundle_name}' 更新失败: {e}", exc_info=True)
     
     def _on_update_check_result(self, bundle_name: str, result: dict):
         """处理单个bundle的更新检查结果"""
@@ -746,8 +786,13 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 interface_data = bundle_data.get("interface", {})
                 current_version = interface_data.get("version", "")
                 
+                # 如果还没有检查过更新（latest_version 为 None），直接加入更新队列
+                # 这样新添加的 bundle 也能被更新
+                if latest_version is None:
+                    logger.info(f"Bundle '{bundle_name}' 尚未检查更新，加入更新队列")
+                    bundles_to_update.append(bundle_name)
                 # 如果有最新版本且与当前版本不同，加入更新队列
-                if latest_version and latest_version != current_version:
+                elif latest_version and latest_version != current_version:
                     bundles_to_update.append(bundle_name)
             
             if not bundles_to_update:
@@ -797,8 +842,13 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 interface_data = bundle_data.get("interface", {})
                 current_version = interface_data.get("version", "")
                 
+                # 如果还没有检查过更新（latest_version 为 None），直接加入更新队列
+                # 这样新添加的 bundle 也能被更新
+                if latest_version is None:
+                    logger.info(f"Bundle '{bundle_name}' 尚未检查更新，加入更新队列")
+                    bundles_to_update.append(bundle_name)
                 # 如果有最新版本且与当前版本不同，加入更新队列
-                if latest_version and latest_version != current_version:
+                elif latest_version and latest_version != current_version:
                     bundles_to_update.append(bundle_name)
             
             if not bundles_to_update:
@@ -1003,6 +1053,10 @@ class BundleInterface(UI_BundleInterface, QWidget):
         
         # 触发 UI 更新，确保列表刷新
         QCoreApplication.processEvents()
+        
+        # 检查新添加的 bundle 的更新（如果多资源适配已开启）
+        if self._is_multi_resource_enabled():
+            self._check_single_bundle_update(bundle_name)
         
         logger.info(f"已添加新 bundle: {bundle_name} -> {bundle_path}")
 
