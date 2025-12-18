@@ -44,7 +44,6 @@ from app.utils.logger import logger
 from app.utils.update import Update, MultiResourceUpdate
 from app.common.signal_bus import signalBus
 from app.utils.markdown_helper import render_markdown
-import jsonc
 import os
 
 
@@ -407,6 +406,9 @@ class BundleInterface(UI_BundleInterface, QWidget):
         
         # 监听更新停止信号（Update 类会自动发送，用于通知主界面）
         signalBus.update_stopped.connect(self._on_update_stopped)
+        
+        # 监听多资源适配启用信号，刷新 bundle 列表
+        signalBus.multi_resource_adaptation_enabled.connect(self._on_multi_resource_enabled)
 
         # 加载 bundle 列表
         self._load_bundles()
@@ -949,6 +951,24 @@ class BundleInterface(UI_BundleInterface, QWidget):
         except Exception as e:
             logger.error(f"更新 Bundle 自动更新设置失败: {e}", exc_info=True)
 
+    def _on_multi_resource_enabled(self):
+        """响应多资源适配启用信号，刷新 bundle 列表"""
+        logger.info("收到多资源适配启用信号，刷新 bundle 列表")
+        # 重新加载配置服务的主配置
+        try:
+            self.service_coordinator.config_service.load_main_config()
+            logger.debug("已重新加载主配置")
+        except Exception as e:
+            logger.warning(f"重新加载主配置失败: {e}")
+        
+        # 重新加载 bundle 列表
+        self._load_bundles()
+        
+        # 如果多资源适配已开启，检查更新
+        if self._is_multi_resource_enabled():
+            QCoreApplication.processEvents()
+            self._check_all_updates()
+
     def _on_add_bundle_clicked(self):
         """打开添加 bundle 对话框"""
         # 检查多资源适配是否开启
@@ -971,8 +991,19 @@ class BundleInterface(UI_BundleInterface, QWidget):
         if not bundle_name or not bundle_path:
             return
 
+        # 重新加载配置服务的主配置，确保能获取到新添加的 bundle
+        try:
+            self.service_coordinator.config_service.load_main_config()
+            logger.debug("已重新加载主配置，确保获取到新添加的 bundle")
+        except Exception as e:
+            logger.warning(f"重新加载主配置失败: {e}")
+
         # 重新加载 bundle 列表以显示新添加的 bundle
         self._load_bundles()
+        
+        # 触发 UI 更新，确保列表刷新
+        QCoreApplication.processEvents()
+        
         logger.info(f"已添加新 bundle: {bundle_name} -> {bundle_path}")
 
 
