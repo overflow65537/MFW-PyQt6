@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from PySide6.QtCore import Qt, Signal, QMetaObject, QCoreApplication
+from PySide6.QtCore import Qt, Signal, QMetaObject, QCoreApplication, QTimer
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QWidget,
@@ -897,20 +897,22 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 # 如果不是自动更新所有模式，显示通知
                 signalBus.info_bar_requested.emit("success", self.tr("All updates completed"))
             logger.info("所有更新任务完成")
-            # 等待文件系统同步（确保文件写入完成）
-            time.sleep(0.5)
-            QCoreApplication.processEvents()  # 确保UI更新
-            # 重新加载bundles以刷新版本信息（强制刷新）
-            self._load_bundles(force_refresh=True)
-            # 重新检查更新以获取最新的版本信息（仅在多资源适配开启时）
-            if self._is_multi_resource_enabled():
-                QCoreApplication.processEvents()  # 确保UI更新
-                self._check_all_updates()
             
-            # 如果是自动更新所有模式，发送所有更新完成信号
-            if is_auto_update_all:
-                signalBus.all_updates_completed.emit()
-                logger.info("Bundle 自动更新完成，已发送 all_updates_completed 信号")
+            # 使用 QTimer 延迟刷新，避免阻塞 UI 线程，同时等待文件系统同步
+            def _refresh_after_update():
+                # 重新加载bundles以刷新版本信息（强制刷新）
+                self._load_bundles(force_refresh=True)
+                # 重新检查更新以获取最新的版本信息（仅在多资源适配开启时）
+                if self._is_multi_resource_enabled():
+                    self._check_all_updates()
+                
+                # 如果是自动更新所有模式，发送所有更新完成信号
+                if is_auto_update_all:
+                    signalBus.all_updates_completed.emit()
+                    logger.info("Bundle 自动更新完成，已发送 all_updates_completed 信号")
+            
+            # 延迟 500ms 执行刷新，确保文件系统同步完成，但不阻塞 UI
+            QTimer.singleShot(500, _refresh_after_update)
             return
         
         bundle_name = self._update_queue.pop(0)
