@@ -180,11 +180,12 @@ class Config(QConfig):
     Notice_QYWX_key = ConfigItem("Notice", "QYWX_key", "")
 
     when_start_up = ConfigItem("Notice", "when_start_up", False)
-    when_connect_failed = ConfigItem("Notice", "when_connect_failed", False)
+    # 仅保留的三个通知时机，默认全部开启
+    when_connect_failed = ConfigItem("Notice", "when_connect_failed", True)
     when_connect_success = ConfigItem("Notice", "when_connect_success", False)
-    when_post_task = ConfigItem("Notice", "when_post_task", False)
+    when_post_task = ConfigItem("Notice", "when_post_task", True)
     when_task_failed = ConfigItem("Notice", "when_task_failed", True)
-    when_task_finished = ConfigItem("Notice", "when_task_finished", True)
+    when_task_finished = ConfigItem("Notice", "when_task_finished", False)
 
     # ===== 主窗口 =====
     micaEnabled = ConfigItem("MainWindow", "MicaEnabled", isWin11(), BoolValidator())

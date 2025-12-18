@@ -91,13 +91,8 @@ class NoticeErrorCode(IntEnum):
 class NoticeTiming(IntEnum):
     """通知触发的时机."""
 
-    WHEN_START_UP = 1
-    WHEN_CONNECT_FAILED = 2
-    WHEN_CONNECT_SUCCESS = 4
-    WHEN_POST_TASK = 8
-    WHEN_TASK_FAILED = 16
-    WHEN_TASK_FINISHED = 32
-    WHEN_TASK_TIMEOUT = 64
+    WHEN_POST_TASK = 1
+    WHEN_TASK_TIMEOUT = 2
 
 
 class DingTalk:
@@ -558,21 +553,20 @@ NOTICE_CHANNEL_STATUS = {
 }
 
 NOTICE_EVENT_CONFIG = {
-    NoticeTiming.WHEN_START_UP: cfg.when_start_up,
-    NoticeTiming.WHEN_CONNECT_FAILED: cfg.when_connect_failed,
-    NoticeTiming.WHEN_CONNECT_SUCCESS: cfg.when_connect_success,
     NoticeTiming.WHEN_POST_TASK: cfg.when_post_task,
-    NoticeTiming.WHEN_TASK_FAILED: cfg.when_task_failed,
-    NoticeTiming.WHEN_TASK_FINISHED: cfg.when_task_finished,
-    NoticeTiming.WHEN_TASK_TIMEOUT: cfg.task_timeout_action,
 }
 
 
 def should_send_notice(event: NoticeTiming) -> bool:
-    config_item = NOTICE_EVENT_CONFIG.get(event)
-    if not config_item:
-        return False
-    return bool(cfg.get(config_item))
+    """是否发送通知
+
+    任务流结束后固定发送一条通知，任务超时时也会发送通知。
+    """
+    if event == NoticeTiming.WHEN_POST_TASK:
+        return True
+    if event == NoticeTiming.WHEN_TASK_TIMEOUT:
+        return True
+    return False
 
 
 def broadcast_enabled_notices(title: str, text: str) -> None:

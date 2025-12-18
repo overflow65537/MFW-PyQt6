@@ -536,8 +536,12 @@ class ServiceCoordinator:
         )
 
     async def stop_task_flow(self):
-        """停止当前任务流（向下转发到 TaskFlowRunner）。"""
-        return await self.task_runner.stop_task()
+        """停止当前任务流（UI/外部调用，视为手动停止）。"""
+        return await self.task_runner.stop_task(manual=True)
+
+    async def stop_task(self, *, manual: bool = False):
+        """停止当前任务流（供内部/调度等模块调用，可指定是否视为手动停止）。"""
+        return await self.task_runner.stop_task(manual=manual)
 
     @property
     def run_manager(self) -> TaskFlowRunner:

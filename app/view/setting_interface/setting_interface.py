@@ -70,8 +70,6 @@ from app.view.setting_interface.widget.NoticeType import (
     WxPusherNoticeType,
 )
 
-from app.view.setting_interface.widget.SendSettingCard import SendSettingCard
-
 _CONTACT_URL_PATTERN = re.compile(r"(?:https?://|www\.)[^\s，,]+")
 # 检测已经是 Markdown 链接格式的文本： [text](url)
 _MARKDOWN_LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
@@ -223,7 +221,6 @@ class SettingInterface(QWidget):
         self.SMTP_noticeTypeCard.clicked.connect(self._on_smtp_notice_clicked)
         self.WxPusher_noticeTypeCard.clicked.connect(self._on_wxpusher_notice_clicked)
         self.QYWX_noticeTypeCard.clicked.connect(self._on_qywx_notice_clicked)
-        self.send_settingCard.clicked.connect(self._on_send_setting_clicked)
 
     def _setup_ui(self):
         """搭建整体结构：标题 + 更新详情 + 滚动区域 + ExpandLayout。"""
@@ -1061,20 +1058,11 @@ class SettingInterface(QWidget):
             parent=self.noticeGroup,
         )
 
-        self.send_settingCard = PrimaryPushSettingCard(
-            text=self.tr("Modify"),
-            icon=FIF.SEND,
-            title=self.tr("Send Setting"),
-            content=self.tr("Choose the timing to send notifications"),
-            parent=self.noticeGroup,
-        )
-
         self.noticeGroup.addSettingCard(self.dingtalk_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.lark_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.SMTP_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.WxPusher_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.QYWX_noticeTypeCard)
-        self.noticeGroup.addSettingCard(self.send_settingCard)
         self.add_setting_group(self.noticeGroup)
 
     def initialize_task_settings(self):
@@ -2024,21 +2012,6 @@ class SettingInterface(QWidget):
         dialog = QYWXNoticeType(parent)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._update_notice_card_status("QYWX")
-
-    def _on_send_setting_clicked(self):
-        """处理发送设置卡片点击事件"""
-        parent = self.window() or self
-        dialog = SendSettingCard(parent)
-        # 连接确认按钮的点击事件以保存设置
-        original_accept = dialog.accept
-
-        def save_and_accept():
-            dialog.save_setting()
-            original_accept()
-
-        dialog.yesButton.clicked.disconnect()
-        dialog.yesButton.clicked.connect(save_and_accept)
-        dialog.exec()
 
     def __showRestartTooltip(self):
         """显示重启提示。"""
