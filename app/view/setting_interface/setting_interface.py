@@ -1508,21 +1508,121 @@ class SettingInterface(QWidget):
         """开启多资源适配后执行的后续操作占位方法。
 
         当前仅作为占位，后续可在此实现多配置资源目录重建等逻辑。
+        
+        注意：此方法具有幂等性，即使重复调用也不会重复执行迁移操作。
         """
-        # 启用多资源适配后，显示“更新 UI”按钮，并通知主界面刷新标题等信息，
+        # 启用多资源适配后，显示"更新 UI"按钮，并通知主界面刷新标题等信息，
         # 同时隐藏多资源适配开关，避免重复误操作。
         self.multi_resource_adaptation_card.setEnabled(False)
         self.reset_resource_card.setEnabled(False)
         signalBus.title_changed.emit()
         self._refresh_update_header()
-        self._move_bundle()
-        self._update_bundle_config()
+        
+        # 检查是否已经迁移过，避免重复执行迁移操作
+        if self._is_bundle_migration_completed():
+            logger.info("检测到 bundle 迁移已完成，跳过迁移操作")
+        else:
+            logger.info("开始执行 bundle 迁移操作")
+            self._move_bundle()
+            self._update_bundle_config()
+
+    def _is_bundle_migration_completed(self) -> bool:
+        """
+        检查 bundle 迁移是否已完成。
+        
+        通过检查以下条件判断：
+        1. bundle 目录是否存在且包含文件
+        2. multi_config.json 中是否已配置了 bundle 路径
+        
+        Returns:
+            True 如果迁移已完成，False 如果未完成
+        """
+        # 读取 interface.json 获取项目名称
+        interface_file = Path.cwd() / "interface.json"
+        if not interface_file.exists():
+            logger.debug("未找到 interface.json，无法检查迁移状态")
+            return False
+
+        try:
+            with open(interface_file, "r", encoding="utf-8") as f:
+                interface = json.load(f)
+        except Exception as e:
+            logger.warning(f"读取 interface.json 失败: {e}，无法检查迁移状态")
+            return False
+
+        name = interface.get("name", "")
+        if not name:
+            logger.debug("interface.json 中未找到 name 字段，无法检查迁移状态")
+            return False
+
+        # 检查 bundle 目录是否存在且包含文件
+        bundle_dir = Path.cwd() / "bundle" / name
+        if bundle_dir.exists() and bundle_dir.is_dir():
+            # 检查目录中是否有文件（排除隐藏文件和目录本身）
+            has_files = any(
+                item.is_file() and not item.name.startswith(".")
+                for item in bundle_dir.iterdir()
+            )
+            if has_files:
+                logger.debug(f"检测到 bundle 目录已存在且包含文件: {bundle_dir}")
+                # 进一步检查配置是否已更新
+                if self._is_bundle_config_updated(name):
+                    logger.debug("bundle 配置已更新，迁移已完成")
+                    return True
+
+        return False
+
+    def _is_bundle_config_updated(self, bundle_name: str) -> bool:
+        """
+        检查 multi_config.json 中是否已配置了指定 bundle 的路径。
+        
+        Args:
+            bundle_name: bundle 名称
+            
+        Returns:
+            True 如果配置已更新，False 如果未更新
+        """
+        if not self._service_coordinator:
+            return False
+
+        try:
+            main_config_path = self._service_coordinator.config_repo.main_config_path
+            if not main_config_path.exists():
+                return False
+
+            with open(main_config_path, "r", encoding="utf-8") as f:
+                config_data = json.load(f)
+
+            # 检查 bundle 配置是否存在且路径正确
+            bundle_config = config_data.get("bundle", {})
+            if not isinstance(bundle_config, dict):
+                return False
+
+            bundle_info = bundle_config.get(bundle_name)
+            if not isinstance(bundle_info, dict):
+                return False
+
+            bundle_path = bundle_info.get("path", "")
+            expected_path = f"./bundle/{bundle_name}"
+            
+            # 路径匹配（支持相对路径和绝对路径的变体）
+            if bundle_path == expected_path or bundle_path.endswith(f"/bundle/{bundle_name}"):
+                logger.debug(f"检测到 bundle 配置已更新: {bundle_name} -> {bundle_path}")
+                return True
+
+        except Exception as e:
+            logger.warning(f"检查 bundle 配置时出错: {e}")
+            return False
+
+        return False
 
     def _update_bundle_config(self):
         """
         更新 multi_config.json 中的 bundle 配置。
 
         在文件移动到 bundle 目录后，更新主配置文件中对应 bundle 的路径。
+        
+        注意：此方法具有幂等性，如果配置已存在且正确，则不会重复更新。
         """
         if not self._service_coordinator:
             logger.error("service_coordinator 未初始化，无法更新 bundle 配置")
@@ -1544,6 +1644,11 @@ class SettingInterface(QWidget):
         name = interface.get("name", "")
         if not name:
             logger.error("interface.json 中未找到 name 字段")
+            return
+
+        # 检查配置是否已更新，避免重复更新
+        if self._is_bundle_config_updated(name):
+            logger.info(f"bundle 配置已存在且正确，跳过更新: {name}")
             return
 
         # 构建新的 bundle 路径（相对于项目根目录）
@@ -1568,6 +1673,8 @@ class SettingInterface(QWidget):
         将当前目录下不在排除列表中的文件移动到 bundle/{name}/ 目录。
         - 排除列表包括：bundle、release_notes、update、config、debug 等系统目录
         - 以及 file_list.txt 中列出的文件（这些是 MFW 本体文件，不应移动）
+        
+        注意：此方法具有幂等性，如果目标目录已存在且包含文件，会跳过迁移。
         """
         import shutil
 
@@ -1602,6 +1709,17 @@ class SettingInterface(QWidget):
             return
 
         bundle_dir = Path.cwd() / "bundle" / name
+        
+        # 检查是否已经迁移过：如果目标目录已存在且包含文件，则跳过
+        if bundle_dir.exists() and bundle_dir.is_dir():
+            has_files = any(
+                item.is_file() and not item.name.startswith(".")
+                for item in bundle_dir.iterdir()
+            )
+            if has_files:
+                logger.info(f"检测到 bundle 目录已存在且包含文件，跳过迁移: {bundle_dir}")
+                return
+        
         bundle_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"准备将文件移动到: {bundle_dir}")
 

@@ -497,49 +497,49 @@ class AddBundleDialog(MessageBoxBase):
         except Exception:
             normalized = os.path.abspath(str(base))
 
-        # 写入主配置的 bundle 字典
+        # 通过服务层接口写入 bundle，避免直接操作私有 _main_config
         if not self._service_coordinator:
             _show_error(self.tr("Service is not ready, cannot save bundle"))
             return
 
-        config_service = self._service_coordinator.config
-        main_cfg = getattr(config_service, "_main_config", None)
-        if main_cfg is None:
-            # 尝试加载主配置
-            try:
-                config_service.load_main_config()
-                main_cfg = getattr(config_service, "_main_config", None)
-            except Exception:
-                main_cfg = None
-        if main_cfg is None:
-            _show_error(self.tr("Main config is not available"))
+        coordinator = self._service_coordinator
+        config_service = coordinator.config_service
+
+        # 检查是否已存在同名或同路径的 bundle
+        try:
+            existing_bundles = config_service.list_bundles()
+            for exist_name in existing_bundles:
+                # 检查名称是否重复
+                if exist_name == name:
+                    _show_error(self.tr("Bundle name already exists"))
+                    return
+                
+                # 检查路径是否重复
+                try:
+                    exist_bundle = config_service.get_bundle(exist_name)
+                    exist_path = str(exist_bundle.get("path", ""))
+                    if exist_path and exist_path == normalized:
+                        _show_error(self.tr("Bundle path already exists"))
+                        return
+                except FileNotFoundError:
+                    # 如果获取失败，跳过这个 bundle
+                    continue
+        except Exception as exc:
+            _show_error(self.tr("Failed to check existing bundles: {}").format(exc))
             return
 
-        bundle_dict = main_cfg.get("bundle") or {}
-        if not isinstance(bundle_dict, dict):
-            bundle_dict = {}
-
-        # 不允许重复名称或重复路径
-        for exist_name, value in bundle_dict.items():
-            exist_path = ""
-            if isinstance(value, dict):
-                exist_path = str(value.get("path", ""))
-            else:
-                exist_path = str(value)
-            if exist_name == name or (exist_path and exist_path == normalized):
-                _show_error(self.tr("Bundle name or path already exists"))
-                return
-
-        bundle_dict[name] = {"name": name, "path": normalized}
-        main_cfg["bundle"] = bundle_dict
-
+        # 使用 ServiceCoordinator 的更新接口，避免在 UI 中维护主配置结构
         try:
-            # 保存主配置
-            if not config_service.save_main_config():
-                _show_error(self.tr("Failed to save main config"))
+            success = coordinator.update_bundle_path(
+                bundle_name=name,
+                new_path=normalized,
+                bundle_display_name=name,
+            )
+            if not success:
+                _show_error(self.tr("Failed to update bundle path"))
                 return
         except Exception as exc:
-            _show_error(self.tr("Failed to save main config: ") + str(exc))
+            _show_error(self.tr("Failed to update bundle path: {}").format(exc))
             return
 
         self._bundle_name = name
