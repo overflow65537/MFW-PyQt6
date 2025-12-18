@@ -798,10 +798,9 @@ class MainWindow(MSFluentWindow):
             logger.info("自动更新已开启，准备启动自动更新线程")
             self._start_auto_update_thread()
             return
-        logger.info("自动更新未开启，直接检查是否需要自动运行任务")
-        if self._pending_auto_run:
-            self._schedule_auto_run()
-            self._pending_auto_run = False
+        # 未开启 UI 自动更新时，直接进入下一步：检查是否需要执行 bundle 自动更新
+        logger.info("自动更新未开启，改为检查并执行 bundle 自动更新")
+        self._check_and_start_bundle_update()
 
     def _start_auto_update_thread(self) -> None:
         """启动自动更新，复用设置页的更新器并避免重复。"""
@@ -815,10 +814,9 @@ class MainWindow(MSFluentWindow):
 
         setting_interface = getattr(self, "SettingInterface", None)
         if not self.service_coordinator or setting_interface is None:
-            logger.warning("自动更新未启动：更新器未就绪")
-            if self._pending_auto_run:
-                self._schedule_auto_run()
-                self._pending_auto_run = False
+            logger.warning("自动更新未启动：更新器未就绪，改为检查并执行 bundle 自动更新")
+            # UI 自动更新无法启动时，直接进入 bundle 自动更新阶段
+            self._check_and_start_bundle_update()
             return
 
         started = False
@@ -836,9 +834,9 @@ class MainWindow(MSFluentWindow):
 
         self._auto_update_in_progress = False
         self._auto_update_thread = None
-        if self._pending_auto_run:
-            self._schedule_auto_run()
-            self._pending_auto_run = False
+        # UI 自动更新未成功启动，继续检查 bundle 自动更新
+        logger.info("自动更新未成功启动，改为检查并执行 bundle 自动更新")
+        self._check_and_start_bundle_update()
 
     def _schedule_auto_run(self) -> None:
         """根据 CLI 或配置决定是否在启动后自动运行任务。"""
@@ -858,12 +856,27 @@ class MainWindow(MSFluentWindow):
         QTimer.singleShot(0, lambda: asyncio.create_task(_start_flow()))
 
     def _on_check_auto_run_after_update_cancel(self) -> None:
-        """当更新被取消后，检查是否需要自动运行任务。"""
-        logger.info("收到更新取消信号，检查是否需要自动运行任务")
+        """当更新被取消后，按统一流水线继续后续任务（bundle 更新 → 自动运行）。"""
+        logger.info(
+            "收到更新取消信号，auto_update_in_progress=%s, bundle_update_in_progress=%s, pending_auto_run=%s",
+            self._auto_update_in_progress,
+            self._bundle_update_in_progress,
+            self._pending_auto_run,
+        )
+        # 如果配置/CLI 不需要启动后自动运行，则仅保证更新状态收尾即可
         should_run = self._cli_auto_run or cfg.get(cfg.run_after_startup)
-        if should_run:
-            logger.info("检测到需要自动运行任务，开始调度")
+        if not should_run:
+            logger.info("未开启启动后自动运行，取消更新后不再调度后续任务")
+            return
+
+        # 标记后续需要自动运行，让统一更新流水线在合适时机调度
+        self._pending_auto_run = True
+
+        # 如果当前没有任何 UI/bundle 更新在进行，则可以直接调度自动运行
+        if not self._auto_update_in_progress and not self._bundle_update_in_progress:
+            logger.info("当前无进行中的更新任务，取消后直接调度自动运行")
             self._schedule_auto_run()
+            self._pending_auto_run = False
 
     def _on_update_stopped_main(self, status: int):
         """监听更新结束，串行触发自动运行或提示重启。"""
@@ -968,7 +981,11 @@ class MainWindow(MSFluentWindow):
     def _on_all_updates_completed(self):
         """所有更新完成回调"""
         logger.info("收到所有更新完成信号")
-        # 这里可以添加其他需要在所有更新完成后执行的操作
+        # 所有更新（UI + bundle）完成后，如果还有待执行的自动运行，则在此统一调度
+        if self._pending_auto_run:
+            logger.info("所有更新已完成，开始执行启动后自动运行任务")
+            self._schedule_auto_run()
+            self._pending_auto_run = False
 
     def _apply_auto_minimize_on_startup(self) -> None:
         """在启动完成后根据配置自动最小化窗口。"""
