@@ -10,7 +10,6 @@ import json
 import os
 import re
 import sys
-import hashlib
 import importlib.util
 from enum import Enum
 from typing import List, Dict
@@ -234,14 +233,12 @@ class MaaFW(QObject):
             "recognitions": {"success": [], "failed": []},
         }
         
-        # 记录是否已将custom_root添加到sys.path，用于后续清理
-        custom_root_added_to_path = False
+        # 将custom_root添加到sys.path，以便模块可以导入同文件夹下的其他模块
+        # 这样custom代码中的相对导入就能正确工作，而不需要改变工作目录
         custom_root_str = str(custom_root)
         if custom_root_str not in sys.path:
-            # 将custom_root添加到sys.path，以便模块可以导入同文件夹下的其他模块
-            # 注意：这里添加到sys.path的开头，确保优先使用当前custom文件夹的模块
+            # 添加到sys.path的开头，确保优先使用当前custom文件夹的模块
             sys.path.insert(0, custom_root_str)
-            custom_root_added_to_path = True
             logger.debug(f"已将 {custom_root_str} 添加到 sys.path")
 
         def _get_bucket(type_name: str) -> str | None:
@@ -293,28 +290,18 @@ class MaaFW(QObject):
                 _record_failure(custom_type, custom_name, reason)
                 continue
 
-            # 生成唯一的模块名：基于custom文件夹路径和文件名
-            # 这样可以避免不同custom文件夹中同名文件的冲突
-            file_stem = Path(custom_file_path).stem
-            # 使用custom_root路径生成唯一标识符
-            # 将路径转换为规范化的字符串，并生成hash以确保唯一性
-            custom_root_identifier = str(custom_root).replace(os.sep, "_").replace(":", "_")
-            # 清理路径中的特殊字符，使其适合作为模块名
-            custom_root_identifier = re.sub(r"[^a-zA-Z0-9_]", "_", custom_root_identifier)
-            # 如果路径太长，使用hash缩短
-            if len(custom_root_identifier) > 50:
-                path_hash = hashlib.md5(str(custom_root).encode()).hexdigest()[:8]
-                custom_root_identifier = f"custom_{path_hash}"
+            # 使用文件名作为模块名，保持与custom内部引用一致
+            # 这样custom文件夹内部的代码可以使用 import custom 等正常引用
+            module_name = Path(custom_file_path).stem
             
-            # 生成唯一模块名：custom_<路径标识>_<文件名>
-            module_name = f"custom_{custom_root_identifier}_{file_stem}"
-            # 确保模块名是有效的Python标识符
-            module_name = re.sub(r"^[0-9]", "n_", module_name)
+            # 使用文件路径作为sys.modules的key，避免同名模块冲突
+            # 但模块的__name__仍然是文件名，这样custom内部的引用可以正常工作
+            module_key = str(custom_file_path)
             
-            # 如果模块已存在，先移除以避免使用缓存的旧模块
-            if module_name in sys.modules:
-                logger.debug(f"移除已存在的模块缓存: {module_name}")
-                del sys.modules[module_name]
+            # 如果该文件路径的模块已存在，先移除（可能是之前加载的）
+            if module_key in sys.modules:
+                logger.debug(f"移除已存在的模块缓存: {module_key}")
+                del sys.modules[module_key]
             
             spec = importlib.util.spec_from_file_location(module_name, custom_file_path)
             if spec is None or spec.loader is None:
@@ -325,8 +312,9 @@ class MaaFW(QObject):
 
             try:
                 module = importlib.util.module_from_spec(spec)
-                # 将模块添加到sys.modules，使用唯一的模块名
-                sys.modules[module_name] = module
+                # 使用文件路径作为key存储到sys.modules，避免同名模块冲突
+                # 模块的__name__仍然是文件名，custom内部的引用可以正常工作
+                sys.modules[module_key] = module
                 spec.loader.exec_module(module)  # type: ignore[arg-type]
 
                 class_obj = getattr(module, custom_class_name, None)
