@@ -121,6 +121,7 @@ class MainWindow(MSFluentWindow):
         self._auto_update_in_progress = False
         self._auto_update_pending_restart = False
         self._pending_auto_run = False
+        self._auto_run_scheduled = False  # 标记是否已调度过启动后自动运行，避免重复触发
         self._bundle_interface_added_to_nav = False  # 标记 BundleInterface 是否已添加到导航栏
         self._setting_update_completed = False  # 设置更新是否完成
         self._bundle_update_in_progress = False  # bundle 更新是否正在进行

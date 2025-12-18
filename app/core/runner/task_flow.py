@@ -256,16 +256,24 @@ class TaskFlowRunner(QObject):
                 if not custom_config_path:
                     custom_config_path = self.task_service.interface.get("custom", "")
 
-                # 将 custom 路径视为相对 bundle.path 的路径，组合为绝对路径
+                # 兼容绝对路径与相对 bundle.path 的自定义配置路径
                 if custom_config_path:
                     bundle_path_str = self.bundle_path or "./"
                     base_dir = Path(bundle_path_str)
                     if not base_dir.is_absolute():
                         base_dir = (Path.cwd() / base_dir).resolve()
 
+                    # 先处理占位符与前导分隔符
                     raw_custom = str(custom_config_path).replace("{PROJECT_DIR}", "")
                     normalized_custom = raw_custom.lstrip("\\/")
-                    custom_config_path = (base_dir / normalized_custom).resolve()
+                    custom_path_obj = Path(normalized_custom)
+
+                    # 绝对路径：直接使用，保持兼容已有配置
+                    if custom_path_obj.is_absolute():
+                        custom_config_path = custom_path_obj
+                    else:
+                        # 相对路径：视为相对 bundle.path 的路径
+                        custom_config_path = (base_dir / normalized_custom).resolve()
 
                 result = self.maafw.load_custom_objects(
                     custom_config_path=custom_config_path

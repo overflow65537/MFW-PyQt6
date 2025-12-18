@@ -1118,19 +1118,19 @@ class AddBundleDialog(MessageBoxBase):
         self._bundle_path: str = ""
 
     def _choose_folder(self) -> None:
-        """精准选择 interface.json 文件，并预填路径和名称。"""
+        """精准选择 interface.json / interface.jsonc 文件，并预填路径和名称。"""
         file_path, _ = QFileDialog.getOpenFileName(
             self,
-            self.tr("Choose interface.json"),
+            self.tr("Choose interface.json / interface.jsonc"),
             "./",
-            self.tr("Interface (interface.json);;All Files (*)"),
+            self.tr("Interface (interface.json interface.jsonc);;All Files (*)"),
         )
         if not file_path:
             return
 
         p = Path(file_path)
-        # 仅接受名为 interface.json 的文件，其它选择直接忽略（不弹错误）
-        if not p.is_file() or p.name.lower() != "interface.json":
+        # 仅接受名为 interface.json / interface.jsonc 的文件，其它选择直接忽略（不弹错误）
+        if not p.is_file() or p.name.lower() not in ("interface.json", "interface.jsonc"):
             return
 
         base_dir = p.parent
@@ -1172,16 +1172,22 @@ class AddBundleDialog(MessageBoxBase):
             logger.warning("Bundle path is not a valid directory: %s", base)
             return
 
-        # 目录：默认视为 bundle 根目录，要求其下存在 interface.json
-        interface_path = base / "interface.json"
-        if not interface_path.exists():
+        # 目录：默认视为 bundle 根目录，要求其下存在 interface.jsonc 或 interface.json
+        interface_path = None
+        for candidate in [base / "interface.jsonc", base / "interface.json"]:
+            if candidate.exists():
+                interface_path = candidate
+                break
+
+        if interface_path is None:
             # 选择错误：静默忽略，不弹出 InfoBar
             logger.warning(
-                "Bundle directory does not contain interface.json: %s", base
+                "Bundle directory does not contain interface.jsonc/interface.json: %s",
+                base,
             )
             return
 
-        # 读取 interface.json 的 name 字段，如果存在则用于填充 bundle 名称
+        # 读取 interface.json / interface.jsonc 的 name 字段，如果存在则用于填充 bundle 名称
         interface_name = ""
         try:
             with open(interface_path, "r", encoding="utf-8") as f:
