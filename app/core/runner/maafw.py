@@ -325,8 +325,9 @@ class MaaFW(QObject):
                     continue
                 instance = class_obj()
             except Exception as exc:
+                # 使用 logger.exception 自动记录完整的堆栈信息
                 reason = f"加载自定义对象 {custom_name} 失败: {exc}"
-                logger.error(reason)
+                logger.exception(f"加载自定义对象 {custom_name} 失败")
                 _record_failure(custom_type, custom_name, reason, level="error")
                 continue
 
