@@ -975,11 +975,13 @@ class Update(BaseUpdate):
         )
         return "x86_64"
 
-    def _init_run_context(self) -> None:
+    def _init_run_context(self, ui_mode: bool = False) -> None:
         """
         初始化一次本次 run 所需的运行时上下文参数。
 
         注意：主要参数已在 __init__ 中初始化，此方法仅重置运行时状态。
+
+        ui_mode=True 时，用于 UI 自更新（版本/资源ID/GitHub 地址与 bundle 资源不同）。
         """
         # 重置运行时状态
         self.latest_update_version = (
@@ -993,9 +995,22 @@ class Update(BaseUpdate):
         # 打印本次更新/检查使用的关键上下文信息
         logger.info("=" * 50)
         logger.info("开始更新流程")
-        logger.info("当前版本: %s", self.current_version)
-        logger.info("资源ID: %s", self.current_res_id)
-        logger.info("GitHub URL: %s", self.url)
+
+        if ui_mode:
+            # UI 自更新：使用程序自身的信息
+            from app.common.__version__ import __version__
+
+            logger.info("当前版本(UI): %s", __version__)
+            logger.info("资源ID(UI): %s", "MFW-PyQt6")
+            logger.info(
+                "GitHub URL(UI): %s", "https://github.com/overflow65537/MFW-PyQt6"
+            )
+        else:
+            # 资源/bundle 更新：使用 interface 中的配置
+            logger.info("当前版本: %s", self.current_version)
+            logger.info("资源ID: %s", self.current_res_id)
+            logger.info("GitHub URL: %s", self.url)
+
         logger.info("=" * 50)
 
     def run(self):
@@ -1653,8 +1668,8 @@ class Update(BaseUpdate):
         - 版本号固定使用应用的 __version__
         - 逻辑整体与 check_update 保持一致（Mirror 优先，其次 GitHub）
         """
-        # 保证运行环境（os_type / arch / current_version 等）已初始化
-        self._init_run_context()
+        # 保证运行环境（os_type / arch / current_version 等）已初始化（UI 模式）
+        self._init_run_context(ui_mode=True)
 
         logger.info("  [检查更新] 开始检查...")
         from app.common.__version__ import __version__
