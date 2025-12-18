@@ -115,7 +115,7 @@ class SpecialTaskInterface(UI_SpecialTaskInterface, QWidget):
                 self.service_coordinator.run_tasks_flow(task_id=target_task.item_id)
             )
         else:
-            asyncio.create_task(self.service_coordinator.stop_task())
+            asyncio.create_task(self.service_coordinator.stop_task_flow())
 
     def _get_selected_special_task(self):
         """从特殊任务列表中获取当前选中的任务（仅内存态）。"""

@@ -40,14 +40,16 @@ class JsonConfigRepository:
                         f"无有效资源配置文件: {interface_path_jsonc} 或 {interface_path_json}"
                     )
 
-            logger.debug("使用 interface 配置创建默认配置")
+            logger.debug("使用 interface 配置创建默认主配置")
 
             bundle_name = self.interface.get("name", "Default Bundle")
+            # 统一主配置中的 bundle 结构为：{ bundle_name: { "name": ..., "path": ... } }
             default_main_config = {
                 "curr_config_id": "",
                 "config_list": [],
                 "bundle": {
                     bundle_name: {
+                        "name": bundle_name,
                         "path": "./",
                     }
                 },
@@ -124,18 +126,17 @@ class ConfigService:
         self.load_main_config()
         if self._main_config and not self._main_config.get("curr_config_id"):
 
-            # Get the first bundle from the bundle dictionary
-            bundle_dict = self._main_config.get("bundle", {})
-            # Use the first bundle in the dictionary
+            # 从主配置中选取第一个 bundle，生成默认子配置
+            bundle_dict = self._main_config.get("bundle", {}) or {}
             first_bundle_name = next(iter(bundle_dict.keys()), "Default Bundle")
-            bundle = bundle_dict.get(first_bundle_name, {"path": "./"})
 
+            # 子配置中仅保存 bundle 名称，由 ConfigService 通过主配置解析详情
             default_config_item = ConfigItem(
                 name="Default Config",
                 item_id=ConfigItem.generate_id(),
                 tasks=[],
                 know_task=[],
-                bundle=bundle,
+                bundle=first_bundle_name,
             )
 
             self._main_config["config_list"].append(default_config_item.item_id)
@@ -312,3 +313,40 @@ class ConfigService:
             if isinstance(bundle, dict):
                 return list(bundle.keys())
         return []
+
+
+    def get_current_bundle(self) -> dict:
+        """获取当前bundle"""
+        # 使用当前配置中保存的 bundle 名称，在主配置中查找 bundle 详情
+        current_config = self.get_current_config()
+        bundle_name = getattr(current_config, "bundle", "") or self.current_config_id
+        return self.get_bundle(bundle_name)
+
+    # ========== bundle 辅助方法 ==========
+
+    def get_bundle_info_for_config(self, config: ConfigItem) -> Dict[str, str] | None:
+        """根据配置对象获取规范化的 bundle 信息（name/path）。"""
+        if not config:
+            return None
+
+        bundle_name = getattr(config, "bundle", "") or ""
+        if not bundle_name:
+            return None
+
+        try:
+            bundle_raw = self.get_bundle(bundle_name)
+        except FileNotFoundError as e:
+            logger.warning(f"Bundle {bundle_name} not found in main config: {e}")
+            return None
+
+        name = str(bundle_raw.get("name", bundle_name))
+        path = str(bundle_raw.get("path", "./"))
+        return {"name": name, "path": path}
+
+    def get_bundle_path_for_config(self, config: ConfigItem) -> str:
+        """根据配置对象获取 bundle 路径（失败时返回安全默认值 "./"）。"""
+        info = self.get_bundle_info_for_config(config)
+        if not info:
+            return "./"
+        path = info.get("path") or "./"
+        return str(path)

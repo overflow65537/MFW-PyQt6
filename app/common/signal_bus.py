@@ -34,8 +34,7 @@ class SignalBus(QObject):
     change_task_flow = Signal(dict)  # 切换任务列表
     show_option = Signal(dict)  # 显示选项
     agent_info = Signal(dict)  # 智能体信息
-    title_changed = Signal(str)  # 窗口标题改变
-
+    title_changed = Signal()  # 窗口标题改变
     # maa sink 发送信号
     callback = Signal(dict)
 
@@ -70,8 +69,12 @@ class SignalBus(QObject):
     # 服务协调器重新初始化
     fs_reinit_requested = Signal()  # 热更新完成后请求服务协调器重新初始化
 
+    # 多资源适配启用后通知主界面等组件初始化相关 UI
+    multi_resource_adaptation_enabled = Signal()
+
     # 更新相关信号
     check_auto_run_after_update_cancel = Signal()  # 更新取消后检查是否需要自动运行
+    all_updates_completed = Signal()  # 所有更新（设置更新 + bundle更新）完成
 
 
 signalBus = SignalBus()

@@ -337,6 +337,72 @@ class InterfaceManager:
         """
         return self._original_interface
 
+    def preview_interface(
+        self,
+        interface_path: Path | str,
+        language: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        加载并返回指定路径的 interface 配置，但不修改当前管理器的内部状态。
+
+        Args:
+            interface_path: 要加载的 interface 配置文件路径（json/jsonc）
+            language: 语言代码（如 "zh_cn", "en_us", "zh_hk"）。如果为 None：
+                - 若当前尚未初始化且语言为默认值，则按配置自动推断；
+                - 否则使用当前管理器的语言设置。
+
+        Returns:
+            翻译后的 interface 字典；如加载失败则返回空字典。
+        """
+        path = Path(interface_path)
+        if not path.exists():
+            logger.error("预览 interface 失败，文件不存在: %s", path)
+            return {}
+
+        # 备份当前状态，确保外部看起来“无副作用”
+        backup_initialized = self._initialized
+        backup_original_interface = deepcopy(self._original_interface)
+        backup_translated_interface = deepcopy(self._translated_interface)
+        backup_translations = deepcopy(self._translations)
+        backup_language = self._current_language
+        backup_interface_path = self._interface_path
+        backup_interface_dir = self._interface_dir
+
+        try:
+            # 使用临时状态加载指定文件
+            self._interface_path = path
+            self._interface_dir = path.parent
+            with open(path, "r", encoding="utf-8") as f:
+                self._original_interface = jsonc.load(f)
+
+            # 选择语言（逻辑与 initialize 尽量保持一致）
+            if language is not None:
+                self._current_language = language
+            elif not backup_initialized and self._current_language == "zh_cn":
+                self._current_language = self._detect_language_from_config()
+            else:
+                # 复用当前语言
+                self._current_language = backup_language
+
+            # 加载翻译并生成翻译后的 interface
+            self._load_translations()
+            self._translate_interface()
+
+            # 返回深拷贝，防止外部修改内部缓存
+            return deepcopy(self._translated_interface)
+        except Exception as exc:
+            logger.error("预览 interface 失败: %s", exc)
+            return {}
+        finally:
+            # 恢复原有状态
+            self._initialized = backup_initialized
+            self._original_interface = backup_original_interface
+            self._translated_interface = backup_translated_interface
+            self._translations = backup_translations
+            self._current_language = backup_language
+            self._interface_path = backup_interface_path
+            self._interface_dir = backup_interface_dir
+
     def get_language(self) -> str:
         """
         获取当前语言代码

@@ -54,7 +54,7 @@ from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
 from app.utils.crypto import crypto_manager
 from app.utils.logger import logger
-from app.utils.update import Update, UpdateCheckTask
+from app.utils.update import Update
 from app.view.setting_interface.widget.ProxySettingCard import ProxySettingCard
 from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.view.setting_interface.widget.SliderSettingCard import SliderSettingCard
@@ -66,7 +66,6 @@ from app.view.setting_interface.widget.NoticeType import (
     QYWXNoticeType,
     DingTalkNoticeType,
     LarkNoticeType,
-    QmsgNoticeType,
     SMTPNoticeType,
     WxPusherNoticeType,
 )
@@ -74,6 +73,8 @@ from app.view.setting_interface.widget.NoticeType import (
 from app.view.setting_interface.widget.SendSettingCard import SendSettingCard
 
 _CONTACT_URL_PATTERN = re.compile(r"(?:https?://|www\.)[^\s，,]+")
+# 检测已经是 Markdown 链接格式的文本： [text](url)
+_MARKDOWN_LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
 
 def start_auto_confirm_countdown(
@@ -174,7 +175,8 @@ class SettingInterface(QWidget):
         )
         self.description = self.interface_data.get("description", "")
         self._updater: Optional[Update] = None
-        self._update_checker: Optional[UpdateCheckTask] = None
+        # 使用 Update 本身作为“仅检查更新”的线程对象（check_only=True）
+        self._update_checker: Optional[Update] = None
         self._latest_update_check_result: str | bool | None = None
         self._updater_started = False
         self._local_update_package: Path | None = None
@@ -202,7 +204,12 @@ class SettingInterface(QWidget):
             # 如果自动更新打开，自动触发"立刻更新"
             if self._is_auto_update_enabled():
                 logger.info("自动更新已开启，自动触发立即更新")
-                QTimer.singleShot(0, lambda: self._handle_instant_update(auto_accept=True, notify_if_cancel=True))
+                QTimer.singleShot(
+                    0,
+                    lambda: self._handle_instant_update(
+                        auto_accept=True, notify_if_cancel=True
+                    ),
+                )
             else:
                 # 如果自动更新关闭，发送信号给 main_window 检查是否需要立刻运行
                 logger.info("自动更新未开启，通知 main_window 检查是否需要自动运行")
@@ -250,6 +257,7 @@ class SettingInterface(QWidget):
         self.initialize_hotkey_settings()
         self.initialize_update_settings()
         self.initialize_compatibility_settings()
+        # 初次进入时根据当前配置刷新一次头部信息
         self._refresh_update_header()
 
         self.main_layout.addWidget(self.scroll_area)
@@ -273,10 +281,20 @@ class SettingInterface(QWidget):
         label.setText(render_markdown(content))
 
     def _linkify_contact_urls(self, contact: str) -> str:
-        """把联系方式中的网址转换成 Markdown 超链接。"""
+        """
+        把联系方式中的网址转换成 Markdown 超链接。
+
+        如果文本中已经包含 Markdown 链接格式（如 [text](url)），则跳过这些部分，
+        只对剩余的裸 URL 进行自动转换。
+        """
         if not contact:
             return contact
 
+        # 如果文本中已经包含 Markdown 链接格式，直接返回（避免重复处理）
+        if _MARKDOWN_LINK_PATTERN.search(contact):
+            return contact
+
+        # 否则，对裸 URL 进行自动转换
         def replace(match: re.Match[str]) -> str:
             url = match.group(0)
             href = url if url.startswith(("http://", "https://")) else f"http://{url}"
@@ -487,9 +505,10 @@ class SettingInterface(QWidget):
         dialog.exec()
 
     def _open_github_home(self):
-        if not self._github_url:
-            return
-        QDesktopServices.openUrl(QUrl(self._github_url))
+        """
+        打开 MFW-ChainFlow Assistant 的 GitHub 仓库（固定地址，与当前 interface 无关）。
+        """
+        QDesktopServices.openUrl(QUrl("https://github.com/overflow65537/MFW-PyQt6"))
 
     def _apply_header_icon(self, icon_path: Optional[str] = None) -> None:
         """加载 interface 中提供的图标路径，失败时回退到默认 logo。"""
@@ -510,7 +529,7 @@ class SettingInterface(QWidget):
 
     def _open_update_log(self):
         """打开更新日志对话框"""
-        release_notes = self._load_release_notes()
+        release_notes = self._load_release_notes(self.name)
 
         if not release_notes:
             # 如果没有本地更新日志，显示提示信息
@@ -1229,7 +1248,6 @@ class SettingInterface(QWidget):
             cfg.multi_resource_adaptation,
             self.compatibility_group,
         )
-        self.multi_resource_adaptation_card.setVisible(False)  # 默认隐藏
 
         self.save_screenshot_card = SwitchSettingCard(
             FIF.SAVE_AS,
@@ -1320,7 +1338,10 @@ class SettingInterface(QWidget):
     def _on_github_api_key_change(self, text: str):
         cfg.set(cfg.github_api_key, str(text).strip())
 
-    def _refresh_update_header(self):
+    def _refresh_header_from_interface(self) -> None:
+        """
+        使用当前任务的 interface 数据刷新头部展示（资源信息视角）。
+        """
         # 每次刷新时都从服务协调器重新获取一次最新的 interface 数据，避免使用旧缓存
         latest_metadata = self._get_interface_metadata()
         if latest_metadata:
@@ -1361,6 +1382,67 @@ class SettingInterface(QWidget):
         self._license_content = license_value
         self.license_button.setText(self.tr("License"))
         self._apply_header_icon(icon_path)
+
+    def _refresh_header_as_mfw(self) -> None:
+        """
+        使用「MFW-ChainFlow Assistant」本体的信息刷新头部展示（宿主应用视角）。
+        """
+        icon_path = "app/assets/icons/logo.png"
+        name = self.tr("MFW-ChainFlow Assistant")
+        self.name = "MFW_CFA"
+        # 当前版本使用 UI 本体版本号
+        current_version = UI_VERSION
+        license_value = "GNU General Public License v3.0"
+        for license in ["MFW_LICENSE", "LICENSE"]:
+            if Path(license).is_file():
+                with open(license, "r", encoding="utf-8") as f:
+                    license_value = f.read()
+                break
+
+        github = "https://github.com/overflow65537/MFW-PyQt6"
+        description = self.tr(
+            "MFW-ChainFlow Assistant provides a visual orchestrator for MaaFramework "
+            "users, covering configuration management, scheduling, notifications and "
+            "custom extensions."
+        )
+        # 使用 html 格式化的联系方式，方便点击跳转
+        contact = (
+            "[GitHub](https://github.com/overflow65537/MFW-PyQt6)  ·  "
+            "[Issues](https://github.com/overflow65537/MFW-PyQt6/issues)"
+        )
+
+        self.resource_name_label.setText(name)
+        # 当前版本 / 最新版本 / UI版本 / MaaFW版本 水平展示
+        from maa.library import Library
+
+        maafw_version = Library.version()
+        self.version_label.setText(
+            self.tr("Current version: ")
+            + str(current_version)
+            + "    "
+            + self.tr("MaaFW version: ")
+            + maafw_version
+        )
+        self._apply_markdown_to_label(self.description_label, description)
+        self._apply_markdown_to_label(
+            self.contact_label, self._linkify_contact_urls(contact)
+        )
+        self._github_url = github
+        self._license_content = license_value
+        self.license_button.setText(self.tr("License"))
+        self._apply_header_icon(icon_path)
+
+    def _refresh_update_header(self) -> None:
+        """
+        根据多资源适配开关，在「资源信息」与「MFW 信息」之间切换头部展示。
+
+        - multi_resource_adaptation = False: 显示当前任务资源的 interface 信息
+        - multi_resource_adaptation = True: 显示 MFW-ChainFlow Assistant 本体信息
+        """
+        if cfg.get(cfg.multi_resource_adaptation):
+            self._refresh_header_as_mfw()
+        else:
+            self._refresh_header_from_interface()
 
     def _get_interface_metadata(self):
         """从服务协调器的任务服务获取 interface 数据。"""
@@ -1414,8 +1496,356 @@ class SettingInterface(QWidget):
             return
         self._update_background_image("")
 
+    def _on_update_ui_clicked(self) -> None:
+        """更新 UI 按钮点击回调，占位接口，后续可在此实现 UI 更新逻辑。"""
+        # TODO: 在此处实现 UI 更新的具体行为（如检查并更新前端资源等）
+        signalBus.info_bar_requested.emit(
+            "info",
+            self.tr("UI update feature is not implemented yet."),
+        )
+
+    def run_multi_resource_post_enable_tasks(self) -> None:
+        """开启多资源适配后执行的后续操作占位方法。
+
+        当前仅作为占位，后续可在此实现多配置资源目录重建等逻辑。
+
+        注意：此方法具有幂等性，即使重复调用也不会重复执行迁移操作。
+        """
+        # 启用多资源适配后，显示"更新 UI"按钮，并通知主界面刷新标题等信息，
+        # 同时隐藏多资源适配开关，避免重复误操作。
+        self.multi_resource_adaptation_card.setEnabled(False)
+        self.reset_resource_card.setEnabled(False)
+        signalBus.title_changed.emit()
+        self._refresh_update_header()
+
+        # 检查是否已经迁移过，避免重复执行迁移操作
+        if self._is_bundle_migration_completed():
+            logger.info("检测到 bundle 迁移已完成，跳过迁移操作")
+        else:
+            logger.info("开始执行 bundle 迁移操作")
+            self._move_bundle()
+
+    def _is_bundle_migration_completed(self) -> bool:
+        """
+        检查 bundle 迁移是否已完成。
+
+        通过检查以下条件判断：
+        1. bundle 目录是否存在且包含文件
+        2. multi_config.json 中是否已配置了 bundle 路径
+
+        Returns:
+            True 如果迁移已完成，False 如果未完成
+        """
+        # 读取 interface.json 获取项目名称
+        interface_file = Path.cwd() / "interface.json"
+        if not interface_file.exists():
+            logger.debug("未找到 interface.json，无法检查迁移状态")
+            return False
+
+        try:
+            with open(interface_file, "r", encoding="utf-8") as f:
+                interface = json.load(f)
+        except Exception as e:
+            logger.warning(f"读取 interface.json 失败: {e}，无法检查迁移状态")
+            return False
+
+        name = interface.get("name", "")
+        if not name:
+            logger.debug("interface.json 中未找到 name 字段，无法检查迁移状态")
+            return False
+
+        # 检查 bundle 目录是否存在且包含文件
+        bundle_dir = Path.cwd() / "bundle" / name
+        if bundle_dir.exists() and bundle_dir.is_dir():
+            # 检查目录中是否有文件（排除隐藏文件和目录本身）
+            has_files = any(
+                item.is_file() and not item.name.startswith(".")
+                for item in bundle_dir.iterdir()
+            )
+            if has_files:
+                logger.debug(f"检测到 bundle 目录已存在且包含文件: {bundle_dir}")
+                # 进一步检查配置是否已更新
+                if self._is_bundle_config_updated(name):
+                    logger.debug("bundle 配置已更新，迁移已完成")
+                    return True
+
+        return False
+
+    def _is_bundle_config_updated(self, bundle_name: str) -> bool:
+        """
+        检查 multi_config.json 中是否已配置了指定 bundle 的路径。
+
+        Args:
+            bundle_name: bundle 名称
+
+        Returns:
+            True 如果配置已更新，False 如果未更新
+        """
+        if not self._service_coordinator:
+            return False
+
+        try:
+            main_config_path = self._service_coordinator.config_repo.main_config_path
+            if not main_config_path.exists():
+                return False
+
+            with open(main_config_path, "r", encoding="utf-8") as f:
+                config_data = json.load(f)
+
+            # 检查 bundle 配置是否存在且路径正确
+            bundle_config = config_data.get("bundle", {})
+            if not isinstance(bundle_config, dict):
+                return False
+
+            bundle_info = bundle_config.get(bundle_name)
+            if not isinstance(bundle_info, dict):
+                return False
+
+            bundle_path = bundle_info.get("path", "")
+            expected_path = f"./bundle/{bundle_name}"
+
+            # 路径匹配（支持相对路径和绝对路径的变体）
+            if bundle_path == expected_path or bundle_path.endswith(
+                f"/bundle/{bundle_name}"
+            ):
+                logger.debug(
+                    f"检测到 bundle 配置已更新: {bundle_name} -> {bundle_path}"
+                )
+                return True
+
+        except Exception as e:
+            logger.warning(f"检查 bundle 配置时出错: {e}")
+            return False
+
+        return False
+
+    def _update_bundle_config_internal(self, name: str, bundle_dir: Path):
+        """
+        更新 multi_config.json 中的 bundle 配置（内部方法）。
+        
+        在文件移动到 bundle 目录后，更新主配置文件中对应 bundle 的路径。
+        
+        Args:
+            name: bundle 名称（从 interface.json 中获取）
+            bundle_dir: bundle 目录路径
+        """
+        if not self._service_coordinator:
+            logger.error("service_coordinator 未初始化，无法更新 bundle 配置")
+            return
+
+        if not name:
+            logger.error("bundle 名称为空，无法更新配置")
+            return
+
+        # 检查当前配置中的路径
+        current_path = None
+        try:
+            bundle_info = self._service_coordinator.config_service.get_bundle(name)
+            current_path = bundle_info.get("path", "")
+        except (FileNotFoundError, Exception) as e:
+            logger.debug(f"获取当前 bundle 配置失败（可能不存在）: {e}")
+
+        # 构建新的 bundle 路径（相对于项目根目录）
+        bundle_path = f"./bundle/{name}"
+
+        # 如果当前路径是 "./" 或空，或者路径不正确，则强制更新
+        needs_update = False
+        if not current_path or current_path == "./" or current_path == ".":
+            logger.info(f"检测到 bundle 路径为 '{current_path}'，需要更新为 '{bundle_path}'")
+            needs_update = True
+        elif current_path != bundle_path and not current_path.endswith(f"/bundle/{name}"):
+            logger.info(f"检测到 bundle 路径不正确 '{current_path}'，需要更新为 '{bundle_path}'")
+            needs_update = True
+        else:
+            logger.info(f"bundle 配置已正确，跳过更新: {name} -> {current_path}")
+            return
+
+        if needs_update:
+            # 更新 multi_config.json 中的 bundle 配置
+            success = self._service_coordinator.update_bundle_path(
+                bundle_name=name,
+                new_path=bundle_path,
+                bundle_display_name=name,
+            )
+
+            if success:
+                logger.info(f"已更新 bundle 配置: {name} -> {bundle_path}")
+            else:
+                logger.error(f"更新 bundle 配置失败: {name}")
+
+    def _move_bundle(self):
+        """
+        移动指定文件到 bundle 目录。
+
+        将当前目录下不在排除列表中的文件移动到 bundle/{name}/ 目录。
+        - 排除列表包括：bundle、release_notes、update、config、debug 等系统目录
+        - 以及 file_list.txt 中列出的文件（这些是 MFW 本体文件，不应移动）
+
+        注意：此方法具有幂等性，如果目标目录已存在且包含文件，会跳过迁移。
+        """
+        import shutil
+
+        # 排除目标（系统目录和关键文件）
+        exclude_names = {
+            "bundle",
+            "release_notes",
+            "update",
+            "config",
+            "debug",
+            "MFW_Updater1.exe",
+            "MFW_Updater1",
+            "file_list.txt",  # 排除列表文件本身
+        }
+
+        # 读取 interface.json 获取项目名称
+        interface_file = Path.cwd() / "interface.json"
+        if not interface_file.exists():
+            logger.error("未找到 interface.json，无法确定 bundle 目录名称")
+            return
+
+        try:
+            with open(interface_file, "r", encoding="utf-8") as f:
+                interface = json.load(f)
+        except Exception as e:
+            logger.error(f"读取 interface.json 失败: {e}")
+            return
+
+        name = interface.get("name", "")
+        if not name:
+            logger.error("interface.json 中未找到 name 字段")
+            return
+
+        bundle_dir = Path.cwd() / "bundle" / name
+
+        # 检查是否已经迁移过：如果目标目录已存在且包含文件，则跳过迁移，但仍需更新配置
+        skip_migration = False
+        if bundle_dir.exists() and bundle_dir.is_dir():
+            has_files = any(
+                item.is_file() and not item.name.startswith(".")
+                for item in bundle_dir.iterdir()
+            )
+            if has_files:
+                logger.info(
+                    f"检测到 bundle 目录已存在且包含文件，跳过迁移: {bundle_dir}"
+                )
+                skip_migration = True
+
+        if not skip_migration:
+            bundle_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"准备将文件移动到: {bundle_dir}")
+
+        # 读取 file_list.txt，构建排除文件路径集合
+        # file_list.txt 中包含的是文件路径（相对或绝对），需要转换为规范化的路径集合
+        # 注意：只排除 file_list.txt 中列出的确切路径，不排除同名文件
+        excluded_file_paths = set()
+        file_list_path = Path.cwd() / "file_list.txt"
+        if file_list_path.exists():
+            try:
+                with open(file_list_path, "r", encoding="utf-8") as f:
+                    file_list = [line.strip() for line in f.readlines() if line.strip()]
+                for file_path_str in file_list:
+                    file_path = Path(file_path_str)
+                    # 如果是相对路径，转换为绝对路径
+                    if not file_path.is_absolute():
+                        file_path = Path.cwd() / file_path
+                    # 规范化路径并添加到排除集合
+                    if file_path.exists() and file_path.is_file():
+                        excluded_file_paths.add(file_path.resolve())
+                        logger.debug(f"排除文件（完整路径）: {file_path.resolve()}")
+            except Exception as e:
+                logger.warning(f"读取 file_list.txt 失败: {e}，继续执行")
+
+        def _should_exclude_path(path: Path) -> bool:
+            """检查路径是否应该被排除"""
+            # 首先检查文件名是否在系统排除列表中（系统目录和关键文件）
+            if path.name in exclude_names:
+                return True
+            # 然后检查完整路径是否在 file_list.txt 中（只排除确切路径，不排除同名文件）
+            resolved_path = path.resolve()
+            if resolved_path in excluded_file_paths:
+                return True
+            return False
+
+        def _has_movable_content(dir_path: Path) -> bool:
+            """检查目录内是否有需要移动的内容（不在排除列表且不在 file_list.txt 中）"""
+            try:
+                for item in dir_path.rglob("*"):
+                    # 跳过目录本身
+                    if item == dir_path:
+                        continue
+                    # 只检查文件
+                    if item.is_file():
+                        if not _should_exclude_path(item):
+                            return True
+            except Exception as e:
+                logger.warning(f"检查目录内容时出错 {dir_path}: {e}")
+            return False
+
+        # 遍历当前目录下的所有文件和目录（如果跳过迁移，则不需要移动文件）
+        moved_count = 0
+        if skip_migration:
+            logger.info("跳过文件移动，直接更新配置")
+        else:
+            for item in Path.cwd().iterdir():
+                # 跳过排除列表中的项目
+                if item.name in exclude_names:
+                    logger.debug(f"跳过排除项: {item.name}")
+                    continue
+
+                # 处理目录：检查目录内容，如果有需要移动的内容则移动整个目录
+                if item.is_dir():
+                    if _has_movable_content(item):
+                        # 目录内包含需要移动的内容，移动整个目录
+                        try:
+                            target_path = bundle_dir / item.name
+                            # 如果目标已存在，先删除或重命名
+                            if target_path.exists():
+                                logger.warning(f"目标目录已存在: {target_path}，将被覆盖")
+                                if target_path.is_dir():
+                                    shutil.rmtree(target_path)
+                                else:
+                                    target_path.unlink()
+
+                            shutil.move(str(item), str(bundle_dir))
+                            moved_count += 1
+                            logger.info(f"已移动目录: {item.name} -> {bundle_dir}")
+                        except Exception as e:
+                            logger.error(f"移动目录失败 {item.name}: {e}")
+                    else:
+                        logger.debug(f"跳过目录（无需要移动的内容）: {item.name}")
+                    continue
+
+                # 移动文件到 bundle 目录
+                try:
+                    # 检查文件是否在 file_list.txt 中（完整路径检查）
+                    if _should_exclude_path(item):
+                        logger.debug(f"跳过文件（在排除列表中）: {item.name}")
+                        continue
+
+                    target_path = bundle_dir / item.name
+                    # 如果目标已存在，先删除或重命名
+                    if target_path.exists():
+                        logger.warning(f"目标文件已存在: {target_path}，将被覆盖")
+                        if target_path.is_file():
+                            target_path.unlink()
+                        else:
+                            shutil.rmtree(target_path)
+
+                    shutil.move(str(item), str(bundle_dir))
+                    moved_count += 1
+                    logger.info(f"已移动: {item.name} -> {bundle_dir}")
+                except Exception as e:
+                    logger.error(f"移动文件失败 {item.name}: {e}")
+
+        if not skip_migration:
+            logger.info(f"文件移动完成，共移动 {moved_count} 个文件到 {bundle_dir}")
+        
+        # 文件移动完成后（或跳过迁移时），更新 multi_config.json 中的 bundle 配置
+        # 此时 name 和 bundle_dir 已经确定，可以直接更新配置
+        self._update_bundle_config_internal(name, bundle_dir)
+
     def _confirm_enable_multi_resource(self) -> bool:
-        """开启多资源适配前进行二次确认（qfluentwidgets Dialog 风格）。"""
+        """开启多资源适配前进行二次确认"""
         confirm_dialog = MessageBoxBase(self)
         confirm_dialog.widget.setMinimumWidth(420)
         confirm_dialog.widget.setMinimumHeight(200)
@@ -1424,7 +1854,9 @@ class SettingInterface(QWidget):
         title.setStyleSheet("font-weight: 600;")
         desc = BodyLabel(
             self.tr(
-                "This feature is experimental and generally not recommended to enable. "
+                "After enabling the multi-configuration feature, the resource "
+                "directories will be reconfigured. This operation is irreversible; "
+                "please proceed with caution."
             ),
             confirm_dialog,
         )
@@ -1434,8 +1866,27 @@ class SettingInterface(QWidget):
         confirm_dialog.viewLayout.addSpacing(6)
         confirm_dialog.viewLayout.addWidget(desc)
 
-        confirm_dialog.yesButton.setText(self.tr("Enable"))
+        wait_seconds = 5
+        base_yes_text = self.tr("Enable")
+        confirm_dialog.yesButton.setText(f"{base_yes_text} ({wait_seconds}s)")
         confirm_dialog.cancelButton.setText(self.tr("Cancel"))
+
+        # 在 5 秒倒计时结束前禁用确认按钮，防止误触
+        confirm_dialog.yesButton.setEnabled(False)
+
+        def _unlock_yes_button(remaining: int):
+            # 对话框已关闭则不再更新
+            if not confirm_dialog.isVisible():
+                return
+
+            if remaining > 0:
+                confirm_dialog.yesButton.setText(f"{base_yes_text} ({remaining}s)")
+                QTimer.singleShot(1000, lambda: _unlock_yes_button(remaining - 1))
+            else:
+                confirm_dialog.yesButton.setText(base_yes_text)
+                confirm_dialog.yesButton.setEnabled(True)
+
+        QTimer.singleShot(0, lambda: _unlock_yes_button(wait_seconds - 1))
 
         return confirm_dialog.exec() == QDialog.DialogCode.Accepted
 
@@ -1489,6 +1940,15 @@ class SettingInterface(QWidget):
                 self._suppress_multi_resource_signal = False
                 cfg.set(cfg.multi_resource_adaptation, False)
                 return
+            # 二次确认通过后，执行多资源适配启用后的后续操作
+            self.run_multi_resource_post_enable_tasks()
+            # 通知主界面等组件：多资源适配已启用，可初始化相关界面
+            try:
+                signalBus.multi_resource_adaptation_enabled.emit()
+            except Exception as exc:
+                logger.warning(
+                    f"发射 multi_resource_adaptation_enabled 信号失败: {exc}"
+                )
 
         cfg.set(cfg.multi_resource_adaptation, bool(checked))
 
@@ -1614,11 +2074,13 @@ class SettingInterface(QWidget):
             return
 
         # 创建更新器
+        interface = self._service_coordinator.task.interface or {}
         self._updater = Update(
             service_coordinator=self._service_coordinator,
             stop_signal=signalBus.update_stopped,
             progress_signal=signalBus.update_progress,
             info_bar_signal=signalBus.info_bar_requested,
+            interface=interface,
         )
 
         # 绑定信号
@@ -1636,11 +2098,20 @@ class SettingInterface(QWidget):
         if skip_checker:
             logger.info("跳过更新检查器启动：%s", reason)
             return
-
-        self._update_checker = UpdateCheckTask(
-            service_coordinator=self._service_coordinator
+        # 使用 Update 本身的仅检查模式进行后台检查，不触发下载与热更新流程
+        interface = self._service_coordinator.task.interface or {}
+        self._update_checker = Update(
+            service_coordinator=self._service_coordinator,
+            stop_signal=signalBus.update_stopped,
+            progress_signal=signalBus.update_progress,
+            info_bar_signal=signalBus.info_bar_requested,
+            interface=interface,
+            force_full_download=False,
+            check_only=True,
         )
-        self._update_checker.result_ready.connect(self._on_update_check_result)
+        # 仅检查模式下，Update 不会发出 InfoBar / 进度相关信号，只通过 check_result_ready 返回结果
+        self._update_checker.check_result_ready.connect(self._on_update_check_result)
+        self._update_checker.finished.connect(self._update_checker.deleteLater)
         self._update_checker.start()
 
     def _should_skip_update_checker(self) -> tuple[bool, str]:
@@ -1831,7 +2302,10 @@ class SettingInterface(QWidget):
             return True
 
         # 如果已经有本地更新包（初始化时已检测），且已经准备好立即更新状态，则不再重复处理
-        if self._local_update_package and self._update_button_handler == self._on_instant_update_clicked:
+        if (
+            self._local_update_package
+            and self._update_button_handler == self._on_instant_update_clicked
+        ):
             logger.info("本地更新包已在初始化时处理，跳过重复处理")
             return True
 
@@ -1897,11 +2371,11 @@ class SettingInterface(QWidget):
         except Exception as e:
             logger.error(f"保存更新日志失败: {e}")
 
-    def _load_release_notes(self) -> dict:
+    def _load_release_notes(self, name: str) -> dict:
         """加载所有已保存的更新日志"""
         import os
 
-        release_notes_dir = "./release_notes"
+        release_notes_dir = f"./release_notes/{name}"
         notes = {}
 
         if not os.path.exists(release_notes_dir):
@@ -1982,11 +2456,13 @@ class SettingInterface(QWidget):
         logger.info("触发资源重置，强制全量下载最新资源包（跳过 update_flag/hotfix）")
 
         # 创建强制全量下载的更新器实例
+        interface = self._service_coordinator.task.interface or {}
         self._updater = Update(
             service_coordinator=self._service_coordinator,
             stop_signal=signalBus.update_stopped,
             progress_signal=signalBus.update_progress,
             info_bar_signal=signalBus.info_bar_requested,
+            interface=interface,
             force_full_download=True,
         )
         self._updater.start()

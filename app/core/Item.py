@@ -100,13 +100,14 @@ class ConfigItem:
         item_id: str,
         tasks: List[TaskItem],
         know_task: List[str],
-        bundle: Dict[str, Dict[str, str]],
+        bundle: str,
     ):
         self.name = name
         self.item_id = item_id
 
         self.tasks = tasks
         self.know_task = know_task
+        # 仅保存 bundle 名称，由 Config_Service 通过主配置解析具体信息
         self.bundle = bundle
 
     def to_dict(self) -> Dict[str, Any]:
@@ -115,6 +116,7 @@ class ConfigItem:
             "item_id": self.item_id,
             "tasks": [task.to_dict() for task in self.tasks],
             "know_task": self.know_task,
+            # 子配置中只保存 bundle 名称（字符串），不重复保存 bundle 详情
             "bundle": self.bundle,
         }
 
@@ -127,11 +129,34 @@ class ConfigItem:
         item_id = data.get("item_id", "")
         if not item_id:
             item_id = cls.generate_id()
-        bundle = data.get("bundle", {})
+
+        # 兼容旧数据：
+        # - 新格式： "bundle": "MPA"
+        # - 旧格式1： "bundle": { "MPA": { "name": "MPA", "path": "./..." } }
+        # - 旧格式2： "bundle": { "path": "./..." }
+        raw_bundle = data.get("bundle", "")
+        bundle_name: str
+        if isinstance(raw_bundle, str):
+            bundle_name = raw_bundle or "Default Bundle"
+        elif isinstance(raw_bundle, dict):
+            if raw_bundle:
+                first_key = next(iter(raw_bundle.keys()))
+                first_val = raw_bundle[first_key]
+                # 旧格式1：{"MPA": {...}}
+                if isinstance(first_val, dict) and "path" in first_val:
+                    bundle_name = first_key
+                else:
+                    # 旧格式2：{"path": "./"} 或 {"name": "...", "path": "..."}
+                    bundle_name = str(raw_bundle.get("name") or "Default Bundle")
+            else:
+                bundle_name = "Default Bundle"
+        else:
+            bundle_name = "Default Bundle"
+
         return cls(
             name=data.get("name", ""),
             item_id=item_id,
             tasks=[TaskItem.from_dict(task) for task in data.get("tasks", [])],
             know_task=data.get("know_task", []),
-            bundle=bundle,
+            bundle=bundle_name,
         )
