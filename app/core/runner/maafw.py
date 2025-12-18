@@ -9,6 +9,8 @@ MFW-ChainFlow Assistant MaaFW核心
 import json
 import os
 import re
+import sys
+import hashlib
 import importlib.util
 from enum import Enum
 from typing import List, Dict
@@ -231,6 +233,16 @@ class MaaFW(QObject):
             "actions": {"success": [], "failed": []},
             "recognitions": {"success": [], "failed": []},
         }
+        
+        # 记录是否已将custom_root添加到sys.path，用于后续清理
+        custom_root_added_to_path = False
+        custom_root_str = str(custom_root)
+        if custom_root_str not in sys.path:
+            # 将custom_root添加到sys.path，以便模块可以导入同文件夹下的其他模块
+            # 注意：这里添加到sys.path的开头，确保优先使用当前custom文件夹的模块
+            sys.path.insert(0, custom_root_str)
+            custom_root_added_to_path = True
+            logger.debug(f"已将 {custom_root_str} 添加到 sys.path")
 
         def _get_bucket(type_name: str) -> str | None:
             if type_name == "action":
@@ -281,7 +293,29 @@ class MaaFW(QObject):
                 _record_failure(custom_type, custom_name, reason)
                 continue
 
-            module_name = Path(custom_file_path).stem
+            # 生成唯一的模块名：基于custom文件夹路径和文件名
+            # 这样可以避免不同custom文件夹中同名文件的冲突
+            file_stem = Path(custom_file_path).stem
+            # 使用custom_root路径生成唯一标识符
+            # 将路径转换为规范化的字符串，并生成hash以确保唯一性
+            custom_root_identifier = str(custom_root).replace(os.sep, "_").replace(":", "_")
+            # 清理路径中的特殊字符，使其适合作为模块名
+            custom_root_identifier = re.sub(r"[^a-zA-Z0-9_]", "_", custom_root_identifier)
+            # 如果路径太长，使用hash缩短
+            if len(custom_root_identifier) > 50:
+                path_hash = hashlib.md5(str(custom_root).encode()).hexdigest()[:8]
+                custom_root_identifier = f"custom_{path_hash}"
+            
+            # 生成唯一模块名：custom_<路径标识>_<文件名>
+            module_name = f"custom_{custom_root_identifier}_{file_stem}"
+            # 确保模块名是有效的Python标识符
+            module_name = re.sub(r"^[0-9]", "n_", module_name)
+            
+            # 如果模块已存在，先移除以避免使用缓存的旧模块
+            if module_name in sys.modules:
+                logger.debug(f"移除已存在的模块缓存: {module_name}")
+                del sys.modules[module_name]
+            
             spec = importlib.util.spec_from_file_location(module_name, custom_file_path)
             if spec is None or spec.loader is None:
                 reason = f"无法获取模块 {module_name} 的 spec，跳过加载"
@@ -291,6 +325,8 @@ class MaaFW(QObject):
 
             try:
                 module = importlib.util.module_from_spec(spec)
+                # 将模块添加到sys.modules，使用唯一的模块名
+                sys.modules[module_name] = module
                 spec.loader.exec_module(module)  # type: ignore[arg-type]
 
                 class_obj = getattr(module, custom_class_name, None)
