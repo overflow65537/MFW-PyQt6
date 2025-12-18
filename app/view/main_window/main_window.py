@@ -122,6 +122,8 @@ class MainWindow(MSFluentWindow):
         self._auto_update_pending_restart = False
         self._pending_auto_run = False
         self._bundle_interface_added_to_nav = False  # 标记 BundleInterface 是否已添加到导航栏
+        self._setting_update_completed = False  # 设置更新是否完成
+        self._bundle_update_in_progress = False  # bundle 更新是否正在进行
 
         cfg.set(cfg.save_screenshot, False)
 
@@ -568,6 +570,7 @@ class MainWindow(MSFluentWindow):
         signalBus.check_auto_run_after_update_cancel.connect(
             self._on_check_auto_run_after_update_cancel
         )
+        signalBus.all_updates_completed.connect(self._on_all_updates_completed)
         # 多资源适配启用后，将 BundleInterface 添加到导航栏
         signalBus.multi_resource_adaptation_enabled.connect(
             self._on_multi_resource_adaptation_enabled
@@ -865,10 +868,37 @@ class MainWindow(MSFluentWindow):
     def _on_update_stopped_main(self, status: int):
         """监听更新结束，串行触发自动运行或提示重启。"""
         logger.info(
-            "收到更新结束信号，status=%s，pending_auto_run=%s",
+            "收到更新结束信号，status=%s，pending_auto_run=%s，setting_update_completed=%s，bundle_update_in_progress=%s",
             status,
             self._pending_auto_run,
+            self._setting_update_completed,
+            self._bundle_update_in_progress,
         )
+        
+        # 判断是设置更新还是 bundle 更新
+        if self._auto_update_in_progress and not self._bundle_update_in_progress:
+            # 这是设置更新完成
+            logger.info("设置更新完成，status=%s", status)
+            self._setting_update_completed = True
+            self._auto_update_in_progress = False
+            self._auto_update_thread = None
+            
+            if status == 1:
+                # 热更新完成后，重新设置窗口标题（延迟到下一个事件循环，确保 reinit 完成）
+                QTimer.singleShot(0, self.set_title)
+            
+            # 检查是否需要启动 bundle 更新
+            self._check_and_start_bundle_update()
+            return
+        
+        if self._bundle_update_in_progress:
+            # 这是 bundle 更新完成（单个bundle）
+            logger.info("Bundle 更新完成（单个），status=%s", status)
+            # 注意：所有bundle更新完成信号由 bundle_interface 的 _start_next_update 发送
+            # 这里不需要发送 all_updates_completed 信号
+            return
+        
+        # 其他情况（可能是手动触发的更新）
         self._auto_update_in_progress = False
         self._auto_update_thread = None
         if status == 1:
@@ -897,6 +927,48 @@ class MainWindow(MSFluentWindow):
         if self._pending_auto_run:
             self._schedule_auto_run()
         self._pending_auto_run = False
+    
+    def _check_and_start_bundle_update(self):
+        """检查并启动 bundle 更新"""
+        # 检查 bundle 自动更新是否开启
+        bundle_auto_update_enabled = cfg.get(cfg.bundle_auto_update)
+        
+        if not bundle_auto_update_enabled:
+            logger.info("Bundle 自动更新未开启，直接发送所有更新完成信号")
+            signalBus.all_updates_completed.emit()
+            # 处理自动运行
+            if self._pending_auto_run:
+                self._schedule_auto_run()
+            self._pending_auto_run = False
+            return
+        
+        # 检查是否有 bundle 需要更新
+        bundle_interface = getattr(self, "BundleInterface", None)
+        if not bundle_interface:
+            logger.warning("BundleInterface 不存在，无法启动 bundle 更新")
+            signalBus.all_updates_completed.emit()
+            if self._pending_auto_run:
+                self._schedule_auto_run()
+            self._pending_auto_run = False
+            return
+        
+        # 启动 bundle 自动更新
+        logger.info("Bundle 自动更新已开启，开始更新所有 bundle")
+        self._bundle_update_in_progress = True
+        try:
+            bundle_interface.start_auto_update_all()
+        except Exception as e:
+            logger.error(f"启动 bundle 自动更新失败: {e}", exc_info=True)
+            self._bundle_update_in_progress = False
+            signalBus.all_updates_completed.emit()
+            if self._pending_auto_run:
+                self._schedule_auto_run()
+            self._pending_auto_run = False
+    
+    def _on_all_updates_completed(self):
+        """所有更新完成回调"""
+        logger.info("收到所有更新完成信号")
+        # 这里可以添加其他需要在所有更新完成后执行的操作
 
     def _apply_auto_minimize_on_startup(self) -> None:
         """在启动完成后根据配置自动最小化窗口。"""

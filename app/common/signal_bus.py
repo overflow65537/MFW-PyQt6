@@ -74,6 +74,7 @@ class SignalBus(QObject):
 
     # 更新相关信号
     check_auto_run_after_update_cancel = Signal()  # 更新取消后检查是否需要自动运行
+    all_updates_completed = Signal()  # 所有更新（设置更新 + bundle更新）完成
 
 
 signalBus = SignalBus()

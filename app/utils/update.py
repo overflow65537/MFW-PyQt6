@@ -1019,7 +1019,8 @@ class Update(BaseUpdate):
                 self._run_check_only()
             elif cfg.get(cfg.multi_resource_adaptation):
                 logger.info("以多资源适配模式运行更新器")
-                self._run_multi_resource_update()
+                # 多资源更新已移至 MultiResourceUpdate 子类，这里改为 UI 更新占位
+                self._run_multi_resource_ui_update()
             else:
                 logger.info("以正常模式运行更新器")
                 self._run_normal()
@@ -1056,243 +1057,16 @@ class Update(BaseUpdate):
         }
         self.check_result_ready.emit(result_data)
 
-    def _run_multi_resource_update(self) -> None:
+    def _run_multi_resource_ui_update(self) -> None:
         """
-        多资源适配模式更新流程：检查更新、下载更新包并执行热更新流程。
+        多资源适配模式 UI 更新占位方法。
+        
+        注意：实际的多资源更新逻辑已移至 MultiResourceUpdate 子类。
+        此方法用于在设置界面检测到多资源更新时更新 UI。
         """
-        self.stop_flag = False
-
-        deleted_backups: list[tuple[Path, Path]] = []
-        # 资源目录热更新时使用的备份信息，用于异常时整体回滚
-        resource_backup_dir: Path | None = None
-        resource_backups: list[tuple[Path, Path]] = []
-
-        try:
-            if not self.service_coordinator:
-                logger.error("service_coordinator 未初始化，无法执行更新")
-                return self._stop_with_notice(0)
-
-            # 步骤1: 检查更新
-            logger.info("[步骤1] 开始检查更新...")
-            self._emit_info_bar("info", self.tr("Checking for updates..."))
-            update_info = self.check_update()
-
-            download_url = (
-                update_info.get("url") if isinstance(update_info, dict) else None
-            )
-            download_source = (
-                update_info.get("source")
-                if isinstance(update_info, dict)
-                else "unknown"
-            )
-            if download_source == "github" and not self.interface.get(
-                "mirrorchyan_multiplatform", False
-            ):
-                download_url = self._form_github_url(
-                    self.url, "hotfix", str(self.latest_update_version)
-                )
-
-            if not download_url:
-                if update_info is False:
-                    logger.info("[步骤1] 当前已是最新版本，无需下载")
-                    return self._stop_with_notice(
-                        0, "info", self.tr("Already up to date")
-                    )
-                logger.error("[步骤1] 检查完成但未获取到下载地址")
-                return self._stop_with_notice(0, "error", self.tr("Download failed"))
-
-            logger.info("[步骤1] 检查完成: 发现新版本 %s", self.latest_update_version)
-            logger.info("[步骤1] 下载来源: %s", download_source)
-            logger.info("[步骤1] 下载地址: %s", str(download_url)[:100])
-
-            self._emit_info_bar("info", self.tr("Preparing to download update..."))
-
-            download_dir = Path.cwd() / "update" / "new_version"
-            download_dir.mkdir(parents=True, exist_ok=True)
-            if not download_url:
-                logger.error("[步骤2] 未设置下载地址，无法执行下载")
-                return self._stop_with_notice(0, "error", self.tr("Download failed"))
-            logger.debug("[步骤2] 保存路径: %s", download_dir)
-
-            logger.info("[步骤3] 开始下载更新包...")
-            logger.debug("[步骤3] 下载地址: %s", download_url)
-            self.download_attempts += 1
-            downloaded_zip_path, download_error = self.download_file(
-                download_url,
-                download_dir,
-                self.progress_signal,
-                use_proxies=self.get_proxy_data(),
-            )
-            if not downloaded_zip_path:
-                if download_error:
-                    logger.error("[步骤3] 下载失败: %s", download_error)
-                    return self._stop_with_notice(
-                        0,
-                        "error",
-                        f"{self.tr('Download failed')}: {download_error}",
-                    )
-                logger.error("[步骤3] 下载失败")
-                return self._stop_with_notice(0, "error", self.tr("Download failed"))
-            zip_file_path = downloaded_zip_path
-            logger.debug("[步骤3] 下载文件: %s", zip_file_path)
-
-            logger.info(
-                "[步骤3] 下载完成，大小: %.2f MB",
-                zip_file_path.stat().st_size / (1024 * 1024),
-            )
-            self._emit_info_bar("success", self.tr("Download complete"))
-
-            logger.info("[步骤4] 开始执行热更新，准备解压更新包...")
-            self._emit_info_bar("info", self.tr("Applying hotfix..."))
-
-            logger.debug("[步骤4] 解压更新包到 hotfix 目录")
-            hotfix_dir = Path.cwd() / "hotfix"
-            hotfix_root = self.extract_zip(zip_file_path, hotfix_dir)
-            if not hotfix_root:
-                logger.error("[步骤4] 解压更新包失败")
-                return self._stop_with_notice(2)
-            logger.info("[步骤4] 更新包解压完成: %s", hotfix_root)
-
-            # 获取 bundle 路径
-            bundle_path = self._get_bundle_path()
-            if not bundle_path:
-                logger.warning("[步骤4] Bundle 配置不存在，跳过热更新")
-                return self._stop_with_notice(2)
-            bundle_path_obj = Path(bundle_path)
-            logger.debug("[步骤4] Bundle 路径: %s", bundle_path_obj)
-
-            logger.info("[步骤5] 使用安全覆盖模式进行热更新")
-
-            project_path = bundle_path_obj
-            if not hotfix_root or not hotfix_root.exists():
-                logger.error("[步骤5] hotfix 目录不存在，无法覆盖")
-                return self._stop_with_notice(2)
-
-            # 备份并删除资源文件中的 pipeline 目录，以供后续无损覆盖
-            resource_backup_dir = Path.cwd() / "backup" / "resource"
-            resource_backup_dir.mkdir(parents=True, exist_ok=True)
-            resource_list = self.interface.get("resource", [])
-            known_resources: list[str] = []
-            resource_backups.clear()
-            for resource in resource_list:
-                logger.debug("[步骤5] 处理资源: %s", resource.get("name", ""))
-
-                for resource_path_str in resource.get("path", []):
-                    logger.debug("[步骤5] 处理资源路径: %s", resource_path_str)
-                    resource_path = Path(resource_path_str.replace("{PROJECT_DIR}", ""))
-                    if resource_path.is_dir() and (
-                        resource_path_str not in known_resources
-                    ):
-                        backup_target = resource_backup_dir / resource_path.name
-                        try:
-                            # 先备份资源
-                            if backup_target.is_dir():
-                                shutil.rmtree(backup_target)
-                            shutil.copytree(str(resource_path), str(backup_target))
-                            logger.debug("[步骤5] 已备份资源目录: %s", resource_path)
-
-                            resource_backups.append((resource_path, backup_target))
-                            known_resources.append(resource_path_str)
-
-                            # 再删除旧的 pipeline 目录，避免影响后续覆盖
-                            pipeline_path = resource_path / "pipeline"
-                            if pipeline_path.exists():
-                                shutil.rmtree(str(pipeline_path))
-                                logger.debug(
-                                    "[步骤5] 已删除旧 pipeline 目录: %s",
-                                    pipeline_path,
-                                )
-                        except Exception as backup_err:
-                            logger.exception(
-                                "[步骤5] 备份或清理资源目录时出错: %s -> %s",
-                                resource_path,
-                                backup_err,
-                            )
-                            raise
-
-            logger.info("[步骤5] 开始覆盖项目目录: %s", project_path)
-            # 允许目标目录已存在（Python 3.8+ 支持 dirs_exist_ok）
-            # 这样在 bundle 目录本身已存在时不会因 WinError 183 直接失败
-            shutil.copytree(hotfix_root, project_path, dirs_exist_ok=True)
-
-            interface_path = [
-                bundle_path_obj / "interface.jsonc",
-                bundle_path_obj / "interface.json",
-            ]
-
-            for path in interface_path:
-                if path.exists():
-                    interface = self._read_config(str(path))
-                    if interface:
-                        interface["version"] = self.latest_update_version
-                        with open(path, "w", encoding="utf-8") as f:
-                            jsonc.dump(interface, f, indent=4, ensure_ascii=False)
-                        logger.info("[步骤5] 更新 interface.jsonc 成功")
-                        break
-            logger.info("[步骤5] interface 配置同步完毕")
-
-            # 步骤5: 完成
-            logger.info("[步骤5] 热更新成功完成!")
-            logger.info("=" * 50)
-            self._emit_info_bar("success", self.tr("Update applied successfully"))
-            self._cleanup_update_artifacts(download_dir, zip_file_path)
-            # 触发服务协调器重新初始化
-            signalBus.fs_reinit_requested.emit()
-            self.stop_signal.emit(1)
-
-        except Exception as e:
-            # 资源目录异常回滚
-            if resource_backups:
-                logger.warning("[步骤5] 更新失败，正在恢复资源备份目录...")
-                for original_path, backup_path in reversed(resource_backups):
-                    try:
-                        if not backup_path.exists():
-                            continue
-                        # 清理已被部分覆盖/删除的原目录
-                        if original_path.exists():
-                            if original_path.is_file():
-                                original_path.unlink()
-                            else:
-                                shutil.rmtree(original_path)
-                        # 使用备份进行还原
-                        if backup_path.is_dir():
-                            shutil.copytree(backup_path, original_path)
-                        else:
-                            original_path.parent.mkdir(parents=True, exist_ok=True)
-                            shutil.copy2(backup_path, original_path)
-                        logger.debug("[步骤5] 已恢复资源目录: %s", original_path)
-                    except Exception as restore_err:
-                        logger.exception(
-                            "[步骤5] 恢复资源目录失败: %s -> %s",
-                            original_path,
-                            restore_err,
-                        )
-                resource_backups.clear()
-
-            if deleted_backups:
-                logger.warning("[步骤5] 更新失败，正在恢复已删除文件...")
-                for original_path, backup_path in reversed(deleted_backups):
-                    try:
-                        if backup_path.exists():
-                            original_path.parent.mkdir(parents=True, exist_ok=True)
-                            shutil.copy2(backup_path, original_path)
-                            logger.debug("[步骤5] 已恢复文件: %s", original_path)
-                    except Exception as restore_err:
-                        logger.exception(
-                            "[步骤5] 恢复文件失败: %s -> %s",
-                            original_path,
-                            restore_err,
-                        )
-                deleted_backups.clear()
-            logger.exception("更新过程中出现错误: %s", e)
-            self._stop_with_notice(0, "error", self.tr("Failed to update"))
-        finally:
-            # 清理资源备份目录
-            if resource_backup_dir and resource_backup_dir.exists():
-                try:
-                    shutil.rmtree(resource_backup_dir)
-                except Exception as cleanup_err:
-                    logger.debug("[步骤5] 清理资源备份目录失败: %s", cleanup_err)
+        logger.info("多资源适配模式：UI 更新占位（实际更新由 MultiResourceUpdate 子类处理）")
+        # TODO: 实现多资源更新的 UI 更新逻辑
+        self._stop_with_notice(0, "info", self.tr("Multi-resource update UI placeholder"))
 
     def _run_normal(self) -> None:
         """
@@ -1823,3 +1597,305 @@ class Update(BaseUpdate):
                 return None
             return_url = f"https://api.github.com/repos/{username}/{repository}/zipball/{version}"
         return return_url
+
+
+class MultiResourceUpdate(Update):
+    """
+    多资源更新子类，专门用于处理 bundle 的多资源更新。
+    继承自 Update 类，重写 run 方法以使用多资源更新流程。
+    """
+
+    def _get_bundle_path(self) -> str | None:
+        """根据 interface 中的 name 获取对应的 bundle 路径"""
+        if not self.service_coordinator:
+            logger.error("service_coordinator 未初始化")
+            return None
+        
+        # 从 interface 中获取 bundle 名称
+        bundle_name = self.interface.get("name", "")
+        if not bundle_name:
+            logger.error("interface 中未找到 bundle 名称")
+            return None
+        
+        try:
+            # 根据 bundle 名称获取 bundle 信息
+            bundle_info = self.service_coordinator.config_service.get_bundle(bundle_name)
+            bundle_path = bundle_info.get("path", "")
+            
+            if not bundle_path:
+                logger.error(f"Bundle '{bundle_name}' 没有路径信息")
+                return None
+            
+            # 处理相对路径
+            bundle_path_obj = Path(bundle_path)
+            if not bundle_path_obj.is_absolute():
+                bundle_path_obj = Path.cwd() / bundle_path_obj
+            
+            logger.debug(f"获取到 bundle '{bundle_name}' 的路径: {bundle_path_obj}")
+            return str(bundle_path_obj)
+        except FileNotFoundError as e:
+            logger.warning(f"Bundle '{bundle_name}' 不存在: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"获取 bundle '{bundle_name}' 路径失败: {e}")
+            return None
+
+    def run(self):
+        """
+        线程入口，使用多资源更新流程。
+        """
+        # 防止多次重复运行（包括误调用 run 或多次 start）
+        if self._is_running:
+            logger.warning("检测到更新线程重复运行请求，本次调用将被忽略")
+            return
+
+        self._is_running = True
+        try:
+            # 每次运行前按当前配置初始化上下文（包括 interface / 频道 / 版本 等）
+            self._init_run_context()
+            if self.check_only:
+                logger.info("以仅检查模式运行更新器（check_only=True）")
+                self._run_check_only()
+            else:
+                logger.info("以多资源适配模式运行更新器")
+                self._run_multi_resource_update()
+        finally:
+            self._is_running = False
+    
+    def _run_multi_resource_update(self) -> None:
+        """
+        多资源适配模式更新流程：检查更新、下载更新包并执行热更新流程。
+        """
+        self.stop_flag = False
+
+        deleted_backups: list[tuple[Path, Path]] = []
+        # 资源目录热更新时使用的备份信息，用于异常时整体回滚
+        resource_backup_dir: Path | None = None
+        resource_backups: list[tuple[Path, Path]] = []
+
+        try:
+            if not self.service_coordinator:
+                logger.error("service_coordinator 未初始化，无法执行更新")
+                return self._stop_with_notice(0)
+
+            # 步骤1: 检查更新
+            logger.info("[步骤1] 开始检查更新...")
+            self._emit_info_bar("info", self.tr("Checking for updates..."))
+            update_info = self.check_update()
+
+            download_url = (
+                update_info.get("url") if isinstance(update_info, dict) else None
+            )
+            download_source = (
+                update_info.get("source")
+                if isinstance(update_info, dict)
+                else "unknown"
+            )
+            if download_source == "github" and not self.interface.get(
+                "mirrorchyan_multiplatform", False
+            ):
+                download_url = self._form_github_url(
+                    self.url, "hotfix", str(self.latest_update_version)
+                )
+
+            if not download_url:
+                if update_info is False:
+                    logger.info("[步骤1] 当前已是最新版本，无需下载")
+                    return self._stop_with_notice(
+                        0, "info", self.tr("Already up to date")
+                    )
+                logger.error("[步骤1] 检查完成但未获取到下载地址")
+                return self._stop_with_notice(0, "error", self.tr("Download failed"))
+
+            logger.info("[步骤1] 检查完成: 发现新版本 %s", self.latest_update_version)
+            logger.info("[步骤1] 下载来源: %s", download_source)
+            logger.info("[步骤1] 下载地址: %s", str(download_url)[:100])
+
+            self._emit_info_bar("info", self.tr("Preparing to download update..."))
+
+            download_dir = Path.cwd() / "update" / "new_version"
+            download_dir.mkdir(parents=True, exist_ok=True)
+            if not download_url:
+                logger.error("[步骤2] 未设置下载地址，无法执行下载")
+                return self._stop_with_notice(0, "error", self.tr("Download failed"))
+            logger.debug("[步骤2] 保存路径: %s", download_dir)
+
+            logger.info("[步骤3] 开始下载更新包...")
+            logger.debug("[步骤3] 下载地址: %s", download_url)
+            self.download_attempts += 1
+            downloaded_zip_path, download_error = self.download_file(
+                download_url,
+                download_dir,
+                self.progress_signal,
+                use_proxies=self.get_proxy_data(),
+            )
+            if not downloaded_zip_path:
+                if download_error:
+                    logger.error("[步骤3] 下载失败: %s", download_error)
+                    return self._stop_with_notice(
+                        0,
+                        "error",
+                        f"{self.tr('Download failed')}: {download_error}",
+                    )
+                logger.error("[步骤3] 下载失败")
+                return self._stop_with_notice(0, "error", self.tr("Download failed"))
+            zip_file_path = downloaded_zip_path
+            logger.debug("[步骤3] 下载文件: %s", zip_file_path)
+
+            logger.info(
+                "[步骤3] 下载完成，大小: %.2f MB",
+                zip_file_path.stat().st_size / (1024 * 1024),
+            )
+            self._emit_info_bar("success", self.tr("Download complete"))
+
+            logger.info("[步骤4] 开始执行热更新，准备解压更新包...")
+            self._emit_info_bar("info", self.tr("Applying hotfix..."))
+
+            logger.debug("[步骤4] 解压更新包到 hotfix 目录")
+            hotfix_dir = Path.cwd() / "hotfix"
+            hotfix_root = self.extract_zip(zip_file_path, hotfix_dir)
+            if not hotfix_root:
+                logger.error("[步骤4] 解压更新包失败")
+                return self._stop_with_notice(2)
+            logger.info("[步骤4] 更新包解压完成: %s", hotfix_root)
+
+            # 获取 bundle 路径
+            bundle_path = self._get_bundle_path()
+            if not bundle_path:
+                logger.warning("[步骤4] Bundle 配置不存在，跳过热更新")
+                return self._stop_with_notice(2)
+            bundle_path_obj = Path(bundle_path)
+            logger.debug("[步骤4] Bundle 路径: %s", bundle_path_obj)
+
+            logger.info("[步骤5] 使用安全覆盖模式进行热更新")
+
+            project_path = bundle_path_obj
+            if not hotfix_root or not hotfix_root.exists():
+                logger.error("[步骤5] hotfix 目录不存在，无法覆盖")
+                return self._stop_with_notice(2)
+
+            # 备份并删除资源文件中的 pipeline 目录，以供后续无损覆盖
+            resource_backup_dir = Path.cwd() / "backup" / "resource"
+            resource_backup_dir.mkdir(parents=True, exist_ok=True)
+            resource_list = self.interface.get("resource", [])
+            known_resources: list[str] = []
+            resource_backups.clear()
+            for resource in resource_list:
+                logger.debug("[步骤5] 处理资源: %s", resource.get("name", ""))
+
+                for resource_path_str in resource.get("path", []):
+                    logger.debug("[步骤5] 处理资源路径: %s", resource_path_str)
+                    resource_path = Path(resource_path_str.replace("{PROJECT_DIR}", ""))
+                    if resource_path.is_dir() and (
+                        resource_path_str not in known_resources
+                    ):
+                        backup_target = resource_backup_dir / resource_path.name
+                        try:
+                            # 先备份资源
+                            if backup_target.is_dir():
+                                shutil.rmtree(backup_target)
+                            shutil.copytree(str(resource_path), str(backup_target))
+                            logger.debug("[步骤5] 已备份资源目录: %s", resource_path)
+
+                            resource_backups.append((resource_path, backup_target))
+                            known_resources.append(resource_path_str)
+
+                            # 再删除旧的 pipeline 目录，避免影响后续覆盖
+                            pipeline_path = resource_path / "pipeline"
+                            if pipeline_path.exists():
+                                shutil.rmtree(str(pipeline_path))
+                                logger.debug(
+                                    "[步骤5] 已删除旧 pipeline 目录: %s",
+                                    pipeline_path,
+                                )
+                        except Exception as backup_err:
+                            logger.exception(
+                                "[步骤5] 备份或清理资源目录时出错: %s -> %s",
+                                resource_path,
+                                backup_err,
+                            )
+                            raise
+
+            logger.info("[步骤5] 开始覆盖项目目录: %s", project_path)
+            # 允许目标目录已存在（Python 3.8+ 支持 dirs_exist_ok）
+            # 这样在 bundle 目录本身已存在时不会因 WinError 183 直接失败
+            shutil.copytree(hotfix_root, project_path, dirs_exist_ok=True)
+
+            interface_path = [
+                bundle_path_obj / "interface.jsonc",
+                bundle_path_obj / "interface.json",
+            ]
+
+            for path in interface_path:
+                if path.exists():
+                    interface = self._read_config(str(path))
+                    if interface:
+                        interface["version"] = self.latest_update_version
+                        with open(path, "w", encoding="utf-8") as f:
+                            jsonc.dump(interface, f, indent=4, ensure_ascii=False)
+                        logger.info("[步骤5] 更新 interface.jsonc 成功")
+                        break
+            logger.info("[步骤5] interface 配置同步完毕")
+
+            # 步骤5: 完成
+            logger.info("[步骤5] 热更新成功完成!")
+            logger.info("=" * 50)
+            self._emit_info_bar("success", self.tr("Update applied successfully"))
+            self._cleanup_update_artifacts(download_dir, zip_file_path)
+            # 触发服务协调器重新初始化
+            signalBus.fs_reinit_requested.emit()
+            self.stop_signal.emit(1)
+
+        except Exception as e:
+            # 资源目录异常回滚
+            if resource_backups:
+                logger.warning("[步骤5] 更新失败，正在恢复资源备份目录...")
+                for original_path, backup_path in reversed(resource_backups):
+                    try:
+                        if not backup_path.exists():
+                            continue
+                        # 清理已被部分覆盖/删除的原目录
+                        if original_path.exists():
+                            if original_path.is_file():
+                                original_path.unlink()
+                            else:
+                                shutil.rmtree(original_path)
+                        # 使用备份进行还原
+                        if backup_path.is_dir():
+                            shutil.copytree(backup_path, original_path)
+                        else:
+                            original_path.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copy2(backup_path, original_path)
+                        logger.debug("[步骤5] 已恢复资源目录: %s", original_path)
+                    except Exception as restore_err:
+                        logger.exception(
+                            "[步骤5] 恢复资源目录失败: %s -> %s",
+                            original_path,
+                            restore_err,
+                        )
+                resource_backups.clear()
+
+            if deleted_backups:
+                logger.warning("[步骤5] 更新失败，正在恢复已删除文件...")
+                for original_path, backup_path in reversed(deleted_backups):
+                    try:
+                        if backup_path.exists():
+                            original_path.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copy2(backup_path, original_path)
+                            logger.debug("[步骤5] 已恢复文件: %s", original_path)
+                    except Exception as restore_err:
+                        logger.exception(
+                            "[步骤5] 恢复文件失败: %s -> %s",
+                            original_path,
+                            restore_err,
+                        )
+                deleted_backups.clear()
+            logger.exception("更新过程中出现错误: %s", e)
+            self._stop_with_notice(0, "error", self.tr("Failed to update"))
+        finally:
+            # 清理资源备份目录
+            if resource_backup_dir and resource_backup_dir.exists():
+                try:
+                    shutil.rmtree(resource_backup_dir)
+                except Exception as cleanup_err:
+                    logger.debug("[步骤5] 清理资源备份目录失败: %s", cleanup_err)

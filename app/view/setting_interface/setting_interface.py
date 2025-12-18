@@ -1512,6 +1512,7 @@ class SettingInterface(QWidget):
         # 启用多资源适配后，显示“更新 UI”按钮，并通知主界面刷新标题等信息，
         # 同时隐藏多资源适配开关，避免重复误操作。
         self.multi_resource_adaptation_card.setEnabled(False)
+        self.reset_resource_card.setEnabled(False)
         signalBus.title_changed.emit()
         self._refresh_update_header()
         self._move_bundle()
