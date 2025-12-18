@@ -206,10 +206,7 @@ class TaskFlowRunner(QObject):
                 )
                 signalBus.log_output.emit("INFO", self.tr("Agent Service Start"))
 
-            if (
-                self.task_service.interface.get("custom", None)
-                or pre_cfg.task_option.get("custom", None)
-            ) and self.maafw.resource:
+            if self.task_service.interface.get("custom", None) and self.maafw.resource:
                 logger.info("开始加载自定义组件...")
                 signalBus.log_output.emit(
                     "INFO", self.tr("Starting to load custom components...")
@@ -217,12 +214,8 @@ class TaskFlowRunner(QObject):
                 self.maafw.resource.clear_custom_recognition()
                 self.maafw.resource.clear_custom_action()
 
-                # 先从预配置中读 custom 路径，若为空则退回 interface 中的默认 custom 路径
-                custom_config_path = pre_cfg.task_option.get("custom")
-                if not custom_config_path:
-                    custom_config_path = self.task_service.interface.get("custom", "")
-
                 # 兼容绝对路径与相对 bundle.path 的自定义配置路径
+                custom_config_path = self.task_service.interface.get("custom", "")
                 if custom_config_path:
                     bundle_path_str = self.bundle_path or "./"
                     base_dir = Path(bundle_path_str)
