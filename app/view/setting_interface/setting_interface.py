@@ -1881,11 +1881,13 @@ class SettingInterface(QWidget):
             return
 
         # 创建更新器
+        interface = self._service_coordinator.task.interface or {}
         self._updater = Update(
             service_coordinator=self._service_coordinator,
             stop_signal=signalBus.update_stopped,
             progress_signal=signalBus.update_progress,
             info_bar_signal=signalBus.info_bar_requested,
+            interface=interface,
         )
 
         # 绑定信号
@@ -1904,11 +1906,13 @@ class SettingInterface(QWidget):
             logger.info("跳过更新检查器启动：%s", reason)
             return
         # 使用 Update 本身的仅检查模式进行后台检查，不触发下载与热更新流程
+        interface = self._service_coordinator.task.interface or {}
         self._update_checker = Update(
             service_coordinator=self._service_coordinator,
             stop_signal=signalBus.update_stopped,
             progress_signal=signalBus.update_progress,
             info_bar_signal=signalBus.info_bar_requested,
+            interface=interface,
             force_full_download=False,
             check_only=True,
         )
@@ -2259,11 +2263,13 @@ class SettingInterface(QWidget):
         logger.info("触发资源重置，强制全量下载最新资源包（跳过 update_flag/hotfix）")
 
         # 创建强制全量下载的更新器实例
+        interface = self._service_coordinator.task.interface or {}
         self._updater = Update(
             service_coordinator=self._service_coordinator,
             stop_signal=signalBus.update_stopped,
             progress_signal=signalBus.update_progress,
             info_bar_signal=signalBus.info_bar_requested,
+            interface=interface,
             force_full_download=True,
         )
         self._updater.start()

@@ -880,10 +880,11 @@ class Update(BaseUpdate):
 
     def __init__(
         self,
-        service_coordinator: ServiceCoordinator,
+        service_coordinator: Optional[ServiceCoordinator],
         stop_signal: SignalInstance,
         progress_signal: SignalInstance,
         info_bar_signal: SignalInstance,
+        interface: dict[str, Any],
         force_full_download: bool = False,
         *,
         check_only: bool = False,
@@ -894,6 +895,15 @@ class Update(BaseUpdate):
         - 正常模式（check_only=False）: 调用 start()/run() 会执行完整更新流程。
         - 仅检查模式（check_only=True）: 调用 start()/run() 只会检查是否有更新，
           不会下载或应用更新，结果通过 check_result_ready 信号返回。
+        
+        Args:
+            service_coordinator: 服务协调器（可选，用于获取 bundle 路径等）
+            stop_signal: 停止信号
+            progress_signal: 进度信号
+            info_bar_signal: 信息栏信号
+            interface: 接口配置字典，包含项目信息（name, version, github/url, mirrorchyan_rid 等）
+            force_full_download: 是否强制完整下载
+            check_only: 是否仅检查更新
         """
         super().__init__()
         self.service_coordinator = service_coordinator
@@ -902,18 +912,28 @@ class Update(BaseUpdate):
         self.info_bar_signal = info_bar_signal
         self.force_full_download = force_full_download
         self.check_only = check_only
-        # 运行期上下文参数，在 run/_run_* 中按当前配置动态初始化
-        self.interface: dict[str, Any] = {}
-        self.project_name: str = ""
-        self.current_version: str = "v1.0.0"
-        self.url: str = ""
-        self.current_res_id: str = ""
-        self.mirror_cdk: str = ""
-        self.current_channel_enum: Config.UpdateChannel = cfg.UpdateChannel.STABLE
-        self.current_channel: str = "stable"
-        self.current_os_type: str = self._normalize_os_type(sys.platform)
-        self.current_arch: str = self._normalize_arch(platform.machine())
-        self.latest_update_version: str | None = None
+        
+        # 从 interface 中获取参数
+        self.interface = interface or {}
+        self.project_name = self.interface.get("name", "")
+        self.current_version = self.interface.get("version", "v1.0.0")
+        self.url = self.interface.get("github", self.interface.get("url", ""))
+        self.current_res_id = self.interface.get("mirrorchyan_rid", "")
+        
+        # 从配置中获取 mirror_cdk
+        self.mirror_cdk = self.Mirror_ckd()
+        
+        # 从配置中获取更新通道
+        channel_value = cfg.get(cfg.resource_update_channel)
+        self.current_channel_enum = self._normalize_channel(channel_value)
+        self.current_channel = self.current_channel_enum.name.lower()
+        
+        # 从系统自动检测操作系统和架构
+        self.current_os_type = self._normalize_os_type(sys.platform)
+        self.current_arch = self._normalize_arch(platform.machine())
+        
+        # 其他运行时参数
+        self.latest_update_version = self.current_version
         self.download_url: str | None = None
         self.release_note: str = ""
         self.download_attempts: int = 0
@@ -957,45 +977,11 @@ class Update(BaseUpdate):
 
     def _init_run_context(self) -> None:
         """
-        根据当前 service_coordinator / 配置，初始化一次本次 run 所需的上下文参数。
-
-        注意：不要在 __init__ 里固化这些值，以便支持运行时切换配置、多资源适配等场景。
+        初始化一次本次 run 所需的运行时上下文参数。
+        
+        注意：主要参数已在 __init__ 中初始化，此方法仅重置运行时状态。
         """
-        if not self.service_coordinator:
-            logger.warning("service_coordinator 未初始化，使用空更新上下文")
-            self.interface = {}
-            self.project_name = ""
-            self.current_version = "v1.0.0"
-            self.url = ""
-            self.current_res_id = ""
-            self.mirror_cdk = ""
-            channel_value = cfg.get(cfg.resource_update_channel)
-            self.current_channel_enum = self._normalize_channel(channel_value)
-            self.current_channel = self.current_channel_enum.name.lower()
-            self.current_os_type = self._normalize_os_type(sys.platform)
-            self.current_arch = self._normalize_arch(platform.machine())
-            self.latest_update_version = self.current_version
-            self.download_url = None
-            self.release_note = ""
-            self.download_attempts = 0
-            self.version_name = None
-            return
-
-        # 从当前任务 interface 以及配置中刷新上下文
-        self.interface = self.service_coordinator.task.interface or {}
-        self.project_name = self.interface.get("name", "")
-        self.current_version = self.interface.get("version", "v1.0.0")
-        self.url = self.interface.get("github", self.interface.get("url", ""))
-        self.current_res_id = self.interface.get("mirrorchyan_rid", "")
-
-        self.mirror_cdk = self.Mirror_ckd()
-
-        channel_value = cfg.get(cfg.resource_update_channel)
-        self.current_channel_enum = self._normalize_channel(channel_value)
-        self.current_channel = self.current_channel_enum.name.lower()
-        self.current_os_type = self._normalize_os_type(sys.platform)
-        self.current_arch = self._normalize_arch(platform.machine())
-
+        # 重置运行时状态
         self.latest_update_version = (
             cfg.get(cfg.latest_update_version) or self.current_version
         )
@@ -1003,6 +989,7 @@ class Update(BaseUpdate):
         self.release_note = ""
         self.download_attempts = 0
         self.version_name = None
+        
         # 打印本次更新/检查使用的关键上下文信息
         logger.info("=" * 50)
         logger.info("开始更新流程")
