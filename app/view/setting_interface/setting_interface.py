@@ -1511,7 +1511,7 @@ class SettingInterface(QWidget):
         """
         # 启用多资源适配后，显示“更新 UI”按钮，并通知主界面刷新标题等信息，
         # 同时隐藏多资源适配开关，避免重复误操作。
-        self.multi_resource_adaptation_card.setVisible(False)
+        self.multi_resource_adaptation_card.setEnabled(False)
         signalBus.title_changed.emit()
         self._refresh_update_header()
         self._move_bundle()
@@ -1556,12 +1556,9 @@ class SettingInterface(QWidget):
         )
 
         if success:
-            logger.info(
-                f"已更新 bundle 配置: {name} -> {bundle_path}"
-            )
+            logger.info(f"已更新 bundle 配置: {name} -> {bundle_path}")
         else:
             logger.error(f"更新 bundle 配置失败: {name}")
-
 
     def _move_bundle(self):
         """
@@ -1756,7 +1753,9 @@ class SettingInterface(QWidget):
             try:
                 signalBus.multi_resource_adaptation_enabled.emit()
             except Exception as exc:
-                logger.warning(f"发射 multi_resource_adaptation_enabled 信号失败: {exc}")
+                logger.warning(
+                    f"发射 multi_resource_adaptation_enabled 信号失败: {exc}"
+                )
 
         cfg.set(cfg.multi_resource_adaptation, bool(checked))
 

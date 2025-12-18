@@ -118,6 +118,7 @@ class Config(QConfig):
     announcement = ConfigItem("General", "announcement", "")
 
     auto_update = ConfigItem("Update", "auto_update", True, BoolValidator())
+    bundle_auto_update = ConfigItem("Bundle", "bundle_auto_update", True, BoolValidator())
     force_github = ConfigItem("Update", "force_github", False, BoolValidator())
     github_api_key = ConfigItem("Update", "github_api_key", "")
 
