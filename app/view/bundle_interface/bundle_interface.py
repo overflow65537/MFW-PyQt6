@@ -126,7 +126,7 @@ class BundleListItem(QWidget):
         layout.addWidget(self.update_log_button)
 
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-    
+
     def update_latest_version(self, latest_version: Optional[str]):
         """更新最新版本信息"""
         self.latest_version = latest_version
@@ -228,7 +228,6 @@ class BundleDetailWidget(QWidget):
         parent_layout.addLayout(section_layout)
 
 
-
 class UI_BundleInterface(object):
     """Bundle 管理界面 UI 类"""
 
@@ -253,7 +252,6 @@ class UI_BundleInterface(object):
         # 将水平布局设置为 QWidget 的主布局
         BundleInterface.setLayout(main_layout)
 
-        self.retranslateUi(BundleInterface)
         QMetaObject.connectSlotsByName(BundleInterface)
 
     def _init_list_panel(self, parent):
@@ -294,9 +292,7 @@ class UI_BundleInterface(object):
         self.add_bundle_button.installEventFilter(
             ToolTipFilter(self.add_bundle_button, 0, ToolTipPosition.TOP)
         )
-        self.add_bundle_button.setToolTip(
-            _translate("BundleInterface", "Add Bundle")
-        )
+        self.add_bundle_button.setToolTip(_translate("BundleInterface", "Add Bundle"))
         self.list_title_layout.addWidget(self.add_bundle_button)
 
         # 更新所有bundle按钮
@@ -376,15 +372,6 @@ class UI_BundleInterface(object):
 
         detail_panel_layout.addWidget(self.detail_card)
 
-    def retranslateUi(self, BundleInterface):
-        _translate = QCoreApplication.translate
-        BundleInterface.setWindowTitle(_translate("BundleInterface", "Form"))
-        # 设置标题文本
-        if hasattr(self, "list_title"):
-            self.list_title.setText(_translate("BundleInterface", "Bundle 列表"))
-        if hasattr(self, "detail_title"):
-            self.detail_title.setText(_translate("BundleInterface", "Bundle 详情"))
-
 
 class BundleInterface(UI_BundleInterface, QWidget):
     """Bundle 管理界面"""
@@ -399,7 +386,9 @@ class BundleInterface(UI_BundleInterface, QWidget):
         self.setupUi(self)
         self.service_coordinator = service_coordinator
         self._bundle_data: Dict[str, Dict[str, Any]] = {}
-        self._latest_versions: Dict[str, Optional[str]] = {}  # bundle_name -> latest_version
+        self._latest_versions: Dict[str, Optional[str]] = (
+            {}
+        )  # bundle_name -> latest_version
         self._update_checkers: Dict[str, Update] = {}  # bundle_name -> Update checker
         self._current_updater: Optional[Update] = None  # 当前正在运行的更新器
         self._current_bundle_name: Optional[str] = None  # 当前正在更新的bundle名称
@@ -407,31 +396,33 @@ class BundleInterface(UI_BundleInterface, QWidget):
         self._is_updating_all = False
 
         # 设置标题
-        self.list_title.setText(self.tr("Bundle 列表"))
-        self.detail_title.setText(self.tr("Bundle 详情"))
+        self.list_title.setText(self.tr("Bundle List"))
+        self.detail_title.setText(self.tr("Bundle Details"))
 
         # 连接信号
         self.list_widget.currentItemChanged.connect(self._on_bundle_selected)
         self.add_bundle_button.clicked.connect(self._on_add_bundle_clicked)
         self.update_all_button.clicked.connect(self._on_update_all_bundles)
         self.auto_update_switch.toggled.connect(self._on_auto_update_changed)
-        
+
         # 监听更新停止信号（Update 类会自动发送，用于通知主界面）
         signalBus.update_stopped.connect(self._on_update_stopped)
-        
+
         # 监听多资源适配启用信号，刷新 bundle 列表
-        signalBus.multi_resource_adaptation_enabled.connect(self._on_multi_resource_enabled)
+        signalBus.multi_resource_adaptation_enabled.connect(
+            self._on_multi_resource_enabled
+        )
 
         # 加载 bundle 列表
         self._load_bundles()
-        
+
         # 启动时自动检查所有资源的更新（仅在多资源适配开启时）
         if self._is_multi_resource_enabled():
             self._check_all_updates()
 
     def _load_bundles(self, force_refresh: bool = False):
         """从 service_coordinator 加载所有 bundle
-        
+
         Args:
             force_refresh: 是否强制刷新（更新后使用，直接读取文件而不使用缓存）
         """
@@ -473,54 +464,68 @@ class BundleInterface(UI_BundleInterface, QWidget):
                             if force_refresh:
                                 # 强制刷新模式：直接读取文件，不使用缓存
                                 # 这样可以确保读取到更新后的最新内容
-                                logger.debug(f"强制刷新模式：直接读取 interface 文件: {interface_path}")
+                                logger.debug(
+                                    f"强制刷新模式：直接读取 interface 文件: {interface_path}"
+                                )
                                 # 多次尝试读取，确保文件系统同步
                                 max_retries = 3
                                 for retry in range(max_retries):
                                     try:
-                                        with open(interface_path, "r", encoding="utf-8") as f:
+                                        with open(
+                                            interface_path, "r", encoding="utf-8"
+                                        ) as f:
                                             interface_data = jsonc.load(f)
                                         if interface_data:
                                             break
                                     except (IOError, jsonc.JSONDecodeError) as e:
                                         if retry < max_retries - 1:
-                                            logger.debug(f"读取 interface 文件失败，重试 {retry + 1}/{max_retries}: {e}")
+                                            logger.debug(
+                                                f"读取 interface 文件失败，重试 {retry + 1}/{max_retries}: {e}"
+                                            )
                                             time.sleep(0.1)  # 等待文件系统同步
                                         else:
-                                            logger.error(f"读取 interface 文件失败: {e}")
+                                            logger.error(
+                                                f"读取 interface 文件失败: {e}"
+                                            )
                                             raise
-                                
+
                                 # 如果需要翻译，再使用 InterfaceManager 进行翻译
                                 if interface_data:
                                     interface_manager = get_interface_manager()
                                     current_language = interface_manager.get_language()
                                     # 使用 preview_interface 进行翻译（会重新读取文件，但我们已经确保文件是最新的）
-                                    translated_data = interface_manager.preview_interface(
-                                        interface_path, language=current_language
+                                    translated_data = (
+                                        interface_manager.preview_interface(
+                                            interface_path, language=current_language
+                                        )
                                     )
                                     if translated_data:
                                         interface_data = translated_data
                                     else:
-                                        logger.warning(f"preview_interface 返回空数据，使用直接读取的数据")
+                                        logger.warning(
+                                            f"preview_interface 返回空数据，使用直接读取的数据"
+                                        )
                             else:
                                 # 正常模式：使用 InterfaceManager 的 preview_interface 方法加载并翻译 interface 文件
                                 # 这样可以支持 i18n 功能
                                 interface_manager = get_interface_manager()
                                 current_language = interface_manager.get_language()
-                                
+
                                 # 预览并翻译该 bundle 的 interface 文件
                                 interface_data = interface_manager.preview_interface(
                                     interface_path, language=current_language
                                 )
-                                
+
                                 # 如果预览失败（返回空字典），回退到直接读取
                                 if not interface_data:
                                     logger.warning(
                                         f"使用 preview_interface 加载失败，回退到直接读取: {interface_path}"
                                     )
-                                    with open(interface_path, "r", encoding="utf-8") as f:
+                                    with open(
+                                        interface_path, "r", encoding="utf-8"
+                                    ) as f:
                                         interface_data = jsonc.load(f)
-                            
+
                             icon_relative = interface_data.get("icon", "")
                             if icon_relative:
                                 icon_path = bundle_path / icon_relative
@@ -535,9 +540,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
                                 with open(interface_path, "r", encoding="utf-8") as f:
                                     interface_data = jsonc.load(f)
                             except Exception as e2:
-                                logger.error(
-                                    f"直接读取 interface 文件也失败: {e2}"
-                                )
+                                logger.error(f"直接读取 interface 文件也失败: {e2}")
 
                     # 获取版本信息
                     bundle_version = interface_data.get("version", "未知版本")
@@ -556,7 +559,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
                         bundle_version,
                         str(icon_path) if icon_path else None,
                     )
-                    
+
                     # 如果有已检查到的最新版本，立即显示
                     if bundle_name in self._latest_versions:
                         latest_version = self._latest_versions[bundle_name]
@@ -564,7 +567,9 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
                     # 连接更新日志按钮的点击事件
                     item_widget.update_log_button.clicked.connect(
-                        lambda checked=False, name=bundle_name: self._open_bundle_update_log(name)
+                        lambda checked=False, name=bundle_name: self._open_bundle_update_log( # type: ignore
+                            name
+                        )
                     )
 
                     list_item = QListWidgetItem(self.list_widget)
@@ -607,7 +612,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 widget = item.widget()
                 if widget and widget != self.default_label:
                     items_to_remove.append(i)
-        
+
         # 从后往前删除，避免索引变化
         for i in reversed(items_to_remove):
             item = self.detail_layout.takeAt(i)
@@ -626,7 +631,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
         # 隐藏默认提示（如果仍然有效）
         try:
-            if hasattr(self, 'default_label') and self.default_label:
+            if hasattr(self, "default_label") and self.default_label:
                 # 检查对象是否仍然有效
                 try:
                     if self.default_label.isVisible():
@@ -643,7 +648,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         if not bundle_data:
             logger.warning(f"Bundle '{bundle_name}' 数据不存在")
             return
-        
+
         interface_data = bundle_data.get("interface", {})
         if not interface_data:
             logger.warning(f"Bundle '{bundle_name}' interface 数据不存在")
@@ -659,6 +664,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
     def _is_multi_resource_enabled(self) -> bool:
         """检查多资源适配是否已开启"""
         from app.common.config import cfg
+
         return bool(cfg.get(cfg.multi_resource_adaptation))
 
     def _check_all_updates(self):
@@ -667,7 +673,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         if not self._is_multi_resource_enabled():
             logger.debug("多资源适配未开启，跳过检查bundle更新")
             return
-        
+
         try:
             bundle_names = self.service_coordinator.config.list_bundles()
             if not bundle_names:
@@ -677,11 +683,11 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 bundle_data = self._bundle_data.get(bundle_name)
                 if not bundle_data:
                     continue
-                
+
                 interface_data = bundle_data.get("interface", {})
                 if not interface_data:
                     continue
-                
+
                 # 创建更新检查器
                 checker = Update(
                     service_coordinator=self.service_coordinator,
@@ -691,17 +697,19 @@ class BundleInterface(UI_BundleInterface, QWidget):
                     interface=interface_data,
                     check_only=True,
                 )
-                
+
                 # 连接检查结果信号
                 checker.check_result_ready.connect(
-                    lambda result, name=bundle_name: self._on_update_check_result(name, result)
+                    lambda result, name=bundle_name: self._on_update_check_result(
+                        name, result
+                    )
                 )
                 checker.finished.connect(checker.deleteLater)
-                
+
                 self._update_checkers[bundle_name] = checker
                 checker.start()
                 logger.info(f"开始检查 bundle '{bundle_name}' 的更新")
-                
+
         except Exception as e:
             logger.error(f"检查所有bundle更新失败: {e}", exc_info=True)
 
@@ -710,18 +718,20 @@ class BundleInterface(UI_BundleInterface, QWidget):
         # 检查多资源适配是否开启
         if not self._is_multi_resource_enabled():
             return
-        
+
         try:
             bundle_data = self._bundle_data.get(bundle_name)
             if not bundle_data:
                 logger.warning(f"Bundle '{bundle_name}' 数据不存在，无法检查更新")
                 return
-            
+
             interface_data = bundle_data.get("interface", {})
             if not interface_data:
-                logger.warning(f"Bundle '{bundle_name}' interface 数据不存在，无法检查更新")
+                logger.warning(
+                    f"Bundle '{bundle_name}' interface 数据不存在，无法检查更新"
+                )
                 return
-            
+
             # 创建更新检查器
             checker = Update(
                 service_coordinator=self.service_coordinator,
@@ -731,20 +741,22 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 interface=interface_data,
                 check_only=True,
             )
-            
+
             # 连接检查结果信号
             checker.check_result_ready.connect(
-                lambda result, name=bundle_name: self._on_update_check_result(name, result)
+                lambda result, name=bundle_name: self._on_update_check_result(
+                    name, result
+                )
             )
             checker.finished.connect(checker.deleteLater)
-            
+
             self._update_checkers[bundle_name] = checker
             checker.start()
             logger.info(f"开始检查新添加的 bundle '{bundle_name}' 的更新")
-            
+
         except Exception as e:
             logger.error(f"检查 bundle '{bundle_name}' 更新失败: {e}", exc_info=True)
-    
+
     def _on_update_check_result(self, bundle_name: str, result: dict):
         """处理单个bundle的更新检查结果"""
         try:
@@ -762,9 +774,13 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 current_version = interface_data.get("version", "未知版本")
                 self._update_bundle_item_version(bundle_name, current_version)
         except Exception as e:
-            logger.error(f"处理 bundle '{bundle_name}' 更新检查结果失败: {e}", exc_info=True)
-    
-    def _update_bundle_item_version(self, bundle_name: str, latest_version: Optional[str]):
+            logger.error(
+                f"处理 bundle '{bundle_name}' 更新检查结果失败: {e}", exc_info=True
+            )
+
+    def _update_bundle_item_version(
+        self, bundle_name: str, latest_version: Optional[str]
+    ):
         """更新列表项的版本显示"""
         for i in range(self.list_widget.count()):
             item = self.list_widget.item(i)
@@ -781,11 +797,11 @@ class BundleInterface(UI_BundleInterface, QWidget):
             logger.warning("多资源适配未开启，无法自动更新bundle")
             signalBus.all_updates_completed.emit()
             return
-        
+
         if self._current_updater:
             logger.warning("已有更新任务正在进行中")
             return
-        
+
         logger.info("开始自动更新所有bundle...")
         try:
             bundle_names = self.service_coordinator.config.list_bundles()
@@ -802,7 +818,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 bundle_data = self._bundle_data.get(bundle_name, {})
                 interface_data = bundle_data.get("interface", {})
                 current_version = interface_data.get("version", "")
-                
+
                 # 如果还没有检查过更新（latest_version 为 None），直接加入更新队列
                 # 这样新添加的 bundle 也能被更新
                 if latest_version is None:
@@ -811,39 +827,41 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 # 如果有最新版本且与当前版本不同，加入更新队列
                 elif latest_version and latest_version != current_version:
                     bundles_to_update.append(bundle_name)
-            
+
             if not bundles_to_update:
                 logger.info("所有bundle都是最新版本，无需更新")
                 # 没有需要更新的bundle，直接发送完成信号
                 signalBus.all_updates_completed.emit()
                 return
-            
+
             # 将需要更新的bundle加入队列
             self._update_queue = bundles_to_update
             self._is_updating_all = True
             self._start_next_update()
-            
+
         except Exception as e:
             logger.error(f"自动更新所有bundle失败: {e}", exc_info=True)
             self._is_updating_all = False
             # 发生错误，发送完成信号
             signalBus.all_updates_completed.emit()
-    
+
     def _on_update_all_bundles(self):
         """更新所有bundle按钮点击事件"""
         # 检查多资源适配是否开启
         if not self._is_multi_resource_enabled():
             signalBus.info_bar_requested.emit(
-                "warning", 
-                self.tr("Multi-resource adaptation is not enabled. Please enable it in Settings first.")
+                "warning",
+                self.tr(
+                    "Multi-resource adaptation is not enabled. Please enable it in Settings first."
+                ),
             )
             logger.warning("多资源适配未开启，无法更新bundle")
             return
-        
+
         if self._current_updater:
             logger.warning("已有更新任务正在进行中")
             return
-        
+
         logger.info("开始更新所有bundle...")
         try:
             bundle_names = self.service_coordinator.config.list_bundles()
@@ -858,7 +876,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 bundle_data = self._bundle_data.get(bundle_name, {})
                 interface_data = bundle_data.get("interface", {})
                 current_version = interface_data.get("version", "")
-                
+
                 # 如果还没有检查过更新（latest_version 为 None），直接加入更新队列
                 # 这样新添加的 bundle 也能被更新
                 if latest_version is None:
@@ -867,41 +885,45 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 # 如果有最新版本且与当前版本不同，加入更新队列
                 elif latest_version and latest_version != current_version:
                     bundles_to_update.append(bundle_name)
-            
+
             if not bundles_to_update:
                 logger.info("所有bundle都是最新版本，无需更新")
-                signalBus.info_bar_requested.emit("info", self.tr("All bundles are up to date"))
+                signalBus.info_bar_requested.emit(
+                    "info", self.tr("All bundles are up to date")
+                )
                 return
-            
+
             # 将需要更新的bundle加入队列
             self._update_queue = bundles_to_update
             self._is_updating_all = True
             self._start_next_update()
-            
+
         except Exception as e:
             logger.error(f"更新所有bundle失败: {e}", exc_info=True)
             self._is_updating_all = False
-    
+
     def _on_single_bundle_update(self, bundle_name: str):
         """处理单个bundle的更新"""
         # 检查多资源适配是否开启
         if not self._is_multi_resource_enabled():
             signalBus.info_bar_requested.emit(
-                "warning", 
-                self.tr("Multi-resource adaptation is not enabled. Please enable it in Settings first.")
+                "warning",
+                self.tr(
+                    "Multi-resource adaptation is not enabled. Please enable it in Settings first."
+                ),
             )
             logger.warning("多资源适配未开启，无法更新bundle")
             return
-        
+
         if self._current_updater:
             logger.warning("已有更新任务正在进行中")
             return
-        
+
         logger.info(f"开始更新单个bundle: {bundle_name}")
         self._update_queue = [bundle_name]
         self._is_updating_all = False
         self._start_next_update()
-    
+
     def _start_next_update(self):
         """开始下一个更新任务"""
         if not self._update_queue:
@@ -909,12 +931,14 @@ class BundleInterface(UI_BundleInterface, QWidget):
             is_auto_update_all = self._is_updating_all  # 保存状态
             self._is_updating_all = False
             self._current_updater = None
-            
+
             if not is_auto_update_all:
                 # 如果不是自动更新所有模式，显示通知
-                signalBus.info_bar_requested.emit("success", self.tr("All updates completed"))
+                signalBus.info_bar_requested.emit(
+                    "success", self.tr("All updates completed")
+                )
             logger.info("所有更新任务完成")
-            
+
             # 使用 QTimer 延迟刷新，避免阻塞 UI 线程，同时等待文件系统同步
             def _refresh_after_update():
                 # 重新加载bundles以刷新版本信息（强制刷新）
@@ -922,29 +946,31 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 # 重新检查更新以获取最新的版本信息（仅在多资源适配开启时）
                 if self._is_multi_resource_enabled():
                     self._check_all_updates()
-                
+
                 # 如果是自动更新所有模式，发送所有更新完成信号
                 if is_auto_update_all:
                     signalBus.all_updates_completed.emit()
-                    logger.info("Bundle 自动更新完成，已发送 all_updates_completed 信号")
-            
+                    logger.info(
+                        "Bundle 自动更新完成，已发送 all_updates_completed 信号"
+                    )
+
             # 延迟 500ms 执行刷新，确保文件系统同步完成，但不阻塞 UI
             QTimer.singleShot(500, _refresh_after_update)
             return
-        
+
         bundle_name = self._update_queue.pop(0)
         bundle_data = self._bundle_data.get(bundle_name)
         if not bundle_data:
             # 如果bundle数据不存在，继续下一个
             self._start_next_update()
             return
-        
+
         interface_data = bundle_data.get("interface", {})
         if not interface_data:
             # 如果interface数据不存在，继续下一个
             self._start_next_update()
             return
-        
+
         # 创建更新器（使用 MultiResourceUpdate 子类处理多资源更新）
         updater = MultiResourceUpdate(
             service_coordinator=self.service_coordinator,
@@ -954,59 +980,67 @@ class BundleInterface(UI_BundleInterface, QWidget):
             interface=interface_data,
             force_full_download=False,
         )
-        
+
         # 连接更新完成信号
-        updater.finished.connect(
-            lambda: self._on_update_finished(bundle_name)
-        )
-        
+        updater.finished.connect(lambda: self._on_update_finished(bundle_name))
+
         self._current_updater = updater
         self._current_bundle_name = bundle_name  # 保存当前更新的bundle名称
         updater.start()
         logger.info(f"开始更新 bundle: {bundle_name}")
-        signalBus.info_bar_requested.emit("info", self.tr(f"Updating bundle: {bundle_name}"))
-    
+        signalBus.info_bar_requested.emit(
+            "info", self.tr(f"Updating bundle: {bundle_name}")
+        )
+
     def _on_update_finished(self, bundle_name: str):
         """更新线程完成回调（线程结束，但不一定表示更新成功）"""
         logger.info(f"Bundle '{bundle_name}' 更新线程完成")
         # 注意：实际的更新状态通过 update_stopped 信号处理
-    
+
     def _on_update_stopped(self, status: int):
         """更新停止信号处理（Update 类自动发送，用于通知主界面和更新 UI）"""
         if not self._current_updater or not self._current_bundle_name:
             # 如果不是当前 bundle 的更新，忽略（可能是其他地方的更新）
             return
-        
+
         bundle_name = self._current_bundle_name
         is_auto_update_all = self._is_updating_all  # 保存状态
         logger.info(f"Bundle '{bundle_name}' 更新停止，状态码: {status}")
-        
+
         if status == 1:
             # 热更新完成
             logger.info(f"Bundle '{bundle_name}' 热更新成功完成")
             if not is_auto_update_all:
                 # 如果不是自动更新所有，显示通知
-                signalBus.info_bar_requested.emit("success", self.tr(f"Bundle '{bundle_name}' updated successfully"))
+                signalBus.info_bar_requested.emit(
+                    "success", self.tr(f"Bundle '{bundle_name}' updated successfully")
+                )
         elif status == 0:
             # 用户取消
             logger.warning(f"Bundle '{bundle_name}' 更新被取消")
             if not is_auto_update_all:
-                signalBus.info_bar_requested.emit("warning", self.tr(f"Update cancelled: {bundle_name}"))
+                signalBus.info_bar_requested.emit(
+                    "warning", self.tr(f"Update cancelled: {bundle_name}")
+                )
         elif status == 2:
             # 需要重启
             logger.info(f"Bundle '{bundle_name}' 需要重启以完成更新")
             if not is_auto_update_all:
-                signalBus.info_bar_requested.emit("info", self.tr(f"Restart required for bundle: {bundle_name}"))
+                signalBus.info_bar_requested.emit(
+                    "info", self.tr(f"Restart required for bundle: {bundle_name}")
+                )
         else:
             # 其他错误
             logger.error(f"Bundle '{bundle_name}' 更新失败，状态码: {status}")
             if not is_auto_update_all:
-                signalBus.info_bar_requested.emit("error", self.tr(f"Update failed for bundle: {bundle_name}"))
-        
+                signalBus.info_bar_requested.emit(
+                    "error", self.tr(f"Update failed for bundle: {bundle_name}")
+                )
+
         # 清理当前更新器
         self._current_updater = None
         self._current_bundle_name = None
-        
+
         # 继续下一个更新（所有更新完成后再重新加载）
         self._start_next_update()
 
@@ -1029,10 +1063,10 @@ class BundleInterface(UI_BundleInterface, QWidget):
             logger.debug("已重新加载主配置")
         except Exception as e:
             logger.warning(f"重新加载主配置失败: {e}")
-        
+
         # 重新加载 bundle 列表
         self._load_bundles()
-        
+
         # 如果多资源适配已开启，检查更新
         if self._is_multi_resource_enabled():
             QCoreApplication.processEvents()
@@ -1044,14 +1078,15 @@ class BundleInterface(UI_BundleInterface, QWidget):
         if not self._is_multi_resource_enabled():
             signalBus.info_bar_requested.emit(
                 "warning",
-                self.tr("Multi-resource adaptation is not enabled. Please enable it in Settings first.")
+                self.tr(
+                    "Multi-resource adaptation is not enabled. Please enable it in Settings first."
+                ),
             )
             logger.warning("多资源适配未开启，无法添加bundle")
             return
 
         dialog = AddBundleDialog(
-            service_coordinator=self.service_coordinator,
-            parent=self
+            service_coordinator=self.service_coordinator, parent=self
         )
         if dialog.exec() != dialog.DialogCode.Accepted:
             return
@@ -1069,14 +1104,14 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
         # 重新加载 bundle 列表以显示新添加的 bundle
         self._load_bundles()
-        
+
         # 触发 UI 更新，确保列表刷新
         QCoreApplication.processEvents()
-        
+
         # 检查新添加的 bundle 的更新（如果多资源适配已开启）
         if self._is_multi_resource_enabled():
             self._check_single_bundle_update(bundle_name)
-        
+
         logger.info(f"已添加新 bundle: {bundle_name} -> {bundle_path}")
 
 
@@ -1149,7 +1184,10 @@ class AddBundleDialog(MessageBoxBase):
 
         p = Path(file_path)
         # 仅接受名为 interface.json / interface.jsonc 的文件，其它选择直接忽略（不弹错误）
-        if not p.is_file() or p.name.lower() not in ("interface.json", "interface.jsonc"):
+        if not p.is_file() or p.name.lower() not in (
+            "interface.json",
+            "interface.jsonc",
+        ):
             return
 
         base_dir = p.parent
@@ -1286,10 +1324,10 @@ class AddBundleDialog(MessageBoxBase):
 
     def _load_release_notes(self, bundle_name: str) -> dict:
         """加载指定 bundle 的更新日志
-        
+
         Args:
             bundle_name: bundle 名称（用于确定文件夹）
-            
+
         Returns:
             更新日志字典，key 为版本号，value 为日志内容
         """
@@ -1315,7 +1353,7 @@ class AddBundleDialog(MessageBoxBase):
 
     def _open_bundle_update_log(self, bundle_name: str):
         """打开指定 bundle 的更新日志对话框
-        
+
         Args:
             bundle_name: bundle 名称
         """
@@ -1331,7 +1369,7 @@ class AddBundleDialog(MessageBoxBase):
             }
 
         # 获取 bundle 显示名称
-        bundle_data = self._bundle_data.get(bundle_name, {})
+        bundle_data = self._bundle_data.get(bundle_name, {}) # type: ignore
         bundle_display_name = bundle_data.get("name", bundle_name)
 
         # 使用 NoticeMessageBox 显示更新日志

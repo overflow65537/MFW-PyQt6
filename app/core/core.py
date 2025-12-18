@@ -15,6 +15,7 @@ from app.core.service.Task_Service import TaskService
 from app.core.service.Option_Service import OptionService
 from app.core.service.interface_manager import get_interface_manager, InterfaceManager
 from app.core.runner.task_flow import TaskFlowRunner
+from app.core.log_processor import CallbackLogProcessor
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
 
@@ -67,6 +68,9 @@ class ServiceCoordinator:
         )
         schedule_store = main_config_path.parent / "schedules.json"
         self.schedule_service = ScheduleService(self, schedule_store)
+
+        # 初始化日志处理器（将 callback 信号转换为 log_output 信号）
+        self.log_processor = CallbackLogProcessor()
 
         # 连接信号
         self._connect_signals()
