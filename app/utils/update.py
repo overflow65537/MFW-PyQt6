@@ -1661,6 +1661,7 @@ class Update(BaseUpdate):
 
         mirror_id = "MFW-PyQt6"
         fixed_version = __version__
+        url = "https://github.com/overflow65537/MFW-PyQt6"
         self.release_note = ""
 
         # 将当前版本也同步为固定版本，避免与多资源上下文的版本不一致
@@ -1756,16 +1757,16 @@ class Update(BaseUpdate):
 
         # 尝试 GitHub
         logger.info("  [检查更新] 切换到 GitHub 源...")
-        if not self.url:
+        if not url:
             logger.warning("  [检查更新] GitHub: 未配置项目地址")
             return False
 
         if self.version_name and not self.force_full_download:
             github_api_url = self._form_github_url(
-                self.url, "download", self.version_name
+                url, "download", self.version_name
             )
         else:
-            github_api_url = self._form_github_url(self.url, "download")
+            github_api_url = self._form_github_url(url, "download")
         if not github_api_url:
             logger.warning("  [检查更新] GitHub: API 地址解析失败")
             return False
