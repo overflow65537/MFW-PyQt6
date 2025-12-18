@@ -1524,7 +1524,6 @@ class SettingInterface(QWidget):
         else:
             logger.info("开始执行 bundle 迁移操作")
             self._move_bundle()
-            self._update_bundle_config()
 
     def _is_bundle_migration_completed(self) -> bool:
         """
@@ -1620,34 +1619,22 @@ class SettingInterface(QWidget):
 
         return False
 
-    def _update_bundle_config(self):
+    def _update_bundle_config_internal(self, name: str, bundle_dir: Path):
         """
-        更新 multi_config.json 中的 bundle 配置。
-
+        更新 multi_config.json 中的 bundle 配置（内部方法）。
+        
         在文件移动到 bundle 目录后，更新主配置文件中对应 bundle 的路径。
         
-        注意：如果当前路径是 "./"，会强制更新为 "./bundle/{name}"，因为这是一次性迁移操作。
+        Args:
+            name: bundle 名称（从 interface.json 中获取）
+            bundle_dir: bundle 目录路径
         """
         if not self._service_coordinator:
             logger.error("service_coordinator 未初始化，无法更新 bundle 配置")
             return
 
-        # 读取 interface.json 获取项目名称
-        interface_file = Path.cwd() / "interface.json"
-        if not interface_file.exists():
-            logger.error("未找到 interface.json，无法确定 bundle 名称")
-            return
-
-        try:
-            with open(interface_file, "r", encoding="utf-8") as f:
-                interface = json.load(f)
-        except Exception as e:
-            logger.error(f"读取 interface.json 失败: {e}")
-            return
-
-        name = interface.get("name", "")
         if not name:
-            logger.error("interface.json 中未找到 name 字段")
+            logger.error("bundle 名称为空，无法更新配置")
             return
 
         # 检查当前配置中的路径
@@ -1730,7 +1717,8 @@ class SettingInterface(QWidget):
 
         bundle_dir = Path.cwd() / "bundle" / name
 
-        # 检查是否已经迁移过：如果目标目录已存在且包含文件，则跳过
+        # 检查是否已经迁移过：如果目标目录已存在且包含文件，则跳过迁移，但仍需更新配置
+        skip_migration = False
         if bundle_dir.exists() and bundle_dir.is_dir():
             has_files = any(
                 item.is_file() and not item.name.startswith(".")
@@ -1740,10 +1728,11 @@ class SettingInterface(QWidget):
                 logger.info(
                     f"检测到 bundle 目录已存在且包含文件，跳过迁移: {bundle_dir}"
                 )
-                return
+                skip_migration = True
 
-        bundle_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(f"准备将文件移动到: {bundle_dir}")
+        if not skip_migration:
+            bundle_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"准备将文件移动到: {bundle_dir}")
 
         # 读取 file_list.txt，构建排除文件路径集合
         # file_list.txt 中包含的是文件路径（相对或绝对），需要转换为规范化的路径集合
@@ -1793,60 +1782,68 @@ class SettingInterface(QWidget):
                 logger.warning(f"检查目录内容时出错 {dir_path}: {e}")
             return False
 
-        # 遍历当前目录下的所有文件和目录
+        # 遍历当前目录下的所有文件和目录（如果跳过迁移，则不需要移动文件）
         moved_count = 0
-        for item in Path.cwd().iterdir():
-            # 跳过排除列表中的项目
-            if item.name in exclude_names:
-                logger.debug(f"跳过排除项: {item.name}")
-                continue
-
-            # 处理目录：检查目录内容，如果有需要移动的内容则移动整个目录
-            if item.is_dir():
-                if _has_movable_content(item):
-                    # 目录内包含需要移动的内容，移动整个目录
-                    try:
-                        target_path = bundle_dir / item.name
-                        # 如果目标已存在，先删除或重命名
-                        if target_path.exists():
-                            logger.warning(f"目标目录已存在: {target_path}，将被覆盖")
-                            if target_path.is_dir():
-                                shutil.rmtree(target_path)
-                            else:
-                                target_path.unlink()
-
-                        shutil.move(str(item), str(bundle_dir))
-                        moved_count += 1
-                        logger.info(f"已移动目录: {item.name} -> {bundle_dir}")
-                    except Exception as e:
-                        logger.error(f"移动目录失败 {item.name}: {e}")
-                else:
-                    logger.debug(f"跳过目录（无需要移动的内容）: {item.name}")
-                continue
-
-            # 移动文件到 bundle 目录
-            try:
-                # 检查文件是否在 file_list.txt 中（完整路径检查）
-                if _should_exclude_path(item):
-                    logger.debug(f"跳过文件（在排除列表中）: {item.name}")
+        if skip_migration:
+            logger.info("跳过文件移动，直接更新配置")
+        else:
+            for item in Path.cwd().iterdir():
+                # 跳过排除列表中的项目
+                if item.name in exclude_names:
+                    logger.debug(f"跳过排除项: {item.name}")
                     continue
 
-                target_path = bundle_dir / item.name
-                # 如果目标已存在，先删除或重命名
-                if target_path.exists():
-                    logger.warning(f"目标文件已存在: {target_path}，将被覆盖")
-                    if target_path.is_file():
-                        target_path.unlink()
+                # 处理目录：检查目录内容，如果有需要移动的内容则移动整个目录
+                if item.is_dir():
+                    if _has_movable_content(item):
+                        # 目录内包含需要移动的内容，移动整个目录
+                        try:
+                            target_path = bundle_dir / item.name
+                            # 如果目标已存在，先删除或重命名
+                            if target_path.exists():
+                                logger.warning(f"目标目录已存在: {target_path}，将被覆盖")
+                                if target_path.is_dir():
+                                    shutil.rmtree(target_path)
+                                else:
+                                    target_path.unlink()
+
+                            shutil.move(str(item), str(bundle_dir))
+                            moved_count += 1
+                            logger.info(f"已移动目录: {item.name} -> {bundle_dir}")
+                        except Exception as e:
+                            logger.error(f"移动目录失败 {item.name}: {e}")
                     else:
-                        shutil.rmtree(target_path)
+                        logger.debug(f"跳过目录（无需要移动的内容）: {item.name}")
+                    continue
 
-                shutil.move(str(item), str(bundle_dir))
-                moved_count += 1
-                logger.info(f"已移动: {item.name} -> {bundle_dir}")
-            except Exception as e:
-                logger.error(f"移动文件失败 {item.name}: {e}")
+                # 移动文件到 bundle 目录
+                try:
+                    # 检查文件是否在 file_list.txt 中（完整路径检查）
+                    if _should_exclude_path(item):
+                        logger.debug(f"跳过文件（在排除列表中）: {item.name}")
+                        continue
 
-        logger.info(f"文件移动完成，共移动 {moved_count} 个文件到 {bundle_dir}")
+                    target_path = bundle_dir / item.name
+                    # 如果目标已存在，先删除或重命名
+                    if target_path.exists():
+                        logger.warning(f"目标文件已存在: {target_path}，将被覆盖")
+                        if target_path.is_file():
+                            target_path.unlink()
+                        else:
+                            shutil.rmtree(target_path)
+
+                    shutil.move(str(item), str(bundle_dir))
+                    moved_count += 1
+                    logger.info(f"已移动: {item.name} -> {bundle_dir}")
+                except Exception as e:
+                    logger.error(f"移动文件失败 {item.name}: {e}")
+
+        if not skip_migration:
+            logger.info(f"文件移动完成，共移动 {moved_count} 个文件到 {bundle_dir}")
+        
+        # 文件移动完成后（或跳过迁移时），更新 multi_config.json 中的 bundle 配置
+        # 此时 name 和 bundle_dir 已经确定，可以直接更新配置
+        self._update_bundle_config_internal(name, bundle_dir)
 
     def _confirm_enable_multi_resource(self) -> bool:
         """开启多资源适配前进行二次确认"""
