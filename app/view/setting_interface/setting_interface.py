@@ -526,7 +526,9 @@ class SettingInterface(QWidget):
 
     def _open_update_log(self):
         """打开更新日志对话框"""
-        release_notes = self._load_release_notes(self.name)
+        # 获取项目名称，用于加载对应的更新日志
+        project_name = self._get_project_name()
+        release_notes = self._load_release_notes(project_name)
 
         if not release_notes:
             # 如果没有本地更新日志，显示提示信息
@@ -1337,6 +1339,8 @@ class SettingInterface(QWidget):
         metadata = self.interface_data or {}
         icon_path = metadata.get("icon", "")
         name = metadata.get("name", "")
+        # 保存项目名称，用于更新日志等功能
+        self.name = name if name else "MFW_CFA"
         current_version = metadata.get("version", "0.0.1")
         last_version = cfg.get(cfg.latest_update_version) or current_version
         license_value = metadata.get("license", "None License")
@@ -1438,6 +1442,29 @@ class SettingInterface(QWidget):
             return {}
         interface_data = getattr(self._service_coordinator.task, "interface", None)
         return interface_data or {}
+
+    def _get_project_name(self) -> str:
+        """获取当前项目名称，用于更新日志等功能。
+        
+        优先使用已保存的 self.name，如果不存在则从 interface 数据中获取。
+        
+        Returns:
+            项目名称，如果无法获取则返回默认值 "MFW_CFA"
+        """
+        # 如果已经设置了 self.name，直接使用
+        if hasattr(self, "name") and self.name:
+            return self.name
+        
+        # 否则从 interface 数据中获取
+        metadata = self._get_interface_metadata()
+        name = metadata.get("name", "")
+        if name:
+            # 保存到 self.name 以便后续使用
+            self.name = name
+            return name
+        
+        # 如果都获取不到，返回默认值
+        return "MFW_CFA"
 
     def _apply_theme_from_config(self):
         """确保设置界面初始化时与全局主题同步。"""
@@ -2330,7 +2357,9 @@ class SettingInterface(QWidget):
         """保存更新日志到文件"""
         import os
 
-        release_notes_dir = "./release_notes"
+        # 获取项目名称，用于创建对应的文件夹
+        project_name = self._get_project_name()
+        release_notes_dir = f"./release_notes/{project_name}"
         os.makedirs(release_notes_dir, exist_ok=True)
 
         # 清理版本号中的非法字符作为文件名

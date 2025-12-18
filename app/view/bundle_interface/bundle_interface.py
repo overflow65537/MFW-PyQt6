@@ -44,6 +44,7 @@ from app.utils.logger import logger
 from app.utils.update import Update, MultiResourceUpdate
 from app.common.signal_bus import signalBus
 from app.utils.markdown_helper import render_markdown
+from app.widget.notice_message import NoticeMessageBox
 import os
 
 
@@ -112,6 +113,17 @@ class BundleListItem(QWidget):
         layout.addWidget(self.icon_label)
         layout.addLayout(text_layout)
         layout.addStretch()
+
+        # 查看更新日志按钮
+        self.update_log_button = ToolButton(FIF.QUICK_NOTE, self)
+        self.update_log_button.setFixedSize(32, 32)
+        self.update_log_button.installEventFilter(
+            ToolTipFilter(self.update_log_button, 0, ToolTipPosition.TOP)
+        )
+        self.update_log_button.setToolTip(
+            QCoreApplication.translate("BundleInterface", "Open update log")
+        )
+        layout.addWidget(self.update_log_button)
 
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
     
@@ -549,6 +561,11 @@ class BundleInterface(UI_BundleInterface, QWidget):
                     if bundle_name in self._latest_versions:
                         latest_version = self._latest_versions[bundle_name]
                         item_widget.update_latest_version(latest_version)
+
+                    # 连接更新日志按钮的点击事件
+                    item_widget.update_log_button.clicked.connect(
+                        lambda checked=False, name=bundle_name: self._open_bundle_update_log(name)
+                    )
 
                     list_item = QListWidgetItem(self.list_widget)
                     list_item.setSizeHint(item_widget.sizeHint())
@@ -1266,3 +1283,63 @@ class AddBundleDialog(MessageBoxBase):
 
     def get_bundle_info(self) -> tuple[str, str]:
         return self._bundle_name, self._bundle_path
+
+    def _load_release_notes(self, bundle_name: str) -> dict:
+        """加载指定 bundle 的更新日志
+        
+        Args:
+            bundle_name: bundle 名称（用于确定文件夹）
+            
+        Returns:
+            更新日志字典，key 为版本号，value 为日志内容
+        """
+        release_notes_dir = f"./release_notes/{bundle_name}"
+        notes = {}
+
+        if not os.path.exists(release_notes_dir):
+            return notes
+
+        try:
+            for filename in os.listdir(release_notes_dir):
+                if filename.endswith(".md"):
+                    version = filename[:-3]  # 移除 .md 后缀
+                    file_path = os.path.join(release_notes_dir, filename)
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        notes[version] = f.read()
+        except Exception as e:
+            logger.error(f"加载 bundle '{bundle_name}' 的更新日志失败: {e}")
+
+        # 按版本号排序（降序，最新版本在前）
+        sorted_notes = dict(sorted(notes.items(), key=lambda x: x[0], reverse=True))
+        return sorted_notes
+
+    def _open_bundle_update_log(self, bundle_name: str):
+        """打开指定 bundle 的更新日志对话框
+        
+        Args:
+            bundle_name: bundle 名称
+        """
+        release_notes = self._load_release_notes(bundle_name)
+
+        if not release_notes:
+            # 如果没有本地更新日志，显示提示信息
+            release_notes = {
+                self.tr("No update log"): self.tr(
+                    "No update log found locally for this bundle.\n\n"
+                    "Please check for updates first, or visit the GitHub releases page."
+                )
+            }
+
+        # 获取 bundle 显示名称
+        bundle_data = self._bundle_data.get(bundle_name, {})
+        bundle_display_name = bundle_data.get("name", bundle_name)
+
+        # 使用 NoticeMessageBox 显示更新日志
+        dialog = NoticeMessageBox(
+            parent=self,
+            title=self.tr("Update Log") + f" - {bundle_display_name}",
+            content=release_notes,
+        )
+        # 隐藏"确认且不再显示"按钮，只保留确认按钮
+        dialog.button_yes.hide()
+        dialog.exec()
