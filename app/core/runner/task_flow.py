@@ -81,11 +81,28 @@ class TaskFlowRunner(QObject):
         self._timeout_active_entry = ""
         self._timeout_restart_attempts = 0
         self._is_timeout_restart = False
-        # 当前正在执行的任务ID和记录，用于超时处理
+        # 当前正在执行的任务ID，用于超时处理
         self._current_running_task_id: str | None = None
-        self._current_running_task_record: dict[str, str] | None = None
-        # 标记是否为“手动停止”，用于控制是否发送完成通知
+        # 标记是否为"手动停止"，用于控制是否发送完成通知
         self._manual_stop = False
+        # 任务运行状态标记：每个任务开始前置为 True，收到 abort 信号时置为 False
+        self._current_task_ok: bool = True
+
+        # 监听 MaaFW 回调信号，用于接收 abort 等特殊事件
+        signalBus.callback.connect(self._handle_maafw_callback)
+
+    def _handle_maafw_callback(self, payload: Dict[str, Any]):
+        """处理来自 MaaFW 的通用回调信号（包括自定义的 abort 信号）。
+
+        当前实现只负责更新内部状态变量，不直接控制任务流转。
+        """
+        try:
+            name = payload.get("name", "")
+            if name == "abort":
+                # 收到 abort 信号：仅标记当前任务状态，等待 run_task 完成后再由调用方判断
+                self._current_task_ok = False
+        except Exception as exc:
+            logger.warning(f"处理 MaaFW 回调信号时出错: {exc}")
 
     def _handle_agent_info(self, info: str):
         if "| WARNING |" in info:
@@ -140,7 +157,6 @@ class TaskFlowRunner(QObject):
             # 超时重启时，不清除重启次数，保持当前计数
             self._timeout_timer.stop()
             self._current_running_task_id = None
-            self._current_running_task_record = None
         is_single_task_mode = task_id is not None
 
         # 初始化日志收集列表
@@ -290,18 +306,27 @@ class TaskFlowRunner(QObject):
                         continue
 
                     logger.info(f"开始执行任务: {task.name}")
+                    # 每个任务开始前，假定其可以正常完成
+                    self._current_task_ok = True
                     # 记录当前正在执行的任务，用于超时处理
                     self._current_running_task_id = task.item_id
-                    self._current_running_task_record = None  # 不再使用任务状态记录
                     try:
                         task_result = await self.run_task(task.item_id)
                         if task_result == "skipped":
                             continue
+                        # 如果任务显式返回 False，视为致命失败，终止整个任务流
                         if task_result is False:
                             msg = f"任务执行失败: {task.name}, 返回 False，终止流程"
                             logger.error(msg)
                             await self.stop_task()
                             break
+
+                        # 任务运行过程中如果触发了 abort 信号，则认为该任务未成功完成，
+                        # 但不中断整个任务流，直接切换到下一个任务。
+                        if not self._current_task_ok:
+                            logger.warning(
+                                f"任务执行被中途中止(abort): {task.name}，切换到下一个任务"
+                            )
 
                         logger.info(f"任务执行完成: {task.name}")
                         # 任务成功后重置重启计数，以便下一个任务重新开始计数
@@ -315,7 +340,6 @@ class TaskFlowRunner(QObject):
 
                     # 清除当前执行任务记录
                     self._current_running_task_id = None
-                    self._current_running_task_record = None
 
                     if self.need_stop:
                         logger.info("收到停止请求，流程终止")
@@ -505,7 +529,9 @@ class TaskFlowRunner(QObject):
             self._stop_task_timeout()
             return
         self._stop_task_timeout()
-        self._record_speedrun_runtime(task)
+        # 仅在任务未被 abort 且正常完成时记录速通耗时
+        if self._current_task_ok:
+            self._record_speedrun_runtime(task)
 
     async def stop_task(self, *, manual: bool = False):
         """停止当前正在运行的任务
@@ -562,7 +588,6 @@ class TaskFlowRunner(QObject):
         self._timeout_active_entry = ""
         self._timeout_restart_attempts = 0
         self._current_running_task_id = None
-        self._current_running_task_record = None
 
     def _on_task_timeout(self):
         """任务超时处理"""

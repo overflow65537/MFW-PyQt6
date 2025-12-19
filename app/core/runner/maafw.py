@@ -67,6 +67,8 @@ class MaaContextSink(ContextEventSink):
             detial = detial.replace("{task_id}", str(details.get("task_id", "")))
             detial = detial.replace("{list}", details.get("list", ""))
             signalBus.callback.emit({"name": "context", "details": detial})
+            if msg == "Node.Recognition.Succeeded" and details.get("abort", False):
+                signalBus.callback.emit({"name": "abort"})
 
     def on_node_next_list(
         self,
@@ -232,18 +234,18 @@ class MaaFW(QObject):
             "actions": {"success": [], "failed": []},
             "recognitions": {"success": [], "failed": []},
         }
-        
+
         # 将custom_root的父目录添加到sys.path，以便模块可以使用绝对导入
         # 例如：from MPAcustom.action.tool.LoadSetting 需要 MPAcustom 的父目录在 sys.path 中
         # 同时也要添加custom_root本身，以便相对导入也能工作
         custom_root_parent = str(custom_root.parent)
         custom_root_str = str(custom_root)
-        
+
         # 添加父目录到sys.path（用于绝对导入，如 from MPAcustom.xxx）
         if custom_root_parent not in sys.path:
             sys.path.insert(0, custom_root_parent)
             logger.debug(f"已将父目录 {custom_root_parent} 添加到 sys.path")
-        
+
         # 添加custom_root本身到sys.path（用于相对导入）
         if custom_root_str not in sys.path:
             sys.path.insert(0, custom_root_str)
@@ -301,16 +303,16 @@ class MaaFW(QObject):
             # 使用文件名作为模块名，保持与custom内部引用一致
             # 这样custom文件夹内部的代码可以使用 import custom 等正常引用
             module_name = Path(custom_file_path).stem
-            
+
             # 使用文件路径作为sys.modules的key，避免同名模块冲突
             # 但模块的__name__仍然是文件名，这样custom内部的引用可以正常工作
             module_key = str(custom_file_path)
-            
+
             # 如果该文件路径的模块已存在，先移除（可能是之前加载的）
             if module_key in sys.modules:
                 logger.debug(f"移除已存在的模块缓存: {module_key}")
                 del sys.modules[module_key]
-            
+
             spec = importlib.util.spec_from_file_location(module_name, custom_file_path)
             if spec is None or spec.loader is None:
                 reason = f"无法获取模块 {module_name} 的 spec，跳过加载"
