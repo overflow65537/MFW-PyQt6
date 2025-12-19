@@ -277,12 +277,37 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             if name:
                 task_special_map[name] = task_def.get("spt", False)
 
+        # 获取当前配置中的资源
+        current_resource_name = ""
+        try:
+            pre_config_task = self.service_coordinator.task.get_task("Pre-Configuration")
+            if pre_config_task:
+                current_resource_name = pre_config_task.task_option.get("resource", "")
+        except Exception:
+            pass
+
         def _include(task_name: str) -> bool:
             is_special = task_special_map.get(task_name, False)
             if self._task_filter_mode == "special":
-                return is_special
-            if self._task_filter_mode == "normal":
-                return not is_special
+                if not is_special:
+                    return False
+            elif self._task_filter_mode == "normal":
+                if is_special:
+                    return False
+            
+            # 根据资源过滤任务
+            if current_resource_name:
+                for task_def in interface.get("task", []):
+                    if task_def.get("name") == task_name:
+                        task_resources = task_def.get("resource", [])
+                        # 如果任务没有 resource 字段，或者 resource 为空列表，表示所有资源都可用
+                        if not task_resources:
+                            return True
+                        # 如果任务的 resource 列表包含当前资源，则显示
+                        if current_resource_name in task_resources:
+                            return True
+                        return False
+            
             return True
 
         return {name: opts for name, opts in task_map.items() if _include(name)}

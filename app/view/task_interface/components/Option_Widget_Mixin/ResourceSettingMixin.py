@@ -1021,7 +1021,19 @@ class ResourceSettingMixin:
                     res_combo.installEventFilter(ToolTipFilter(res_combo))
                     res_combo.setToolTip(description)
                 self._auto_save_options()
+                # 资源变化时，通知任务列表更新
+                self._notify_task_list_update()
                 break
+    
+    def _notify_task_list_update(self):
+        """通知任务列表更新（资源变化时调用）"""
+        try:
+            # 通过信号总线通知任务列表更新
+            if hasattr(self, 'service_coordinator'):
+                # 发出 option_updated 信号，任务列表可以监听此信号来更新
+                self.service_coordinator.signal_bus.option_updated.emit(self.current_config)
+        except Exception:
+            pass
 
     def _on_search_combo_changed(self, device_name):
         if self._syncing:

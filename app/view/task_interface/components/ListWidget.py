@@ -147,6 +147,10 @@ class TaskDragListWidget(BaseListWidget):
         self.service_coordinator.signal_bus.config_changed.connect(
             self._on_config_changed
         )
+        # 监听资源变化信号，更新任务列表
+        self.service_coordinator.signal_bus.option_updated.connect(
+            self._on_resource_changed
+        )
         service_coordinator.fs_signal_bus.fs_task_modified.connect(self.modify_task)
         service_coordinator.fs_signal_bus.fs_task_removed.connect(self.remove_task)
         self.update_list()
@@ -162,10 +166,57 @@ class TaskDragListWidget(BaseListWidget):
     def _should_include(self, task: TaskItem) -> bool:
         """根据过滤模式判断任务是否应显示在当前列表。"""
         if self._filter_mode == "special":
-            return task.is_special
-        if self._filter_mode == "normal":
-            return not task.is_special
+            if not task.is_special:
+                return False
+        elif self._filter_mode == "normal":
+            if task.is_special:
+                return False
+        
+        # 根据资源过滤任务
+        if not self._should_show_by_resource(task):
+            return False
+        
         return True
+    
+    def _should_show_by_resource(self, task: TaskItem) -> bool:
+        """根据当前选择的资源判断任务是否应该显示"""
+        # 基础任务（资源、完成后操作）始终显示
+        if task.is_base_task():
+            return True
+        
+        # 获取当前配置中的资源
+        try:
+            # 从 Pre-Configuration 任务中获取资源
+            pre_config_task = self.service_coordinator.task.get_task("Pre-Configuration")
+            if not pre_config_task:
+                return True  # 如果没有 Pre-Configuration 任务，显示所有任务
+            
+            current_resource_name = pre_config_task.task_option.get("resource", "")
+            if not current_resource_name:
+                return True  # 如果没有选择资源，显示所有任务
+            
+            # 获取 interface 中的任务定义
+            interface = getattr(self.service_coordinator.task, "interface", {})
+            if not interface:
+                return True
+            
+            # 查找任务定义中的 resource 字段
+            for task_def in interface.get("task", []):
+                if task_def.get("name") == task.name:
+                    task_resources = task_def.get("resource", [])
+                    # 如果任务没有 resource 字段，或者 resource 为空列表，表示所有资源都可用
+                    if not task_resources:
+                        return True
+                    # 如果任务的 resource 列表包含当前资源，则显示
+                    if current_resource_name in task_resources:
+                        return True
+                    return False
+            
+            # 如果找不到任务定义，默认显示
+            return True
+        except Exception:
+            # 发生错误时，默认显示所有任务
+            return True
 
     def dropEvent(self, event):
         # 拖动前收集任务和保护位置
@@ -200,6 +251,13 @@ class TaskDragListWidget(BaseListWidget):
         self._pending_refresh = True
         self._show_loading_overlay()
         self._fade_out.start()
+    
+    def _on_resource_changed(self, options: dict) -> None:
+        """当资源变化时，更新任务列表显示"""
+        # 检查是否是资源变化（通过检查 options 中是否有 resource 字段）
+        if "resource" in options:
+            # 资源变化时，刷新任务列表
+            self.update_list()
 
     def _on_fade_out_finished(self) -> None:
         if not self._pending_refresh:
@@ -302,12 +360,26 @@ class TaskDragListWidget(BaseListWidget):
 
     def modify_task(self, task: TaskItem):
         """添加或更新任务项到列表（如果存在同 id 的任务则更新，否则新增）。"""
+        # 先尝试查找是否已有同 id 的项
+        existing_widget = self._task_widgets.get(task.item_id)
+        
+        # 检查任务是否符合过滤条件
         if not self._should_include(task):
+            # 如果任务不符合过滤条件，但已经存在于列表中，则移除它
+            if existing_widget:
+                for i in range(self.count()):
+                    item = self.item(i)
+                    widget = self.itemWidget(item)
+                    if widget == existing_widget:
+                        self.takeItem(i)
+                        widget.deleteLater()
+                        self._task_widgets.pop(task.item_id, None)
+                        break
             return
+        
         # 获取 interface 配置
         interface = getattr(self.service_coordinator.task, "interface", None)
-        # 先尝试查找是否已有同 id 的项，若有则进行更新
-        existing_widget = self._task_widgets.get(task.item_id)
+        # 如果已有同 id 的项，进行更新
         if existing_widget:
             existing_widget.task = task
             existing_widget.update_interface(interface)
