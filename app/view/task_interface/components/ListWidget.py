@@ -586,7 +586,7 @@ class ConfigListWidget(BaseListWidget):
     def _add_config_to_list(self, config: ConfigItem):
         """添加单个配置项到列表"""
         list_item = QListWidgetItem()
-        config_widget = ConfigListItem(config)
+        config_widget = ConfigListItem(config, self.service_coordinator)
         self.addItem(list_item)
         self.setItemWidget(list_item, config_widget)
 

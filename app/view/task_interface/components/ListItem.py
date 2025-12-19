@@ -110,6 +110,60 @@ class BaseListItem(QWidget):
                 break
             parent = parent.parent()
 
+    def _create_icon_label(self, icon_path: str, base_path: Path | None = None) -> BodyLabel:
+        """创建图标标签（通用方法，供子类复用）
+
+        Args:
+            icon_path: 图标路径（可能是相对路径或绝对路径）
+            base_path: 如果 icon_path 是相对路径，相对于此路径。如果为 None，则相对于项目根目录
+
+        Returns:
+            BodyLabel 对象，已加载图标
+        """
+        icon_label = BodyLabel(self)
+        icon_label.setFixedSize(24, 24)
+        icon_label.setScaledContents(True)
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # 加载图标
+        self._load_icon_to_label(icon_label, icon_path, base_path)
+
+        return icon_label
+
+    def _load_icon_to_label(
+        self, icon_label: BodyLabel, icon_path: str, base_path: Path | None = None
+    ):
+        """将图标加载到标签中（通用方法，供子类复用）
+
+        Args:
+            icon_label: 要加载图标的标签
+            icon_path: 图标路径（可能是相对路径或绝对路径）
+            base_path: 如果 icon_path 是相对路径，相对于此路径。如果为 None，则相对于项目根目录
+        """
+        icon_file = Path(icon_path)
+        
+        # 处理相对路径
+        if not icon_file.is_absolute():
+            if base_path:
+                icon_file = base_path / icon_path.lstrip("./")
+            else:
+                # 如果是相对路径，假设相对于项目根目录
+                project_root = Path.cwd()
+                icon_file = project_root / icon_path.lstrip("./")
+
+        # 加载图标
+        if icon_file.exists():
+            pixmap = QPixmap(str(icon_file))
+            if not pixmap.isNull():
+                icon_label.setPixmap(
+                    pixmap.scaled(
+                        24,
+                        24,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                )
+
 
 # 任务列表项组件
 class TaskListItem(BaseListItem):
@@ -216,51 +270,31 @@ class TaskListItem(BaseListItem):
                     return icon_path
         return None
 
-    def _create_icon_label(self, icon_path: str) -> BodyLabel:
-        """创建图标标签
+    def _create_icon_label(self, icon_path: str, base_path: Path | None = None) -> BodyLabel:
+        """创建图标标签（调用基类方法）
 
         Args:
             icon_path: 图标路径（可能是相对路径或绝对路径）
+            base_path: 如果 icon_path 是相对路径，相对于此路径。如果为 None，则相对于项目根目录
 
         Returns:
             BodyLabel 对象，已加载图标
         """
-        icon_label = BodyLabel(self)
-        icon_label.setFixedSize(24, 24)
-        icon_label.setScaledContents(True)
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # 使用基类方法，相对路径相对于项目根目录
+        return super()._create_icon_label(icon_path, base_path=base_path)
 
-        # 加载图标
-        self._load_icon_to_label(icon_label, icon_path)
-
-        return icon_label
-
-    def _load_icon_to_label(self, icon_label: BodyLabel, icon_path: str):
-        """将图标加载到标签中
+    def _load_icon_to_label(
+        self, icon_label: BodyLabel, icon_path: str, base_path: Path | None = None
+    ):
+        """将图标加载到标签中（调用基类方法）
 
         Args:
             icon_label: 要加载图标的标签
             icon_path: 图标路径（可能是相对路径或绝对路径）
+            base_path: 如果 icon_path 是相对路径，相对于此路径。如果为 None，则相对于项目根目录
         """
-        # 处理相对路径：相对于项目根目录（interface.json 所在目录）
-        icon_file = Path(icon_path)
-        if not icon_file.is_absolute():
-            # 如果是相对路径，假设相对于项目根目录
-            project_root = Path.cwd()
-            icon_file = project_root / icon_path.lstrip("./")
-
-        # 加载图标
-        if icon_file.exists():
-            pixmap = QPixmap(str(icon_file))
-            if not pixmap.isNull():
-                icon_label.setPixmap(
-                    pixmap.scaled(
-                        24,
-                        24,
-                        Qt.AspectRatioMode.KeepAspectRatio,
-                        Qt.TransformationMode.SmoothTransformation,
-                    )
-                )
+        # 使用基类方法，相对路径相对于项目根目录
+        super()._load_icon_to_label(icon_label, icon_path, base_path=base_path)
 
     def _update_icon(self):
         """更新图标显示"""
@@ -405,8 +439,128 @@ class SpecialTaskListItem(TaskListItem):
 
 # 配置列表项组件
 class ConfigListItem(BaseListItem):
-    def __init__(self, config: ConfigItem, parent=None):
+    def __init__(
+        self,
+        config: ConfigItem,
+        service_coordinator: ServiceCoordinator | None = None,
+        parent=None,
+    ):
+        self.service_coordinator = service_coordinator
         super().__init__(config, parent)
+
+    def _init_ui(self):
+        # 创建水平布局
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(5, 2, 5, 2)
+
+        # 添加图标（如果有）
+        icon_path = self._get_bundle_icon_path()
+        if icon_path:
+            self.icon_label = self._create_icon_label(icon_path)
+            layout.addWidget(self.icon_label)
+        else:
+            self.icon_label = None
+
+        # 添加标签
+        self.name_label = self._create_name_label()
+        layout.addWidget(self.name_label)
+
+        # 添加设置按钮
+        self.setting_button = self._create_setting_button()
+        self.setting_button.clicked.connect(self._select_in_parent_list)
+        layout.addWidget(self.setting_button)
+
+    def _get_bundle_icon_path(self) -> str | None:
+        """从配置的 bundle 中获取图标路径
+
+        Returns:
+            图标路径字符串，如果不存在则返回 None
+        """
+        if not self.service_coordinator:
+            return None
+
+        bundle_name = getattr(self.item, "bundle", None)
+        if not bundle_name or not isinstance(bundle_name, str):
+            return None
+
+        try:
+            # 获取 bundle 信息
+            bundle_info = self.service_coordinator.config.get_bundle(bundle_name)
+            if not bundle_info:
+                return None
+
+            bundle_path_str = bundle_info.get("path", "")
+            if not bundle_path_str:
+                return None
+
+            # 解析 bundle 路径
+            bundle_path = Path(bundle_path_str)
+            if not bundle_path.is_absolute():
+                bundle_path = Path.cwd() / bundle_path
+
+            # 查找 interface.json 或 interface.jsonc
+            interface_path = bundle_path / "interface.jsonc"
+            if not interface_path.exists():
+                interface_path = bundle_path / "interface.json"
+
+            if not interface_path.exists():
+                return None
+
+            # 使用 preview_interface 获取 interface 数据（不改变当前激活的 interface）
+            from app.core.service.interface_manager import get_interface_manager
+
+            interface_manager = get_interface_manager()
+            current_language = interface_manager.get_language()
+            interface_data = interface_manager.preview_interface(
+                interface_path, language=current_language
+            )
+
+            if not interface_data:
+                return None
+
+            # 获取图标路径
+            icon_relative = interface_data.get("icon", "")
+            if not icon_relative:
+                return None
+
+            # 图标路径相对于 bundle 路径
+            icon_path = bundle_path / icon_relative
+            if icon_path.exists():
+                return str(icon_path)
+
+            return None
+        except Exception as e:
+            from app.utils.logger import logger
+
+            logger.warning(f"获取 bundle '{bundle_name}' 图标失败: {e}")
+            return None
+
+    def _create_icon_label(self, icon_path: str, base_path: Path | None = None) -> BodyLabel:
+        """创建图标标签（调用基类方法）
+
+        Args:
+            icon_path: 图标路径（绝对路径）
+            base_path: 如果 icon_path 是相对路径，相对于此路径。如果为 None，则相对于项目根目录
+
+        Returns:
+            BodyLabel 对象，已加载图标
+        """
+        # 使用基类方法，传入 bundle_path 作为 base_path（如果路径是相对的话）
+        # 但这里 icon_path 已经是绝对路径，所以 base_path 传 None 即可
+        return super()._create_icon_label(icon_path, base_path=base_path)
+
+    def _load_icon_to_label(
+        self, icon_label: BodyLabel, icon_path: str, base_path: Path | None = None
+    ):
+        """将图标加载到标签中（调用基类方法）
+
+        Args:
+            icon_label: 要加载图标的标签
+            icon_path: 图标路径（绝对路径）
+            base_path: 如果 icon_path 是相对路径，相对于此路径。如果为 None，则相对于项目根目录
+        """
+        # 使用基类方法，icon_path 已经是绝对路径
+        super()._load_icon_to_label(icon_label, icon_path, base_path=base_path)
 
     def contextMenuEvent(self, event):
         """右键菜单：复制配置 ID"""
