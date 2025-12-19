@@ -173,6 +173,11 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pyinstaller
           python -m pip install -r ./requirements.txt
+      
+      - name: lrelease i18n
+        run: |
+          python ./lrelease.py
+        shell: pwsh
 
       - name: Install(macos)
         if: matrix.platform == 'macos'
