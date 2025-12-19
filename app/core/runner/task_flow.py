@@ -305,6 +305,11 @@ class TaskFlowRunner(QObject):
                     elif task.is_special:
                         continue
 
+                    # 根据资源过滤任务：跳过隐藏的任务
+                    if not self._should_run_task_by_resource(task):
+                        logger.info(f"任务 '{task.name}' 因资源过滤被跳过")
+                        continue
+
                     logger.info(f"开始执行任务: {task.name}")
                     # 每个任务开始前，假定其可以正常完成
                     self._current_task_ok = True
@@ -1552,3 +1557,49 @@ class TaskFlowRunner(QObject):
                 return task
 
         return {}
+
+    def _should_run_task_by_resource(self, task: TaskItem) -> bool:
+        """根据当前选择的资源判断任务是否应该执行
+        
+        规则：
+        - 基础任务（资源、完成后操作）始终执行
+        - 如果任务没有 resource 字段或 resource 为空列表，表示所有资源都可用，执行
+        - 如果任务的 resource 列表包含当前资源，则执行
+        - 否则跳过
+        """
+        # 基础任务始终执行
+        if task.is_base_task():
+            return True
+        
+        # 获取当前配置中的资源
+        try:
+            pre_config_task = self.task_service.get_task(PRE_CONFIGURATION)
+            if not pre_config_task:
+                return True  # 如果没有 Pre-Configuration 任务，执行所有任务
+            
+            current_resource_name = pre_config_task.task_option.get("resource", "")
+            if not current_resource_name:
+                return True  # 如果没有选择资源，执行所有任务
+            
+            # 获取 interface 中的任务定义
+            interface = self.task_service.interface
+            if not interface:
+                return True
+            
+            # 查找任务定义中的 resource 字段
+            for task_def in interface.get("task", []):
+                if task_def.get("name") == task.name:
+                    task_resources = task_def.get("resource", [])
+                    # 如果任务没有 resource 字段，或者 resource 为空列表，表示所有资源都可用
+                    if not task_resources:
+                        return True
+                    # 如果任务的 resource 列表包含当前资源，则执行
+                    if current_resource_name in task_resources:
+                        return True
+                    return False
+            
+            # 如果找不到任务定义，默认执行
+            return True
+        except Exception:
+            # 发生错误时，默认执行所有任务
+            return True

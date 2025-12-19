@@ -133,7 +133,9 @@ class BundleListItem(QWidget):
         self.latest_version = latest_version
         if latest_version and latest_version != self.bundle_version:
             # 显示最新版本（蓝色表示有更新）
-            self.latest_version_label.setText(f"最新版本: {latest_version}")
+            self.latest_version_label.setText(
+                self.tr("Latest version: {}").format(latest_version)
+            )
             self.latest_version_label.setStyleSheet("font-size: 12px; color: #0078d4;")
             self.latest_version_label.show()
         else:
@@ -174,18 +176,17 @@ class BundleDetailWidget(QWidget):
 
     def _add_description_section(self, parent_layout: QVBoxLayout):
         """添加描述区域"""
-        _translate = QCoreApplication.translate
         section_layout = QVBoxLayout()
         section_layout.setSpacing(8)
         section_layout.setContentsMargins(0, 0, 0, 0)
 
-        title = TitleLabel(_translate("BundleInterface", "描述"), self)
+        title = TitleLabel(self.tr("Description"), self)
         section_layout.addWidget(title)
 
         description_text = (
             self.interface_data.get("description", "")
             or self.interface_data.get("welcome", "")
-            or _translate("BundleInterface", "暂无描述")
+            or self.tr("No description available")
         )
         description_label = BodyLabel(self)
         description_label.setWordWrap(True)
@@ -203,16 +204,15 @@ class BundleDetailWidget(QWidget):
 
     def _add_contact_section(self, parent_layout: QVBoxLayout):
         """添加联系方式区域"""
-        _translate = QCoreApplication.translate
         section_layout = QVBoxLayout()
         section_layout.setSpacing(8)
         section_layout.setContentsMargins(0, 0, 0, 0)
 
-        title = TitleLabel(_translate("BundleInterface", "联系方式"), self)
+        title = TitleLabel(self.tr("Contact"), self)
         section_layout.addWidget(title)
 
-        contact_text = self.interface_data.get("contact", "") or _translate(
-            "BundleInterface", "暂无联系方式"
+        contact_text = self.interface_data.get("contact", "") or self.tr(
+            "No contact information available"
         )
         contact_label = BodyLabel(self)
         contact_label.setWordWrap(True)
@@ -361,7 +361,8 @@ class UI_BundleInterface(object):
 
         # 默认提示
         self.default_label = BodyLabel(
-            _translate("BundleInterface", "请从左侧选择一个 Bundle"), self.detail_widget
+            _translate("BundleInterface", "Please select a Bundle from the left"),
+            self.detail_widget,
         )
         self.default_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.default_label.setStyleSheet("font-size: 16px; color: gray; padding: 40px;")
@@ -419,6 +420,9 @@ class BundleInterface(UI_BundleInterface, QWidget):
         # 设置标题
         self.list_title.setText(self.tr("Bundle List"))
         self.detail_title.setText(self.tr("Bundle Details"))
+
+        self.auto_update_switch.setText(self.tr("Auto Update"))
+        self.auto_update_switch.setToolTip(self.tr("Auto Update"))
 
         # 连接信号
         self.list_widget.currentItemChanged.connect(self._on_bundle_selected)
@@ -566,7 +570,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
                                 logger.error(f"直接读取 interface 文件也失败: {e2}")
 
                     # 获取版本信息
-                    bundle_version = interface_data.get("version", "未知版本")
+                    bundle_version = interface_data.get("version", self.tr("Unknown version"))
 
                     # 保存数据
                     self._bundle_data[bundle_name] = {
@@ -901,7 +905,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 # 如果没有找到更新，使用当前版本
                 bundle_data = self._bundle_data.get(bundle_name, {})
                 interface_data = bundle_data.get("interface", {})
-                current_version = interface_data.get("version", "未知版本")
+                current_version = interface_data.get("version", self.tr("Unknown version"))
                 self._update_bundle_item_version(bundle_name, current_version)
         except Exception as e:
             logger.error(
@@ -1244,6 +1248,66 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
         logger.info(f"已添加新 bundle: {bundle_name} -> {bundle_path}")
 
+    def _load_release_notes(self, bundle_name: str) -> dict:
+        """加载指定 bundle 的更新日志
+
+        Args:
+            bundle_name: bundle 名称（用于确定文件夹）
+
+        Returns:
+            更新日志字典，key 为版本号，value 为日志内容
+        """
+        release_notes_dir = f"./release_notes/{bundle_name}"
+        notes = {}
+
+        if not os.path.exists(release_notes_dir):
+            return notes
+
+        try:
+            for filename in os.listdir(release_notes_dir):
+                if filename.endswith(".md"):
+                    version = filename[:-3]  # 移除 .md 后缀
+                    file_path = os.path.join(release_notes_dir, filename)
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        notes[version] = f.read()
+        except Exception as e:
+            logger.error(f"加载 bundle '{bundle_name}' 的更新日志失败: {e}")
+
+        # 按版本号排序（降序，最新版本在前）
+        sorted_notes = dict(sorted(notes.items(), key=lambda x: x[0], reverse=True))
+        return sorted_notes
+
+    def _open_bundle_update_log(self, bundle_name: str):
+        """打开指定 bundle 的更新日志对话框
+
+        Args:
+            bundle_name: bundle 名称
+        """
+        release_notes = self._load_release_notes(bundle_name)
+
+        if not release_notes:
+            # 如果没有本地更新日志，显示提示信息
+            release_notes = {
+                self.tr("No update log"): self.tr(
+                    "No update log found locally for this bundle.\n\n"
+                    "Please check for updates first, or visit the GitHub releases page."
+                )
+            }
+
+        # 获取 bundle 显示名称
+        bundle_data = self._bundle_data.get(bundle_name, {})
+        bundle_display_name = bundle_data.get("name", bundle_name)
+
+        # 使用 NoticeMessageBox 显示更新日志
+        dialog = NoticeMessageBox(
+            parent=self,
+            title=self.tr("Update Log") + f" - {bundle_display_name}",
+            content=release_notes,
+        )
+        # 隐藏"确认且不再显示"按钮，只保留确认按钮
+        dialog.button_yes.hide()
+        dialog.exec()
+
 
 class AddBundleDialog(MessageBoxBase):
     """添加 Bundle 对话框"""
@@ -1451,63 +1515,3 @@ class AddBundleDialog(MessageBoxBase):
 
     def get_bundle_info(self) -> tuple[str, str]:
         return self._bundle_name, self._bundle_path
-
-    def _load_release_notes(self, bundle_name: str) -> dict:
-        """加载指定 bundle 的更新日志
-
-        Args:
-            bundle_name: bundle 名称（用于确定文件夹）
-
-        Returns:
-            更新日志字典，key 为版本号，value 为日志内容
-        """
-        release_notes_dir = f"./release_notes/{bundle_name}"
-        notes = {}
-
-        if not os.path.exists(release_notes_dir):
-            return notes
-
-        try:
-            for filename in os.listdir(release_notes_dir):
-                if filename.endswith(".md"):
-                    version = filename[:-3]  # 移除 .md 后缀
-                    file_path = os.path.join(release_notes_dir, filename)
-                    with open(file_path, "r", encoding="utf-8") as f:
-                        notes[version] = f.read()
-        except Exception as e:
-            logger.error(f"加载 bundle '{bundle_name}' 的更新日志失败: {e}")
-
-        # 按版本号排序（降序，最新版本在前）
-        sorted_notes = dict(sorted(notes.items(), key=lambda x: x[0], reverse=True))
-        return sorted_notes
-
-    def _open_bundle_update_log(self, bundle_name: str):
-        """打开指定 bundle 的更新日志对话框
-
-        Args:
-            bundle_name: bundle 名称
-        """
-        release_notes = self._load_release_notes(bundle_name)
-
-        if not release_notes:
-            # 如果没有本地更新日志，显示提示信息
-            release_notes = {
-                self.tr("No update log"): self.tr(
-                    "No update log found locally for this bundle.\n\n"
-                    "Please check for updates first, or visit the GitHub releases page."
-                )
-            }
-
-        # 获取 bundle 显示名称
-        bundle_data = self._bundle_data.get(bundle_name, {}) # type: ignore
-        bundle_display_name = bundle_data.get("name", bundle_name)
-
-        # 使用 NoticeMessageBox 显示更新日志
-        dialog = NoticeMessageBox(
-            parent=self,
-            title=self.tr("Update Log") + f" - {bundle_display_name}",
-            content=release_notes,
-        )
-        # 隐藏"确认且不再显示"按钮，只保留确认按钮
-        dialog.button_yes.hide()
-        dialog.exec()
