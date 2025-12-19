@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 
 from PySide6.QtWidgets import (
     QWidget,
@@ -7,7 +8,7 @@ from PySide6.QtWidgets import (
 )
 
 from PySide6.QtCore import Signal, Qt
-from PySide6.QtGui import QPalette, QGuiApplication
+from PySide6.QtGui import QPalette, QGuiApplication, QPixmap
 
 from qfluentwidgets import (
     CheckBox,
@@ -139,10 +140,7 @@ class TaskListItem(BaseListItem):
         """根据 interface 中的 task 列表决定是否允许此任务勾选/显示为禁用状态。"""
         interface_task_defs = self.interface.get("task")
         self._interface_allowed = True
-        if (
-            isinstance(interface_task_defs, list)
-            and not self.task.is_base_task()
-        ):
+        if isinstance(interface_task_defs, list) and not self.task.is_base_task():
             allowed_names = [
                 task_def.get("name")
                 for task_def in interface_task_defs
@@ -164,9 +162,11 @@ class TaskListItem(BaseListItem):
         return self._interface_allowed
 
     def update_interface(self, interface: dict | None):
-        """在接口数据变更时重新评估任务是否被允许显示。"""
+        """在接口数据变更时重新评估任务是否被允许显示，并更新图标。"""
         self.interface = interface or {}
         self._apply_interface_constraints()
+        # 更新图标
+        self._update_icon()
 
     def _init_ui(self):
         # 创建水平布局
@@ -180,6 +180,14 @@ class TaskListItem(BaseListItem):
         self.checkbox.setTristate(False)
         layout.addWidget(self.checkbox)
 
+        # 添加图标（如果有）
+        icon_path = self._get_task_icon_path()
+        if icon_path:
+            self.icon_label = self._create_icon_label(icon_path)
+            layout.addWidget(self.icon_label)
+        else:
+            self.icon_label = None
+
         # 添加标签
         self.name_label = self._create_name_label()
         layout.addWidget(self.name_label)
@@ -188,6 +196,97 @@ class TaskListItem(BaseListItem):
         self.setting_button = self._create_setting_button()
         self.setting_button.clicked.connect(self._select_in_parent_list)
         layout.addWidget(self.setting_button)
+
+    def _get_task_icon_path(self) -> str | None:
+        """从 interface.task 中获取当前任务的图标路径
+
+        Returns:
+            图标路径字符串，如果不存在则返回 None
+        """
+        if not self.interface:
+            return None
+
+        interface_task_defs = self.interface.get("task", [])
+
+        # 查找与当前任务同名的数据块
+        for task_def in interface_task_defs:
+            if task_def.get("name") == self.task.name:
+                icon_path = task_def.get("icon")
+                if icon_path and isinstance(icon_path, str):
+                    return icon_path
+        return None
+
+    def _create_icon_label(self, icon_path: str) -> BodyLabel:
+        """创建图标标签
+
+        Args:
+            icon_path: 图标路径（可能是相对路径或绝对路径）
+
+        Returns:
+            BodyLabel 对象，已加载图标
+        """
+        icon_label = BodyLabel(self)
+        icon_label.setFixedSize(24, 24)
+        icon_label.setScaledContents(True)
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # 加载图标
+        self._load_icon_to_label(icon_label, icon_path)
+
+        return icon_label
+
+    def _load_icon_to_label(self, icon_label: BodyLabel, icon_path: str):
+        """将图标加载到标签中
+
+        Args:
+            icon_label: 要加载图标的标签
+            icon_path: 图标路径（可能是相对路径或绝对路径）
+        """
+        # 处理相对路径：相对于项目根目录（interface.json 所在目录）
+        icon_file = Path(icon_path)
+        if not icon_file.is_absolute():
+            # 如果是相对路径，假设相对于项目根目录
+            project_root = Path.cwd()
+            icon_file = project_root / icon_path.lstrip("./")
+
+        # 加载图标
+        if icon_file.exists():
+            pixmap = QPixmap(str(icon_file))
+            if not pixmap.isNull():
+                icon_label.setPixmap(
+                    pixmap.scaled(
+                        24,
+                        24,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                )
+
+    def _update_icon(self):
+        """更新图标显示"""
+        icon_path = self._get_task_icon_path()
+        layout = self.layout()
+
+        if layout is None or not isinstance(layout, QHBoxLayout):
+            return
+
+        if icon_path:
+            # 如果有图标路径
+            if self.icon_label is None:
+                # 如果还没有图标标签，创建并插入到 checkbox 和 name_label 之间
+                self.icon_label = self._create_icon_label(icon_path)
+                # 找到 checkbox 和 name_label 的位置
+                checkbox_index = layout.indexOf(self.checkbox)
+                layout.insertWidget(checkbox_index + 1, self.icon_label)
+            else:
+                # 如果已有图标标签，更新图标
+                self._load_icon_to_label(self.icon_label, icon_path)
+        else:
+            # 如果没有图标路径，移除图标标签
+            if self.icon_label is not None:
+                layout.removeWidget(self.icon_label)
+                self.icon_label.deleteLater()
+                self.icon_label = None
 
     def _get_display_name(self):
         """获取显示名称（从 interface 获取 label，否则使用 name）
@@ -260,14 +359,14 @@ class SpecialTaskListItem(TaskListItem):
     ):
         # 先调用父类初始化，创建checkbox等UI元素
         super().__init__(task, interface, service_coordinator, parent)
-        
+
         # 隐藏checkbox
         self.checkbox.hide()
-        
+
         # 将整个item的点击事件绑定到checkbox逻辑
         # 点击name_label时触发选择
         self.name_label.clicked.connect(self._on_item_clicked)
-        
+
         # 设置整个widget可点击
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
@@ -275,18 +374,18 @@ class SpecialTaskListItem(TaskListItem):
         """处理item点击事件：相当于点击checkbox，并切换到任务设置"""
         if not self._interface_allowed or self.task.is_base_task():
             return
-        
+
         # 如果当前未选中，则选中（相当于点击checkbox）
         # 这会触发checkbox状态改变，发射checkbox_changed信号，进而触发单选逻辑
         if not self.task.is_checked:
             # 触发checkbox状态改变，这会发射checkbox_changed信号
             # 单选逻辑会在_on_task_checkbox_changed中处理
             self.checkbox.setChecked(True)
-        
+
         # 无论是否已选中，都切换到对应的任务设置（触发任务选择）
         if self.service_coordinator:
             self.service_coordinator.select_task(self.task.item_id)
-        
+
         # 在父列表中选择当前项
         self._select_in_parent_list()
 
