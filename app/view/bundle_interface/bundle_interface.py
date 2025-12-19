@@ -34,6 +34,7 @@ from qfluentwidgets import (
     FluentIcon as FIF,
     TogglePushButton,
     MessageBoxBase,
+    TransparentPushButton,
     LineEdit,
     SubtitleLabel,
 )
@@ -370,6 +371,23 @@ class UI_BundleInterface(object):
         self.scroll_area.setWidget(self.detail_widget)
         detail_card_layout.addWidget(self.scroll_area)
 
+        # 许可证 / 欢迎信息按钮（位于滚动区域下方，靠右）
+        self.license_button = TransparentPushButton(
+            _translate("BundleInterface", "License"), self.detail_card, FIF.CERTIFICATE
+        )
+        self.license_button.setFixedHeight(36)
+
+        self.welcome_button = TransparentPushButton(
+            _translate("BundleInterface", "Welcome"), self.detail_card, FIF.INFO
+        )
+        self.welcome_button.setFixedHeight(36)
+
+        bottom_button_layout = QHBoxLayout()
+        bottom_button_layout.addStretch()
+        bottom_button_layout.addWidget(self.welcome_button)
+        bottom_button_layout.addWidget(self.license_button)
+        detail_card_layout.addLayout(bottom_button_layout)
+
         detail_panel_layout.addWidget(self.detail_card)
 
 
@@ -381,7 +399,9 @@ class BundleInterface(UI_BundleInterface, QWidget):
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         QWidget.__init__(self, parent=parent)
         UI_BundleInterface.__init__(
-            self, service_coordinator=service_coordinator, parent=parent
+            self,
+            service_coordinator=service_coordinator,
+            parent=parent,
         )
         self.setupUi(self)
         self.service_coordinator = service_coordinator
@@ -394,6 +414,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         self._current_bundle_name: Optional[str] = None  # 当前正在更新的bundle名称
         self._update_queue: list[str] = []  # 更新队列
         self._is_updating_all = False
+        self._selected_bundle_name: Optional[str] = None  # 当前选中的 bundle 名称
 
         # 设置标题
         self.list_title.setText(self.tr("Bundle List"))
@@ -404,6 +425,8 @@ class BundleInterface(UI_BundleInterface, QWidget):
         self.add_bundle_button.clicked.connect(self._on_add_bundle_clicked)
         self.update_all_button.clicked.connect(self._on_update_all_bundles)
         self.auto_update_switch.toggled.connect(self._on_auto_update_changed)
+        self.license_button.clicked.connect(self._open_license_dialog)
+        self.welcome_button.clicked.connect(self._open_welcome_dialog)
 
         # 监听更新停止信号（Update 类会自动发送，用于通知主界面）
         signalBus.update_stopped.connect(self._on_update_stopped)
@@ -596,6 +619,9 @@ class BundleInterface(UI_BundleInterface, QWidget):
         if not bundle_name:
             return
 
+        # 记录当前选中的 bundle 名称，供许可证对话框使用
+        self._selected_bundle_name = bundle_name
+
         # 发送信号
         self.bundle_selected.emit(bundle_name)
 
@@ -660,6 +686,110 @@ class BundleInterface(UI_BundleInterface, QWidget):
         )
         self.detail_layout.addWidget(detail)
         self.detail_layout.addStretch()
+
+    def _open_license_dialog(self):
+        """显示当前选中 Bundle 的许可证信息"""
+        from PySide6.QtWidgets import QDialog, QDialogButtonBox
+
+        if not self._selected_bundle_name:
+            # 未选择 bundle 时不弹框，避免无意义操作
+            return
+
+        bundle_name = self._selected_bundle_name
+        bundle_data = self._bundle_data.get(bundle_name, {})
+        interface_data = bundle_data.get("interface", {}) or {}
+
+        license_text = interface_data.get(
+            "license", self.tr("No license information for this bundle")
+        )
+        bundle_display_name = bundle_data.get("name", bundle_name)
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(self.tr("License") + f" - {bundle_display_name}")
+        dialog.setModal(True)
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+
+        content_label = BodyLabel(license_text, dialog)
+        content_label.setWordWrap(True)
+        content_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.LinksAccessibleByMouse
+        )
+
+        scroll_area = ScrollArea(dialog)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.enableTransparentBackground()
+        scroll_area.setWidget(content_label)
+        scroll_area.setMinimumHeight(280)
+
+        layout.addWidget(scroll_area)
+
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Close, parent=dialog
+        )
+        button_box.rejected.connect(dialog.reject)
+        layout.addWidget(button_box)
+
+        dialog.resize(480, 280)
+        dialog.exec()
+
+    def _open_welcome_dialog(self):
+        """显示当前选中 Bundle 的 welcome 信息"""
+        from PySide6.QtWidgets import QDialog, QDialogButtonBox
+
+        if not self._selected_bundle_name:
+            return
+
+        bundle_name = self._selected_bundle_name
+        bundle_data = self._bundle_data.get(bundle_name, {})
+        interface_data = bundle_data.get("interface", {}) or {}
+
+        welcome_text = interface_data.get(
+            "welcome", self.tr("No welcome message for this bundle")
+        )
+        bundle_display_name = bundle_data.get("name", bundle_name)
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(self.tr("Welcome") + f" - {bundle_display_name}")
+        dialog.setModal(True)
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+
+        content_label = BodyLabel(dialog)
+        content_label.setWordWrap(True)
+        # 支持 Markdown
+        content_label.setTextFormat(Qt.TextFormat.RichText)
+        content_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.LinksAccessibleByMouse
+        )
+        content_label.setOpenExternalLinks(True)
+        html_content = render_markdown(welcome_text)
+        content_label.setText(html_content)
+
+        scroll_area = ScrollArea(dialog)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.enableTransparentBackground()
+        scroll_area.setWidget(content_label)
+        scroll_area.setMinimumHeight(280)
+
+        layout.addWidget(scroll_area)
+
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Close, parent=dialog
+        )
+        button_box.rejected.connect(dialog.reject)
+        layout.addWidget(button_box)
+
+        dialog.resize(480, 280)
+        dialog.exec()
 
     def _is_multi_resource_enabled(self) -> bool:
         """检查多资源适配是否已开启"""
