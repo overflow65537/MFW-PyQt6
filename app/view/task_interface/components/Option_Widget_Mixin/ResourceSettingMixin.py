@@ -266,8 +266,15 @@ class ResourceSettingMixin:
         self.current_controller_info = None
         self.current_resource = None
 
-        # 构建控制器类型映射
+        # 初始化interface相关数据
+        self._rebuild_interface_data()
+
+    def _rebuild_interface_data(self):
+        """重新构建基于interface的数据结构（用于多配置模式下interface更新时）"""
+        # 获取最新的interface
         interface = self.service_coordinator.interface
+        
+        # 构建控制器类型映射
         self.controller_type_mapping = {
             ctrl.get("label", ctrl.get("name", "")): {
                 "name": ctrl.get("name", ""),
@@ -317,6 +324,9 @@ class ResourceSettingMixin:
     def create_resource_settings(self):
         """创建固定的资源设置UI"""
         logger.info("Creating resource settings UI...")
+        # 在多配置模式下，重新构建interface相关数据以确保使用最新的interface
+        self._rebuild_interface_data()
+        
         self._syncing = True
         try:
             self._clear_options()
@@ -342,29 +352,44 @@ class ResourceSettingMixin:
             self._toggle_win32_children_option(False)
             self._toggle_adb_children_option(False)
             # 设置初始值为当前配置中的控制器类型
-            if self.current_config == {}:
-                for key, value in self.controller_type_mapping.items():
-                    self.current_config["controller_type"] = value["name"]
+            ctrl_combo: ComboBox = self.resource_setting_widgets["ctrl_combo"]
+            controller_list = list(self.controller_type_mapping)
+            
+            if not controller_list:
+                # 如果没有可用的控制器，直接返回
+                return
+            
+            # 尝试找到匹配的控制器类型
+            matched_label = None
+            matched_idx = 0
+            
+            target_controller_name = self.current_config.get("controller_type", "")
+            for idx, label in enumerate(controller_list):
+                if self.controller_type_mapping[label]["name"] == target_controller_name:
+                    matched_label = label
+                    matched_idx = idx
                     break
-
-            for idx, label in enumerate(list(self.controller_type_mapping)):
-                if self.controller_type_mapping[label]["name"] == self.current_config.get(
-                    "controller_type", ""
-                ):
-                    # 更新当前控制器信息变量
-                    self.current_controller_label = label
-                    self.current_controller_info = self.controller_type_mapping[label]
-                    self.current_controller_name = self.current_controller_info["name"]
-                    self.current_controller_type = self.current_controller_info[
-                        "type"
-                    ].lower()
-
-                    # 填充信息
-                    ctrl_combo: ComboBox = self.resource_setting_widgets["ctrl_combo"]
-                    ctrl_combo.setCurrentIndex(idx)
-                    self._on_controller_type_changed(label)  # 立即显示对应的子选项
-
-                    # 更换搜索设备类型
+            
+            # 如果找不到匹配的，使用第一个可用的控制器
+            if matched_label is None:
+                matched_label = controller_list[0]
+                matched_idx = 0
+                # 更新配置为第一个控制器
+                self.current_config["controller_type"] = self.controller_type_mapping[matched_label]["name"]
+            
+            # 更新当前控制器信息变量
+            self.current_controller_label = matched_label
+            self.current_controller_info = self.controller_type_mapping[matched_label]
+            self.current_controller_name = self.current_controller_info["name"]
+            self.current_controller_type = self.current_controller_info["type"].lower()
+            
+            # 先阻塞信号，设置索引，然后强制调用刷新函数（即使索引相同也要刷新）
+            ctrl_combo.blockSignals(True)
+            ctrl_combo.setCurrentIndex(matched_idx)
+            ctrl_combo.blockSignals(False)
+            
+            # 强制调用刷新函数，确保界面更新（即使索引没有变化）
+            self._on_controller_type_changed(matched_label)
         finally:
             self._syncing = False
 

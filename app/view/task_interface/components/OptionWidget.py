@@ -447,7 +447,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self.current_config = {}
 
     def _on_config_changed(self, config_id: str):
-        """配置切换时重置选项面板"""
+        """配置切换时重置选项面板并重新初始化interface数据"""
+        # 重新初始化ResourceSettingMixin的interface相关数据
+        self._rebuild_interface_data()
         self.reset()
 
     def set_title(self, title: str):
