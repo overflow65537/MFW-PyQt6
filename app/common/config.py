@@ -232,7 +232,7 @@ class Config(QConfig):
         "Personalization", "background_image_path", _default_background
     )
     background_image_opacity = RangeConfigItem(
-        "Personalization", "background_image_opacity", 80, RangeValidator(0, 100)
+        "Personalization", "background_image_opacity", 10, RangeValidator(0, 100)
     )
 
     # ===== 材质 & 通用界面 =====
