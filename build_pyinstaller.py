@@ -250,13 +250,6 @@ def generate_file_list(input_dir, output_file=None):
                     f.write(file_path + "\n")
             # 写入file_list.txt自身的路径，保持格式一致
             f.write("./file_list.txt" + "\n")
-            f.write("./bundle" + "\n")
-            f.write("./config" + "\n")
-            f.write("./debug" + "\n")
-            f.write("./update" + "\n")
-            f.write("./hotfix" + "\n")
-            f.write("./release_notes" + "\n")
-            f.write("./backup" + "\n")
 
         print(f"File list generated: {output_file}")
         print(
