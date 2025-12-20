@@ -541,6 +541,16 @@ class TaskListItem(BaseListItem):
         if hasattr(self, "_option_scroll_timer"):
             self._option_scroll_timer.stop()
         
+        # 尝试从 service_coordinator 获取最新的 task 对象，确保使用最新的 task_option
+        if self.service_coordinator:
+            try:
+                latest_task = self.service_coordinator.task.get_task(self.task.item_id)
+                if latest_task:
+                    self.task = latest_task
+            except Exception:
+                # 如果获取失败，继续使用当前的 task 对象
+                pass
+        
         # 如果是基础任务，不显示选项
         if self.task.is_base_task():
             self._option_full_text = ""

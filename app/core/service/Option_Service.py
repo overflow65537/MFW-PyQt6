@@ -57,7 +57,13 @@ class OptionService:
 
         # 更新任务中的选项并持久化
         task.task_option.update(option_data)
-        return self.task_service.update_task(task)
+        success = self.task_service.update_task(task)
+        
+        # 发出选项更新信号，通知UI层更新显示
+        if success:
+            self.signal_bus.option_updated.emit(option_data)
+        
+        return success
 
     def get_options(self) -> Dict[str, Any]:
         """获取当前任务的选项"""

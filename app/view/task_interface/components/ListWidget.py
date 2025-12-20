@@ -258,11 +258,23 @@ class TaskDragListWidget(BaseListWidget):
         QTimer.singleShot(10, self._select_pre_configuration)
     
     def _on_resource_changed(self, options: dict) -> None:
-        """当资源变化时，更新任务列表显示"""
+        """当选项变化时，更新任务列表显示"""
         # 检查是否是资源变化（通过检查 options 中是否有 resource 字段）
         if "resource" in options:
             # 资源变化时，刷新任务列表
             self.update_list()
+        else:
+            # 其他选项变化时，更新所有 TaskListItem 的选项显示
+            # 使用 QTimer.singleShot 确保 task 更新完成后再更新显示
+            QTimer.singleShot(10, self._update_all_task_option_displays)
+    
+    def _update_all_task_option_displays(self):
+        """更新所有 TaskListItem 的选项显示"""
+        for i in range(self.count()):
+            item = self.item(i)
+            widget = self.itemWidget(item)
+            if isinstance(widget, TaskListItem):
+                widget._update_option_display()
 
     def _on_fade_out_finished(self) -> None:
         if not self._pending_refresh:
