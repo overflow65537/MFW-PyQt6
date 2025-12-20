@@ -82,29 +82,29 @@ if os.path.exists(i18n_json_path):
                     else:
                         lrelease_path = os.path.join(lrelease_path, "lrelease")
     except Exception as e:
-        print(f"读取 i18n.json 文件出错: {e}")
+        print(f"Error reading i18n.json file: {e}")
 
 # 定义 i18n 文件夹路径
 i18n_dir = os.path.join(current_dir, "app", "i18n")
 
 # 检查 i18n 文件夹是否存在
 if not os.path.exists(i18n_dir):
-    print(f"错误: 未找到 i18n 文件夹: {i18n_dir}")
+    print(f"Error: i18n folder not found: {i18n_dir}")
     exit(1)
 
 # 自动查找所有 .ts 文件
 ts_files = glob.glob(os.path.join(i18n_dir, "*.ts"))
 
 if not ts_files:
-    print(f"未在 {i18n_dir} 中找到任何 .ts 文件")
+    print(f"No .ts files found in {i18n_dir}")
     exit(0)
 
-print(f"找到 {len(ts_files)} 个 .ts 文件:")
+print(f"Found {len(ts_files)} .ts files:")
 for ts_file in ts_files:
     print(f"  - {os.path.basename(ts_file)}")
 
 print()
-print(f"使用工具: {lrelease_path}")
+print(f"Using tool: {lrelease_path}")
 print("-" * 60)
 
 # 遍历每个 .ts 文件
@@ -123,20 +123,20 @@ for ts_file in ts_files:
             capture_output=True,
             text=True
         )
-        print(f"[成功] {ts_file_name} -> {qm_file_name}")
+        print(f"[Success] {ts_file_name} -> {qm_file_name}")
         success_count += 1
     except subprocess.CalledProcessError as e:
-        print(f"[失败] {ts_file_name}: {e}")
+        print(f"[Failed] {ts_file_name}: {e}")
         if e.stderr:
-            print(f"  错误信息: {e.stderr}")
+            print(f"  Error message: {e.stderr}")
     except FileNotFoundError:
-        print(f"[失败] 未找到工具: {lrelease_path}")
-        print("  提示: 请确保已安装 PySide6")
-        print("  可以通过以下方式解决:")
-        print("  1. 确保 PySide6 已正确安装: pip install PySide6")
-        print("  2. 在 i18n.json 中指定工具路径:")
-        print('     {"lrelease": "完整路径\\lrelease.exe"}')
+        print(f"[Failed] Tool not found: {lrelease_path}")
+        print("  Hint: Please ensure PySide6 is installed")
+        print("  Can be resolved by:")
+        print("  1. Ensure PySide6 is properly installed: pip install PySide6")
+        print("  2. Specify tool path in i18n.json:")
+        print('     {"lrelease": "full_path\\lrelease.exe"}')
         break
 
 print("-" * 60)
-print(f"转换完成: {success_count}/{len(ts_files)} 个文件成功")
+print(f"Conversion completed: {success_count}/{len(ts_files)} files successful")

@@ -73,6 +73,26 @@ jobs:
           echo tag=$tag | tee -a $GITHUB_OUTPUT
           echo is_release=$is_release | tee -a $GITHUB_OUTPUT
           echo is_prerelease=$is_prerelease | tee -a $GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install PySide6
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install PySide6
+
+      - name: lrelease i18n
+        run: |
+          python ./lrelease.py
+
+      - name: Upload i18n
+        uses: actions/upload-artifact@v4
+        with:
+          name: i18n
+          path: app/i18n
     outputs:
       tag: ${{ steps.set_tag.outputs.tag }}
       is_release: ${{ steps.set_tag.outputs.is_release }}
@@ -173,11 +193,13 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pyinstaller
           python -m pip install -r ./requirements.txt
-      
-      - name: lrelease i18n
-        run: |
-          python ./lrelease.py
-        shell: pwsh
+
+      - name: Download i18n
+        uses: actions/download-artifact@v4
+        with:
+          name: i18n
+          path: app/i18n
+          overwrite: true
 
       - name: Install(macos)
         if: matrix.platform == 'macos'
