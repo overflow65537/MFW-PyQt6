@@ -369,7 +369,7 @@ class TaskListItem(BaseListItem):
         self.checkbox_changed.emit(self.task)
 
     def contextMenuEvent(self, event):
-        """右键菜单：单独运行任务"""
+        """右键菜单：单独运行任务、插入任务"""
         if not self.service_coordinator:
             return super().contextMenuEvent(event)
 
@@ -379,6 +379,14 @@ class TaskListItem(BaseListItem):
         if self.task.is_base_task():
             run_action.setEnabled(False)
         menu.addAction(run_action)
+        
+        # 插入任务选项（post action 不显示）
+        from app.common.constants import POST_ACTION
+        if self.task.item_id != POST_ACTION:
+            insert_action = Action(FIF.ADD, self.tr("Insert task"))
+            insert_action.triggered.connect(self._insert_task)
+            menu.addAction(insert_action)
+        
         menu.popup(event.globalPos())
         event.accept()
 
@@ -386,6 +394,58 @@ class TaskListItem(BaseListItem):
         if not self.service_coordinator:
             return
         asyncio.create_task(self.service_coordinator.run_tasks_flow(self.task.item_id))
+    
+    def _insert_task(self):
+        """插入任务：在当前任务下方插入新任务"""
+        if not self.service_coordinator:
+            return
+        
+        # 保存当前任务的 item_id，用于在对话框关闭后重新查找索引
+        current_task_id = self.task.item_id
+        
+        # 打开添加任务对话框
+        from app.view.task_interface.components.AddTaskMessageBox import AddTaskDialog
+        from app.common.signal_bus import signalBus
+        
+        task_map = getattr(self.service_coordinator.task, "default_option", {})
+        interface = getattr(self.service_coordinator.task, "interface", {})
+        
+        # 过滤任务映射（根据当前工具栏的过滤模式，这里使用全部任务）
+        filtered_task_map = task_map  # 可以根据需要添加过滤逻辑
+        
+        if not filtered_task_map:
+            signalBus.info_bar_requested.emit(
+                "warning", self.tr("No available tasks to add.")
+            )
+            return
+        
+        dlg = AddTaskDialog(
+            task_map=filtered_task_map, interface=interface, parent=self.window()
+        )
+        if dlg.exec():
+            new_task = dlg.get_task_item()
+            if new_task:
+                # 在对话框关闭后重新获取任务列表和索引（因为列表可能在对话框打开期间发生了变化）
+                all_tasks = self.service_coordinator.task.get_tasks()
+                current_idx = -1
+                for i, task in enumerate(all_tasks):
+                    if task.item_id == current_task_id:
+                        current_idx = i
+                        break
+                
+                # 计算插入位置：当前任务的下方（idx + 1）
+                # 如果找不到当前任务，使用默认位置（-2，倒数第二个）
+                if current_idx == -1:
+                    insert_idx = -2
+                    from app.utils.logger import logger
+                    logger.warning(f"未找到任务 {current_task_id}，使用默认插入位置 -2")
+                else:
+                    insert_idx = current_idx + 1
+                    from app.utils.logger import logger
+                    logger.info(f"找到任务 {current_task_id} 在索引 {current_idx}，将在索引 {insert_idx} 插入新任务 '{new_task.name}'")
+                
+                # 插入到指定位置
+                self.service_coordinator.modify_task(new_task, insert_idx)
     
     def _create_setting_button(self):
         """重写基类方法，创建删除按钮"""

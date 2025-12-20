@@ -313,8 +313,13 @@ class TaskService:
 
         return default_option
 
-    def apply_task_update(self, task_data: TaskItem) -> bool:
-        """当任务更新时保存到当前配置（接收 TaskItem 或 dict）"""
+    def apply_task_update(self, task_data: TaskItem, idx: int = -2) -> bool:
+        """当任务更新时保存到当前配置（接收 TaskItem 或 dict）
+        
+        Args:
+            task_data: 任务数据
+            idx: 插入位置索引，默认为-2（倒数第二个位置）。如果是新任务且idx>=0，则插入到idx位置；如果idx<0，则插入到倒数第|idx|个位置
+        """
         config_id = self.config_service.current_config_id
         if not config_id:
             return False
@@ -337,9 +342,44 @@ class TaskService:
                 task_updated = True
                 break
 
-        # 如果是新任务，添加到列表倒数第二个，确保完成后操作在最后
+        # 如果是新任务，根据idx参数插入到指定位置
         if not task_updated:
-            config.tasks.insert(-1, incoming)
+            original_len = len(config.tasks)
+            # 确保 idx 是整数类型，处理可能的布尔值或其他类型
+            if not isinstance(idx, int):
+                if idx is False or idx == 0:
+                    # 如果传入 False 或 0，使用默认值 -2
+                    idx = -2
+                else:
+                    # 其他非整数类型，尝试转换或使用默认值
+                    try:
+                        idx = int(idx)
+                    except (ValueError, TypeError):
+                        idx = -2
+            
+            if idx >= 0:
+                # 正数索引：插入到指定位置
+                # 确保不超出范围，但允许插入到列表末尾（idx == len(config.tasks)）
+                insert_pos = min(idx, original_len)
+                config.tasks.insert(insert_pos, incoming)
+                logger.info(f"插入新任务 '{incoming.name}' 到位置 {insert_pos} (请求位置: {idx}, 原列表长度: {original_len}, 新列表长度: {len(config.tasks)})")
+            else:
+                # 负数索引：从末尾计算位置（默认-2表示倒数第二个）
+                # Python 的 insert(-2, item) 会在倒数第二个元素之前插入
+                # 例如：idx=-2, len=5 -> insert(-2) 会在索引 3 插入（倒数第二个之前）
+                # 但如果列表长度 <= |idx|，Python 会插入到位置 0，这不是我们想要的
+                # 我们希望在这种情况下，插入到倒数第二个位置（即 len-1）
+                if original_len > abs(idx):
+                    # 列表足够长，使用标准的负数索引语义：len + idx + 1
+                    # 例如：len=5, idx=-2 -> 5 + (-2) + 1 = 4，但 insert(-2) 实际是 3
+                    # 实际上 Python 的 insert(-2) 等价于 insert(len + idx + 1)
+                    insert_pos = original_len + idx + 1
+                else:
+                    # 列表太短，插入到倒数第二个位置（确保不插入到位置 0）
+                    # 例如：len=2, idx=-2 -> 插入到位置 1（在 Pre-Configuration 和 Post-Action 之间）
+                    insert_pos = original_len - 1
+                config.tasks.insert(insert_pos, incoming)
+                logger.info(f"插入新任务 '{incoming.name}' 到位置 {insert_pos} (负数索引: {idx}, 原列表长度: {original_len}, 新列表长度: {len(config.tasks)})")
 
         # 保存配置（直接传入 ConfigItem，由底层处理转换）
         if self.config_service.update_config(config_id, config):
@@ -391,10 +431,14 @@ class TaskService:
                 return task
         return None
 
-    def update_task(self, task: TaskItem) -> bool:
-        """更新任务"""
-
-        return self.apply_task_update(task)
+    def update_task(self, task: TaskItem, idx: int = -2) -> bool:
+        """更新任务
+        
+        Args:
+            task: 任务对象
+            idx: 插入位置索引，默认为-2（倒数第二个位置）
+        """
+        return self.apply_task_update(task, idx)
 
     def update_tasks(self, tasks: List[TaskItem]) -> bool:
         """批量更新任务：在当前配置中按 tasks 中的 item_id 替换或添加，最后一次性保存并发送 tasks_loaded 或逐项 task_updated。"""

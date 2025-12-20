@@ -421,9 +421,14 @@ class ServiceCoordinator:
 
     # region 任务相关方法
 
-    def modify_task(self, task: TaskItem) -> bool:
-        """修改或添加任务：传入 TaskItem，如果列表中没有对应 id 的任务，添加到倒数第2位，否则更新对应任务"""
-        ok = self.task_service.update_task(task)
+    def modify_task(self, task: TaskItem, idx: int = -2) -> bool:
+        """修改或添加任务：传入 TaskItem，如果列表中没有对应 id 的任务，根据idx参数插入到指定位置，否则更新对应任务
+        
+        Args:
+            task: 任务对象
+            idx: 插入位置索引，默认为-2（倒数第二个位置）
+        """
+        ok = self.task_service.update_task(task, idx)
         if ok:
             self.fs_signal_bus.fs_task_modified.emit(task)
         return ok

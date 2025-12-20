@@ -216,8 +216,8 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         self.select_all_button.clicked.connect(self.select_all)
         # 取消选择全部按钮
         self.deselect_all_button.clicked.connect(self.deselect_all)
-        # 添加按钮
-        self.add_button.clicked.connect(self.add_task)
+        # 添加按钮（使用 lambda 确保 idx 参数使用默认值 -2）
+        self.add_button.clicked.connect(lambda: self.add_task(-2))
         # 删除按钮
         self.delete_button.clicked.connect(self.remove_selected_task)
 
@@ -243,8 +243,12 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         """取消选择全部"""
         self.task_list.deselect_all()
 
-    def add_task(self):
-        """添加任务"""
+    def add_task(self, idx: int = -2):
+        """添加任务
+        
+        Args:
+            idx: 插入位置索引，默认为-2（倒数第二个位置）
+        """
         # 打开添加任务对话框
         task_map = getattr(self.service_coordinator.task, "default_option", {})
         interface = getattr(self.service_coordinator.task, "interface", {})
@@ -261,7 +265,7 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             new_task = dlg.get_task_item()
             if new_task:
                 # 持久化到服务层
-                self.service_coordinator.modify_task(new_task)
+                self.service_coordinator.modify_task(new_task, idx)
 
     def _filter_task_map_by_mode(
         self, task_map: dict[str, dict], interface: dict | None

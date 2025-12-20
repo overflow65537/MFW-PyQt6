@@ -408,12 +408,44 @@ class TaskDragListWidget(BaseListWidget):
         if task.is_base_task():
             list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
         
-        # 批量刷新时严格按传入顺序追加；单项新增时插入到倒数第二位
+        # 批量刷新时严格按传入顺序追加；单项新增时根据任务在完整列表中的位置插入
         if getattr(self, "_bulk_updating", False):
             self.addItem(list_item)
         else:
-            # 插入到倒数第二位,确保"完成后操作"始终在最后
-            insert_index = max(0, self.count() - 1)
+            # 获取完整任务列表，找到新任务在完整列表中的位置
+            all_tasks = self.service_coordinator.task.get_tasks()
+            task_index_in_all = -1
+            for i, t in enumerate(all_tasks):
+                if t.item_id == task.item_id:
+                    task_index_in_all = i
+                    break
+            
+            # 在 UI 列表中找到对应的插入位置
+            # 需要找到在完整列表中，位于当前任务之前且符合过滤条件的最后一个任务在 UI 中的位置
+            insert_index = self.count()  # 默认插入到最后
+            if task_index_in_all >= 0:
+                # 创建 UI 中任务 item_id 到索引的映射，提高查找效率
+                ui_task_positions = {}
+                for j in range(self.count()):
+                    item = self.item(j)
+                    widget = self.itemWidget(item)
+                    if isinstance(widget, TaskListItem):
+                        ui_task_positions[widget.task.item_id] = j
+                
+                # 从完整列表中，找到当前任务之前的所有任务
+                # 然后在 UI 列表中找到这些任务中最后一个符合过滤条件的任务位置
+                for i in range(task_index_in_all - 1, -1, -1):
+                    prev_task = all_tasks[i]
+                    # 检查这个任务是否在 UI 列表中
+                    if prev_task.item_id in ui_task_positions:
+                        # 找到了前一个任务在 UI 中的位置，插入到它后面
+                        insert_index = ui_task_positions[prev_task.item_id] + 1
+                        break
+            
+            # 如果没找到合适的位置，使用默认位置（倒数第二位，确保"完成后操作"始终在最后）
+            if insert_index >= self.count():
+                insert_index = max(0, self.count() - 1)
+            
             self.insertItem(insert_index, list_item)
         self.setItemWidget(list_item, task_widget)
         self._task_widgets[task.item_id] = task_widget
