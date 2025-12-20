@@ -1,38 +1,71 @@
 #   This file is part of MFW-ChainFlow Assistant.
-
+#
 #   MFW-ChainFlow Assistant is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published
 #   by the Free Software Foundation, either version 3 of the License,
 #   or (at your option) any later version.
-
+#
 #   MFW-ChainFlow Assistant is distributed in the hope that it will be useful,
 #   but WITHOUT ANY WARRANTY; without even the implied warranty
 #   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
 #   the GNU General Public License for more details.
-
+#
 #   You should have received a copy of the GNU General Public License
 #   along with MFW-ChainFlow Assistant. If not, see <https://www.gnu.org/licenses/>.
-
+#
 #   Contact: err.overflow@gmail.com
 #   Copyright (C) 2024-2025  MFW-ChainFlow Assistant. All rights reserved.
 
 """
 MFW-ChainFlow Assistant
 MFW-ChainFlow Assistant i18n 翻译脚本
+自动将 app/i18n 文件夹内的所有 .ts 文件转换为 .qm 文件
 作者:overflow65537
 """
 
 import os
 import subprocess
 import json
+import glob
+import shutil
+from pathlib import Path
+
+def find_pyside6_tool(tool_name):
+    """查找 PySide6 工具的位置"""
+    # 首先尝试在 PATH 中查找
+    tool_path = shutil.which(tool_name)
+    if tool_path:
+        return tool_path
+    
+    # 尝试查找 PySide6 安装目录
+    try:
+        import PySide6
+        pyside6_path = Path(PySide6.__file__).parent
+        # Windows
+        if os.name == "nt":
+            tool_exe = pyside6_path / f"{tool_name}.exe"
+            if tool_exe.exists():
+                return str(tool_exe)
+        # Linux/Mac
+        else:
+            tool_path = pyside6_path / tool_name
+            if tool_path.exists():
+                return str(tool_path)
+    except ImportError:
+        pass
+    
+    return None
 
 # 获取当前脚本所在的目录
 current_dir = os.path.dirname(os.path.abspath(__file__))
 # 定义 i18n.json 文件路径
 i18n_json_path = os.path.join(current_dir, "i18n.json")
 
-# 初始化 lrelease 路径，默认值
-lrelease_path = "lrelease.exe"
+# 初始化 lrelease 路径，优先使用 lrelease（PySide6 中的实际工具名）
+lrelease_path = find_pyside6_tool("lrelease")
+if not lrelease_path:
+    # 如果找不到 lrelease，尝试 pyside6-lrelease（向后兼容）
+    lrelease_path = find_pyside6_tool("pyside6-lrelease") or "lrelease"
 
 # 尝试读取 i18n.json 文件
 if os.path.exists(i18n_json_path):
@@ -43,23 +76,67 @@ if os.path.exists(i18n_json_path):
                 lrelease_path = data["lrelease"]
                 # 如果是文件夹
                 if os.path.isdir(lrelease_path):
-                    lrelease_path = os.path.join(lrelease_path, "lrelease.exe")
+                    # Windows 使用 .exe，Linux/Mac 不使用
+                    if os.name == "nt":
+                        lrelease_path = os.path.join(lrelease_path, "lrelease.exe")
+                    else:
+                        lrelease_path = os.path.join(lrelease_path, "lrelease")
     except Exception as e:
         print(f"读取 i18n.json 文件出错: {e}")
 
-# 定义要转换的 .ts 文件列表
-ts_files = ["app\\i18n\\i18n.zh_CN.ts", "app\\i18n\\i18n.zh_HK.ts"]
+# 定义 i18n 文件夹路径
+i18n_dir = os.path.join(current_dir, "app", "i18n")
+
+# 检查 i18n 文件夹是否存在
+if not os.path.exists(i18n_dir):
+    print(f"错误: 未找到 i18n 文件夹: {i18n_dir}")
+    exit(1)
+
+# 自动查找所有 .ts 文件
+ts_files = glob.glob(os.path.join(i18n_dir, "*.ts"))
+
+if not ts_files:
+    print(f"未在 {i18n_dir} 中找到任何 .ts 文件")
+    exit(0)
+
+print(f"找到 {len(ts_files)} 个 .ts 文件:")
+for ts_file in ts_files:
+    print(f"  - {os.path.basename(ts_file)}")
+
+print()
+print(f"使用工具: {lrelease_path}")
+print("-" * 60)
 
 # 遍历每个 .ts 文件
+success_count = 0
 for ts_file in ts_files:
-    # 构建完整的 .ts 文件路径
-    ts_file_path = os.path.join(current_dir, ts_file)
+    # 构建对应的 .qm 文件路径（同名）
     qm_file = os.path.splitext(ts_file)[0] + ".qm"
+    ts_file_name = os.path.basename(ts_file)
+    qm_file_name = os.path.basename(qm_file)
 
     try:
-        # 调用用户指定或默认的 lrelease 路径进行转换
-        print(f"路径:{lrelease_path}")
-        subprocess.run([lrelease_path, ts_file_path], check=True)
-        print(f"成功将 {ts_file} 转换为 {qm_file}")
+        # 调用 lrelease 进行转换
+        result = subprocess.run(
+            [lrelease_path, ts_file],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        print(f"[成功] {ts_file_name} -> {qm_file_name}")
+        success_count += 1
     except subprocess.CalledProcessError as e:
-        print(f"转换 {ts_file} 时出错: {e}")
+        print(f"[失败] {ts_file_name}: {e}")
+        if e.stderr:
+            print(f"  错误信息: {e.stderr}")
+    except FileNotFoundError:
+        print(f"[失败] 未找到工具: {lrelease_path}")
+        print("  提示: 请确保已安装 PySide6")
+        print("  可以通过以下方式解决:")
+        print("  1. 确保 PySide6 已正确安装: pip install PySide6")
+        print("  2. 在 i18n.json 中指定工具路径:")
+        print('     {"lrelease": "完整路径\\lrelease.exe"}')
+        break
+
+print("-" * 60)
+print(f"转换完成: {success_count}/{len(ts_files)} 个文件成功")

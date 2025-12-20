@@ -480,5 +480,5 @@ update/new_version/update_metadata.json
 update_flag.txt
 bundle/*
 MPAcustom/*
-app\i18n\i18n.zh_HK.qm
-app\i18n\i18n.zh_CN.qm
+app/i18n/i18n.zh_CN.qm
+app/i18n/i18n.zh_HK.qm
