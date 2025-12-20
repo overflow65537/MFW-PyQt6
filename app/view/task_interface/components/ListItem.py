@@ -530,12 +530,17 @@ class TaskListItem(BaseListItem):
     
     def _update_option_display(self):
         """更新选项显示"""
-        if not hasattr(self, "option_label"):
-            return
-        
         # 停止之前的滚动
         if hasattr(self, "_option_scroll_timer"):
             self._option_scroll_timer.stop()
+        
+        # 如果是基础任务，不显示选项
+        if self.task.is_base_task():
+            self._option_full_text = ""
+            self.option_label.setText("")
+            self.option_label.setToolTip("")
+            self._option_scroll_position = 0
+            return
         
         # 提取选项值（只显示当前选择的选项）
         interface_options = None
