@@ -6,9 +6,10 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QSizePolicy,
     QVBoxLayout,
+    QFrame,
 )
 
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Signal, Qt, QTimer
 from PySide6.QtGui import QPalette, QGuiApplication, QPixmap
 
 from qfluentwidgets import (
@@ -38,6 +39,26 @@ class ClickableLabel(BodyLabel):
         if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit()
         super().mousePressEvent(event)
+
+
+class OptionLabel(BodyLabel):
+    """选项标签：不拦截事件，让所有动作作用于父组件（ListItem）"""
+    
+    def mousePressEvent(self, event):
+        # 不处理事件，让事件传递给父组件
+        event.ignore()
+        # 调用父类方法以保持文本选择功能
+        super().mousePressEvent(event)
+    
+    def mouseMoveEvent(self, event):
+        # 不处理拖动事件，让事件传递给父组件
+        event.ignore()
+        super().mouseMoveEvent(event)
+    
+    def mouseReleaseEvent(self, event):
+        # 不处理释放事件，让事件传递给父组件
+        event.ignore()
+        super().mouseReleaseEvent(event)
 
 
 # 列表项基类
@@ -194,6 +215,10 @@ class TaskListItem(BaseListItem):
             self.checkbox.setDisabled(True)
 
         self.checkbox.stateChanged.connect(self.on_checkbox_changed)
+        
+        # 连接选项标签的resize事件，以便在大小改变时重新检查滚动
+        if hasattr(self, "option_label"):
+            self.option_label.installEventFilter(self)
 
     def _apply_interface_constraints(self):
         """根据 interface 中的 task 列表决定是否允许此任务勾选/显示为禁用状态。"""
@@ -247,9 +272,23 @@ class TaskListItem(BaseListItem):
         else:
             self.icon_label = None
 
+        # 创建垂直布局容器（名称和选项）
+        name_option_container = QWidget()
+        name_option_layout = QVBoxLayout(name_option_container)
+        name_option_layout.setContentsMargins(0, 0, 0, 0)
+        name_option_layout.setSpacing(2)
+        
         # 添加标签
         self.name_label = self._create_name_label()
-        layout.addWidget(self.name_label)
+        name_option_layout.addWidget(self.name_label)
+        
+        # 添加选项显示标签
+        self.option_label = self._create_option_label()
+        name_option_layout.addWidget(self.option_label)
+        # 在添加到布局后更新显示
+        self._update_option_display()
+        
+        layout.addWidget(name_option_container, stretch=1)
 
         # 添加删除按钮（基础任务不能删除，会禁用）
         self.setting_button = self._create_setting_button()
@@ -258,6 +297,17 @@ class TaskListItem(BaseListItem):
         if self.task.is_base_task():
             self.setting_button.setDisabled(True)
         layout.addWidget(self.setting_button)
+        
+        # 连接选项标签的resize事件，以便在大小改变时重新检查滚动
+        if hasattr(self, "option_label"):
+            self.option_label.installEventFilter(self)
+    
+    def eventFilter(self, obj, event):
+        """事件过滤器，用于监听选项标签的大小变化"""
+        if obj == self.option_label and event.type() == event.Type.Resize:
+            # 当选项标签大小改变时，重新检查是否需要滚动
+            QTimer.singleShot(50, self._check_and_start_scroll)
+        return super().eventFilter(obj, event)
 
     def _get_task_icon_path(self) -> str | None:
         """从 interface.task 中获取当前任务的图标路径
@@ -360,6 +410,224 @@ class TaskListItem(BaseListItem):
         label.setFixedHeight(34)
         label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         return label
+    
+    def _create_option_label(self):
+        """创建选项显示标签（支持自动滚动，事件传递给父组件）"""
+        label = OptionLabel("")
+        label.setFixedHeight(20)
+        label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        label.setWordWrap(False)  # 不换行
+        # 设置样式，使文本更小更淡
+        label.setStyleSheet("color: gray; font-size: 11px;")
+        # 禁用文本选择，让所有事件（点击、拖动等）直接作用于父组件 ListItem
+        label.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
+        
+        # 初始化滚动相关变量
+        self._option_scroll_timer = QTimer()
+        self._option_scroll_timer.timeout.connect(self._scroll_option_text)
+        self._option_scroll_position = 0
+        self._option_full_text = ""
+        
+        return label
+    
+    def _extract_option_values(self, task_option: dict, result: list | None = None, interface_options: dict | None = None) -> list:
+        """递归提取任务选项中的当前选择的可见值
+        
+        Args:
+            task_option: 任务选项字典
+            result: 结果列表（递归使用）
+            interface_options: interface 中的选项定义，用于获取选项的 label
+            
+        Returns:
+            提取的值列表（只包含当前选择的选项值）
+        """
+        if result is None:
+            result = []
+        
+        if not isinstance(task_option, dict):
+            return result
+        
+        # 如果没有传入 interface_options，尝试从 self.interface 获取
+        if interface_options is None and hasattr(self, 'interface'):
+            interface_options = self.interface.get("option", {})
+        
+        for key, value in task_option.items():
+            # 跳过特殊键（如 _speedrun_config）
+            if key.startswith("_"):
+                continue
+            
+            # 如果 value 是字典
+            if isinstance(value, dict):
+                # 检查是否有 hidden 标志（在 value 同级）
+                if value.get("hidden", False):
+                    continue
+                
+                # 只提取当前选择的选项值（必须有 value 字段）
+                option_value = value.get("value")
+                if option_value is not None:
+                    # 尝试从 interface 获取选项的 label（用于显示）
+                    display_value = None
+                    if interface_options and key in interface_options:
+                        option_def = interface_options[key]
+                        # 如果是 combobox 类型，尝试根据 value 找到对应的 label
+                        if option_def.get("type", "").lower() == "combobox":
+                            options = option_def.get("options", [])
+                            for opt in options:
+                                if isinstance(opt, dict):
+                                    opt_name = opt.get("name", "")
+                                    opt_label = opt.get("label", opt_name)
+                                    if opt_name == str(option_value) or opt_label == str(option_value):
+                                        display_value = opt_label
+                                        break
+                                elif str(opt) == str(option_value):
+                                    display_value = str(opt)
+                                    break
+                    
+                    # 如果没找到 label，使用原始值
+                    if display_value is None:
+                        display_value = str(option_value)
+                    
+                    # 如果 value 是字典（如 {"角色名": "破晓"}），提取其中的值
+                    if isinstance(option_value, dict):
+                        for sub_value in option_value.values():
+                            if sub_value and str(sub_value).strip():
+                                result.append(str(sub_value).strip())
+                    else:
+                        # 普通值，使用 display_value（可能是 label）
+                        if display_value and display_value.strip():
+                            result.append(display_value.strip())
+                
+                # 递归处理 children（只处理当前选择的选项的子选项）
+                if "children" in value and isinstance(value["children"], dict) and option_value is not None:
+                    # 获取当前选项值的子选项定义（children 中的选项定义）
+                    child_interface_options = None
+                    if interface_options and key in interface_options:
+                        option_def = interface_options[key]
+                        children_def = option_def.get("children", {})
+                        if isinstance(children_def, dict) and option_value in children_def:
+                            # children_def[option_value] 可能是一个选项定义列表或字典
+                            child_option_structure = children_def[option_value]
+                            # 如果是一个列表，提取其中的选项定义
+                            if isinstance(child_option_structure, list) and child_option_structure:
+                                # 从列表中提取选项定义，构建一个字典
+                                child_interface_options = {}
+                                for child_opt in child_option_structure:
+                                    if isinstance(child_opt, dict) and "name" in child_opt:
+                                        child_interface_options[child_opt["name"]] = child_opt
+                            elif isinstance(child_option_structure, dict):
+                                # 如果直接是字典，可能需要进一步处理
+                                # 这里假设子选项的结构与主选项类似
+                                pass
+                    
+                    # 递归处理子选项
+                    self._extract_option_values(value["children"], result, child_interface_options)
+            else:
+                # 直接是值的情况（简单格式）- 这种情况表示当前选择的选项
+                if value and str(value).strip():
+                    result.append(str(value).strip())
+        
+        return result
+    
+    def _update_option_display(self):
+        """更新选项显示"""
+        if not hasattr(self, "option_label"):
+            return
+        
+        # 停止之前的滚动
+        if hasattr(self, "_option_scroll_timer"):
+            self._option_scroll_timer.stop()
+        
+        # 提取选项值（只显示当前选择的选项）
+        interface_options = None
+        if self.interface:
+            interface_options = self.interface.get("option", {})
+        option_values = self._extract_option_values(self.task.task_option, interface_options=interface_options)
+        
+        # 组合显示文本
+        if option_values:
+            display_text = " · ".join(option_values)
+            self._option_full_text = display_text
+            self.option_label.setToolTip(display_text)  # 设置工具提示以便查看完整内容
+            
+            # 检查文本是否需要滚动
+            self._check_and_start_scroll()
+        else:
+            self._option_full_text = ""
+            self.option_label.setText("")
+            self.option_label.setToolTip("")
+            self._option_scroll_position = 0
+    
+    def _check_and_start_scroll(self):
+        """检查文本是否需要滚动，如果需要则启动自动滚动"""
+        if not hasattr(self, "option_label") or not self._option_full_text:
+            return
+        
+        # 获取标签的可用宽度
+        label_width = self.option_label.width()
+        if label_width <= 0:
+            # 如果宽度还未确定，延迟检查
+            QTimer.singleShot(100, self._check_and_start_scroll)
+            return
+        
+        # 获取文本宽度
+        font_metrics = self.option_label.fontMetrics()
+        text_width = font_metrics.boundingRect(self._option_full_text).width()
+        
+        # 如果文本宽度超过标签宽度，启动滚动
+        if text_width > label_width:
+            self._option_scroll_position = 0
+            self._option_scroll_timer.start(50)  # 每50ms更新一次
+        else:
+            # 文本不需要滚动，直接显示
+            self.option_label.setText(self._option_full_text)
+            self._option_scroll_timer.stop()
+    
+    def _scroll_option_text(self):
+        """滚动选项文本"""
+        if not hasattr(self, "option_label") or not self._option_full_text:
+            self._option_scroll_timer.stop()
+            return
+        
+        label_width = self.option_label.width()
+        if label_width <= 0:
+            return
+        
+        font_metrics = self.option_label.fontMetrics()
+        text_width = font_metrics.boundingRect(self._option_full_text).width()
+        
+        # 如果文本不再需要滚动，停止滚动
+        if text_width <= label_width:
+            self.option_label.setText(self._option_full_text)
+            self._option_scroll_timer.stop()
+            self._option_scroll_position = 0
+            return
+        
+        # 计算显示的文本部分
+        # 添加分隔符以便滚动更平滑
+        scroll_text = self._option_full_text + " · "
+        total_width = font_metrics.boundingRect(scroll_text).width()
+        
+        # 计算当前应该显示的文本起始位置
+        # 使用字符位置而不是像素位置，更简单
+        chars_per_scroll = 1  # 每次滚动1个字符
+        max_chars = len(scroll_text)
+        
+        # 计算当前显示的文本
+        start_pos = self._option_scroll_position % max_chars
+        display_text = scroll_text[start_pos:] + scroll_text[:start_pos]
+        
+        # 截取适合宽度的文本
+        displayed = ""
+        for char in display_text:
+            test_text = displayed + char
+            if font_metrics.boundingRect(test_text).width() > label_width:
+                break
+            displayed = test_text
+        
+        self.option_label.setText(displayed)
+        
+        # 更新滚动位置
+        self._option_scroll_position += chars_per_scroll
 
     def on_checkbox_changed(self, state):
         # 复选框状态变更处理
