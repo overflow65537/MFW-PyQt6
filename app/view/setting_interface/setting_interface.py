@@ -2538,10 +2538,36 @@ class SettingInterface(QWidget):
     def trigger_instant_update_prompt(self, auto_accept: bool = False) -> None:
         """供外部（如自动更新流程）触发的立即更新确认。"""
         self._restart_update_required = True
-        self._refresh_local_update_package()
-        self._prepare_instant_update_state()
+        # 确保刷新本地更新包，传入 restart_required 参数
+        package = self._refresh_local_update_package(restart_required=True)
+        # 如果检测不到更新包，尝试延迟一下再检测（可能是文件系统延迟）
+        if not package:
+            logger.warning("首次检测未发现本地更新包，延迟100ms后重试")
+            QTimer.singleShot(100, lambda: self._retry_trigger_instant_update(auto_accept))
+            return
+        self._prepare_instant_update_state(restart_required=True)
         logger.info(
             "触发立即更新确认，auto_accept=%s，检测到本地包=%s",
+            auto_accept,
+            bool(self._local_update_package),
+        )
+        self._handle_instant_update(auto_accept=auto_accept, notify_if_cancel=True)
+    
+    def _retry_trigger_instant_update(self, auto_accept: bool) -> None:
+        """重试触发立即更新确认（用于处理文件系统延迟）。"""
+        self._restart_update_required = True
+        package = self._refresh_local_update_package(restart_required=True)
+        if not package:
+            logger.error("重试后仍未检测到本地更新包，无法触发立即更新确认")
+            signalBus.info_bar_requested.emit(
+                "error",
+                self.tr("Update package not found, please try updating again.")
+            )
+            signalBus.update_stopped.emit(3)
+            return
+        self._prepare_instant_update_state(restart_required=True)
+        logger.info(
+            "重试后触发立即更新确认，auto_accept=%s，检测到本地包=%s",
             auto_accept,
             bool(self._local_update_package),
         )

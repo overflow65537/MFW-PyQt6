@@ -900,8 +900,28 @@ class MainWindow(MSFluentWindow):
             if status == 1:
                 # 热更新完成后，重新设置窗口标题（延迟到下一个事件循环，确保 reinit 完成）
                 QTimer.singleShot(0, self.set_title)
+                # 检查是否需要启动 bundle 更新
+                self._check_and_start_bundle_update()
+                return
+            elif status == 2:
+                # 需要重启完成更新，触发立即更新提示
+                self._auto_update_pending_restart = True
+                self._pending_auto_run = False
+                setting_interface = getattr(self, "SettingInterface", None)
+                logger.info(
+                    "设置更新需要重启完成更新，auto_update=%s，设置页存在=%s",
+                    cfg.get(cfg.auto_update),
+                    bool(setting_interface),
+                )
+                if setting_interface:
+                    setting_interface.trigger_instant_update_prompt(
+                        auto_accept=cfg.get(cfg.auto_update)
+                    )
+                else:
+                    logger.warning("SettingInterface 不存在，无法触发立即更新提示")
+                return
             
-            # 检查是否需要启动 bundle 更新
+            # 其他 status，检查是否需要启动 bundle 更新
             self._check_and_start_bundle_update()
             return
         
