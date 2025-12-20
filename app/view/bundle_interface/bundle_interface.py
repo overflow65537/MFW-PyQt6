@@ -68,8 +68,11 @@ class BundleListItem(QWidget):
         self.latest_version: Optional[str] = None
 
         layout = QHBoxLayout(self)
+        # 调整边距，确保总高度不超过 item 边界
+        # 设置固定高度 64px，确保不超过 item 边界
         layout.setContentsMargins(12, 8, 12, 8)
         layout.setSpacing(12)
+        self.setFixedHeight(64)
 
         # 图标
         self.icon_label = QLabel(self)
@@ -93,21 +96,28 @@ class BundleListItem(QWidget):
 
         # 名称和版本
         text_layout = QVBoxLayout()
-        text_layout.setSpacing(4)
+        # 调整间距，确保总高度不超过 64px
+        # 64px = 上下边距(8+8) + 图标(32) + 文本区域(16) = 64px
+        text_layout.setSpacing(2)  # 从 4 调整为 2
         text_layout.setContentsMargins(0, 0, 0, 0)
 
         self.name_label = QLabel(bundle_name, self)
         self.name_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        # 设置固定高度，确保不超过边界
+        self.name_label.setFixedHeight(18)  # 14px 字体 + 4px 行高
 
         # 当前版本
         self.version_label = QLabel(bundle_version, self)
         self.version_label.setStyleSheet("font-size: 12px; color: gray;")
         self.version_label.setWordWrap(True)
+        # 设置最大高度，防止超出边界
+        self.version_label.setMaximumHeight(16)  # 12px 字体 + 4px 行高
 
         # 最新版本
         self.latest_version_label = QLabel("", self)
         self.latest_version_label.setStyleSheet("font-size: 12px; color: #0078d4;")
         self.latest_version_label.setWordWrap(True)
+        self.latest_version_label.setMaximumHeight(16)  # 12px 字体 + 4px 行高
         self.latest_version_label.hide()  # 初始状态隐藏
 
         text_layout.addWidget(self.name_label)
@@ -603,7 +613,9 @@ class BundleInterface(UI_BundleInterface, QWidget):
                     )
 
                     list_item = QListWidgetItem(self.list_widget)
-                    list_item.setSizeHint(item_widget.sizeHint())
+                    # 设置固定的 item 高度，确保与 BundleListItem 的高度一致（64px）
+                    from PySide6.QtCore import QSize
+                    list_item.setSizeHint(QSize(0, 64))
                     list_item.setData(
                         Qt.ItemDataRole.UserRole, bundle_name
                     )  # 保存原始名称

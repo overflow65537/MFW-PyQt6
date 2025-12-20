@@ -43,22 +43,7 @@ class ClickableLabel(BodyLabel):
 
 class OptionLabel(BodyLabel):
     """选项标签：不拦截事件，让所有动作作用于父组件（ListItem）"""
-    
-    def mousePressEvent(self, event):
-        # 不处理事件，让事件传递给父组件
-        event.ignore()
-        # 调用父类方法以保持文本选择功能
-        super().mousePressEvent(event)
-    
-    def mouseMoveEvent(self, event):
-        # 不处理拖动事件，让事件传递给父组件
-        event.ignore()
-        super().mouseMoveEvent(event)
-    
-    def mouseReleaseEvent(self, event):
-        # 不处理释放事件，让事件传递给父组件
-        event.ignore()
-        super().mouseReleaseEvent(event)
+    pass
 
 
 # 列表项基类
@@ -92,6 +77,8 @@ class BaseListItem(QWidget):
         # 基础UI布局设置
         layout = QHBoxLayout(self)
         layout.setContentsMargins(5, 2, 5, 2)
+        # 确保 BaseListItem 的高度不超过 item 高度（44px）
+        self.setFixedHeight(44)
 
         # 创建标签（子类可以重写或扩展）
         self.name_label = self._create_name_label()
@@ -105,7 +92,8 @@ class BaseListItem(QWidget):
     def _create_name_label(self):
         # 子类可以重写此方法来自定义标签
         label = ClickableLabel(self.item.name)
-        label.setFixedHeight(34)
+        # 调整高度，确保总高度不超过 item 高度（44px）
+        label.setFixedHeight(40)  # BaseListItem 没有 option_label，所以可以更高
         label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         return label
 
@@ -256,6 +244,8 @@ class TaskListItem(BaseListItem):
         # 创建水平布局
         layout = QHBoxLayout(self)
         layout.setContentsMargins(5, 2, 5, 2)
+        # 确保 TaskListItem 的高度不超过 item 高度（44px）
+        self.setFixedHeight(44)
 
         # 复选框 - 任务项特有的UI元素
         self.checkbox = CheckBox()
@@ -407,18 +397,35 @@ class TaskListItem(BaseListItem):
     def _create_name_label(self):
         """创建名称标签（使用 label 而不是 name）"""
         label = ClickableLabel(self._get_display_name())
-        label.setFixedHeight(34)
+        # 调整高度，确保总高度不超过 item 高度（44px）
+        # item 高度 44px = name_label + spacing(2px) + option_label
+        label.setFixedHeight(30)  # 从 34 调整为 30
         label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         return label
+    
+    def _ensure_font_valid(self, label: BodyLabel):
+        """确保标签的字体大小有效，防止出现负数"""
+        font = label.font()
+        if font.pointSize() <= 0:
+            font.setPointSize(11)
+            label.setFont(font)
+        # 如果使用像素大小，也确保有效
+        if font.pixelSize() <= 0 and font.pointSize() <= 0:
+            font.setPointSize(11)
+            label.setFont(font)
     
     def _create_option_label(self):
         """创建选项显示标签（支持自动滚动，事件传递给父组件）"""
         label = OptionLabel("")
-        label.setFixedHeight(20)
+        # 调整高度，确保总高度不超过 item 高度（44px）
+        # item 高度 44px = name_label(30px) + spacing(2px) + option_label(12px)
+        label.setFixedHeight(12)  # 从 20 调整为 12
         label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         label.setWordWrap(False)  # 不换行
         # 设置样式，使文本更小更淡
         label.setStyleSheet("color: gray; font-size: 11px;")
+        # 确保字体大小有效，防止出现负数
+        self._ensure_font_valid(label)
         # 禁用文本选择，让所有事件（点击、拖动等）直接作用于父组件 ListItem
         label.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
         
@@ -574,9 +581,18 @@ class TaskListItem(BaseListItem):
             QTimer.singleShot(100, self._check_and_start_scroll)
             return
         
+        # 确保字体大小有效，防止出现负数
+        self._ensure_font_valid(self.option_label)
+        
         # 获取文本宽度
-        font_metrics = self.option_label.fontMetrics()
-        text_width = font_metrics.boundingRect(self._option_full_text).width()
+        try:
+            font_metrics = self.option_label.fontMetrics()
+            text_width = font_metrics.boundingRect(self._option_full_text).width()
+        except Exception:
+            # 如果获取字体度量失败，直接显示文本，不滚动
+            self.option_label.setText(self._option_full_text)
+            self._option_scroll_timer.stop()
+            return
         
         # 如果文本宽度超过标签宽度，启动滚动
         if text_width > label_width:
@@ -597,8 +613,18 @@ class TaskListItem(BaseListItem):
         if label_width <= 0:
             return
         
-        font_metrics = self.option_label.fontMetrics()
-        text_width = font_metrics.boundingRect(self._option_full_text).width()
+        # 确保字体大小有效，防止出现负数
+        self._ensure_font_valid(self.option_label)
+        
+        try:
+            font_metrics = self.option_label.fontMetrics()
+            text_width = font_metrics.boundingRect(self._option_full_text).width()
+        except Exception:
+            # 如果获取字体度量失败，停止滚动
+            self.option_label.setText(self._option_full_text)
+            self._option_scroll_timer.stop()
+            self._option_scroll_position = 0
+            return
         
         # 如果文本不再需要滚动，停止滚动
         if text_width <= label_width:
@@ -610,7 +636,14 @@ class TaskListItem(BaseListItem):
         # 计算显示的文本部分
         # 添加分隔符以便滚动更平滑
         scroll_text = self._option_full_text + " · "
-        total_width = font_metrics.boundingRect(scroll_text).width()
+        try:
+            total_width = font_metrics.boundingRect(scroll_text).width()
+        except Exception:
+            # 如果计算失败，停止滚动
+            self.option_label.setText(self._option_full_text)
+            self._option_scroll_timer.stop()
+            self._option_scroll_position = 0
+            return
         
         # 计算当前应该显示的文本起始位置
         # 使用字符位置而不是像素位置，更简单
@@ -625,7 +658,11 @@ class TaskListItem(BaseListItem):
         displayed = ""
         for char in display_text:
             test_text = displayed + char
-            if font_metrics.boundingRect(test_text).width() > label_width:
+            try:
+                if font_metrics.boundingRect(test_text).width() > label_width:
+                    break
+            except Exception:
+                # 如果计算失败，使用当前文本
                 break
             displayed = test_text
         
