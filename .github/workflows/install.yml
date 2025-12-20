@@ -199,7 +199,6 @@ jobs:
         with:
           name: i18n
           path: app/i18n
-          overwrite: true
 
       - name: Install(macos)
         if: matrix.platform == 'macos'
