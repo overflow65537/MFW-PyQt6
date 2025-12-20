@@ -2712,7 +2712,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <message>
         <location filename="../view/setting_interface/setting_interface.py" line="773"/>
         <source>When enabled, the application reopens at the last recorded size and position</source>
-        <translation>当开启后,程序会记住上一次关闭的大小和未知,在下一次开启时恢复</translation>
+        <translation>当开启后,程序会记住上一次关闭的大小和位置,在下一次开启时恢复</translation>
     </message>
     <message>
         <location filename="../view/setting_interface/setting_interface.py" line="781"/>
