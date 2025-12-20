@@ -2,7 +2,7 @@ from datetime import datetime
 from html import escape
 import re
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QFont, QPalette
 from PySide6.QtWidgets import (
     QFrame,
@@ -17,9 +17,7 @@ from qfluentwidgets import (
     BodyLabel,
     ScrollArea,
     SimpleCardWidget,
-    ToolButton,
-    ToolTipFilter,
-    ToolTipPosition,
+    PushButton,
     FluentIcon as FIF,
     isDarkTheme,
     qconfig,
@@ -155,12 +153,9 @@ class LogoutputWidget(QWidget):
         self.log_output_title.setStyleSheet("font-size: 20px;")
 
         # 生成日志压缩包按钮
-        self.generate_log_zip_button = ToolButton(FIF.FEEDBACK, self)
-        self.generate_log_zip_button.setToolTip(self.tr("generate log zip"))
-        # 悬浮提示
-        self.generate_log_zip_button.installEventFilter(
-            ToolTipFilter(self.generate_log_zip_button, 0, ToolTipPosition.TOP)
-        )
+        self.generate_log_zip_button = PushButton(self.tr("generate log zip"), self)
+        self.generate_log_zip_button.setIcon(FIF.FEEDBACK)
+        self.generate_log_zip_button.setIconSize(QSize(18, 18))
 
         # 日志输出区域标题栏总体布局
         self.log_output_title_layout = QHBoxLayout()
