@@ -201,6 +201,16 @@ class SpeedrunConfigWidget(QWidget):
         merged = deepcopy(DEFAULT_SPEEDRUN_CONFIG)
         if isinstance(config, dict):
             self._deep_merge(merged, config)
+        
+        # 清理trigger对象，移除不应该存在的字段（如run）
+        # trigger应该只包含daily、weekly、monthly三个键
+        if isinstance(merged.get("trigger"), dict):
+            trigger = merged["trigger"]
+            # 只保留合法的trigger键
+            valid_keys = {"daily", "weekly", "monthly"}
+            keys_to_remove = [key for key in trigger.keys() if key not in valid_keys]
+            for key in keys_to_remove:
+                del trigger[key]
 
         self._updating = True
         self._config = merged
