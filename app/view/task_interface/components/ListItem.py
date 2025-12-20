@@ -24,6 +24,7 @@ from qfluentwidgets import (
     MessageBoxBase,
     LineEdit,
     SubtitleLabel,
+    MessageBox,
 )
 from app.core.Item import TaskItem, ConfigItem
 from app.common.constants import PRE_CONFIGURATION, POST_ACTION
@@ -95,7 +96,7 @@ class BaseListItem(QWidget):
         return self.item.name
 
     def _create_setting_button(self):
-        # 子类可以重写此方法来自定义设置按钮
+        # 基类默认创建设置按钮，TaskListItem 会重写为删除按钮
         button = TransparentToolButton(FIF.SETTING)
         button.setFixedSize(34, 34)
         return button
@@ -250,9 +251,12 @@ class TaskListItem(BaseListItem):
         self.name_label = self._create_name_label()
         layout.addWidget(self.name_label)
 
-        # 添加设置按钮
+        # 添加删除按钮（基础任务不能删除，会禁用）
         self.setting_button = self._create_setting_button()
-        self.setting_button.clicked.connect(self._select_in_parent_list)
+        self.setting_button.clicked.connect(self._on_delete_button_clicked)
+        # 基础任务禁用删除按钮
+        if self.task.is_base_task():
+            self.setting_button.setDisabled(True)
         layout.addWidget(self.setting_button)
 
     def _get_task_icon_path(self) -> str | None:
@@ -382,6 +386,43 @@ class TaskListItem(BaseListItem):
         if not self.service_coordinator:
             return
         asyncio.create_task(self.service_coordinator.run_tasks_flow(self.task.item_id))
+    
+    def _create_setting_button(self):
+        """重写基类方法，创建删除按钮"""
+        button = TransparentToolButton(FIF.DELETE)
+        button.setFixedSize(34, 34)
+        button.setToolTip(self.tr("Delete task"))
+        return button
+    
+    def _on_delete_button_clicked(self):
+        """处理删除按钮点击事件"""
+        if not self.service_coordinator:
+            return
+        
+        # 基础任务不能删除
+        if self.task.is_base_task():
+            return
+        
+        # 获取任务显示名称
+        task_name = self._get_display_name()
+        
+        # 弹出确认对话框
+        w = MessageBox(
+            self.tr("Delete Task"),
+            self.tr("Are you sure you want to delete task '{}'?").format(task_name),
+            self.window()
+        )
+        
+        if w.exec():
+            # 用户确认删除
+            try:
+                success = self.service_coordinator.delete_task(self.task.item_id)
+                if not success:
+                    from app.utils.logger import logger
+                    logger.error(f"删除任务失败: {self.task.item_id}")
+            except Exception as e:
+                from app.utils.logger import logger
+                logger.error(f"删除任务时发生错误: {e}")
 
 
 # 特殊任务列表项组件
@@ -524,10 +565,10 @@ class ConfigListItem(BaseListItem):
         self.name_label = self._create_name_label()
         layout.addWidget(self.name_label)
 
-        # 添加设置按钮
+        # 创建设置按钮但不添加到布局（隐藏）
         self.setting_button = self._create_setting_button()
         self.setting_button.clicked.connect(self._select_in_parent_list)
-        layout.addWidget(self.setting_button)
+        self.setting_button.hide()  # 隐藏设置按钮
 
     def _get_bundle_icon_path(self) -> str | None:
         """从配置的 bundle 中获取图标路径
@@ -641,6 +682,10 @@ class ConfigListItem(BaseListItem):
     def _rename_config(self):
         """更改配置名称"""
         if not self.service_coordinator:
+            return
+        
+        # 确保 item 是 ConfigItem 类型
+        if not isinstance(self.item, ConfigItem):
             return
         
         # 获取当前配置名称
