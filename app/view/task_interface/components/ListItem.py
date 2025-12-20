@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QHBoxLayout,
     QSizePolicy,
+    QVBoxLayout,
 )
 
 from PySide6.QtCore import Signal, Qt
@@ -20,6 +21,9 @@ from qfluentwidgets import (
     qconfig,
     RoundMenu,
     Action,
+    MessageBoxBase,
+    LineEdit,
+    SubtitleLabel,
 )
 from app.core.Item import TaskItem, ConfigItem
 from app.common.constants import PRE_CONFIGURATION, POST_ACTION
@@ -437,6 +441,61 @@ class SpecialTaskListItem(TaskListItem):
         event.ignore()
 
 
+# 重命名配置对话框
+class RenameConfigDialog(MessageBoxBase):
+    """重命名配置对话框"""
+    
+    def __init__(self, current_name: str, parent=None):
+        super().__init__(parent)
+        
+        # 设置对话框标题
+        self.titleLabel = SubtitleLabel(self.tr("Rename config"), self)
+        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addSpacing(10)
+        
+        # 创建输入框布局
+        name_layout = QVBoxLayout()
+        name_label = BodyLabel(self.tr("Enter new config name:"), self)
+        self.name_edit = LineEdit(self)
+        self.name_edit.setText(current_name)
+        self.name_edit.setPlaceholderText(self.tr("Enter the name of the config"))
+        self.name_edit.setClearButtonEnabled(True)
+        self.name_edit.selectAll()  # 选中所有文本以便快速输入
+        
+        name_layout.addWidget(name_label)
+        name_layout.addWidget(self.name_edit)
+        
+        # 添加到视图布局
+        self.viewLayout.addLayout(name_layout)
+        
+        # 设置对话框大小
+        self.widget.setMinimumWidth(400)
+        self.widget.setMinimumHeight(180)
+        
+        # 设置按钮文本
+        self.yesButton.setText(self.tr("Confirm"))
+        self.cancelButton.setText(self.tr("Cancel"))
+        
+        # 连接确认按钮信号
+        self.yesButton.clicked.connect(self.on_confirm)
+        
+        # 设置焦点到输入框
+        self.name_edit.setFocus()
+        
+    def on_confirm(self):
+        """确认重命名"""
+        new_name = self.name_edit.text().strip()
+        if not new_name:
+            # 如果名称为空，不接受
+            return
+        
+        self.accept()
+    
+    def get_new_name(self) -> str:
+        """获取新名称"""
+        return self.name_edit.text().strip()
+
+
 # 配置列表项组件
 class ConfigListItem(BaseListItem):
     def __init__(
@@ -563,13 +622,60 @@ class ConfigListItem(BaseListItem):
         super()._load_icon_to_label(icon_label, icon_path, base_path=base_path)
 
     def contextMenuEvent(self, event):
-        """右键菜单：复制配置 ID"""
+        """右键菜单：复制配置 ID、更改配置名"""
         menu = RoundMenu(parent=self)
+        
+        # 添加更改配置名选项
+        rename_action = Action(FIF.EDIT, self.tr("Rename config"))
+        rename_action.triggered.connect(self._rename_config)
+        menu.addAction(rename_action)
+        
+        # 添加复制配置 ID 选项
         copy_action = Action(FIF.COPY, self.tr("Copy config ID"))
         copy_action.triggered.connect(self._copy_config_id)
         menu.addAction(copy_action)
+        
         menu.popup(event.globalPos())
         event.accept()
+
+    def _rename_config(self):
+        """更改配置名称"""
+        if not self.service_coordinator:
+            return
+        
+        # 获取当前配置名称
+        current_name = self.item.name
+        if not current_name:
+            current_name = ""
+        
+        # 创建输入对话框，使用顶层窗口作为父组件
+        dialog = RenameConfigDialog(current_name, self.window())
+        if dialog.exec():
+            new_name = dialog.get_new_name()
+            if new_name and new_name.strip() and new_name != current_name:
+                new_name = new_name.strip()
+                
+                # 更新配置项的 name
+                self.item.name = new_name
+                
+                # 保存配置
+                try:
+                    success = self.service_coordinator.config.save_config(
+                        self.item.item_id,
+                        self.item
+                    )
+                    if success:
+                        # 更新显示的标签文本
+                        self.name_label.setText(new_name)
+                        
+                        # 发送配置已保存的信号，触发刷新
+                        self.service_coordinator.signal_bus.config_saved.emit(True)
+                    else:
+                        from app.utils.logger import logger
+                        logger.error(f"保存配置失败: {self.item.item_id}")
+                except Exception as e:
+                    from app.utils.logger import logger
+                    logger.error(f"保存配置时发生错误: {e}")
 
     def _copy_config_id(self):
         config_id = getattr(self.item, "item_id", "") or ""
