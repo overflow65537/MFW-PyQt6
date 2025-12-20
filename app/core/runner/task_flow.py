@@ -150,6 +150,8 @@ class TaskFlowRunner(QObject):
         self.need_stop = False
         self._manual_stop = False
         self._is_timeout_restart = is_timeout_restart
+        # 跟踪任务流是否成功启动并执行了任务
+        self._tasks_started = False
         # 如果不是超时重启，重置超时状态
         if not is_timeout_restart:
             self._reset_task_timeout_state()
@@ -291,10 +293,12 @@ class TaskFlowRunner(QObject):
                 if not task.is_checked:
                     logger.warning(f"任务 '{task.name}' 未被选中，跳过执行")
                     return
+                self._tasks_started = True
                 await self.run_task(task_id, skip_speedrun=True)
                 return
             else:
                 logger.info("开始执行任务序列...")
+                self._tasks_started = True
                 for task in self.task_service.current_tasks:
                     if task.name in [PRE_CONFIGURATION, POST_ACTION]:
                         continue
@@ -359,12 +363,19 @@ class TaskFlowRunner(QObject):
 
             logger.critical(traceback.format_exc())
         finally:
-            should_run_post_action = not self.need_stop and not is_single_task_mode
+            should_run_post_action = (
+                not self.need_stop
+                and not is_single_task_mode
+                and self._tasks_started
+            )
             try:
                 if should_run_post_action:
                     await self._handle_post_action()
                 else:
-                    logger.info("跳过完成后操作：手动停止或单任务执行")
+                    if not self._tasks_started:
+                        logger.info("跳过完成后操作：任务流未成功启动")
+                    else:
+                        logger.info("跳过完成后操作：手动停止或单任务执行")
             except Exception as exc:
                 logger.error(f"完成后操作执行失败: {exc}")
             await self.stop_task()
