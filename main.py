@@ -33,11 +33,11 @@ if getattr(sys, "frozen", False):
     os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
 else:
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-from app.utils.logger import logger
 import maa
 from maa.context import Context
 from maa.custom_action import CustomAction
 from maa.custom_recognition import CustomRecognition
+from app.utils.logger import logger
 from qasync import QEventLoop, asyncio
 
 # 应用qasync Windows平台补丁
