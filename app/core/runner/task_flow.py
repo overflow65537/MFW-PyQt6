@@ -274,8 +274,8 @@ class TaskFlowRunner(QObject):
                         "ERROR",
                         self.tr(
                             "Custom components loading failed, the flow is terminated: "
-                            + detail_msg
-                        ),
+                        )
+                        + detail_msg,
                     )
                     signalBus.log_output.emit(
                         "ERROR", self.tr("please try to reset resource in setting")
@@ -691,9 +691,22 @@ class TaskFlowRunner(QObject):
 
         adb_path = controller_config.get("adb_path", "")
         address = controller_config.get("address", "")
-        if not adb_path or not address:
-            logger.warning("未找到可用的 ADB 设备")
-            signalBus.log_output.emit("WARNING", self.tr("No ADB device found"))
+
+        # 检查 adb 路径和连接地址
+        if not adb_path:
+            error_msg = self.tr(
+                "ADB path is empty, please configure ADB path in settings"
+            )
+            logger.error("ADB 路径为空")
+            signalBus.log_output.emit("ERROR", error_msg)
+            return False
+
+        if not address:
+            error_msg = self.tr(
+                "ADB connection address is empty, please configure device connection in settings"
+            )
+            logger.error("ADB 连接地址为空")
+            signalBus.log_output.emit("ERROR", error_msg)
             return False
         raw_input_method = int(
             controller_raw.get(activate_controller, {}).get("input_methods", -1)
@@ -796,9 +809,13 @@ class TaskFlowRunner(QObject):
         mouse_method = controller_config.get("mouse_input_methods", 0)
         keyboard_method = controller_config.get("keyboard_input_methods", 0)
 
+        # 检查 hwnd 是否为空
         if not hwnd:
-            logger.warning("未找到可用的 Win32 窗口")
-            signalBus.log_output.emit("WARNING", self.tr("No Win32 window found"))
+            error_msg = self.tr(
+                "Window handle (hwnd) is empty, please configure window connection in settings"
+            )
+            logger.error("Win32 窗口句柄为空")
+            signalBus.log_output.emit("ERROR", error_msg)
             return False
 
         if await self.maafw.connect_win32hwnd(
@@ -1560,7 +1577,7 @@ class TaskFlowRunner(QObject):
 
     def _should_run_task_by_resource(self, task: TaskItem) -> bool:
         """根据当前选择的资源判断任务是否应该执行
-        
+
         规则：
         - 基础任务（资源、完成后操作）始终执行
         - 如果任务没有 resource 字段或 resource 为空列表，表示所有资源都可用，执行
@@ -1570,22 +1587,22 @@ class TaskFlowRunner(QObject):
         # 基础任务始终执行
         if task.is_base_task():
             return True
-        
+
         # 获取当前配置中的资源
         try:
             pre_config_task = self.task_service.get_task(PRE_CONFIGURATION)
             if not pre_config_task:
                 return True  # 如果没有 Pre-Configuration 任务，执行所有任务
-            
+
             current_resource_name = pre_config_task.task_option.get("resource", "")
             if not current_resource_name:
                 return True  # 如果没有选择资源，执行所有任务
-            
+
             # 获取 interface 中的任务定义
             interface = self.task_service.interface
             if not interface:
                 return True
-            
+
             # 查找任务定义中的 resource 字段
             for task_def in interface.get("task", []):
                 if task_def.get("name") == task.name:
@@ -1597,7 +1614,7 @@ class TaskFlowRunner(QObject):
                     if current_resource_name in task_resources:
                         return True
                     return False
-            
+
             # 如果找不到任务定义，默认执行
             return True
         except Exception:
