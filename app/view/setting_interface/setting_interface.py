@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
 from PySide6.QtCore import Qt, QSize, QUrl, QTimer, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QDesktopServices, QPixmap
+from PySide6.QtGui import QDesktopServices, QPixmap, QFont
 from PySide6.QtWidgets import (
     QFrame,
     QSizePolicy,
@@ -1489,8 +1489,19 @@ class SettingInterface(QWidget):
         font = self.font()
         base_size = font.pointSize()
         if base_size <= 0:
-            base_size = 10
-        font.setPointSize(base_size + 2)
+            # 如果 pointSize() 返回 -1，说明字体使用像素大小模式
+            # 在这种情况下，创建一个新的使用点大小的字体对象
+            pixel_size = font.pixelSize()
+            if pixel_size > 0:
+                # 像素大小转点大小的近似转换（1 点 ≈ 1.33 像素）
+                base_size = max(10, int(pixel_size * 0.75))
+            else:
+                base_size = 10
+            # 创建新字体，明确使用点大小模式
+            font = QFont(font.family(), base_size + 2)
+        else:
+            # 字体已使用点大小模式，直接增加点大小
+            font.setPointSize(base_size + 2)
         self.setFont(font)
 
     def _choose_background_image(self):

@@ -769,6 +769,10 @@ class SpecialTaskListItem(TaskListItem):
 
         # 隐藏checkbox
         self.checkbox.hide()
+        
+        # 隐藏选项标签（特殊任务不显示选项）
+        if hasattr(self, "option_label"):
+            self.option_label.hide()
 
         # 将整个item的点击事件绑定到checkbox逻辑
         # 点击name_label时触发选择
