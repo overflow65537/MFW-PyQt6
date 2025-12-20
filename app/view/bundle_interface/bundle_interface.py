@@ -7,8 +7,6 @@ Bundle 管理界面
 import jsonc
 import time
 import shutil
-import zipfile
-import tempfile
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -1351,13 +1349,13 @@ class AddBundleDialog(MessageBoxBase):
 
         # 资源路径 + 选择按钮
         self.path_layout = QHBoxLayout()
-        self.path_label = BodyLabel(self.tr("Bundle Path:"), self)
+        self.path_label = BodyLabel(self.tr("Interface File:"), self)
         self.path_edit = LineEdit(self)
         self.path_edit.setPlaceholderText(
-            self.tr("Select folder or zip file containing interface.json and resource/")
+            self.tr("Select interface.json or interface.jsonc file")
         )
         self.path_edit.setClearButtonEnabled(True)
-        self.path_button = ToolButton(FIF.FOLDER, self)
+        self.path_button = ToolButton(FIF.DOCUMENT, self)
         self.path_button.setSizePolicy(
             QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed
         )
@@ -1379,17 +1377,15 @@ class AddBundleDialog(MessageBoxBase):
 
         self._bundle_name: str = ""
         self._bundle_path: str = ""
-        self._temp_dir: Optional[Path] = None  # 用于存储临时解压目录
 
     def _choose_bundle_source(self) -> None:
-        """选择 bundle 源（文件夹或 zip 文件）。"""
+        """选择 interface.json 文件。"""
         file_path, _ = QFileDialog.getOpenFileName(
             self,
-            self.tr("Choose Bundle Source"),
+            self.tr("Choose Interface File"),
             "./",
             self.tr(
-                "Bundle Files (interface.json interface.jsonc *.zip);;"
-                "Zip Files (*.zip);;"
+                "Interface Files (interface.json interface.jsonc);;"
                 "All Files (*)"
             ),
         )
@@ -1398,31 +1394,16 @@ class AddBundleDialog(MessageBoxBase):
 
         p = Path(file_path)
 
-        # 如果是 zip 文件
-        if p.is_file() and p.suffix.lower() == ".zip":
-            self.path_edit.setText(str(p))
-            # zip 文件需要解压后才能读取 interface.json，暂时不预填名称
-            return
-
-        # 如果是 interface.json 或 interface.jsonc 文件
+        # 只接受 interface.json 或 interface.jsonc 文件
         if p.is_file() and p.name.lower() in ("interface.json", "interface.jsonc"):
-            base_dir = p.parent
-            self.path_edit.setText(str(base_dir))
+            self.path_edit.setText(str(p))
             # 读取 interface.json 的 name 字段以预填 bundle 名称
             self._read_interface_name_and_prefill(p)
-            return
-
-        # 如果是目录
-        if p.is_dir():
-            self.path_edit.setText(str(p))
-            # 尝试读取 interface.json
-            interface_path = None
-            for candidate in [p / "interface.jsonc", p / "interface.json"]:
-                if candidate.exists():
-                    interface_path = candidate
-                    break
-            if interface_path:
-                self._read_interface_name_and_prefill(interface_path)
+        else:
+            signalBus.info_bar_requested.emit(
+                "warning",
+                self.tr("Please select interface.json or interface.jsonc file")
+            )
 
     def _read_interface_name_and_prefill(self, interface_path: Path) -> None:
         """读取 interface.json 的 name 字段并预填到名称输入框。"""
@@ -1445,79 +1426,28 @@ class AddBundleDialog(MessageBoxBase):
 
     def _on_confirm(self) -> None:
         name = self.name_edit.text().strip()
-        path = self.path_edit.text().strip()
+        interface_file_path = self.path_edit.text().strip()
 
         def _show_error(msg: str) -> None:
             # 通过信号总线发送 InfoBar 通知，由主窗口统一处理
             signalBus.info_bar_requested.emit("error", msg)
 
-        def _cleanup_temp_dir() -> None:
-            """清理临时目录（如果存在）。"""
-            if self._temp_dir and self._temp_dir.exists():
-                try:
-                    shutil.rmtree(self._temp_dir)
-                    self._temp_dir = None
-                except Exception as e:
-                    logger.warning(f"清理临时目录失败: {e}")
-
         try:
-            if not path:
-                _show_error(self.tr("Bundle path cannot be empty"))
+            if not interface_file_path:
+                _show_error(self.tr("Interface file path cannot be empty"))
                 return
 
-            source_path = Path(path)
-            if not source_path.exists():
-                _show_error(self.tr("Selected path does not exist"))
+            interface_path = Path(interface_file_path)
+            if not interface_path.exists():
+                _show_error(self.tr("Selected interface file does not exist"))
                 return
 
-            # 处理 zip 文件：解压到临时目录
-            bundle_source_dir: Optional[Path] = None
-            is_from_zip = False
-            if source_path.is_file() and source_path.suffix.lower() == ".zip":
-                try:
-                    # 创建临时目录用于解压
-                    temp_dir = Path(tempfile.mkdtemp(prefix="bundle_"))
-                    self._temp_dir = temp_dir
-                    is_from_zip = True
-
-                    logger.info(f"解压 zip 文件到临时目录: {temp_dir}")
-                    with zipfile.ZipFile(source_path, "r") as zip_ref:
-                        zip_ref.extractall(temp_dir)
-
-                    # 查找解压后的根目录（可能直接是内容，也可能包含一个子目录）
-                    bundle_source_dir = self._find_bundle_root_in_dir(temp_dir)
-                    if bundle_source_dir is None:
-                        # 如果没找到，使用临时目录本身
-                        bundle_source_dir = temp_dir
-
-                except Exception as e:
-                    logger.error(f"解压 zip 文件失败: {e}")
-                    _show_error(self.tr("Failed to extract zip file: {}").format(str(e)))
-                    _cleanup_temp_dir()
-                    return
-            elif source_path.is_dir():
-                bundle_source_dir = source_path
-            else:
-                _show_error(self.tr("Selected path must be a directory or zip file"))
+            if not interface_path.is_file():
+                _show_error(self.tr("Selected path is not a file"))
                 return
 
-            # 查找 interface.json 或 interface.jsonc
-            interface_path = None
-            for candidate in [
-                bundle_source_dir / "interface.jsonc",
-                bundle_source_dir / "interface.json",
-            ]:
-                if candidate.exists():
-                    interface_path = candidate
-                    break
-
-            if interface_path is None:
-                _show_error(
-                    self.tr(
-                        "Bundle directory does not contain interface.jsonc/interface.json"
-                    )
-                )
-                _cleanup_temp_dir()
+            if interface_path.name.lower() not in ("interface.json", "interface.jsonc"):
+                _show_error(self.tr("Please select interface.json or interface.jsonc file"))
                 return
 
             # 读取 interface.json 获取 name
@@ -1531,26 +1461,18 @@ class AddBundleDialog(MessageBoxBase):
             except Exception as e:
                 logger.error(f"读取 interface.json 失败: {e}")
                 _show_error(self.tr("Failed to read interface.json: {}").format(str(e)))
-                _cleanup_temp_dir()
                 return
 
-            # 如果当前名称为空，使用 interface.json 中的 name 或默认值
-            if not name:
-                if interface_name:
-                    name = interface_name
-                else:
-                    name = "Default Bundle"
-                self.name_edit.setText(name)
-            else:
-                # 如果用户输入了名称，但 interface.json 中有名称，使用 interface.json 中的名称
-                # 这样可以确保文件夹名称正确
-                if interface_name:
-                    name = interface_name
+            # 使用 interface.json 中的 name 作为 bundle_name
+            if not interface_name:
+                _show_error(self.tr("interface.json does not contain a valid 'name' field"))
+                return
+
+            bundle_name = interface_name
 
             # 通过服务层接口写入 bundle，避免直接操作私有 _main_config
             if not self._service_coordinator:
                 _show_error(self.tr("Service is not ready, cannot save bundle"))
-                _cleanup_temp_dir()
                 return
 
             coordinator = self._service_coordinator
@@ -1559,17 +1481,15 @@ class AddBundleDialog(MessageBoxBase):
             # 检查是否已存在同名的 bundle
             try:
                 existing_bundles = config_service.list_bundles()
-                if name in existing_bundles:
+                if bundle_name in existing_bundles:
                     _show_error(self.tr("Bundle name already exists"))
-                    _cleanup_temp_dir()
                     return
             except Exception as exc:
                 _show_error(self.tr("Failed to check existing bundles: {}").format(exc))
-                _cleanup_temp_dir()
                 return
 
-            # 确定目标 bundle 目录（使用 name 作为文件夹名）
-            bundle_dir = Path.cwd() / "bundle" / name
+            # 确定目标 bundle 目录（使用 bundle_name 作为文件夹名）
+            bundle_dir = Path.cwd() / "bundle" / bundle_name
 
             # 如果目标目录已存在，询问是否覆盖
             if bundle_dir.exists():
@@ -1579,11 +1499,10 @@ class AddBundleDialog(MessageBoxBase):
                     self.tr("Bundle Already Exists"),
                     self.tr(
                         "Bundle directory '{}' already exists. Do you want to replace it?"
-                    ).format(name),
+                    ).format(bundle_name),
                     self,
                 )
                 if msg_box.exec() != msg_box.DialogCode.Accepted:
-                    _cleanup_temp_dir()
                     return
 
                 # 删除现有目录
@@ -1599,7 +1518,6 @@ class AddBundleDialog(MessageBoxBase):
                             "Failed to remove existing bundle directory: {}"
                         ).format(str(e))
                     )
-                    _cleanup_temp_dir()
                     return
 
             # 创建目标目录
@@ -1610,39 +1528,38 @@ class AddBundleDialog(MessageBoxBase):
                 _show_error(
                     self.tr("Failed to create bundle directory: {}").format(str(e))
                 )
-                _cleanup_temp_dir()
                 return
 
-            # 移动 bundle 源到目标目录
-            # 总是移动内容到目标目录，这样可以确保文件夹名始终为 name
+            # 获取 interface.json 的父目录（同级目录）
+            source_dir = interface_path.parent
+
+            # 复制同级目录下的所有文件和文件夹到目标目录
             try:
-                for item in bundle_source_dir.iterdir():
+                for item in source_dir.iterdir():
                     target_item = bundle_dir / item.name
-                    if target_item.exists():
-                        if target_item.is_dir():
+                    if item.is_dir():
+                        if target_item.exists():
                             shutil.rmtree(target_item)
-                        else:
+                        shutil.copytree(str(item), str(target_item))
+                    else:
+                        if target_item.exists():
                             target_item.unlink()
-                    shutil.move(str(item), str(target_item))
-                logger.info(f"已将 bundle 内容移动到: {bundle_dir}")
+                        shutil.copy2(str(item), str(target_item))
+                logger.info(f"已将 bundle 内容复制到: {bundle_dir}")
             except Exception as e:
-                logger.error(f"移动 bundle 到目标目录失败: {e}")
+                logger.error(f"复制 bundle 到目标目录失败: {e}")
                 _show_error(
-                    self.tr("Failed to move bundle to target directory: {}").format(
+                    self.tr("Failed to copy bundle to target directory: {}").format(
                         str(e)
                     )
                 )
-                # 清理：如果移动失败，删除已创建的目标目录
+                # 清理：如果复制失败，删除已创建的目标目录
                 try:
                     if bundle_dir.exists():
                         shutil.rmtree(bundle_dir)
                 except Exception:
                     pass
-                _cleanup_temp_dir()
                 return
-
-            # 清理临时目录（如果是解压的 zip）
-            _cleanup_temp_dir()
 
             # 将路径转换为相对路径
             try:
@@ -1654,9 +1571,9 @@ class AddBundleDialog(MessageBoxBase):
             # 更新 bundle 配置
             try:
                 success = coordinator.update_bundle_path(
-                    bundle_name=name,
+                    bundle_name=bundle_name,
                     new_path=normalized,
-                    bundle_display_name=name,
+                    bundle_display_name=bundle_name,
                 )
                 if not success:
                     _show_error(self.tr("Failed to update bundle path"))
@@ -1665,57 +1582,17 @@ class AddBundleDialog(MessageBoxBase):
                 _show_error(self.tr("Failed to update bundle path: {}").format(str(exc)))
                 return
 
-            self._bundle_name = name
+            self._bundle_name = bundle_name
             self._bundle_path = normalized
-            logger.info(f"成功添加 bundle: {name} -> {normalized}")
+            logger.info(f"成功添加 bundle: {bundle_name} -> {normalized}")
             self.accept()
         except Exception as e:
             logger.error(f"添加 bundle 时发生未预期的错误: {e}", exc_info=True)
             _show_error(self.tr("An unexpected error occurred: {}").format(str(e)))
-            _cleanup_temp_dir()
-
-    def _find_bundle_root_in_dir(self, directory: Path) -> Optional[Path]:
-        """在目录中查找包含 interface.json 的 bundle 根目录。"""
-        # 首先检查当前目录
-        for candidate in [directory / "interface.jsonc", directory / "interface.json"]:
-            if candidate.exists():
-                return directory
-
-        # 如果当前目录没有，检查子目录
-        try:
-            subdirs = [item for item in directory.iterdir() if item.is_dir()]
-            # 如果只有一个子目录，检查它
-            if len(subdirs) == 1:
-                subdir = subdirs[0]
-                for candidate in [
-                    subdir / "interface.jsonc",
-                    subdir / "interface.json",
-                ]:
-                    if candidate.exists():
-                        return subdir
-
-            # 如果有多个子目录，查找包含 interface.json 的
-            for subdir in subdirs:
-                for candidate in [
-                    subdir / "interface.jsonc",
-                    subdir / "interface.json",
-                ]:
-                    if candidate.exists():
-                        return subdir
-        except Exception as e:
-            logger.warning(f"查找 bundle 根目录时出错: {e}")
-
-        return None
 
     def get_bundle_info(self) -> tuple[str, str]:
         return self._bundle_name, self._bundle_path
 
     def closeEvent(self, event) -> None:
-        """对话框关闭时清理临时目录。"""
-        if self._temp_dir and self._temp_dir.exists():
-            try:
-                shutil.rmtree(self._temp_dir)
-                logger.debug(f"已清理临时目录: {self._temp_dir}")
-            except Exception as e:
-                logger.warning(f"清理临时目录失败: {e}")
+        """对话框关闭事件。"""
         super().closeEvent(event)
