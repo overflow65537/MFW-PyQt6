@@ -51,7 +51,6 @@ from app.common.__version__ import __version__
 from app.common.config import cfg
 from app.view.main_window.main_window import MainWindow
 from app.common.config import Language
-from app.core.service.interface_manager import get_interface_manager
 from app.utils.crypto import crypto_manager
 
 

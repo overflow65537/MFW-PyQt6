@@ -727,8 +727,8 @@ class ResourceSettingMixin:
         current_controller_name = self.current_controller_name
         current_controller_type = self.current_controller_type
         if current_controller_type == "adb":
-            self.current_config[current_controller_name] = self.current_config.get(
-                current_controller_name,
+            self.current_config[current_controller_type] = self.current_config.get(
+                current_controller_type,
                 {
                     "adb_path": "",
                     "address": "",
@@ -742,8 +742,8 @@ class ResourceSettingMixin:
             )
 
         elif current_controller_type == "win32":
-            self.current_config[current_controller_name] = self.current_config.get(
-                current_controller_name,
+            self.current_config[current_controller_type] = self.current_config.get(
+                current_controller_type,
                 {
                     "hwnd": "",
                     "program_path": "",
@@ -757,12 +757,12 @@ class ResourceSettingMixin:
         # Parse JSON string back to dict for "config" key
         if key == "config":
             try:
-                self.current_config[current_controller_name][key] = jsonc.loads(value)
+                self.current_config[current_controller_type][key] = jsonc.loads(value)
             except (jsonc.JSONDecodeError, ValueError):
                 # If parsing fails, keep the string as-is or use an empty dict
-                self.current_config[current_controller_name][key] = value
+                self.current_config[current_controller_type][key] = value
         else:
-            self.current_config[current_controller_name][key] = value
+            self.current_config[current_controller_type][key] = value
         self._auto_save_options()
 
     def _auto_save_options(self):
@@ -817,7 +817,8 @@ class ResourceSettingMixin:
             if controller_info["name"] == controller_name:
                 controller_type = controller_info["type"].lower()
                 break
-        controller_cfg = self.current_config.setdefault(controller_name, {})
+        # 使用控制器类型作为键，而不是控制器名称
+        controller_cfg = self.current_config.setdefault(controller_type, {})
         if controller_type == "adb":
             adb_defaults = {
                 "adb_path": "",
@@ -844,21 +845,21 @@ class ResourceSettingMixin:
         for name, widget in self.resource_setting_widgets.items():
             if name.endswith("_label"):
                 continue
-            elif name in self.current_config[controller_name]:
+            elif name in self.current_config[controller_type]:
                 if isinstance(widget, (LineEdit, PathLineEdit)):
-                    value = self.current_config[controller_name][name]
+                    value = self.current_config[controller_type][name]
                     # Convert dict to JSON string
                     widget.setText(
                         jsonc.dumps(value) if isinstance(value, dict) else str(value)
                     )
                 elif isinstance(widget, ComboBox):
-                    target = self.current_config[controller_name][name]
+                    target = self.current_config[controller_type][name]
                     widget.setCurrentIndex(self._value_to_index(widget, target))
         self._fill_custom_option()
         self._fill_gpu_option()
         self._fill_agent_timeout_option()
         # 填充设备名称
-        device_name = self.current_config[controller_name].get(
+        device_name = self.current_config[controller_type].get(
             "device_name", self.tr("Unknown Device")
         )
         # 阻断下拉框信号发送
@@ -1056,7 +1057,16 @@ class ResourceSettingMixin:
         if self._syncing:
             return
         current_controller_name = self.current_config["controller_type"]
-        current_controller_config = self.current_config[current_controller_name]
+        # 获取控制器类型
+        current_controller_type = None
+        for controller_info in self.controller_type_mapping.values():
+            if controller_info["name"] == current_controller_name:
+                current_controller_type = controller_info["type"].lower()
+                break
+        if not current_controller_type:
+            return
+        # 使用控制器类型作为键
+        current_controller_config = self.current_config.setdefault(current_controller_type, {})
         find_device_info = self.resource_setting_widgets[
             "search_combo"
         ].device_mapping.get(device_name)

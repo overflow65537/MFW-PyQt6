@@ -359,6 +359,7 @@ class TaskFlowRunner(QObject):
 
         except Exception as exc:
             logger.error(f"任务流程执行异常: {str(exc)}")
+            signalBus.log_output.emit("ERROR", self.tr("Task flow error: ")+str(exc))
             import traceback
 
             logger.critical(traceback.format_exc())
@@ -822,9 +823,9 @@ class TaskFlowRunner(QObject):
             logger.debug("未匹配到与配置一致的 Win32 窗口，继续使用当前配置")
 
         hwnd = int(controller_config.get("hwnd", 0))
-        screencap_method = controller_config.get("win32_screencap_methods", 0)
-        mouse_method = controller_config.get("mouse_input_methods", 0)
-        keyboard_method = controller_config.get("keyboard_input_methods", 0)
+        screencap_method = controller_config.get("win32_screencap_methods", 1)
+        mouse_method = controller_config.get("mouse_input_methods", 1)
+        keyboard_method = controller_config.get("keyboard_input_methods", 1)
 
         # 检查 hwnd 是否为空
         if not hwnd:
@@ -836,7 +837,7 @@ class TaskFlowRunner(QObject):
             return False
 
         logger.debug(
-            f"Win32 参数类型: hwnd={type(hwnd)}, screencap_method={type(screencap_method)}, mouse_method={type(mouse_method)}, keyboard_method={type(keyboard_method)}"
+            f"Win32 参数类型: hwnd={hwnd}, screencap_method={screencap_method}, mouse_method={mouse_method}, keyboard_method={keyboard_method}"
         )
 
         if await self.maafw.connect_win32hwnd(

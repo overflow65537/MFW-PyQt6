@@ -47,52 +47,48 @@
 <context>
     <name>AddBundleDialog</name>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1335"/>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1339"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1333"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1337"/>
         <source>Add Resource Bundle</source>
         <translation>添加资源包</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1345"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1343"/>
         <source>Bundle Name:</source>
         <translation>资源包名</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1347"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1345"/>
         <source>Enter the name of the bundle</source>
         <translation>输入资源包名</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1354"/>
         <source>Bundle Path:</source>
-        <translation>资源包路径</translation>
+        <translation type="vanished">资源包路径</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1357"/>
         <source>Select folder or zip file containing interface.json and resource/</source>
-        <translation>选择包含 interface.json 和 resource/ 的文件夹或 zip 文件</translation>
+        <translation type="vanished">选择包含 interface.json 和 resource/ 的文件夹或 zip 文件</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1388"/>
         <source>Choose Bundle Source</source>
-        <translation>选择资源包</translation>
+        <translation type="vanished">选择资源包</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1391"/>
         <source>Bundle Files (interface.json interface.jsonc *.zip);;Zip Files (*.zip);;All Files (*)</source>
-        <translation>资源包文件（interface.json interface.jsonc *.zip）；压缩文件（*.zip）；所有文件（*）</translation>
+        <translation type="vanished">资源包文件（interface.json interface.jsonc *.zip）；压缩文件（*.zip）；所有文件（*）</translation>
     </message>
     <message>
         <source>Select folder containing interface.json and resource/</source>
         <translation type="vanished">选择interface.json位置</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1376"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1374"/>
         <source>Confirm</source>
         <translation>确认</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1377"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1375"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
@@ -105,49 +101,49 @@
         <translation type="vanished">interface(interface.json)</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1465"/>
         <source>Bundle path cannot be empty</source>
-        <translation>资源包路径不能为空</translation>
+        <translation type="vanished">资源包路径不能为空</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1470"/>
         <source>Selected path does not exist</source>
-        <translation>所选路径不存在</translation>
+        <translation type="vanished">所选路径不存在</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1495"/>
         <source>Failed to extract zip file: {}</source>
-        <translation>解压 zip 文件失败：{}</translation>
+        <translation type="vanished">解压 zip 文件失败：{}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1501"/>
         <source>Selected path must be a directory or zip file</source>
-        <translation>所选路径必须是目录或压缩文件。</translation>
+        <translation type="vanished">所选路径必须是目录或压缩文件。</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1517"/>
         <source>Bundle directory does not contain interface.jsonc/interface.json</source>
-        <translation>
+        <translation type="vanished">
 捆绑目录不包含 interface.jsonc/interface.json</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1533"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1463"/>
         <source>Failed to read interface.json: {}</source>
         <translation>
 读取 interface.json 失败：{}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1552"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1475"/>
         <source>Service is not ready, cannot save bundle</source>
         <translation>服务未就绪;无法保存资源包</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1563"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1485"/>
         <source>Bundle name already exists</source>
         <translation>资源包名已存在</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1674"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1552"/>
+        <source>Failed to copy bundle to target directory: {}</source>
+        <translation>无法将资源包复制到目标目录：{}</translation>
+    </message>
+    <message>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1591"/>
         <source>An unexpected error occurred: {}</source>
         <translation>
 发生意外错误：{}</translation>
@@ -157,43 +153,88 @@
         <translation type="vanished">资源包路径已存在</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1567"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1352"/>
+        <source>Interface File:</source>
+        <translation>interface文件：</translation>
+    </message>
+    <message>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1355"/>
+        <source>Select interface.json or interface.jsonc file</source>
+        <translation>选择 interface.json 或 interface.jsonc 文件</translation>
+    </message>
+    <message>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1385"/>
+        <source>Choose Interface File</source>
+        <translation>选择interface文件</translation>
+    </message>
+    <message>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1388"/>
+        <source>Interface Files (interface.json interface.jsonc);;All Files (*)</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1405"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1450"/>
+        <source>Please select interface.json or interface.jsonc file</source>
+        <translation>请选择 interface.json 或 interface.jsonc 文件</translation>
+    </message>
+    <message>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1437"/>
+        <source>Interface file path cannot be empty</source>
+        <translation>interface文件路径不能为空。</translation>
+    </message>
+    <message>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1442"/>
+        <source>Selected interface file does not exist</source>
+        <translation>所选接口文件不存在</translation>
+    </message>
+    <message>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1446"/>
+        <source>Selected path is not a file</source>
+        <translation>选定的路径不是文件</translation>
+    </message>
+    <message>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1468"/>
+        <source>interface.json does not contain a valid &apos;name&apos; field</source>
+        <translation>interface.json 文件不包含有效的“name”字段</translation>
+    </message>
+    <message>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1488"/>
         <source>Failed to check existing bundles: {}</source>
         <translation>检查资源包失败: {}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1579"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1499"/>
         <source>Bundle Already Exists</source>
         <translation>资源包已存在</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1581"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1501"/>
         <source>Bundle directory &apos;{}&apos; already exists. Do you want to replace it?</source>
         <translation>资源包目录“{}”已存在。是​​否要替换它？</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1599"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1518"/>
         <source>Failed to remove existing bundle directory: {}</source>
         <translation>删除现有资源包目录失败：{}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1611"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1529"/>
         <source>Failed to create bundle directory: {}</source>
         <translation>
 创建资源包目录失败：{}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1631"/>
         <source>Failed to move bundle to target directory: {}</source>
-        <translation>将资源包移动到目标目录失败：{}</translation>
+        <translation type="vanished">将资源包移动到目标目录失败：{}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1662"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1579"/>
         <source>Failed to update bundle path</source>
         <translation>更新资源包路径失败</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1665"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1582"/>
         <source>Failed to update bundle path: {}</source>
         <translation>更新资源包路径失败: {}</translation>
     </message>
@@ -480,22 +521,22 @@ Please check for updates first, or visit the GitHub releases page.</source>
 <context>
     <name>BundleDetailWidget</name>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="196"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="194"/>
         <source>Description</source>
         <translation>描述</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="202"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="200"/>
         <source>No description available</source>
         <translation>当前没有描述</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="224"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="222"/>
         <source>Contact</source>
         <translation>联系方式</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="228"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="226"/>
         <source>No contact information available</source>
         <translation>当前没有联系方式</translation>
     </message>
@@ -503,102 +544,102 @@ Please check for updates first, or visit the GitHub releases page.</source>
 <context>
     <name>BundleInterface</name>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="138"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="136"/>
         <source>Open update log</source>
         <translation>打开更新日志</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="437"/>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="438"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="435"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="436"/>
         <source>Auto Update</source>
         <translation>自动更新</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="434"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="432"/>
         <source>Bundle List</source>
         <translation>资源包列表</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="435"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="433"/>
         <source>Bundle Details</source>
         <translation>资源包信息</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="586"/>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="923"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="584"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="921"/>
         <source>Unknown version</source>
         <translation>未知版本</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="722"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="720"/>
         <source>No license information for this bundle</source>
         <translation>此资源包无许可信息。</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="727"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="725"/>
         <source>License</source>
         <translation>许可证</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="771"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="769"/>
         <source>No welcome message for this bundle</source>
         <translation>此资源包没有欢迎信息</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="776"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="774"/>
         <source>Welcome</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1004"/>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1061"/>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1231"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1002"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1059"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1229"/>
         <source>Multi-resource adaptation is not enabled. Please enable it in Settings first.</source>
         <translation>多资源适配功能未启用。请先在设置中启用该功能。</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1041"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1039"/>
         <source>All bundles are up to date</source>
         <translation>所有软件包均为最新版本</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1087"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1085"/>
         <source>All updates completed</source>
         <translation>全部更新完成</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1141"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1139"/>
         <source>Updating bundle: {bundle_name}</source>
         <translation>正在更新资源包包：{bundle_name}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1165"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1163"/>
         <source>Bundle &apos;{bundle_name}&apos; updated successfully</source>
         <translation>资源包包“{bundle_name}”已成功更新</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1172"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1170"/>
         <source>Update cancelled: {bundle_name}</source>
         <translation>
 更新已取消：{bundle_name}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1179"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1177"/>
         <source>Restart required for bundle: {bundle_name}</source>
         <translation>需要重启捆绑包：{bundle_name}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1186"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1184"/>
         <source>Update failed for bundle: {bundle_name}</source>
         <translation>更新捆绑包失败：{bundle_name}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1306"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1304"/>
         <source>No update log</source>
         <translation>没有更新日志</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1307"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1305"/>
         <source>No update log found locally for this bundle.
 
 Please check for updates first, or visit the GitHub releases page.</source>
@@ -607,7 +648,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
 请先检查更新，或访问 GitHub 发布页面。</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1319"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1317"/>
         <source>Update Log</source>
         <translation>更新日志</translation>
     </message>
@@ -615,7 +656,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
 <context>
     <name>BundleListItem</name>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="150"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="148"/>
         <source>Latest version: {}</source>
         <translation>最新版本: {}</translation>
     </message>
@@ -668,13 +709,13 @@ Please check for updates first, or visit the GitHub releases page.</source>
 <context>
     <name>ConfigListItem</name>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="1044"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="1054"/>
         <source>Rename config</source>
         <translation>
 重命名配置</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="1049"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="1059"/>
         <source>Copy config ID</source>
         <translation>复制配置ID</translation>
     </message>
@@ -983,128 +1024,128 @@ Please check for updates first, or visit the GitHub releases page.</source>
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../view/main_window/main_window.py" line="151"/>
+        <location filename="../view/main_window/main_window.py" line="152"/>
         <source>Task</source>
         <translation>任务</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="156"/>
+        <location filename="../view/main_window/main_window.py" line="157"/>
         <source>Special Task</source>
         <translation>特殊任务</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="162"/>
+        <location filename="../view/main_window/main_window.py" line="163"/>
         <source>Monitor</source>
         <translation>监控</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="168"/>
+        <location filename="../view/main_window/main_window.py" line="169"/>
         <source>Schedule</source>
         <translation>计划任务</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="176"/>
+        <location filename="../view/main_window/main_window.py" line="177"/>
         <source>test_interface</source>
         <translation>测试界面</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="200"/>
-        <location filename="../view/main_window/main_window.py" line="288"/>
-        <location filename="../view/main_window/main_window.py" line="300"/>
+        <location filename="../view/main_window/main_window.py" line="202"/>
+        <location filename="../view/main_window/main_window.py" line="317"/>
+        <location filename="../view/main_window/main_window.py" line="329"/>
         <source>Bundle</source>
         <translation>资源包</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="212"/>
+        <location filename="../view/main_window/main_window.py" line="214"/>
         <source>Setting</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="603"/>
+        <location filename="../view/main_window/main_window.py" line="632"/>
         <source>Log is being packaged, please wait...</source>
         <translation>日志正在打包,请稍候</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="618"/>
+        <location filename="../view/main_window/main_window.py" line="647"/>
         <source>Debug directory not found, cannot package logs.</source>
         <translation>debug目录不存在,无法打包日志</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="645"/>
+        <location filename="../view/main_window/main_window.py" line="674"/>
         <source>Log packaging failed:</source>
         <translation>日志打包失败</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="700"/>
+        <location filename="../view/main_window/main_window.py" line="729"/>
         <source>, there are </source>
         <translation>, 还有</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="702"/>
+        <location filename="../view/main_window/main_window.py" line="731"/>
         <source> files not added</source>
         <translation>文件未添加</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="706"/>
+        <location filename="../view/main_window/main_window.py" line="735"/>
         <source>Log has been packaged, but some files failed to read:</source>
         <translation>日志打包完成,但是部分文件读取失败</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="713"/>
+        <location filename="../view/main_window/main_window.py" line="742"/>
         <source>Log has been packaged:</source>
         <translation>日志打包完成</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="720"/>
+        <location filename="../view/main_window/main_window.py" line="749"/>
         <source>Packing logs</source>
         <translation>打包日志</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="721"/>
+        <location filename="../view/main_window/main_window.py" line="750"/>
         <source>Please wait...</source>
         <translation>请稍等...</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="761"/>
-        <location filename="../view/main_window/main_window.py" line="769"/>
-        <location filename="../view/main_window/main_window.py" line="781"/>
-        <location filename="../view/main_window/main_window.py" line="1014"/>
+        <location filename="../view/main_window/main_window.py" line="790"/>
+        <location filename="../view/main_window/main_window.py" line="798"/>
+        <location filename="../view/main_window/main_window.py" line="810"/>
+        <location filename="../view/main_window/main_window.py" line="1067"/>
         <source>Announcement</source>
         <translation>公告</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="764"/>
+        <location filename="../view/main_window/main_window.py" line="793"/>
         <source>There is no announcement at the moment.</source>
         <translation>暂时没有公告</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1009"/>
+        <location filename="../view/main_window/main_window.py" line="1062"/>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1031"/>
+        <location filename="../view/main_window/main_window.py" line="1084"/>
         <source>Item </source>
         <translation>元素</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1035"/>
+        <location filename="../view/main_window/main_window.py" line="1088"/>
         <source>Detail</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1046"/>
-        <location filename="../view/main_window/main_window.py" line="1049"/>
+        <location filename="../view/main_window/main_window.py" line="1099"/>
+        <location filename="../view/main_window/main_window.py" line="1102"/>
         <source>Info</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1047"/>
+        <location filename="../view/main_window/main_window.py" line="1100"/>
         <source>Warning</source>
         <translation>警报</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1048"/>
+        <location filename="../view/main_window/main_window.py" line="1101"/>
         <source>Error</source>
         <translation>错误</translation>
     </message>
@@ -1113,7 +1154,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">链程助手</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1108"/>
+        <location filename="../view/main_window/main_window.py" line="1161"/>
         <source>admin</source>
         <translation>管理员</translation>
     </message>
@@ -1416,44 +1457,44 @@ Please check for updates first, or visit the GitHub releases page.</source>
 <context>
     <name>MultiResourceUpdate</name>
     <message>
-        <location filename="../utils/update.py" line="2016"/>
+        <location filename="../utils/update.py" line="2019"/>
         <source>Checking for updates...</source>
         <translation>检查更新中...</translation>
     </message>
     <message>
-        <location filename="../utils/update.py" line="2038"/>
+        <location filename="../utils/update.py" line="2041"/>
         <source>Already up to date</source>
         <translation>已是最新版</translation>
     </message>
     <message>
-        <location filename="../utils/update.py" line="2041"/>
-        <location filename="../utils/update.py" line="2053"/>
-        <location filename="../utils/update.py" line="2074"/>
+        <location filename="../utils/update.py" line="2044"/>
+        <location filename="../utils/update.py" line="2056"/>
+        <location filename="../utils/update.py" line="2077"/>
         <source>Download failed</source>
         <translation>下载失败</translation>
     </message>
     <message>
-        <location filename="../utils/update.py" line="2047"/>
+        <location filename="../utils/update.py" line="2050"/>
         <source>Preparing to download update...</source>
         <translation>准备下载更新</translation>
     </message>
     <message>
-        <location filename="../utils/update.py" line="2082"/>
+        <location filename="../utils/update.py" line="2085"/>
         <source>Download complete</source>
         <translation>下载完毕</translation>
     </message>
     <message>
-        <location filename="../utils/update.py" line="2085"/>
+        <location filename="../utils/update.py" line="2088"/>
         <source>Applying hotfix...</source>
         <translation>执行热更新</translation>
     </message>
     <message>
-        <location filename="../utils/update.py" line="2176"/>
+        <location filename="../utils/update.py" line="2179"/>
         <source>Update applied successfully</source>
         <translation>更新成功</translation>
     </message>
     <message>
-        <location filename="../utils/update.py" line="2227"/>
+        <location filename="../utils/update.py" line="2230"/>
         <source>Failed to update</source>
         <translation>更新失败</translation>
     </message>
@@ -1811,27 +1852,27 @@ Please check for updates first, or visit the GitHub releases page.</source>
 <context>
     <name>RenameConfigDialog</name>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="867"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="877"/>
         <source>Rename config</source>
         <translation>重命名配置</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="873"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="883"/>
         <source>Enter new config name:</source>
         <translation>请输入新的配置名称：</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="876"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="886"/>
         <source>Enter the name of the config</source>
         <translation>输入配置名</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="891"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="901"/>
         <source>Confirm</source>
         <translation>确认</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="892"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="902"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
@@ -1998,118 +2039,118 @@ Please check for updates first, or visit the GitHub releases page.</source>
 <context>
     <name>ResourceSettingMixin</name>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="398"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="447"/>
         <source>Controller Type</source>
         <translation>控制器类型</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="415"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="464"/>
         <source>Resource</source>
         <translation>资源</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="425"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="474"/>
         <source>Search Device</source>
         <translation>搜索设备</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="438"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="487"/>
         <source>Agent Timeout</source>
         <translation>Agent 超时时间</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="442"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="491"/>
         <source>-1 means infinite</source>
         <translation>-1 代表永不超时</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="459"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="508"/>
         <source>Custom Module Path</source>
         <translation>custom模块路径</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="468"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="517"/>
         <source>GPU Acceleration</source>
         <translation>GPU选择</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="488"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="537"/>
         <source>Auto</source>
         <translation>自动</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="489"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="538"/>
         <source>CPU</source>
         <translation>CPU</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="552"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="601"/>
         <source>ADB Path</source>
         <translation>ADB 路径</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="559"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="608"/>
         <source>ADB Address</source>
         <translation>ADB连接地址</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="565"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="614"/>
         <source>Emulator Path</source>
         <translation>模拟器路径</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="572"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="621"/>
         <source>Emulator Params</source>
         <translation>模拟器参数</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="578"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="627"/>
         <source>Wait for Emulator StartUp Time</source>
         <translation>等待模拟器启动时间</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="595"/>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="687"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="634"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="700"/>
         <source>Screencap Method</source>
         <translation>截图模式</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="610"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="642"/>
         <source>Input Method</source>
         <translation>输入模式</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="618"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="650"/>
         <source>Special Config</source>
         <translation>特化配置</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="633"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="665"/>
         <source>Program Path</source>
         <translation>程序路径</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="640"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="672"/>
         <source>Program Params</source>
         <translation>程序参数</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="646"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="678"/>
         <source>Wait for Launch Time</source>
         <translation>等待程序启动时间</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="663"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="685"/>
         <source>Mouse Input Method</source>
         <translation>鼠标输入方式</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="670"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="692"/>
         <source>Keyboard Input Method</source>
         <translation>键盘输入方式</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="849"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="863"/>
         <source>Unknown Device</source>
         <translation>未知设备</translation>
     </message>
@@ -3324,7 +3365,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
     </message>
     <message>
         <location filename="../view/setting_interface/setting_interface.py" line="1898"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2556"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2582"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
@@ -3367,32 +3408,37 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation>服务未准备完成,无法重置资源</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2555"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2564"/>
+        <source>Update package not found, please try updating again.</source>
+        <translation>未找到更新包，请重试更新。</translation>
+    </message>
+    <message>
+        <location filename="../view/setting_interface/setting_interface.py" line="2581"/>
         <source>Update now</source>
         <translation>立刻更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2559"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2585"/>
         <source>Restart required to update</source>
         <translation>需要重启来完成更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2561"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2587"/>
         <source>Update package detected</source>
         <translation>更新包删除</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2564"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2590"/>
         <source>Hot update is unavailable. A restart update is required. Proceed?</source>
         <translation>热更不可用,需要重启来进行更新,是否继续?</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2567"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2593"/>
         <source>Found a downloaded update package. Do you want to launch the updater now?</source>
         <translation>找到本地更新包,是否希望进行更新?</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2590"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2616"/>
         <source>Auto updating in %1 s</source>
         <translation>自动更新与 %1 秒</translation>
     </message>
@@ -4129,159 +4175,164 @@ MaaFW 未知错误代码：</translation>
         <translation>MaaFW 未知错误代码：{error_code}</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="176"/>
+        <location filename="../core/runner/task_flow.py" line="178"/>
         <source>Unknown Config</source>
         <translation>未知配置</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="195"/>
+        <location filename="../core/runner/task_flow.py" line="197"/>
         <source>Starting to connect device...</source>
         <translation>开始连接设备</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="200"/>
+        <location filename="../core/runner/task_flow.py" line="202"/>
         <source>Device connected successfully</source>
         <translation>设备连接成功</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="223"/>
+        <location filename="../core/runner/task_flow.py" line="225"/>
         <source>Agent Service Start</source>
         <translation>Agent 服务启动</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="228"/>
+        <location filename="../core/runner/task_flow.py" line="230"/>
         <source>Starting to load custom components...</source>
         <translation>开始加载自定义模块</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="276"/>
+        <location filename="../core/runner/task_flow.py" line="278"/>
         <source>Custom components loading failed, the flow is terminated: </source>
         <translation>自定义组件加载失败，流程终止：</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="281"/>
-        <location filename="../core/runner/task_flow.py" line="476"/>
+        <location filename="../core/runner/task_flow.py" line="283"/>
+        <location filename="../core/runner/task_flow.py" line="486"/>
         <source>please try to reset resource in setting</source>
         <translation>请尝试在设置中重置资源</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="353"/>
+        <location filename="../core/runner/task_flow.py" line="357"/>
         <source>All tasks have been completed</source>
         <translation>所有任务都已完成</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="387"/>
+        <location filename="../core/runner/task_flow.py" line="362"/>
+        <source>Task flow error: </source>
+        <translation>任务流程错误：</translation>
+    </message>
+    <message>
+        <location filename="../core/runner/task_flow.py" line="397"/>
         <source>Task Flow Completed</source>
         <translation>任务完成</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="403"/>
+        <location filename="../core/runner/task_flow.py" line="413"/>
         <source>INFO</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="404"/>
+        <location filename="../core/runner/task_flow.py" line="414"/>
         <source>WARNING</source>
         <translation>警报</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="405"/>
+        <location filename="../core/runner/task_flow.py" line="415"/>
         <source>ERROR</source>
         <translation>错误</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="406"/>
+        <location filename="../core/runner/task_flow.py" line="416"/>
         <source>CRITICAL</source>
         <translation>严重</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="470"/>
+        <location filename="../core/runner/task_flow.py" line="480"/>
         <source>Resource </source>
         <translation>资源 </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="472"/>
+        <location filename="../core/runner/task_flow.py" line="482"/>
         <source> not found in bundle: </source>
         <translation> 不存在于: </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="506"/>
+        <location filename="../core/runner/task_flow.py" line="516"/>
         <source>Task </source>
         <translation>任务 </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="508"/>
+        <location filename="../core/runner/task_flow.py" line="518"/>
         <source> follows speedrun limit, skipping this run: </source>
         <translation>遵循speedrun限制,跳过本运行</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="514"/>
+        <location filename="../core/runner/task_flow.py" line="524"/>
         <source>Speedrun rule allows execution</source>
         <translation>speedrun规则错误</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="554"/>
+        <location filename="../core/runner/task_flow.py" line="564"/>
         <source>Stopping task...</source>
         <translation>停止任务中</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="577"/>
-        <location filename="../core/runner/task_flow.py" line="601"/>
+        <location filename="../core/runner/task_flow.py" line="587"/>
+        <location filename="../core/runner/task_flow.py" line="611"/>
         <source>Unknown Task Entry</source>
         <translation>未知任务入口</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="602"/>
+        <location filename="../core/runner/task_flow.py" line="612"/>
         <source>Task entry {} timed out after {} seconds.</source>
         <translation>任务 {} 运行时长超过 {} 秒</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="618"/>
+        <location filename="../core/runner/task_flow.py" line="628"/>
         <source>Task Timeout</source>
         <translation>任务超时</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="619"/>
+        <location filename="../core/runner/task_flow.py" line="629"/>
         <source>Task entry &apos;{}&apos; timed out after {} seconds.</source>
         <translation>任务 {} 运行时长超过 {} 秒</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="630"/>
+        <location filename="../core/runner/task_flow.py" line="640"/>
         <source>Task entry {} timed out, restarting attempt {}/3.</source>
         <translation>任务 {} 超时 重启中 {}/3.</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="641"/>
+        <location filename="../core/runner/task_flow.py" line="651"/>
         <source>Task entry {} timed out after {} restarts, stopping flow.</source>
         <translation>任务 {} 超时,{}次重启后仍无法运行,终止任务流</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="648"/>
+        <location filename="../core/runner/task_flow.py" line="658"/>
         <source>Task Timeout - Flow Stopped</source>
         <translation>任务超时</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="650"/>
+        <location filename="../core/runner/task_flow.py" line="660"/>
         <source>Task entry &apos;{}&apos; timed out after {} restart attempts, flow stopped.</source>
         <translation>任务 {} 超时,{}次重启后仍无法运行,终止任务流</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="678"/>
+        <location filename="../core/runner/task_flow.py" line="692"/>
         <source>Auto searching ADB devices...</source>
         <translation>自动检测ADB设备</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="698"/>
+        <location filename="../core/runner/task_flow.py" line="710"/>
         <source>ADB path is empty, please configure ADB path in settings</source>
         <translation>ADB路径为空，请在设置中配置ADB路径。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="706"/>
+        <location filename="../core/runner/task_flow.py" line="718"/>
         <source>ADB connection address is empty, please configure device connection in settings</source>
         <translation>ADB 连接地址为空，请在设置中配置设备连接。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="815"/>
+        <location filename="../core/runner/task_flow.py" line="833"/>
         <source>Window handle (hwnd) is empty, please configure window connection in settings</source>
         <translation>窗口句柄 (hwnd) 为空，请在设置中配置窗口连接。</translation>
     </message>
@@ -4290,22 +4341,22 @@ MaaFW 未知错误代码：</translation>
         <translation type="vanished">未找到ADB设备</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="747"/>
+        <location filename="../core/runner/task_flow.py" line="763"/>
         <source>try to start emulator</source>
         <translation>尝试启动模拟器</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="762"/>
+        <location filename="../core/runner/task_flow.py" line="778"/>
         <source>waiting for emulator start...</source>
         <translation>等待模拟器启动中</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="775"/>
+        <location filename="../core/runner/task_flow.py" line="791"/>
         <source>Device connection failed</source>
         <translation>设备连接失败</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="794"/>
+        <location filename="../core/runner/task_flow.py" line="814"/>
         <source>Auto searching Win32 windows...</source>
         <translation>自动搜索Win32窗口</translation>
     </message>
@@ -4314,32 +4365,32 @@ MaaFW 未知错误代码：</translation>
         <translation type="vanished">未找到Win32窗口</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="830"/>
+        <location filename="../core/runner/task_flow.py" line="852"/>
         <source>try to start program</source>
         <translation>尝试启动程序</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="844"/>
+        <location filename="../core/runner/task_flow.py" line="866"/>
         <source>waiting for program start...</source>
         <translation>等待程序启动中</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="948"/>
+        <location filename="../core/runner/task_flow.py" line="970"/>
         <source> seconds</source>
         <translation> 秒</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1331"/>
+        <location filename="../core/runner/task_flow.py" line="1353"/>
         <source>This period&apos;s remaining execution count is 0</source>
         <translation>本周期剩余执行次数为0</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1343"/>
+        <location filename="../core/runner/task_flow.py" line="1365"/>
         <source>Not enough time passed since last run. Minimum interval is </source>
         <translation>自上次运行以来的时间不够。最小间隔为 </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1346"/>
+        <location filename="../core/runner/task_flow.py" line="1368"/>
         <source> hours.</source>
         <translation>小时</translation>
     </message>
@@ -4914,32 +4965,32 @@ Task Status:
         <translation>完成后运行</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="687"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="697"/>
         <source>Run this task</source>
         <translation>单独运行</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="696"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="706"/>
         <source>Insert task</source>
         <translation>插入任务</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="728"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="738"/>
         <source>No available tasks to add.</source>
         <translation>无可用任务</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="764"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="774"/>
         <source>Delete task</source>
         <translation>删除任务</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="781"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="791"/>
         <source>Delete Task</source>
         <translation>删除任务</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="782"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="792"/>
         <source>Are you sure you want to delete task &apos;{}&apos;?</source>
         <translation>您确定要删除任务“{}”吗？</translation>
     </message>
@@ -5248,71 +5299,71 @@ Task Status:
 <context>
     <name>Update</name>
     <message>
-        <location filename="../utils/update.py" line="1117"/>
-        <location filename="../utils/update.py" line="1210"/>
+        <location filename="../utils/update.py" line="1119"/>
+        <location filename="../utils/update.py" line="1212"/>
         <source>Checking for updates...</source>
         <translation>检查更新中...</translation>
     </message>
     <message>
-        <location filename="../utils/update.py" line="1134"/>
-        <location filename="../utils/update.py" line="1232"/>
+        <location filename="../utils/update.py" line="1136"/>
+        <location filename="../utils/update.py" line="1234"/>
         <source>Already up to date</source>
         <translation>已是最新版</translation>
     </message>
     <message>
-        <location filename="../utils/update.py" line="1136"/>
-        <location filename="../utils/update.py" line="1148"/>
-        <location filename="../utils/update.py" line="1169"/>
-        <location filename="../utils/update.py" line="1235"/>
-        <location filename="../utils/update.py" line="1270"/>
-        <location filename="../utils/update.py" line="1291"/>
+        <location filename="../utils/update.py" line="1138"/>
+        <location filename="../utils/update.py" line="1150"/>
+        <location filename="../utils/update.py" line="1171"/>
+        <location filename="../utils/update.py" line="1237"/>
+        <location filename="../utils/update.py" line="1272"/>
+        <location filename="../utils/update.py" line="1293"/>
         <source>Download failed</source>
         <translation>下载失败</translation>
     </message>
     <message>
-        <location filename="../utils/update.py" line="1142"/>
-        <location filename="../utils/update.py" line="1264"/>
+        <location filename="../utils/update.py" line="1144"/>
+        <location filename="../utils/update.py" line="1266"/>
         <source>Preparing to download update...</source>
         <translation>准备下载更新</translation>
     </message>
     <message>
-        <location filename="../utils/update.py" line="1177"/>
-        <location filename="../utils/update.py" line="1299"/>
+        <location filename="../utils/update.py" line="1179"/>
+        <location filename="../utils/update.py" line="1301"/>
         <source>Download complete</source>
         <translation>下载完毕</translation>
     </message>
     <message>
-        <location filename="../utils/update.py" line="1321"/>
+        <location filename="../utils/update.py" line="1323"/>
         <source>Applying hotfix...</source>
         <translation>执行热更新</translation>
     </message>
     <message>
-        <location filename="../utils/update.py" line="1408"/>
+        <location filename="../utils/update.py" line="1410"/>
         <source>Update applied successfully</source>
         <translation>更新成功</translation>
     </message>
     <message>
-        <location filename="../utils/update.py" line="1459"/>
+        <location filename="../utils/update.py" line="1461"/>
         <source>Failed to update</source>
         <translation>更新失败</translation>
     </message>
     <message>
-        <location filename="../utils/update.py" line="1521"/>
-        <location filename="../utils/update.py" line="1544"/>
-        <location filename="../utils/update.py" line="1620"/>
-        <location filename="../utils/update.py" line="1653"/>
-        <location filename="../utils/update.py" line="1732"/>
-        <location filename="../utils/update.py" line="1755"/>
-        <location filename="../utils/update.py" line="1829"/>
-        <location filename="../utils/update.py" line="1862"/>
+        <location filename="../utils/update.py" line="1523"/>
+        <location filename="../utils/update.py" line="1546"/>
+        <location filename="../utils/update.py" line="1623"/>
+        <location filename="../utils/update.py" line="1656"/>
+        <location filename="../utils/update.py" line="1735"/>
+        <location filename="../utils/update.py" line="1758"/>
+        <location filename="../utils/update.py" line="1832"/>
+        <location filename="../utils/update.py" line="1865"/>
         <source>Found update: </source>
         <translation>找到更新:</translation>
     </message>
     <message>
-        <location filename="../utils/update.py" line="1588"/>
-        <location filename="../utils/update.py" line="1599"/>
-        <location filename="../utils/update.py" line="1797"/>
-        <location filename="../utils/update.py" line="1808"/>
+        <location filename="../utils/update.py" line="1591"/>
+        <location filename="../utils/update.py" line="1602"/>
+        <location filename="../utils/update.py" line="1800"/>
+        <location filename="../utils/update.py" line="1811"/>
         <source>GitHub update check failed</source>
         <translation>GitHub更新失败</translation>
     </message>
