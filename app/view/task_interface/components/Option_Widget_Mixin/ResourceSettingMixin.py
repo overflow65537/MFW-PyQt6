@@ -35,6 +35,7 @@ class ResourceSettingMixin:
     # 映射表定义
     WIN32_INPUT_METHOD_ALIAS_VALUES: Dict[str, int] = {
         "null": 0,
+        "default": -1,
         "Seize": 1,
         "SendMessage": 1 << 1,
         "PostMessage": 1 << 2,
@@ -45,6 +46,7 @@ class ResourceSettingMixin:
     }
     WIN32_SCREENCAP_METHOD_ALIAS_VALUES: Dict[str, int] = {
         "null": 0,
+        "default": -1,
         "GDI": 1,
         "FramePool": 1 << 1,
         "DXGI_DesktopDup": 1 << 2,
@@ -75,19 +77,21 @@ class ResourceSettingMixin:
         self, sourceText: str, /, disambiguation: str | None = ..., n: int = ...
     ) -> str: ...
 
-    def _value_to_index(self, value: int) -> int:
-        """将值转换为下拉框的索引"""
-        value_mapping = {
-            1: 1,
-            2: 2,
-            4: 3,
-            8: 4,
-            16: 5,
-            32: 6,
-            64: 7,
-            128: 8,
-        }
-        return value_mapping.get(value, 0)  # 默认返回0如果值不存在
+    def _value_to_index(self, combo: ComboBox, value: Any) -> int:
+        """将值转换为下拉框的索引，通过在下拉框中查找对应的 userData"""
+        # 确保 value 是 int 类型
+        int_value = self._coerce_int(value)
+        if int_value is None:
+            return 0
+        
+        # 在下拉框中查找对应的 userData
+        for idx in range(combo.count()):
+            item_data = combo.itemData(idx)
+            # 处理可能的类型不匹配
+            item_int = self._coerce_int(item_data)
+            if item_int is not None and item_int == int_value:
+                return idx
+        return 0  # 默认返回0如果值不存在
 
     def _coerce_int(self, value: Any) -> int | None:
         """尝试将值转换为整数，失败则返回 None"""
@@ -118,7 +122,6 @@ class ResourceSettingMixin:
         )
 
         return {
-            "input": input_aliases,
             "mouse": input_aliases,
             "keyboard": input_aliases,
             "screencap": screencap_aliases,
@@ -143,12 +146,15 @@ class ResourceSettingMixin:
         if not normalized_value:
             return None
 
+        # 直接查找标准化后的键名
         if (mapped := alias_map.get(normalized_value)) is not None:
             return mapped
 
-        # 兜底：包含关键字的情况也能命中
-        if method_type.lower() in {"input", "mouse", "keyboard"}:
+        # 兜底：包含关键字的情况也能命中（仅对 mouse/keyboard 生效）
+        if method_type.lower() in {"mouse", "keyboard"}:
             fallback_rules = (
+                ("sendmessagewithcursorpos", "sendmessagewithcursorpos"),
+                ("postmessagewithcursorpos", "postmessagewithcursorpos"),
                 ("sendmessage", "sendmessage"),
                 ("postmessage", "postmessage"),
                 ("legacyevent", "legacyevent"),
@@ -158,6 +164,13 @@ class ResourceSettingMixin:
             for keyword, alias_key in fallback_rules:
                 if keyword in normalized_value and alias_key in alias_map:
                     return alias_map[alias_key]
+
+        # 对于 screencap，如果直接查找失败，记录警告并返回 None
+        if method_type.lower() == "screencap":
+            logger.warning(
+                f"无法解析截图方法值: {value} (标准化后: {normalized_value}), "
+                f"可用的键: {sorted(alias_map.keys())}"
+            )
 
         return None
 
@@ -258,6 +271,10 @@ class ResourceSettingMixin:
 
     def _ensure_win32_input_defaults(self, controller_cfg: dict, controller_name: str):
         """为 Win32 控制器设置输入/截图默认值"""
+        # 只有当传入的控制器名称与当前选择的控制器一致时，才从interface中读取默认值
+        if not self.current_controller_name or controller_name != self.current_controller_name:
+            return
+        
         win32_defaults = self.win32_default_mapping.get(controller_name, {}).get(
             "defaults", {}
         )
@@ -663,45 +680,26 @@ class ResourceSettingMixin:
             lambda text: self._on_child_option_changed("wait_launch_time", text),
         )
 
-        # 鼠标和键盘输入方式选项
-        mouse_keyboard_options = {
-            "default": -1,
-            "Seize": 1,
-            "SendMessage": 2,
-            "PostMessage": 4,
-            "LegacyEvent": 8,
-            "PostThreadMessage": 16,
-        }
-
         # 鼠标输入方式
         self._create_resource_combobox(
             self.tr("Mouse Input Method"),
             "mouse_input_methods",
-            mouse_keyboard_options,
+            self.WIN32_INPUT_METHOD_ALIAS_VALUES,
             self._on_child_option_changed,
         )
         # 键盘输入方式
         self._create_resource_combobox(
             self.tr("Keyboard Input Method"),
             "keyboard_input_methods",
-            mouse_keyboard_options,
+            self.WIN32_INPUT_METHOD_ALIAS_VALUES,
             self._on_child_option_changed,
         )
 
         # 截图方式
-        screencap_options = {
-            "default": -1,
-            "GDI": 1,
-            "FramePool": 2,
-            "DXGI_DesktopDup": 4,
-            "DXGI_DesktopDup_Window": 8,
-            "PrintWindow": 16,
-            "ScreenDC": 32,
-        }
         self._create_resource_combobox(
             self.tr("Screencap Method"),
             "win32_screencap_methods",
-            screencap_options,
+            self.WIN32_SCREENCAP_METHOD_ALIAS_VALUES,
             self._on_child_option_changed,
         )
 
@@ -855,7 +853,7 @@ class ResourceSettingMixin:
                     )
                 elif isinstance(widget, ComboBox):
                     target = self.current_config[controller_name][name]
-                    widget.setCurrentIndex(self._value_to_index(target))
+                    widget.setCurrentIndex(self._value_to_index(widget, target))
         self._fill_custom_option()
         self._fill_gpu_option()
         self._fill_agent_timeout_option()
