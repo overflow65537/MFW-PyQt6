@@ -137,6 +137,7 @@ class MainWindow(MSFluentWindow):
         self._apply_cli_switch_config()
 
         self._announcement_pending_show = False
+        self._announcement_enabled = True  # 标记公告是否启用
         self._log_zip_running = False
         self._log_zip_infobar: InfoBar | None = None
         self._background_label: QLabel | None = None
@@ -186,13 +187,14 @@ class MainWindow(MSFluentWindow):
         
         self.SettingInterface = SettingInterface(self.service_coordinator)
         
-        # 如果多资源适配已开启，先添加 BundleInterface，再添加 SettingInterface
-        # 这样 Bundle 会在 Setting 之前，而 Announcement 会在最前面（通过 insertItem(0)）
+        # 根据多资源适配状态控制 Bundle 和 Announcement 的显示
+        # 如果多资源适配已开启：显示 Bundle，不显示 Announcement
+        # 如果多资源适配未开启：显示 Announcement，不显示 Bundle
         multi_res_enabled = cfg.get(cfg.multi_resource_adaptation)
         logger.info(f"检查多资源适配状态（启动时）: {multi_res_enabled}")
         if multi_res_enabled:
-            logger.info("多资源适配已开启，添加 BundleInterface 到导航栏")
-            # 先添加 Bundle，确保它在 Setting 之前
+            logger.info("多资源适配已开启，添加 BundleInterface 到导航栏，隐藏 Announcement")
+            # 添加 Bundle，确保它在 Setting 之前
             if hasattr(self, "BundleInterface") and self.BundleInterface is not None:
                 self.addSubInterface(
                     self.BundleInterface,
@@ -203,9 +205,9 @@ class MainWindow(MSFluentWindow):
                 self._bundle_interface_added_to_nav = True
                 logger.info("✓ BundleInterface 已添加到导航栏")
         else:
-            logger.info("多资源适配未开启，BundleInterface 不会显示在导航栏")
+            logger.info("多资源适配未开启，显示 Announcement，BundleInterface 不会显示在导航栏")
         
-        # 添加 SettingInterface（在 Bundle 之后，这样 Bundle 会在 Setting 之前）
+        # 添加 SettingInterface
         self.addSubInterface(
             self.SettingInterface,
             FIF.SETTING,
@@ -213,9 +215,13 @@ class MainWindow(MSFluentWindow):
             position=NavigationItemPosition.BOTTOM,
         )
         
-        # 最后插入 Announcement（使用 insertItem(0) 确保它在最前面）
-        # 最终顺序：Announcement (索引 0), Bundle, Setting
-        self._insert_announcement_nav_item()
+        # 根据多资源适配状态决定是否插入 Announcement
+        if not multi_res_enabled:
+            # 多资源适配未开启时，插入 Announcement（使用 insertItem(0) 确保它在最前面）
+            self._insert_announcement_nav_item()
+            logger.info("✓ Announcement 已添加到导航栏")
+        else:
+            logger.info("多资源适配已开启，Announcement 不会显示在导航栏")
         
         # 添加导航项
         self.splashScreen.finish()
@@ -251,7 +257,7 @@ class MainWindow(MSFluentWindow):
         logger.info(" 主界面初始化完成。")
 
     def _add_bundle_interface_to_navigation(self) -> None:
-        """将 BundleInterface 添加到导航栏。
+        """将 BundleInterface 添加到导航栏，并隐藏 Announcement。
 
         如果已经添加过，则不会重复添加。
         当用户动态启用多资源适配时，会调用此方法添加 Bundle。
@@ -272,17 +278,40 @@ class MainWindow(MSFluentWindow):
             logger.info("开始添加 BundleInterface 到导航栏（动态启用多资源适配）...")
             logger.info(f"BundleInterface 对象: {self.BundleInterface}")
             
+            # 隐藏 Announcement（如果存在）并禁用其功能
+            try:
+                # 禁用公告功能
+                self._announcement_enabled = False
+                logger.info("✓ Announcement 功能已禁用")
+                
+                # 尝试通过查找导航项并隐藏它
+                # 由于 qfluentwidgets 的 NavigationBar 可能没有直接的隐藏方法，
+                # 我们通过查找对应的导航项并设置其可见性
+                nav_items = getattr(self.navigationInterface, "items", [])
+                for item in nav_items:
+                    if hasattr(item, "routeKey") and item.routeKey == "announcement_button":
+                        if hasattr(item, "setVisible"):
+                            item.setVisible(False)
+                            logger.info("✓ Announcement 已隐藏")
+                            break
+                        elif hasattr(item, "hide"):
+                            item.hide()
+                            logger.info("✓ Announcement 已隐藏")
+                            break
+            except Exception as hide_exc:
+                logger.debug(f"隐藏 Announcement 时出错（可能不存在或已隐藏）: {hide_exc}")
+            
             # 首先确保 BundleInterface 被添加到 stackedWidget
             if self.stackedWidget.indexOf(self.BundleInterface) == -1:
                 self.stackedWidget.addWidget(self.BundleInterface)
                 logger.info("BundleInterface 已添加到 stackedWidget")
             
-            # 使用 insertItem 在公告和设置之间插入 Bundle
-            # 公告在索引 0，Setting 在索引 1（如果没有 Bundle），
-            # 所以我们在索引 1 位置插入 Bundle，使顺序变为：Announcement (0), Bundle (1), Setting (2)
+            # 添加 Bundle 到导航栏（在 Setting 之前）
+            # 注意：由于多资源适配开启时公告不会显示，所以直接添加 Bundle 即可
             try:
+                # 尝试在索引 0 位置插入 Bundle（原本公告的位置）
                 self.navigationInterface.insertItem(
-                    1,
+                    0,
                     "bundle_interface",
                     FIF.FOLDER,
                     self.tr("Bundle"),
@@ -290,9 +319,9 @@ class MainWindow(MSFluentWindow):
                     selectable=True,
                     position=NavigationItemPosition.BOTTOM,
                 )
-                logger.info("使用 insertItem 在公告和设置之间插入 Bundle")
+                logger.info("使用 insertItem 在索引 0 位置插入 Bundle")
             except Exception as insert_exc:
-                # 如果 insertItem 失败，回退到 addSubInterface（虽然顺序可能不对）
+                # 如果 insertItem 失败，使用 addSubInterface
                 logger.warning(f"insertItem 失败，使用 addSubInterface: {insert_exc}")
                 self.addSubInterface(
                     self.BundleInterface,
@@ -1016,6 +1045,10 @@ class MainWindow(MSFluentWindow):
 
     def _on_announcement_button_clicked(self):
         """处理公告按钮点击，弹出公告对话框或提示无内容。"""
+        # 如果公告功能被禁用，直接返回
+        if not getattr(self, "_announcement_enabled", True):
+            return
+        
         if not self._announcement_content:
             self.show_info_bar("info", self._announcement_empty_hint)
             return
