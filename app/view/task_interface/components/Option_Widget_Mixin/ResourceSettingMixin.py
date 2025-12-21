@@ -19,6 +19,8 @@ from app.widget.PathLineEdit import PathLineEdit
 from app.view.task_interface.components.Option_Widget_Mixin.DeviceFinderWidget import (
     DeviceFinderWidget,
 )
+from maa.define import MaaAdbInputMethodEnum, MaaAdbScreencapMethodEnum
+from maa.define import MaaWin32InputMethodEnum, MaaWin32ScreencapMethodEnum
 
 
 class ResourceSettingMixin:
@@ -31,24 +33,26 @@ class ResourceSettingMixin:
 
     resource_setting_widgets: Dict[str, Any]
     CHILD = [300, 300]
-    
+
     # 映射表定义
     WIN32_INPUT_METHOD_ALIAS_VALUES: Dict[str, int] = {
+        "null": 0,
         "Seize": 1,
-        "SendMessage": 2,
-        "SendMessageWithCursorPos": 2,
-        "PostMessage": 4,
-        "PostMessageWithCursorPos": 4,
-        "LegacyEvent": 8,
-        "PostThreadMessage": 16,
+        "SendMessage": 1 << 1,
+        "PostMessage": 1 << 2,
+        "LegacyEvent": 1 << 3,
+        "PostThreadMessage": 1 << 4,
+        "SendMessageWithCursorPos": 1 << 5,
+        "PostMessageWithCursorPos": 1 << 6,
     }
     WIN32_SCREENCAP_METHOD_ALIAS_VALUES: Dict[str, int] = {
+        "null": 0,
         "GDI": 1,
-        "FramePool": 2,
-        "DXGI_DesktopDup": 4,
-        "DXGI_DesktopDup_Window": 8,
-        "PrintWindow": 16,
-        "ScreenDC": 32,
+        "FramePool": 1 << 1,
+        "DXGI_DesktopDup": 1 << 2,
+        "DXGI_DesktopDup_Window": 1 << 3,
+        "PrintWindow": 1 << 4,
+        "ScreenDC": 1 << 5,
     }
     ADB_SCREENCAP_OPTIONS: Dict[str, int] = {
         "default": -1,
