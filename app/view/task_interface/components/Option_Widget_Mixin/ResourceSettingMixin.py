@@ -31,6 +31,8 @@ class ResourceSettingMixin:
 
     resource_setting_widgets: Dict[str, Any]
     CHILD = [300, 300]
+    
+    # 映射表定义
     WIN32_INPUT_METHOD_ALIAS_VALUES: Dict[str, int] = {
         "Seize": 1,
         "SendMessage": 2,
@@ -47,6 +49,23 @@ class ResourceSettingMixin:
         "DXGI_DesktopDup_Window": 8,
         "PrintWindow": 16,
         "ScreenDC": 32,
+    }
+    ADB_SCREENCAP_OPTIONS: Dict[str, int] = {
+        "default": -1,
+        "EncodeToFileAndPull": 1,
+        "Encode": 2,
+        "RawWithGzip": 4,
+        "RawByNetcat": 8,
+        "MinicapDirect": 16,
+        "MinicapStream": 32,
+        "EmulatorExtras": 64,
+    }
+    ADB_INPUT_OPTIONS: Dict[str, int] = {
+        "default": -1,
+        "AdbShell": 1,
+        "MinitouchAndAdbKey": 2,
+        "Maatouch": 4,
+        "EmulatorExtras": 8,
     }
 
     def _toggle_description(self, visible: bool) -> None: ...
@@ -91,9 +110,7 @@ class ResourceSettingMixin:
 
     def _build_win32_method_alias_map(self) -> Dict[str, Dict[str, int]]:
         """构建 Win32 输入/截图方法别名映射"""
-        input_aliases = self._normalize_alias_map(
-            self.WIN32_INPUT_METHOD_ALIAS_VALUES
-        )
+        input_aliases = self._normalize_alias_map(self.WIN32_INPUT_METHOD_ALIAS_VALUES)
         screencap_aliases = self._normalize_alias_map(
             self.WIN32_SCREENCAP_METHOD_ALIAS_VALUES
         )
@@ -223,7 +240,11 @@ class ResourceSettingMixin:
             if window_regex:
                 mapping_entry["window_regex"] = str(window_regex)
 
-            if defaults or "class_regex" in mapping_entry or "window_regex" in mapping_entry:
+            if (
+                defaults
+                or "class_regex" in mapping_entry
+                or "window_regex" in mapping_entry
+            ):
                 win32_mapping[controller_name] = mapping_entry
 
         return win32_mapping
@@ -245,7 +266,9 @@ class ResourceSettingMixin:
         ]:
             controller_cfg.setdefault(key, win32_defaults.get(key, 0))
 
-    def _get_win32_regex_filters(self, controller_name: str) -> tuple[str | None, str | None]:
+    def _get_win32_regex_filters(
+        self, controller_name: str
+    ) -> tuple[str | None, str | None]:
         """获取 Win32 控制器的 class/window regex"""
         mapping_data = self.win32_default_mapping.get(controller_name, {})
         return (
@@ -273,7 +296,7 @@ class ResourceSettingMixin:
         """重新构建基于interface的数据结构（用于多配置模式下interface更新时）"""
         # 获取最新的interface
         interface = self.service_coordinator.interface
-        
+
         # 构建控制器类型映射
         self.controller_type_mapping = {
             ctrl.get("label", ctrl.get("name", "")): {
@@ -290,7 +313,9 @@ class ResourceSettingMixin:
         )
         agent_interface_config = interface.get("agent", {})
         interface_custom = interface.get("custom")
-        self.interface_custom_default = interface_custom if isinstance(interface_custom, str) else ""
+        self.interface_custom_default = (
+            interface_custom if isinstance(interface_custom, str) else ""
+        )
         self.current_config = self.service_coordinator.option_service.current_options
         self.current_config.setdefault("gpu", -1)
         agent_timeout_default = self._coerce_int(agent_interface_config.get("timeout"))
@@ -326,7 +351,7 @@ class ResourceSettingMixin:
         logger.info("Creating resource settings UI...")
         # 在多配置模式下，重新构建interface相关数据以确保使用最新的interface
         self._rebuild_interface_data()
-        
+
         self._syncing = True
         try:
             self._clear_options()
@@ -354,40 +379,45 @@ class ResourceSettingMixin:
             # 设置初始值为当前配置中的控制器类型
             ctrl_combo: ComboBox = self.resource_setting_widgets["ctrl_combo"]
             controller_list = list(self.controller_type_mapping)
-            
+
             if not controller_list:
                 # 如果没有可用的控制器，直接返回
                 return
-            
+
             # 尝试找到匹配的控制器类型
             matched_label = None
             matched_idx = 0
-            
+
             target_controller_name = self.current_config.get("controller_type", "")
             for idx, label in enumerate(controller_list):
-                if self.controller_type_mapping[label]["name"] == target_controller_name:
+                if (
+                    self.controller_type_mapping[label]["name"]
+                    == target_controller_name
+                ):
                     matched_label = label
                     matched_idx = idx
                     break
-            
+
             # 如果找不到匹配的，使用第一个可用的控制器
             if matched_label is None:
                 matched_label = controller_list[0]
                 matched_idx = 0
                 # 更新配置为第一个控制器
-                self.current_config["controller_type"] = self.controller_type_mapping[matched_label]["name"]
-            
+                self.current_config["controller_type"] = self.controller_type_mapping[
+                    matched_label
+                ]["name"]
+
             # 更新当前控制器信息变量
             self.current_controller_label = matched_label
             self.current_controller_info = self.controller_type_mapping[matched_label]
             self.current_controller_name = self.current_controller_info["name"]
             self.current_controller_type = self.current_controller_info["type"].lower()
-            
+
             # 先阻塞信号，设置索引，然后强制调用刷新函数（即使索引相同也要刷新）
             ctrl_combo.blockSignals(True)
             ctrl_combo.setCurrentIndex(matched_idx)
             ctrl_combo.blockSignals(False)
-            
+
             # 强制调用刷新函数，确保界面更新（即使索引没有变化）
             self._on_controller_type_changed(matched_label)
         finally:
@@ -581,35 +611,18 @@ class ResourceSettingMixin:
         )
 
         # 截图方式
-        screencap_options = {
-            "default": -1,
-            "EncodeToFileAndPull": 1,
-            "Encode": 2,
-            "RawWithGzip": 4,
-            "RawByNetcat": 8,
-            "MinicapDirect": 16,
-            "MinicapStream": 32,
-            "EmulatorExtras": 64,
-        }
         self._create_resource_combobox(
             self.tr("Screencap Method"),
             "screencap_methods",
-            screencap_options,
+            self.ADB_SCREENCAP_OPTIONS,
             self._on_child_option_changed,
         )
 
         # 输入方式
-        input_options = {
-            "default": -1,
-            "AdbShell": 1,
-            "MinitouchAndAdbKey": 2,
-            "Maatouch": 4,
-            "EmulatorExtras": 8,
-        }
         self._create_resource_combobox(
             self.tr("Input Method"),
             "input_methods",
-            input_options,
+            self.ADB_INPUT_OPTIONS,
             self._on_child_option_changed,
         )
 
@@ -856,7 +869,11 @@ class ResourceSettingMixin:
         combo_box.blockSignals(True)
         # 先尝试定位已有的设备项，避免重复添加
         target_index = next(
-            (i for i in range(combo_box.count()) if combo_box.itemText(i) == device_name),
+            (
+                i
+                for i in range(combo_box.count())
+                if combo_box.itemText(i) == device_name
+            ),
             -1,
         )
         if target_index == -1:
@@ -981,9 +998,7 @@ class ResourceSettingMixin:
         ]
         search_option.change_controller_type(new_type)
         if new_type == "win32":
-            class_regex, window_regex = self._get_win32_regex_filters(
-                ctrl_info["name"]
-            )
+            class_regex, window_regex = self._get_win32_regex_filters(ctrl_info["name"])
             search_option.set_win32_filters(class_regex, window_regex)
         else:
             search_option.set_win32_filters(None, None)
@@ -1024,14 +1039,16 @@ class ResourceSettingMixin:
                 # 资源变化时，通知任务列表更新
                 self._notify_task_list_update()
                 break
-    
+
     def _notify_task_list_update(self):
         """通知任务列表更新（资源变化时调用）"""
         try:
             # 通过信号总线通知任务列表更新
-            if hasattr(self, 'service_coordinator'):
+            if hasattr(self, "service_coordinator"):
                 # 发出 option_updated 信号，任务列表可以监听此信号来更新
-                self.service_coordinator.signal_bus.option_updated.emit(self.current_config)
+                self.service_coordinator.signal_bus.option_updated.emit(
+                    self.current_config
+                )
         except Exception:
             pass
 
@@ -1065,24 +1082,25 @@ class ResourceSettingMixin:
         """清空选项区域"""
         # 从布局中移除所有控件
         widgets_to_remove = list(self.resource_setting_widgets.values())
-        
+
         # 遍历布局，找到并移除这些控件
-        if hasattr(self, 'parent_layout'):
+        if hasattr(self, "parent_layout"):
             items_to_remove = []
             for i in range(self.parent_layout.count()):
                 item = self.parent_layout.itemAt(i)
                 if item and item.widget() and item.widget() in widgets_to_remove:
                     items_to_remove.append(i)
-            
+
             # 从后往前移除，避免索引问题
             for i in reversed(items_to_remove):
                 item = self.parent_layout.takeAt(i)
                 if item and item.widget():
                     widget = item.widget()
-                    widget.hide()
-                    widget.setParent(None)
-                    widget.deleteLater()
-        
+                    if widget:
+                        widget.hide()
+                        widget.setParent(None)
+                        widget.deleteLater()
+
         # 清理字典
         self.resource_setting_widgets.clear()
         self.current_controller_type = None
