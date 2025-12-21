@@ -19,8 +19,6 @@ from app.widget.PathLineEdit import PathLineEdit
 from app.view.task_interface.components.Option_Widget_Mixin.DeviceFinderWidget import (
     DeviceFinderWidget,
 )
-from maa.define import MaaAdbInputMethodEnum, MaaAdbScreencapMethodEnum
-from maa.define import MaaWin32InputMethodEnum, MaaWin32ScreencapMethodEnum
 
 
 class ResourceSettingMixin:

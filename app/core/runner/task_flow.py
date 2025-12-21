@@ -364,9 +364,7 @@ class TaskFlowRunner(QObject):
             logger.critical(traceback.format_exc())
         finally:
             should_run_post_action = (
-                not self.need_stop
-                and not is_single_task_mode
-                and self._tasks_started
+                not self.need_stop and not is_single_task_mode and self._tasks_started
             )
             try:
                 if should_run_post_action:
@@ -696,9 +694,7 @@ class TaskFlowRunner(QObject):
         )
         if found_device:
             logger.info("检测到与配置匹配的 ADB 设备，更新连接参数")
-            self._save_device_to_config(
-                controller_raw, controller_type, found_device
-            )
+            self._save_device_to_config(controller_raw, controller_type, found_device)
             controller_config = controller_raw[controller_type]
             self.adb_controller_config = controller_config
         else:
@@ -748,6 +744,10 @@ class TaskFlowRunner(QObject):
                 f"input_method={input_method}({type(input_method)})"
             )
         )
+        logger.debug(
+            f"ADB 参数值: adb_path={adb_path}, address={address}, screen_method={screen_method}, input_method={input_method}"
+        )
+        logger.debug(f"ADB 参数配置: config={config}")
 
         if await self.maafw.connect_adb(
             adb_path,
@@ -816,9 +816,7 @@ class TaskFlowRunner(QObject):
         )
         if found_device:
             logger.info("检测到与配置匹配的 Win32 窗口，更新连接参数")
-            self._save_device_to_config(
-                controller_raw, controller_type, found_device
-            )
+            self._save_device_to_config(controller_raw, controller_type, found_device)
             controller_config = controller_raw[controller_type]
         else:
             logger.debug("未匹配到与配置一致的 Win32 窗口，继续使用当前配置")
@@ -836,6 +834,10 @@ class TaskFlowRunner(QObject):
             logger.error("Win32 窗口句柄为空")
             signalBus.log_output.emit("ERROR", error_msg)
             return False
+
+        logger.debug(
+            f"Win32 参数类型: hwnd={type(hwnd)}, screencap_method={type(screencap_method)}, mouse_method={type(mouse_method)}, keyboard_method={type(keyboard_method)}"
+        )
 
         if await self.maafw.connect_win32hwnd(
             hwnd,
