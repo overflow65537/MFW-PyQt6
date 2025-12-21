@@ -431,7 +431,7 @@ class TaskFlowRunner(QObject):
             )
         if controller_type == "adb":
             return await self._connect_adb_controller(controller_raw)
-        elif controller_type == "win":
+        elif controller_type == "win32":
             return await self._connect_win32_controller(controller_raw)
         raise ValueError("不支持的控制器类型")
 
@@ -678,24 +678,28 @@ class TaskFlowRunner(QObject):
             logger.error(f"未找到控制器配置: {controller_raw}")
             return False
 
+        # 获取控制器类型（adb或win32）
+        controller_type = self._get_controller_type(controller_raw)
+
         self.adb_controller_raw = controller_raw
         self.adb_activate_controller = activate_controller
 
-        controller_raw.setdefault(activate_controller, {})
-        controller_config = controller_raw[activate_controller]
+        # 使用控制器类型作为键来获取配置
+        controller_raw.setdefault(controller_type, {})
+        controller_config = controller_raw[controller_type]
         self.adb_controller_config = controller_config
 
         logger.info("每次连接前自动搜索 ADB 设备...")
         signalBus.log_output.emit("INFO", self.tr("Auto searching ADB devices..."))
         found_device = await self._auto_find_adb_device(
-            controller_raw, activate_controller, controller_config
+            controller_raw, controller_type, controller_config
         )
         if found_device:
             logger.info("检测到与配置匹配的 ADB 设备，更新连接参数")
             self._save_device_to_config(
-                controller_raw, activate_controller, found_device
+                controller_raw, controller_type, found_device
             )
-            controller_config = controller_raw[activate_controller]
+            controller_config = controller_raw[controller_type]
             self.adb_controller_config = controller_config
         else:
             logger.debug("未匹配到与配置一致的 ADB 设备，继续使用当前配置")
@@ -793,8 +797,12 @@ class TaskFlowRunner(QObject):
             logger.error(f"未找到控制器配置: {controller_raw}")
             return False
 
-        controller_raw.setdefault(activate_controller, {})
-        controller_config = controller_raw[activate_controller]
+        # 获取控制器类型（adb或win32）
+        controller_type = self._get_controller_type(controller_raw)
+
+        # 使用控制器类型作为键来获取配置
+        controller_raw.setdefault(controller_type, {})
+        controller_config = controller_raw[controller_type]
 
         hwnd = controller_config.get("hwnd", 0)
         screencap_method: int = controller_config.get("win32_screencap_methods", 0)
@@ -804,18 +812,18 @@ class TaskFlowRunner(QObject):
         logger.info("每次连接前自动搜索 Win32 窗口...")
         signalBus.log_output.emit("INFO", self.tr("Auto searching Win32 windows..."))
         found_device = await self._auto_find_win32_window(
-            controller_raw, activate_controller, controller_config
+            controller_raw, controller_type, controller_config
         )
         if found_device:
             logger.info("检测到与配置匹配的 Win32 窗口，更新连接参数")
             self._save_device_to_config(
-                controller_raw, activate_controller, found_device
+                controller_raw, controller_type, found_device
             )
-            controller_config = controller_raw[activate_controller]
+            controller_config = controller_raw[controller_type]
         else:
             logger.debug("未匹配到与配置一致的 Win32 窗口，继续使用当前配置")
 
-        hwnd = controller_config.get("hwnd", 0)
+        hwnd = int(controller_config.get("hwnd", 0))
         screencap_method = controller_config.get("win32_screencap_methods", 0)
         mouse_method = controller_config.get("mouse_input_methods", 0)
         keyboard_method = controller_config.get("keyboard_input_methods", 0)
@@ -989,7 +997,7 @@ class TaskFlowRunner(QObject):
     async def _auto_find_adb_device(
         self,
         controller_raw: Dict[str, Any],
-        activate_controller: str,
+        controller_type: str,
         controller_config: Dict[str, Any],
     ) -> Dict[str, Any] | None:
         """自动搜索 ADB 设备并找到与旧配置一致的那一项"""
@@ -1036,7 +1044,7 @@ class TaskFlowRunner(QObject):
     async def _auto_find_win32_window(
         self,
         controller_raw: Dict[str, Any],
-        activate_controller: str,
+        controller_type: str,
         controller_config: Dict[str, Any],
     ) -> Dict[str, Any] | None:
         """自动搜索 Win32 窗口并找到与旧配置一致的那一项"""
@@ -1065,23 +1073,23 @@ class TaskFlowRunner(QObject):
     def _save_device_to_config(
         self,
         controller_raw: Dict[str, Any],
-        activate_controller: str,
+        controller_type: str,
         device_info: Dict[str, Any],
     ) -> None:
         """保存设备信息到配置
 
         Args:
             controller_raw: 控制器原始配置
-            activate_controller: 当前激活的控制器名称
+            controller_type: 控制器类型（"adb"或"win32"）
             device_info: 设备信息字典
         """
         try:
-            # 确保控制器配置存在
-            if activate_controller not in controller_raw:
-                controller_raw[activate_controller] = {}
+            # 确保控制器配置存在（使用控制器类型作为键）
+            if controller_type not in controller_raw:
+                controller_raw[controller_type] = {}
 
             # 更新设备信息
-            controller_raw[activate_controller].update(device_info)
+            controller_raw[controller_type].update(device_info)
 
             # 获取预配置任务并更新
             pre_cfg = self.task_service.get_task(PRE_CONFIGURATION)

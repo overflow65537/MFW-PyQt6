@@ -450,13 +450,11 @@ class MaaFW(QObject):
     @asyncify
     def connect_win32hwnd(
         self,
-        hwnd: int | str,
+        hwnd: int,
         screencap_method: int = MaaWin32ScreencapMethodEnum.DXGI_DesktopDup,
         mouse_method: int = MaaWin32InputMethodEnum.Seize,
         keyboard_method: int = MaaWin32InputMethodEnum.Seize,
     ) -> bool:
-        if isinstance(hwnd, str):
-            hwnd = int(hwnd, 16)
         screencap_method = (
             screencap_method or MaaWin32ScreencapMethodEnum.DXGI_DesktopDup
         )
