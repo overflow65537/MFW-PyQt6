@@ -917,6 +917,8 @@ class Update(BaseUpdate):
         self.interface = interface or {}
         self.project_name = self.interface.get("name", "")
         self.current_version = self.interface.get("version", "v1.0.0")
+        if not self.current_version.startswith("v"):
+            self.current_version = "v" + self.current_version
         self.url = self.interface.get("github", self.interface.get("url", ""))
         self.current_res_id = self.interface.get("mirrorchyan_rid", "")
 
@@ -1545,6 +1547,7 @@ class Update(BaseUpdate):
                     )
                     return {
                         "url": mirror_url,
+                        "update_type": mirror_data.get("update_type"),
                         "source": "mirror",
                         "version": self.latest_update_version,
                     }
