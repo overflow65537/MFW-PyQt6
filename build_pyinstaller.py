@@ -81,10 +81,12 @@ base_command = [
     "--collect-data=darkdetect",
     "--collect-data=maa",
     "--collect-data=MaaAgentBinary",
+    "--collect-data=certifi",  # 收集 certifi 证书文件
     # 隐式依赖声明
     "--hidden-import=darkdetect",
     "--hidden-import=maa",
     "--hidden-import=MaaAgentBinary",
+    "--hidden-import=certifi",  # 确保 certifi 模块被包含
 ]
 
 # === 平台特定配置 准备阶段 ===
