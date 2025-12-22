@@ -84,7 +84,7 @@ from app.common.signal_bus import signalBus
 from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
-from app.widget.notice_message import NoticeMessageBox
+from app.widget.notice_message import NoticeMessageBox, DelayedCloseNoticeMessageBox
 
 
 class CustomSystemThemeListener(SystemThemeListener):
@@ -796,10 +796,12 @@ class MainWindow(MSFluentWindow):
         cfg_announcement = cfg.get(cfg.announcement)
         res_announcement = self.service_coordinator.task.interface.get("welcome", "")
         self.set_announcement_content(self.tr("Announcement"), res_announcement)
+        # 保存待更新的公告内容，只有在用户关闭对话框时才会更新配置
+        self._pending_announcement_content = res_announcement
         if cfg_announcement != res_announcement:
-            # 公告内容不一致，更新配置并在界面准备好后弹出对话框
+            # 公告内容不一致，在界面准备好后弹出对话框
+            # 注意：此时不更新配置，只有在用户关闭对话框时才更新
             self._announcement_pending_show = True
-            cfg.set(cfg.announcement, res_announcement)
 
     def _insert_announcement_nav_item(self):
         """在设置入口上方插入公告按钮，并挂载点击行为。"""
@@ -817,7 +819,7 @@ class MainWindow(MSFluentWindow):
         """在主界面完成初始化后延迟展示公告对话框。"""
         if self._announcement_pending_show:
             self._announcement_pending_show = False
-            QTimer.singleShot(0, self._on_announcement_button_clicked)
+            QTimer.singleShot(0, lambda: self._on_announcement_button_clicked(auto_show=True))
 
     def _bootstrap_auto_update_and_run(self) -> None:
         """启动自动更新并串行等待，更新后再执行自动任务。"""
@@ -1043,8 +1045,14 @@ class MainWindow(MSFluentWindow):
             return
         QTimer.singleShot(0, self.showMinimized)
 
-    def _on_announcement_button_clicked(self):
-        """处理公告按钮点击，弹出公告对话框或提示无内容。"""
+    def _on_announcement_button_clicked(self, auto_show: bool = False):
+        """处理公告按钮点击，弹出公告对话框或提示无内容。
+        
+        Args:
+            auto_show: 如果为 True，表示是通过方法自动唤醒的（第一次打开或公告更新），
+                      将使用带延迟关闭功能的对话框；如果为 False，表示用户手动点击，
+                      使用普通对话框。
+        """
         # 如果公告功能被禁用，直接返回
         if not getattr(self, "_announcement_enabled", True):
             return
@@ -1053,14 +1061,42 @@ class MainWindow(MSFluentWindow):
             self.show_info_bar("info", self._announcement_empty_hint)
             return
 
-        dialog = NoticeMessageBox(
-            parent=self,
-            title=self._announcement_title,
-            content=self._announcement_content,
-        )
+        # 检查当前记录的公告和当前运行的公告是否一致
+        cfg_announcement = cfg.get(cfg.announcement)
+        res_announcement = getattr(self, "_pending_announcement_content", "")
+        if not res_announcement:
+            res_announcement = self.service_coordinator.task.interface.get("welcome", "")
+        
+        # 只有当公告内容不一致时，才需要5秒延迟
+        announcement_mismatch = cfg_announcement != res_announcement
+        
+        # 根据公告内容是否一致决定使用哪个对话框类
+        if announcement_mismatch:
+            # 公告内容不一致，使用带延迟关闭功能的对话框
+            dialog = DelayedCloseNoticeMessageBox(
+                parent=self,
+                title=self._announcement_title,
+                content=self._announcement_content,
+                enable_delay=True,
+            )
+        else:
+            # 公告内容一致，使用普通对话框（无延迟）
+            dialog = NoticeMessageBox(
+                parent=self,
+                title=self._announcement_title,
+                content=self._announcement_content,
+            )
+        
         dialog.button_yes.hide()
         dialog.button_cancel.setText(self.tr("Close"))
-        dialog.exec()
+        result = dialog.exec()
+        
+        # 只有在公告内容不一致且用户关闭对话框时，才更新配置
+        # 这样如果用户不关闭对话框，下次启动时还会弹出
+        if announcement_mismatch and hasattr(self, "_pending_announcement_content"):
+            # 用户关闭了对话框，更新配置，下次不会再弹出
+            cfg.set(cfg.announcement, self._pending_announcement_content)
+            logger.info("用户关闭公告对话框，已更新公告配置")
 
     def set_announcement_content(self, title: Optional[str], content) -> None:
         """更新公告数据，外部可以通过调用该方法传入内容。"""

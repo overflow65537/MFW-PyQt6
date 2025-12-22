@@ -35,7 +35,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QVBoxLayout,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from qfluentwidgets import (
     MessageBoxBase,
     Signal,
@@ -160,3 +160,99 @@ class QuantifiedItemCard(CardWidget):
         self.Layout.addWidget(self.Name)
         self.Layout.addStretch(1)
         self.Layout.addWidget(self.Numb)
+
+
+class DelayedCloseNoticeMessageBox(NoticeMessageBox):
+    """带延迟关闭功能的公告对话框
+    
+    在打开后5秒内无法关闭，适用于第一次打开或公告更新时自动弹出的场景。
+    """
+
+    def __init__(self, parent, title: str, content: Dict[str, str], enable_delay: bool = True):
+        super().__init__(parent, title, content)
+        self._enable_delay = enable_delay
+        self._can_close = not enable_delay  # 如果启用延迟，初始时不能关闭
+        self._remaining_seconds = 5  # 剩余秒数
+        self._delay_timer = QTimer(self)
+        self._delay_timer.setSingleShot(True)
+        self._delay_timer.timeout.connect(self._enable_close)
+        
+        # 倒计时更新定时器（每秒更新一次）
+        self._countdown_timer = QTimer(self)
+        self._countdown_timer.timeout.connect(self._update_countdown)
+        
+        # 创建倒计时标签，放在关闭按钮旁边
+        self._countdown_label = BodyLabel("", self)
+        self._countdown_label.setStyleSheet("color: #666; font-size: 12px;")
+        
+        # 如果启用延迟，初始时禁用关闭按钮并显示倒计时
+        if self._enable_delay:
+            self.button_cancel.setEnabled(False)
+            self._update_countdown_text()
+            # 将倒计时标签添加到按钮布局中（在关闭按钮之后）
+            self.button_layout.addWidget(self._countdown_label)
+        else:
+            self._countdown_label.hide()
+
+    def _update_countdown_text(self):
+        """更新倒计时文本"""
+        if self._enable_delay and self._remaining_seconds > 0:
+            self._countdown_label.setText(f"({self._remaining_seconds}s)")
+        else:
+            self._countdown_label.setText("")
+
+    def _update_countdown(self):
+        """更新倒计时"""
+        if self._remaining_seconds > 0:
+            self._remaining_seconds -= 1
+            self._update_countdown_text()
+        else:
+            self._countdown_timer.stop()
+
+    def _enable_close(self):
+        """启用关闭功能"""
+        self._can_close = True
+        self.button_cancel.setEnabled(True)
+        self._countdown_timer.stop()
+        self._countdown_label.setText("")
+
+    def exec(self):
+        """显示对话框并执行，如果启用延迟则在5秒后允许关闭"""
+        if self._enable_delay:
+            # 重置倒计时
+            self._remaining_seconds = 5
+            self._update_countdown_text()
+            # 启动倒计时更新定时器（每秒更新一次）
+            self._countdown_timer.start(1000)
+            # 启动5秒定时器
+            self._delay_timer.start(5000)  # 5000毫秒 = 5秒
+        return super().exec()
+
+    def show(self):
+        """显示对话框，如果启用延迟则在5秒后允许关闭"""
+        if self._enable_delay:
+            # 重置倒计时
+            self._remaining_seconds = 5
+            self._update_countdown_text()
+            # 启动倒计时更新定时器（每秒更新一次）
+            self._countdown_timer.start(1000)
+            # 启动5秒定时器
+            self._delay_timer.start(5000)  # 5000毫秒 = 5秒
+        return super().show()
+
+    def closeEvent(self, event):
+        """拦截关闭事件，如果延迟未结束则阻止关闭"""
+        if not self._can_close:
+            event.ignore()
+            return
+        # 停止定时器
+        self._countdown_timer.stop()
+        super().closeEvent(event)
+
+    def reject(self):
+        """拦截取消/关闭操作，如果延迟未结束则阻止关闭"""
+        if not self._can_close:
+            return
+        # 停止定时器
+        self._countdown_timer.stop()
+        super().reject()
