@@ -41,6 +41,24 @@ from qfluentwidgets import (
     ConfigSerializer,
 )
 
+from app.common.__version__ import __version__
+
+
+def _detect_auto_update_default() -> bool:
+    """
+    根据版本号决定自动更新默认值：
+    - 若版本包含 ci/alpha/beta（不区分大小写），则默认关闭自动更新
+    - 否则默认开启
+    """
+    version = (__version__ or "").lower()
+    for keyword in ("ci", "alpha", "beta"):
+        if keyword in version:
+            return False
+    return True
+
+
+_AUTO_UPDATE_DEFAULT = _detect_auto_update_default()
+
 
 class Language(Enum):
     """Language enumeration mapped to QLocale."""
@@ -117,8 +135,12 @@ class Config(QConfig):
 
     announcement = ConfigItem("General", "announcement", "")
 
-    auto_update = ConfigItem("Update", "auto_update", True, BoolValidator())
-    bundle_auto_update = ConfigItem("Bundle", "bundle_auto_update", False, BoolValidator())
+    auto_update = ConfigItem(
+        "Update", "auto_update", _AUTO_UPDATE_DEFAULT, BoolValidator()
+    )
+    bundle_auto_update = ConfigItem(
+        "Bundle", "bundle_auto_update", False, BoolValidator()
+    )
     force_github = ConfigItem("Update", "force_github", False, BoolValidator())
     github_api_key = ConfigItem("Update", "github_api_key", "")
 
@@ -130,7 +152,9 @@ class Config(QConfig):
     )
 
     # ===== 任务设置 =====
-    task_timeout_enable = ConfigItem("Task", "task_timeout_enable", False)  # 是否开启任务超时设置
+    task_timeout_enable = ConfigItem(
+        "Task", "task_timeout_enable", False
+    )  # 是否开启任务超时设置
     task_timeout = ConfigItem("Task", "task_timeout", 900)  # 默认900秒
 
     # 任务超时后动作
