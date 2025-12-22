@@ -140,13 +140,32 @@ class Config(QConfig):
         NOTIFY_ONLY = 0  # 仅通知
         RESTART_AND_NOTIFY = 1  # 重启并通知
 
-    _task_timeout_action_validator = OptionsValidator([item.value for item in TaskTimeoutAction])
-    
+    _task_timeout_action_validator = OptionsValidator(
+        [item.value for item in TaskTimeoutAction]
+    )
+
     task_timeout_action = OptionsConfigItem(
         "Task",
         "task_timeout_action",
         TaskTimeoutAction.NOTIFY_ONLY.value,
         _task_timeout_action_validator,
+    )
+
+    class TaskTimeoutRestartMode(Enum):
+        """Task timeout restart mode when action is RESTART_AND_NOTIFY."""
+
+        DIRECT_RESTART = 0  # 直接重启
+        RUN_LAST_ENTRY_THEN_RESTART = 1  # 运行列表中最后一项任务后重启
+
+    _task_timeout_restart_mode_validator = OptionsValidator(
+        [item.value for item in TaskTimeoutRestartMode]
+    )
+
+    task_timeout_restart_mode = OptionsConfigItem(
+        "Task",
+        "task_timeout_restart_mode",
+        TaskTimeoutRestartMode.DIRECT_RESTART.value,
+        _task_timeout_restart_mode_validator,
     )
 
     # ===== 通知 =====

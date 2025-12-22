@@ -43,6 +43,7 @@ class ClickableLabel(BodyLabel):
 
 class OptionLabel(BodyLabel):
     """选项标签：不拦截事件，让所有动作作用于父组件（ListItem）"""
+
     pass
 
 
@@ -124,7 +125,9 @@ class BaseListItem(QWidget):
                 break
             parent = parent.parent()
 
-    def _create_icon_label(self, icon_path: str, base_path: Path | None = None) -> BodyLabel:
+    def _create_icon_label(
+        self, icon_path: str, base_path: Path | None = None
+    ) -> BodyLabel:
         """创建图标标签（通用方法，供子类复用）
 
         Args:
@@ -155,7 +158,7 @@ class BaseListItem(QWidget):
             base_path: 如果 icon_path 是相对路径，相对于此路径。如果为 None，则相对于项目根目录
         """
         icon_file = Path(icon_path)
-        
+
         # 处理相对路径
         if not icon_file.is_absolute():
             if base_path:
@@ -203,7 +206,7 @@ class TaskListItem(BaseListItem):
             self.checkbox.setDisabled(True)
 
         self.checkbox.stateChanged.connect(self.on_checkbox_changed)
-        
+
         # 连接选项标签的resize事件，以便在大小改变时重新检查滚动
         if hasattr(self, "option_label"):
             self.option_label.installEventFilter(self)
@@ -276,17 +279,17 @@ class TaskListItem(BaseListItem):
         name_option_layout = QVBoxLayout(name_option_container)
         name_option_layout.setContentsMargins(0, 0, 0, 0)
         name_option_layout.setSpacing(2)
-        
+
         # 添加标签
         self.name_label = self._create_name_label()
         name_option_layout.addWidget(self.name_label)
-        
+
         # 添加选项显示标签
         self.option_label = self._create_option_label()
         name_option_layout.addWidget(self.option_label)
         # 在添加到布局后更新显示
         self._update_option_display()
-        
+
         layout.addWidget(name_option_container, stretch=1)
 
         # 添加删除按钮（基础任务不能删除，会禁用）
@@ -296,11 +299,11 @@ class TaskListItem(BaseListItem):
         if self.task.is_base_task():
             self.setting_button.setDisabled(True)
         layout.addWidget(self.setting_button)
-        
+
         # 连接选项标签的resize事件，以便在大小改变时重新检查滚动
         if hasattr(self, "option_label"):
             self.option_label.installEventFilter(self)
-    
+
     def eventFilter(self, obj, event):
         """事件过滤器，用于监听选项标签的大小变化"""
         if obj == self.option_label and event.type() == event.Type.Resize:
@@ -327,7 +330,9 @@ class TaskListItem(BaseListItem):
                     return icon_path
         return None
 
-    def _create_icon_label(self, icon_path: str, base_path: Path | None = None) -> BodyLabel:
+    def _create_icon_label(
+        self, icon_path: str, base_path: Path | None = None
+    ) -> BodyLabel:
         """创建图标标签（调用基类方法）
 
         Args:
@@ -411,7 +416,7 @@ class TaskListItem(BaseListItem):
         label.setFixedHeight(30)  # 从 34 调整为 30
         label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         return label
-    
+
     def _ensure_font_valid(self, label: BodyLabel):
         """确保标签的字体大小有效，防止出现负数"""
         font = label.font()
@@ -422,7 +427,7 @@ class TaskListItem(BaseListItem):
         if font.pixelSize() <= 0 and font.pointSize() <= 0:
             font.setPointSize(11)
             label.setFont(font)
-    
+
     def _create_option_label(self):
         """创建选项显示标签（支持自动滚动，事件传递给父组件）"""
         label = OptionLabel("")
@@ -437,47 +442,52 @@ class TaskListItem(BaseListItem):
         self._ensure_font_valid(label)
         # 禁用文本选择，让所有事件（点击、拖动等）直接作用于父组件 ListItem
         label.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
-        
+
         # 初始化滚动相关变量
         self._option_scroll_timer = QTimer()
         self._option_scroll_timer.timeout.connect(self._scroll_option_text)
         self._option_scroll_position = 0
         self._option_full_text = ""
-        
+
         return label
-    
-    def _extract_option_values(self, task_option: dict, result: list | None = None, interface_options: dict | None = None) -> list:
+
+    def _extract_option_values(
+        self,
+        task_option: dict,
+        result: list | None = None,
+        interface_options: dict | None = None,
+    ) -> list:
         """递归提取任务选项中的当前选择的可见值
-        
+
         Args:
             task_option: 任务选项字典
             result: 结果列表（递归使用）
             interface_options: interface 中的选项定义，用于获取选项的 label
-            
+
         Returns:
             提取的值列表（只包含当前选择的选项值）
         """
         if result is None:
             result = []
-        
+
         if not isinstance(task_option, dict):
             return result
-        
+
         # 如果没有传入 interface_options，尝试从 self.interface 获取
-        if interface_options is None and hasattr(self, 'interface'):
+        if interface_options is None and hasattr(self, "interface"):
             interface_options = self.interface.get("option", {})
-        
+
         for key, value in task_option.items():
             # 跳过特殊键（如 _speedrun_config）
             if key.startswith("_"):
                 continue
-            
+
             # 如果 value 是字典
             if isinstance(value, dict):
                 # 检查是否有 hidden 标志（在 value 同级）
                 if value.get("hidden", False):
                     continue
-                
+
                 # 只提取当前选择的选项值（必须有 value 字段）
                 option_value = value.get("value")
                 if option_value is not None:
@@ -492,17 +502,19 @@ class TaskListItem(BaseListItem):
                                 if isinstance(opt, dict):
                                     opt_name = opt.get("name", "")
                                     opt_label = opt.get("label", opt_name)
-                                    if opt_name == str(option_value) or opt_label == str(option_value):
+                                    if opt_name == str(
+                                        option_value
+                                    ) or opt_label == str(option_value):
                                         display_value = opt_label
                                         break
                                 elif str(opt) == str(option_value):
                                     display_value = str(opt)
                                     break
-                    
+
                     # 如果没找到 label，使用原始值
                     if display_value is None:
                         display_value = str(option_value)
-                    
+
                     # 如果 value 是字典（如 {"角色名": "破晓"}），提取其中的值
                     if isinstance(option_value, dict):
                         for sub_value in option_value.values():
@@ -512,44 +524,61 @@ class TaskListItem(BaseListItem):
                         # 普通值，使用 display_value（可能是 label）
                         if display_value and display_value.strip():
                             result.append(display_value.strip())
-                
+
                 # 递归处理 children（只处理当前选择的选项的子选项）
-                if "children" in value and isinstance(value["children"], dict) and option_value is not None:
+                if (
+                    "children" in value
+                    and isinstance(value["children"], dict)
+                    and option_value is not None
+                ):
                     # 获取当前选项值的子选项定义（children 中的选项定义）
                     child_interface_options = None
                     if interface_options and key in interface_options:
                         option_def = interface_options[key]
                         children_def = option_def.get("children", {})
-                        if isinstance(children_def, dict) and option_value in children_def:
+                        if (
+                            isinstance(children_def, dict)
+                            and option_value in children_def
+                        ):
                             # children_def[option_value] 可能是一个选项定义列表或字典
                             child_option_structure = children_def[option_value]
                             # 如果是一个列表，提取其中的选项定义
-                            if isinstance(child_option_structure, list) and child_option_structure:
+                            if (
+                                isinstance(child_option_structure, list)
+                                and child_option_structure
+                            ):
                                 # 从列表中提取选项定义，构建一个字典
                                 child_interface_options = {}
                                 for child_opt in child_option_structure:
-                                    if isinstance(child_opt, dict) and "name" in child_opt:
-                                        child_interface_options[child_opt["name"]] = child_opt
+                                    if (
+                                        isinstance(child_opt, dict)
+                                        and "name" in child_opt
+                                    ):
+                                        child_interface_options[child_opt["name"]] = (
+                                            child_opt
+                                        )
                             elif isinstance(child_option_structure, dict):
                                 # 如果直接是字典，可能需要进一步处理
                                 # 这里假设子选项的结构与主选项类似
                                 pass
-                    
+
                     # 递归处理子选项
-                    self._extract_option_values(value["children"], result, child_interface_options)
+                    self._extract_option_values(
+                        value["children"], result, child_interface_options
+                    )
             else:
                 # 直接是值的情况（简单格式）- 这种情况表示当前选择的选项
                 if value and str(value).strip():
                     result.append(str(value).strip())
-        
+
         return result
-    
+
     def _update_option_display(self):
         """更新选项显示"""
         # 停止之前的滚动
         if hasattr(self, "_option_scroll_timer"):
             self._option_scroll_timer.stop()
-        
+
         # 尝试从 service_coordinator 获取最新的 task 对象，确保使用最新的 task_option
         if self.service_coordinator:
             try:
@@ -559,7 +588,7 @@ class TaskListItem(BaseListItem):
             except Exception:
                 # 如果获取失败，继续使用当前的 task 对象
                 pass
-        
+
         # 如果是基础任务，不显示选项
         if self.task.is_base_task():
             self._option_full_text = ""
@@ -567,19 +596,21 @@ class TaskListItem(BaseListItem):
             self.option_label.setToolTip("")
             self._option_scroll_position = 0
             return
-        
+
         # 提取选项值（只显示当前选择的选项）
         interface_options = None
         if self.interface:
             interface_options = self.interface.get("option", {})
-        option_values = self._extract_option_values(self.task.task_option, interface_options=interface_options)
-        
+        option_values = self._extract_option_values(
+            self.task.task_option, interface_options=interface_options
+        )
+
         # 组合显示文本
         if option_values:
             display_text = " · ".join(option_values)
             self._option_full_text = display_text
             self.option_label.setToolTip(display_text)  # 设置工具提示以便查看完整内容
-            
+
             # 检查文本是否需要滚动
             self._check_and_start_scroll()
         else:
@@ -587,22 +618,22 @@ class TaskListItem(BaseListItem):
             self.option_label.setText("")
             self.option_label.setToolTip("")
             self._option_scroll_position = 0
-    
+
     def _check_and_start_scroll(self):
         """检查文本是否需要滚动，如果需要则启动自动滚动"""
         if not hasattr(self, "option_label") or not self._option_full_text:
             return
-        
+
         # 获取标签的可用宽度
         label_width = self.option_label.width()
         if label_width <= 0:
             # 如果宽度还未确定，延迟检查
             QTimer.singleShot(100, self._check_and_start_scroll)
             return
-        
+
         # 确保字体大小有效，防止出现负数
         self._ensure_font_valid(self.option_label)
-        
+
         # 获取文本宽度
         try:
             font_metrics = self.option_label.fontMetrics()
@@ -612,7 +643,7 @@ class TaskListItem(BaseListItem):
             self.option_label.setText(self._option_full_text)
             self._option_scroll_timer.stop()
             return
-        
+
         # 如果文本宽度超过标签宽度，启动滚动
         if text_width > label_width:
             self._option_scroll_position = 0
@@ -621,20 +652,20 @@ class TaskListItem(BaseListItem):
             # 文本不需要滚动，直接显示
             self.option_label.setText(self._option_full_text)
             self._option_scroll_timer.stop()
-    
+
     def _scroll_option_text(self):
         """滚动选项文本"""
         if not hasattr(self, "option_label") or not self._option_full_text:
             self._option_scroll_timer.stop()
             return
-        
+
         label_width = self.option_label.width()
         if label_width <= 0:
             return
-        
+
         # 确保字体大小有效，防止出现负数
         self._ensure_font_valid(self.option_label)
-        
+
         try:
             font_metrics = self.option_label.fontMetrics()
             text_width = font_metrics.boundingRect(self._option_full_text).width()
@@ -644,14 +675,14 @@ class TaskListItem(BaseListItem):
             self._option_scroll_timer.stop()
             self._option_scroll_position = 0
             return
-        
+
         # 如果文本不再需要滚动，停止滚动
         if text_width <= label_width:
             self.option_label.setText(self._option_full_text)
             self._option_scroll_timer.stop()
             self._option_scroll_position = 0
             return
-        
+
         # 计算显示的文本部分
         # 添加分隔符以便滚动更平滑
         scroll_text = self._option_full_text + " · "
@@ -663,16 +694,16 @@ class TaskListItem(BaseListItem):
             self._option_scroll_timer.stop()
             self._option_scroll_position = 0
             return
-        
+
         # 计算当前应该显示的文本起始位置
         # 使用字符位置而不是像素位置，更简单
         chars_per_scroll = 1  # 每次滚动1个字符
         max_chars = len(scroll_text)
-        
+
         # 计算当前显示的文本
         start_pos = self._option_scroll_position % max_chars
         display_text = scroll_text[start_pos:] + scroll_text[:start_pos]
-        
+
         # 截取适合宽度的文本
         displayed = ""
         for char in display_text:
@@ -684,9 +715,9 @@ class TaskListItem(BaseListItem):
                 # 如果计算失败，使用当前文本
                 break
             displayed = test_text
-        
+
         self.option_label.setText(displayed)
-        
+
         # 更新滚动位置
         self._option_scroll_position += chars_per_scroll
 
@@ -708,14 +739,15 @@ class TaskListItem(BaseListItem):
         if self.task.is_base_task():
             run_action.setEnabled(False)
         menu.addAction(run_action)
-        
+
         # 插入任务选项（post action 不显示）
         from app.common.constants import POST_ACTION
+
         if self.task.item_id != POST_ACTION:
             insert_action = Action(FIF.ADD, self.tr("Insert task"))
             insert_action.triggered.connect(self._insert_task)
             menu.addAction(insert_action)
-        
+
         menu.popup(event.globalPos())
         event.accept()
 
@@ -723,31 +755,31 @@ class TaskListItem(BaseListItem):
         if not self.service_coordinator:
             return
         asyncio.create_task(self.service_coordinator.run_tasks_flow(self.task.item_id))
-    
+
     def _insert_task(self):
         """插入任务：在当前任务下方插入新任务"""
         if not self.service_coordinator:
             return
-        
+
         # 保存当前任务的 item_id，用于在对话框关闭后重新查找索引
         current_task_id = self.task.item_id
-        
+
         # 打开添加任务对话框
         from app.view.task_interface.components.AddTaskMessageBox import AddTaskDialog
         from app.common.signal_bus import signalBus
-        
+
         task_map = getattr(self.service_coordinator.task, "default_option", {})
         interface = getattr(self.service_coordinator.task, "interface", {})
-        
+
         # 过滤任务映射（根据当前工具栏的过滤模式，这里使用全部任务）
         filtered_task_map = task_map  # 可以根据需要添加过滤逻辑
-        
+
         if not filtered_task_map:
             signalBus.info_bar_requested.emit(
                 "warning", self.tr("No available tasks to add.")
             )
             return
-        
+
         dlg = AddTaskDialog(
             task_map=filtered_task_map, interface=interface, parent=self.window()
         )
@@ -761,56 +793,62 @@ class TaskListItem(BaseListItem):
                     if task.item_id == current_task_id:
                         current_idx = i
                         break
-                
+
                 # 计算插入位置：当前任务的下方（idx + 1）
                 # 如果找不到当前任务，使用默认位置（-2，倒数第二个）
                 if current_idx == -1:
                     insert_idx = -2
                     from app.utils.logger import logger
+
                     logger.warning(f"未找到任务 {current_task_id}，使用默认插入位置 -2")
                 else:
                     insert_idx = current_idx + 1
                     from app.utils.logger import logger
-                    logger.info(f"找到任务 {current_task_id} 在索引 {current_idx}，将在索引 {insert_idx} 插入新任务 '{new_task.name}'")
-                
+
+                    logger.info(
+                        f"找到任务 {current_task_id} 在索引 {current_idx}，将在索引 {insert_idx} 插入新任务 '{new_task.name}'"
+                    )
+
                 # 插入到指定位置
                 self.service_coordinator.modify_task(new_task, insert_idx)
-    
+
     def _create_setting_button(self):
         """重写基类方法，创建删除按钮"""
         button = TransparentToolButton(FIF.DELETE)
         button.setFixedSize(34, 34)
         button.setToolTip(self.tr("Delete task"))
         return button
-    
+
     def _on_delete_button_clicked(self):
         """处理删除按钮点击事件"""
         if not self.service_coordinator:
             return
-        
+
         # 基础任务不能删除
         if self.task.is_base_task():
             return
-        
+
         # 获取任务显示名称
         task_name = self._get_display_name()
-        
+
         # 弹出确认对话框
         w = MessageBox(
             self.tr("Delete Task"),
             self.tr("Are you sure you want to delete task '{}'?").format(task_name),
-            self.window()
+            self.window(),
         )
-        
+
         if w.exec():
             # 用户确认删除
             try:
                 success = self.service_coordinator.delete_task(self.task.item_id)
                 if not success:
                     from app.utils.logger import logger
+
                     logger.error(f"删除任务失败: {self.task.item_id}")
             except Exception as e:
                 from app.utils.logger import logger
+
                 logger.error(f"删除任务时发生错误: {e}")
 
 
@@ -830,7 +868,7 @@ class SpecialTaskListItem(TaskListItem):
 
         # 隐藏checkbox
         self.checkbox.hide()
-        
+
         # 隐藏选项标签（特殊任务不显示选项）
         if hasattr(self, "option_label"):
             self.option_label.hide()
@@ -878,15 +916,15 @@ class SpecialTaskListItem(TaskListItem):
 # 重命名配置对话框
 class RenameConfigDialog(MessageBoxBase):
     """重命名配置对话框"""
-    
+
     def __init__(self, current_name: str, parent=None):
         super().__init__(parent)
-        
+
         # 设置对话框标题
         self.titleLabel = SubtitleLabel(self.tr("Rename config"), self)
         self.viewLayout.addWidget(self.titleLabel)
         self.viewLayout.addSpacing(10)
-        
+
         # 创建输入框布局
         name_layout = QVBoxLayout()
         name_label = BodyLabel(self.tr("Enter new config name:"), self)
@@ -895,36 +933,36 @@ class RenameConfigDialog(MessageBoxBase):
         self.name_edit.setPlaceholderText(self.tr("Enter the name of the config"))
         self.name_edit.setClearButtonEnabled(True)
         self.name_edit.selectAll()  # 选中所有文本以便快速输入
-        
+
         name_layout.addWidget(name_label)
         name_layout.addWidget(self.name_edit)
-        
+
         # 添加到视图布局
         self.viewLayout.addLayout(name_layout)
-        
+
         # 设置对话框大小
         self.widget.setMinimumWidth(400)
         self.widget.setMinimumHeight(180)
-        
+
         # 设置按钮文本
         self.yesButton.setText(self.tr("Confirm"))
         self.cancelButton.setText(self.tr("Cancel"))
-        
+
         # 连接确认按钮信号
         self.yesButton.clicked.connect(self.on_confirm)
-        
+
         # 设置焦点到输入框
         self.name_edit.setFocus()
-        
+
     def on_confirm(self):
         """确认重命名"""
         new_name = self.name_edit.text().strip()
         if not new_name:
             # 如果名称为空，不接受
             return
-        
+
         self.accept()
-    
+
     def get_new_name(self) -> str:
         """获取新名称"""
         return self.name_edit.text().strip()
@@ -1028,7 +1066,9 @@ class ConfigListItem(BaseListItem):
             logger.warning(f"获取 bundle '{bundle_name}' 图标失败: {e}")
             return None
 
-    def _create_icon_label(self, icon_path: str, base_path: Path | None = None) -> BodyLabel:
+    def _create_icon_label(
+        self, icon_path: str, base_path: Path | None = None
+    ) -> BodyLabel:
         """创建图标标签（调用基类方法）
 
         Args:
@@ -1058,17 +1098,17 @@ class ConfigListItem(BaseListItem):
     def contextMenuEvent(self, event):
         """右键菜单：复制配置 ID、更改配置名"""
         menu = RoundMenu(parent=self)
-        
+
         # 添加更改配置名选项
         rename_action = Action(FIF.EDIT, self.tr("Rename config"))
         rename_action.triggered.connect(self._rename_config)
         menu.addAction(rename_action)
-        
+
         # 添加复制配置 ID 选项
         copy_action = Action(FIF.COPY, self.tr("Copy config ID"))
         copy_action.triggered.connect(self._copy_config_id)
         menu.addAction(copy_action)
-        
+
         menu.popup(event.globalPos())
         event.accept()
 
@@ -1076,43 +1116,44 @@ class ConfigListItem(BaseListItem):
         """更改配置名称"""
         if not self.service_coordinator:
             return
-        
+
         # 确保 item 是 ConfigItem 类型
         if not isinstance(self.item, ConfigItem):
             return
-        
+
         # 获取当前配置名称
         current_name = self.item.name
         if not current_name:
             current_name = ""
-        
+
         # 创建输入对话框，使用顶层窗口作为父组件
         dialog = RenameConfigDialog(current_name, self.window())
         if dialog.exec():
             new_name = dialog.get_new_name()
             if new_name and new_name.strip() and new_name != current_name:
                 new_name = new_name.strip()
-                
+
                 # 更新配置项的 name
                 self.item.name = new_name
-                
+
                 # 保存配置
                 try:
                     success = self.service_coordinator.config.save_config(
-                        self.item.item_id,
-                        self.item
+                        self.item.item_id, self.item
                     )
                     if success:
                         # 更新显示的标签文本
                         self.name_label.setText(new_name)
-                        
+
                         # 发送配置已保存的信号，触发刷新
                         self.service_coordinator.signal_bus.config_saved.emit(True)
                     else:
                         from app.utils.logger import logger
+
                         logger.error(f"保存配置失败: {self.item.item_id}")
                 except Exception as e:
                     from app.utils.logger import logger
+
                     logger.error(f"保存配置时发生错误: {e}")
 
     def _copy_config_id(self):

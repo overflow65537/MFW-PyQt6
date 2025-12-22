@@ -12,6 +12,7 @@ from qfluentwidgets import (
 
 from app.view.task_interface.task_interface_ui import UI_TaskInterface
 from app.utils.logger import logger
+from app.common.config import cfg, Config
 
 
 class TaskInterface(UI_TaskInterface, QWidget):
@@ -143,12 +144,95 @@ class TaskInterface(UI_TaskInterface, QWidget):
 
             self._timeout_restarting = False  # 清除标志，准备启动
             asyncio.create_task(
-                self.service_coordinator.run_tasks_flow(
-                    is_timeout_restart=True,
-                    timeout_restart_entry=entry,
-                    timeout_restart_attempts=attempts,
-                )
+                self._run_timeout_restart_flow(entry, attempts)
             )
+
+    async def _run_timeout_restart_flow(self, entry: str | None, attempts: int) -> None:
+        """根据配置执行超时重启流程。
+
+        - 直接重启：保持现有行为，仅执行超时重启任务流；
+        - 运行最后一项任务后重启：先运行列表中最后一项启用的普通任务，再执行超时重启任务流。
+
+        “最后一项任务”定义为：
+        - 不属于基础任务（PRE_CONFIGURATION / POST_ACTION）；
+        - 不是特殊任务（task.is_special 为 False）；
+        - 勾选状态为 True（task.is_checked 为 True）。
+        """
+        if not self.service_coordinator:
+            return
+
+        # 读取重启模式配置
+        try:
+            mode_value = cfg.get(cfg.task_timeout_restart_mode)
+            restart_mode = Config.TaskTimeoutRestartMode(mode_value)
+        except Exception:
+            # 配置缺失或非法时，退回为“直接重启”
+            restart_mode = Config.TaskTimeoutRestartMode.DIRECT_RESTART
+
+        # 如果是“运行最后一项任务后重启”模式，先尝试执行最后一项任务
+        if restart_mode == Config.TaskTimeoutRestartMode.RUN_LAST_ENTRY_THEN_RESTART:
+            try:
+                last_task = self._find_last_normal_checked_task()
+                if last_task is not None:
+                    logger.info(
+                        f"超时重启模式: 先执行列表中最后一项任务再重启 -> {last_task.name}"
+                    )
+                    await self.service_coordinator.run_tasks_flow(
+                        task_id=last_task.item_id
+                    )
+                else:
+                    logger.info(
+                        "超时重启模式为“运行最后一项任务后重启”，但未找到符合条件的任务，直接进入重启流程"
+                    )
+            except Exception as exc:
+                logger.warning(f"执行最后一项任务失败，将直接进入重启流程: {exc}")
+
+        # 执行原有的超时重启任务流
+        await self.service_coordinator.run_tasks_flow(
+            is_timeout_restart=True,
+            timeout_restart_entry=entry,
+            timeout_restart_attempts=attempts,
+        )
+
+    def _find_last_normal_checked_task(self):
+        """查找当前任务列表中“最后一项启用的普通任务”。
+
+        普通任务定义：
+        - 不是基础任务（名称不为 PRE_CONFIGURATION / POST_ACTION）；
+        - 不是特殊任务（is_special 为 False）；
+        - 被勾选（is_checked 为 True）。
+        """
+        try:
+            task_service = getattr(self.service_coordinator, "task", None)
+            if not task_service:
+                return None
+
+            # 获取当前配置下的任务顺序，与任务流中的执行顺序保持一致
+            tasks = list(task_service.current_tasks)
+            if not tasks:
+                # 兼容性兜底：某些版本可能没有 current_tasks 属性
+                tasks = list(task_service.get_tasks())
+
+            from app.core.runner.task_flow import PRE_CONFIGURATION, POST_ACTION
+
+            last_task = None
+            for task in tasks:
+                # 跳过基础任务
+                if task.name in [PRE_CONFIGURATION, POST_ACTION]:
+                    continue
+                # 跳过未勾选的任务
+                if not getattr(task, "is_checked", False):
+                    continue
+                # 跳过特殊任务
+                if getattr(task, "is_special", False):
+                    continue
+
+                last_task = task
+
+            return last_task
+        except Exception as exc:
+            logger.warning(f"查找最后一项任务失败: {exc}")
+            return None
 
     def restart_tasks_via_button(self):
         """确保先停止再启动，复用 run_button 的 click 事件。"""
