@@ -26,17 +26,17 @@ import os
 import subprocess
 import sys
 import shutil
+from contextlib import suppress
 from pathlib import Path
 
 def find_pyside6_tool(tool_name):
     """查找 PySide6 工具的位置"""
     # 首先尝试在 PATH 中查找
-    tool_path = shutil.which(tool_name)
-    if tool_path:
+    if tool_path:=shutil.which(tool_name):
         return tool_path
     
     # 尝试查找 PySide6 安装目录
-    try:
+    with suppress(ImportError):
         import PySide6
         pyside6_path = Path(PySide6.__file__).parent
         # Windows
@@ -49,8 +49,6 @@ def find_pyside6_tool(tool_name):
             tool_path = pyside6_path / tool_name
             if tool_path.exists():
                 return str(tool_path)
-    except ImportError:
-        pass
     
     return None
 

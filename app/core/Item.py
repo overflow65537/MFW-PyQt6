@@ -126,9 +126,7 @@ class ConfigItem:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ConfigItem":
-        item_id = data.get("item_id", "")
-        if not item_id:
-            item_id = cls.generate_id()
+        item_id = data.get("item_id", "") or cls.generate_id()
 
         # 兼容旧数据：
         # - 新格式： "bundle": "MPA"

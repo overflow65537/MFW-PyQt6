@@ -129,12 +129,12 @@ class TaskFlowRunner(QObject):
                 case MaaFWError.TASKER_NOT_INITIALIZED:
                     msg = self.tr("Tasker not initialized")
                 case _:
-                    msg = self.tr(f"Unknown MaaFW error code: " + str(error_code))
+                    msg = self.tr("Unknown MaaFW error code: {}").format(error_code)
             signalBus.log_output.emit("ERROR", msg)
         except ValueError:
             logger.warning(f"Received unknown MaaFW error code: {error_code}")
             signalBus.log_output.emit(
-                "WARNING", self.tr(f"Unknown MaaFW error code: {error_code}")
+                "WARNING", self.tr("Unknown MaaFW error code: {}").format(error_code)
             )
 
     async def run_tasks_flow(
@@ -359,7 +359,7 @@ class TaskFlowRunner(QObject):
 
         except Exception as exc:
             logger.error(f"任务流程执行异常: {str(exc)}")
-            signalBus.log_output.emit("ERROR", self.tr("Task flow error: ")+str(exc))
+            signalBus.log_output.emit("ERROR", self.tr("Task flow error: ") + str(exc))
             import traceback
 
             logger.critical(traceback.format_exc())
@@ -604,6 +604,18 @@ class TaskFlowRunner(QObject):
         self._timeout_restart_attempts = 0
         self._current_running_task_id = None
 
+    def _handle_timeout_restart(self, entry_text: str) -> None:
+        """处理任务超时重启逻辑"""
+        self._timeout_restart_attempts += 1
+        restart_message = self.tr(
+            "Task entry {} timed out, restarting attempt {}/3."
+        ).format(entry_text, self._timeout_restart_attempts)
+        logger.info(restart_message)
+        signalBus.log_output.emit("WARNING", restart_message)
+        # 通过信号通知外部需要重启
+        self.task_timeout_restart_requested.emit()
+        # 注意：重启模式下不立即发送通知，等待最终总结时发送
+
     def _on_task_timeout(self):
         """任务超时处理"""
         self._timeout_timer.stop()
@@ -635,15 +647,7 @@ class TaskFlowRunner(QObject):
 
         # 重启并通知模式
         if self._timeout_restart_attempts < 3:
-            self._timeout_restart_attempts += 1
-            restart_message = self.tr(
-                "Task entry {} timed out, restarting attempt {}/3."
-            ).format(entry_text, self._timeout_restart_attempts)
-            logger.info(restart_message)
-            signalBus.log_output.emit("WARNING", restart_message)
-            # 通过信号通知外部需要重启
-            self.task_timeout_restart_requested.emit()
-            # 注意：重启模式下不立即发送通知，等待最终总结时发送
+            self._handle_timeout_restart(entry_text)
             return
 
         # 超过3次重启，停止任务并发送通知
@@ -927,10 +931,15 @@ class TaskFlowRunner(QObject):
 
         old_name = (old_config.get("device_name") or "").strip()
         new_name = (new_device.get("device_name") or "").strip()
+
+        # 如果旧配置没有设备名，只要有新设备名就使用
         if not old_name:
             return bool(new_name)
-
-        return bool(new_name and old_name == new_name)
+        # 如果旧配置有设备名，需要新设备名存在且与旧配置匹配
+        elif new_name:
+            return old_name == new_name
+        else:
+            return False
 
     def _start_process(
         self, entry: str | Path, argv: list[str] | tuple[str, ...] | str | None = None
@@ -1095,8 +1104,7 @@ class TaskFlowRunner(QObject):
             controller_raw[controller_type].update(device_info)
 
             # 获取预配置任务并更新
-            pre_cfg = self.task_service.get_task(PRE_CONFIGURATION)
-            if pre_cfg:
+            if pre_cfg := self.task_service.get_task(PRE_CONFIGURATION):
                 pre_cfg.task_option.update(controller_raw)
                 self.task_service.update_task(pre_cfg)
                 logger.info(f"设备配置已保存: {device_info.get('device_name', '')}")
@@ -1135,8 +1143,7 @@ class TaskFlowRunner(QObject):
 
         # 4. 如果选择了"运行其他配置"，切换配置（继续执行后续操作）
         if post_config.get("run_other"):
-            target_config = (post_config.get("target_config") or "").strip()
-            if target_config:
+            if target_config := (post_config.get("target_config") or "").strip():
                 await self._run_other_configuration(target_config)
             else:
                 logger.warning("完成后运行其他配置开关被激活，但未配置目标配置")
@@ -1236,7 +1243,6 @@ class TaskFlowRunner(QObject):
 
         if "mumuplayer12" in device_name.lower():
             EmulatorHelper.close_mumu(adb_path, adb_port)
-            return
         elif "ldplayer" in device_name.lower():
             ld_pid_cfg = (
                 self.adb_controller_config.get("config", {})
@@ -1245,17 +1251,8 @@ class TaskFlowRunner(QObject):
                 .get("pid")
             )
             EmulatorHelper.close_ldplayer(adb_path, ld_pid_cfg)
-
-            return
-        elif "bluestacks" in device_name.lower():
-            pass
-        elif "nox" in device_name.lower():
-            pass
-        elif "memu" in device_name.lower():
-            pass
         else:
             logger.warning(f"未找到对应的模拟器: {device_name}")
-            return
 
     def shutdown(self):
         """
@@ -1336,17 +1333,19 @@ class TaskFlowRunner(QObject):
         remaining_count = state.get("remaining_count")
         if not isinstance(remaining_count, int):
             remaining_count = -1
+        # 如果剩余次数小于0，则设置为0
         if remaining_count < 0:
             state["remaining_count"] = 0
             remaining_count = 0
             state_dirty = True
 
-        if now >= next_refresh:
-            if state.get("remaining_count") != count_limit_value:
-                state["remaining_count"] = count_limit_value
-                remaining_count = count_limit_value
-                state_dirty = True
+        # 如果当前时间大于下次刷新时间，且剩余次数不等于限制次数，则更新剩余次数
+        if now >= next_refresh and state.get("remaining_count") != count_limit_value:
+            state["remaining_count"] = count_limit_value
+            remaining_count = count_limit_value
+            state_dirty = True
 
+        # 如果剩余次数为0，则返回False
         if remaining_count == 0:
             if state_dirty:
                 self.task_service.update_task(task)
@@ -1412,7 +1411,7 @@ class TaskFlowRunner(QObject):
                         parsed_entry = None
 
             # 对不合法时间回退到 epoch
-            parsed.append(parsed_entry if parsed_entry else epoch)
+            parsed.append(parsed_entry or epoch)
 
         parsed.sort()
         return parsed
@@ -1465,7 +1464,7 @@ class TaskFlowRunner(QObject):
     ) -> datetime | None:
         allowed = weekdays or list(range(1, 8))
         start_date = base_time.date()
-        for day_offset in range(0, 14):
+        for day_offset in range(14):
             candidate_date = start_date + timedelta(days=day_offset)
             if candidate_date.isoweekday() not in allowed:
                 continue
@@ -1501,7 +1500,7 @@ class TaskFlowRunner(QObject):
         allowed_days = sorted(set(days)) if days else list(range(1, 32))
         start_year = base_time.year
         start_month = base_time.month
-        for month_offset in range(0, 24):
+        for month_offset in range(24):
             month_index = start_month - 1 + month_offset
             year = start_year + month_index // 12
             month = (month_index % 12) + 1
@@ -1537,8 +1536,8 @@ class TaskFlowRunner(QObject):
         except (TypeError, ValueError):
             return None
 
-        if hour < 0:
-            hour = 0
+        hour = max(0, hour)
+        # 将小时限制在0-23之间
         hour %= 24
         return hour
 
@@ -1610,15 +1609,14 @@ class TaskFlowRunner(QObject):
         if task.is_base_task():
             return True
 
-        # 获取当前配置中的资源
         try:
-            pre_config_task = self.task_service.get_task(PRE_CONFIGURATION)
+            pre_config_task = self.task_service.get_task(PRE_CONFIGURATION) # sourcery skip
             if not pre_config_task:
                 return True  # 如果没有 Pre-Configuration 任务，执行所有任务
 
             current_resource_name = pre_config_task.task_option.get("resource", "")
             if not current_resource_name:
-                return True  # 如果没有选择资源，执行所有任务
+                return True
 
             # 获取 interface 中的任务定义
             interface = self.task_service.interface

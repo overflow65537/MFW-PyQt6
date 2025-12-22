@@ -125,7 +125,6 @@ class MaaResourceEventSink(ResourceEventSink):
 class MaaTaskerEventSink(TaskerEventSink):
     def on_raw_notification(self, tasker: Tasker, msg: str, details: dict):
         pass
-        print(f"任务器原始信息:{msg},详细信息:{details}")
 
     def on_tasker_task(
         self,
@@ -252,11 +251,7 @@ class MaaFW(QObject):
             logger.debug(f"已将 {custom_root_str} 添加到 sys.path")
 
         def _get_bucket(type_name: str) -> str | None:
-            if type_name == "action":
-                return "actions"
-            if type_name == "recognition":
-                return "recognitions"
-            return None
+            return {"action": "actions", "recognition": "recognitions"}.get(type_name)
 
         def _record_success(type_name: str, name: str):
             bucket = _get_bucket(type_name)
@@ -414,14 +409,7 @@ class MaaFW(QObject):
     @asyncify
     def detect_win32hwnd(window_regex: str) -> List[DesktopWindow]:
         windows = Toolkit.find_desktop_windows()
-        result = []
-        for win in windows:
-            if not re.search(window_regex, win.window_name):
-                continue
-
-            result.append(win)
-
-        return result
+        return [win for win in windows if re.search(window_regex, win.window_name)]
 
     @asyncify
     def connect_adb(
