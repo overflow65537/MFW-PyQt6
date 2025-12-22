@@ -873,6 +873,10 @@ class SpecialTaskListItem(TaskListItem):
         if hasattr(self, "option_label"):
             self.option_label.hide()
 
+        # 隐藏删除按钮（特殊任务不应该有删除按钮）
+        if hasattr(self, "setting_button"):
+            self.setting_button.hide()
+
         # 将整个item的点击事件绑定到checkbox逻辑
         # 点击name_label时触发选择
         self.name_label.clicked.connect(self._on_item_clicked)
@@ -902,9 +906,8 @@ class SpecialTaskListItem(TaskListItem):
     def mousePressEvent(self, event):
         """重写鼠标点击事件，使整个widget可点击"""
         if event.button() == Qt.MouseButton.LeftButton:
-            # 如果点击的不是设置按钮，则触发item点击逻辑
-            if not self.setting_button.geometry().contains(event.pos()):
-                self._on_item_clicked()
+            # 删除按钮已隐藏，直接触发item点击逻辑
+            self._on_item_clicked()
         super().mousePressEvent(event)
 
     def contextMenuEvent(self, event):
