@@ -551,7 +551,7 @@ class TaskFlowRunner(QObject):
 
         self._start_task_timeout(entry)
 
-        if not await self.maafw.run_task(entry, pipeline_override):
+        if not await self.maafw.run_task(entry, pipeline_override,cfg.get(cfg.save_screenshot)):
             logger.error(f"任务 '{task.name}' 执行失败")
             self._stop_task_timeout()
             return

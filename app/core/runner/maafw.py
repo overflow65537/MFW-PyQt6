@@ -592,7 +592,6 @@ class MaaFW(QObject):
         self,
         entry: str,
         pipeline_override: dict = {},
-        custom_dir: str | None = None,
         save_draw: bool = False,
     ) -> bool:
         if not self.resource or not self.controller:
