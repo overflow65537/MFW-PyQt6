@@ -15,7 +15,7 @@ from app.utils.logger import logger
 
 
 class TaskInterface(UI_TaskInterface, QWidget):
-    
+
     def __init__(self, service_coordinator=None, parent=None):
         QWidget.__init__(self, parent=parent)
         UI_TaskInterface.__init__(
@@ -36,6 +36,8 @@ class TaskInterface(UI_TaskInterface, QWidget):
         )
 
         self._timeout_restarting = False
+        self._timeout_restart_entry = None
+        self._timeout_restart_attempts = 0
 
         if self.service_coordinator:
             try:
@@ -67,13 +69,17 @@ class TaskInterface(UI_TaskInterface, QWidget):
             self.start_bar.run_button.setDisabled(True)
             # 强制处理UI事件，确保按钮状态立即更新
             QApplication.processEvents()
-            
+
             self._timeout_restarting = False
-            
+            self._timeout_restart_entry = None
+            self._timeout_restart_attempts = 0
+            # 清除超时重启状态（正常启动时）
+            self._clear_timeout_restart_state()
+
             def _start_task():
                 self.log_output_widget.clear_log()
                 asyncio.create_task(self.service_coordinator.run_tasks_flow())
-            
+
             # 使用 QTimer 延迟执行，避免阻塞UI更新
             QTimer.singleShot(0, _start_task)
         else:
@@ -81,10 +87,10 @@ class TaskInterface(UI_TaskInterface, QWidget):
             self.start_bar.run_button.setDisabled(True)
             # 强制处理UI事件，确保按钮状态立即更新
             QApplication.processEvents()
-            
+
             def _stop_task():
                 asyncio.create_task(self.service_coordinator.stop_task_flow())
-            
+
             # 使用 QTimer 延迟执行
             QTimer.singleShot(0, _stop_task)
 
@@ -101,12 +107,26 @@ class TaskInterface(UI_TaskInterface, QWidget):
             # 如果正在等待重启且按钮已启用，触发重启
             if self._timeout_restarting and status.get("status") == "enabled":
                 QTimer.singleShot(100, lambda: self._trigger_restart_if_ready())
+            elif status.get("status") == "enabled" and not self._timeout_restarting:
+                # 如果不是超时重启且按钮已启用（任务正常完成），清除状态
+                self._clear_timeout_restart_state()
+                self._timeout_restart_entry = None
+                self._timeout_restart_attempts = 0
 
         # 设置按钮是否可用
         self.start_bar.run_button.setEnabled(status.get("status") != "disabled")
 
-    def _on_timeout_restart_requested(self):
-        """处理任务超时需要重启的请求"""
+    def _on_timeout_restart_requested(self, entry: str, attempts: int):
+        """处理任务超时需要重启的请求
+
+        Args:
+            entry: 超时的任务entry
+            attempts: 当前重启次数
+        """
+        self._timeout_restart_entry = entry
+        self._timeout_restart_attempts = attempts
+        # 保存状态到配置
+        self._save_timeout_restart_state(entry, attempts)
         self._timeout_restarting = True
         self.restart_tasks_via_button()
 
@@ -114,10 +134,20 @@ class TaskInterface(UI_TaskInterface, QWidget):
         """如果按钮已准备好，触发重启。"""
         button = self.start_bar.run_button
         if button.text() == self.tr("Start") and button.isEnabled():
-            # 超时重启，直接调用 run_tasks_flow 并传递 is_timeout_restart=True
+            # 超时重启，恢复状态并传递给 run_tasks_flow
+            entry = self._timeout_restart_entry
+            attempts = self._timeout_restart_attempts
+            # 如果内存中没有状态，从配置中恢复
+            if not entry or attempts == 0:
+                entry, attempts = self._restore_timeout_restart_state()
+
             self._timeout_restarting = False  # 清除标志，准备启动
             asyncio.create_task(
-                self.service_coordinator.run_tasks_flow(is_timeout_restart=True)
+                self.service_coordinator.run_tasks_flow(
+                    is_timeout_restart=True,
+                    timeout_restart_entry=entry,
+                    timeout_restart_attempts=attempts,
+                )
             )
 
     def restart_tasks_via_button(self):
@@ -132,6 +162,63 @@ class TaskInterface(UI_TaskInterface, QWidget):
         elif button.text() == self.tr("Start") and button.isEnabled():
             # 如果已经是"Start"状态且可用，直接点击
             button.click()
+
+    def _save_timeout_restart_state(self, entry: str, attempts: int):
+        """保存超时重启状态到配置"""
+        if not self.service_coordinator:
+            return
+        try:
+            config_service = self.service_coordinator.config_service
+            if config_service:
+                success = config_service.save_timeout_restart_state(entry, attempts)
+                if success:
+                    logger.debug(
+                        f"已保存超时重启状态: entry={entry}, attempts={attempts}"
+                    )
+                else:
+                    logger.warning(
+                        f"保存超时重启状态失败: entry={entry}, attempts={attempts}"
+                    )
+        except Exception as exc:
+            logger.warning(f"保存超时重启状态时出错: {exc}")
+
+    def _restore_timeout_restart_state(self) -> tuple[str | None, int]:
+        """从配置中恢复超时重启状态
+
+        Returns:
+            (entry, attempts) 元组，如果配置中没有状态则返回 (None, 0)
+        """
+        if not self.service_coordinator:
+            return None, 0
+        try:
+            config_service = self.service_coordinator.config_service
+            if config_service:
+                saved_state = config_service.get_timeout_restart_state()
+                if saved_state:
+                    # 如果有多个entry，选择次数最多的（通常是当前正在处理的）
+                    max_entry = max(saved_state.items(), key=lambda x: x[1])
+                    if max_entry:
+                        entry, attempts = max_entry
+                        logger.info(
+                            f"从配置恢复超时重启状态: entry={entry}, attempts={attempts}"
+                        )
+                        return entry, attempts
+            return None, 0
+        except Exception as exc:
+            logger.warning(f"恢复超时重启状态时出错: {exc}")
+            return None, 0
+
+    def _clear_timeout_restart_state(self, entry: str | None = None):
+        """清除超时重启状态"""
+        if not self.service_coordinator:
+            return
+        try:
+            config_service = self.service_coordinator.config_service
+            if config_service:
+                config_service.clear_timeout_restart_state(entry)
+                logger.debug(f"已清除超时重启状态: entry={entry or 'all'}")
+        except Exception as exc:
+            logger.warning(f"清除超时重启状态时出错: {exc}")
 
     def showEvent(self, event: QShowEvent):
         """界面显示时自动选中第0个任务"""

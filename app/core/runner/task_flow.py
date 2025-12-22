@@ -37,7 +37,7 @@ from app.core.Item import FromeServiceCoordinator, TaskItem
 class TaskFlowRunner(QObject):
     """负责执行任务流的运行时组件"""
 
-    task_timeout_restart_requested = Signal()  # 任务超时需要重启
+    task_timeout_restart_requested = Signal(str, int)  # 任务超时需要重启 (entry, attempts)
 
     def __init__(
         self,
@@ -138,14 +138,13 @@ class TaskFlowRunner(QObject):
             )
 
     async def run_tasks_flow(
-        self, task_id: str | None = None, is_timeout_restart: bool = False
+        self, task_id: str | None = None, is_timeout_restart: bool = False, 
+        timeout_restart_entry: str | None = None, timeout_restart_attempts: int = 0
     ):
         """任务完整流程：连接设备、加载资源、批量运行任务"""
         if self._is_running:
             logger.warning("任务流已经在运行，忽略新的启动请求")
-            if self._is_running:
-                logger.warning("等待结束后仍在运行，取消当前启动请求")
-                return
+            return
         self._is_running = True
         self.need_stop = False
         self._manual_stop = False
@@ -156,7 +155,11 @@ class TaskFlowRunner(QObject):
         if not is_timeout_restart:
             self._reset_task_timeout_state()
         else:
-            # 超时重启时，不清除重启次数，保持当前计数
+            # 超时重启时，从传入参数恢复重启次数和entry
+            if timeout_restart_entry:
+                self._timeout_active_entry = timeout_restart_entry
+                self._timeout_restart_attempts = timeout_restart_attempts
+                logger.info(f"恢复超时重启状态: entry={timeout_restart_entry}, attempts={timeout_restart_attempts}")
             self._timeout_timer.stop()
             self._current_running_task_id = None
         is_single_task_mode = task_id is not None
@@ -339,23 +342,30 @@ class TaskFlowRunner(QObject):
 
                         logger.info(f"任务执行完成: {task.name}")
                         # 任务成功后重置重启计数，以便下一个任务重新开始计数
-                        if self._timeout_restart_attempts > 0:
-                            self._timeout_restart_attempts = 0
+                        # 注意：状态清除由 UI 层控制，这里只重置内存中的计数
+                        self._reset_timeout_attempts_if_needed()
 
                     except Exception as exc:
                         logger.error(f"任务执行失败: {task.name}, 错误: {str(exc)}")
                         # 任务失败后也重置重启计数
-                        self._timeout_restart_attempts = 0
+                        # 注意：状态清除由 UI 层控制，这里只重置内存中的计数
+                        self._reset_timeout_attempts_if_needed()
 
                     # 清除当前执行任务记录
                     self._current_running_task_id = None
 
                     if self.need_stop:
-                        logger.info("收到停止请求，流程终止")
+                        if self._manual_stop:
+                            logger.info("收到手动停止请求，流程终止")
+                        else:
+                            logger.info("收到停止请求，流程终止")
                         break
-                signalBus.log_output.emit(
-                    "INFO", self.tr("All tasks have been completed")
-                )
+                
+                # 只有在任务流正常完成（非手动停止）时才输出"所有任务都已完成"
+                if self._is_tasks_flow_completed_normally():
+                    signalBus.log_output.emit(
+                        "INFO", self.tr("All tasks have been completed")
+                    )
 
         except Exception as exc:
             logger.error(f"任务流程执行异常: {str(exc)}")
@@ -364,6 +374,7 @@ class TaskFlowRunner(QObject):
 
             logger.critical(traceback.format_exc())
         finally:
+            # 判断是否需要执行完成后操作
             should_run_post_action = (
                 not self.need_stop and not is_single_task_mode and self._tasks_started
             )
@@ -377,12 +388,13 @@ class TaskFlowRunner(QObject):
                         logger.info("跳过完成后操作：手动停止或单任务执行")
             except Exception as exc:
                 logger.error(f"完成后操作执行失败: {exc}")
+            
             await self.stop_task()
 
             # 断开日志收集信号
             signalBus.log_output.disconnect(collect_log)
 
-            # 发送收集的日志信息
+            # 发送收集的日志信息（仅在非手动停止时发送）
             if not self._manual_stop and log_messages:
                 # 将日志信息格式化为文本
                 log_text_lines = []
@@ -585,10 +597,17 @@ class TaskFlowRunner(QObject):
             return
 
         entry_text = (entry or "").strip() or self.tr("Unknown Task Entry")
-        # 如果entry不同，或者不是超时重启，重置计数器
-        if entry_text != self._timeout_active_entry or not self._is_timeout_restart:
+        # 如果entry不同，重置计数器
+        if entry_text != self._timeout_active_entry:
             self._timeout_active_entry = entry_text
-            self._timeout_restart_attempts = 0
+            # 如果不是超时重启，重置计数器
+            if not self._is_timeout_restart:
+                self._timeout_restart_attempts = 0
+            # 如果是超时重启且entry不同，应该不会发生（超时重启时entry应该相同）
+            # 但为了安全，如果entry不同，重置为0
+            elif self._is_timeout_restart:
+                self._timeout_restart_attempts = 0
+        # entry相同且是超时重启时，保持当前计数（已在 run_tasks_flow 中恢复）
 
         self._timeout_timer.stop()
         self._timeout_timer.start(timeout_seconds * 1000)
@@ -600,9 +619,19 @@ class TaskFlowRunner(QObject):
     def _reset_task_timeout_state(self):
         """重置任务超时状态"""
         self._timeout_timer.stop()
+        # 注意：配置中的状态清除由 UI 层控制
         self._timeout_active_entry = ""
         self._timeout_restart_attempts = 0
         self._current_running_task_id = None
+
+    def _reset_timeout_attempts_if_needed(self):
+        """在任务完成或失败时重置超时重启计数（如果不在超时重启流程中）"""
+        if not self._is_timeout_restart and self._timeout_restart_attempts > 0:
+            self._timeout_restart_attempts = 0
+
+    def _is_tasks_flow_completed_normally(self) -> bool:
+        """判断任务流是否正常完成（非手动停止）"""
+        return not self.need_stop and not self._manual_stop
 
     def _handle_timeout_restart(self, entry_text: str) -> None:
         """处理任务超时重启逻辑"""
@@ -612,8 +641,9 @@ class TaskFlowRunner(QObject):
         ).format(entry_text, self._timeout_restart_attempts)
         logger.info(restart_message)
         signalBus.log_output.emit("WARNING", restart_message)
-        # 通过信号通知外部需要重启
-        self.task_timeout_restart_requested.emit()
+        # 通过信号通知外部需要重启，传递 entry 和 attempts 信息
+        # UI 层负责保存状态
+        self.task_timeout_restart_requested.emit(entry_text, self._timeout_restart_attempts)
         # 注意：重启模式下不立即发送通知，等待最终总结时发送
 
     def _on_task_timeout(self):
@@ -667,6 +697,7 @@ class TaskFlowRunner(QObject):
         asyncio.create_task(self.stop_task())
         self._reset_task_timeout_state()
         return
+
 
     async def _connect_adb_controller(self, controller_raw: Dict[str, Any]):
         """连接 ADB 控制器"""

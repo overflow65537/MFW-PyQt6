@@ -350,3 +350,48 @@ class ConfigService:
             return "./"
         path = info.get("path") or "./"
         return str(path)
+
+    def get_timeout_restart_state(self) -> Dict[str, int]:
+        """获取超时重启状态（entry -> attempts 映射）"""
+        if self._main_config is None:
+            return {}
+        state = self._main_config.get("_timeout_restart_state")
+        if isinstance(state, dict):
+            return state.copy()
+        return {}
+
+    def save_timeout_restart_state(self, entry: str, attempts: int) -> bool:
+        """保存超时重启状态"""
+        if self._main_config is None:
+            logger.warning("保存超时重启状态失败: _main_config 为 None")
+            return False
+        if "_timeout_restart_state" not in self._main_config:
+            self._main_config["_timeout_restart_state"] = {}
+        if attempts > 0:
+            self._main_config["_timeout_restart_state"][entry] = attempts
+            logger.debug(f"保存超时重启状态到配置: entry={entry}, attempts={attempts}")
+        else:
+            # 如果次数为0或负数，清除该entry的状态
+            self._main_config["_timeout_restart_state"].pop(entry, None)
+            logger.debug(f"清除超时重启状态: entry={entry}")
+        result = self.save_main_config()
+        if result:
+            logger.debug(f"配置保存成功，当前状态: {self._main_config.get('_timeout_restart_state', {})}")
+        else:
+            logger.warning("保存主配置失败")
+        return result
+
+    def clear_timeout_restart_state(self, entry: str | None = None) -> bool:
+        """清除超时重启状态
+        Args:
+            entry: 如果提供，只清除该entry的状态；否则清除所有状态
+        """
+        if self._main_config is None:
+            return False
+        if "_timeout_restart_state" not in self._main_config:
+            return True
+        if entry is not None:
+            self._main_config["_timeout_restart_state"].pop(entry, None)
+        else:
+            self._main_config["_timeout_restart_state"] = {}
+        return self.save_main_config()
