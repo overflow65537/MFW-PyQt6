@@ -10,6 +10,12 @@ import platform
 from typing import Dict, Optional
 from app.utils.logger import logger
 
+# Windows 系统下隐藏命令行窗口的标志
+if platform.system() == "Windows":
+    CREATE_NO_WINDOW = subprocess.CREATE_NO_WINDOW
+else:
+    CREATE_NO_WINDOW = 0
+
 
 def get_gpu_info() -> Dict[int, str]:
     """
@@ -29,6 +35,7 @@ def get_gpu_info() -> Dict[int, str]:
                 ["wmic", "path", "win32_videocontroller", "get", "name"],
                 capture_output=True,
                 text=True,
+                creationflags=CREATE_NO_WINDOW,
             )
             if result.returncode == 0:
                 # 解析输出，跳过第一行（标题）
