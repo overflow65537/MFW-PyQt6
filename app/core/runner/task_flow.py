@@ -756,11 +756,11 @@ class TaskFlowRunner(QObject):
             signalBus.log_output.emit("ERROR", error_msg)
             return False
         raw_input_method = int(
-            controller_raw.get(activate_controller, {}).get("input_methods", -1)
+            controller_config.get("input_methods", -1)
         )
 
         raw_screen_method = int(
-            controller_raw.get(activate_controller, {}).get("screencap_methods", -1)
+            controller_config.get("screencap_methods", -1)
         )
 
         def normalize_input_method(value: int) -> int:
@@ -772,7 +772,7 @@ class TaskFlowRunner(QObject):
 
         input_method = normalize_input_method(raw_input_method)
         screen_method = normalize_input_method(raw_screen_method)
-        config = controller_raw.get(activate_controller, {}).get("config", {})
+        config = controller_config.get("config", {})
         logger.debug(
             (
                 f"ADB 参数类型: adb_path={type(adb_path)}, address={type(address)}, "
@@ -793,18 +793,12 @@ class TaskFlowRunner(QObject):
             config,
         ):
             return True
-        elif controller_raw.get(activate_controller, {}).get("emulator_path", ""):
+        elif controller_config.get("emulator_path", ""):
             logger.info("尝试启动模拟器")
             signalBus.log_output.emit("INFO", self.tr("try to start emulator"))
-            emu_path = controller_raw.get(activate_controller, {}).get(
-                "emulator_path", ""
-            )
-            emu_params = controller_raw.get(activate_controller, {}).get(
-                "emulator_params", ""
-            )
-            wait_emu_start = int(
-                controller_raw.get(activate_controller, {}).get("wait_time", 0)
-            )
+            emu_path = controller_config.get("emulator_path", "")
+            emu_params = controller_config.get("emulator_params", "")
+            wait_emu_start = int(controller_config.get("wait_time", 0))
 
             self.process = self._start_process(emu_path, emu_params)
             # 异步等待
@@ -882,18 +876,12 @@ class TaskFlowRunner(QObject):
             keyboard_method,
         ):
             return True
-        elif controller_raw.get(activate_controller, {}).get("program_path", ""):
+        elif controller_config.get("program_path", ""):
             logger.info("尝试启动程序")
             signalBus.log_output.emit("INFO", self.tr("try to start program"))
-            program_path = controller_raw.get(activate_controller, {}).get(
-                "program_path", ""
-            )
-            program_params = controller_raw.get(activate_controller, {}).get(
-                "program_params", ""
-            )
-            wait_program_start = int(
-                controller_raw.get(activate_controller, {}).get("wait_launch_time", 0)
-            )
+            program_path = controller_config.get("program_path", "")
+            program_params = controller_config.get("program_params", "")
+            wait_program_start = int(controller_config.get("wait_launch_time", 0))
             self.process = self._start_process(program_path, program_params)
             if wait_program_start > 0:
                 countdown_ok = await self._countdown_wait(
