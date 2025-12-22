@@ -7,7 +7,7 @@ from pathlib import Path
 from time import time
 
 from PIL import Image
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
 from qfluentwidgets import (
     BodyLabel,
     FluentIcon as FIF,
-    IndeterminateProgressBar,
     PixmapLabel,
     PrimaryPushButton,
 )
@@ -59,11 +58,7 @@ class MonitorInterface(QWidget):
         self._preview_pixmap: Optional[QPixmap] = None
         self._current_pil_image: Optional[Image.Image] = None
         self._preview_scaled_size: QSize = QSize(0, 0)
-        self._locked = True
-        self._lock_overlay: Optional[QWidget] = None
-        self._unlock_progress: Optional[IndeterminateProgressBar] = None
         self._setup_ui()
-        self._create_lock_overlay()
         self.monitor_task = MonitorTask(
             task_service=self.service_coordinator.task_service,
             config_service=self.service_coordinator.config_service,
@@ -132,6 +127,15 @@ class MonitorInterface(QWidget):
             self.tr("Capture the current preview and store it on disk")
         )
         controls_layout.addWidget(self.save_button)
+
+        self.monitor_control_button = PrimaryPushButton(self.tr("Start Monitoring"), self)
+        self.monitor_control_button.setIcon(FIF.PLAY)
+        self.monitor_control_button.setIconSize(QSize(18, 18))
+        self.monitor_control_button.clicked.connect(self._on_monitor_control_clicked)
+        self.monitor_control_button.setToolTip(
+            self.tr("Start monitoring task")
+        )
+        controls_layout.addWidget(self.monitor_control_button)
 
         controls_layout.addStretch()
         self.main_layout.addLayout(controls_layout)
@@ -247,7 +251,7 @@ class MonitorInterface(QWidget):
     async def _monitor_loop(self) -> None:
         loop = asyncio.get_running_loop()
         try:
-            while self._monitoring_active and not self._locked:
+            while self._monitoring_active:
                 start = loop.time()
                 if not self._is_controller_connected():
                     await self._handle_controller_disconnection()
@@ -276,9 +280,9 @@ class MonitorInterface(QWidget):
         return connected is not False
 
     async def _handle_controller_disconnection(self) -> None:
-        if not self._monitoring_active or self._locked:
+        if not self._monitoring_active:
             return
-        logger.warning("监控子页面：检测到控制器断开，停止监控并自动锁定。")
+        logger.warning("监控子页面：检测到控制器断开，停止监控。")
         self._monitoring_active = False
         current_task = asyncio.current_task()
         if current_task is not self._monitor_loop_task:
@@ -287,10 +291,14 @@ class MonitorInterface(QWidget):
             await self.monitor_task.maafw.stop_task()
         except Exception as exc:
             logger.exception("监控子页面：停止任务失败：%s", exc)
-        self.lock_monitor_page(stop_loop=False)
+        # 更新按钮状态
+        if hasattr(self, 'monitor_control_button'):
+            self.monitor_control_button.setText(self.tr("Start Monitoring"))
+            self.monitor_control_button.setIcon(FIF.PLAY)
+            self.monitor_control_button.setToolTip(self.tr("Start monitoring task"))
 
     def _schedule_controller_disconnection(self) -> None:
-        if not self._monitoring_active or self._locked:
+        if not self._monitoring_active:
             return
         try:
             loop = asyncio.get_running_loop()
@@ -302,8 +310,6 @@ class MonitorInterface(QWidget):
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._refresh_preview_image()
-        if self._lock_overlay:
-            self._lock_overlay.setGeometry(self.rect())
 
     def _on_save_screenshot(self) -> None:
         logger.info("监控子页面：用户请求保存截图。")
@@ -385,99 +391,108 @@ class MonitorInterface(QWidget):
 
         return device_x, device_y
 
-    def _show_unlock_loading(self) -> None:
-        if self._unlock_progress:
-            self._unlock_progress.setVisible(True)
-            self._unlock_progress.start()
 
-    def _hide_unlock_loading(self) -> None:
-        if self._unlock_progress:
-            self._unlock_progress.setVisible(False)
-            self._unlock_progress.stop()
+    def _on_monitor_control_clicked(self) -> None:
+        """处理开始/停止监控按钮点击"""
+        if self._monitoring_active:
+            # 当前正在监控，切换到停止监控
+            self._stop_monitoring()
+        else:
+            # 当前未监控，切换到开始监控
+            self._start_monitoring()
 
-    def _create_lock_overlay(self) -> None:
-        overlay = QWidget(self)
-        overlay.setObjectName("monitorLockOverlay")
-        overlay.setStyleSheet(
-            """
-            QWidget#monitorLockOverlay {
-                background-color: rgba(0, 0, 0, 0.65);
-                border-radius: 12px;
-            }
-            """
-        )
-        layout = QVBoxLayout(overlay)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
-        label = BodyLabel(self.tr("Monitor page locked"), overlay)
-        label.setStyleSheet("color: rgba(255, 255, 255, 0.85);")
-        layout.addWidget(label)
-        self._unlock_button = PrimaryPushButton(self.tr("Unlock"), overlay)
-        self._unlock_button.setToolTip(self.tr("Unlock this page"))
-        self._unlock_button.clicked.connect(self._on_unlock_clicked)
-        self._unlock_button.setSizePolicy(
-            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
-        )
-        self._unlock_button.setFixedWidth(160)
-        layout.addWidget(self._unlock_button, alignment=Qt.AlignmentFlag.AlignHCenter)
-        progress = IndeterminateProgressBar(overlay, start=False)
-        progress.setFixedWidth(160)
-        progress.setTextVisible(False)
-        progress.setVisible(False)
-        container = QWidget(overlay)
-        container_layout = QHBoxLayout(container)
-        container_layout.setContentsMargins(0, 0, 0, 0)
-        container_layout.setSpacing(0)
-        container_layout.addStretch()
-        container_layout.addWidget(progress)
-        container_layout.addStretch()
-        container.setFixedHeight(24)
-        layout.addWidget(container, alignment=Qt.AlignmentFlag.AlignHCenter)
-        self._unlock_progress = progress
-        overlay.setGeometry(self.rect())
-        overlay.raise_()
-        overlay.setVisible(self._locked)
-        self._lock_overlay = overlay
-
-    def _on_unlock_clicked(self) -> None:
-        async def _unlock_sequence():
+    def _start_monitoring(self) -> None:
+        """开始监控任务"""
+        # 立即锁定按钮，防止重复点击
+        self.monitor_control_button.setEnabled(False)
+        
+        async def _start_sequence():
             try:
-                connected = await self.monitor_task._connect()
-                if not connected:
-                    logger.error("设备连接失败，无法解锁监控页面")
-                    signalBus.info_bar_requested.emit(
-                        "error", "设备连接失败，无法解锁监控页面"
-                    )
-                    return
-                self._set_locked(False)
+                # 如果控制器未连接，先连接
+                if not self._is_controller_connected():
+                    connected = await self.monitor_task._connect()
+                    if not connected:
+                        logger.error("设备连接失败，无法开始监控")
+                        signalBus.info_bar_requested.emit(
+                            "error", self.tr("Device connection failed, cannot start monitoring")
+                        )
+                        return
+                
+                # 启动监控循环
                 self._start_monitor_loop()
-                signalBus.info_bar_requested.emit("success", "监控页面解锁成功")
+                
+                # 更新按钮状态
+                self.monitor_control_button.setText(self.tr("Stop Monitoring"))
+                self.monitor_control_button.setIcon(FIF.CLOSE)
+                self.monitor_control_button.setToolTip(self.tr("Stop monitoring task"))
+                
+                signalBus.info_bar_requested.emit("success", self.tr("Monitoring started"))
+                
+                # 立即捕获一帧以显示画面
                 try:
                     if not self._is_controller_connected():
                         await self._handle_controller_disconnection()
                         return
                     pil_image = await asyncio.to_thread(self._capture_frame)
                 except Exception as exc:
-                    logger.exception("监控子页面：解锁后刷新画面失败：%s", exc)
+                    logger.exception("监控子页面：开始监控后刷新画面失败：%s", exc)
                 else:
-                    self._apply_preview_from_pil(pil_image)
+                    if pil_image:
+                        self._apply_preview_from_pil(pil_image)
+            except Exception as exc:
+                logger.exception("监控子页面：开始监控失败：%s", exc)
+                signalBus.info_bar_requested.emit(
+                    "error", self.tr("Failed to start monitoring: ") + str(exc)
+                )
             finally:
-                self._hide_unlock_loading()
+                # 无论成功还是失败，都重新启用按钮
+                self.monitor_control_button.setEnabled(True)
 
-        self._show_unlock_loading()
+        # 使用 QTimer 延迟发送，防止异步任务阻塞 UI
+        QTimer.singleShot(0, lambda: asyncio.create_task(_start_sequence()))
 
-        asyncio.create_task(_unlock_sequence())
-
-    def _set_locked(self, locked: bool) -> None:
-        self._locked = locked
-        if self._lock_overlay:
-            self._lock_overlay.setVisible(locked)
+    def _stop_monitoring(self) -> None:
+        """停止监控任务"""
+        # 立即锁定按钮，防止重复点击
+        self.monitor_control_button.setEnabled(False)
+        
+        async def _stop_sequence():
+            try:
+                # 停止监控循环
+                self._stop_monitor_loop()
+                
+                # 停止任务
+                try:
+                    await self.monitor_task.maafw.stop_task()
+                except Exception as exc:
+                    logger.exception("监控子页面：停止任务失败：%s", exc)
+                
+                # 更新按钮状态
+                self.monitor_control_button.setText(self.tr("Start Monitoring"))
+                self.monitor_control_button.setIcon(FIF.PLAY)
+                self.monitor_control_button.setToolTip(self.tr("Start monitoring task"))
+                
+                signalBus.info_bar_requested.emit("success", self.tr("Monitoring stopped"))
+            except Exception as exc:
+                logger.exception("监控子页面：停止监控失败：%s", exc)
+                signalBus.info_bar_requested.emit(
+                    "error", self.tr("Failed to stop monitoring: ") + str(exc)
+                )
+            finally:
+                # 无论成功还是失败，都重新启用按钮
+                self.monitor_control_button.setEnabled(True)
+        
+        # 使用 QTimer 延迟发送，防止异步任务阻塞 UI
+        QTimer.singleShot(0, lambda: asyncio.create_task(_stop_sequence()))
 
     def lock_monitor_page(self, stop_loop: bool = True) -> None:
-        """重新锁定监控页面。"""
+        """停止监控任务（保留此方法以保持向后兼容）。"""
         if stop_loop:
             self._stop_monitor_loop()
         else:
             self._monitoring_active = False
-        self._set_locked(True)
+        # 更新按钮状态
+        if hasattr(self, 'monitor_control_button'):
+            self.monitor_control_button.setText(self.tr("Start Monitoring"))
+            self.monitor_control_button.setIcon(FIF.PLAY)
+            self.monitor_control_button.setToolTip(self.tr("Start monitoring task"))
