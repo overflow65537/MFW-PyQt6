@@ -317,7 +317,8 @@ class SettingInterface(QWidget):
         self.icon_label = QLabel(self)
         self.icon_label.setFixedSize(72, 72)
         self._apply_header_icon("app/assets/icons/logo.png")
-        top_row.addWidget(self.icon_label)
+        # 图标整体在该行内顶部对齐
+        top_row.addWidget(self.icon_label, 0, Qt.AlignmentFlag.AlignTop)
 
         info_column = QVBoxLayout()
         info_column.setSpacing(6)

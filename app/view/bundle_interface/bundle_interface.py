@@ -177,7 +177,9 @@ class BundleDetailWidget(QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(20)
 
-        # 只显示联系方式（welcome 已在按钮中显示）
+        # 描述信息（来自 interface 的 description 字段）
+        self._add_description_section(layout)
+        # 联系方式（welcome 已在底部按钮中单独弹出）
         self._add_contact_section(layout)
 
         layout.addStretch()
