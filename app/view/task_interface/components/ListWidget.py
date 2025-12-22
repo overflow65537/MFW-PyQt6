@@ -254,8 +254,8 @@ class TaskDragListWidget(BaseListWidget):
         self._pending_refresh = True
         self._show_loading_overlay()
         self._fade_out.start()
-        # 延迟10ms后选中启动前配置
-        QTimer.singleShot(10, self._select_pre_configuration)
+        # 延迟10ms后清除任务选择
+        QTimer.singleShot(10, self.clearSelection)
     
     def _on_resource_changed(self, options: dict) -> None:
         """当选项变化时，更新任务列表显示"""
