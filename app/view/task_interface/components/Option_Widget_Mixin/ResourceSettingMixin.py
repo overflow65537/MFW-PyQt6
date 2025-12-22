@@ -83,7 +83,7 @@ class ResourceSettingMixin:
         int_value = self._coerce_int(value)
         if int_value is None:
             return 0
-        
+
         # 在下拉框中查找对应的 userData
         for idx in range(combo.count()):
             item_data = combo.itemData(idx)
@@ -272,9 +272,12 @@ class ResourceSettingMixin:
     def _ensure_win32_input_defaults(self, controller_cfg: dict, controller_name: str):
         """为 Win32 控制器设置输入/截图默认值"""
         # 只有当传入的控制器名称与当前选择的控制器一致时，才从interface中读取默认值
-        if not self.current_controller_name or controller_name != self.current_controller_name:
+        if (
+            not self.current_controller_name
+            or controller_name != self.current_controller_name
+        ):
             return
-        
+
         win32_defaults = self.win32_default_mapping.get(controller_name, {}).get(
             "defaults", {}
         )
@@ -763,15 +766,24 @@ class ResourceSettingMixin:
                 self.current_config[current_controller_type][key] = value
         else:
             self.current_config[current_controller_type][key] = value
-        self._auto_save_options()
+        # 仅提交当前控制器的配置，避免无关字段触发任务列表误刷新
+        self._auto_save_options(
+            {current_controller_type: self.current_config[current_controller_type]}
+        )
 
-    def _auto_save_options(self):
-        """自动保存当前选项"""
+    def _auto_save_options(self, changed_options: dict[str, Any] | None = None):
+        """自动保存当前选项
+
+        changed_options:
+            - 为 None 时：保存完整配置（兼容旧逻辑）
+            - 为 dict 时：仅保存和广播其中包含的字段，避免无关字段导致任务列表重载
+        """
         if self._syncing:
             return
         try:
             option_service = self.service_coordinator.option_service
-            ok = option_service.update_options(self.current_config)
+            options_to_save = changed_options or self.current_config
+            ok = option_service.update_options(options_to_save)
             # 强制同步到预配置任务，确保落盘
             from app.common.constants import PRE_CONFIGURATION
 
@@ -809,14 +821,18 @@ class ResourceSettingMixin:
         )
 
     # 填充新的子选项信息
-    def _fill_children_option(self, controller_name):
+    def _fill_children_option(self, controller_name: str) -> None:
         """填充新的子选项信息"""
-        controller_type = None
+        controller_type: str | None = None
         self.current_config.setdefault("gpu", -1)
         for controller_info in self.controller_type_mapping.values():
             if controller_info["name"] == controller_name:
                 controller_type = controller_info["type"].lower()
                 break
+        # 如果仍然没有找到对应的控制器类型，则直接返回，避免传入 None
+        if controller_type is None:
+            logger.warning(f"未能为控制器 {controller_name!r} 找到对应的类型配置")
+            return
         # 使用控制器类型作为键，而不是控制器名称
         controller_cfg = self.current_config.setdefault(controller_type, {})
         if controller_type == "adb":
@@ -866,6 +882,14 @@ class ResourceSettingMixin:
         search_option: DeviceFinderWidget = self.resource_setting_widgets[
             "search_combo"
         ]
+        # 确保 no_device_found 信号连接到 InfoBar 提示槽
+        try:
+            # 防止重复连接：先尝试断开旧连接（若未连接会抛异常，忽略即可）
+            search_option.no_device_found.disconnect(self._on_no_device_found)
+        except Exception:
+            pass
+        search_option.no_device_found.connect(self._on_no_device_found)
+
         combo_box = search_option.combo_box
         combo_box.blockSignals(True)
         # 先尝试定位已有的设备项，避免重复添加
@@ -882,6 +906,30 @@ class ResourceSettingMixin:
             target_index = combo_box.count() - 1
         combo_box.setCurrentIndex(target_index)
         combo_box.blockSignals(False)
+
+    def _on_no_device_found(self, controller_type: str) -> None:
+        """当未找到任何设备时，通过信号总线弹出 InfoBar 提示"""
+        if not hasattr(self, "service_coordinator"):
+            return
+
+        # InfoBar 信号定义: info_bar_requested = Signal(str, str)  # (level, message)
+        level = "warning"
+        if controller_type.lower() == "adb":
+            message = self.tr(
+                "No ADB devices were found. Please check emulator or device connection."
+            )
+        elif controller_type.lower() == "win32":
+            message = self.tr("No desktop windows were found that match the filter.")
+        else:
+            message = self.tr("No devices were found for current controller type.")
+
+        from app.common.signal_bus import signalBus
+
+        try:
+            # 直接使用全局 signalBus，避免类型推断不到 service_coordinator.signal_bus 的属性
+            signalBus.info_bar_requested.emit(level, message)
+        except Exception as e:
+            logger.warning(f"发送 InfoBar 提示失败: {e}")
 
     def _fill_custom_option(self):
         custom_edit = self.resource_setting_widgets.get("custom")
@@ -936,7 +984,8 @@ class ResourceSettingMixin:
 
     def _on_custom_path_changed(self, text: str):
         self.current_config["custom"] = text
-        self._auto_save_options()
+        # 仅提交 custom 字段，避免无关字段导致任务列表重载
+        self._auto_save_options({"custom": text})
 
     def _on_agent_timeout_changed(self, text: str):
         if not text:
@@ -946,7 +995,8 @@ class ResourceSettingMixin:
         except ValueError:
             return
         self.current_config["agent_timeout"] = timeout_value
-        self._auto_save_options()
+        # 仅提交 agent_timeout 字段
+        self._auto_save_options({"agent_timeout": timeout_value})
 
     def _on_gpu_option_changed(self, index: int):
         combo = self.resource_setting_widgets.get("gpu_combo")
@@ -960,7 +1010,8 @@ class ResourceSettingMixin:
             value = -1
 
         self.current_config["gpu"] = value
-        self._auto_save_options()
+        # 仅提交 gpu 字段
+        self._auto_save_options({"gpu": value})
 
     def _toggle_win32_children_option(self, visible: bool):
         """控制Win32子选项的隐藏和显示"""
@@ -991,7 +1042,8 @@ class ResourceSettingMixin:
 
         # 更新当前配置
         self.current_config["controller_type"] = ctrl_info["name"]
-        self._auto_save_options()
+        # 仅提交 controller_type 字段
+        self._auto_save_options({"controller_type": ctrl_info["name"]})
 
         # 更换搜索设备类型
         search_option: DeviceFinderWidget = self.resource_setting_widgets[
@@ -1036,8 +1088,9 @@ class ResourceSettingMixin:
                 if description := resource.get("description"):
                     res_combo.installEventFilter(ToolTipFilter(res_combo))
                     res_combo.setToolTip(description)
-                self._auto_save_options()
-                # 资源变化时，通知任务列表更新
+                # 仅提交 resource 字段，任务列表据此判断是否需要重载
+                self._auto_save_options({"resource": resource["name"]})
+                # 资源变化时，通知任务列表更新（仅携带 resource 字段）
                 self._notify_task_list_update()
                 break
 
@@ -1047,8 +1100,9 @@ class ResourceSettingMixin:
             # 通过信号总线通知任务列表更新
             if hasattr(self, "service_coordinator"):
                 # 发出 option_updated 信号，任务列表可以监听此信号来更新
+                # 仅携带 resource 字段，避免其他字段变化导致任务列表重载
                 self.service_coordinator.signal_bus.option_updated.emit(
-                    self.current_config
+                    {"resource": self.current_config.get("resource")}
                 )
         except Exception:
             pass
@@ -1066,7 +1120,9 @@ class ResourceSettingMixin:
         if not current_controller_type:
             return
         # 使用控制器类型作为键
-        current_controller_config = self.current_config.setdefault(current_controller_type, {})
+        current_controller_config = self.current_config.setdefault(
+            current_controller_type, {}
+        )
         find_device_info = self.resource_setting_widgets[
             "search_combo"
         ].device_mapping.get(device_name)
@@ -1077,7 +1133,8 @@ class ResourceSettingMixin:
                 value = str(value)
             current_controller_config[key] = value
         current_controller_config["device_name"] = device_name
-        self._auto_save_options()
+        # 仅提交当前控制器配置，避免无关字段导致任务列表重载
+        self._auto_save_options({current_controller_type: current_controller_config})
         self._fill_children_option(current_controller_name)
 
     def _toggle_children_visible(self, option_list: list, visible: bool):

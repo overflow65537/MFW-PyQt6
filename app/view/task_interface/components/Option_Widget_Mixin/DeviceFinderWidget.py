@@ -87,6 +87,10 @@ class DeviceFinderTask(QRunnable):
 
 
 class DeviceFinderWidget(QWidget):
+    # 当未找到任何设备时发出的信号
+    # 参数为当前控制器类型字符串，例如 "adb" 或 "win32"
+    no_device_found = Signal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._init_ui()
@@ -137,10 +141,15 @@ class DeviceFinderWidget(QWidget):
                     filtered[key] = device
             device_mapping = filtered
 
-        # 更新设备映射和下拉框
-        self.device_mapping = device_mapping
-        self.combo_box.clear()
-        self.combo_box.addItems(list(device_mapping.keys()))
+        # 如果没有找到任何设备，仅发出信号，不清空已有下拉框内容
+        if not device_mapping:
+            self.no_device_found.emit(controller_type)
+        else:
+            # 更新设备映射和下拉框
+            self.device_mapping = device_mapping
+            self.combo_box.clear()
+            self.combo_box.addItems(list(device_mapping.keys()))
+
         self.search_button.setEnabled(True)
 
     def _matches_win32_filters(self, device: dict) -> bool:
