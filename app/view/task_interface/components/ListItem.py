@@ -229,6 +229,15 @@ class TaskListItem(BaseListItem):
                 self.checkbox.setDisabled(False)
             self._apply_theme_colors()
 
+    def _apply_theme_colors(self, *_):
+        """应用主题颜色到名称标签，同时保持选项标签的灰色小字体样式"""
+        super()._apply_theme_colors()
+        # 选项标签保持灰色小字体样式，不受主题变化影响
+        if hasattr(self, "option_label"):
+            self.option_label.setStyleSheet("color: gray; font-size: 11px;")
+            # 确保字体大小有效
+            self._ensure_font_valid(self.option_label)
+
     @property
     def interface_allows(self) -> bool:
         return self._interface_allowed
