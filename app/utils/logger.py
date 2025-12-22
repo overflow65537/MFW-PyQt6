@@ -65,7 +65,21 @@ class LoggerManager:
             handler.close()
             root_logger.removeHandler(handler)
 
-        os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+        # 创建日志目录，处理 Windows 权限错误
+        if log_dir := os.path.dirname(log_file_path):
+            try:
+                os.makedirs(log_dir, exist_ok=True)
+            except OSError as e:
+                # Windows Error 5: 拒绝访问，可能是目录已存在或被锁定
+                # 如果目录已存在，继续执行；否则抛出异常
+                if not os.path.exists(log_dir):
+                    raise
+                # 如果目录存在但无法访问，记录警告但继续尝试创建文件
+                import warnings
+
+                warnings.warn(
+                    f"无法访问日志目录 {log_dir}: {e}，将尝试继续创建日志文件"
+                )
 
         # 创建新的处理器
         file_handler = TimedRotatingFileHandler(
