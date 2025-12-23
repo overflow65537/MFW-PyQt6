@@ -291,6 +291,13 @@ class MonitorInterface(QWidget):
             await self.monitor_task.maafw.stop_task()
         except Exception as exc:
             logger.exception("监控子页面：停止任务失败：%s", exc)
+        # 销毁连接对象，回到初始状态
+        try:
+            if self.monitor_task.maafw.controller:
+                self.monitor_task.maafw.controller = None
+                logger.info("监控子页面：已销毁连接对象")
+        except Exception as exc:
+            logger.exception("监控子页面：销毁连接对象失败：%s", exc)
         # 更新按钮状态
         if hasattr(self, 'monitor_control_button'):
             self.monitor_control_button.setText(self.tr("Start Monitoring"))
@@ -329,7 +336,6 @@ class MonitorInterface(QWidget):
             logger.exception("监控子页面：保存截图失败：%s", exc)
 
     def _on_preview_clicked(self, x: int, y: int) -> None:
-        logger.info("监控子页面：预览图被点击，开始同步到设备。")
         if not self.service_coordinator:
             return
         if not self._is_controller_connected():
@@ -466,6 +472,14 @@ class MonitorInterface(QWidget):
                     await self.monitor_task.maafw.stop_task()
                 except Exception as exc:
                     logger.exception("监控子页面：停止任务失败：%s", exc)
+                
+                # 销毁连接对象，回到初始状态
+                try:
+                    if self.monitor_task.maafw.controller:
+                        self.monitor_task.maafw.controller = None
+                        logger.info("监控子页面：已销毁连接对象")
+                except Exception as exc:
+                    logger.exception("监控子页面：销毁连接对象失败：%s", exc)
                 
                 # 更新按钮状态
                 self.monitor_control_button.setText(self.tr("Start Monitoring"))
