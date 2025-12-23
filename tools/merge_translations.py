@@ -32,8 +32,8 @@ from typing import Dict, Tuple, Optional, List
 # 设置Windows控制台编码为UTF-8
 if sys.platform == "win32":
     try:
-        sys.stdout.reconfigure(encoding='utf-8')
-        sys.stderr.reconfigure(encoding='utf-8')
+        sys.stdout.reconfigure(encoding='utf-8')  # type: ignore
+        sys.stderr.reconfigure(encoding='utf-8')  # type: ignore
     except Exception:
         pass
 
@@ -212,9 +212,26 @@ def merge_translations(
 
 def main():
     """主函数"""
-    # 获取项目根目录
-    script_dir = Path(__file__).parent
-    project_root = script_dir
+    # === 确保从项目根目录运行 ===
+    # 获取脚本所在目录
+    script_dir = Path(__file__).parent.absolute()
+    # 项目根目录应该是脚本目录的父目录（因为脚本在 tools/ 目录下）
+    project_root = script_dir.parent
+    
+    # 检查是否在正确的目录（通过检查 main.py 是否存在）
+    if not (project_root / "main.py").exists():
+        # 如果从项目根目录运行，project_root 就是当前目录
+        if (Path.cwd() / "main.py").exists():
+            project_root = Path.cwd()
+        else:
+            print("[ERROR] can't find project root (can't find main.py)")
+            print(f"  current working directory: {os.getcwd()}")
+            print(f"  script directory: {script_dir}")
+            sys.exit(1)
+    
+    # 切换到项目根目录
+    os.chdir(project_root)
+    print(f"[INFO] working directory has been set to: {os.getcwd()}")
     
     # 定义要处理的语言
     languages = [

@@ -167,7 +167,7 @@ for output_ts_file in output_ts_files:
             "tests",
         ]
         exclude_files = [
-            "build_pyinstaller.py",
+            "build.py",  # 已移动到 tools/build.py
             "generate_i18n.py",
             "generate_custom_json.py",
             "lrelease.py",

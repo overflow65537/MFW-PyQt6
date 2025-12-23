@@ -543,8 +543,10 @@ class MaaFW(QObject):
         logger.debug(f"启动agent命令: {start_cmd}")
         # 如果是打包模式,使用utf8,否则使用gbk
         import os
+        import sys
 
-        is_packed = os.path.exists("./lrelease.py")
+        # 使用 sys.frozen 判断是否打包（PyInstaller 标准方式）
+        is_packed = getattr(sys, "frozen", False)
         encoding = "utf-8" if is_packed else "gbk"
         try:
             agent_process = subprocess.Popen(

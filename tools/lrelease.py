@@ -56,9 +56,30 @@ def find_pyside6_tool(tool_name):
     
     return None
 
-# 获取当前脚本所在的目录
-current_dir = os.path.dirname(os.path.abspath(__file__))
-# 定义 i18n.json 文件路径
+# === 确保从项目根目录运行 ===
+# 获取脚本所在目录
+script_dir = Path(__file__).parent.absolute()
+# 项目根目录应该是脚本目录的父目录（因为脚本在 tools/ 目录下）
+project_root = script_dir.parent
+
+# 检查是否在正确的目录（通过检查 main.py 是否存在）
+if not (project_root / "main.py").exists():
+    # 如果从项目根目录运行，project_root 就是当前目录
+    if (Path.cwd() / "main.py").exists():
+        project_root = Path.cwd()
+    else:
+        print("[ERROR] can't find project root (can't find main.py）")
+        print(f"  current working directory: {os.getcwd()}")
+        print(f"  script directory: {script_dir}")
+        exit(1)
+
+# 切换到项目根目录
+os.chdir(project_root)
+print(f"[INFO] working directory has been set to: {os.getcwd()}")
+
+# 获取当前脚本所在的目录（用于查找 i18n.json）
+current_dir = script_dir
+# 定义 i18n.json 文件路径（在 tools/ 目录下）
 i18n_json_path = os.path.join(current_dir, "i18n.json")
 
 # 初始化 lrelease 路径，优先使用 lrelease（PySide6 中的实际工具名）
@@ -84,8 +105,8 @@ if os.path.exists(i18n_json_path):
     except Exception as e:
         print(f"Error reading i18n.json file: {e}")
 
-# 定义 i18n 文件夹路径
-i18n_dir = os.path.join(current_dir, "app", "i18n")
+# 定义 i18n 文件夹路径（相对于项目根目录）
+i18n_dir = os.path.join(project_root, "app", "i18n")
 
 # 检查 i18n 文件夹是否存在
 if not os.path.exists(i18n_dir):

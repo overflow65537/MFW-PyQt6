@@ -86,7 +86,7 @@ jobs:
 
       - name: lrelease i18n
         run: |
-          python ./lrelease.py
+          python ./tools/lrelease.py
 
       - name: Upload i18n
         uses: actions/upload-artifact@v4
@@ -203,13 +203,13 @@ jobs:
       - name: Install(macos)
         if: matrix.platform == 'macos'
         run: |
-          sudo python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          sudo python ./build.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
 
 
       - name: Install(other)
         if: matrix.platform != 'macos'
         run: |
-          python ./build_pyinstaller.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          python ./build.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
         shell: pwsh  
 
       - name: Upload artifact
