@@ -29,15 +29,17 @@ import shutil
 from contextlib import suppress
 from pathlib import Path
 
+
 def find_pyside6_tool(tool_name):
     """查找 PySide6 工具的位置"""
     # 首先尝试在 PATH 中查找
-    if tool_path:=shutil.which(tool_name):
+    if tool_path := shutil.which(tool_name):
         return tool_path
-    
+
     # 尝试查找 PySide6 安装目录
     with suppress(ImportError):
         import PySide6
+
         pyside6_path = Path(PySide6.__file__).parent
         # Windows
         if os.name == "nt":
@@ -49,22 +51,25 @@ def find_pyside6_tool(tool_name):
             tool_path = pyside6_path / tool_name
             if tool_path.exists():
                 return str(tool_path)
-    
+
     return None
+
 
 # 优先使用 pylupdate6（PySide6 中专门用于 Python 文件的工具）
 pylupdate6_path = find_pyside6_tool("pylupdate6")
 if not pylupdate6_path:
     # 如果找不到 pylupdate6，尝试其他可能的名称
     pylupdate6_path = find_pyside6_tool("pyside6-lupdate")
-    
+
 # 如果还是找不到，尝试使用 lupdate（需要配合 -extensions py 选项）
 if not pylupdate6_path:
     pylupdate6_path = find_pyside6_tool("lupdate")
     if pylupdate6_path:
-        print("提示: 使用 lupdate 工具，将自动添加 -extensions py 选项以支持 Python 文件")
+        print(
+            "提示: 使用 lupdate 工具，将自动添加 -extensions py 选项以支持 Python 文件"
+        )
         print()
-    
+
 # 如果自动搜索都找不到，使用默认名称（可能在 PATH 中）
 if not pylupdate6_path:
     # 优先尝试 pylupdate6
@@ -121,22 +126,24 @@ for output_ts_file in output_ts_files:
     # 查找项目内所有的 Python 文件
     # 只扫描 app 目录（主要的应用代码）
     app_dir = os.path.join(project_root, "app")
-    
+
     # 排除的目录
     exclude_dirs = [
         "__pycache__",
         "i18n",  # 排除翻译文件目录
     ]
-    
+
     python_files = []
     if os.path.exists(app_dir):
         for root, dirs, files in os.walk(app_dir):
             # 跳过排除的目录
             rel_path = os.path.relpath(root, app_dir)
-            if any(exclude_dir in rel_path.split(os.sep) for exclude_dir in exclude_dirs):
+            if any(
+                exclude_dir in rel_path.split(os.sep) for exclude_dir in exclude_dirs
+            ):
                 dirs[:] = []  # 跳过当前目录及其子目录
                 continue
-            
+
             for file in files:
                 if file.endswith(".py"):
                     file_path = os.path.join(root, file)
@@ -168,17 +175,23 @@ for output_ts_file in output_ts_files:
             "updater.py",
             "main.py",  # 排除 main.py，因为 lupdate 可能无法处理
         ]
-        
+
         for root, dirs, files in os.walk(project_root):
             rel_path = os.path.relpath(root, project_root)
-            if any(exclude_dir in rel_path.split(os.sep) for exclude_dir in exclude_dirs_full):
+            if any(
+                exclude_dir in rel_path.split(os.sep)
+                for exclude_dir in exclude_dirs_full
+            ):
                 dirs[:] = []
                 continue
-            
+
             for file in files:
                 if file.endswith(".py"):
                     file_path = os.path.join(root, file)
-                    if os.path.dirname(file_path) == project_root and file in exclude_files:
+                    if (
+                        os.path.dirname(file_path) == project_root
+                        and file in exclude_files
+                    ):
                         continue
                     python_files.append(file_path)
 
@@ -186,7 +199,7 @@ for output_ts_file in output_ts_files:
     # 对于 lupdate，需要使用目录方式并添加 -extensions py 选项
     # 对于 pylupdate6，可以直接传递文件列表
     tool_name = os.path.basename(pylupdate6_path).lower()
-    
+
     if "pylupdate" in tool_name:
         # pylupdate6 支持直接传递 Python 文件列表
         command = [pylupdate6_path, "-ts", output_ts_file] + python_files
@@ -200,27 +213,38 @@ for output_ts_file in output_ts_files:
             scan_target = app_dir
         else:
             scan_target = project_root
-        
+
         # 正确的命令格式: lupdate -extensions py directory -ts file.ts
-        command = [pylupdate6_path, "-extensions", "py", scan_target, "-ts", output_ts_file]
-        
+        command = [
+            pylupdate6_path,
+            "-extensions",
+            "py",
+            scan_target,
+            "-ts",
+            output_ts_file,
+        ]
+
         print(f"使用工具: {pylupdate6_path}")
         print(f"扫描目录: {scan_target}")
         print(f"  找到 {len(python_files)} 个 Python 文件")
         print("  使用 -extensions py 选项以支持 Python 文件")
-    
+
     try:
         # 执行命令
         result = subprocess.run(command, check=False, capture_output=True, text=True)
-        
+
         # 检查是否成功生成了文件（即使有警告也可能成功）
         if os.path.exists(output_ts_file):
             print(f"[成功] 生成 {os.path.basename(output_ts_file)} 文件")
             # 如果有警告信息，显示但不作为错误
             if result.stderr and "error" in result.stderr.lower():
                 # 过滤掉常见的可忽略错误
-                errors = [line for line in result.stderr.split('\n') 
-                         if 'error' in line.lower() and 'no recognized extension' not in line.lower()]
+                errors = [
+                    line
+                    for line in result.stderr.split("\n")
+                    if "error" in line.lower()
+                    and "no recognized extension" not in line.lower()
+                ]
                 if errors:
                     print(f"  警告: {errors[0]}")
         else:
@@ -243,7 +267,9 @@ for output_ts_file in output_ts_files:
         print("  1. 确保 PySide6 已正确安装: pip install PySide6")
         print("  2. 通过命令行参数指定工具路径:")
         print("     python generate_i18n.py <pylupdate6完整路径>")
-        print("  3. 检查 PySide6 安装目录中是否存在 pylupdate6.exe (Windows) 或 pylupdate6 (Linux/Mac)")
+        print(
+            "  3. 检查 PySide6 安装目录中是否存在 pylupdate6.exe (Windows) 或 pylupdate6 (Linux/Mac)"
+        )
         print("     通常位于: <Python安装目录>/Lib/site-packages/PySide6/")
     except Exception as e:
         print(f"[失败] 执行 lupdate 命令时出错: {e}")

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.1" language="zh_HK" sourcelanguage="en_US">
+<TS version="2.1" language="zh_HK">
 <context>
     <name></name>
     <message>
@@ -47,208 +47,136 @@
 <context>
     <name>AddBundleDialog</name>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1330"/>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1334"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1332"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1336"/>
         <source>Add Resource Bundle</source>
         <translation>新增資源包</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1340"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1342"/>
         <source>Bundle Name:</source>
         <translation>資源包名稱：</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1342"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1344"/>
         <source>Enter the name of the bundle</source>
         <translation>請輸入資源包的名稱</translation>
     </message>
     <message>
-        <source>Bundle Path:</source>
-        <translation type="vanished">資源包路徑：</translation>
-    </message>
-    <message>
-        <source>Select folder or zip file containing interface.json and resource/</source>
-        <translation type="vanished">選擇包含 interface.json 和 resource/ 的資料夾或 zip 文件</translation>
-    </message>
-    <message>
-        <source>Choose Bundle Source</source>
-        <translation type="vanished">選擇捆綁包來源</translation>
-    </message>
-    <message>
-        <source>Bundle Files (interface.json interface.jsonc *.zip);;Zip Files (*.zip);;All Files (*)</source>
-        <translation type="vanished">捆綁檔案（interface.json interface.jsonc *.zip）；壓縮檔案（*.zip）；所有檔案（*）</translation>
-    </message>
-    <message>
-        <source>Select folder containing interface.json and resource/</source>
-        <translation type="vanished">選擇 interface.json</translation>
-    </message>
-    <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1371"/>
-        <source>Confirm</source>
-        <translation>確認</translation>
-    </message>
-    <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1372"/>
-        <source>Cancel</source>
-        <translation>取消</translation>
-    </message>
-    <message>
-        <source>Choose interface.json / interface.jsonc</source>
-        <translation type="vanished">選擇interface.json</translation>
-    </message>
-    <message>
-        <source>Interface (interface.json interface.jsonc);;All Files (*)</source>
-        <translation type="vanished">interface.json（interface.json）；所有檔案（*）</translation>
-    </message>
-    <message>
-        <source>Bundle path cannot be empty</source>
-        <translation type="vanished">資源包路徑不能為空</translation>
-    </message>
-    <message>
-        <source>Selected path does not exist</source>
-        <translation type="vanished">所選路徑不存在</translation>
-    </message>
-    <message>
-        <source>Failed to extract zip file: {}</source>
-        <translation type="vanished">解壓縮 zip 檔案失敗：{}</translation>
-    </message>
-    <message>
-        <source>Selected path must be a directory or zip file</source>
-        <translation type="vanished">所選路徑必須是目錄或壓縮檔案。</translation>
-    </message>
-    <message>
-        <source>Bundle directory does not contain interface.jsonc/interface.json</source>
-        <translation type="vanished">捆綁目錄不包含 interface.jsonc/interface.json</translation>
-    </message>
-    <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1460"/>
-        <source>Failed to read interface.json: {}</source>
-        <translation>讀取 interface.json 失敗：{}</translation>
-    </message>
-    <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1472"/>
-        <source>Service is not ready, cannot save bundle</source>
-        <translation>服務尚未準備就緒，無法儲存資源包</translation>
-    </message>
-    <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1482"/>
-        <source>Bundle name already exists</source>
-        <translation>資源包名稱已存在</translation>
-    </message>
-    <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1549"/>
-        <source>Failed to copy bundle to target directory: {}</source>
-        <translation>無法將捆綁包複製到目標目錄：{}</translation>
-    </message>
-    <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1588"/>
-        <source>An unexpected error occurred: {}</source>
-        <translation>發生意外錯誤：{}</translation>
-    </message>
-    <message>
-        <source>Bundle path already exists</source>
-        <translation type="vanished">資源包路徑已存在</translation>
-    </message>
-    <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1349"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1351"/>
         <source>Interface File:</source>
         <translation>接口檔：</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1352"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1354"/>
         <source>Select interface.json or interface.jsonc file</source>
         <translation>選擇 interface.json 或 interface.jsonc 文件</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1382"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1373"/>
+        <source>Confirm</source>
+        <translation>確認</translation>
+    </message>
+    <message>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1374"/>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1384"/>
         <source>Choose Interface File</source>
         <translation>選擇介面文件</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1385"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1387"/>
         <source>Interface Files (interface.json interface.jsonc);;All Files (*)</source>
-        <translation></translation>
+        <translation>介面檔案（interface.json）；所有檔案（*）</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1402"/>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1447"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1404"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1449"/>
         <source>Please select interface.json or interface.jsonc file</source>
         <translation>請選擇 interface.json 或 interface.jsonc 文件</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1434"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1436"/>
         <source>Interface file path cannot be empty</source>
         <translation>介面檔案路徑不能為空。</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1439"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1441"/>
         <source>Selected interface file does not exist</source>
         <translation>所選介面檔案不存在</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1443"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1445"/>
         <source>Selected path is not a file</source>
         <translation>選定的路徑不是文件</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1465"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1462"/>
+        <source>Failed to read interface.json: {}</source>
+        <translation>讀取 interface.json 失敗：{}</translation>
+    </message>
+    <message>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1467"/>
         <source>interface.json does not contain a valid &apos;name&apos; field</source>
         <translation>interface.json 檔案不包含有效的「name」字段</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1485"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1474"/>
+        <source>Service is not ready, cannot save bundle</source>
+        <translation>服務尚未準備就緒，無法儲存資源包</translation>
+    </message>
+    <message>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1484"/>
+        <source>Bundle name already exists</source>
+        <translation>資源包名稱已存在</translation>
+    </message>
+    <message>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1487"/>
         <source>Failed to check existing bundles: {}</source>
         <translation>檢查現有資源包失敗：{}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1496"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1498"/>
         <source>Bundle Already Exists</source>
         <translation>該捆綁包已存在</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1498"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1500"/>
         <source>Bundle directory &apos;{}&apos; already exists. Do you want to replace it?</source>
         <translation>捆綁目錄“{}”已存在。是否要替換它？</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1515"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1517"/>
         <source>Failed to remove existing bundle directory: {}</source>
         <translation>刪除現有捆綁包目錄失敗：{}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1526"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1528"/>
         <source>Failed to create bundle directory: {}</source>
         <translation>建立捆綁包目錄失敗：{}</translation>
     </message>
     <message>
-        <source>Failed to move bundle to target directory: {}</source>
-        <translation type="vanished">將捆綁包移到目標目錄失敗：{}</translation>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1551"/>
+        <source>Failed to copy bundle to target directory: {}</source>
+        <translation>無法將捆綁包複製到目標目錄：{}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1576"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1578"/>
         <source>Failed to update bundle path</source>
         <translation>更新資源包路徑失敗</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1579"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1581"/>
         <source>Failed to update bundle path: {}</source>
         <translation>更新資源包路徑失敗：{}</translation>
     </message>
     <message>
-        <source>No update log</source>
-        <translation type="vanished">沒有更新日誌</translation>
-    </message>
-    <message>
-        <source>No update log found locally for this bundle.
-
-Please check for updates first, or visit the GitHub releases page.</source>
-        <translation type="vanished">本地未找到此軟體包的更新日誌。
-
-請先檢查更新，或造訪 GitHub 發布頁面。</translation>
-    </message>
-    <message>
-        <source>Update Log</source>
-        <translation type="vanished">更新日志</translation>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1590"/>
+        <source>An unexpected error occurred: {}</source>
+        <translation>發生意外錯誤：{}</translation>
     </message>
 </context>
 <context>
@@ -325,17 +253,6 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <location filename="../view/task_interface/components/AddTaskMessageBox.py" line="322"/>
         <source>Task name cannot be empty</source>
         <translation>任務名不能為空</translation>
-    </message>
-</context>
-<context>
-    <name>AssistToolTaskInterface</name>
-    <message>
-        <source>start</source>
-        <translation type="vanished">開始</translation>
-    </message>
-    <message>
-        <source>stop</source>
-        <translation type="vanished">停止</translation>
     </message>
 </context>
 <context>
@@ -497,42 +414,26 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <source>Failed to clean up temporary files</source>
         <translation>清理文件時發生錯誤</translation>
     </message>
-    <message>
-        <source>MirrorChyan Update check failed,status code: </source>
-        <translation type="vanished">Mirror醬檢查更新失敗 錯誤碼: </translation>
-    </message>
-    <message>
-        <source>MirrorChyan Update check failed</source>
-        <translation type="vanished">Mirror醬檢查更新失敗</translation>
-    </message>
-    <message>
-        <source>Github Update check failed</source>
-        <translation type="vanished">Github檢查更新失敗</translation>
-    </message>
-    <message>
-        <source>The interface file has been changed. Clear the task configuration.</source>
-        <translation type="vanished">interface 檔案已更改，清空任務配置.</translation>
-    </message>
 </context>
 <context>
     <name>BundleDetailWidget</name>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="191"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="193"/>
         <source>Description</source>
         <translation>描述</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="197"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="199"/>
         <source>No description available</source>
         <translation>無可用描述</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="219"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="221"/>
         <source>Contact</source>
         <translation>聯絡資訊</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="223"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="225"/>
         <source>No contact information available</source>
         <translation>沒有可用的聯絡資訊</translation>
     </message>
@@ -545,96 +446,96 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation>打開更新日志</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="432"/>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="433"/>
-        <source>Auto Update</source>
-        <translation>自動更新</translation>
-    </message>
-    <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="429"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="431"/>
         <source>Bundle List</source>
         <translation>資源包列表</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="430"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="432"/>
         <source>Bundle Details</source>
         <translation>資源包信息</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="581"/>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="918"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="434"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="435"/>
+        <source>Auto Update</source>
+        <translation>自動更新</translation>
+    </message>
+    <message>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="583"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="920"/>
         <source>Unknown version</source>
         <translation>未知版本</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="717"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="719"/>
         <source>No license information for this bundle</source>
         <translation>此資源包無許可資訊。</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="722"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="724"/>
         <source>License</source>
         <translation>許可證</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="766"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="768"/>
         <source>No welcome message for this bundle</source>
         <translation>此資源包沒有歡迎訊息</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="771"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="773"/>
         <source>Welcome</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="999"/>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1056"/>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1226"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1001"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1058"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1228"/>
         <source>Multi-resource adaptation is not enabled. Please enable it in Settings first.</source>
         <translation>多重資源適配功能未啟用。請先在設定中啟用該功能。</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1036"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1038"/>
         <source>All bundles are up to date</source>
         <translation>所有資源包包均為最新版本</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1082"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1084"/>
         <source>All updates completed</source>
         <translation>全部更新完成</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1136"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1138"/>
         <source>Updating bundle: {bundle_name}</source>
         <translation>正在更新捆綁包：{bundle_name}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1160"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1162"/>
         <source>Bundle &apos;{bundle_name}&apos; updated successfully</source>
         <translation>捆綁包“{bundle_name}”已成功更新</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1167"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1169"/>
         <source>Update cancelled: {bundle_name}</source>
         <translation>更新已取消：{bundle_name}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1174"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1176"/>
         <source>Restart required for bundle: {bundle_name}</source>
         <translation>需要重啟捆綁包：{bundle_name}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1181"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1183"/>
         <source>Update failed for bundle: {bundle_name}</source>
         <translation>更新捆綁包失敗：{bundle_name}</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1301"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1303"/>
         <source>No update log</source>
         <translation>沒有更新日誌</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1302"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1304"/>
         <source>No update log found locally for this bundle.
 
 Please check for updates first, or visit the GitHub releases page.</source>
@@ -643,7 +544,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
 請先檢查更新，或造訪 GitHub 發布頁面。</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1314"/>
+        <location filename="../view/bundle_interface/bundle_interface.py" line="1316"/>
         <source>Update Log</source>
         <translation>更新日志</translation>
     </message>
@@ -695,21 +596,14 @@ Please check for updates first, or visit the GitHub releases page.</source>
     </message>
 </context>
 <context>
-    <name>ComboBoxSettingCardCustom</name>
-    <message>
-        <source>default</source>
-        <translation type="vanished">默認</translation>
-    </message>
-</context>
-<context>
     <name>ConfigListItem</name>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="1103"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="1106"/>
         <source>Rename config</source>
         <translation>重新命名配置</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="1108"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="1111"/>
         <source>Copy config ID</source>
         <translation>複製配置 ID</translation>
     </message>
@@ -726,107 +620,6 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <location filename="../view/task_interface/components/ListToolBarWidget.py" line="181"/>
         <source>Cannot delete the last configuration!</source>
         <translation>無法刪除最後一個配置</translation>
-    </message>
-</context>
-<context>
-    <name>ContinuousTaskInterface</name>
-    <message>
-        <source>start</source>
-        <translation type="vanished">開始</translation>
-    </message>
-    <message>
-        <source>stop</source>
-        <translation type="vanished">停止</translation>
-    </message>
-</context>
-<context>
-    <name>CustomMessageBox</name>
-    <message>
-        <source>choose Resource</source>
-        <translation type="vanished">選擇資源包</translation>
-    </message>
-    <message>
-        <source>Enter the name of the resource</source>
-        <translation type="vanished">輸入資源包名稱</translation>
-    </message>
-    <message>
-        <source>Enter the path of the resource</source>
-        <translation type="vanished">輸入資源包路徑</translation>
-    </message>
-    <message>
-        <source>Enter update link (optional)</source>
-        <translation type="vanished">輸入更新連結(可選)</translation>
-    </message>
-    <message>
-        <source>Confirm</source>
-        <translation type="vanished">確認</translation>
-    </message>
-    <message>
-        <source>Cancel</source>
-        <translation type="vanished">退出</translation>
-    </message>
-    <message>
-        <source>Please enter the update link</source>
-        <translation type="vanished">請輸入更新連結</translation>
-    </message>
-    <message>
-        <source>The resource does not have an interface.json</source>
-        <translation type="vanished">資源包中缺少interface.json</translation>
-    </message>
-    <message>
-        <source>The resource is not a resource directory</source>
-        <translation type="vanished">未找到resource文件</translation>
-    </message>
-    <message>
-        <source>Choose folder</source>
-        <translation type="vanished">選擇文件夾</translation>
-    </message>
-    <message>
-        <source>Error</source>
-        <translation type="vanished">錯誤</translation>
-    </message>
-    <message>
-        <source>Resource name cannot be empty</source>
-        <translation type="vanished">資源包名稱不能為空</translation>
-    </message>
-    <message>
-        <source>Resource path cannot be empty</source>
-        <translation type="vanished">資源包路徑不能為空</translation>
-    </message>
-    <message>
-        <source>Resource already exists</source>
-        <translation type="vanished">資源包已經存在</translation>
-    </message>
-    <message>
-        <source>Info</source>
-        <translation type="vanished">信息</translation>
-    </message>
-    <message>
-        <source>Select Resource</source>
-        <translation type="vanished">選擇資源</translation>
-    </message>
-    <message>
-        <source>The resource does not have an interface.json file</source>
-        <translation type="vanished">當前路徑內無interface.json文件</translation>
-    </message>
-    <message>
-        <source>No update found</source>
-        <translation type="vanished">未發現更新</translation>
-    </message>
-    <message>
-        <source>Update found</source>
-        <translation type="vanished">發現更新</translation>
-    </message>
-</context>
-<context>
-    <name>CustomSettingInterface</name>
-    <message>
-        <source>Custom Setting</source>
-        <translation type="vanished">自定義程式設置</translation>
-    </message>
-    <message>
-        <source>Setting</source>
-        <translation type="vanished">設置</translation>
     </message>
 </context>
 <context>
@@ -859,37 +652,6 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <source>beta</source>
         <translation>測試版</translation>
     </message>
-    <message>
-        <source>alpha</source>
-        <translation type="vanished">內測版</translation>
-    </message>
-</context>
-<context>
-    <name>DownloadBundle</name>
-    <message>
-        <source>Project URL not configured</source>
-        <translation type="vanished">項目地址未配置</translation>
-    </message>
-    <message>
-        <source>Download failed</source>
-        <translation type="vanished">下載失敗</translation>
-    </message>
-    <message>
-        <source>Extraction failed</source>
-        <translation type="vanished">解壓失敗</translation>
-    </message>
-    <message>
-        <source>Move file failed</source>
-        <translation type="vanished">移動文件失敗</translation>
-    </message>
-    <message>
-        <source>Download successful</source>
-        <translation type="vanished">更新成功</translation>
-    </message>
-    <message>
-        <source>Move files failed</source>
-        <translation type="vanished">移動文件失敗</translation>
-    </message>
 </context>
 <context>
     <name>LarkNoticeType</name>
@@ -910,78 +672,11 @@ Please check for updates first, or visit the GitHub releases page.</source>
     </message>
 </context>
 <context>
-    <name>ListWidge_Menu_Draggable</name>
-    <message>
-        <source>Run Alone</source>
-        <translation type="vanished">單獨運行</translation>
-    </message>
-    <message>
-        <source>Move Up</source>
-        <translation type="vanished">上移</translation>
-    </message>
-    <message>
-        <source>Move Down</source>
-        <translation type="vanished">下移</translation>
-    </message>
-    <message>
-        <source>Delete</source>
-        <translation type="vanished">刪除</translation>
-    </message>
-    <message>
-        <source>Delete All</source>
-        <translation type="vanished">刪除全部</translation>
-    </message>
-    <message>
-        <source>Error</source>
-        <translation type="vanished">錯誤</translation>
-    </message>
-    <message>
-        <source>No task can be deleted</source>
-        <translation type="vanished">沒有任務可以被刪除</translation>
-    </message>
-    <message>
-        <source>Already the first task</source>
-        <translation type="vanished">已經是首位任務</translation>
-    </message>
-    <message>
-        <source>Already the last task</source>
-        <translation type="vanished">已經是末位任務</translation>
-    </message>
-</context>
-<context>
     <name>LogoutputWidget</name>
     <message>
         <location filename="../view/task_interface/components/LogoutputWidget.py" line="156"/>
         <source>generate log zip</source>
         <translation>生成日志壓縮包</translation>
-    </message>
-    <message>
-        <source>screenshot test success, time: </source>
-        <translation type="vanished">最快截圖耗時:</translation>
-    </message>
-    <message>
-        <source>Resource Loading Failed</source>
-        <translation type="vanished">資源加載失敗</translation>
-    </message>
-    <message>
-        <source>Controller Started Connect</source>
-        <translation type="vanished">開始連接控制器</translation>
-    </message>
-    <message>
-        <source>Controller Connect Failed</source>
-        <translation type="vanished">控制器連接失敗</translation>
-    </message>
-    <message>
-        <source>Unknown Task</source>
-        <translation type="vanished">未知任務</translation>
-    </message>
-    <message>
-        <source>Task started execution: </source>
-        <translation type="vanished">開始任務: </translation>
-    </message>
-    <message>
-        <source>Task execution failed: </source>
-        <translation type="vanished">任務執行失敗:</translation>
     </message>
 </context>
 <context>
@@ -1113,185 +808,9 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation>錯誤</translation>
     </message>
     <message>
-        <source>MFW-ChainFlow Assistant</source>
-        <translation type="vanished">鏈程助手</translation>
-    </message>
-    <message>
         <location filename="../view/main_window/main_window.py" line="1197"/>
         <source>admin</source>
         <translation>管理員</translation>
-    </message>
-    <message>
-        <source>Restart now</source>
-        <translation type="vanished">立刻重啟</translation>
-    </message>
-    <message>
-        <source>Later</source>
-        <translation type="vanished">稍後</translation>
-    </message>
-    <message>
-        <source>Restart required to finish update</source>
-        <translation type="vanished">重啟以完成更新</translation>
-    </message>
-    <message>
-        <source>Update package downloaded. Restart to apply changes.</source>
-        <translation type="vanished">更新包下載完成,重啟以應用更改</translation>
-    </message>
-    <message>
-        <source>Auto restarting in %1 s</source>
-        <translation type="vanished">自動更新與 %1 秒</translation>
-    </message>
-    <message>
-        <source>Update Failed, Please Check Log File</source>
-        <translation type="vanished">更新失敗</translation>
-    </message>
-    <message>
-        <source>DingTalk Notification Enabled</source>
-        <translation type="vanished">通知已啟用</translation>
-    </message>
-    <message>
-        <source>DingTalk Notification Disabled</source>
-        <translation type="vanished">通知已禁用</translation>
-    </message>
-    <message>
-        <source>Lark Notification Enabled</source>
-        <translation type="vanished">通知已啟用</translation>
-    </message>
-    <message>
-        <source>Lark Notification Disabled</source>
-        <translation type="vanished">通知已禁用</translation>
-    </message>
-    <message>
-        <source>SMTP Notification Enabled</source>
-        <translation type="vanished">通知已啟用</translation>
-    </message>
-    <message>
-        <source>SMTP Notification Disabled</source>
-        <translation type="vanished">通知已禁用</translation>
-    </message>
-    <message>
-        <source>WXPusher Notification Enabled</source>
-        <translation type="vanished">通知已啟用</translation>
-    </message>
-    <message>
-        <source>WXPusher Notification Disabled</source>
-        <translation type="vanished">通知已禁用</translation>
-    </message>
-    <message>
-        <source>QYWX Notification Enabled</source>
-        <translation type="vanished">通知已啟用</translation>
-    </message>
-    <message>
-        <source>QYWX Notification Disabled</source>
-        <translation type="vanished">通知已禁用</translation>
-    </message>
-    <message>
-        <source>Update Now</source>
-        <translation type="vanished">立即更新</translation>
-    </message>
-    <message>
-        <source>Success</source>
-        <translation type="vanished">成功</translation>
-    </message>
-    <message>
-        <source>Send message success</source>
-        <translation type="vanished">發送測試成功</translation>
-    </message>
-    <message>
-        <source>Notification is disabled, cannot send message</source>
-        <translation type="vanished">通知選項關閉,無法發送通知</translation>
-    </message>
-    <message>
-        <source>Required parameters are empty, send failed</source>
-        <translation type="vanished">參數為空,發送失敗</translation>
-    </message>
-    <message>
-        <source>Parameter format is invalid, send failed</source>
-        <translation type="vanished">參數格式錯誤,發送失敗</translation>
-    </message>
-    <message>
-        <source>Network request failed, send failed</source>
-        <translation type="vanished">網絡請求失敗</translation>
-    </message>
-    <message>
-        <source>Server response error, send failed</source>
-        <translation type="vanished">服務器返回錯誤</translation>
-    </message>
-    <message>
-        <source>SMTP port is invalid, send failed</source>
-        <translation type="vanished">SMTP端口錯誤</translation>
-    </message>
-    <message>
-        <source>SMTP connection failed, send failed</source>
-        <translation type="vanished">SMTP鏈接失敗</translation>
-    </message>
-    <message>
-        <source>Unknown error, send failed</source>
-        <translation type="vanished">未知錯誤</translation>
-    </message>
-    <message>
-        <source>Resource Setting</source>
-        <translation type="vanished">選擇資源</translation>
-    </message>
-    <message>
-        <source>TaskCooldown</source>
-        <translation type="vanished">任務冷卻時間</translation>
-    </message>
-    <message>
-        <source>Assis Tool Task</source>
-        <translation type="vanished">輔助工具</translation>
-    </message>
-    <message>
-        <source>ChainFlow Assistant</source>
-        <translation type="vanished">鏈程助手</translation>
-    </message>
-    <message>
-        <source>Debug</source>
-        <translation type="vanished">調試模式</translation>
-    </message>
-    <message>
-        <source>MFW Announcement</source>
-        <translation type="vanished">鏈程助手公告</translation>
-    </message>
-    <message>
-        <source>MFW Changelog</source>
-        <translation type="vanished">MFW更新日志</translation>
-    </message>
-    <message>
-        <source>Resource Changelog</source>
-        <translation type="vanished">資源更新日志</translation>
-    </message>
-    <message>
-        <source>AssistTool Task</source>
-        <translation type="vanished">輔助工具</translation>
-    </message>
-    <message>
-        <source>New task found: </source>
-        <translation type="vanished">發現新任務: </translation>
-    </message>
-    <message>
-        <source>Resource Announcement</source>
-        <translation type="vanished">資源公告</translation>
-    </message>
-    <message>
-        <source>Scheduled</source>
-        <translation type="vanished">計劃任務</translation>
-    </message>
-    <message>
-        <source>Continuous Task</source>
-        <translation type="vanished">特殊任務</translation>
-    </message>
-    <message>
-        <source>Scheduling tasks</source>
-        <translation type="vanished">計劃任務</translation>
-    </message>
-    <message>
-        <source>Custom Setting</source>
-        <translation type="vanished">自定義程式設置</translation>
-    </message>
-    <message>
-        <source>Resource</source>
-        <translation type="vanished">資源</translation>
     </message>
 </context>
 <context>
@@ -1348,69 +867,82 @@ Please check for updates first, or visit the GitHub releases page.</source>
     </message>
 </context>
 <context>
-    <name>MirrorDownloadBundle</name>
-    <message>
-        <source>switching to Github download</source>
-        <translation type="vanished">轉為 GitHub 下載</translation>
-    </message>
-    <message>
-        <source>Download failed</source>
-        <translation type="vanished">下載失敗</translation>
-    </message>
-    <message>
-        <source>Extraction failed</source>
-        <translation type="vanished">解壓失敗</translation>
-    </message>
-    <message>
-        <source>Move files failed</source>
-        <translation type="vanished">移動文件失敗</translation>
-    </message>
-    <message>
-        <source>Download successful</source>
-        <translation type="vanished">更新成功</translation>
-    </message>
-</context>
-<context>
     <name>MonitorInterface</name>
     <message>
-        <location filename="../view/monitor_interface/monitor_interface.py" line="99"/>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="94"/>
         <source>Click to sync this frame to the device</source>
         <translation>點擊同步操作到設備中</translation>
     </message>
     <message>
-        <location filename="../view/monitor_interface/monitor_interface.py" line="100"/>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="95"/>
         <source>FPS: --</source>
-        <translation></translation>
+        <translation>FPS: --</translation>
     </message>
     <message>
-        <location filename="../view/monitor_interface/monitor_interface.py" line="127"/>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="122"/>
         <source>Save Screenshot</source>
         <translation>保存截圖</translation>
     </message>
     <message>
-        <location filename="../view/monitor_interface/monitor_interface.py" line="132"/>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="127"/>
         <source>Capture the current preview and store it on disk</source>
         <translation>保存當前截圖到本地</translation>
     </message>
     <message>
-        <location filename="../view/monitor_interface/monitor_interface.py" line="320"/>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="131"/>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="303"/>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="485"/>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="510"/>
+        <source>Start Monitoring</source>
+        <translation>開始監控</translation>
+    </message>
+    <message>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="136"/>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="305"/>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="487"/>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="512"/>
+        <source>Start monitoring task</source>
+        <translation>啟動監控任務</translation>
+    </message>
+    <message>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="333"/>
         <source>Screenshot saved to </source>
         <translation>截圖保存到 </translation>
     </message>
     <message>
-        <location filename="../view/monitor_interface/monitor_interface.py" line="413"/>
-        <source>Monitor page locked</source>
-        <translation>監控頁面鎖定</translation>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="423"/>
+        <source>Device connection failed, cannot start monitoring</source>
+        <translation>設備連線失敗，無法開始監控</translation>
     </message>
     <message>
-        <location filename="../view/monitor_interface/monitor_interface.py" line="416"/>
-        <source>Unlock</source>
-        <translation>解鎖</translation>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="431"/>
+        <source>Stop Monitoring</source>
+        <translation>停止監控</translation>
     </message>
     <message>
-        <location filename="../view/monitor_interface/monitor_interface.py" line="417"/>
-        <source>Unlock this page</source>
-        <translation>解鎖這個頁面</translation>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="433"/>
+        <source>Stop monitoring task</source>
+        <translation>停止監控任務</translation>
+    </message>
+    <message>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="435"/>
+        <source>Monitoring started</source>
+        <translation>監控開始</translation>
+    </message>
+    <message>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="451"/>
+        <source>Failed to start monitoring: </source>
+        <translation>啟動監控失敗：</translation>
+    </message>
+    <message>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="489"/>
+        <source>Monitoring stopped</source>
+        <translation>監控停止</translation>
+    </message>
+    <message>
+        <location filename="../view/monitor_interface/monitor_interface.py" line="493"/>
+        <source>Failed to stop monitoring: </source>
+        <translation>停止監控失敗：</translation>
     </message>
 </context>
 <context>
@@ -1456,17 +988,6 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <location filename="../utils/update.py" line="2230"/>
         <source>Failed to update</source>
         <translation>更新失敗</translation>
-    </message>
-</context>
-<context>
-    <name>NoticeButtonSettingCard</name>
-    <message>
-        <source>Notification Enabled</source>
-        <translation type="vanished">通知已啟用</translation>
-    </message>
-    <message>
-        <source>Notification disabled</source>
-        <translation type="vanished">通知已禁用</translation>
     </message>
 </context>
 <context>
@@ -1532,137 +1053,6 @@ Please check for updates first, or visit the GitHub releases page.</source>
     </message>
 </context>
 <context>
-    <name>NoticeType</name>
-    <message>
-        <source>Test</source>
-        <translation type="vanished">測試</translation>
-    </message>
-    <message>
-        <source>DingTalk Webhook URL:</source>
-        <translation type="vanished">釘釘 Webhook 地址：</translation>
-    </message>
-    <message>
-        <source>DingTalk Secret:</source>
-        <translation type="vanished">釘釘密鑰：</translation>
-    </message>
-    <message>
-        <source>DingTalk Status:</source>
-        <translation type="vanished">釘釘狀態：</translation>
-    </message>
-    <message>
-        <source>Lark Webhook URL:</source>
-        <translation type="vanished">飛書 Webhook 地址：</translation>
-    </message>
-    <message>
-        <source>Lark App Key:</source>
-        <translation type="vanished">飛書應用密鑰：</translation>
-    </message>
-    <message>
-        <source>Lark Status:</source>
-        <translation type="vanished">飛書狀態：</translation>
-    </message>
-    <message>
-        <source>Server:</source>
-        <translation type="vanished">伺服器：</translation>
-    </message>
-    <message>
-        <source>Key:</source>
-        <translation type="vanished">密鑰：</translation>
-    </message>
-    <message>
-        <source>User QQ:</source>
-        <translation type="vanished">使用者 QQ：</translation>
-    </message>
-    <message>
-        <source>Robot QQ:</source>
-        <translation type="vanished">機器人 QQ：</translation>
-    </message>
-    <message>
-        <source>Qmsg Status:</source>
-        <translation type="vanished">QQ機器人狀態：</translation>
-    </message>
-    <message>
-        <source>Use SSL</source>
-        <translation type="vanished">使用SSL</translation>
-    </message>
-    <message>
-        <source>Server Address:</source>
-        <translation type="vanished">伺服器地址：</translation>
-    </message>
-    <message>
-        <source>Server Port:</source>
-        <translation type="vanished">伺服器連接埠：</translation>
-    </message>
-    <message>
-        <source>User Name:</source>
-        <translation type="vanished">使用者名稱：</translation>
-    </message>
-    <message>
-        <source>Password:</source>
-        <translation type="vanished">密碼：</translation>
-    </message>
-    <message>
-        <source>Receive Mail:</source>
-        <translation type="vanished">接收電子郵件：</translation>
-    </message>
-    <message>
-        <source>SMTP Status:</source>
-        <translation type="vanished">SMTP狀態：</translation>
-    </message>
-    <message>
-        <source>WxPusher Spt:</source>
-        <translation type="vanished">微信推送SPT：</translation>
-    </message>
-    <message>
-        <source>WxPusher Status:</source>
-        <translation type="vanished">微信推送狀態:</translation>
-    </message>
-    <message>
-        <source>QYWXbot Key:</source>
-        <translation type="vanished">企業微信機器人推送密鈅:</translation>
-    </message>
-    <message>
-        <source>QYWXbot Status:</source>
-        <translation type="vanished">企業微信機器人推送狀態:</translation>
-    </message>
-    <message>
-        <source>OK</source>
-        <translation type="vanished">確認</translation>
-    </message>
-    <message>
-        <source>test</source>
-        <translation type="vanished">測試</translation>
-    </message>
-    <message>
-        <source>Clear</source>
-        <translation type="vanished">清除</translation>
-    </message>
-    <message>
-        <source>send test message success</source>
-        <translation type="vanished">發送測試成功</translation>
-    </message>
-    <message>
-        <source>send test message failed</source>
-        <translation type="vanished">發送測試失敗</translation>
-    </message>
-    <message>
-        <source>Error</source>
-        <translation type="vanished">錯誤</translation>
-    </message>
-    <message>
-        <source>Success</source>
-        <translation type="vanished">成功</translation>
-    </message>
-    <message>
-        <source>Resource does not support MirrorChan, right-click about mirror to unlock input</source>
-        <translation type="vanished">資源不支持Mirror醬,右鍵關於Mirror以解鎖輸入</translation>
-    </message>
-    <message>
-        <source>Send Mail:</source>
-        <translation type="vanished">發送電子郵件：</translation>
-    </message>
-</context>
-<context>
     <name>OptionWidget</name>
     <message>
         <location filename="../view/task_interface/components/OptionWidget.py" line="59"/>
@@ -1724,7 +1114,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <message>
         <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="75"/>
         <source>Parent layout is not set, cannot render post action options</source>
-        <translation></translation>
+        <translation>父佈局未設置，無法渲染帖子操作選項</translation>
     </message>
     <message>
         <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="84"/>
@@ -1811,188 +1201,29 @@ Please check for updates first, or visit the GitHub releases page.</source>
 <context>
     <name>RenameConfigDialog</name>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="924"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="927"/>
         <source>Rename config</source>
         <translation>重新命名配置</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="930"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="933"/>
         <source>Enter new config name:</source>
         <translation>請輸入新的配置名稱：</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="933"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="936"/>
         <source>Enter the name of the config</source>
         <translation>為配置輸入一個名字</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="948"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="951"/>
         <source>Confirm</source>
         <translation>確認</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="949"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="952"/>
         <source>Cancel</source>
         <translation>取消</translation>
-    </message>
-</context>
-<context>
-    <name>ResourceSettingInterface</name>
-    <message>
-        <source>default</source>
-        <translation type="vanished">默認</translation>
-    </message>
-    <message>
-        <source>Auto</source>
-        <translation type="vanished">自動</translation>
-    </message>
-    <message>
-        <source>Disabled</source>
-        <translation type="vanished">關閉</translation>
-    </message>
-    <message>
-        <source>Resource Settings</source>
-        <translation type="vanished">資源包設置</translation>
-    </message>
-    <message>
-        <source>default config can&apos;t be added.</source>
-        <translation type="vanished">無法添加默認配置</translation>
-    </message>
-    <message>
-        <source> already exists.</source>
-        <translation type="vanished"> 已經存在</translation>
-    </message>
-    <message>
-        <source>Creating config </source>
-        <translation type="vanished">創建配置 </translation>
-    </message>
-    <message>
-        <source>Please add resources first.</source>
-        <translation type="vanished">請先添加資源包。</translation>
-    </message>
-    <message>
-        <source>resource and config</source>
-        <translation type="vanished">資源包設置</translation>
-    </message>
-    <message>
-        <source>Resource Path</source>
-        <translation type="vanished">資源包</translation>
-    </message>
-    <message>
-        <source>You can quickly switch to the next resource with ALT+R, and return to the previous resource with ALT+SHIFT+R</source>
-        <translation type="vanished">您可以使用 ALT+R 快速切換到下一個資源包，使用 ALT+SHIFT+R 返回上一個資源包</translation>
-    </message>
-    <message>
-        <source>Config Path</source>
-        <translation type="vanished">配置</translation>
-    </message>
-    <message>
-        <source>You can quickly switch to the next config with ALT+C, and return to the previous config with ALT+SHIFT+C</source>
-        <translation type="vanished">您可以使用 ALT+C 快速切換到下一個設定，使用 ALT+SHIFT+C 返回上一個設定</translation>
-    </message>
-    <message>
-        <source>ADB</source>
-        <translation type="vanished">安卓調試橋</translation>
-    </message>
-    <message>
-        <source>ADB Port</source>
-        <translation type="vanished">ADB 連接埠</translation>
-    </message>
-    <message>
-        <source>ADB Path</source>
-        <translation type="vanished">ADB 路徑</translation>
-    </message>
-    <message>
-        <source>Select ADB Path</source>
-        <translation type="vanished">選擇 ADB 路徑</translation>
-    </message>
-    <message>
-        <source>Select Emulator Path</source>
-        <translation type="vanished">選擇模擬器路徑</translation>
-    </message>
-    <message>
-        <source>Run Parameters</source>
-        <translation type="vanished">運行參數</translation>
-    </message>
-    <message>
-        <source>Wait Time for Emulator Startup</source>
-        <translation type="vanished">模擬器啟動等待時間</translation>
-    </message>
-    <message>
-        <source>Win32</source>
-        <translation type="vanished">Win32</translation>
-    </message>
-    <message>
-        <source>Executable Path</source>
-        <translation type="vanished">可執行文件路徑</translation>
-    </message>
-    <message>
-        <source>Select Executable Path</source>
-        <translation type="vanished">選擇可執行文件路徑</translation>
-    </message>
-    <message>
-        <source>Wait Time for Program Startup</source>
-        <translation type="vanished">程式啟動等待時間</translation>
-    </message>
-    <message>
-        <source>Custom Startup</source>
-        <translation type="vanished">自定義啟動</translation>
-    </message>
-    <message>
-        <source>Run Program Before Start</source>
-        <translation type="vanished">啟動前運行程式</translation>
-    </message>
-    <message>
-        <source>Select Program</source>
-        <translation type="vanished">選擇程式</translation>
-    </message>
-    <message>
-        <source>Run Program After Finish</source>
-        <translation type="vanished">結束後運行程式</translation>
-    </message>
-    <message>
-        <source>Vision &amp; Input</source>
-        <translation type="vanished">視覺與輸入</translation>
-    </message>
-    <message>
-        <source>Select GPU</source>
-        <translation type="vanished">選擇GPU</translation>
-    </message>
-    <message>
-        <source>Use GPU to accelerate inference</source>
-        <translation type="vanished">使用GPU加速推理</translation>
-    </message>
-    <message>
-        <source>Select Win32 Input Mode</source>
-        <translation type="vanished">選擇Win32輸入模式</translation>
-    </message>
-    <message>
-        <source>Select Win32 Screencap Mode</source>
-        <translation type="vanished">選擇Win32截圖模式</translation>
-    </message>
-    <message>
-        <source>Select ADB Input Mode</source>
-        <translation type="vanished">選擇ADB輸入模式</translation>
-    </message>
-    <message>
-        <source>Select ADB Screencap Mode</source>
-        <translation type="vanished">選擇ADB截圖模式</translation>
-    </message>
-    <message>
-        <source>Updated successfully</source>
-        <translation type="vanished">更新成功</translation>
-    </message>
-    <message>
-        <source>Configuration takes effect after restart</source>
-        <translation type="vanished">配置保存,重啟後生效</translation>
-    </message>
-    <message>
-        <source>Choose file</source>
-        <translation type="vanished">选择文件</translation>
-    </message>
-    <message>
-        <source>Error</source>
-        <translation type="vanished">錯誤</translation>
     </message>
 </context>
 <context>
@@ -2040,7 +1271,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <message>
         <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="541"/>
         <source>CPU</source>
-        <translation></translation>
+        <translation>CPU</translation>
     </message>
     <message>
         <location filename="../view/task_interface/components/Option_Widget_Mixin/ResourceSettingMixin.py" line="604"/>
@@ -2128,10 +1359,6 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <source>No devices were found for current controller type.</source>
         <translation>未找到與目前控制器類型相符的裝置。</translation>
     </message>
-    <message>
-        <source>Off</source>
-        <translation type="vanished">關閉</translation>
-    </message>
 </context>
 <context>
     <name>SMTPNoticeType</name>
@@ -2169,25 +1396,6 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <location filename="../view/setting_interface/widget/NoticeType.py" line="307"/>
         <source>SMTP Status:</source>
         <translation>SMTP狀態：</translation>
-    </message>
-</context>
-<context>
-    <name>ScheduleEntry</name>
-    <message>
-        <source>Single at {time}</source>
-        <translation type="vanished">單次運行</translation>
-    </message>
-    <message>
-        <source>Every month</source>
-        <translation type="vanished">每月</translation>
-    </message>
-    <message>
-        <source>Last</source>
-        <translation type="vanished">最後一週</translation>
-    </message>
-    <message>
-        <source>Custom</source>
-        <translation type="vanished">自定義</translation>
     </message>
 </context>
 <context>
@@ -2464,201 +1672,6 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <source>Schedule saved.</source>
         <translation>計划任務保存</translation>
     </message>
-    <message>
-        <source>weeks (0 = every week)</source>
-        <translation type="vanished">周 (0代表每一週)</translation>
-    </message>
-</context>
-<context>
-    <name>ScheduledInterface</name>
-    <message>
-        <source>Success</source>
-        <translation type="vanished">成功</translation>
-    </message>
-    <message>
-        <source>Schedule settings saved successfully</source>
-        <translation type="vanished">成功儲存計劃設定</translation>
-    </message>
-    <message>
-        <source>Start Date</source>
-        <translation type="vanished">啓動</translation>
-    </message>
-    <message>
-        <source>Schedule Mode</source>
-        <translation type="vanished">計劃模式</translation>
-    </message>
-    <message>
-        <source>Daily</source>
-        <translation type="vanished">每日</translation>
-    </message>
-    <message>
-        <source>Weekly</source>
-        <translation type="vanished">每週</translation>
-    </message>
-    <message>
-        <source>Monthly</source>
-        <translation type="vanished">每月</translation>
-    </message>
-    <message>
-        <source>Refresh Time, Daily</source>
-        <translation type="vanished">刷新時間：每日 </translation>
-    </message>
-    <message>
-        <source>Monday</source>
-        <translation type="vanished">週一</translation>
-    </message>
-    <message>
-        <source>Tuesday</source>
-        <translation type="vanished">週二</translation>
-    </message>
-    <message>
-        <source>Wednesday</source>
-        <translation type="vanished">週三</translation>
-    </message>
-    <message>
-        <source>Thursday</source>
-        <translation type="vanished">週四</translation>
-    </message>
-    <message>
-        <source>Friday</source>
-        <translation type="vanished">週五</translation>
-    </message>
-    <message>
-        <source>Saturday</source>
-        <translation type="vanished">週六</translation>
-    </message>
-    <message>
-        <source>Sunday</source>
-        <translation type="vanished">週日</translation>
-    </message>
-    <message>
-        <source>Hour</source>
-        <translation type="vanished">小時</translation>
-    </message>
-    <message>
-        <source>Interval</source>
-        <translation type="vanished">週期</translation>
-    </message>
-    <message>
-        <source>Minutes</source>
-        <translation type="vanished">分</translation>
-    </message>
-    <message>
-        <source>Hours</source>
-        <translation type="vanished">時</translation>
-    </message>
-    <message>
-        <source>Days</source>
-        <translation type="vanished">日</translation>
-    </message>
-    <message>
-        <source>Loop</source>
-        <translation type="vanished">循環</translation>
-    </message>
-    <message>
-        <source>Times</source>
-        <translation type="vanished">次</translation>
-    </message>
-    <message>
-        <source>Confirm</source>
-        <translation type="vanished">確認</translation>
-    </message>
-    <message>
-        <source>Start Automatically</source>
-        <translation type="vanished">啟用狀態</translation>
-    </message>
-    <message>
-        <source>Day</source>
-        <translation type="vanished">日</translation>
-    </message>
-    <message>
-        <source>Loop item</source>
-        <translation type="vanished">執行次數</translation>
-    </message>
-    <message>
-        <source>Last Run</source>
-        <translation type="vanished">上次運行時間: </translation>
-    </message>
-    <message>
-        <source>Error</source>
-        <translation type="vanished">錯誤</translation>
-    </message>
-    <message>
-        <source>Refresh Time, Weekly</source>
-        <translation type="vanished">刷新時間：每週 </translation>
-    </message>
-    <message>
-        <source>Refresh Time, Monthly</source>
-        <translation type="vanished">刷新時間：每月 </translation>
-    </message>
-    <message>
-        <source>Configuration</source>
-        <translation type="vanished">配置</translation>
-    </message>
-    <message>
-        <source>Resource</source>
-        <translation type="vanished">資源</translation>
-    </message>
-    <message>
-        <source>Add</source>
-        <translation type="vanished">添加</translation>
-    </message>
-    <message>
-        <source>Delete</source>
-        <translation type="vanished">刪除</translation>
-    </message>
-    <message>
-        <source>Please add resources first.</source>
-        <translation type="vanished">請先添加資源。</translation>
-    </message>
-    <message>
-        <source>Scheduled_Interface</source>
-        <comment>Configuration</comment>
-        <translation type="vanished">配置</translation>
-    </message>
-</context>
-<context>
-    <name>Scheduled_Interface</name>
-    <message>
-        <source>Scheduled Interface</source>
-        <translation type="vanished">計劃任務介面</translation>
-    </message>
-    <message>
-        <source>Add</source>
-        <translation type="vanished">添加</translation>
-    </message>
-    <message>
-        <source>Delete</source>
-        <translation type="vanished">刪除</translation>
-    </message>
-    <message>
-        <source>Scheduled name</source>
-        <translation type="vanished">計劃名稱</translation>
-    </message>
-    <message>
-        <source>please inter scheduled name</source>
-        <translation type="vanished">請輸入計劃名稱</translation>
-    </message>
-    <message>
-        <source>Trigger Time</source>
-        <translation type="vanished">觸發時間</translation>
-    </message>
-    <message>
-        <source>Use Configuration</source>
-        <translation type="vanished">选择配置</translation>
-    </message>
-    <message>
-        <source>Configuration</source>
-        <translation type="vanished">配置</translation>
-    </message>
-    <message>
-        <source>Resource</source>
-        <translation type="vanished">資源</translation>
-    </message>
-    <message>
-        <source>Use Resource</source>
-        <translation type="vanished">選擇資源</translation>
-    </message>
 </context>
 <context>
     <name>SendSettingCard</name>
@@ -2677,1128 +1690,717 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <source>When Task Failed</source>
         <translation>儅任務失敗時</translation>
     </message>
-    <message>
-        <source>When Start Up</source>
-        <translation type="vanished">儅隊列啓動時</translation>
-    </message>
-    <message>
-        <source>When Connect Succeed</source>
-        <translation type="vanished">儅鏈接成功時</translation>
-    </message>
-    <message>
-        <source>When Task Finished</source>
-        <translation type="vanished">儅隊列結束時</translation>
-    </message>
 </context>
 <context>
     <name>SettingInterface</name>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="325"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="326"/>
         <source>ChainFlow Assistant</source>
         <translation>鏈程助手</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="384"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="473"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1419"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1468"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="385"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="474"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1420"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1469"/>
         <source>License</source>
         <translation>許可證</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="387"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="388"/>
         <source>GitHub URL</source>
         <translation>GitHub連接</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="389"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="589"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1183"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="390"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="590"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1184"/>
         <source>Update</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="391"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="392"/>
         <source>Open update log</source>
         <translation>打開更新日志</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="450"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="451"/>
         <source>Description: </source>
         <translation>描述: </translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="536"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="537"/>
         <source>No update log</source>
         <translation>沒有更新日誌</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="537"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="538"/>
         <source>No update log found locally.
 
 Please check for updates first, or visit the GitHub releases page.</source>
         <translation>沒有更新日志</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="545"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="546"/>
         <source>Update Log</source>
         <translation>更新日志</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="603"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="604"/>
         <source>Update Now</source>
         <translation>立即更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="698"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="699"/>
         <source>Custom Startup</source>
         <translation>自定義啟動</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="702"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="703"/>
         <source>run after startup</source>
         <translation>啟動後直接運行</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="703"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="704"/>
         <source>Launch the task immediately after starting the GUI program</source>
         <translation>啟動 GUI 程式後立即運行任務</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="709"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="710"/>
         <source>Start minimized</source>
         <translation>最小化啟動</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="710"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="711"/>
         <source>Automatically minimize the window right after launch</source>
         <translation>啟動後自動轉為最小化</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="721"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="722"/>
         <source>Personalization</source>
         <translation>個性化設置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="726"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="727"/>
         <source>Mica Effect</source>
         <translation>雲母效果</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="727"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="728"/>
         <source>Apply semi transparent to windows and surfaces</source>
         <translation>對窗口和表面應用半透明效果</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="734"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="735"/>
         <source>Application Theme</source>
         <translation>應用主題</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="735"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="736"/>
         <source>Change the appearance of your application</source>
         <translation>更改應用的外觀</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="736"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="737"/>
         <source>Light</source>
         <translation>亮色</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="736"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="737"/>
         <source>Dark</source>
         <translation>暗色</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="736"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="757"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="737"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="758"/>
         <source>Use system setting</source>
         <translation>使用系統設置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="742"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="743"/>
         <source>Theme Color</source>
         <translation>主題顏色</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="743"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="744"/>
         <source>Change the theme color of your application</source>
         <translation>更改應用的主題顏色</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="749"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="750"/>
         <source>Interface Zoom</source>
         <translation>介面縮放</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="750"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="751"/>
         <source>Change the size of widgets and fonts</source>
         <translation>更改小部件和字體的大小</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="764"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="765"/>
         <source>Language</source>
         <translation>語言</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="765"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="766"/>
         <source>Set your preferred language for UI</source>
         <translation>設定您喜歡的使用者介面語言</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="772"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="773"/>
         <source>Restore window position</source>
         <translation>重設窗口位置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="774"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="775"/>
         <source>When enabled, the application reopens at the last recorded size and position</source>
         <translation>打開後,程序會記住上一次關閉時的位置和大小</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="781"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="782"/>
         <source>Advanced Settings</source>
         <translation>高級設置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="782"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="783"/>
         <source>Enable to show more options in Pre-configuration</source>
         <translation>打開後啟動前配置會展示更多選項</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="790"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="791"/>
         <source>Background Image</source>
         <translation>背景圖片</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="792"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="793"/>
         <source>Select an image as application background</source>
         <translation>選擇一個背景圖片</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="798"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="799"/>
         <source>Choose an image file (png/jpg/webp/bmp)</source>
         <translation>選擇一個圖片 (png/jpg/webp/bmp)</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="809"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="810"/>
         <source>Browse image file</source>
         <translation>選擇圖片文件</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="827"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="828"/>
         <source>Clear background image</source>
         <translation>清除背景圖片</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="837"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="838"/>
         <source>Background Opacity</source>
         <translation>背景圖片透明度</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="838"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="839"/>
         <source>Adjust transparency of the background image</source>
         <translation>調整背景影像的透明度</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="862"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="863"/>
         <source>Global Shortcuts</source>
         <translation>全局快捷鍵</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="870"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="871"/>
         <source>Start task shortcut</source>
         <translation>開始任務快捷鍵</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="873"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="874"/>
         <source>Default Ctrl+`, can also trigger when focus is not on the main window</source>
         <translation>默認快捷鍵是Ctrl+`, 即使焦點不在在主窗口上也可以觸發</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="878"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="879"/>
         <source>Ctrl+</source>
-        <translation></translation>
+        <translation>Ctrl+</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="881"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="882"/>
         <source>Format: Modifier+[Key], e.g. Ctrl+`</source>
         <translation>格式: 修飾鍵+[鍵] ,比如Crtl+`</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="893"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="894"/>
         <source>Stop task shortcut</source>
         <translation>停止任務快捷鍵</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="895"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="896"/>
         <source>Default Alt+`, used to interrupt tasks in advance</source>
         <translation>默認快捷鍵是Alt+`, 即使焦點不在在主窗口上也可以觸發</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="899"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="900"/>
         <source>Alt+</source>
-        <translation></translation>
+        <translation>Alt+</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="902"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="903"/>
         <source>Format: Modifier+[Key], e.g. Alt+`</source>
         <translation>格式: 修飾鍵+[鍵], 比如Alt+`</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="926"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="927"/>
         <source>Key cannot be empty</source>
         <translation>快捷鍵不能為空</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="935"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="936"/>
         <source>Key format is invalid, restored to previous configuration.</source>
         <translation>快捷鍵格式化失敗,恢復配置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="944"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="945"/>
         <source>Ctrl</source>
-        <translation></translation>
+        <translation>Ctrl</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="944"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="945"/>
         <source>Alt</source>
-        <translation></translation>
+        <translation>Alt</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="947"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="948"/>
         <source>Start task</source>
         <translation>開始任務</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="949"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="950"/>
         <source>Stop task</source>
         <translation>結束任務</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="953"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="954"/>
         <source>Shortcut must start with %1+, used for %2.</source>
         <translation>快捷鍵必須要%1開頭,用於%2</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1002"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1003"/>
         <source>Notice</source>
         <translation>通知</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1005"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2033"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1006"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2034"/>
         <source>DingTalk Notification Enabled</source>
         <translation>通知已啟用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1007"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2035"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1008"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2036"/>
         <source>DingTalk Notification Disabled</source>
         <translation>通知已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1010"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1021"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1032"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1044"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1056"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1011"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1022"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1033"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1045"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1057"/>
         <source>Modify</source>
         <translation>更改</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1012"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1013"/>
         <source>DingTalk</source>
         <translation>釘釘</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1017"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2039"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1018"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2040"/>
         <source>Lark Notification Enabled</source>
         <translation>通知已啟用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1019"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2041"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1020"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2042"/>
         <source>Lark Notification Disabled</source>
         <translation>通知已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1023"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1024"/>
         <source>Lark</source>
         <translation>飛書</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1028"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2045"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1029"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2046"/>
         <source>SMTP Notification Enabled</source>
         <translation>通知已啟用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1030"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2047"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1031"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2048"/>
         <source>SMTP Notification Disabled</source>
         <translation>通知已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1034"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1035"/>
         <source>SMTP</source>
         <translation>SMTP</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1039"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2051"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1040"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2052"/>
         <source>WxPusher Notification Enabled</source>
         <translation>通知已啟用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1041"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2053"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1042"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2054"/>
         <source>WxPusher Notification Disabled</source>
         <translation>通知已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1046"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1047"/>
         <source>WxPusher</source>
         <translation>微信</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1051"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2057"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1052"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2058"/>
         <source>QYWX Notification Enabled</source>
         <translation>通知已啟用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1053"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2059"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1054"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2060"/>
         <source>QYWX Notification Disabled</source>
         <translation>通知已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1058"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1059"/>
         <source>QYWX</source>
         <translation>企業微信機器人</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1073"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1074"/>
         <source>Task Settings</source>
         <translation>任務設置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1079"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1080"/>
         <source>Enable Task Timeout</source>
         <translation>啟用任務超時</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1080"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1081"/>
         <source>Enable or disable task timeout settings</source>
         <translation>啟用或者關閉任務超時</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1088"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1089"/>
         <source>Task Timeout</source>
         <translation>任務超時時間</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1091"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1092"/>
         <source>Set the maximum time allowed for a task to run (in seconds)</source>
         <translation>設置任務最長可以運行的時間(秒)</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1105"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1106"/>
         <source>Task Timeout Action</source>
         <translation>任務超時動作</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1106"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1107"/>
         <source>Set the action to take when a task times out</source>
         <translation>選擇一個動作在任務超時後運行</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1108"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1109"/>
         <source>Notify Only</source>
         <translation>僅通知</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1109"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1110"/>
         <source>Restart and Notify</source>
         <translation>重啟和通知</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1118"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1119"/>
         <source>Task Timeout Restart Mode</source>
         <translation>任務逾時重啟模式</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1120"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1121"/>
         <source>Select how to restart when task timeout action is &apos;Restart and Notify&apos;</source>
         <translation>選擇任務逾時操作時的重啟方式，操作選項為“重新啟動並通知”</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1123"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1124"/>
         <source>Restart Immediately</source>
         <translation>立即重啟</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1124"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1125"/>
         <source>Run last list entry then restart</source>
         <translation>執行最後一個清單項，然後重新啟動</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1188"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1189"/>
         <source>mirrorchyan CDK</source>
         <translation>Mirror醬CDK</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1189"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1330"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1190"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1331"/>
         <source>Enter mirrorchyan CDK for stable update path</source>
         <translation>輸入Mirror醬CDK以獲取穩定的更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1191"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1192"/>
         <source>About Mirror</source>
         <translation>關於Mirror醬</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1197"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1198"/>
         <source>Automatically update after startup</source>
         <translation>自動更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1198"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1199"/>
         <source>Automatically download and apply updates once available</source>
         <translation>啟動後自動檢查-下載,確認更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1207"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1208"/>
         <source>select update channel for resource</source>
         <translation>選擇更新通道</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1208"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1209"/>
         <source>select the update channel for the resource</source>
         <translation>選擇一個更新通道</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1215"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1216"/>
         <source>Force use GitHub</source>
         <translation>強制使用GitHub</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1216"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1217"/>
         <source>Force use GitHub for resource update</source>
         <translation>強制使用GitHub進行資源更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1222"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1223"/>
         <source>Reset</source>
         <translation>重置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1224"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1225"/>
         <source>Reset resource</source>
         <translation>重置資源</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1225"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1226"/>
         <source>Redownload resource package without version/tag check</source>
         <translation>重新下載資源</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1231"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1232"/>
         <source>GitHub API Key</source>
-        <translation></translation>
+        <translation>GitHub API Key</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1233"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1234"/>
         <source>Personal access tokens increase GitHub API rate limits for update checks.</source>
         <translation>個人存取令牌可提高 GitHub API 更新檢查的速率限制</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1240"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1241"/>
         <source>Optional token for authenticated GitHub requests</source>
         <translation>用於已驗證 GitHub 請求的可選令牌</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1249"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1250"/>
         <source>Use Proxy</source>
         <translation>使用代理</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1251"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1252"/>
         <source>After filling in the proxy settings, all traffic except that to the Mirror will be proxied.</source>
         <translation>填寫代理后,會自動代理所有非Mirror醬的流量</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1274"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1275"/>
         <source>Experimental / Compatibility</source>
         <translation>實驗性</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1278"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1279"/>
         <source>Multi-resource adaptation</source>
         <translation>多重資源適應</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1280"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1281"/>
         <source>Experimental. Enable loading multiple resource bundles; may impact stability.</source>
         <translation>實驗性功能。啟用載入多個資源包；可能會影響穩定性。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1288"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1289"/>
         <source>Save screenshot</source>
         <translation>保存截圖</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1289"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1290"/>
         <source>Save a screenshot when experimental features run</source>
         <translation>開啟後會保存運行中的截圖</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1336"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1337"/>
         <source>Resource does not support Mirrorchyan, right-click about mirror to unlock input</source>
         <translation>资源不支援 Mirrorchyan，右鍵點擊關於鏡像以解鎖輸入</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1401"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1456"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1402"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1457"/>
         <source>Current version: </source>
         <translation>當前版本</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1404"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1405"/>
         <source>Latest version: </source>
         <translation>最新版本</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1407"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1408"/>
         <source>UI version: </source>
         <translation>UI 版本</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1410"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1459"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1411"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1460"/>
         <source>MaaFW version: </source>
         <translation>MaaFW 版本</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1427"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1428"/>
         <source>MFW-ChainFlow Assistant</source>
         <translation>鏈程助手</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1440"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1441"/>
         <source>MFW-ChainFlow Assistant provides a visual orchestrator for MaaFramework users, covering configuration management, scheduling, notifications and custom extensions.</source>
         <translation>MFW-ChainFlow Assistant 為 MaaFramework 用戶提供了一個視覺化編排器，涵蓋設定管理、調度、通知和自訂擴充功能。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1555"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1556"/>
         <source>Select background image</source>
         <translation>選擇背景圖片</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1557"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1558"/>
         <source>Images (*.png *.jpg *.jpeg *.bmp *.webp)</source>
         <translation>圖片 (*.png *.jpg *.jpeg *.bmp *.webp)</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1574"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1575"/>
         <source>UI update feature is not implemented yet.</source>
-        <translation></translation>
+        <translation>UI更新功能尚未實作。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1923"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1924"/>
         <source>Enable multi-resource adaptation?</source>
         <translation>啟用多資源自適應？</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1927"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1928"/>
         <source>After enabling the multi-configuration feature, the resource directories will be reconfigured. This operation is irreversible; please proceed with caution.</source>
         <translation>啟用多重設定功能後，資源目錄將會重新配置。此操作不可逆，請謹慎操作。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1940"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1941"/>
         <source>Enable</source>
         <translation>開啟</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1942"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2626"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1943"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2627"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1979"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1980"/>
         <source>Image file does not exist</source>
         <translation>圖片檔案不存在</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2101"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2102"/>
         <source>Configuration takes effect after restart</source>
         <translation>配置保存,重啟後生效</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2265"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2266"/>
         <source>Update failed too many times, local update package has been cleared.</source>
         <translation>多次更新失敗,清除更新包</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2341"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2384"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2467"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2511"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2342"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2385"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2468"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2512"/>
         <source>Stop update</source>
         <translation>停止更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2405"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2406"/>
         <source>New version available: </source>
         <translation>新版本可用:</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2499"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2500"/>
         <source>Update is already running</source>
         <translation>更新正在運行</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2505"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2506"/>
         <source>Service is not ready, cannot reset resource</source>
         <translation>服務未準備完成</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2608"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2609"/>
         <source>Update package not found, please try updating again.</source>
         <translation>未找到更新包，請重試更新。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2625"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2626"/>
         <source>Update now</source>
         <translation>立刻更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2629"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2630"/>
         <source>Restart required to update</source>
         <translation>重啟以完成更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2631"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2632"/>
         <source>Update package detected</source>
         <translation>更新包刪除</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2634"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2635"/>
         <source>Hot update is unavailable. A restart update is required. Proceed?</source>
         <translation>熱更新不可用,需要重啟完成更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2637"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2638"/>
         <source>Found a downloaded update package. Do you want to launch the updater now?</source>
         <translation>找到本地更新包,是否繼續</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2660"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2661"/>
         <source>Auto updating in %1 s</source>
         <translation>自動更新與 %1 秒</translation>
-    </message>
-    <message>
-        <source>Send Setting</source>
-        <translation type="vanished">通知發送設置</translation>
-    </message>
-    <message>
-        <source>Choose the timing to send notifications</source>
-        <translation type="vanished">選擇通知發送的時機</translation>
-    </message>
-    <message>
-        <source>This feature is experimental and generally not recommended to enable. </source>
-        <translation type="vanished">此功能為實驗性功能，一般不建議啟用。 </translation>
-    </message>
-    <message>
-        <source>Version:</source>
-        <translation type="vanished">版本: </translation>
-    </message>
-    <message>
-        <source>Last version:</source>
-        <translation type="vanished">最新版本: </translation>
-    </message>
-    <message>
-        <source>Speedrun Mode</source>
-        <translation type="vanished">速通模式</translation>
-    </message>
-    <message>
-        <source>Open to skip some tasks already run</source>
-        <translation type="vanished">打開後可以跳過週期內已經運行過的任務</translation>
-    </message>
-    <message>
-        <source>License:</source>
-        <translation type="vanished">許可證:</translation>
-    </message>
-    <message>
-        <source>Check for resource updates</source>
-        <translation type="vanished">檢查資源更新</translation>
-    </message>
-    <message>
-        <source>View update log</source>
-        <translation type="vanished">查看更新日志</translation>
-    </message>
-    <message>
-        <source>never show notice</source>
-        <translation type="vanished">永不再次顯示</translation>
-    </message>
-    <message>
-        <source>Announcements will never pop up regardless of the situation</source>
-        <translation type="vanished">無論何種情況，公告都不會再彈出。</translation>
-    </message>
-    <message>
-        <source>Settings</source>
-        <translation type="vanished">設置</translation>
-    </message>
-    <message>
-        <source>Current</source>
-        <translation type="vanished">當前</translation>
-    </message>
-    <message>
-        <source>version:</source>
-        <translation type="vanished">版本:</translation>
-    </message>
-    <message>
-        <source>Advanced</source>
-        <translation type="vanished">高級</translation>
-    </message>
-    <message>
-        <source>Show Agent CMD</source>
-        <translation type="vanished">展示Agent命令列</translation>
-    </message>
-    <message>
-        <source>Show the agent command line</source>
-        <translation type="vanished">展示Agent命令列以獲取更多資訊。</translation>
-    </message>
-    <message>
-        <source>Recording</source>
-        <translation type="vanished">保存錄像</translation>
-    </message>
-    <message>
-        <source>The video recording and saving function saves all screenshots and operation data during the runtime. You can use the DbgController for reproduction and debugging.</source>
-        <translation type="vanished">保存錄像功能，會保存運行期間所有的截圖及操作數據，可使用 DbgController 進行復現調試。</translation>
-    </message>
-    <message>
-        <source>Save Draw</source>
-        <translation type="vanished">保存圖像</translation>
-    </message>
-    <message>
-        <source>Saving the visualization results of image recognition will save all the drawn diagrams of the visualization results of image recognition during the runtime.</source>
-        <translation type="vanished">保存圖像識別可視化結果，會保存運行期間所有圖像識別可視化結果繪製圖。</translation>
-    </message>
-    <message>
-        <source>Show Hit Draw</source>
-        <translation type="vanished">显示命中</translation>
-    </message>
-    <message>
-        <source>Show the node hit pop-up window. A pop-up window will appear to display the recognition results every time the recognition is successful.</source>
-        <translation type="vanished">显示节点命中弹窗，每次识别成功会弹窗显示识别结果。</translation>
-    </message>
-    <message>
-        <source>Auto Update resource</source>
-        <translation type="vanished">资源自动更新</translation>
-    </message>
-    <message>
-        <source>Automatically update resources on every startup</source>
-        <translation type="vanished">每次啟動自動更新資源</translation>
-    </message>
-    <message>
-        <source>Auto Update MFW</source>
-        <translation type="vanished">MFW自动更新</translation>
-    </message>
-    <message>
-        <source>Automatically update MFW after opening the program. Not recommended, as it may cause the loss of the current running progress.</source>
-        <translation type="vanished">打開程式後自動更新MFW，不建議，可能會遺失當前運行進度。</translation>
-    </message>
-    <message>
-        <source>Feedback and About</source>
-        <translation type="vanished">反饋和關於</translation>
-    </message>
-    <message>
-        <source>Open the debug folder</source>
-        <translation type="vanished">打開日志文件夾</translation>
-    </message>
-    <message>
-        <source>Generate a debug ZIP package</source>
-        <translation type="vanished">生成日志壓縮包</translation>
-    </message>
-    <message>
-        <source>Feedback</source>
-        <translation type="vanished">反饋</translation>
-    </message>
-    <message>
-        <source>Check for updates</source>
-        <translation type="vanished">檢查更新</translation>
-    </message>
-    <message>
-        <source>About Resource</source>
-        <translation type="vanished">關於資源</translation>
-    </message>
-    <message>
-        <source>About UI</source>
-        <translation type="vanished">關於UI</translation>
-    </message>
-    <message>
-        <source>ChainFlow Assistant is open source under the GPLv3 license. Visit the project URL for more information.</source>
-        <translation type="vanished">鏈程助手是在 GPLv3 許可證下開源的。請訪問項目的 URL 以獲取更多信息。</translation>
-    </message>
-    <message>
-        <source>Checking for updates...</source>
-        <translation type="vanished">檢查更新中...</translation>
-    </message>
-    <message>
-        <source>Updated successfully</source>
-        <translation type="vanished">更新成功</translation>
-    </message>
-    <message>
-        <source>Warning</source>
-        <translation type="vanished">警告</translation>
-    </message>
-    <message>
-        <source>The current version of the program does not support automatic updates.</source>
-        <translation type="vanished">目前程式版本不支援自動更新。</translation>
-    </message>
-    <message>
-        <source>Updating...</source>
-        <translation type="vanished">更新中...</translation>
-    </message>
-    <message>
-        <source>About</source>
-        <translation type="vanished">關於</translation>
-    </message>
-    <message>
-        <source>Submit Feedback</source>
-        <translation type="vanished">發送反饋</translation>
-    </message>
-    <message>
-        <source>MFW-PyQt6 is open source under the GPLv3 license. Visit the project URL for more information.</source>
-        <translation type="vanished">MFW-PyQt6 是在 GPLv3 許可證下開源的。請訪問項目的 URL 以獲取更多信息。</translation>
-    </message>
-    <message>
-        <source>In the speedrun mode, resource developers can specify the operation cycle of a certain task. The task will only run once within the cycle.</source>
-        <translation type="vanished">在速通模式下，資源開發者可以指定某個任務運行週期。任務只會在週期內運行一次。</translation>
-    </message>
-    <message>
-        <source>ADB</source>
-        <translation type="vanished">安卓調試橋</translation>
-    </message>
-    <message>
-        <source>ADB Port</source>
-        <translation type="vanished">ADB 連接埠</translation>
-    </message>
-    <message>
-        <source>ADB Path</source>
-        <translation type="vanished">ADB 路徑</translation>
-    </message>
-    <message>
-        <source>Select ADB Path</source>
-        <translation type="vanished">選擇 ADB 路徑</translation>
-    </message>
-    <message>
-        <source>Select Emulator Path</source>
-        <translation type="vanished">選擇模擬器路徑</translation>
-    </message>
-    <message>
-        <source>Run Parameters</source>
-        <translation type="vanished">運行參數</translation>
-    </message>
-    <message>
-        <source>Wait Time for Emulator Startup</source>
-        <translation type="vanished">模擬器啟動等待時間</translation>
-    </message>
-    <message>
-        <source>Win32</source>
-        <translation type="vanished">Win32</translation>
-    </message>
-    <message>
-        <source>Executable Path</source>
-        <translation type="vanished">可執行文件路徑</translation>
-    </message>
-    <message>
-        <source>Select Executable Path</source>
-        <translation type="vanished">選擇可執行文件路徑</translation>
-    </message>
-    <message>
-        <source>Wait Time for Program Startup</source>
-        <translation type="vanished">程式啟動等待時間</translation>
-    </message>
-    <message>
-        <source>Run Program Before Start</source>
-        <translation type="vanished">啟動前運行程式</translation>
-    </message>
-    <message>
-        <source>Select Program</source>
-        <translation type="vanished">選擇程式</translation>
-    </message>
-    <message>
-        <source>Run Program After Finish</source>
-        <translation type="vanished">結束後運行程式</translation>
-    </message>
-    <message>
-        <source>Vision &amp; Input</source>
-        <translation type="vanished">視覺與輸入</translation>
-    </message>
-    <message>
-        <source>Auto</source>
-        <translation type="vanished">自動</translation>
-    </message>
-    <message>
-        <source>Disabled</source>
-        <translation type="vanished">關閉</translation>
-    </message>
-    <message>
-        <source>default</source>
-        <translation type="vanished">默認</translation>
-    </message>
-    <message>
-        <source>Select GPU</source>
-        <translation type="vanished">選擇GPU</translation>
-    </message>
-    <message>
-        <source>Use GPU to accelerate inference</source>
-        <translation type="vanished">使用GPU加速推理</translation>
-    </message>
-    <message>
-        <source>Select Win32 Input Mode</source>
-        <translation type="vanished">選擇Win32輸入模式</translation>
-    </message>
-    <message>
-        <source>Select Win32 Screencap Mode</source>
-        <translation type="vanished">選擇Win32截圖模式</translation>
-    </message>
-    <message>
-        <source>Select ADB Input Mode</source>
-        <translation type="vanished">選擇ADB輸入模式</translation>
-    </message>
-    <message>
-        <source>Select ADB Screencap Mode</source>
-        <translation type="vanished">選擇ADB截圖模式</translation>
-    </message>
-    <message>
-        <source>Choose file</source>
-        <translation type="vanished">选择文件</translation>
-    </message>
-    <message>
-        <source>DEV Mode</source>
-        <translation type="vanished">開發者選項</translation>
-    </message>
-    <message>
-        <source>If enabled, screenshots will be saved in ./debug/vision</source>
-        <translation type="vanished">如果開啟,會保存截圖至./debug/vision</translation>
-    </message>
-    <message>
-        <source>successful</source>
-        <translation type="vanished">成功</translation>
-    </message>
-    <message>
-        <source>Update failed</source>
-        <translation type="vanished">更新失敗</translation>
-    </message>
-    <message>
-        <source>info</source>
-        <translation type="vanished">信息</translation>
-    </message>
-    <message>
-        <source>Already the latest version</source>
-        <translation type="vanished">已經是最新版本</translation>
-    </message>
-    <message>
-        <source>Please check your internet connection</source>
-        <translation type="vanished">請檢查網絡連接</translation>
-    </message>
-    <message>
-        <source>Update completed</source>
-        <translation type="vanished">更新完成</translation>
-    </message>
-    <message>
-        <source>Successfully Downloaded updates</source>
-        <translation type="vanished">成功下載更新</translation>
-    </message>
-    <message>
-        <source>Check for updates from Mirror</source>
-        <translation type="vanished">從Mirror獲取更新</translation>
-    </message>
-    <message>
-        <source>Check for updates from Github</source>
-        <translation type="vanished">從Github獲取更新</translation>
-    </message>
-    <message>
-        <source>Emulator Path</source>
-        <translation type="vanished">模擬器路徑</translation>
-    </message>
-    <message>
-        <source>DingTalk Configuration</source>
-        <translation type="vanished">釘釘配置</translation>
-    </message>
-    <message>
-        <source>Lark Configuration</source>
-        <translation type="vanished">飛書配置</translation>
-    </message>
-    <message>
-        <source>Qmsg</source>
-        <translation type="vanished">Qmsg</translation>
-    </message>
-    <message>
-        <source>Qmsg Configuration</source>
-        <translation type="vanished">Qmsg配置</translation>
-    </message>
-    <message>
-        <source>SMTP Configuration</source>
-        <translation type="vanished">SMTP配置</translation>
-    </message>
-    <message>
-        <source>Submit feedback to help us improve</source>
-        <translation type="vanished">發送反饋幫助我們改善 </translation>
-    </message>
-    <message>
-        <source>About PyQt-MAA</source>
-        <translation type="vanished">關於PyQt-MAA</translation>
-    </message>
-    <message>
-        <source>PyQt-MAA is open source under the GPLv3 license. Visit the project URL for more information.</source>
-        <translation type="vanished">PyQt-MAA 遵循GPLv3開源協議,訪問項目地址以了解更多</translation>
-    </message>
-    <message>
-        <source>Please set the project URL first</source>
-        <translation type="vanished">請檢查資源連結</translation>
-    </message>
-    <message>
-        <source>No need to update</source>
-        <translation type="vanished">無需更新</translation>
-    </message>
-    <message>
-        <source>You are using the latest version</source>
-        <translation type="vanished">你已經在使用最新版本</translation>
-    </message>
-    <message>
-        <source>Update available</source>
-        <translation type="vanished">更新可用</translation>
-    </message>
-    <message>
-        <source>New version: </source>
-        <translation type="vanished">新版本: </translation>
-    </message>
-    <message>
-        <source>Successfully updated to</source>
-        <translation type="vanished">成功更新至</translation>
-    </message>
-</context>
-<context>
-    <name>ShowDownload</name>
-    <message>
-        <source>Downloading...</source>
-        <translation type="vanished">下載中...</translation>
-    </message>
-    <message>
-        <source>Cancel</source>
-        <translation type="vanished">取消</translation>
-    </message>
-    <message>
-        <source>bytes</source>
-        <translation type="vanished">bytes</translation>
     </message>
 </context>
 <context>
@@ -3938,7 +2540,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <location filename="../view/task_interface/components/Option_Framework/SpeedrunConfigWidget.py" line="134"/>
         <location filename="../view/task_interface/components/Option_Framework/SpeedrunConfigWidget.py" line="139"/>
         <source>N/A</source>
-        <translation></translation>
+        <translation>N/A</translation>
     </message>
     <message>
         <location filename="../view/task_interface/components/Option_Framework/SpeedrunConfigWidget.py" line="135"/>
@@ -3950,14 +2552,6 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <source>Last Run Time</source>
         <translation>上次運行時間</translation>
     </message>
-    <message>
-        <source>Yes</source>
-        <translation type="vanished">是</translation>
-    </message>
-    <message>
-        <source>No</source>
-        <translation type="vanished">否</translation>
-    </message>
 </context>
 <context>
     <name>StartBarWidget</name>
@@ -3965,136 +2559,6 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <location filename="../view/task_interface/components/StartBarWidget.py" line="27"/>
         <source>Start</source>
         <translation>開始</translation>
-    </message>
-</context>
-<context>
-    <name>SwitchSettingCardCustom</name>
-    <message>
-        <source>Off</source>
-        <translation type="vanished">關閉</translation>
-    </message>
-</context>
-<context>
-    <name>TaskCooldownInterface</name>
-    <message>
-        <source>Success</source>
-        <translation type="vanished">成功</translation>
-    </message>
-    <message>
-        <source>Schedule settings saved successfully</source>
-        <translation type="vanished">成功儲存計劃設定</translation>
-    </message>
-    <message>
-        <source>Start Date</source>
-        <translation type="vanished">啓動</translation>
-    </message>
-    <message>
-        <source>Schedule Mode</source>
-        <translation type="vanished">計劃模式</translation>
-    </message>
-    <message>
-        <source>Daily</source>
-        <translation type="vanished">每日</translation>
-    </message>
-    <message>
-        <source>Weekly</source>
-        <translation type="vanished">每週</translation>
-    </message>
-    <message>
-        <source>Monthly</source>
-        <translation type="vanished">每月</translation>
-    </message>
-    <message>
-        <source>Refresh Time, Daily</source>
-        <translation type="vanished">刷新時間：每日 </translation>
-    </message>
-    <message>
-        <source>Monday</source>
-        <translation type="vanished">週一</translation>
-    </message>
-    <message>
-        <source>Tuesday</source>
-        <translation type="vanished">週二</translation>
-    </message>
-    <message>
-        <source>Wednesday</source>
-        <translation type="vanished">週三</translation>
-    </message>
-    <message>
-        <source>Thursday</source>
-        <translation type="vanished">週四</translation>
-    </message>
-    <message>
-        <source>Friday</source>
-        <translation type="vanished">週五</translation>
-    </message>
-    <message>
-        <source>Saturday</source>
-        <translation type="vanished">週六</translation>
-    </message>
-    <message>
-        <source>Sunday</source>
-        <translation type="vanished">週日</translation>
-    </message>
-    <message>
-        <source>Hour</source>
-        <translation type="vanished">小時</translation>
-    </message>
-    <message>
-        <source>Interval</source>
-        <translation type="vanished">週期</translation>
-    </message>
-    <message>
-        <source>Minutes</source>
-        <translation type="vanished">分</translation>
-    </message>
-    <message>
-        <source>Hours</source>
-        <translation type="vanished">時</translation>
-    </message>
-    <message>
-        <source>Days</source>
-        <translation type="vanished">日</translation>
-    </message>
-    <message>
-        <source>Loop</source>
-        <translation type="vanished">循環</translation>
-    </message>
-    <message>
-        <source>Times</source>
-        <translation type="vanished">次</translation>
-    </message>
-    <message>
-        <source>Confirm</source>
-        <translation type="vanished">確認</translation>
-    </message>
-    <message>
-        <source>Start Automatically</source>
-        <translation type="vanished">啟用狀態</translation>
-    </message>
-    <message>
-        <source>Day</source>
-        <translation type="vanished">日</translation>
-    </message>
-    <message>
-        <source>Loop item</source>
-        <translation type="vanished">執行次數</translation>
-    </message>
-    <message>
-        <source>Last Run</source>
-        <translation type="vanished">上次運行時間:</translation>
-    </message>
-    <message>
-        <source>Refresh Time, Weekly</source>
-        <translation type="vanished">刷新時間：每週 </translation>
-    </message>
-    <message>
-        <source>Refresh Time, Monthly</source>
-        <translation type="vanished">刷新時間：每月 </translation>
-    </message>
-    <message>
-        <source>Error</source>
-        <translation type="vanished">錯誤</translation>
     </message>
 </context>
 <context>
@@ -4115,13 +2579,10 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation>任務未初始化</translation>
     </message>
     <message>
-        <source>Unknown MaaFW error code: </source>
-        <translation type="vanished">MaaFW 未知錯誤代碼：</translation>
-    </message>
-    <message>
-        <source>Unknown MaaFW error code: {error_code}</source>
-        <translation type="vanished">
-MaaFW 未知錯誤代碼：{error_code}</translation>
+        <location filename="../core/runner/task_flow.py" line="132"/>
+        <location filename="../core/runner/task_flow.py" line="137"/>
+        <source>Unknown MaaFW error code: {}</source>
+        <translation>未知的 MaaFW 錯誤代碼：{}</translation>
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="181"/>
@@ -4231,6 +2692,11 @@ MaaFW 未知錯誤代碼：{error_code}</translation>
         <translation>未知任務</translation>
     </message>
     <message>
+        <location filename="../core/runner/task_flow.py" line="640"/>
+        <source>Task entry {} timed out, restarting attempt {}/3.</source>
+        <translation>任務 {} 超時, 重啟中 {}/3</translation>
+    </message>
+    <message>
         <location filename="../core/runner/task_flow.py" line="654"/>
         <source>Task entry {} timed out after {} seconds.</source>
         <translation>任務 {} 運行時長超過 {} 秒</translation>
@@ -4244,17 +2710,6 @@ MaaFW 未知錯誤代碼：{error_code}</translation>
         <location filename="../core/runner/task_flow.py" line="671"/>
         <source>Task entry &apos;{}&apos; timed out after {} seconds.</source>
         <translation>任務 {} 運行時長超過 {} 秒</translation>
-    </message>
-    <message>
-        <location filename="../core/runner/task_flow.py" line="640"/>
-        <source>Task entry {} timed out, restarting attempt {}/3.</source>
-        <translation>任務 {} 超時, 重啟中 {}/3</translation>
-    </message>
-    <message>
-        <location filename="../core/runner/task_flow.py" line="132"/>
-        <location filename="../core/runner/task_flow.py" line="137"/>
-        <source>Unknown MaaFW error code: {}</source>
-        <translation>未知的 MaaFW 錯誤代碼：{}</translation>
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="685"/>
@@ -4287,170 +2742,59 @@ MaaFW 未知錯誤代碼：{error_code}</translation>
         <translation>ADB 連線位址為空，請在設定中設定設備連線。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="868"/>
-        <source>Window handle (hwnd) is empty, please configure window connection in settings</source>
-        <translation>視窗句柄 (hwnd) 為空，請在設定中設定視窗連線。</translation>
-    </message>
-    <message>
-        <source>No ADB device found</source>
-        <translation type="vanished">未找到ADB設備</translation>
-    </message>
-    <message>
         <location filename="../core/runner/task_flow.py" line="798"/>
         <source>try to start emulator</source>
         <translation>嘗試啟動模擬器</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="813"/>
+        <location filename="../core/runner/task_flow.py" line="807"/>
         <source>waiting for emulator start...</source>
         <translation>等待模擬器啟動中</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="826"/>
+        <location filename="../core/runner/task_flow.py" line="820"/>
         <source>Device connection failed</source>
         <translation>設備連接失敗</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="849"/>
+        <location filename="../core/runner/task_flow.py" line="843"/>
         <source>Auto searching Win32 windows...</source>
         <translation>自動搜索win32中</translation>
     </message>
     <message>
-        <source>No Win32 window found</source>
-        <translation type="vanished">未找到win32設備</translation>
+        <location filename="../core/runner/task_flow.py" line="862"/>
+        <source>Window handle (hwnd) is empty, please configure window connection in settings</source>
+        <translation>視窗句柄 (hwnd) 為空，請在設定中設定視窗連線。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="887"/>
+        <location filename="../core/runner/task_flow.py" line="881"/>
         <source>try to start program</source>
         <translation>嘗試啟動程序</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="901"/>
+        <location filename="../core/runner/task_flow.py" line="889"/>
         <source>waiting for program start...</source>
         <translation>等待程序啟動</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1010"/>
+        <location filename="../core/runner/task_flow.py" line="998"/>
         <source> seconds</source>
         <translation> 秒</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1383"/>
+        <location filename="../core/runner/task_flow.py" line="1371"/>
         <source>This period&apos;s remaining execution count is 0</source>
         <translation>本週期剩餘執行次數為 0</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1395"/>
+        <location filename="../core/runner/task_flow.py" line="1383"/>
         <source>Not enough time passed since last run. Minimum interval is </source>
         <translation>上次運轉至今時間不足。最小間隔為 </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1398"/>
+        <location filename="../core/runner/task_flow.py" line="1386"/>
         <source> hours.</source>
         <translation>時</translation>
-    </message>
-    <message>
-        <source>NOT STARTED</source>
-        <translation type="vanished">未啟動</translation>
-    </message>
-    <message>
-        <source>Task Flow Started</source>
-        <translation type="vanished">任務流啟動</translation>
-    </message>
-    <message>
-        <source>Config </source>
-        <translation type="vanished">配置 </translation>
-    </message>
-    <message>
-        <source> contains </source>
-        <translation type="vanished">包含</translation>
-    </message>
-    <message>
-        <source> tasks, ready to connect device.</source>
-        <translation type="vanished">準備連接設備</translation>
-    </message>
-    <message>
-        <source>Device Connection Failed</source>
-        <translation type="vanished">設備連接失敗</translation>
-    </message>
-    <message>
-        <source> cannot connect device, please check controller configuration.</source>
-        <translation type="vanished">無法咯娜姐設備</translation>
-    </message>
-    <message>
-        <source>Device Connection Successful</source>
-        <translation type="vanished">設備連接成功</translation>
-    </message>
-    <message>
-        <source> device connection successful, start to execute tasks.</source>
-        <translation type="vanished">設備連接成功,開始運行任務</translation>
-    </message>
-    <message>
-        <source>SKIPPED</source>
-        <translation type="vanished">跳過</translation>
-    </message>
-    <message>
-        <source>FAILED</source>
-        <translation type="vanished">失敗</translation>
-    </message>
-    <message>
-        <source>Task Failed</source>
-        <translation type="vanished">任務失敗</translation>
-    </message>
-    <message>
-        <source> did not return a successful status, the flow is terminated.</source>
-        <translation type="vanished">如果未返回成功狀態,則流程終止</translation>
-    </message>
-    <message>
-        <source>SUCCESS</source>
-        <translation type="vanished">成功</translation>
-    </message>
-    <message>
-        <source>Task Finished</source>
-        <translation type="vanished">任務完成</translation>
-    </message>
-    <message>
-        <source> has been completed.</source>
-        <translation type="vanished">已經完成</translation>
-    </message>
-    <message>
-        <source> execution failed: </source>
-        <translation type="vanished">執行失敗: </translation>
-    </message>
-    <message>
-        <source>Task Flow Exception</source>
-        <translation type="vanished">任務流錯誤</translation>
-    </message>
-    <message>
-        <source>Task flow execution exception: </source>
-        <translation type="vanished">任務流執行錯誤</translation>
-    </message>
-    <message>
-        <source>No tasks</source>
-        <translation type="vanished">無任務</translation>
-    </message>
-    <message>
-        <source>Configuration </source>
-        <translation type="vanished">配置</translation>
-    </message>
-    <message>
-        <source> all tasks and post actions have been completed, processed </source>
-        <translation type="vanished">所有任務和後續操作均已完成並處理完畢</translation>
-    </message>
-    <message>
-        <source> tasks.
-Task Status:
-</source>
-        <translation type="vanished">任務
-任務啟動:</translation>
-    </message>
-    <message>
-        <source>Found ADB device: </source>
-        <translation type="vanished">找到ADB設備: </translation>
-    </message>
-    <message>
-        <source>Found Win32 window: </source>
-        <translation type="vanished">找到win32窗口</translation>
     </message>
 </context>
 <context>
@@ -4478,430 +2822,6 @@ Task Status:
         <location filename="../view/task_interface/task_interface_logic.py" line="241"/>
         <source>Stop</source>
         <translation>停止</translation>
-    </message>
-    <message>
-        <source>Resource file not detected</source>
-        <translation type="vanished">未找到資源文件</translation>
-    </message>
-    <message>
-        <source>New task found: </source>
-        <translation type="vanished">發現新任務: </translation>
-    </message>
-    <message>
-        <source>Inconsistent items between configuration tasks and interface templates</source>
-        <translation type="vanished">配置任務與介面模板之間存在不一致項目</translation>
-    </message>
-    <message>
-        <source>ERROR</source>
-        <translation type="vanished">錯誤</translation>
-    </message>
-    <message>
-        <source>Task</source>
-        <translation type="vanished">任務</translation>
-    </message>
-    <message>
-        <source>Add Task</source>
-        <translation type="vanished">添加</translation>
-    </message>
-    <message>
-        <source>Resource</source>
-        <translation type="vanished">資源</translation>
-    </message>
-    <message>
-        <source>Controller</source>
-        <translation type="vanished">控制端</translation>
-    </message>
-    <message>
-        <source>Auto Detect</source>
-        <translation type="vanished">自动检测</translation>
-    </message>
-    <message>
-        <source>Finish</source>
-        <translation type="vanished">完成後</translation>
-    </message>
-    <message>
-        <source>Do nothing</source>
-        <translation type="vanished">無動作</translation>
-    </message>
-    <message>
-        <source>Close emulator</source>
-        <translation type="vanished">退出模擬器</translation>
-    </message>
-    <message>
-        <source>Quit app</source>
-        <translation type="vanished">退出應用</translation>
-    </message>
-    <message>
-        <source>Close emulator and Quit app</source>
-        <translation type="vanished">退出模擬器和應用</translation>
-    </message>
-    <message>
-        <source>Shutdown</source>
-        <translation type="vanished">關機</translation>
-    </message>
-    <message>
-        <source>Run Other Config</source>
-        <translation type="vanished">運行其他配置</translation>
-    </message>
-    <message>
-        <source>Load Custom Action:</source>
-        <translation type="vanished">載入自定義動作:</translation>
-    </message>
-    <message>
-        <source>Load Custom Recognition:</source>
-        <translation type="vanished">載入自定義識別器:</translation>
-    </message>
-    <message>
-        <source>Agent server connect failed</source>
-        <translation type="vanished">MAA Agent伺服器連接失敗</translation>
-    </message>
-    <message>
-        <source>Agent server registration failed</source>
-        <translation type="vanished">MAA Agent伺服器註冊失敗</translation>
-    </message>
-    <message>
-        <source>Failed to init MaaFramework instance</source>
-        <translation type="vanished">初始化MaaFramework實例失敗</translation>
-    </message>
-    <message>
-        <source>Resource or Controller not initialized</source>
-        <translation type="vanished">資源或控制器未初始化</translation>
-    </message>
-    <message>
-        <source>Agent service start</source>
-        <translation type="vanished">MAA Agent伺服器開始</translation>
-    </message>
-    <message>
-        <source>Starting Connection</source>
-        <translation type="vanished">開始連接</translation>
-    </message>
-    <message>
-        <source>Connection Success</source>
-        <translation type="vanished">連接成功</translation>
-    </message>
-    <message>
-        <source>Connection Failed</source>
-        <translation type="vanished">連接失敗</translation>
-    </message>
-    <message>
-        <source>Unknown Error</source>
-        <translation type="vanished">未知錯誤</translation>
-    </message>
-    <message>
-        <source>Started</source>
-        <translation type="vanished">啓動</translation>
-    </message>
-    <message>
-        <source>completed</source>
-        <translation type="vanished">完成</translation>
-    </message>
-    <message>
-        <source>Failed</source>
-        <translation type="vanished">失敗</translation>
-    </message>
-    <message>
-        <source>The task has failed. Subsequent operations will continue. Please wait.</source>
-        <translation type="vanished">任務失敗.但進程仍在運行,請稍後</translation>
-    </message>
-    <message>
-        <source>No task selected</source>
-        <translation type="vanished">任務列表為空</translation>
-    </message>
-    <message>
-        <source>Start Up</source>
-        <translation type="vanished">啓動</translation>
-    </message>
-    <message>
-        <source>Connection failed,please check the program</source>
-        <translation type="vanished">連接失敗，請檢查程序</translation>
-    </message>
-    <message>
-        <source>fastest screenshot method cost:</source>
-        <translation type="vanished">最快截圖耗時: </translation>
-    </message>
-    <message>
-        <source>May have an impact on the operation.</source>
-        <translation type="vanished">存在對運行造成不利影響的可能性</translation>
-    </message>
-    <message>
-        <source>Connection success</source>
-        <translation type="vanished">連接成功</translation>
-    </message>
-    <message>
-        <source>File not found</source>
-        <translation type="vanished">未找到文件</translation>
-    </message>
-    <message>
-        <source>Can not start the file</source>
-        <translation type="vanished">無法打開文件</translation>
-    </message>
-    <message>
-        <source>Connection Failed,try to kill ADB process</source>
-        <translation type="vanished">連接失敗，嘗試終止 ADB 進程</translation>
-    </message>
-    <message>
-        <source>kill ADB Failed</source>
-        <translation type="vanished">終止 ADB 失敗</translation>
-    </message>
-    <message>
-        <source>waiting for emulator start...</source>
-        <translation type="vanished">等待模擬器啟動中...</translation>
-    </message>
-    <message>
-        <source>Starting task in </source>
-        <translation type="vanished">任務啟動於 </translation>
-    </message>
-    <message>
-        <source>Starting game...</source>
-        <translation type="vanished">啟動遊戲中...</translation>
-    </message>
-    <message>
-        <source>Starting game in </source>
-        <translation type="vanished">遊戲啟動於 </translation>
-    </message>
-    <message>
-        <source>Post Task :</source>
-        <translation type="vanished">開始任務</translation>
-    </message>
-    <message>
-        <source>Loop count exhausted</source>
-        <translation type="vanished">循環次數已耗盡</translation>
-    </message>
-    <message>
-        <source>Waiting for next run: </source>
-        <translation type="vanished">上次運行時間: </translation>
-    </message>
-    <message>
-        <source>Stopping task...</source>
-        <translation type="vanished">停止任務中...</translation>
-    </message>
-    <message>
-        <source>No task can be deleted</source>
-        <translation type="vanished">沒有任務可以被刪除</translation>
-    </message>
-    <message>
-        <source>Already the first task</source>
-        <translation type="vanished">已經是首位任務</translation>
-    </message>
-    <message>
-        <source>Already the last task</source>
-        <translation type="vanished">已經是末位任務</translation>
-    </message>
-    <message>
-        <source>Drag to Delete</source>
-        <translation type="vanished">拖動至此刪除</translation>
-    </message>
-    <message>
-        <source>Rewrite</source>
-        <translation type="vanished">重寫</translation>
-    </message>
-    <message>
-        <source>Detecting game...</source>
-        <translation type="vanished">檢測Win32應用中...</translation>
-    </message>
-    <message>
-        <source>No game detected</source>
-        <translation type="vanished">指定程式不存在</translation>
-    </message>
-    <message>
-        <source>Game detected</source>
-        <translation type="vanished">檢測到指定程式</translation>
-    </message>
-    <message>
-        <source>Detecting emulator...</source>
-        <translation type="vanished">檢測模擬器中...</translation>
-    </message>
-    <message>
-        <source>No emulator detected</source>
-        <translation type="vanished">未檢測到模擬器</translation>
-    </message>
-    <message>
-        <source>Emulator detected</source>
-        <translation type="vanished">檢測到模擬器</translation>
-    </message>
-    <message>
-        <source>Tip</source>
-        <translation type="vanished">提示</translation>
-    </message>
-    <message>
-        <source>Not Run</source>
-        <translation type="vanished">未運行</translation>
-    </message>
-    <message>
-        <source>Success</source>
-        <translation type="vanished">成功</translation>
-    </message>
-    <message>
-        <source>Unknown Status</source>
-        <translation type="vanished">未知狀態</translation>
-    </message>
-    <message>
-        <source>task completed</source>
-        <translation type="vanished">任務完成</translation>
-    </message>
-    <message>
-        <source>task info</source>
-        <translation type="vanished">任務信息</translation>
-    </message>
-    <message>
-        <source>task failed</source>
-        <translation type="vanished">任務失敗</translation>
-    </message>
-    <message>
-        <source>Sunday</source>
-        <translation type="vanished">週日</translation>
-    </message>
-    <message>
-        <source>Monday</source>
-        <translation type="vanished">週一</translation>
-    </message>
-    <message>
-        <source>Tuesday</source>
-        <translation type="vanished">週二</translation>
-    </message>
-    <message>
-        <source>Wednesday</source>
-        <translation type="vanished">週三</translation>
-    </message>
-    <message>
-        <source>Thursday</source>
-        <translation type="vanished">週四</translation>
-    </message>
-    <message>
-        <source>Friday</source>
-        <translation type="vanished">週五</translation>
-    </message>
-    <message>
-        <source>Saturday</source>
-        <translation type="vanished">週六</translation>
-    </message>
-    <message>
-        <source>Delete: </source>
-        <translation type="vanished">刪除: </translation>
-    </message>
-    <message>
-        <source>Task Entry</source>
-        <translation type="vanished">未找到任務入口</translation>
-    </message>
-    <message>
-        <source>Task Entry Failed</source>
-        <translation type="vanished">未找到任務入口</translation>
-    </message>
-    <message>
-        <source>Succeeded</source>
-        <translation type="vanished">成功</translation>
-    </message>
-    <message>
-        <source>aborted</source>
-        <translation type="vanished">終止</translation>
-    </message>
-    <message>
-        <source>Error</source>
-        <translation type="vanished">錯誤</translation>
-    </message>
-    <message>
-        <source>first Connection failed,try to kill ADB process</source>
-        <translation type="vanished">連接失敗，嘗試終止 ADB 進程</translation>
-    </message>
-    <message>
-        <source>Connection</source>
-        <translation type="vanished">連接</translation>
-    </message>
-    <message>
-        <source>DingTalk Failed</source>
-        <translation type="vanished">釘釘推送失敗</translation>
-    </message>
-    <message>
-        <source>Lark Failed</source>
-        <translation type="vanished">飛書推送失敗</translation>
-    </message>
-    <message>
-        <source>SMTP Failed</source>
-        <translation type="vanished">SMTP推送失敗</translation>
-    </message>
-    <message>
-        <source>WxPusher Failed</source>
-        <translation type="vanished">微信推送失敗</translation>
-    </message>
-    <message>
-        <source>QYWX Failed</source>
-        <translation type="vanished">企業微信機器人推送失敗</translation>
-    </message>
-    <message>
-        <source>DingTalk Success</source>
-        <translation type="vanished">釘釘推送成功</translation>
-    </message>
-    <message>
-        <source>Lark Success</source>
-        <translation type="vanished">飛書推送成功</translation>
-    </message>
-    <message>
-        <source>SMTP Success</source>
-        <translation type="vanished">SMTP推送成功</translation>
-    </message>
-    <message>
-        <source>WxPusher Success</source>
-        <translation type="vanished">微信推送成功</translation>
-    </message>
-    <message>
-        <source>QYWX Success</source>
-        <translation type="vanished">企業微信機器人推送成功</translation>
-    </message>
-    <message>
-        <source>The task has timed out</source>
-        <translation type="vanished">任務超時</translation>
-    </message>
-    <message>
-        <source>Refresh time: Daily </source>
-        <translation type="vanished">刷新時間：每日 </translation>
-    </message>
-    <message>
-        <source>Refresh time: Every </source>
-        <translation type="vanished">刷新時間：每 </translation>
-    </message>
-    <message>
-        <source>Task </source>
-        <translation type="vanished">任務 </translation>
-    </message>
-    <message>
-        <source> has been run today, skipping</source>
-        <translation type="vanished"> 今日已運行</translation>
-    </message>
-    <message>
-        <source>Last runing time: </source>
-        <translation type="vanished">上次運行時間: </translation>
-    </message>
-    <message>
-        <source> has been run this week, skipping</source>
-        <translation type="vanished"> 本周已運行</translation>
-    </message>
-    <message>
-        <source>Do Nothing</source>
-        <translation type="vanished">無動作</translation>
-    </message>
-    <message>
-        <source>Quit Application</source>
-        <translation type="vanished">退出應用</translation>
-    </message>
-    <message>
-        <source>Close Application and Quit</source>
-        <translation type="vanished">退出模擬器和應用</translation>
-    </message>
-    <message>
-        <source>successful</source>
-        <translation type="vanished">成功</translation>
-    </message>
-    <message>
-        <source>Update failed</source>
-        <translation type="vanished">更新失敗</translation>
-    </message>
-    <message>
-        <source>info</source>
-        <translation type="vanished">信息</translation>
-    </message>
-    <message>
-        <source>Delete</source>
-        <translation type="vanished">刪除</translation>
     </message>
 </context>
 <context>
@@ -4963,289 +2883,6 @@ Task Status:
         <location filename="../view/task_interface/components/ListToolBarWidget.py" line="345"/>
         <source>Base tasks (Resource, Post-Task) cannot be deleted (ID: {id})</source>
         <translation>基礎任務無法被刪除</translation>
-    </message>
-</context>
-<context>
-    <name>Task_Interface</name>
-    <message>
-        <source>Load Custom Action:</source>
-        <translation type="vanished">載入自定義動作:</translation>
-    </message>
-    <message>
-        <source>Load Custom Recognition:</source>
-        <translation type="vanished">載入自定義識別器:</translation>
-    </message>
-    <message>
-        <source>Started</source>
-        <translation type="vanished">啓動</translation>
-    </message>
-    <message>
-        <source>Succeeded</source>
-        <translation type="vanished">成功</translation>
-    </message>
-    <message>
-        <source>Failed</source>
-        <translation type="vanished">失敗</translation>
-    </message>
-    <message>
-        <source>Error</source>
-        <translation type="vanished">錯誤</translation>
-    </message>
-    <message>
-        <source>Drag to Delete</source>
-        <translation type="vanished">拖動至此刪除</translation>
-    </message>
-    <message>
-        <source>Do nothing</source>
-        <translation type="vanished">無動作</translation>
-    </message>
-    <message>
-        <source>Close emulator</source>
-        <translation type="vanished">退出模擬器</translation>
-    </message>
-    <message>
-        <source>Close emulator and Quit app</source>
-        <translation type="vanished">退出模擬器和應用</translation>
-    </message>
-    <message>
-        <source>Quit app</source>
-        <translation type="vanished">退出應用</translation>
-    </message>
-    <message>
-        <source>Shutdown</source>
-        <translation type="vanished">關機</translation>
-    </message>
-    <message>
-        <source>Starting Connection</source>
-        <translation type="vanished">開始連接</translation>
-    </message>
-    <message>
-        <source>Connection Success</source>
-        <translation type="vanished">連接成功</translation>
-    </message>
-    <message>
-        <source>Connection Failed</source>
-        <translation type="vanished">連接失敗</translation>
-    </message>
-    <message>
-        <source>Unknow Error</source>
-        <translation type="vanished">未知錯誤</translation>
-    </message>
-    <message>
-        <source>Run Other Config</source>
-        <translation type="vanished">運行其他配置</translation>
-    </message>
-    <message>
-        <source>Resource file not detected</source>
-        <translation type="vanished">未找到資源文件</translation>
-    </message>
-    <message>
-        <source>Stop</source>
-        <translation type="vanished">停止</translation>
-    </message>
-    <message>
-        <source>File not found</source>
-        <translation type="vanished">未找到文件</translation>
-    </message>
-    <message>
-        <source>Can not start the file</source>
-        <translation type="vanished">無法打開文件</translation>
-    </message>
-    <message>
-        <source>Start</source>
-        <translation type="vanished">開始</translation>
-    </message>
-    <message>
-        <source>waiting for emulator start...</source>
-        <translation type="vanished">等待模擬器啟動中</translation>
-    </message>
-    <message>
-        <source>Starting task in </source>
-        <translation type="vanished">任務啟動於</translation>
-    </message>
-    <message>
-        <source>Starting game...</source>
-        <translation type="vanished">啟動遊戲中</translation>
-    </message>
-    <message>
-        <source>Starting game in </source>
-        <translation type="vanished">遊戲啟動於</translation>
-    </message>
-    <message>
-        <source>Starting task...</source>
-        <translation type="vanished">啟動任務中</translation>
-    </message>
-    <message>
-        <source>running task:</source>
-        <translation type="vanished">運行任務:</translation>
-    </message>
-    <message>
-        <source>Task finished</source>
-        <translation type="vanished">任務完成</translation>
-    </message>
-    <message>
-        <source>Stopping task...</source>
-        <translation type="vanished">停止任務中</translation>
-    </message>
-    <message>
-        <source>No task can be deleted</source>
-        <translation type="vanished">沒有任務可以被刪除</translation>
-    </message>
-    <message>
-        <source>Already the first task</source>
-        <translation type="vanished">已經是首位任務</translation>
-    </message>
-    <message>
-        <source>Already the last task</source>
-        <translation type="vanished">已經是末位任務</translation>
-    </message>
-    <message>
-        <source>Saving ADB configuration...</source>
-        <translation type="vanished">使用ADB方案</translation>
-    </message>
-    <message>
-        <source>Saving Win32 configuration...</source>
-        <translation type="vanished">使用Win32方案</translation>
-    </message>
-    <message>
-        <source>Task</source>
-        <translation type="vanished">任務</translation>
-    </message>
-    <message>
-        <source>Detecting game...</source>
-        <translation type="vanished">檢測Win32應用中</translation>
-    </message>
-    <message>
-        <source>No game detected</source>
-        <translation type="vanished">指定程式不存在</translation>
-    </message>
-    <message>
-        <source>Game detected</source>
-        <translation type="vanished">檢測到指定程式</translation>
-    </message>
-    <message>
-        <source>Detecting emulator...</source>
-        <translation type="vanished">檢測模擬器中</translation>
-    </message>
-    <message>
-        <source>No emulator detected</source>
-        <translation type="vanished">未檢測到模擬器</translation>
-    </message>
-    <message>
-        <source>Emulator detected</source>
-        <translation type="vanished">檢測到模擬器</translation>
-    </message>
-    <message>
-        <source>Tip</source>
-        <translation type="vanished">提示</translation>
-    </message>
-    <message>
-        <source>Success</source>
-        <translation type="vanished">成功</translation>
-    </message>
-    <message>
-        <source>DingTalk Failed</source>
-        <translation type="vanished">釘釘推送失敗</translation>
-    </message>
-    <message>
-        <source>Lark Failed</source>
-        <translation type="vanished">飛書推送失敗</translation>
-    </message>
-    <message>
-        <source>SMTP Failed</source>
-        <translation type="vanished">SMTP推送失敗</translation>
-    </message>
-    <message>
-        <source>WxPusher Failed</source>
-        <translation type="vanished">微信推送失敗</translation>
-    </message>
-    <message>
-        <source>DingTalk Success</source>
-        <translation type="vanished">釘釘推送成功</translation>
-    </message>
-    <message>
-        <source>Lark Success</source>
-        <translation type="vanished">飛書推送成功</translation>
-    </message>
-    <message>
-        <source>SMTP Success</source>
-        <translation type="vanished">SMTP推送成功</translation>
-    </message>
-    <message>
-        <source>WxPusher Success</source>
-        <translation type="vanished">微信推送成功</translation>
-    </message>
-    <message>
-        <source>Unknown Error</source>
-        <translation type="vanished">未知錯誤</translation>
-    </message>
-    <message>
-        <source> Failed</source>
-        <translation type="vanished">失敗</translation>
-    </message>
-    <message>
-        <source>save Win32 config...</source>
-        <translation type="vanished">保存Win32控制器</translation>
-    </message>
-    <message>
-        <source>task completed</source>
-        <translation type="vanished">任務完成</translation>
-    </message>
-    <message>
-        <source>task failed</source>
-        <translation type="vanished">任務失敗</translation>
-    </message>
-    <message>
-        <source>task running:</source>
-        <translation type="vanished">運行任務:</translation>
-    </message>
-    <message>
-        <source>save ADB config...</source>
-        <translation type="vanished">保存ADB控制器</translation>
-    </message>
-    <message>
-        <source>Add Task</source>
-        <translation type="vanished">添加</translation>
-    </message>
-    <message>
-        <source>Rewrite</source>
-        <translation type="vanished">重寫</translation>
-    </message>
-    <message>
-        <source>Task Interface</source>
-        <translation type="vanished">任務頁面</translation>
-    </message>
-    <message>
-        <source>Finish Action</source>
-        <translation type="vanished">結束後操作</translation>
-    </message>
-    <message>
-        <source>Resource</source>
-        <translation type="vanished">資源</translation>
-    </message>
-    <message>
-        <source>Controller</source>
-        <translation type="vanished">控制端</translation>
-    </message>
-    <message>
-        <source>Auto Detect</source>
-        <translation type="vanished">自动检测</translation>
-    </message>
-    <message>
-        <source>Finished</source>
-        <translation type="vanished">完成後</translation>
-    </message>
-    <message>
-        <source>Move Up</source>
-        <translation type="vanished">上移</translation>
-    </message>
-    <message>
-        <source>Move Down</source>
-        <translation type="vanished">下移</translation>
-    </message>
-    <message>
-        <source>Delete</source>
-        <translation type="vanished">刪除</translation>
     </message>
 </context>
 <context>
@@ -5318,301 +2955,6 @@ Task Status:
         <location filename="../utils/update.py" line="1811"/>
         <source>GitHub update check failed</source>
         <translation>GitHub更新失敗</translation>
-    </message>
-    <message>
-        <source>Failed to read Mirror update package</source>
-        <translation type="vanished">讀取Mirror醬更新包失敗</translation>
-    </message>
-    <message>
-        <source>Already latest version</source>
-        <translation type="vanished">已是最新版本</translation>
-    </message>
-    <message>
-        <source>No URL found</source>
-        <translation type="vanished">未發現更新連結</translation>
-    </message>
-    <message>
-        <source>No valid URL found</source>
-        <translation type="vanished">更新連結不合法</translation>
-    </message>
-    <message>
-        <source>No version found</source>
-        <translation type="vanished">未找到版本</translation>
-    </message>
-    <message>
-        <source>MirrorChyan update check successful, starting downloa</source>
-        <translation type="vanished">Mirror醬檢查成功，開始更新</translation>
-    </message>
-    <message>
-        <source>MirrorChyan update check successful, but no CDK found, switching to Github download</source>
-        <translation type="vanished">Mirror醬檢查成功，但未找到CDK，轉為Github下載</translation>
-    </message>
-    <message>
-        <source>Extraction failed</source>
-        <translation type="vanished">解壓失敗</translation>
-    </message>
-    <message>
-        <source>Current MFW version is too low, update aborted</source>
-        <translation type="vanished">當前MFW版本過低，中止更新</translation>
-    </message>
-    <message>
-        <source>Failed to clean up temporary files</source>
-        <translation type="vanished">清理文件時發生錯誤</translation>
-    </message>
-    <message>
-        <source>Move file failed</source>
-        <translation type="vanished">移動文件失敗</translation>
-    </message>
-    <message>
-        <source>update success</source>
-        <translation type="vanished">更新成功</translation>
-    </message>
-    <message>
-        <source>incomplete update data</source>
-        <translation type="vanished">更新數據字段缺失</translation>
-    </message>
-    <message>
-        <source>unexpected error during update</source>
-        <translation type="vanished">未預期的錯誤</translation>
-    </message>
-    <message>
-        <source>Updating the Agent may take a long time.</source>
-        <translation type="vanished">更新Agent程式中，可能會需要更長時間。</translation>
-    </message>
-    <message>
-        <source>No matching resource found</source>
-        <translation type="vanished">未找到匹配資源</translation>
-    </message>
-    <message>
-        <source>Clean up failed</source>
-        <translation type="vanished">清理文件時發生錯誤</translation>
-    </message>
-    <message>
-        <source>GitHub request failed</source>
-        <translation type="vanished">GitHub請求失敗</translation>
-    </message>
-    <message>
-        <source>HTTP error</source>
-        <translation type="vanished">HTTP錯誤</translation>
-    </message>
-    <message>
-        <source>Incomplete update data</source>
-        <translation type="vanished">更新數據字段缺失</translation>
-    </message>
-    <message>
-        <source>Unexpected error during update</source>
-        <translation type="vanished">未預期的錯誤</translation>
-    </message>
-    <message>
-        <source>update failed: version_data is None</source>
-        <translation type="vanished">更新失敗:版本數據丟失</translation>
-    </message>
-    <message>
-        <source>version file not found</source>
-        <translation type="vanished">版本文件未找到</translation>
-    </message>
-    <message>
-        <source>version file format error</source>
-        <translation type="vanished">版本文件格式錯誤</translation>
-    </message>
-    <message>
-        <source>INVALID_PARAMS</source>
-        <translation type="vanished">參數不正確</translation>
-    </message>
-    <message>
-        <source>switching to Github download</source>
-        <translation type="vanished">切換至 GitHub 下載</translation>
-    </message>
-    <message>
-        <source>KEY_EXPIRED</source>
-        <translation type="vanished">CDK已過期</translation>
-    </message>
-    <message>
-        <source>KEY_INVALID</source>
-        <translation type="vanished">CDK錯誤</translation>
-    </message>
-    <message>
-        <source>RESOURCE_QUOTA_EXHAUSTED</source>
-        <translation type="vanished">CDK 今日下載次數已達上限</translation>
-    </message>
-    <message>
-        <source>KEY_MISMATCHED</source>
-        <translation type="vanished">CDK 類型和待下載的資源不匹配</translation>
-    </message>
-    <message>
-        <source>RESOURCE_NOT_FOUND</source>
-        <translation type="vanished">對應架構和系統下的資源不存在</translation>
-    </message>
-    <message>
-        <source>INVALID_OS</source>
-        <translation type="vanished">錯誤的系統參數</translation>
-    </message>
-    <message>
-        <source>INVALID_ARCH</source>
-        <translation type="vanished">錯誤的架構參數</translation>
-    </message>
-    <message>
-        <source>INVALID_CHANNEL</source>
-        <translation type="vanished">錯誤的更新通道參數</translation>
-    </message>
-    <message>
-        <source>current version is latest</source>
-        <translation type="vanished">當前已經是最新版</translation>
-    </message>
-    <message>
-        <source>Project address configuration not found</source>
-        <translation type="vanished">項目地址未配置</translation>
-    </message>
-    <message>
-        <source>Invalid project URL format</source>
-        <translation type="vanished">無效的項目URL格式</translation>
-    </message>
-    <message>
-        <source>SSL error occurred, please check your network connection</source>
-        <translation type="vanished">發生SSL錯誤，請檢查你的網絡連接</translation>
-    </message>
-    <message>
-        <source>GitHub API request limit exceeded,please try again later</source>
-        <translation type="vanished">GitHub API 請求次數已達上限，請稍後再試</translation>
-    </message>
-    <message>
-        <source>GitHub response is empty</source>
-        <translation type="vanished">GitHub 回應為空</translation>
-    </message>
-    <message>
-        <source>Invalid response from GitHub</source>
-        <translation type="vanished">来自 GitHub 的响应无效</translation>
-    </message>
-    <message>
-        <source>Update check failed due to unexpected error</source>
-        <translation type="vanished">由于意外错误，更新检查失败</translation>
-    </message>
-    <message>
-        <source>Version file not found</source>
-        <translation type="vanished">版本文件未找到</translation>
-    </message>
-    <message>
-        <source>Version file format error</source>
-        <translation type="vanished">版本文件格式錯誤</translation>
-    </message>
-    <message>
-        <source>Projeund, unable to perform update check</source>
-        <translation type="vanished">項目未找到，無法執行更新檢查</translation>
-    </message>
-    <message>
-        <source>unknow error, unable to perform update check</source>
-        <translation type="vanished">未知錯誤，無法執行更新檢查</translation>
-    </message>
-    <message>
-        <source>Update successful</source>
-        <translation type="vanished">更新成功</translation>
-    </message>
-    <message>
-        <source>Project address configuration not found, unable to perform update check</source>
-        <translation type="vanished">未找到項目地址配置，無法執行更新檢查</translation>
-    </message>
-    <message>
-        <source>Project address configuration error, unable to perform update check</source>
-        <translation type="vanished">項目地址配置錯誤，無法執行更新檢查</translation>
-    </message>
-    <message>
-        <source>Move files failed</source>
-        <translation type="vanished">移動文件失敗</translation>
-    </message>
-    <message>
-        <source>MirrorChyan update check successful, starting download</source>
-        <translation type="vanished">Mirror醬檢查更新成功，開始下載</translation>
-    </message>
-</context>
-<context>
-    <name>UpdateSelf</name>
-    <message>
-        <source>Failed to get download address</source>
-        <translation type="vanished">获取下载地址失败</translation>
-    </message>
-    <message>
-        <source>switching to Github download</source>
-        <translation type="vanished">轉為 GitHub 下載</translation>
-    </message>
-    <message>
-        <source>MirrorChyan update check successful, starting download</source>
-        <translation type="vanished">Mirror醬檢查更新成功，開始下載</translation>
-    </message>
-    <message>
-        <source>Unexpected error during download</source>
-        <translation type="vanished">下载过程中出现意外错误</translation>
-    </message>
-    <message>
-        <source>MirrorChyan update check successful, but no CDK found, switching to Github download</source>
-        <translation type="vanished">Mirror醬檢查更新成功，但未檢測到CDK，轉為GitHub下載</translation>
-    </message>
-    <message>
-        <source>GitHub URL construction failed</source>
-        <translation type="vanished">GitHub URL 构建失败</translation>
-    </message>
-    <message>
-        <source>Download failed</source>
-        <translation type="vanished">下載失敗</translation>
-    </message>
-    <message>
-        <source>current version is latest</source>
-        <translation type="vanished">當前已經是最新版</translation>
-    </message>
-    <message>
-        <source>update failed: version_data is None</source>
-        <translation type="vanished">更新失敗:版本數據丟失</translation>
-    </message>
-    <message>
-        <source>Version file update failed</source>
-        <translation type="vanished">版本文件更新失败</translation>
-    </message>
-    <message>
-        <source>Version file write failed</source>
-        <translation type="vanished">版本文件写入失败</translation>
-    </message>
-    <message>
-        <source>Cannot read version file</source>
-        <translation type="vanished">无法读取版本文件</translation>
-    </message>
-    <message>
-        <source>INVALID_PARAMS</source>
-        <translation type="vanished">參數不正確</translation>
-    </message>
-    <message>
-        <source>KEY_EXPIRED</source>
-        <translation type="vanished">金鑰已過期</translation>
-    </message>
-    <message>
-        <source>KEY_INVALID</source>
-        <translation type="vanished">金鑰錯誤</translation>
-    </message>
-    <message>
-        <source>RESOURCE_QUOTA_EXHAUSTED</source>
-        <translation type="vanished">金鑰今日下載次數已達上限</translation>
-    </message>
-    <message>
-        <source>KEY_MISMATCHED</source>
-        <translation type="vanished">金鑰類型和待下載的資源不匹配</translation>
-    </message>
-    <message>
-        <source>KEY_BLOCKED</source>
-        <translation type="vanished">金鑰已被封鎖</translation>
-    </message>
-    <message>
-        <source>RESOURCE_NOT_FOUND</source>
-        <translation type="vanished">對應架構和系統下的資源不存在</translation>
-    </message>
-    <message>
-        <source>INVALID_OS</source>
-        <translation type="vanished">錯誤的系統參數</translation>
-    </message>
-    <message>
-        <source>INVALID_ARCH</source>
-        <translation type="vanished">錯誤的架構參數</translation>
-    </message>
-    <message>
-        <source>INVALID_CHANNEL</source>
-        <translation type="vanished">錯誤的更新通道參數</translation>
     </message>
 </context>
 <context>
