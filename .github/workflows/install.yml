@@ -231,12 +231,14 @@ jobs:
       - run: |
           cd assets
           for f in *; do
-            (cd $f && zip -r ../$f-${{ needs.meta.outputs.tag }}.zip .)
+            if [ "$f" != "i18n" ]; then
+              (cd $f && zip -r ../$f-${{ needs.meta.outputs.tag }}.zip .)
+            fi
           done
 
       - uses: softprops/action-gh-release@v2.2.2
         with:
-          files: assets/*
+          files: assets/*.zip
           tag_name: ${{ needs.meta.outputs.tag }}
           body: ${{ needs.changelog.outputs.release_body }}
           draft: false
