@@ -254,8 +254,10 @@ class TaskDragListWidget(BaseListWidget):
         self._pending_refresh = True
         self._show_loading_overlay()
         self._fade_out.start()
-        # 延迟10ms后清除任务选择
-        QTimer.singleShot(10, self.clearSelection)
+        # 普通任务列表：延迟10ms后清除任务选择
+        # 特殊任务列表：保持原样，不做任何修改
+        if self._filter_mode != "special":
+            QTimer.singleShot(10, self.clearSelection)
     
     def _on_resource_changed(self, options: dict) -> None:
         """当选项变化时，更新任务列表显示"""
