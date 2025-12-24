@@ -1044,7 +1044,6 @@ class ControllerSettingWidget(QWidget):
         if callback:
             # 检查是否在初始化阶段（_syncing 为 True 表示正在初始化）
             is_initializing = self._syncing
-            logger.debug(f"[ControllerSettingWidget] 控制器类型变化为 {label}，调用回调更新资源下拉框 (is_initializing={is_initializing})")
             # 如果回调支持 is_initializing 参数，传递它；否则只传递 label
             import inspect
             if len(inspect.signature(callback).parameters) > 1:
@@ -1052,10 +1051,7 @@ class ControllerSettingWidget(QWidget):
             else:
                 callback(label)
         elif hasattr(self, "_fill_resource_option"):
-            logger.debug(f"[ControllerSettingWidget] 控制器类型变化为 {label}，直接调用 _fill_resource_option")
             getattr(self, "_fill_resource_option")()
-        else:
-            logger.debug(f"[ControllerSettingWidget] 控制器类型变化为 {label}，但未找到更新资源下拉框的方法")
 
         # 显示/隐藏对应的子选项
         if new_type == "adb":

@@ -552,11 +552,6 @@ class OptionItemWidget(QWidget):
         selected_value_str = str(selected_value) if selected_value is not None else ""
         normalized_selected = selected_value_str.strip()
 
-        logger.debug(
-            f"更新子选项可见性: key={self.key}, selected_value={selected_value}, "
-            f"selected_value_str={selected_value_str}, children_keys={list(children.keys())}"
-        )
-
         matched_key = self._match_child_key(
             children, selected_value, selected_value_str, normalized_selected
         )
@@ -566,7 +561,6 @@ class OptionItemWidget(QWidget):
         use_animation = self._animation_enabled and not skip_animation and animator is not None
 
         if matched_key:
-            logger.debug(f"找到匹配的子选项: matched_key={matched_key}")
             if matched_key not in self._child_value_map:
                 self.add_child_option(matched_key, children.get(matched_key))
 
@@ -582,7 +576,6 @@ class OptionItemWidget(QWidget):
                     visible_any = True
 
             if visible_any:
-                logger.debug("设置子选项容器可见")
                 if use_animation and animator is not None:
                     # 使用动画展开
                     animator.expand()
@@ -598,7 +591,6 @@ class OptionItemWidget(QWidget):
                     self.children_wrapper.setVisible(False)
                     self.children_wrapper.setMaximumHeight(0)
         else:
-            logger.debug("没有找到匹配的子选项，隐藏容器")
             if use_animation:
                 # 使用动画收起，动画完成后再隐藏子选项内容
                 if animator is not None:
@@ -636,30 +628,20 @@ class OptionItemWidget(QWidget):
     ) -> Optional[str]:
         """匹配哪个子选项集合应该被显示"""
         if selected_value_str in children:
-            logger.debug(f"精确匹配1: selected_value_str={selected_value_str}")
             return selected_value_str
         if selected_value in children:
-            logger.debug(f"精确匹配2: selected_value={selected_value}")
             return selected_value
         if normalized_selected in children:
-            logger.debug(f"精确匹配3: normalized_selected={normalized_selected}")
             return normalized_selected
 
-        logger.debug(f"开始遍历匹配，标准化值={normalized_selected}")
         for key in children.keys():
             key_str = str(key)
             key_stripped = key_str.strip()
-            logger.debug(
-                f"比较键: key={repr(key)}, key_str={repr(key_str)}, key_stripped={repr(key_stripped)}"
-            )
             if key_str == selected_value_str:
-                logger.debug(f"匹配成功（原始值）: {key}")
                 return key
             if key_stripped == normalized_selected:
-                logger.debug(f"匹配成功（标准化值）: {key}")
                 return key
             if str(key) == str(selected_value):
-                logger.debug(f"匹配成功（字符串转换）: {key}")
                 return key
 
         return None

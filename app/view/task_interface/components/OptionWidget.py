@@ -86,43 +86,32 @@ class OptionWidget(QWidget):
                 label: 控制器标签
                 is_initializing: 是否在初始化阶段（如果是，不触发任务列表更新）
             """
-            logger.debug(f"[回调] 控制器类型变化为 {label}，开始更新资源下拉框 (is_initializing={is_initializing})")
             # 更新资源组件的控制器标签
             self.resource_setting_widget.current_controller_label = label
-            logger.debug(f"[回调] 已更新 resource_setting_widget.current_controller_label = {label}")
             # 更新资源组件的控制器映射（以防有变化）
             self.resource_setting_widget.controller_type_mapping = self.controller_setting_widget.controller_type_mapping
-            logger.debug(f"[回调] 已更新 controller_type_mapping，包含 {len(self.resource_setting_widget.controller_type_mapping)} 个控制器")
             # 重新构建资源映射表（确保使用最新的控制器信息）
             self.resource_setting_widget._rebuild_resource_mapping()
-            logger.debug(f"[回调] 已重新构建资源映射表，包含 {len(self.resource_setting_widget.resource_mapping)} 个控制器映射")
-            # 检查资源映射表中是否有当前控制器的资源
-            if label in self.resource_setting_widget.resource_mapping:
-                resource_count = len(self.resource_setting_widget.resource_mapping[label])
-                logger.debug(f"[回调] 控制器 {label} 有 {resource_count} 个资源")
-            else:
-                logger.warning(f"[回调] 控制器 {label} 不在资源映射表中！可用的控制器: {list(self.resource_setting_widget.resource_mapping.keys())}")
+            
+            if label not in self.resource_setting_widget.resource_mapping:
+                logger.warning(f"控制器 {label} 不在资源映射表中！可用的控制器: {list(self.resource_setting_widget.resource_mapping.keys())}")
+            
             # 刷新资源下拉框（如果资源下拉框已创建）
             if "resource_combo" in self.resource_setting_widget.resource_setting_widgets:
                 if hasattr(self.resource_setting_widget, '_fill_resource_option'):
-                    logger.debug(f"[回调] 调用 _fill_resource_option() 填充资源下拉框")
                     self.resource_setting_widget._fill_resource_option()
                     
                     # 控制器类型变化后，强制保存一次资源设置（仅在非初始化时）
                     if not is_initializing:
                         current_resource = self.resource_setting_widget.current_config.get("resource", "")
                         if current_resource:
-                            logger.debug(f"[回调] 控制器类型变化后，强制保存资源设置: {current_resource}")
                             self.resource_setting_widget._auto_save_resource_option(current_resource, skip_sync_check=True)
                             # 触发任务列表更新（延迟触发，确保资源已保存）
                             from PySide6.QtCore import QTimer
                             QTimer.singleShot(50, lambda: self.service_coordinator.signal_bus.option_updated.emit(
                                 {"resource": current_resource}
                             ))
-                else:
-                    logger.warning(f"[回调] resource_setting_widget 没有 _fill_resource_option 方法")
             else:
-                logger.debug(f"[回调] 资源下拉框尚未创建，直接更新资源配置")
                 # 即使资源下拉框不存在，也需要更新资源任务的配置
                 # 检查当前资源是否在新控制器的资源列表中
                 if label in self.resource_setting_widget.resource_mapping:
@@ -142,21 +131,17 @@ class OptionWidget(QWidget):
                             resource_label = resource.get("label", resource_name)
                             if current_resource_name and current_resource_name in (resource_name, resource_label):
                                 resource_found = True
-                                logger.debug(f"[回调] 当前资源 {current_resource_name} 在新控制器 {label} 的资源列表中，保持不变")
                                 break
                         
                         # 如果当前资源不在新控制器的资源列表中，自动选择第一个资源并保存（仅在非初始化时）
                         if not resource_found and current_resource_name and not is_initializing:
                             first_resource = current_resources[0]
                             first_resource_name = first_resource.get("name", "")
-                            first_resource_label = first_resource.get("label", first_resource_name)
-                            logger.debug(f"[回调] 当前资源 {current_resource_name} 不在控制器 {label} 的资源列表中，自动选择第一个资源: {first_resource_label} (name: {first_resource_name})")
                             
                             # 更新配置并保存
                             if resource_task:
                                 resource_task.task_option["resource"] = first_resource_name
                                 self.service_coordinator.task_service.update_task(resource_task)
-                                logger.debug(f"[回调] 已自动保存资源: {first_resource_name}")
                                 
                                 # 触发任务列表更新（延迟触发，确保资源任务已保存）
                                 from PySide6.QtCore import QTimer
@@ -164,13 +149,12 @@ class OptionWidget(QWidget):
                                     {"resource": first_resource_name}
                                 ))
                             else:
-                                logger.warning(f"[回调] 未找到 Resource 任务，无法保存资源")
+                                logger.warning(f"未找到 Resource 任务，无法保存资源")
                         elif not is_initializing:
                             # 即使资源没有变化，也要触发任务列表更新（确保任务列表根据当前资源正确显示）
                             if resource_task and isinstance(resource_task.task_option, dict):
                                 final_resource = resource_task.task_option.get("resource", "")
                                 if final_resource:
-                                    logger.debug(f"[回调] 控制器类型变化后，触发任务列表更新以确保正确显示，当前资源: {final_resource}")
                                     # 使用 QTimer 延迟触发，确保资源任务已保存
                                     from PySide6.QtCore import QTimer
                                     QTimer.singleShot(50, lambda: self.service_coordinator.signal_bus.option_updated.emit(
@@ -689,7 +673,6 @@ class OptionWidget(QWidget):
         # 构建新选项
         self.option_form_widget.build_from_structure(form_structure, config)
         self._connect_option_signals()
-        logger.info("表单已使用 form_structure 完成更新")
 
     def get_current_form_config(self):
         """
@@ -748,9 +731,6 @@ class OptionWidget(QWidget):
         # 只使用form_structure更新表单
         if form_structure:
             self.current_config = self.service_coordinator.option.get_options()
-
-            # 记录日志
-            logger.info(f"选项加载完成，共 {len(self.current_config)} 个选项")
 
             # 判断任务类型
             form_type = form_structure.get("type")
@@ -849,32 +829,27 @@ class OptionWidget(QWidget):
         controller_name = ""
         if controller_task and isinstance(controller_task.task_option, dict):
             controller_name = controller_task.task_option.get("controller_type", "")
-            logger.debug(f"[_apply_resource_settings] 从Controller任务获取控制器类型: {controller_name}")
         
         # 如果Controller任务中没有配置，尝试从当前配置中获取（作为fallback）
         if not controller_name:
             controller_name = self.current_config.get("controller_type", "")
-            logger.debug(f"[_apply_resource_settings] 从当前配置获取控制器类型: {controller_name}")
         
         if controller_name:
             # 查找对应的控制器标签
             for label, ctrl_info in self.controller_setting_widget.controller_type_mapping.items():
                 if ctrl_info["name"] == controller_name:
                     self.resource_setting_widget.current_controller_label = label
-                    logger.debug(f"[_apply_resource_settings] 设置资源组件控制器标签为: {label} (name: {controller_name})")
                     break
             else:
                 # 如果找不到，使用第一个控制器
                 if self.controller_setting_widget.controller_type_mapping:
                     first_label = list(self.controller_setting_widget.controller_type_mapping.keys())[0]
                     self.resource_setting_widget.current_controller_label = first_label
-                    logger.debug(f"[_apply_resource_settings] 未找到匹配的控制器，使用第一个: {first_label}")
         else:
             # 如果没有配置，使用第一个控制器
             if self.controller_setting_widget.controller_type_mapping:
                 first_label = list(self.controller_setting_widget.controller_type_mapping.keys())[0]
                 self.resource_setting_widget.current_controller_label = first_label
-                logger.debug(f"[_apply_resource_settings] 没有控制器配置，使用第一个: {first_label}")
         
         # 从Resource任务的配置中获取当前资源值，并设置到current_config中
         # 注意：必须在 create_settings 之前设置，因为 create_settings 会调用 _fill_resource_option
@@ -887,15 +862,9 @@ class OptionWidget(QWidget):
                 self.current_config["resource"] = resource_name
                 # 同时更新 resource_setting_widget 的 current_config（它们共享同一个字典）
                 self.resource_setting_widget.current_config["resource"] = resource_name
-                logger.debug(f"[_apply_resource_settings] 从Resource任务获取资源: {resource_name}，已设置到 current_config")
-            else:
-                logger.debug(f"[_apply_resource_settings] Resource任务中没有资源配置")
-        else:
-            logger.debug(f"[_apply_resource_settings] 未找到Resource任务或task_option不是字典")
         
         # 创建资源下拉框（此时 current_config 中已经有 resource 值了）
         self.resource_setting_widget.create_settings()
-        logger.info("资源设置表单已创建")
     
     def _apply_controller_settings_with_animation(self):
         """在动画回调中应用控制器设置"""
