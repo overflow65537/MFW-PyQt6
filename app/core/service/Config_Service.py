@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 
 from app.utils.logger import logger
-from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
+from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION, PRE_CONFIGURATION
 from app.core.Item import ConfigItem, TaskItem, CoreSignalBus
 
 
@@ -200,7 +200,12 @@ class ConfigService:
         if not config_data:
             return None
 
-        return ConfigItem.from_dict(config_data)
+        config = ConfigItem.from_dict(config_data)
+        
+        # 向后兼容：检查并转换旧的 Pre-Configuration 任务
+        self._migrate_pre_configuration_task(config)
+        
+        return config
 
     def get_current_config(self) -> ConfigItem:
         """获取当前配置"""
@@ -404,3 +409,110 @@ class ConfigService:
         else:
             self._main_config["_timeout_restart_state"] = {}
         return self.save_main_config()
+
+    def _migrate_pre_configuration_task(self, config: ConfigItem) -> bool:
+        """
+        向后兼容：将旧的 Pre-Configuration 任务迁移为新的 Controller 和 Resource 任务
+        
+        Args:
+            config: 配置对象
+            
+        Returns:
+            bool: 是否进行了迁移
+        """
+        # 查找 Pre-Configuration 任务
+        pre_config_task = None
+        pre_config_index = -1
+        for idx, task in enumerate(config.tasks):
+            if task.item_id == PRE_CONFIGURATION:
+                pre_config_task = task
+                pre_config_index = idx
+                break
+        
+        if pre_config_task is None:
+            return False
+        
+        logger.info(f"检测到旧版本的 Pre-Configuration 任务，开始迁移为新的 Controller 和 Resource 任务")
+        
+        # 从 Pre-Configuration 任务中提取配置
+        pre_config_options = pre_config_task.task_option or {}
+        controller_type = pre_config_options.get("controller_type", "")
+        resource_name = pre_config_options.get("resource", "")
+        
+        # 如果没有配置，使用默认值
+        if not controller_type and self.repo.interface.get("controller"):
+            controller_type = self.repo.interface["controller"][0]["name"]
+        if not resource_name and self.repo.interface.get("resource"):
+            resource_name = self.repo.interface["resource"][0]["name"]
+        
+        # 检查是否已存在 Controller 和 Resource 任务
+        has_controller = any(task.item_id == _CONTROLLER_ for task in config.tasks)
+        has_resource = any(task.item_id == _RESOURCE_ for task in config.tasks)
+        
+        # 先删除旧的 Pre-Configuration 任务（避免索引问题）
+        config.tasks.pop(pre_config_index)
+        logger.info(f"已删除旧的 Pre-Configuration 任务")
+        
+        # 创建或更新 Controller 任务
+        if not has_controller:
+            controller_task = TaskItem(
+                name="Controller",
+                item_id=_CONTROLLER_,
+                is_checked=pre_config_task.is_checked,
+                task_option={
+                    "controller_type": controller_type,
+                },
+                is_special=False,
+            )
+            # 在原来的 Pre-Configuration 位置插入 Controller 任务
+            # 由于已经删除了 Pre-Configuration，索引需要减1
+            insert_index = min(pre_config_index, len(config.tasks))
+            config.tasks.insert(insert_index, controller_task)
+            logger.info(f"已创建 Controller 任务，controller_type: {controller_type}")
+        else:
+            # 如果已存在，更新其配置
+            for task in config.tasks:
+                if task.item_id == _CONTROLLER_:
+                    if controller_type:
+                        task.task_option["controller_type"] = controller_type
+                    logger.info(f"已更新现有 Controller 任务，controller_type: {controller_type}")
+                    break
+        
+        # 创建或更新 Resource 任务
+        if not has_resource:
+            resource_task = TaskItem(
+                name="Resource",
+                item_id=_RESOURCE_,
+                is_checked=pre_config_task.is_checked,
+                task_option={
+                    "resource": resource_name,
+                },
+                is_special=False,
+            )
+            # 在 Controller 任务之后插入 Resource 任务
+            controller_index = next(
+                (idx for idx, task in enumerate(config.tasks) if task.item_id == _CONTROLLER_),
+                -1
+            )
+            if controller_index >= 0:
+                config.tasks.insert(controller_index + 1, resource_task)
+            else:
+                # 如果找不到 Controller，插入到开头
+                config.tasks.insert(0, resource_task)
+            logger.info(f"已创建 Resource 任务，resource: {resource_name}")
+        else:
+            # 如果已存在，更新其配置
+            for task in config.tasks:
+                if task.item_id == _RESOURCE_:
+                    if resource_name:
+                        task.task_option["resource"] = resource_name
+                    logger.info(f"已更新现有 Resource 任务，resource: {resource_name}")
+                    break
+        
+        # 保存迁移后的配置
+        if self.save_config(config.item_id, config):
+            logger.info(f"配置迁移完成并已保存")
+            return True
+        else:
+            logger.warning(f"配置迁移完成但保存失败")
+            return False
