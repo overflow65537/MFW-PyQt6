@@ -11,7 +11,11 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict
 from PySide6.QtCore import QCoreApplication, QObject, Signal, QTimer
-from app.common.constants import POST_ACTION, PRE_CONFIGURATION
+from app.common.constants import (
+    POST_ACTION,
+    _CONTROLLER_,
+    _RESOURCE_,
+)
 from app.common.signal_bus import signalBus
 from app.common.config import cfg, Config
 
@@ -37,7 +41,9 @@ from app.core.Item import FromeServiceCoordinator, TaskItem
 class TaskFlowRunner(QObject):
     """负责执行任务流的运行时组件"""
 
-    task_timeout_restart_requested = Signal(str, int)  # 任务超时需要重启 (entry, attempts)
+    task_timeout_restart_requested = Signal(
+        str, int
+    )  # 任务超时需要重启 (entry, attempts)
 
     def __init__(
         self,
@@ -138,8 +144,11 @@ class TaskFlowRunner(QObject):
             )
 
     async def run_tasks_flow(
-        self, task_id: str | None = None, is_timeout_restart: bool = False, 
-        timeout_restart_entry: str | None = None, timeout_restart_attempts: int = 0
+        self,
+        task_id: str | None = None,
+        is_timeout_restart: bool = False,
+        timeout_restart_entry: str | None = None,
+        timeout_restart_attempts: int = 0,
     ):
         """任务完整流程：连接设备、加载资源、批量运行任务"""
         if self._is_running:
@@ -159,7 +168,9 @@ class TaskFlowRunner(QObject):
             if timeout_restart_entry:
                 self._timeout_active_entry = timeout_restart_entry
                 self._timeout_restart_attempts = timeout_restart_attempts
-                logger.info(f"恢复超时重启状态: entry={timeout_restart_entry}, attempts={timeout_restart_attempts}")
+                logger.info(
+                    f"恢复超时重启状态: entry={timeout_restart_entry}, attempts={timeout_restart_attempts}"
+                )
             self._timeout_timer.stop()
             self._current_running_task_id = None
         is_single_task_mode = task_id is not None
@@ -192,13 +203,13 @@ class TaskFlowRunner(QObject):
                 self.fs_signal_bus.fs_start_button_status.emit(
                     {"text": "STOP", "status": "disabled"}
                 )
-            pre_cfg = self.task_service.get_task(PRE_CONFIGURATION)
-            if not pre_cfg:
+            controller_cfg = self.task_service.get_task(_CONTROLLER_)
+            if not controller_cfg:
                 raise ValueError("未找到基础预配置任务")
 
             logger.info("开始连接设备...")
             signalBus.log_output.emit("INFO", self.tr("Starting to connect device..."))
-            connected = await self.connect_device(pre_cfg.task_option)
+            connected = await self.connect_device(controller_cfg.task_option)
             if not connected:
                 logger.error("设备连接失败")
                 return
@@ -215,7 +226,10 @@ class TaskFlowRunner(QObject):
             )
 
             logger.info("开始加载资源...")
-            if not await self.load_resources(pre_cfg.task_option):
+            resource_cfg = self.task_service.get_task(_RESOURCE_)
+            if not resource_cfg:
+                raise ValueError("未找到资源设置任务")
+            if not await self.load_resources(resource_cfg.task_option):
                 logger.error("资源加载失败，流程终止")
                 return
             logger.info("资源加载成功")
@@ -303,7 +317,7 @@ class TaskFlowRunner(QObject):
                 logger.info("开始执行任务序列...")
                 self._tasks_started = True
                 for task in self.task_service.current_tasks:
-                    if task.name in [PRE_CONFIGURATION, POST_ACTION]:
+                    if task.name in [_CONTROLLER_, _RESOURCE_, POST_ACTION]:
                         continue
 
                     elif not task.is_checked:
@@ -360,7 +374,7 @@ class TaskFlowRunner(QObject):
                         else:
                             logger.info("收到停止请求，流程终止")
                         break
-                
+
                 # 只有在任务流正常完成（非手动停止）时才输出"所有任务都已完成"
                 if self._is_tasks_flow_completed_normally():
                     signalBus.log_output.emit(
@@ -388,7 +402,7 @@ class TaskFlowRunner(QObject):
                         logger.info("跳过完成后操作：手动停止或单任务执行")
             except Exception as exc:
                 logger.error(f"完成后操作执行失败: {exc}")
-            
+
             await self.stop_task()
 
             # 断开日志收集信号
@@ -500,7 +514,7 @@ class TaskFlowRunner(QObject):
                 return False
 
             logger.debug(f"加载资源: {resource}")
-            res_cfg = self.task_service.get_task(PRE_CONFIGURATION)
+            res_cfg = self.task_service.get_task(_RESOURCE_)
             gpu_idx = res_cfg.task_option.get("gpu", -1) if res_cfg else -1
             await self.maafw.load_resource(resource, gpu_idx)
             logger.debug(f"资源加载完成: {resource}")
@@ -551,7 +565,9 @@ class TaskFlowRunner(QObject):
 
         self._start_task_timeout(entry)
 
-        if not await self.maafw.run_task(entry, pipeline_override,cfg.get(cfg.save_screenshot)):
+        if not await self.maafw.run_task(
+            entry, pipeline_override, cfg.get(cfg.save_screenshot)
+        ):
             logger.error(f"任务 '{task.name}' 执行失败")
             self._stop_task_timeout()
             return
@@ -643,7 +659,9 @@ class TaskFlowRunner(QObject):
         signalBus.log_output.emit("WARNING", restart_message)
         # 通过信号通知外部需要重启，传递 entry 和 attempts 信息
         # UI 层负责保存状态
-        self.task_timeout_restart_requested.emit(entry_text, self._timeout_restart_attempts)
+        self.task_timeout_restart_requested.emit(
+            entry_text, self._timeout_restart_attempts
+        )
         # 注意：重启模式下不立即发送通知，等待最终总结时发送
 
     def _on_task_timeout(self):
@@ -697,7 +715,6 @@ class TaskFlowRunner(QObject):
         asyncio.create_task(self.stop_task())
         self._reset_task_timeout_state()
         return
-
 
     async def _connect_adb_controller(self, controller_raw: Dict[str, Any]):
         """连接 ADB 控制器"""
@@ -755,13 +772,9 @@ class TaskFlowRunner(QObject):
             logger.error("ADB 连接地址为空")
             signalBus.log_output.emit("ERROR", error_msg)
             return False
-        raw_input_method = int(
-            controller_config.get("input_methods", -1)
-        )
+        raw_input_method = int(controller_config.get("input_methods", -1))
 
-        raw_screen_method = int(
-            controller_config.get("screencap_methods", -1)
-        )
+        raw_screen_method = int(controller_config.get("screencap_methods", -1))
 
         def normalize_input_method(value: int) -> int:
             mask = (1 << 64) - 1
@@ -1123,9 +1136,9 @@ class TaskFlowRunner(QObject):
             controller_raw[controller_type].update(device_info)
 
             # 获取预配置任务并更新
-            if pre_cfg := self.task_service.get_task(PRE_CONFIGURATION):
-                pre_cfg.task_option.update(controller_raw)
-                self.task_service.update_task(pre_cfg)
+            if controller_cfg := self.task_service.get_task(_CONTROLLER_):
+                controller_cfg.task_option.update(controller_raw)
+                self.task_service.update_task(controller_cfg)
                 logger.info(f"设备配置已保存: {device_info.get('device_name', '')}")
 
         except Exception as e:
@@ -1629,11 +1642,11 @@ class TaskFlowRunner(QObject):
             return True
 
         try:
-            pre_config_task = self.task_service.get_task(PRE_CONFIGURATION) # sourcery skip
-            if not pre_config_task:
-                return True  # 如果没有 Pre-Configuration 任务，执行所有任务
+            resource_cfg = self.task_service.get_task(_RESOURCE_)  # sourcery skip
+            if not resource_cfg:
+                return True  # 如果没有资源设置任务，执行所有任务
 
-            current_resource_name = pre_config_task.task_option.get("resource", "")
+            current_resource_name = resource_cfg.task_option.get("resource", "")
             if not current_resource_name:
                 return True
 

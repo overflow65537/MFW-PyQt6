@@ -21,16 +21,19 @@ from app.view.task_interface.components.Option_Framework import (
     OptionFormWidget,
     SpeedrunConfigWidget,
 )
-from app.view.task_interface.components.Option_Widget_Mixin.PostActionSettingMixin import (
-    PostActionSettingMixin,
+from app.view.task_interface.components.Option_Widget_Mixin.PostActionSettingWidget import (
+    PostActionSettingWidget,
 )
-from app.view.task_interface.components.Option_Widget_Mixin.ResourceSettingMixin import (
-    ResourceSettingMixin,
+from app.view.task_interface.components.Option_Widget_Mixin.ResourceSettingWidget import (
+    ResourceSettingWidget,
+)
+from app.view.task_interface.components.Option_Widget_Mixin.ControllerSettingMixin import (
+    ControllerSettingWidget,
 )
 from ....core.core import ServiceCoordinator
 
 
-class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
+class OptionWidget(QWidget):
     current_config: Dict[str, Any]
     parent_layout: QVBoxLayout
 
@@ -38,13 +41,74 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 先调用QWidget的初始化
         self.service_coordinator = service_coordinator
         QWidget.__init__(self, parent)
-        # 调用ResourceSettingMixin的初始化
-        ResourceSettingMixin.__init__(self)
-        # 调用PostActionSettingMixin的初始化
-        PostActionSettingMixin.__init__(self)
-
-        # 初始化UI组件
+        
+        # 初始化UI组件（需要先创建布局）
         self._init_ui()
+        
+        # 初始化三个设置组件
+        self.controller_setting_widget = ControllerSettingWidget(
+            service_coordinator, self.option_page_layout
+        )
+        self.resource_setting_widget = ResourceSettingWidget(
+            service_coordinator, self.option_page_layout
+        )
+        self.post_action_setting_widget = PostActionSettingWidget(
+            service_coordinator, self.option_page_layout
+        )
+        
+        # 设置三个子组件的 current_config 和 tr 方法
+        self.current_config = self.controller_setting_widget.current_config
+        self.resource_setting_widget.current_config = self.current_config
+        self.post_action_setting_widget.current_config = self.current_config
+        
+        # 设置翻译方法
+        self.controller_setting_widget.tr = self.tr
+        self.resource_setting_widget.tr = self.tr
+        self.post_action_setting_widget.tr = self.tr
+        
+        # 设置 _clear_options 和 _toggle_description 方法
+        self.controller_setting_widget._clear_options = self._clear_options
+        self.controller_setting_widget._toggle_description = self._toggle_description
+        self.resource_setting_widget._clear_options = self._clear_options
+        self.resource_setting_widget._toggle_description = self._toggle_description
+        self.post_action_setting_widget._clear_options = self._clear_options
+        self.post_action_setting_widget._toggle_description = self._toggle_description
+        
+        # 共享控制器相关属性（ResourceSettingWidget 需要）
+        setattr(self.resource_setting_widget, 'controller_type_mapping', self.controller_setting_widget.controller_type_mapping)
+        setattr(self.resource_setting_widget, 'current_controller_label', self.controller_setting_widget.current_controller_label)
+        
+        # 设置控制器类型变化时的回调，用于更新资源下拉框
+        def on_controller_type_changed(label):
+            """当控制器类型变化时，更新资源下拉框"""
+            logger.debug(f"[回调] 控制器类型变化为 {label}，开始更新资源下拉框")
+            # 更新资源组件的控制器标签
+            self.resource_setting_widget.current_controller_label = label
+            logger.debug(f"[回调] 已更新 resource_setting_widget.current_controller_label = {label}")
+            # 更新资源组件的控制器映射（以防有变化）
+            self.resource_setting_widget.controller_type_mapping = self.controller_setting_widget.controller_type_mapping
+            logger.debug(f"[回调] 已更新 controller_type_mapping，包含 {len(self.resource_setting_widget.controller_type_mapping)} 个控制器")
+            # 重新构建资源映射表（确保使用最新的控制器信息）
+            self.resource_setting_widget._rebuild_resource_mapping()
+            logger.debug(f"[回调] 已重新构建资源映射表，包含 {len(self.resource_setting_widget.resource_mapping)} 个控制器映射")
+            # 检查资源映射表中是否有当前控制器的资源
+            if label in self.resource_setting_widget.resource_mapping:
+                resource_count = len(self.resource_setting_widget.resource_mapping[label])
+                logger.debug(f"[回调] 控制器 {label} 有 {resource_count} 个资源")
+            else:
+                logger.warning(f"[回调] 控制器 {label} 不在资源映射表中！可用的控制器: {list(self.resource_setting_widget.resource_mapping.keys())}")
+            # 刷新资源下拉框（如果资源下拉框已创建）
+            if "resource_combo" in self.resource_setting_widget.resource_setting_widgets:
+                if hasattr(self.resource_setting_widget, '_fill_resource_option'):
+                    logger.debug(f"[回调] 调用 _fill_resource_option() 填充资源下拉框")
+                    self.resource_setting_widget._fill_resource_option()
+                else:
+                    logger.warning(f"[回调] resource_setting_widget 没有 _fill_resource_option 方法")
+            else:
+                logger.debug(f"[回调] 资源下拉框尚未创建，跳过更新")
+        
+        # 将回调设置到控制器组件
+        setattr(self.controller_setting_widget, '_on_controller_changed_callback', on_controller_type_changed)
         self._toggle_description(visible=False, animate=False)
         self.speedrun_widget.config_changed.connect(self._on_speedrun_changed)
 
@@ -457,11 +521,13 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
     def _clear_options(self):
         """清空选项区域"""
-        # 清空两个固定UI的字典（资源设置和完成后操作）
-        if hasattr(self, 'resource_setting_widgets'):
-            self.resource_setting_widgets.clear()
-        if hasattr(self, 'post_action_widgets'):
-            self.post_action_widgets.clear()
+        # 清空三个设置组件的字典
+        if hasattr(self, 'controller_setting_widget'):
+            self.controller_setting_widget.resource_setting_widgets.clear()
+        if hasattr(self, 'resource_setting_widget'):
+            self.resource_setting_widget.resource_setting_widgets.clear()
+        if hasattr(self, 'post_action_setting_widget'):
+            self.post_action_setting_widget.post_action_widgets.clear()
         
         # 使用新框架清空选项
         self.option_form_widget._clear_options()
@@ -616,17 +682,26 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             # 记录日志
             logger.info(f"选项加载完成，共 {len(self.current_config)} 个选项")
 
-            # 判断是否为资源类型的配置
+            # 判断任务类型
             form_type = form_structure.get("type")
             is_resource = form_type == "resource"
+            is_controller = form_type == "controller"
             is_post_action = form_type == "post_action"
 
             if is_resource:
-                # 前置配置 - 使用动画过渡
+                # 资源任务 - 只显示资源下拉框
                 self._option_animator.play(
                     lambda: self._apply_resource_settings_with_animation()
                 )
                 # 资源类型没有公告，隐藏公告区域
+                self.set_description("", has_options=True)
+
+            elif is_controller:
+                # 控制器任务 - 显示控制器设置
+                self._option_animator.play(
+                    lambda: self._apply_controller_settings_with_animation()
+                )
+                # 控制器类型没有公告，隐藏公告区域
                 self.set_description("", has_options=True)
 
             elif is_post_action:
@@ -653,7 +728,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         is_special_task = getattr(task, "is_special", False) if task else False
         
         speedrun_visible = not (
-            form_structure and form_structure.get("type") in ["resource", "post_action"]
+            form_structure and form_structure.get("type") in ["resource", "controller", "post_action"]
         ) and not is_special_task
 
         if not speedrun_visible:
@@ -689,15 +764,64 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             self.segmented_switcher.setCurrentItem("speedrun")
 
     def _apply_resource_settings_with_animation(self):
-        """在动画回调中应用资源设置"""
+        """在动画回调中应用资源设置（只显示资源下拉框）"""
         self._clear_options()
-        self.create_resource_settings()
+        # 资源任务只显示资源下拉框，不显示控制器设置
+        # 但资源下拉框需要控制器信息，所以先初始化控制器数据
+        self.controller_setting_widget._rebuild_interface_data()
+        
+        # 同步控制器相关属性到资源组件
+        self.resource_setting_widget.controller_type_mapping = self.controller_setting_widget.controller_type_mapping
+        
+        # 从Controller任务的配置中获取当前控制器类型（资源任务应该使用Controller任务的配置）
+        from app.common.constants import _CONTROLLER_
+        controller_task = self.service_coordinator.task_service.get_task(_CONTROLLER_)
+        controller_name = ""
+        if controller_task and isinstance(controller_task.task_option, dict):
+            controller_name = controller_task.task_option.get("controller_type", "")
+            logger.debug(f"[_apply_resource_settings] 从Controller任务获取控制器类型: {controller_name}")
+        
+        # 如果Controller任务中没有配置，尝试从当前配置中获取（作为fallback）
+        if not controller_name:
+            controller_name = self.current_config.get("controller_type", "")
+            logger.debug(f"[_apply_resource_settings] 从当前配置获取控制器类型: {controller_name}")
+        
+        if controller_name:
+            # 查找对应的控制器标签
+            for label, ctrl_info in self.controller_setting_widget.controller_type_mapping.items():
+                if ctrl_info["name"] == controller_name:
+                    self.resource_setting_widget.current_controller_label = label
+                    logger.debug(f"[_apply_resource_settings] 设置资源组件控制器标签为: {label} (name: {controller_name})")
+                    break
+            else:
+                # 如果找不到，使用第一个控制器
+                if self.controller_setting_widget.controller_type_mapping:
+                    first_label = list(self.controller_setting_widget.controller_type_mapping.keys())[0]
+                    self.resource_setting_widget.current_controller_label = first_label
+                    logger.debug(f"[_apply_resource_settings] 未找到匹配的控制器，使用第一个: {first_label}")
+        else:
+            # 如果没有配置，使用第一个控制器
+            if self.controller_setting_widget.controller_type_mapping:
+                first_label = list(self.controller_setting_widget.controller_type_mapping.keys())[0]
+                self.resource_setting_widget.current_controller_label = first_label
+                logger.debug(f"[_apply_resource_settings] 没有控制器配置，使用第一个: {first_label}")
+        
+        # 创建资源下拉框
+        self.resource_setting_widget.create_settings()
         logger.info("资源设置表单已创建")
+    
+    def _apply_controller_settings_with_animation(self):
+        """在动画回调中应用控制器设置"""
+        self._clear_options()
+        # 控制器任务只显示控制器设置，不显示资源下拉框
+        self.controller_setting_widget.create_settings()
+        
+        logger.info("控制器设置表单已创建")
 
     def _apply_post_action_settings_with_animation(self):
         """在动画回调中应用完成后操作设置"""
         self._clear_options()
-        self.create_post_action_setting()
+        self.post_action_setting_widget.create_settings()
         logger.info("完成后操作设置表单已创建")
 
     def _set_layout_visibility(self, layout, visible):

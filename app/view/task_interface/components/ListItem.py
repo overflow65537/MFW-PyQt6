@@ -28,7 +28,7 @@ from qfluentwidgets import (
     MessageBox,
 )
 from app.core.Item import TaskItem, ConfigItem
-from app.common.constants import PRE_CONFIGURATION, POST_ACTION
+from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.core.core import ServiceCoordinator
 
 
@@ -392,8 +392,10 @@ class TaskListItem(BaseListItem):
         from app.utils.logger import logger
 
         # 修改为
-        if self.task.item_id == PRE_CONFIGURATION:
-            return self.tr("Pre-Configuration")
+        if self.task.item_id == _RESOURCE_:
+            return self.tr("Resource")
+        elif self.task.item_id == _CONTROLLER_:
+            return self.tr("Controller")
         elif self.task.item_id == POST_ACTION:
             return self.tr("Post-Action")
         elif self.interface:

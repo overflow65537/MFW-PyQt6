@@ -2,7 +2,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List
 from PySide6.QtCore import QObject, Signal
-from app.common.constants import PRE_CONFIGURATION, POST_ACTION
+from app.common.constants import  POST_ACTION, _CONTROLLER_, _RESOURCE_
 
 
 # ==================== 信号总线 ====================
@@ -56,7 +56,7 @@ class TaskItem:
 
     def is_base_task(self) -> bool:
         """判断是否为基础任务（资源或完成后操作）"""
-        return self.item_id in (PRE_CONFIGURATION, POST_ACTION)
+        return self.item_id in ( _CONTROLLER_, _RESOURCE_, POST_ACTION)
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""

@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 
 from app.utils.logger import logger
-from app.common.constants import PRE_CONFIGURATION, POST_ACTION
+from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.core.Item import ConfigItem, TaskItem, CoreSignalBus
 
 
@@ -237,10 +237,18 @@ class ConfigService:
             default_tasks = [
                 TaskItem(
                     name="Pre-Configuration",
-                    item_id=PRE_CONFIGURATION,
+                    item_id=_CONTROLLER_,
                     is_checked=True,
                     task_option={
                         "controller_type": init_controller,
+                    },
+                    is_special=False,  # 基础任务，不是特殊任务
+                ),
+                TaskItem(
+                    name="Resource",
+                    item_id=_RESOURCE_,
+                    is_checked=True,
+                    task_option={
                         "resource": init_resource,
                     },
                     is_special=False,  # 基础任务，不是特殊任务
@@ -314,7 +322,6 @@ class ConfigService:
                 return list(bundle.keys())
         return []
 
-
     def get_current_bundle(self) -> dict:
         """获取当前bundle"""
         # 使用当前配置中保存的 bundle 名称，在主配置中查找 bundle 详情
@@ -376,7 +383,9 @@ class ConfigService:
             logger.debug(f"清除超时重启状态: entry={entry}")
         result = self.save_main_config()
         if result:
-            logger.debug(f"配置保存成功，当前状态: {self._main_config.get('_timeout_restart_state', {})}")
+            logger.debug(
+                f"配置保存成功，当前状态: {self._main_config.get('_timeout_restart_state', {})}"
+            )
         else:
             logger.warning("保存主配置失败")
         return result

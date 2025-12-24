@@ -13,7 +13,7 @@ from qfluentwidgets import (
 )
 import jsonc
 from app.core.Item import TaskItem, ConfigItem
-from app.common.constants import PRE_CONFIGURATION, POST_ACTION
+from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.common.config import cfg
 from app.core.core import ServiceCoordinator
 from app.common.signal_bus import signalBus
@@ -215,10 +215,18 @@ class AddConfigDialog(BaseAddDialog):
         default_tasks = [
             TaskItem(
                 name="Pre-Configuration",
-                item_id=PRE_CONFIGURATION,
+                item_id=_CONTROLLER_,
                 is_checked=True,
                 task_option={
                     "controller_type": init_controller,
+                },
+                is_special=False,  # 基础任务，不是特殊任务
+            ),
+            TaskItem(
+                name="Resource",
+                item_id=_RESOURCE_,
+                is_checked=True,
+                task_option={
                     "resource": init_resource,
                 },
                 is_special=False,  # 基础任务，不是特殊任务

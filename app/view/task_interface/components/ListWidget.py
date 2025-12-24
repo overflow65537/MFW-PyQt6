@@ -15,7 +15,7 @@ from app.core.Item import TaskItem, ConfigItem
 from app.view.task_interface.components.ListItem import TaskListItem, ConfigListItem, SpecialTaskListItem
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
-from app.common.constants import PRE_CONFIGURATION
+from app.common.constants import _RESOURCE_, _CONTROLLER_
 
 
 class BaseListWidget(ListWidget):
@@ -156,7 +156,7 @@ class TaskDragListWidget(BaseListWidget):
         service_coordinator.fs_signal_bus.fs_task_removed.connect(self.remove_task)
         self.update_list()
         # 初始化时延迟10ms后选中启动前配置
-        QTimer.singleShot(10, self._select_pre_configuration)
+        QTimer.singleShot(10, self._select_controller)
 
         self._bulk_toggle_queue: list[tuple[TaskListItem, bool]] = []
         self._bulk_toggle_timer = QTimer(self)
@@ -666,14 +666,14 @@ class TaskDragListWidget(BaseListWidget):
         if self._bulk_toggle_queue:
             self._bulk_toggle_timer.start(1)
     
-    def _select_pre_configuration(self) -> None:
+    def _select_controller(self) -> None:
         """选中启动前配置任务"""
         # 检查是否在特殊任务模式下，如果是则不选中
         if self._filter_mode == "special":
             return
         
         # 检查任务是否存在
-        pre_config_task = self.service_coordinator.task.get_task(PRE_CONFIGURATION)
+        pre_config_task = self.service_coordinator.task.get_task(_CONTROLLER_)
         if not pre_config_task:
             return
         
@@ -682,9 +682,9 @@ class TaskDragListWidget(BaseListWidget):
             return
         
         # 尝试选中启动前配置任务
-        self.select_item(PRE_CONFIGURATION)
+        self.select_item(_CONTROLLER_)
         # 触发选项加载
-        self.service_coordinator.select_task(PRE_CONFIGURATION)
+        self.service_coordinator.select_task(_CONTROLLER_)
 
 
 class ConfigListWidget(BaseListWidget):

@@ -154,7 +154,7 @@ class TaskInterface(UI_TaskInterface, QWidget):
         - 运行最后一项任务后重启：先运行列表中最后一项启用的普通任务，再执行超时重启任务流。
 
         “最后一项任务”定义为：
-        - 不属于基础任务（PRE_CONFIGURATION / POST_ACTION）；
+        - 不属于基础任务（_RESOURCE_ / _CONTROLLER_ / POST_ACTION）；
         - 不是特殊任务（task.is_special 为 False）；
         - 勾选状态为 True（task.is_checked 为 True）。
         """
@@ -198,7 +198,7 @@ class TaskInterface(UI_TaskInterface, QWidget):
         """查找当前任务列表中“最后一项启用的普通任务”。
 
         普通任务定义：
-        - 不是基础任务（名称不为 PRE_CONFIGURATION / POST_ACTION）；
+        - 不是基础任务（名称不为 _RESOURCE_ / _CONTROLLER_ / POST_ACTION）；
         - 不是特殊任务（is_special 为 False）；
         - 被勾选（is_checked 为 True）。
         """
@@ -213,12 +213,12 @@ class TaskInterface(UI_TaskInterface, QWidget):
                 # 兼容性兜底：某些版本可能没有 current_tasks 属性
                 tasks = list(task_service.get_tasks())
 
-            from app.core.runner.task_flow import PRE_CONFIGURATION, POST_ACTION
+            from app.core.runner.task_flow import _RESOURCE_, _CONTROLLER_, POST_ACTION
 
             last_task = None
             for task in tasks:
                 # 跳过基础任务
-                if task.name in [PRE_CONFIGURATION, POST_ACTION]:
+                if task.name in [_RESOURCE_, _CONTROLLER_, POST_ACTION]:
                     continue
                 # 跳过未勾选的任务
                 if not getattr(task, "is_checked", False):
