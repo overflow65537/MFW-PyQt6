@@ -17,6 +17,7 @@ class ResourceSettingWidget(QWidget):
     
     # 这些方法由 OptionWidget 动态设置
     _toggle_description: Any = None
+    _set_description: Any = None
     _clear_options: Any = None
     tr: Any = None
 
@@ -142,6 +143,13 @@ class ResourceSettingWidget(QWidget):
                 if description := resource.get("description"):
                     res_combo.installEventFilter(ToolTipFilter(res_combo))
                     res_combo.setToolTip(description)
+                    # 设置资源描述到公告页面
+                    if hasattr(self, "_set_description") and self._set_description:
+                        self._set_description(description, has_options=True)
+                else:
+                    # 如果没有描述，清空公告页面
+                    if hasattr(self, "_set_description") and self._set_description:
+                        self._set_description("", has_options=True)
                 # 保存资源选项到Resource任务
                 self._auto_save_resource_option(new_resource_name)
                 # 资源变化时，通知任务列表更新（仅携带 resource 字段）
@@ -247,9 +255,14 @@ class ResourceSettingWidget(QWidget):
                 # 更新 current_resource，避免下次误判为变化
                 self.current_resource = target_label
                 # 确保 current_config 中的 resource 是最新的（使用 name，不是 label）
+                # 同时获取资源的 description 并设置到公告页面
                 for resource in curren_config:
                     if resource.get("label", resource.get("name", "")) == target_label:
                         self.current_config["resource"] = resource.get("name", "")
+                        # 设置资源描述到公告页面
+                        if hasattr(self, "_set_description") and self._set_description:
+                            description = resource.get("description", "")
+                            self._set_description(description, has_options=True)
                         break
             else:
                 logger.warning(f"未找到资源标签 {target_label} 在下拉框中")
@@ -269,6 +282,11 @@ class ResourceSettingWidget(QWidget):
                     # 更新配置并保存（跳过 _syncing 检查，因为这是控制器类型切换时的自动更新）
                     self.current_config["resource"] = first_resource_name
                     self._auto_save_resource_option(first_resource_name, skip_sync_check=True)
+                    
+                    # 设置资源描述到公告页面
+                    if hasattr(self, "_set_description") and self._set_description:
+                        description = first_resource.get("description", "")
+                        self._set_description(description, has_options=True)
                 else:
                     logger.warning(f"未找到资源标签 {first_resource_label} 在下拉框中")
         

@@ -15,6 +15,7 @@ class PostActionSettingWidget(QWidget):
     
     # 这些方法由 OptionWidget 动态设置
     _toggle_description: Any = None
+    _set_description: Any = None
     _clear_options: Any = None
     tr: Any = None
 

@@ -69,10 +69,13 @@ class OptionWidget(QWidget):
         # 设置 _clear_options 和 _toggle_description 方法
         self.controller_setting_widget._clear_options = self._clear_options
         self.controller_setting_widget._toggle_description = self._toggle_description
+        self.controller_setting_widget._set_description = self.set_description
         self.resource_setting_widget._clear_options = self._clear_options
         self.resource_setting_widget._toggle_description = self._toggle_description
+        self.resource_setting_widget._set_description = self.set_description
         self.post_action_setting_widget._clear_options = self._clear_options
         self.post_action_setting_widget._toggle_description = self._toggle_description
+        self.post_action_setting_widget._set_description = self.set_description
         
         # 共享控制器相关属性（ResourceSettingWidget 需要）
         setattr(self.resource_setting_widget, 'controller_type_mapping', self.controller_setting_widget.controller_type_mapping)
@@ -743,16 +746,14 @@ class OptionWidget(QWidget):
                 self._option_animator.play(
                     lambda: self._apply_resource_settings_with_animation()
                 )
-                # 资源类型没有公告，隐藏公告区域
-                self.set_description("", has_options=True)
+                # 资源类型的描述会在 create_settings 中设置
 
             elif is_controller:
                 # 控制器任务 - 显示控制器设置
                 self._option_animator.play(
                     lambda: self._apply_controller_settings_with_animation()
                 )
-                # 控制器类型没有公告，隐藏公告区域
-                self.set_description("", has_options=True)
+                # 控制器类型的描述会在 create_settings 中设置
 
             elif is_post_action:
                 # 完成后操作 - 使用动画过渡

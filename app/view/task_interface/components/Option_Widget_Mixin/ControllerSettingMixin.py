@@ -32,6 +32,7 @@ class ControllerSettingWidget(QWidget):
     
     # 这些方法由 OptionWidget 动态设置（如果未设置则使用默认实现）
     _toggle_description: Any = None
+    _set_description: Any = None
     tr: Any = None
 
     # 映射表定义
@@ -423,6 +424,11 @@ class ControllerSettingWidget(QWidget):
             ctrl_combo.blockSignals(True)
             ctrl_combo.setCurrentIndex(matched_idx)
             ctrl_combo.blockSignals(False)
+
+            # 设置控制器描述到公告页面
+            if hasattr(self, "_set_description") and self._set_description:
+                description = self.current_controller_info.get("description", "")
+                self._set_description(description, has_options=True)
 
             # 强制调用刷新函数，确保界面更新（即使索引没有变化）
             self._on_controller_type_changed(matched_label)
@@ -1038,6 +1044,11 @@ class ControllerSettingWidget(QWidget):
         ctrl_combox: ComboBox = self.resource_setting_widgets["ctrl_combo"]
         ctrl_combox.installEventFilter(ToolTipFilter(ctrl_combox))
         ctrl_combox.setToolTip(ctrl_info["description"])
+        
+        # 设置控制器描述到公告页面
+        if hasattr(self, "_set_description") and self._set_description:
+            description = ctrl_info.get("description", "")
+            self._set_description(description, has_options=True)
 
         # 刷新资源下拉框（通过回调或直接调用）
         callback = getattr(self, "_on_controller_changed_callback", None)
