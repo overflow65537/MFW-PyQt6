@@ -138,7 +138,18 @@ class TaskService:
     ) -> Dict[str, Any]:
         """
         确保任务包含标准化的 speedrun 配置；可选持久化
+        
+        注意：基础任务（Controller, Resource, Post-Action）不需要 speedrun_config
         """
+        # 基础任务不需要 speedrun_config
+        if task.is_base_task():
+            # 如果基础任务中有 speedrun_config，删除它
+            if isinstance(task.task_option, dict) and "_speedrun_config" in task.task_option:
+                del task.task_option["_speedrun_config"]
+                if persist:
+                    self.update_task(task)
+            return {}
+        
         if not isinstance(task.task_option, dict):
             task.task_option = {}
 
@@ -296,7 +307,16 @@ class TaskService:
                 task_default_option[option] = option_defaults
 
         # 追加速通配置（使用 interface 或默认值）
-        task_default_option["_speedrun_config"] = self.build_speedrun_config(task_name)
+        # 注意：基础任务（Controller, Resource, Post-Action）不需要 speedrun_config
+        from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
+        # 检查是否是基础任务（通过检查 task_name 是否匹配基础任务的名称）
+        # 由于这里处理的是 interface 中的任务定义，需要检查 task_name
+        # 但基础任务的名称可能不同，所以我们需要通过其他方式判断
+        # 实际上，基础任务不会在 interface 的 task 列表中，所以这里不需要特殊处理
+        # 但为了安全，我们检查 task_name 是否可能是基础任务
+        is_base_task_name = task_name in ["Controller", "Resource", "Post-Action", "Pre-Configuration"]
+        if not is_base_task_name:
+            task_default_option["_speedrun_config"] = self.build_speedrun_config(task_name)
 
         return task_default_option
 

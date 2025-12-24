@@ -770,11 +770,32 @@ class ControllerSettingWidget(QWidget):
 
             task = option_service.task_service.get_task(_CONTROLLER_)
             if task:
-                task.task_option = self.current_config
+                # 只保存应该保存到 Controller 任务的字段
+                # Controller 任务应该包含：controller_type, gpu, agent_timeout, custom, 以及控制器特定的配置（如 adb, win32）
+                controller_task_option = {}
+                # 保存基础字段
+                if "controller_type" in self.current_config:
+                    controller_task_option["controller_type"] = self.current_config["controller_type"]
+                if "gpu" in self.current_config:
+                    controller_task_option["gpu"] = self.current_config["gpu"]
+                if "agent_timeout" in self.current_config:
+                    controller_task_option["agent_timeout"] = self.current_config["agent_timeout"]
+                if "custom" in self.current_config:
+                    controller_task_option["custom"] = self.current_config["custom"]
+                # 保存控制器特定的配置（adb, win32）
+                for key in ["adb", "win32"]:
+                    if key in self.current_config:
+                        controller_task_option[key] = self.current_config[key]
+                
+                # 更新任务选项（只更新相关字段，保留其他字段）
+                task.task_option.update(controller_task_option)
+                # 确保不包含 speedrun_config
+                if "_speedrun_config" in task.task_option:
+                    del task.task_option["_speedrun_config"]
                 if not option_service.task_service.update_task(task):
-                    logger.warning("资源设置强制保存失败")
+                    logger.warning("控制器设置强制保存失败")
             else:
-                logger.warning("未找到 Controller 任务，无法保存资源设置")
+                logger.warning("未找到 Controller 任务，无法保存控制器设置")
 
             if not ok:
                 logger.warning("资源设置保存返回 False（已尝试强制保存）")

@@ -409,7 +409,11 @@ class PostActionSettingWidget(QWidget):
 
                 task = option_service.task_service.get_task(POST_ACTION)
                 if task:
+                    # 只保存 post_action 字段，不保存其他字段（如 speedrun_config 等）
                     task.task_option[self._CONFIG_KEY] = payload
+                    # 确保不包含 speedrun_config
+                    if "_speedrun_config" in task.task_option:
+                        del task.task_option["_speedrun_config"]
                     if not option_service.task_service.update_task(task):
                         logger.warning("完成后操作配置兜底保存失败")
                 else:

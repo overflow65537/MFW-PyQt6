@@ -173,7 +173,13 @@ class ResourceSettingWidget(QWidget):
             # 保存到Resource任务
             resource_task = option_service.task_service.get_task(_RESOURCE_)
             if resource_task:
+                # 只保存 resource 字段，不保存其他字段（如 gpu, agent_timeout, custom, speedrun_config 等）
                 resource_task.task_option["resource"] = resource_name
+                # 确保不包含不应该保存到 Resource 任务的字段
+                fields_to_remove = ["gpu", "agent_timeout", "custom", "_speedrun_config", "controller_type", "adb", "win32"]
+                for field in fields_to_remove:
+                    if field in resource_task.task_option:
+                        del resource_task.task_option[field]
                 if not option_service.task_service.update_task(resource_task):
                     logger.warning("资源选项保存失败")
             else:

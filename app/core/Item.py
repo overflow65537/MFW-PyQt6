@@ -82,11 +82,43 @@ class TaskItem:
         is_special = data.get("is_special", False)
         if not item_id:
             item_id = cls.generate_id(is_special)
+        
+        task_option = data.get("task_option", {})
+        
+        # 如果是基础任务，清理不应该存在的字段
+        temp_task = cls(
+            name=data.get("name", ""),
+            item_id=item_id,
+            is_checked=data.get("is_checked", False),
+            task_option=task_option,
+            is_special=is_special,
+        )
+        
+        if temp_task.is_base_task():
+            # 基础任务不应该包含 speedrun_config
+            if isinstance(task_option, dict) and "_speedrun_config" in task_option:
+                task_option = dict(task_option)  # 创建副本避免修改原始数据
+                del task_option["_speedrun_config"]
+            
+            # Resource 任务不应该包含控制器相关字段
+            if item_id == _RESOURCE_:
+                fields_to_remove = ["gpu", "agent_timeout", "custom", "controller_type", "adb", "win32"]
+                if isinstance(task_option, dict):
+                    task_option = dict(task_option)  # 确保是副本
+                    for field in fields_to_remove:
+                        task_option.pop(field, None)
+            
+            # Controller 任务不应该包含 resource 字段
+            if item_id == _CONTROLLER_:
+                if isinstance(task_option, dict):
+                    task_option = dict(task_option)  # 确保是副本
+                    task_option.pop("resource", None)
+        
         return cls(
             name=data.get("name", ""),
             item_id=item_id,
             is_checked=data.get("is_checked", False),
-            task_option=data.get("task_option", {}),
+            task_option=task_option,
             is_special=is_special,
         )
 
