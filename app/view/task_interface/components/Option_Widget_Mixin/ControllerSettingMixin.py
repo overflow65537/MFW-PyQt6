@@ -33,7 +33,7 @@ class ControllerSettingWidget(QWidget):
     # 这些方法由 OptionWidget 动态设置（如果未设置则使用默认实现）
     _toggle_description: Any = None
     _set_description: Any = None
-    tr: Any = None
+    # tr 方法继承自 QWidget，不需要手动设置
 
     # 映射表定义
     WIN32_INPUT_METHOD_ALIAS_VALUES: Dict[str, int] = {

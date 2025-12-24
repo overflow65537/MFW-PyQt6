@@ -17,7 +17,7 @@ class PostActionSettingWidget(QWidget):
     _toggle_description: Any = None
     _set_description: Any = None
     _clear_options: Any = None
-    tr: Any = None
+    # tr 方法继承自 QWidget，不需要手动设置
 
     _CONFIG_KEY = "post_action"
     _ACTION_ORDER: List[str] = [

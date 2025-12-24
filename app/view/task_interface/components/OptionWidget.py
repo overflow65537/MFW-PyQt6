@@ -56,15 +56,13 @@ class OptionWidget(QWidget):
             service_coordinator, self.option_page_layout
         )
         
-        # 设置三个子组件的 current_config 和 tr 方法
+        # 设置三个子组件的 current_config
         self.current_config = self.controller_setting_widget.current_config
         self.resource_setting_widget.current_config = self.current_config
         self.post_action_setting_widget.current_config = self.current_config
         
-        # 设置翻译方法
-        self.controller_setting_widget.tr = self.tr
-        self.resource_setting_widget.tr = self.tr
-        self.post_action_setting_widget.tr = self.tr
+        # 注意：不需要设置 tr 方法，这些组件继承自 QWidget，已经有自己的 tr 方法
+        # 直接赋值会导致使用错误的上下文（OptionWidget 而不是各自的类名）
         
         # 设置 _clear_options 和 _toggle_description 方法
         self.controller_setting_widget._clear_options = self._clear_options
