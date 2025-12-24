@@ -127,6 +127,7 @@ class MainWindow(MSFluentWindow):
         self._bundle_update_in_progress = False  # bundle 更新是否正在进行
 
         cfg.set(cfg.save_screenshot, False)
+        cfg.set(cfg.show_advanced_startup_options, False)
 
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)

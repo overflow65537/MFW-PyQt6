@@ -29,11 +29,10 @@ class ControllerSettingWidget(QWidget):
 
     resource_setting_widgets: Dict[str, Any]
     CHILD = [300, 300]
-    
+
     # 这些方法由 OptionWidget 动态设置（如果未设置则使用默认实现）
     _toggle_description: Any = None
     _set_description: Any = None
-    # tr 方法继承自 QWidget，不需要手动设置
 
     # 映射表定义
     WIN32_INPUT_METHOD_ALIAS_VALUES: Dict[str, int] = {
@@ -775,18 +774,22 @@ class ControllerSettingWidget(QWidget):
                 controller_task_option = {}
                 # 保存基础字段
                 if "controller_type" in self.current_config:
-                    controller_task_option["controller_type"] = self.current_config["controller_type"]
+                    controller_task_option["controller_type"] = self.current_config[
+                        "controller_type"
+                    ]
                 if "gpu" in self.current_config:
                     controller_task_option["gpu"] = self.current_config["gpu"]
                 if "agent_timeout" in self.current_config:
-                    controller_task_option["agent_timeout"] = self.current_config["agent_timeout"]
+                    controller_task_option["agent_timeout"] = self.current_config[
+                        "agent_timeout"
+                    ]
                 if "custom" in self.current_config:
                     controller_task_option["custom"] = self.current_config["custom"]
                 # 保存控制器特定的配置（adb, win32）
                 for key in ["adb", "win32"]:
                     if key in self.current_config:
                         controller_task_option[key] = self.current_config[key]
-                
+
                 # 更新任务选项（只更新相关字段，保留其他字段）
                 task.task_option.update(controller_task_option)
                 # 确保不包含 speedrun_config
@@ -1065,7 +1068,7 @@ class ControllerSettingWidget(QWidget):
         ctrl_combox: ComboBox = self.resource_setting_widgets["ctrl_combo"]
         ctrl_combox.installEventFilter(ToolTipFilter(ctrl_combox))
         ctrl_combox.setToolTip(ctrl_info["description"])
-        
+
         # 设置控制器描述到公告页面
         if hasattr(self, "_set_description") and self._set_description:
             description = ctrl_info.get("description", "")
@@ -1078,6 +1081,7 @@ class ControllerSettingWidget(QWidget):
             is_initializing = self._syncing
             # 如果回调支持 is_initializing 参数，传递它；否则只传递 label
             import inspect
+
             if len(inspect.signature(callback).parameters) > 1:
                 callback(label, is_initializing)
             else:
@@ -1119,18 +1123,24 @@ class ControllerSettingWidget(QWidget):
                 value = str(value)
             current_controller_config[key] = value
         current_controller_config["device_name"] = device_name
-        
+
         # 确保 emulator_path 和 emulator_params 被正确设置
         if "emulator_path" in find_device_info:
-            current_controller_config["emulator_path"] = find_device_info["emulator_path"]
+            current_controller_config["emulator_path"] = find_device_info[
+                "emulator_path"
+            ]
         if "emulator_params" in find_device_info:
-            current_controller_config["emulator_params"] = find_device_info["emulator_params"]
-        
+            current_controller_config["emulator_params"] = find_device_info[
+                "emulator_params"
+            ]
+
         # 打印所有设备配置
         logger.info(f"[设备配置] 设备名称: {device_name}")
         logger.info(f"[设备配置] 控制器类型: {current_controller_type}")
-        logger.info(f"[设备配置] 完整配置: {jsonc.dumps(current_controller_config, indent=2, ensure_ascii=False)}")
-        
+        logger.info(
+            f"[设备配置] 完整配置: {jsonc.dumps(current_controller_config, indent=2, ensure_ascii=False)}"
+        )
+
         # 仅提交当前控制器配置，避免无关字段导致任务列表重载
         self._auto_save_options({current_controller_type: current_controller_config})
         self._fill_children_option(current_controller_name)
@@ -1169,4 +1179,3 @@ class ControllerSettingWidget(QWidget):
         # 清理字典
         self.resource_setting_widgets.clear()
         self.current_controller_type = None
-

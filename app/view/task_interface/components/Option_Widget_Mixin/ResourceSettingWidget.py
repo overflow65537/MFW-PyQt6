@@ -104,6 +104,8 @@ class ResourceSettingWidget(QWidget):
 
         resource_combox = ComboBox()
         self.parent_layout.addWidget(resource_combox)
+        # 存储 label 和 combo，确保可以被正确控制显示/隐藏
+        self.resource_setting_widgets["resource_combo_label"] = resource_label
         self.resource_setting_widgets["resource_combo"] = resource_combox
         resource_combox.currentTextChanged.connect(self._on_resource_combox_changed)
 
