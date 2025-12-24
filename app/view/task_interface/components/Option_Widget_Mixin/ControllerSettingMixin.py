@@ -1119,6 +1119,18 @@ class ControllerSettingWidget(QWidget):
                 value = str(value)
             current_controller_config[key] = value
         current_controller_config["device_name"] = device_name
+        
+        # 确保 emulator_path 和 emulator_params 被正确设置
+        if "emulator_path" in find_device_info:
+            current_controller_config["emulator_path"] = find_device_info["emulator_path"]
+        if "emulator_params" in find_device_info:
+            current_controller_config["emulator_params"] = find_device_info["emulator_params"]
+        
+        # 打印所有设备配置
+        logger.info(f"[设备配置] 设备名称: {device_name}")
+        logger.info(f"[设备配置] 控制器类型: {current_controller_type}")
+        logger.info(f"[设备配置] 完整配置: {jsonc.dumps(current_controller_config, indent=2, ensure_ascii=False)}")
+        
         # 仅提交当前控制器配置，避免无关字段导致任务列表重载
         self._auto_save_options({current_controller_type: current_controller_config})
         self._fill_children_option(current_controller_name)

@@ -30,8 +30,11 @@ class DeviceFinderTask(QRunnable):
                 for device in devices:
                     # 尝试从设备 config 中携带的 ld pid 反查雷电序号
                     ld_pid = (
-                        getattr(device, "config", {}) or {}
-                    ).get("extras", {}).get("ld", {}).get("pid")
+                        (getattr(device, "config", {}) or {})
+                        .get("extras", {})
+                        .get("ld", {})
+                        .get("pid")
+                    )
                     device_index = EmulatorHelper.resolve_emulator_index(
                         device, ld_pid=ld_pid
                     )
@@ -40,6 +43,14 @@ class DeviceFinderTask(QRunnable):
                         if device_index is not None
                         else f"{device.name}({device.address})"
                     )
+                    # 自动生成模拟器运行路径和参数
+                    adb_path_str = str(device.adb_path) if device.adb_path else None
+                    emulator_path, emulator_params = (
+                        EmulatorHelper.generate_emulator_launch_info(
+                            device.name, device_index, adb_path_str
+                        )
+                    )
+
                     device_mapping[display_name] = {
                         "name": device.name,
                         "adb_path": device.adb_path,
@@ -48,6 +59,8 @@ class DeviceFinderTask(QRunnable):
                         "input_methods": device.input_methods,
                         "config": device.config,
                         "device_index": device_index,
+                        "emulator_path": emulator_path,
+                        "emulator_params": emulator_params,
                     }
 
             elif self.controller_type.lower() == "win32":

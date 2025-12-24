@@ -99,7 +99,7 @@ class EmulatorHelper:
             segments = [seg.strip() for seg in stripped.split(",")]
             if len(segments) < 6:
                 continue
-            if segments[5] == pid_cfg_str:
+            if segments[6] == pid_cfg_str:
                 return segments[0]
         return None
 
@@ -261,7 +261,7 @@ class EmulatorHelper:
             return EmulatorHelper.get_index_by_adb_address(adb_path, address, device_name)
 
         # 雷电序号：需要 pid + ldconsole
-        if ("雷电" in normalized_name) or ("ld" in normalized_name) or (
+        elif ("雷电" in normalized_name) or ("ld" in normalized_name) or (
             "ldplayer" in normalized_name
         ):
             if not ld_pid:
@@ -276,3 +276,53 @@ class EmulatorHelper:
 
         return None
 
+    @staticmethod
+    def generate_emulator_launch_info(
+        device_name: Optional[str],
+        device_index: Optional[str],
+        adb_path: Optional[str],
+    ) -> tuple[str, str]:
+        """
+        根据设备名称、序号和adb路径生成模拟器运行路径和参数
+
+        Args:
+            device_name: 设备名称（如 "MuMu模拟器", "雷电模拟器"）
+            device_index: 设备序号
+            adb_path: ADB路径
+
+        Returns:
+            tuple[emulator_path, emulator_params]: 模拟器运行路径和参数
+        """
+        if not device_name or not device_index or not adb_path:
+            return "", ""
+
+        normalized_name = (device_name or "").lower()
+        adb_path_obj = Path(adb_path)
+        emulator_dir = adb_path_obj.parent
+
+        # MuMu 模拟器
+        if "mumu" in normalized_name:
+            # 优先检测 MuMuNxMain.exe
+            mumu_nx_main_path = emulator_dir / "MuMuNxMain.exe"
+            if mumu_nx_main_path.exists():
+                return str(mumu_nx_main_path), f"-v {device_index}"
+
+            # 如果不存在，检测 MuMuPlayer.exe
+            mumu_player_path = emulator_dir / "MuMuPlayer.exe"
+            if mumu_player_path.exists():
+                return str(mumu_player_path), f"-v {device_index}"
+
+            # 都不存在，返回空
+            return "", ""
+
+        # 雷电模拟器
+        elif "ld" in normalized_name:
+            # 检测 LDPlayer.exe
+            ldplayer_path = emulator_dir / "dnplayer.exe"
+            if ldplayer_path.exists():
+                return str(ldplayer_path), f"--index {device_index}"
+
+            # 不存在，返回空
+            return "", ""
+
+        return "", ""
