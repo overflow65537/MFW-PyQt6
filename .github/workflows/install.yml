@@ -203,13 +203,13 @@ jobs:
       - name: Install(macos)
         if: matrix.platform == 'macos'
         run: |
-          sudo python ./build.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          sudo python ./tools/build.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
 
 
       - name: Install(other)
         if: matrix.platform != 'macos'
         run: |
-          python ./build.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
+          python ./tools/build.py ${{ matrix.platform }} ${{ matrix.arch }} ${{ needs.meta.outputs.tag }}
         shell: pwsh  
 
       - name: Upload artifact
