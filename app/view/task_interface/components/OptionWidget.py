@@ -482,18 +482,20 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
                 continue
             if item.widget():
                 widget = item.widget()
-                widget.hide()
-                widget.setParent(None)
-                widget.deleteLater()
+                if widget:
+                    widget.hide()
+                    widget.setParent(None)
+                    widget.deleteLater()
             elif item.layout():
                 layout = item.layout()
                 while layout and layout.count() > 0:
                     child_item = layout.takeAt(0)
                     if child_item and child_item.widget():
                         child_widget = child_item.widget()
-                        child_widget.hide()
-                        child_widget.setParent(None)
-                        child_widget.deleteLater()
+                        if child_widget:
+                            child_widget.hide()
+                            child_widget.setParent(None)
+                            child_widget.deleteLater()
                 if layout:
                     layout.deleteLater()
 
