@@ -263,13 +263,15 @@ class ResourceSettingWidget(QWidget):
         # 根据 current_config 中的 resource 选择对应项
         target = self.current_config.get("resource", "")
         logger.debug(f"[_fill_resource_option] 配置中的目标资源: {target}")
+        logger.debug(f"[_fill_resource_option] 当前控制器的资源列表: {[(r.get('name', ''), r.get('label', r.get('name', ''))) for r in curren_config]}")
         target_label = None
         for resource in curren_config:
             name = resource.get("name", "")
             label = resource.get("label", name)
-            if target and target in (name, label):
+            # 使用精确匹配，而不是 in 操作符，避免部分匹配问题
+            if target and (target == name or target == label):
                 target_label = label
-                logger.debug(f"[_fill_resource_option] 找到匹配的资源: {target_label} (name: {name})")
+                logger.debug(f"[_fill_resource_option] 找到匹配的资源: {target_label} (name: {name}, target: {target})")
                 break
         
         if target_label:

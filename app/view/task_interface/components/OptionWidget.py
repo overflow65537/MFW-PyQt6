@@ -876,7 +876,24 @@ class OptionWidget(QWidget):
                 self.resource_setting_widget.current_controller_label = first_label
                 logger.debug(f"[_apply_resource_settings] 没有控制器配置，使用第一个: {first_label}")
         
-        # 创建资源下拉框
+        # 从Resource任务的配置中获取当前资源值，并设置到current_config中
+        # 注意：必须在 create_settings 之前设置，因为 create_settings 会调用 _fill_resource_option
+        from app.common.constants import _RESOURCE_
+        resource_task = self.service_coordinator.task_service.get_task(_RESOURCE_)
+        if resource_task and isinstance(resource_task.task_option, dict):
+            resource_name = resource_task.task_option.get("resource", "")
+            if resource_name:
+                # 确保 current_config 中有 resource 字段
+                self.current_config["resource"] = resource_name
+                # 同时更新 resource_setting_widget 的 current_config（它们共享同一个字典）
+                self.resource_setting_widget.current_config["resource"] = resource_name
+                logger.debug(f"[_apply_resource_settings] 从Resource任务获取资源: {resource_name}，已设置到 current_config")
+            else:
+                logger.debug(f"[_apply_resource_settings] Resource任务中没有资源配置")
+        else:
+            logger.debug(f"[_apply_resource_settings] 未找到Resource任务或task_option不是字典")
+        
+        # 创建资源下拉框（此时 current_config 中已经有 resource 值了）
         self.resource_setting_widget.create_settings()
         logger.info("资源设置表单已创建")
     

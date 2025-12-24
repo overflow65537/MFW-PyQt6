@@ -154,12 +154,13 @@ class TaskDragListWidget(BaseListWidget):
         )
         service_coordinator.fs_signal_bus.fs_task_modified.connect(self.modify_task)
         service_coordinator.fs_signal_bus.fs_task_removed.connect(self.remove_task)
-        self.update_list()
-
+        
         self._bulk_toggle_queue: list[tuple[TaskListItem, bool]] = []
         self._bulk_toggle_timer = QTimer(self)
         self._bulk_toggle_timer.setSingleShot(True)
         self._bulk_toggle_timer.timeout.connect(self._process_bulk_toggle_step)
+        
+        self.update_list()
 
     def _on_item_selected_to_service(self, item_id: str):
         self.service_coordinator.select_task(item_id)
@@ -174,7 +175,12 @@ class TaskDragListWidget(BaseListWidget):
                 return False
         
         # 根据资源过滤任务
-        if not self._should_show_by_resource(task):
+        should_show = self._should_show_by_resource(task)
+        
+        # 更新任务的 is_hidden 状态（仅标记，不改变选中状态）
+        task.is_hidden = not should_show
+        
+        if not should_show:
             return False
         
         return True
@@ -412,7 +418,10 @@ class TaskDragListWidget(BaseListWidget):
             existing_widget.task = task
             existing_widget.update_interface(interface)
             existing_widget.name_label.setText(existing_widget._get_display_name())
+            # 更新复选框状态，反映任务的选中状态（可能因隐藏而改变）
+            existing_widget.checkbox.blockSignals(True)
             existing_widget.checkbox.setChecked(task.is_checked)
+            existing_widget.checkbox.blockSignals(False)
             return
 
         if self._loading_tasks:

@@ -303,6 +303,9 @@ class TaskFlowRunner(QObject):
                 if not task:
                     logger.error(f"任务 ID '{task_id}' 不存在")
                     return
+                if task.is_hidden:
+                    logger.warning(f"任务 '{task.name}' 被隐藏，跳过执行")
+                    return
                 if not task.is_checked:
                     logger.warning(f"任务 '{task.name}' 未被选中，跳过执行")
                     return
@@ -320,6 +323,11 @@ class TaskFlowRunner(QObject):
                         continue
 
                     elif task.is_special:
+                        continue
+
+                    # 跳过被隐藏的任务
+                    if task.is_hidden:
+                        logger.info(f"任务 '{task.name}' 被隐藏，跳过执行")
                         continue
 
                     # 根据资源过滤任务：跳过隐藏的任务
@@ -521,6 +529,9 @@ class TaskFlowRunner(QObject):
         task = self.task_service.get_task(task_id)
         if not task:
             logger.error(f"任务 ID '{task_id}' 不存在")
+            return
+        elif task.is_hidden:
+            logger.warning(f"任务 '{task.name}' 被隐藏，跳过执行")
             return
         elif not task.is_checked:
             logger.warning(f"任务 '{task.name}' 未被选中，跳过执行")

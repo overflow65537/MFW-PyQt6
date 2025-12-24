@@ -53,6 +53,7 @@ class TaskItem:
     is_checked: bool
     task_option: Dict[str, Any]
     is_special: bool = False  # 标记是否为特殊任务
+    is_hidden: bool = False  # 标记任务是否被隐藏（不保存到配置，仅运行时使用）
 
     def is_base_task(self) -> bool:
         """判断是否为基础任务（资源或完成后操作）"""
