@@ -187,14 +187,10 @@ class TaskFlowRunner(QObject):
         current_config = self.config_service.get_config(
             self.config_service.current_config_id
         )
-        config_label = ""
         if not current_config:
-            config_label = self.tr("Unknown Config")
             # 保持 bundle_path 的安全默认值
             self.bundle_path = "./"
         else:
-            config_label = current_config.name
-            # 使用 ConfigService 统一获取 bundle 路径
             self.bundle_path = self.config_service.get_bundle_path_for_config(
                 current_config
             )

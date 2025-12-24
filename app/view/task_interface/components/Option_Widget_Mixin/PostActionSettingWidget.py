@@ -1,20 +1,22 @@
 from typing import Any, Dict, List, Tuple
 
-from PySide6.QtWidgets import QVBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout
 from qfluentwidgets import BodyLabel, CheckBox, ComboBox, LineEdit
 
 from app.core.core import ServiceCoordinator
 from app.utils.logger import logger
 from app.widget.PathLineEdit import PathLineEdit
-from app.view.task_interface.components.Option_Widget_Mixin.BaseSettingWidget import (
-    BaseSettingWidget,
-)
 
 
-class PostActionSettingWidget(BaseSettingWidget):
+class PostActionSettingWidget(QWidget):
     """
     完成后操作设置组件，提供固定 UI 与互斥逻辑。
     """
+    
+    # 这些方法由 OptionWidget 动态设置
+    _toggle_description: Any = None
+    _clear_options: Any = None
+    tr: Any = None
 
     _CONFIG_KEY = "post_action"
     _ACTION_ORDER: List[str] = [
@@ -46,7 +48,11 @@ class PostActionSettingWidget(BaseSettingWidget):
         parent_layout: QVBoxLayout,
         parent=None,
     ):
-        super().__init__(service_coordinator, parent_layout, parent)
+        super().__init__(parent)
+        self.service_coordinator = service_coordinator
+        self.parent_layout = parent_layout
+        self.current_config: Dict[str, Any] = {}
+        self._syncing = False
         self.post_action_widgets: Dict[str, Any] = {}
         self._post_action_state: Dict[str, Any] = {}
 

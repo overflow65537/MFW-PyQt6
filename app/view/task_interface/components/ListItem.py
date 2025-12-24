@@ -742,10 +742,9 @@ class TaskListItem(BaseListItem):
             run_action.setEnabled(False)
         menu.addAction(run_action)
 
-        # 插入任务选项（post action 不显示）
-        from app.common.constants import POST_ACTION
+        # 插入任务选项（post action 和 controller 不显示）
 
-        if self.task.item_id != POST_ACTION:
+        if self.task.item_id not in [POST_ACTION, _CONTROLLER_]:
             insert_action = Action(FIF.ADD, self.tr("Insert task"))
             insert_action.triggered.connect(self._insert_task)
             menu.addAction(insert_action)

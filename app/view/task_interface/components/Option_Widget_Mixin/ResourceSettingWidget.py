@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from PySide6.QtWidgets import QVBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout
 from qfluentwidgets import (
     BodyLabel,
     ComboBox,
@@ -8,15 +8,17 @@ from qfluentwidgets import (
 
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
-from app.view.task_interface.components.Option_Widget_Mixin.BaseSettingWidget import (
-    BaseSettingWidget,
-)
 
 
-class ResourceSettingWidget(BaseSettingWidget):
+class ResourceSettingWidget(QWidget):
     """
     资源设置组件 - 仅包含资源下拉框相关逻辑
     """
+    
+    # 这些方法由 OptionWidget 动态设置
+    _toggle_description: Any = None
+    _clear_options: Any = None
+    tr: Any = None
 
     def __init__(
         self,
@@ -24,7 +26,11 @@ class ResourceSettingWidget(BaseSettingWidget):
         parent_layout: QVBoxLayout,
         parent=None,
     ):
-        super().__init__(service_coordinator, parent_layout, parent)
+        super().__init__(parent)
+        self.service_coordinator = service_coordinator
+        self.parent_layout = parent_layout
+        self.current_config: Dict[str, Any] = {}
+        self._syncing = False
         self.resource_setting_widgets: Dict[str, Any] = {}
         self.current_resource: str | None = None
         self.current_controller_label: str | None = None
@@ -148,12 +154,41 @@ class ResourceSettingWidget(BaseSettingWidget):
                 if description := resource.get("description"):
                     res_combo.installEventFilter(ToolTipFilter(res_combo))
                     res_combo.setToolTip(description)
-                # 仅提交 resource 字段，任务列表据此判断是否需要重载
-                if hasattr(self, "_auto_save_options"):
-                    getattr(self, "_auto_save_options")({"resource": new_resource_name})
+                # 保存资源选项到Resource任务
+                self._auto_save_resource_option(new_resource_name)
                 # 资源变化时，通知任务列表更新（仅携带 resource 字段）
                 self._notify_task_list_update()
                 break
+
+    def _auto_save_resource_option(self, resource_name: str, skip_sync_check: bool = False):
+        """自动保存资源选项到Resource任务
+        
+        Args:
+            resource_name: 资源名称
+            skip_sync_check: 是否跳过 _syncing 检查（用于控制器类型切换时的自动保存）
+        """
+        if not skip_sync_check and self._syncing:
+            return
+        try:
+            from app.common.constants import _RESOURCE_
+            option_service = self.service_coordinator.option_service
+            # 更新当前配置
+            self.current_config["resource"] = resource_name
+            # 保存到Resource任务
+            resource_task = option_service.task_service.get_task(_RESOURCE_)
+            if resource_task:
+                resource_task.task_option["resource"] = resource_name
+                if not option_service.task_service.update_task(resource_task):
+                    logger.warning("资源选项保存失败")
+                else:
+                    logger.debug(f"资源选项已保存: {resource_name}")
+            else:
+                logger.warning("未找到 Resource 任务，无法保存资源选项")
+            
+            # 同时通过OptionService保存（用于触发信号）
+            option_service.update_options({"resource": resource_name})
+        except Exception as e:
+            logger.error(f"自动保存资源选项失败: {e}")
 
     def _notify_task_list_update(self):
         """通知任务列表更新（资源变化时调用）"""
@@ -243,11 +278,37 @@ class ResourceSettingWidget(BaseSettingWidget):
                 resource_combo.setCurrentIndex(idx)
                 # 更新 current_resource，避免下次误判为变化
                 self.current_resource = target_label
+                # 确保 current_config 中的 resource 是最新的（使用 name，不是 label）
+                for resource in curren_config:
+                    if resource.get("label", resource.get("name", "")) == target_label:
+                        self.current_config["resource"] = resource.get("name", "")
+                        logger.debug(f"[_fill_resource_option] 更新 current_config['resource'] 为: {self.current_config['resource']}")
+                        break
                 logger.debug(f"[_fill_resource_option] 设置资源下拉框当前项为: {target_label} (索引: {idx})")
             else:
                 logger.warning(f"[_fill_resource_option] 未找到资源标签 {target_label} 在下拉框中")
         else:
-            logger.debug(f"[_fill_resource_option] 配置中没有资源或资源不在当前控制器的资源列表中")
+            # 如果当前保存的资源不在新控制器的资源列表中，自动选择第一个资源并保存
+            if target and curren_config:
+                first_resource = curren_config[0]
+                first_resource_name = first_resource.get("name", "")
+                first_resource_label = first_resource.get("label", first_resource_name)
+                logger.debug(f"[_fill_resource_option] 当前资源 {target} 不在控制器 {current_controller_label} 的资源列表中，自动选择第一个资源: {first_resource_label} (name: {first_resource_name})")
+                
+                # 设置下拉框为第一个资源
+                idx = resource_combo.findText(first_resource_label)
+                if idx >= 0:
+                    resource_combo.setCurrentIndex(idx)
+                    self.current_resource = first_resource_label
+                    
+                    # 更新配置并保存（跳过 _syncing 检查，因为这是控制器类型切换时的自动更新）
+                    self.current_config["resource"] = first_resource_name
+                    self._auto_save_resource_option(first_resource_name, skip_sync_check=True)
+                    logger.debug(f"[_fill_resource_option] 已自动保存资源: {first_resource_name}")
+                else:
+                    logger.warning(f"[_fill_resource_option] 未找到资源标签 {first_resource_label} 在下拉框中")
+            else:
+                logger.debug(f"[_fill_resource_option] 配置中没有资源或资源列表为空")
         
         # 恢复信号
         resource_combo.blockSignals(False)

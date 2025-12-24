@@ -79,9 +79,14 @@ class OptionWidget(QWidget):
         setattr(self.resource_setting_widget, 'current_controller_label', self.controller_setting_widget.current_controller_label)
         
         # 设置控制器类型变化时的回调，用于更新资源下拉框
-        def on_controller_type_changed(label):
-            """当控制器类型变化时，更新资源下拉框"""
-            logger.debug(f"[回调] 控制器类型变化为 {label}，开始更新资源下拉框")
+        def on_controller_type_changed(label, is_initializing=False):
+            """当控制器类型变化时，更新资源下拉框
+            
+            Args:
+                label: 控制器标签
+                is_initializing: 是否在初始化阶段（如果是，不触发任务列表更新）
+            """
+            logger.debug(f"[回调] 控制器类型变化为 {label}，开始更新资源下拉框 (is_initializing={is_initializing})")
             # 更新资源组件的控制器标签
             self.resource_setting_widget.current_controller_label = label
             logger.debug(f"[回调] 已更新 resource_setting_widget.current_controller_label = {label}")
@@ -102,10 +107,75 @@ class OptionWidget(QWidget):
                 if hasattr(self.resource_setting_widget, '_fill_resource_option'):
                     logger.debug(f"[回调] 调用 _fill_resource_option() 填充资源下拉框")
                     self.resource_setting_widget._fill_resource_option()
+                    
+                    # 控制器类型变化后，强制保存一次资源设置（仅在非初始化时）
+                    if not is_initializing:
+                        current_resource = self.resource_setting_widget.current_config.get("resource", "")
+                        if current_resource:
+                            logger.debug(f"[回调] 控制器类型变化后，强制保存资源设置: {current_resource}")
+                            self.resource_setting_widget._auto_save_resource_option(current_resource, skip_sync_check=True)
+                            # 触发任务列表更新（延迟触发，确保资源已保存）
+                            from PySide6.QtCore import QTimer
+                            QTimer.singleShot(50, lambda: self.service_coordinator.signal_bus.option_updated.emit(
+                                {"resource": current_resource}
+                            ))
                 else:
                     logger.warning(f"[回调] resource_setting_widget 没有 _fill_resource_option 方法")
             else:
-                logger.debug(f"[回调] 资源下拉框尚未创建，跳过更新")
+                logger.debug(f"[回调] 资源下拉框尚未创建，直接更新资源配置")
+                # 即使资源下拉框不存在，也需要更新资源任务的配置
+                # 检查当前资源是否在新控制器的资源列表中
+                if label in self.resource_setting_widget.resource_mapping:
+                    current_resources = self.resource_setting_widget.resource_mapping[label]
+                    if current_resources:
+                        # 获取当前保存的资源
+                        from app.common.constants import _RESOURCE_
+                        resource_task = self.service_coordinator.task_service.get_task(_RESOURCE_)
+                        current_resource_name = ""
+                        if resource_task and isinstance(resource_task.task_option, dict):
+                            current_resource_name = resource_task.task_option.get("resource", "")
+                        
+                        # 检查当前资源是否在新控制器的资源列表中
+                        resource_found = False
+                        for resource in current_resources:
+                            resource_name = resource.get("name", "")
+                            resource_label = resource.get("label", resource_name)
+                            if current_resource_name and current_resource_name in (resource_name, resource_label):
+                                resource_found = True
+                                logger.debug(f"[回调] 当前资源 {current_resource_name} 在新控制器 {label} 的资源列表中，保持不变")
+                                break
+                        
+                        # 如果当前资源不在新控制器的资源列表中，自动选择第一个资源并保存（仅在非初始化时）
+                        if not resource_found and current_resource_name and not is_initializing:
+                            first_resource = current_resources[0]
+                            first_resource_name = first_resource.get("name", "")
+                            first_resource_label = first_resource.get("label", first_resource_name)
+                            logger.debug(f"[回调] 当前资源 {current_resource_name} 不在控制器 {label} 的资源列表中，自动选择第一个资源: {first_resource_label} (name: {first_resource_name})")
+                            
+                            # 更新配置并保存
+                            if resource_task:
+                                resource_task.task_option["resource"] = first_resource_name
+                                self.service_coordinator.task_service.update_task(resource_task)
+                                logger.debug(f"[回调] 已自动保存资源: {first_resource_name}")
+                                
+                                # 触发任务列表更新（延迟触发，确保资源任务已保存）
+                                from PySide6.QtCore import QTimer
+                                QTimer.singleShot(50, lambda: self.service_coordinator.signal_bus.option_updated.emit(
+                                    {"resource": first_resource_name}
+                                ))
+                            else:
+                                logger.warning(f"[回调] 未找到 Resource 任务，无法保存资源")
+                        elif not is_initializing:
+                            # 即使资源没有变化，也要触发任务列表更新（确保任务列表根据当前资源正确显示）
+                            if resource_task and isinstance(resource_task.task_option, dict):
+                                final_resource = resource_task.task_option.get("resource", "")
+                                if final_resource:
+                                    logger.debug(f"[回调] 控制器类型变化后，触发任务列表更新以确保正确显示，当前资源: {final_resource}")
+                                    # 使用 QTimer 延迟触发，确保资源任务已保存
+                                    from PySide6.QtCore import QTimer
+                                    QTimer.singleShot(50, lambda: self.service_coordinator.signal_bus.option_updated.emit(
+                                        {"resource": final_resource}
+                                    ))
         
         # 将回调设置到控制器组件
         setattr(self.controller_setting_widget, '_on_controller_changed_callback', on_controller_type_changed)

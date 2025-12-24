@@ -236,7 +236,7 @@ class ConfigService:
         if not config.tasks:
             default_tasks = [
                 TaskItem(
-                    name="Pre-Configuration",
+                    name="Controller",
                     item_id=_CONTROLLER_,
                     is_checked=True,
                     task_option={

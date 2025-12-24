@@ -19,18 +19,20 @@ from app.widget.PathLineEdit import PathLineEdit
 from app.view.task_interface.components.Option_Widget_Mixin.DeviceFinderWidget import (
     DeviceFinderWidget,
 )
-from app.view.task_interface.components.Option_Widget_Mixin.BaseSettingWidget import (
-    BaseSettingWidget,
-)
+from PySide6.QtWidgets import QWidget
 
 
-class ControllerSettingWidget(BaseSettingWidget):
+class ControllerSettingWidget(QWidget):
     """
     控制器设置组件 - 固定UI实现
     """
 
     resource_setting_widgets: Dict[str, Any]
     CHILD = [300, 300]
+    
+    # 这些方法由 OptionWidget 动态设置（如果未设置则使用默认实现）
+    _toggle_description: Any = None
+    tr: Any = None
 
     # 映射表定义
     WIN32_INPUT_METHOD_ALIAS_VALUES: Dict[str, int] = {
@@ -300,7 +302,11 @@ class ControllerSettingWidget(BaseSettingWidget):
         parent=None,
     ):
         """初始化控制器设置组件"""
-        super().__init__(service_coordinator, parent_layout, parent)
+        super().__init__(parent)
+        self.service_coordinator = service_coordinator
+        self.parent_layout = parent_layout
+        self.current_config: Dict[str, Any] = {}
+        self._syncing = False
         self.show_hide_option = bool(cfg.get(cfg.show_advanced_startup_options))
         self.resource_setting_widgets = {}
 
@@ -1036,8 +1042,15 @@ class ControllerSettingWidget(BaseSettingWidget):
         # 刷新资源下拉框（通过回调或直接调用）
         callback = getattr(self, "_on_controller_changed_callback", None)
         if callback:
-            logger.debug(f"[ControllerSettingWidget] 控制器类型变化为 {label}，调用回调更新资源下拉框")
-            callback(label)
+            # 检查是否在初始化阶段（_syncing 为 True 表示正在初始化）
+            is_initializing = self._syncing
+            logger.debug(f"[ControllerSettingWidget] 控制器类型变化为 {label}，调用回调更新资源下拉框 (is_initializing={is_initializing})")
+            # 如果回调支持 is_initializing 参数，传递它；否则只传递 label
+            import inspect
+            if len(inspect.signature(callback).parameters) > 1:
+                callback(label, is_initializing)
+            else:
+                callback(label)
         elif hasattr(self, "_fill_resource_option"):
             logger.debug(f"[ControllerSettingWidget] 控制器类型变化为 {label}，直接调用 _fill_resource_option")
             getattr(self, "_fill_resource_option")()

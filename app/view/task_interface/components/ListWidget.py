@@ -155,8 +155,6 @@ class TaskDragListWidget(BaseListWidget):
         service_coordinator.fs_signal_bus.fs_task_modified.connect(self.modify_task)
         service_coordinator.fs_signal_bus.fs_task_removed.connect(self.remove_task)
         self.update_list()
-        # 初始化时延迟10ms后选中启动前配置
-        QTimer.singleShot(10, self._select_controller)
 
         self._bulk_toggle_queue: list[tuple[TaskListItem, bool]] = []
         self._bulk_toggle_timer = QTimer(self)
@@ -183,24 +181,30 @@ class TaskDragListWidget(BaseListWidget):
     
     def _should_show_by_resource(self, task: TaskItem) -> bool:
         """根据当前选择的资源判断任务是否应该显示"""
-        # 基础任务（资源、完成后操作）始终显示
+        # 基础任务（资源、控制器、完成后操作）始终显示
         if task.is_base_task():
             return True
         
         # 获取当前配置中的资源
         try:
-            # 从 Pre-Configuration 任务中获取资源
-            pre_config_task = self.service_coordinator.task.get_task("Pre-Configuration")
-            if not pre_config_task:
-                return True  # 如果没有 Pre-Configuration 任务，显示所有任务
+            # 从 Resource 任务中获取资源
+            resource_task = self.service_coordinator.task.get_task(_RESOURCE_)
+            if not resource_task:
+                logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 没有 Resource 任务，显示所有任务")
+                return True  # 如果没有 Resource 任务，显示所有任务
             
-            current_resource_name = pre_config_task.task_option.get("resource", "")
+            current_resource_name = ""
+            if isinstance(resource_task.task_option, dict):
+                current_resource_name = resource_task.task_option.get("resource", "")
+            
             if not current_resource_name:
+                logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 没有选择资源，显示所有任务")
                 return True  # 如果没有选择资源，显示所有任务
             
             # 获取 interface 中的任务定义
             interface = getattr(self.service_coordinator.task, "interface", {})
             if not interface:
+                logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 没有 interface，显示所有任务")
                 return True
             
             # 查找任务定义中的 resource 字段
@@ -209,16 +213,21 @@ class TaskDragListWidget(BaseListWidget):
                     task_resources = task_def.get("resource", [])
                     # 如果任务没有 resource 字段，或者 resource 为空列表，表示所有资源都可用
                     if not task_resources:
+                        logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 没有 resource 字段，显示（所有资源可用）")
                         return True
-                    # 如果任务的 resource 列表包含当前资源，则显示
+                    # 如果任务的 resource 列表包含当前资源（使用 name 匹配），则显示
                     if current_resource_name in task_resources:
+                        logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 当前资源 {current_resource_name} 在任务的 resource 列表中，显示")
                         return True
+                    logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 当前资源 {current_resource_name} 不在任务的 resource 列表 {task_resources} 中，隐藏")
                     return False
             
             # 如果找不到任务定义，默认显示
+            logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 找不到任务定义，默认显示")
             return True
-        except Exception:
+        except Exception as e:
             # 发生错误时，默认显示所有任务
+            logger.warning(f"[_should_show_by_resource] 任务 {task.name}: 发生错误，默认显示: {e}")
             return True
 
     def dropEvent(self, event):
@@ -666,25 +675,6 @@ class TaskDragListWidget(BaseListWidget):
         if self._bulk_toggle_queue:
             self._bulk_toggle_timer.start(1)
     
-    def _select_controller(self) -> None:
-        """选中启动前配置任务"""
-        # 检查是否在特殊任务模式下，如果是则不选中
-        if self._filter_mode == "special":
-            return
-        
-        # 检查任务是否存在
-        pre_config_task = self.service_coordinator.task.get_task(_CONTROLLER_)
-        if not pre_config_task:
-            return
-        
-        # 检查任务是否应该显示在当前列表中
-        if not self._should_include(pre_config_task):
-            return
-        
-        # 尝试选中启动前配置任务
-        self.select_item(_CONTROLLER_)
-        # 触发选项加载
-        self.service_coordinator.select_task(_CONTROLLER_)
 
 
 class ConfigListWidget(BaseListWidget):
