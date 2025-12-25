@@ -2851,7 +2851,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <message>
         <location filename="../core/runner/task_flow.py" line="551"/>
         <source> follows speedrun limit, skipping this run: </source>
-        <translation>遵循speedrun限制,跳过本运行</translation>
+        <translation>遵循speedrun限制,跳过本运行: </translation>
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="557"/>
@@ -2861,7 +2861,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <message>
         <location filename="../core/runner/task_flow.py" line="599"/>
         <source>Stopping task...</source>
-        <translation>停止任务中</translation>
+        <translation>停止任务中...</translation>
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="622"/>
@@ -2877,7 +2877,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <message>
         <location filename="../core/runner/task_flow.py" line="679"/>
         <source>Task entry {} timed out after {} seconds.</source>
-        <translation>任务 {} 运行时长超过 {} 秒</translation>
+        <translation>任务 {} 运行时长超过 {} 秒.</translation>
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="695"/>
@@ -2887,12 +2887,12 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <message>
         <location filename="../core/runner/task_flow.py" line="696"/>
         <source>Task entry &apos;{}&apos; timed out after {} seconds.</source>
-        <translation>任务 {} 运行时长超过 {} 秒</translation>
+        <translation>任务 {} 运行时长超过 {} 秒.</translation>
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="710"/>
         <source>Task entry {} timed out after {} restarts, stopping flow.</source>
-        <translation>任务 {} 超时,{}次重启后仍无法运行,终止任务流</translation>
+        <translation>任务 {} 超时,{}次重启后仍无法运行,终止任务流.</translation>
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="717"/>
@@ -2902,22 +2902,22 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <message>
         <location filename="../core/runner/task_flow.py" line="719"/>
         <source>Task entry &apos;{}&apos; timed out after {} restart attempts, flow stopped.</source>
-        <translation>任务 {} 超时,{}次重启后仍无法运行,终止任务流</translation>
+        <translation>任务 {} 超时,{}次重启后仍无法运行,终止任务流.</translation>
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="751"/>
         <source>Auto searching ADB devices...</source>
-        <translation>自动检测ADB设备</translation>
+        <translation>自动检测ADB设备...</translation>
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="769"/>
         <source>ADB path is empty, please configure ADB path in settings</source>
-        <translation>ADB路径为空，请在设置中配置ADB路径。</translation>
+        <translation>ADB路径为空，请在控制器中配置ADB路径</translation>
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="777"/>
         <source>ADB connection address is empty, please configure device connection in settings</source>
-        <translation>ADB 连接地址为空，请在设置中配置设备连接。</translation>
+        <translation>ADB 连接地址为空，请在控制器中配置设备连接</translation>
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="818"/>
@@ -2927,7 +2927,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <message>
         <location filename="../core/runner/task_flow.py" line="827"/>
         <source>waiting for emulator start...</source>
-        <translation>等待模拟器启动中</translation>
+        <translation>等待模拟器启动中...</translation>
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="840"/>
@@ -2937,12 +2937,12 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <message>
         <location filename="../core/runner/task_flow.py" line="863"/>
         <source>Auto searching Win32 windows...</source>
-        <translation>自动搜索Win32窗口</translation>
+        <translation>自动搜索Win32窗口...</translation>
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="882"/>
         <source>Window handle (hwnd) is empty, please configure window connection in settings</source>
-        <translation>窗口句柄 (hwnd) 为空，请在设置中配置窗口连接。</translation>
+        <translation>窗口句柄 (hwnd) 为空，请在控制器中配置窗口连接</translation>
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="901"/>
@@ -2952,7 +2952,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <message>
         <location filename="../core/runner/task_flow.py" line="909"/>
         <source>waiting for program start...</source>
-        <translation>等待程序启动中</translation>
+        <translation>等待程序启动中...</translation>
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="1018"/>
@@ -2972,7 +2972,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <message>
         <location filename="../core/runner/task_flow.py" line="1406"/>
         <source> hours.</source>
-        <translation>小时</translation>
+        <translation> 小时.</translation>
     </message>
 </context>
 <context>
