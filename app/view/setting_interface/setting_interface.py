@@ -922,10 +922,6 @@ class SettingInterface(QWidget):
 
     def _check_and_disable_hotkey_settings(self):
         """检测全局快捷键权限，如果不可用则禁用设置界面。"""
-        # 仅在 macOS/Linux 平台检测权限
-        if sys.platform not in ("darwin", "linux"):
-            return
-        
         try:
             # 创建一个临时的 GlobalHotkeyManager 来检测权限
             import asyncio
@@ -940,13 +936,25 @@ class SettingInterface(QWidget):
                 # 禁用快捷键设置
                 if hasattr(self, "start_shortcut_card"):
                     self.start_shortcut_card.setEnabled(False)
+                    self.start_shortcut_card.lineEdit.setEnabled(False)
+                    # 修改描述文本
+                    if hasattr(self.start_shortcut_card, "contentLabel"):
+                        self.start_shortcut_card.contentLabel.setText(
+                            self.tr("Permission denied, shortcuts disabled")
+                        )
                     self.start_shortcut_card.lineEdit.setPlaceholderText(
-                        self.tr("快捷键功能不可用（权限不足）")
+                        self.tr("Permission denied, shortcuts disabled")
                     )
                 if hasattr(self, "stop_shortcut_card"):
                     self.stop_shortcut_card.setEnabled(False)
+                    self.stop_shortcut_card.lineEdit.setEnabled(False)
+                    # 修改描述文本
+                    if hasattr(self.stop_shortcut_card, "contentLabel"):
+                        self.stop_shortcut_card.contentLabel.setText(
+                            self.tr("Permission denied, shortcuts disabled")
+                        )
                     self.stop_shortcut_card.lineEdit.setPlaceholderText(
-                        self.tr("快捷键功能不可用（权限不足）")
+                        self.tr("Permission denied, shortcuts disabled")
                     )
                 logger.info("快捷键设置界面已禁用（权限不足）")
         except Exception as exc:
