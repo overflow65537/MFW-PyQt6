@@ -68,6 +68,7 @@ from app.view.setting_interface.widget.NoticeType import (
     LarkNoticeType,
     SMTPNoticeType,
     WxPusherNoticeType,
+    NoticeTimingDialog,
 )
 
 _CONTACT_URL_PATTERN = re.compile(r"(?:https?://|www\.)[^\s，,]+")
@@ -221,6 +222,7 @@ class SettingInterface(QWidget):
         self.SMTP_noticeTypeCard.clicked.connect(self._on_smtp_notice_clicked)
         self.WxPusher_noticeTypeCard.clicked.connect(self._on_wxpusher_notice_clicked)
         self.QYWX_noticeTypeCard.clicked.connect(self._on_qywx_notice_clicked)
+        self.notice_timing_card.clicked.connect(self._on_notice_timing_clicked)
 
     def _setup_ui(self):
         """搭建整体结构：标题 + 更新详情 + 滚动区域 + ExpandLayout。"""
@@ -1066,6 +1068,17 @@ class SettingInterface(QWidget):
         self.noticeGroup.addSettingCard(self.SMTP_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.WxPusher_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.QYWX_noticeTypeCard)
+        
+        # 添加通知时机设置按钮
+        self.notice_timing_card = PrimaryPushSettingCard(
+            text=self.tr("Configure"),
+            icon=FIF.SETTING,
+            title=self.tr("Notification Timing"),
+            content=self.tr("Configure when to send notifications"),
+            parent=self.noticeGroup,
+        )
+        self.noticeGroup.addSettingCard(self.notice_timing_card)
+        
         self.add_setting_group(self.noticeGroup)
 
     def initialize_task_settings(self):
@@ -2095,6 +2108,12 @@ class SettingInterface(QWidget):
         dialog = QYWXNoticeType(parent)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._update_notice_card_status("QYWX")
+    
+    def _on_notice_timing_clicked(self):
+        """处理通知时机设置卡片点击事件"""
+        parent = self.window() or self
+        dialog = NoticeTimingDialog(parent)
+        dialog.exec()
 
     def __showRestartTooltip(self):
         """显示重启提示。"""

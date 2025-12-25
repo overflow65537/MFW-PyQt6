@@ -10,6 +10,7 @@ from qfluentwidgets import (
     PasswordLineEdit,
     SwitchButton,
     CheckBox,
+    SubtitleLabel,
 )
 
 from app.utils.logger import logger
@@ -447,3 +448,71 @@ class QYWXNoticeType(BaseNoticeType):
         cfg.set(cfg.Notice_QYWX_key, self.encrypt_key(self.qywx_key_input.text))
         cfg.set(cfg.Notice_QYWX_status, self.qywx_status_switch.isChecked())
 
+
+class NoticeTimingDialog(MessageBoxBase):
+    """通知时机设置对话框，包含6个复选框控制不同通知时机的开启/关闭"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+        # 设置对话框标题
+        self.titleLabel = SubtitleLabel(self.tr("Notification Timing Settings"), self)
+        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addSpacing(10)
+        
+        self.widget.setMinimumWidth(400)
+        self.widget.setMinimumHeight(300)
+        self.add_fields()
+        self.yesButton.clicked.connect(self.on_yes)
+        self.cancelButton.clicked.connect(self.on_cancel)
+        
+    def add_fields(self):
+        """添加6个复选框"""
+        layout = QVBoxLayout()
+        
+        # 创建6个复选框
+        self.flow_started_checkbox = CheckBox(self.tr("Notify when task flow starts"), self)
+        self.connect_success_checkbox = CheckBox(self.tr("Notify when device connects successfully"), self)
+        self.connect_failed_checkbox = CheckBox(self.tr("Notify when device connection fails"), self)
+        self.task_success_checkbox = CheckBox(self.tr("Notify when task completes successfully"), self)
+        self.task_failed_checkbox = CheckBox(self.tr("Notify when task fails"), self)
+        self.post_task_checkbox = CheckBox(self.tr("Notify when task flow completes"), self)
+        
+        # 从配置中读取当前状态
+        self.flow_started_checkbox.setChecked(cfg.get(cfg.when_flow_started))
+        self.connect_success_checkbox.setChecked(cfg.get(cfg.when_connect_success))
+        self.connect_failed_checkbox.setChecked(cfg.get(cfg.when_connect_failed))
+        self.task_success_checkbox.setChecked(cfg.get(cfg.when_task_success))
+        self.task_failed_checkbox.setChecked(cfg.get(cfg.when_task_failed))
+        self.post_task_checkbox.setChecked(cfg.get(cfg.when_post_task))
+        
+        # 添加到布局
+        layout.addWidget(self.flow_started_checkbox)
+        layout.addWidget(self.connect_success_checkbox)
+        layout.addWidget(self.connect_failed_checkbox)
+        layout.addWidget(self.task_success_checkbox)
+        layout.addWidget(self.task_failed_checkbox)
+        layout.addWidget(self.post_task_checkbox)
+        layout.addStretch()
+        
+        self.viewLayout.addLayout(layout)
+        
+    def save_fields(self):
+        """保存复选框状态到配置"""
+        cfg.set(cfg.when_flow_started, self.flow_started_checkbox.isChecked())
+        cfg.set(cfg.when_connect_success, self.connect_success_checkbox.isChecked())
+        cfg.set(cfg.when_connect_failed, self.connect_failed_checkbox.isChecked())
+        cfg.set(cfg.when_task_success, self.task_success_checkbox.isChecked())
+        cfg.set(cfg.when_task_failed, self.task_failed_checkbox.isChecked())
+        cfg.set(cfg.when_post_task, self.post_task_checkbox.isChecked())
+        logger.info("保存通知时机设置")
+        
+    def on_yes(self):
+        """确认按钮点击事件"""
+        self.save_fields()
+        self.accept()
+        
+    def on_cancel(self):
+        """取消按钮点击事件"""
+        logger.info("取消通知时机设置")
+        self.close()

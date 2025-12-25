@@ -223,12 +223,15 @@ class Config(QConfig):
     Notice_QYWX_key = ConfigItem("Notice", "QYWX_key", "")
 
     when_start_up = ConfigItem("Notice", "when_start_up", False)
-    # 仅保留的三个通知时机，默认全部开启
-    when_connect_failed = ConfigItem("Notice", "when_connect_failed", True)
-    when_connect_success = ConfigItem("Notice", "when_connect_success", False)
-    when_post_task = ConfigItem("Notice", "when_post_task", True)
-    when_task_failed = ConfigItem("Notice", "when_task_failed", True)
-    when_task_finished = ConfigItem("Notice", "when_task_finished", False)
+    # 通知时机配置，分别控制不同场景下的通知发送
+    when_flow_started = ConfigItem("Notice", "when_flow_started", False)  # 任务流启动时
+    when_connect_success = ConfigItem("Notice", "when_connect_success", False)  # 连接成功时
+    when_connect_failed = ConfigItem("Notice", "when_connect_failed", True)  # 连接失败时
+    when_task_success = ConfigItem("Notice", "when_task_success", False)  # 任务成功时
+    when_task_failed = ConfigItem("Notice", "when_task_failed", True)  # 任务失败时
+    when_post_task = ConfigItem("Notice", "when_post_task", True)  # 任务流完成时
+    when_task_timeout = ConfigItem("Notice", "when_task_timeout", True)  # 任务超时
+    when_task_finished = ConfigItem("Notice", "when_task_finished", False)  # 保留兼容性
 
     # ===== 主窗口 =====
     micaEnabled = ConfigItem("MainWindow", "MicaEnabled", isWin11(), BoolValidator())

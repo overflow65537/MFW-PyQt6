@@ -91,6 +91,8 @@ class TaskFlowRunner(QObject):
         self._current_running_task_id: str | None = None
         # 标记是否为"手动停止"，用于控制是否发送完成通知
         self._manual_stop = False
+        # 标记是否为"超时停止"，用于避免重复发送通知
+        self._timeout_stop = False
         # 任务运行状态标记：每个任务开始前置为 True，收到 abort 信号时置为 False
         self._current_task_ok: bool = True
 
@@ -157,9 +159,17 @@ class TaskFlowRunner(QObject):
         self._is_running = True
         self.need_stop = False
         self._manual_stop = False
+        self._timeout_stop = False
         self._is_timeout_restart = is_timeout_restart
         # 跟踪任务流是否成功启动并执行了任务
         self._tasks_started = False
+        
+        # 发送任务流启动通知
+        send_notice(
+            NoticeTiming.WHEN_FLOW_STARTED,
+            self.tr("Task Flow Started"),
+            self.tr("Task flow has been started."),
+        )
         # 如果不是超时重启，重置超时状态
         if not is_timeout_restart:
             self._reset_task_timeout_state()
@@ -208,9 +218,21 @@ class TaskFlowRunner(QObject):
             connected = await self.connect_device(controller_cfg.task_option)
             if not connected:
                 logger.error("设备连接失败")
+                # 发送连接失败通知
+                send_notice(
+                    NoticeTiming.WHEN_CONNECT_FAILED,
+                    self.tr("Device Connection Failed"),
+                    self.tr("Failed to connect to the device."),
+                )
                 return
             signalBus.log_output.emit("INFO", self.tr("Device connected successfully"))
             logger.info("设备连接成功")
+            # 发送连接成功通知
+            send_notice(
+                NoticeTiming.WHEN_CONNECT_SUCCESS,
+                self.tr("Device Connected Successfully"),
+                self.tr("Device has been connected successfully."),
+            )
 
             logger.info("开始截图测试...")
             start_time = _time.time()
@@ -310,7 +332,28 @@ class TaskFlowRunner(QObject):
                     logger.warning(f"任务 '{task.name}' 未被选中，跳过执行")
                     return
                 self._tasks_started = True
+                # 每个任务开始前，假定其可以正常完成
+                self._current_task_ok = True
+                # 记录当前正在执行的任务，用于超时处理
+                self._current_running_task_id = task.item_id
                 await self.run_task(task_id, skip_speedrun=True)
+                # 检查任务执行结果并发送通知
+                if not self._current_task_ok:
+                    # 发送任务失败通知
+                    send_notice(
+                        NoticeTiming.WHEN_TASK_FAILED,
+                        self.tr("Task Failed"),
+                        self.tr("Task '{}' was aborted or failed.").format(task.name),
+                    )
+                else:
+                    # 发送任务成功通知
+                    send_notice(
+                        NoticeTiming.WHEN_TASK_SUCCESS,
+                        self.tr("Task Completed"),
+                        self.tr("Task '{}' has been completed successfully.").format(task.name),
+                    )
+                # 清除当前执行任务记录
+                self._current_running_task_id = None
                 return
             else:
                 logger.info("开始执行任务序列...")
@@ -348,6 +391,12 @@ class TaskFlowRunner(QObject):
                         if task_result is False:
                             msg = f"任务执行失败: {task.name}, 返回 False，终止流程"
                             logger.error(msg)
+                            # 发送任务失败通知
+                            send_notice(
+                                NoticeTiming.WHEN_TASK_FAILED,
+                                self.tr("Task Failed"),
+                                self.tr("Task '{}' failed and the flow was terminated.").format(task.name),
+                            )
                             await self.stop_task()
                             break
 
@@ -357,6 +406,19 @@ class TaskFlowRunner(QObject):
                             logger.warning(
                                 f"任务执行被中途中止(abort): {task.name}，切换到下一个任务"
                             )
+                            # 发送任务失败通知
+                            send_notice(
+                                NoticeTiming.WHEN_TASK_FAILED,
+                                self.tr("Task Failed"),
+                                self.tr("Task '{}' was aborted.").format(task.name),
+                            )
+                        else:
+                            # 发送任务成功通知
+                            send_notice(
+                                NoticeTiming.WHEN_TASK_SUCCESS,
+                                self.tr("Task Completed"),
+                                self.tr("Task '{}' has been completed successfully.").format(task.name),
+                            )
 
                         logger.info(f"任务执行完成: {task.name}")
                         # 任务成功后重置重启计数，以便下一个任务重新开始计数
@@ -365,6 +427,12 @@ class TaskFlowRunner(QObject):
 
                     except Exception as exc:
                         logger.error(f"任务执行失败: {task.name}, 错误: {str(exc)}")
+                        # 发送任务失败通知
+                        send_notice(
+                            NoticeTiming.WHEN_TASK_FAILED,
+                            self.tr("Task Failed"),
+                            self.tr("Task '{}' failed with error: {}").format(task.name, str(exc)),
+                        )
                         # 任务失败后也重置重启计数
                         # 注意：状态清除由 UI 层控制，这里只重置内存中的计数
                         self._reset_timeout_attempts_if_needed()
@@ -412,8 +480,9 @@ class TaskFlowRunner(QObject):
             # 断开日志收集信号
             signalBus.log_output.disconnect(collect_log)
 
-            # 发送收集的日志信息（仅在非手动停止时发送）
-            if not self._manual_stop and log_messages:
+            # 发送收集的日志信息（仅在非手动停止且非超时停止时发送）
+            # 超时停止时已经发送了超时通知，避免重复发送任务流完成通知
+            if not self._manual_stop and not self._timeout_stop and log_messages:
                 # 将日志信息格式化为文本
                 log_text_lines = []
                 for level, text in log_messages:
@@ -576,6 +645,12 @@ class TaskFlowRunner(QObject):
             entry, pipeline_override, cfg.get(cfg.save_screenshot)
         ):
             logger.error(f"任务 '{task.name}' 执行失败")
+            # 发送任务失败通知
+            send_notice(
+                NoticeTiming.WHEN_TASK_FAILED,
+                self.tr("Task Failed"),
+                self.tr("Task '{}' execution failed.").format(task.name),
+            )
             self._stop_task_timeout()
             return
         self._stop_task_timeout()
@@ -711,6 +786,8 @@ class TaskFlowRunner(QObject):
         ).format(entry_text, self._timeout_restart_attempts)
         logger.error(stop_message)
         signalBus.log_output.emit("ERROR", stop_message)
+        # 标记为超时停止，避免在 finally 块中重复发送任务流完成通知
+        self._timeout_stop = True
         # 发送超时停止通知
         send_notice(
             NoticeTiming.WHEN_TASK_TIMEOUT,
