@@ -1,7 +1,11 @@
 from pathlib import Path
 from typing import List, Dict, Any
+import time
+import shutil
 
 import jsonc
+
+from PySide6.QtCore import QTimer
 
 from app.core.Item import (
     CoreSignalBus,
@@ -32,6 +36,9 @@ class ServiceCoordinator:
         # 初始化信号总线
         self.signal_bus = CoreSignalBus()
         self.fs_signal_bus = FromeServiceCoordinator()
+        
+        # 存储待显示的错误信息（用于在 UI 初始化完成后显示）
+        self._pending_error_message: tuple[str, str] | None = None
 
         # 根据传入参数或主配置中的 bundle.path 解析 interface 路径
         self._interface_path = self._resolve_interface_path(
@@ -52,10 +59,30 @@ class ServiceCoordinator:
         self.config_repo = JsonConfigRepository(
             main_config_path, configs_dir, interface=self._interface
         )
-        self.config_service = ConfigService(self.config_repo, self.signal_bus)
-        self.task_service = TaskService(
-            self.config_service, self.signal_bus, self._interface
-        )
+        
+        # 尝试初始化 ConfigService 和 TaskService，如果配置加载失败则重置配置
+        try:
+            self.config_service = ConfigService(self.config_repo, self.signal_bus)
+            self.task_service = TaskService(
+                self.config_service, self.signal_bus, self._interface
+            )
+        except (IndexError, ValueError, jsonc.JSONDecodeError, FileNotFoundError, Exception) as e:
+            # 配置加载错误，尝试重置配置
+            logger.error(f"配置加载失败: {e}")
+            if self._handle_config_load_error(main_config_path, configs_dir, e):
+                # 重置成功后重新初始化
+                try:
+                    self.config_service = ConfigService(self.config_repo, self.signal_bus)
+                    self.task_service = TaskService(
+                        self.config_service, self.signal_bus, self._interface
+                    )
+                except Exception as retry_error:
+                    logger.error(f"重置配置后重新初始化失败: {retry_error}")
+                    raise
+            else:
+                # 重置失败，抛出原始错误
+                raise
+        
         self.option_service = OptionService(self.task_service, self.signal_bus)
         self.config_service.register_on_change(self._on_config_changed)
 
@@ -208,6 +235,191 @@ class ServiceCoordinator:
             return None
 
         return candidate
+
+    def _handle_config_load_error(
+        self, main_config_path: Path, configs_dir: Path, error: Exception
+    ) -> bool:
+        """处理配置加载错误：备份损坏的配置文件并用默认配置覆盖
+        
+        Args:
+            main_config_path: 主配置文件路径
+            configs_dir: 配置目录路径
+            error: 发生的错误
+            
+        Returns:
+            bool: 是否成功重置配置
+        """
+        try:
+            logger.warning(f"检测到配置加载错误，开始重置配置: {error}")
+            
+            # 获取当前配置ID和bundle信息（如果存在）
+            current_config_id = None
+            bundle_name = None
+            config_name = "Default Config"
+            
+            # 优先尝试从 config_service 获取当前配置ID（如果已初始化）
+            try:
+                if hasattr(self, 'config_service') and self.config_service:
+                    current_config_id = self.config_service.current_config_id
+            except Exception:
+                pass
+            
+            # 如果无法从 config_service 获取，尝试从主配置文件中读取
+            if not current_config_id:
+                try:
+                    if main_config_path.exists():
+                        with open(main_config_path, "r", encoding="utf-8") as f:
+                            main_config_data = jsonc.load(f)
+                            current_config_id = main_config_data.get("curr_config_id")
+                            
+                            # 尝试获取bundle信息
+                            if not bundle_name:
+                                bundle_dict = main_config_data.get("bundle", {}) or {}
+                                if bundle_dict:
+                                    bundle_name = next(iter(bundle_dict.keys()), None)
+                except Exception:
+                    pass
+            
+            # 尝试从损坏的配置文件中读取名称和bundle（如果可能）
+            if current_config_id:
+                config_file = configs_dir / f"{current_config_id}.json"
+                if config_file.exists():
+                    try:
+                        with open(config_file, "r", encoding="utf-8") as cf:
+                            # 尝试读取，即使可能失败
+                            try:
+                                broken_config_data = jsonc.load(cf)
+                                config_name = broken_config_data.get("name", "Default Config")
+                                if not bundle_name:
+                                    bundle_name = broken_config_data.get("bundle")
+                            except:
+                                # 如果读取失败，使用默认值
+                                pass
+                    except:
+                        pass
+            
+            # 如果没有获取到bundle，使用interface中的默认值
+            if not bundle_name:
+                bundle_name = self._interface.get("name", "Default Bundle")
+            
+            # 备份损坏的配置文件
+            timestamp = int(time.time())
+            backup_success = False
+            broken_config_file = None
+            
+            if current_config_id:
+                config_file = configs_dir / f"{current_config_id}.json"
+                if config_file.exists():
+                    try:
+                        backup_path = config_file.with_suffix(
+                            f".broken.{timestamp}.json"
+                        )
+                        shutil.copy2(config_file, backup_path)
+                        logger.info(f"已备份损坏的子配置文件到: {backup_path}")
+                        broken_config_file = config_file
+                        backup_success = True
+                    except Exception as e:
+                        logger.error(f"备份子配置文件失败: {e}")
+            
+            # 如果找不到损坏的配置文件，无法修复
+            if not broken_config_file or not broken_config_file.exists():
+                logger.error("无法找到损坏的配置文件，无法修复")
+                error_message = f"Config load failed. Unable to locate corrupted config file for recovery. Error details: {str(error)}"
+                self._pending_error_message = ("error", error_message)
+                return False
+            
+            # 确保 current_config_id 不为 None（如果为 None，从文件名中提取）
+            if not current_config_id:
+                # 从 broken_config_file 的文件名中提取 config_id
+                config_id_from_file = broken_config_file.stem
+                if config_id_from_file.startswith("c_"):
+                    current_config_id = config_id_from_file
+                else:
+                    # 如果无法从文件名提取，生成新的 ID
+                    current_config_id = ConfigItem.generate_id()
+                    logger.warning(f"无法获取配置ID，生成新的ID: {current_config_id}")
+            else:
+                # 确保 current_config_id 是字符串类型
+                current_config_id = str(current_config_id)
+            
+            # 确保 bundle_name 不为 None
+            if not bundle_name:
+                bundle_name = self._interface.get("name", "Default Bundle")
+            bundle_name = str(bundle_name)
+            
+            # 创建默认配置项（使用相同的config_id和bundle）
+            init_controller = self._interface.get("controller", [{}])[0].get("name", "")
+            init_resource = self._interface.get("resource", [{}])[0].get("name", "")
+            
+            from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
+            
+            default_tasks = [
+                TaskItem(
+                    name="Controller",
+                    item_id=_CONTROLLER_,
+                    is_checked=True,
+                    task_option={
+                        "controller_type": init_controller,
+                    },
+                    is_special=False,
+                ),
+                TaskItem(
+                    name="Resource",
+                    item_id=_RESOURCE_,
+                    is_checked=True,
+                    task_option={
+                        "resource": init_resource,
+                    },
+                    is_special=False,
+                ),
+                TaskItem(
+                    name="Post-Action",
+                    item_id=POST_ACTION,
+                    is_checked=True,
+                    task_option={},
+                    is_special=False,
+                ),
+            ]
+            
+            default_config_item = ConfigItem(
+                name=config_name,
+                item_id=current_config_id,
+                tasks=default_tasks,
+                know_task=[],
+                bundle=bundle_name,
+            )
+            
+            # 将默认配置写入到损坏的配置文件中（覆盖）
+            try:
+                config_data = default_config_item.to_dict()
+                with open(broken_config_file, "w", encoding="utf-8") as f:
+                    jsonc.dump(config_data, f, indent=4, ensure_ascii=False)
+                logger.info(f"已用默认配置覆盖损坏的配置文件: {broken_config_file}")
+            except Exception as e:
+                logger.error(f"覆盖损坏的配置文件失败: {e}")
+                return False
+            
+            # 重新初始化配置仓库和服务
+            self.config_repo = JsonConfigRepository(
+                main_config_path, configs_dir, interface=self._interface
+            )
+            
+            # 存储错误信息，等待 UI 初始化完成后显示
+            # 使用英文作为基础消息，在 UI 层使用 tr 进行翻译
+            if backup_success:
+                error_message = f"Config load failed, automatically reset to default. Backup of corrupted config file completed. Error details: {str(error)}"
+            else:
+                error_message = f"Config load failed, automatically reset to default. Failed to backup corrupted config file. Error details: {str(error)}"
+            self._pending_error_message = ("error", error_message)
+            logger.info("Stored error message, waiting for UI initialization to complete")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Exception occurred while handling config load error: {e}")
+            error_message = f"Config load failed and error occurred while resetting config: {str(e)}"
+            self._pending_error_message = ("error", error_message)
+            return False
 
     def _cleanup_invalid_bundles(self) -> None:
         """检查 bundle.path 对应的 interface.json 是否存在，不存在则仅删除主配置中的 bundle 索引。
@@ -591,3 +803,15 @@ class ServiceCoordinator:
     @property
     def signals(self) -> CoreSignalBus:
         return self.signal_bus
+    
+    def get_pending_error_message(self) -> tuple[str, str] | None:
+        """获取并清除待显示的错误信息
+        
+        Returns:
+            tuple[str, str] | None: (level, message) 或 None
+        """
+        if self._pending_error_message:
+            msg = self._pending_error_message
+            self._pending_error_message = None
+            return msg
+        return None

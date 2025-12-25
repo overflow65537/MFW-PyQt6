@@ -234,6 +234,14 @@ class MainWindow(MSFluentWindow):
 
         # 连接公共信号
         self.connectSignalToSlot()
+        
+        # 检查是否有待显示的错误信息（配置加载错误等）
+        pending_error = self.service_coordinator.get_pending_error_message()
+        if pending_error:
+            level, message = pending_error
+            # 处理国际化：将英文消息转换为可翻译的格式
+            translated_message = self._translate_config_error(message)
+            signalBus.info_bar_requested.emit(level, translated_message)
         try:
             event_loop = self._loop or asyncio.get_event_loop()
         except RuntimeError:
@@ -590,6 +598,38 @@ class MainWindow(MSFluentWindow):
         """响应设置界面的背景透明度变更。"""
         self._apply_background_opacity(value)
 
+    def _translate_config_error(self, message: str) -> str:
+        """翻译配置错误消息
+        
+        Args:
+            message: 英文错误消息
+            
+        Returns:
+            str: 翻译后的消息
+        """
+        if "Config load failed, automatically reset to default" in message:
+            if "Backup of corrupted config file completed" in message:
+                # 提取错误详情
+                if "Error details:" in message:
+                    error_detail = message.split("Error details:")[-1].strip()
+                    base_msg = self.tr("Config load failed, automatically reset to default. Backup of corrupted config file completed. Error details:")
+                    return f"{base_msg} {error_detail}"
+                return self.tr("Config load failed, automatically reset to default. Backup of corrupted config file completed.")
+            elif "Failed to backup corrupted config file" in message:
+                # 提取错误详情
+                if "Error details:" in message:
+                    error_detail = message.split("Error details:")[-1].strip()
+                    base_msg = self.tr("Config load failed, automatically reset to default. Failed to backup corrupted config file. Error details:")
+                    return f"{base_msg} {error_detail}"
+                return self.tr("Config load failed, automatically reset to default. Failed to backup corrupted config file.")
+        elif "Config load failed and error occurred while resetting config" in message:
+            error_detail = message.split(":")[-1].strip() if ":" in message else ""
+            if error_detail:
+                base_msg = self.tr("Config load failed and error occurred while resetting config:")
+                return f"{base_msg} {error_detail}"
+            return self.tr("Config load failed and error occurred while resetting config.")
+        return message
+    
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
         signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
