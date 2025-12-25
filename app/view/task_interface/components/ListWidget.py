@@ -160,6 +160,12 @@ class TaskDragListWidget(BaseListWidget):
         self._bulk_toggle_timer.setSingleShot(True)
         self._bulk_toggle_timer.timeout.connect(self._process_bulk_toggle_step)
         
+        # 拖拽时自动滚动相关
+        self._drag_scroll_timer = QTimer(self)
+        self._drag_scroll_timer.timeout.connect(self._on_drag_scroll_timer)
+        self._drag_scroll_direction = 0  # -1: 向上, 1: 向下, 0: 不滚动
+        self._is_dragging = False
+        
         self.update_list()
 
     def _on_item_selected_to_service(self, item_id: str):
@@ -236,7 +242,79 @@ class TaskDragListWidget(BaseListWidget):
             logger.warning(f"[_should_show_by_resource] 任务 {task.name}: 发生错误，默认显示: {e}")
             return True
 
+    def dragMoveEvent(self, event):
+        """拖拽移动事件：检测鼠标位置并触发自动滚动，同时允许滚轮滚动"""
+        self._is_dragging = True
+        super().dragMoveEvent(event)
+        
+        # 检测鼠标位置，如果接近列表边缘则自动滚动
+        pos = event.pos()
+        viewport_height = self.viewport().height()
+        scroll_margin = 40  # 距离边缘多少像素时开始自动滚动
+        
+        # 计算滚动方向
+        scroll_direction = 0
+        if pos.y() < scroll_margin:
+            # 接近顶部，向上滚动
+            scroll_direction = -1
+        elif pos.y() > viewport_height - scroll_margin:
+            # 接近底部，向下滚动
+            scroll_direction = 1
+        
+        # 更新滚动方向并启动/停止定时器
+        self._drag_scroll_direction = scroll_direction
+        if scroll_direction != 0:
+            if not self._drag_scroll_timer.isActive():
+                self._drag_scroll_timer.start(16)  # 约60fps
+        else:
+            self._drag_scroll_timer.stop()
+    
+    def _on_drag_scroll_timer(self):
+        """拖拽自动滚动定时器回调"""
+        if self._drag_scroll_direction == 0:
+            self._drag_scroll_timer.stop()
+            return
+        
+        scroll_bar = self.verticalScrollBar()
+        if not scroll_bar:
+            return
+        
+        # 计算滚动步长（根据方向）
+        scroll_step = 8 * self._drag_scroll_direction
+        new_value = scroll_bar.value() - scroll_step
+        
+        # 限制在有效范围内
+        new_value = max(scroll_bar.minimum(), min(scroll_bar.maximum(), new_value))
+        scroll_bar.setValue(new_value)
+    
+    def wheelEvent(self, event):
+        """重写滚轮事件，确保在拖拽期间也能使用滚轮滚动"""
+        # 即使在拖拽期间也允许滚轮滚动
+        delta = event.pixelDelta().y()
+        if delta == 0:
+            delta = event.angleDelta().y()
+        if delta != 0 and self.verticalScrollBar():
+            step = int(delta * self._WHEEL_SCROLL_FACTOR)
+            self.verticalScrollBar().setValue(
+                self.verticalScrollBar().value() - step
+            )
+            event.accept()
+            return
+        super().wheelEvent(event)
+    
+    def dragLeaveEvent(self, event):
+        """拖拽离开事件：停止自动滚动"""
+        self._drag_scroll_timer.stop()
+        self._drag_scroll_direction = 0
+        self._is_dragging = False
+        super().dragLeaveEvent(event)
+    
     def dropEvent(self, event):
+        # 停止自动滚动
+        self._drag_scroll_timer.stop()
+        self._drag_scroll_direction = 0
+        self._is_dragging = False
+        
         # 拖动前收集任务和保护位置
         previous_tasks = self._collect_task_items()
         protected = self._protected_positions(previous_tasks)
