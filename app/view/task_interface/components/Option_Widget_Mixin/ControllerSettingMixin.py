@@ -8,7 +8,7 @@ from qfluentwidgets import (
     LineEdit,
     ToolTipFilter,
 )
-from pathlib import WindowsPath
+from pathlib import Path
 
 import jsonc
 from app.utils.gpu_cache import gpu_cache
@@ -751,6 +751,24 @@ class ControllerSettingWidget(QWidget):
             {current_controller_type: self.current_config[current_controller_type]}
         )
 
+    def _normalize_config_for_json(self, config: Any) -> Any:
+        """递归规范化配置数据，确保所有路径类型都被转换为字符串
+        
+        Args:
+            config: 需要规范化的配置数据
+            
+        Returns:
+            规范化后的配置数据
+        """
+        if isinstance(config, Path):
+            return str(config)
+        elif isinstance(config, dict):
+            return {key: self._normalize_config_for_json(value) for key, value in config.items()}
+        elif isinstance(config, list):
+            return [self._normalize_config_for_json(item) for item in config]
+        else:
+            return config
+
     def _auto_save_options(self, changed_options: dict[str, Any] | None = None):
         """自动保存当前选项
 
@@ -763,6 +781,8 @@ class ControllerSettingWidget(QWidget):
         try:
             option_service = self.service_coordinator.option_service
             options_to_save = changed_options or self.current_config
+            # 规范化配置数据，确保所有路径类型都被转换为字符串
+            options_to_save = self._normalize_config_for_json(options_to_save)
             ok = option_service.update_options(options_to_save)
             # 强制同步到预配置任务，确保落盘
             from app.common.constants import _CONTROLLER_
@@ -788,9 +808,14 @@ class ControllerSettingWidget(QWidget):
                 # 保存控制器特定的配置（adb, win32）
                 for key in ["adb", "win32"]:
                     if key in self.current_config:
-                        controller_task_option[key] = self.current_config[key]
+                        # 规范化配置数据，确保所有路径类型都被转换为字符串
+                        controller_task_option[key] = self._normalize_config_for_json(
+                            self.current_config[key]
+                        )
 
                 # 更新任务选项（只更新相关字段，保留其他字段）
+                # 规范化整个 controller_task_option，确保所有路径类型都被转换为字符串
+                controller_task_option = self._normalize_config_for_json(controller_task_option)
                 task.task_option.update(controller_task_option)
                 # 确保不包含 speedrun_config
                 if "_speedrun_config" in task.task_option:
@@ -1119,20 +1144,24 @@ class ControllerSettingWidget(QWidget):
         if find_device_info is None:
             return
         for key, value in find_device_info.items():
-            if isinstance(value, WindowsPath):
+            # 处理所有路径类型（Path 基类检查会匹配 WindowsPath 和 PosixPath）
+            if isinstance(value, Path):
                 value = str(value)
             current_controller_config[key] = value
         current_controller_config["device_name"] = device_name
 
-        # 确保 emulator_path 和 emulator_params 被正确设置
+        # 确保 emulator_path 和 emulator_params 被正确设置（并转换为字符串）
         if "emulator_path" in find_device_info:
-            current_controller_config["emulator_path"] = find_device_info[
-                "emulator_path"
-            ]
+            emulator_path = find_device_info["emulator_path"]
+            if isinstance(emulator_path, Path):
+                emulator_path = str(emulator_path)
+            current_controller_config["emulator_path"] = emulator_path
         if "emulator_params" in find_device_info:
-            current_controller_config["emulator_params"] = find_device_info[
-                "emulator_params"
-            ]
+            emulator_params = find_device_info["emulator_params"]
+            # emulator_params 通常是字符串，但为了安全也检查一下
+            if isinstance(emulator_params, Path):
+                emulator_params = str(emulator_params)
+            current_controller_config["emulator_params"] = emulator_params
 
         # 打印所有设备配置
         logger.info(f"[设备配置] 设备名称: {device_name}")
