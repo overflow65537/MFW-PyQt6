@@ -824,6 +824,10 @@ class TaskFlowRunner(QObject):
         controller_config = controller_raw[controller_type]
         self.adb_controller_config = controller_config
 
+        # 提前读取并保存原始的 input_methods 和 screencap_methods
+        raw_input_method = int(controller_config.get("input_methods", -1))
+        raw_screen_method = int(controller_config.get("screencap_methods", -1))
+
         logger.info("每次连接前自动搜索 ADB 设备...")
         signalBus.log_output.emit("INFO", self.tr("Auto searching ADB devices..."))
         found_device = await self._auto_find_adb_device(
@@ -834,6 +838,11 @@ class TaskFlowRunner(QObject):
             self._save_device_to_config(controller_raw, controller_type, found_device)
             controller_config = controller_raw[controller_type]
             self.adb_controller_config = controller_config
+            # 恢复原始的 input_methods 和 screencap_methods
+            if raw_input_method != -1:
+                controller_config["input_methods"] = raw_input_method
+            if raw_screen_method != -1:
+                controller_config["screencap_methods"] = raw_screen_method
         else:
             logger.debug("未匹配到与配置一致的 ADB 设备，继续使用当前配置")
 
@@ -856,9 +865,7 @@ class TaskFlowRunner(QObject):
             logger.error("ADB 连接地址为空")
             signalBus.log_output.emit("ERROR", error_msg)
             return False
-        raw_input_method = int(controller_config.get("input_methods", -1))
-
-        raw_screen_method = int(controller_config.get("screencap_methods", -1))
+        # 使用之前保存的原始值（已在重新搜索前读取）
 
         def normalize_input_method(value: int) -> int:
             mask = (1 << 64) - 1
@@ -931,10 +938,10 @@ class TaskFlowRunner(QObject):
         controller_raw.setdefault(controller_type, {})
         controller_config = controller_raw[controller_type]
 
-        hwnd = controller_config.get("hwnd", 0)
-        screencap_method: int = controller_config.get("win32_screencap_methods", 0)
-        mouse_method: int = controller_config.get("mouse_input_methods", 0)
-        keyboard_method: int = controller_config.get("keyboard_input_methods", 0)
+        # 提前读取并保存原始的配置值
+        raw_screencap_method = controller_config.get("win32_screencap_methods")
+        raw_mouse_method = controller_config.get("mouse_input_methods")
+        raw_keyboard_method = controller_config.get("keyboard_input_methods")
 
         logger.info("每次连接前自动搜索 Win32 窗口...")
         signalBus.log_output.emit("INFO", self.tr("Auto searching Win32 windows..."))
@@ -945,13 +952,21 @@ class TaskFlowRunner(QObject):
             logger.info("检测到与配置匹配的 Win32 窗口，更新连接参数")
             self._save_device_to_config(controller_raw, controller_type, found_device)
             controller_config = controller_raw[controller_type]
+            # 恢复原始的配置值
+            if raw_screencap_method is not None:
+                controller_config["win32_screencap_methods"] = raw_screencap_method
+            if raw_mouse_method is not None:
+                controller_config["mouse_input_methods"] = raw_mouse_method
+            if raw_keyboard_method is not None:
+                controller_config["keyboard_input_methods"] = raw_keyboard_method
         else:
             logger.debug("未匹配到与配置一致的 Win32 窗口，继续使用当前配置")
 
         hwnd = int(controller_config.get("hwnd", 0))
-        screencap_method = controller_config.get("win32_screencap_methods", 1)
-        mouse_method = controller_config.get("mouse_input_methods", 1)
-        keyboard_method = controller_config.get("keyboard_input_methods", 1)
+        # 使用之前保存的原始值，如果不存在则使用配置中的值或默认值
+        screencap_method = raw_screencap_method if raw_screencap_method is not None else controller_config.get("win32_screencap_methods", 1)
+        mouse_method = raw_mouse_method if raw_mouse_method is not None else controller_config.get("mouse_input_methods", 1)
+        keyboard_method = raw_keyboard_method if raw_keyboard_method is not None else controller_config.get("keyboard_input_methods", 1)
 
         # 检查 hwnd 是否为空
         if not hwnd:
