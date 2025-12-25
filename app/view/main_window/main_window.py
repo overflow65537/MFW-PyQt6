@@ -688,13 +688,13 @@ class MainWindow(MSFluentWindow):
                 if hasattr(setting_interface, "start_shortcut_card"):
                     setting_interface.start_shortcut_card.setEnabled(False)
                     setting_interface.start_shortcut_card.lineEdit.setPlaceholderText(
-                        self.tr("快捷键功能不可用（权限不足）")
+                        self.tr("hotkey disabled due to permission issue")
                     )
                 # 禁用停止任务快捷键设置
                 if hasattr(setting_interface, "stop_shortcut_card"):
                     setting_interface.stop_shortcut_card.setEnabled(False)
                     setting_interface.stop_shortcut_card.lineEdit.setPlaceholderText(
-                        self.tr("快捷键功能不可用（权限不足）")
+                        self.tr("hotkey disabled due to permission issue")
                     )
                 logger.info("已禁用快捷键设置界面")
         except Exception as exc:
