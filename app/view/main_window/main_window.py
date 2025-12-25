@@ -244,6 +244,9 @@ class MainWindow(MSFluentWindow):
             stop_factory=lambda: self.service_coordinator.stop_task_flow(),
         )
         signalBus.hotkey_shortcuts_changed.connect(self._reload_global_hotkeys)
+        
+        # 检测快捷键权限（macOS/Linux）
+        self._check_hotkey_permission()
         self._reload_global_hotkeys()
         self._bootstrap_auto_update_and_run()
         self._apply_auto_minimize_on_startup()
@@ -620,6 +623,42 @@ class MainWindow(MSFluentWindow):
             logger.info("CLI 指定配置已切换: %s", target)
         else:
             logger.warning("CLI 指定配置不存在，保持原配置: %s", target)
+
+    def _check_hotkey_permission(self):
+        """检测全局快捷键权限，如果不可用则禁用设置。"""
+        if not getattr(self, "_hotkey_manager", None):
+            return
+        
+        # 检测权限
+        has_permission = self._hotkey_manager.check_permission()
+        
+        # 仅在 macOS/Linux 平台且权限不足时禁用设置
+        if sys.platform in ("darwin", "linux") and not has_permission:
+            logger.warning("全局快捷键权限不足，已禁用快捷键设置")
+            
+            # 禁用快捷键设置界面
+            self._disable_hotkey_settings()
+    
+    def _disable_hotkey_settings(self):
+        """禁用快捷键设置界面。"""
+        try:
+            setting_interface = getattr(self, "SettingInterface", None)
+            if setting_interface and hasattr(setting_interface, "start_shortcut_card"):
+                # 禁用开始任务快捷键设置
+                if hasattr(setting_interface, "start_shortcut_card"):
+                    setting_interface.start_shortcut_card.setEnabled(False)
+                    setting_interface.start_shortcut_card.lineEdit.setPlaceholderText(
+                        self.tr("快捷键功能不可用（权限不足）")
+                    )
+                # 禁用停止任务快捷键设置
+                if hasattr(setting_interface, "stop_shortcut_card"):
+                    setting_interface.stop_shortcut_card.setEnabled(False)
+                    setting_interface.stop_shortcut_card.lineEdit.setPlaceholderText(
+                        self.tr("快捷键功能不可用（权限不足）")
+                    )
+                logger.info("已禁用快捷键设置界面")
+        except Exception as exc:
+            logger.warning("禁用快捷键设置界面失败: %s", exc)
 
     def _reload_global_hotkeys(self):
         """配置变更后重新注册全局快捷键。"""

@@ -262,8 +262,8 @@ class Config(QConfig):
     )
     last_window_geometry = ConfigItem("MainWindow", "LastWindowGeometry", "")
 
-    start_task_shortcut = ConfigItem("Shortcuts", "start_task_shortcut", "Ctrl+`")
-    stop_task_shortcut = ConfigItem("Shortcuts", "stop_task_shortcut", "Alt+`")
+    start_task_shortcut = ConfigItem("Shortcuts", "start_task_shortcut", "Ctrl+F1")
+    stop_task_shortcut = ConfigItem("Shortcuts", "stop_task_shortcut", "Alt+F1")
 
     show_advanced_startup_options = ConfigItem(
         "Personalization",

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+import sys
 from typing import Any, Callable, Coroutine, List, Optional
 
 from app.common.config import cfg
@@ -68,6 +69,7 @@ class GlobalHotkeyManager:
         self._keyboard: Any = keyboard
         self._start_factory: Callable[[], Coroutine[Any, Any, Any]] | None = None
         self._stop_factory: Callable[[], Coroutine[Any, Any, Any]] | None = None
+        self._permission_available: bool | None = None  # None 表示未检测，True/False 表示检测结果
 
     def setup(
         self,
@@ -79,6 +81,48 @@ class GlobalHotkeyManager:
         self._stop_factory = stop_factory
         self.reload()
 
+    def check_permission(self) -> bool:
+        """检测 macOS/Linux 平台是否有权限使用全局快捷键。
+        
+        Returns:
+            bool: True 表示有权限或不需要权限（Windows），False 表示无权限
+        """
+        # Windows 平台不需要权限检测
+        if sys.platform == "win32":
+            return True
+        
+        # 如果已经检测过，直接返回结果
+        if self._permission_available is not None:
+            return self._permission_available
+        
+        if not self._keyboard:
+            self._permission_available = False
+            return False
+        
+        # macOS/Linux 平台需要尝试注册一个测试快捷键来检测权限
+        if sys.platform in ("darwin", "linux"):
+            try:
+                # 尝试注册一个测试快捷键
+                test_hotkey = self._keyboard.add_hotkey(
+                    "ctrl+shift+alt+f12",  # 使用一个不太可能被使用的组合键
+                    lambda: None,
+                    suppress=False,
+                )
+                # 如果成功注册，立即移除
+                self._keyboard.remove_hotkey(test_hotkey)
+                self._permission_available = True
+                logger.info("全局快捷键权限检测成功")
+                return True
+            except Exception as exc:
+                # 注册失败通常表示权限不足
+                self._permission_available = False
+                logger.warning("全局快捷键权限检测失败: %s", exc)
+                return False
+        
+        # 其他平台默认返回 True
+        self._permission_available = True
+        return True
+
     def reload(self) -> None:
         """重新注册组合键（例如配置修改后调用）。"""
         if not self._keyboard:
@@ -89,6 +133,11 @@ class GlobalHotkeyManager:
 
         if not self._loop:
             logger.warning("未提供事件循环，全局快捷键无法调度任务。")
+            return
+
+        # 检测权限（仅在 macOS/Linux 平台）
+        if not self.check_permission():
+            logger.warning("全局快捷键权限不足，无法注册快捷键")
             return
 
         self._clear()

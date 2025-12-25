@@ -58,6 +58,7 @@ from app.utils.update import Update
 from app.view.setting_interface.widget.ProxySettingCard import ProxySettingCard
 from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.view.setting_interface.widget.SliderSettingCard import SliderSettingCard
+import sys
 from app.view.setting_interface.widget.LineEditCard import (
     LineEditCard,
     MirrorCdkLineEditCard,
@@ -873,7 +874,7 @@ class SettingInterface(QWidget):
             self.tr("Start task shortcut"),
             holderText=start_value,
             content=self.tr(
-                "Default Ctrl+`, can also trigger when focus is not on the main window"
+                "Default Ctrl+F1, can also trigger when focus is not on the main window"
             ),
             parent=self.hotkeyGroup,
             num_only=False,
@@ -881,7 +882,7 @@ class SettingInterface(QWidget):
         self._decorate_shortcut_card(self.start_shortcut_card, self.tr("Ctrl+"))
         self._set_shortcut_line_text(self.start_shortcut_card, start_value)
         self.start_shortcut_card.lineEdit.setPlaceholderText(
-            self.tr("Format: Modifier+[Key], e.g. Ctrl+`")
+            self.tr("Format: Modifier+[Key], e.g. Ctrl+F1")
         )
         self.start_shortcut_card.lineEdit.editingFinished.connect(
             lambda: self._on_shortcut_card_edited(
@@ -895,14 +896,14 @@ class SettingInterface(QWidget):
             FIF.RIGHT_ARROW,
             self.tr("Stop task shortcut"),
             holderText=stop_value,
-            content=self.tr("Default Alt+`, used to interrupt tasks in advance"),
+            content=self.tr("Default Alt+F1, used to interrupt tasks in advance"),
             parent=self.hotkeyGroup,
             num_only=False,
         )
         self._decorate_shortcut_card(self.stop_shortcut_card, self.tr("Alt+"))
         self._set_shortcut_line_text(self.stop_shortcut_card, stop_value)
         self.stop_shortcut_card.lineEdit.setPlaceholderText(
-            self.tr("Format: Modifier+[Key], e.g. Alt+`")
+            self.tr("Format: Modifier+[Key], e.g. Alt+F1")
         )
         self.stop_shortcut_card.lineEdit.editingFinished.connect(
             lambda: self._on_shortcut_card_edited(
@@ -915,6 +916,41 @@ class SettingInterface(QWidget):
         self.hotkeyGroup.addSettingCard(self.start_shortcut_card)
         self.hotkeyGroup.addSettingCard(self.stop_shortcut_card)
         self.add_setting_group(self.hotkeyGroup)
+        
+        # 检测权限并禁用设置（如果权限不足）
+        self._check_and_disable_hotkey_settings()
+
+    def _check_and_disable_hotkey_settings(self):
+        """检测全局快捷键权限，如果不可用则禁用设置界面。"""
+        # 仅在 macOS/Linux 平台检测权限
+        if sys.platform not in ("darwin", "linux"):
+            return
+        
+        try:
+            # 创建一个临时的 GlobalHotkeyManager 来检测权限
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = None
+            temp_manager = GlobalHotkeyManager(loop)
+            has_permission = temp_manager.check_permission()
+            
+            if not has_permission:
+                # 禁用快捷键设置
+                if hasattr(self, "start_shortcut_card"):
+                    self.start_shortcut_card.setEnabled(False)
+                    self.start_shortcut_card.lineEdit.setPlaceholderText(
+                        self.tr("快捷键功能不可用（权限不足）")
+                    )
+                if hasattr(self, "stop_shortcut_card"):
+                    self.stop_shortcut_card.setEnabled(False)
+                    self.stop_shortcut_card.lineEdit.setPlaceholderText(
+                        self.tr("快捷键功能不可用（权限不足）")
+                    )
+                logger.info("快捷键设置界面已禁用（权限不足）")
+        except Exception as exc:
+            logger.warning("检测快捷键权限失败: %s", exc)
 
     def _on_shortcut_card_edited(
         self,
