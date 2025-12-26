@@ -1150,6 +1150,7 @@ class TaskFlowRunner(QObject):
                 logger.warning("未找到任何 ADB 设备")
                 return None
 
+            all_device_infos = []
             for device in devices:
                 # 优先使用 config 中的雷电 pid，补充给解析函数
                 ld_pid_cfg = (
@@ -1175,9 +1176,11 @@ class TaskFlowRunner(QObject):
                     "config": device.config,
                     "device_name": display_name,
                 }
+                all_device_infos.append(device_info)
                 if self._should_use_new_adb_device(controller_config, device_info):
                     return device_info
             logger.debug("ADB 设备列表均未满足与配置匹配的条件，跳过更新")
+            logger.debug(f"所有 ADB 设备信息: {all_device_infos}")
             return None
 
         except Exception as e:
@@ -1197,6 +1200,7 @@ class TaskFlowRunner(QObject):
                 logger.warning("未找到任何 Win32 窗口")
                 return None
 
+            all_window_infos = []
             for window in windows:
                 window_info = {
                     "hwnd": str(window.hwnd),
@@ -1204,9 +1208,11 @@ class TaskFlowRunner(QObject):
                     "class_name": window.class_name,
                     "device_name": f"{window.window_name or 'Unknown Window'}({window.hwnd})",
                 }
+                all_window_infos.append(window_info)
                 if self._should_use_new_win32_window(controller_config, window_info):
                     return window_info
             logger.debug("Win32 窗口列表均未满足与配置匹配的条件，跳过更新")
+            logger.debug(f"所有 Win32 窗口信息: {all_window_infos}")
             return None
 
         except Exception as e:
