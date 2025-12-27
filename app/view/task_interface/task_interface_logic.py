@@ -99,12 +99,17 @@ class TaskInterface(UI_TaskInterface, QWidget):
         """处理按钮状态变化信号"""
         """状态格式: {"text": "STOP", "status": "disabled"}"""
         # 更新启动/停止按钮状态
-        if status.get("text") == "STOP":
+        is_running = status.get("text") == "STOP"
+        if is_running:
             self.start_bar.run_button.setText(self.tr("Stop"))
             self.start_bar.run_button.setIcon(FIF.CLOSE)
+            # 任务流运行时，禁用任务列表的编辑功能
+            self._set_task_list_editable(False)
         else:
             self.start_bar.run_button.setText(self.tr("Start"))
             self.start_bar.run_button.setIcon(FIF.PLAY)
+            # 任务流停止时，启用任务列表的编辑功能
+            self._set_task_list_editable(True)
             # 如果正在等待重启且按钮已启用，触发重启
             if self._timeout_restarting and status.get("status") == "enabled":
                 QTimer.singleShot(100, lambda: self._trigger_restart_if_ready())
@@ -116,6 +121,48 @@ class TaskInterface(UI_TaskInterface, QWidget):
 
         # 设置按钮是否可用
         self.start_bar.run_button.setEnabled(status.get("status") != "disabled")
+    
+    def _set_task_list_editable(self, enabled: bool):
+        """设置任务列表的编辑功能是否可用
+        
+        Args:
+            enabled: True 表示启用编辑功能，False 表示禁用
+        """
+        if not hasattr(self, 'task_info') or not self.task_info:
+            return
+        
+        task_list = getattr(self.task_info, 'task_list', None)
+        if not task_list:
+            return
+        
+        # 禁用/启用拖动功能
+        task_list.setDragEnabled(enabled)
+        task_list.setAcceptDrops(enabled)
+        
+        # 禁用/启用工具栏按钮
+        if hasattr(self.task_info, 'add_button'):
+            self.task_info.add_button.setEnabled(enabled)
+        if hasattr(self.task_info, 'delete_button'):
+            self.task_info.delete_button.setEnabled(enabled)
+        if hasattr(self.task_info, 'select_all_button'):
+            self.task_info.select_all_button.setEnabled(enabled)
+        if hasattr(self.task_info, 'deselect_all_button'):
+            self.task_info.deselect_all_button.setEnabled(enabled)
+        
+        # 禁用/启用所有任务项的 checkbox 和删除按钮
+        for i in range(task_list.count()):
+            item = task_list.item(i)
+            if not item:
+                continue
+            widget = task_list.itemWidget(item)
+            if not widget:
+                continue
+            # 禁用/启用 checkbox
+            if hasattr(widget, 'checkbox'):
+                widget.checkbox.setEnabled(enabled)
+            # 禁用/启用删除按钮
+            if hasattr(widget, 'setting_button'):
+                widget.setting_button.setEnabled(enabled)
 
     def _on_timeout_restart_requested(self, entry: str, attempts: int):
         """处理任务超时需要重启的请求
