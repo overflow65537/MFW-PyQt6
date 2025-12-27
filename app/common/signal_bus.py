@@ -76,5 +76,8 @@ class SignalBus(QObject):
     check_auto_run_after_update_cancel = Signal()  # 更新取消后检查是否需要自动运行
     all_updates_completed = Signal()  # 所有更新（设置更新 + bundle更新）完成
 
+    # 任务状态信号
+    task_status_changed = Signal(str, str)  # (task_id, status) status: "running", "completed", "failed", "restart_success", "waiting"
+
 
 signalBus = SignalBus()

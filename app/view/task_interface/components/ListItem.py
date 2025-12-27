@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
 )
 
 from PySide6.QtCore import Signal, Qt, QTimer
-from PySide6.QtGui import QPalette, QGuiApplication, QPixmap
+from PySide6.QtGui import QPalette, QGuiApplication, QPixmap, QColor
 
 from qfluentwidgets import (
     CheckBox,
@@ -26,6 +26,9 @@ from qfluentwidgets import (
     LineEdit,
     SubtitleLabel,
     MessageBox,
+    IndeterminateProgressRing,
+    ProgressRing,
+    IconWidget,
 )
 from app.core.Item import TaskItem, ConfigItem
 from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
@@ -292,6 +295,10 @@ class TaskListItem(BaseListItem):
 
         layout.addWidget(name_option_container, stretch=1)
 
+        # 添加状态标志（在删除按钮之前）
+        self.status_widget = self._create_status_widget()
+        layout.addWidget(self.status_widget)
+        
         # 添加删除按钮（基础任务不能删除，会禁用）
         self.setting_button = self._create_setting_button()
         self.setting_button.clicked.connect(self._on_delete_button_clicked)
@@ -813,6 +820,87 @@ class TaskListItem(BaseListItem):
                 # 插入到指定位置
                 self.service_coordinator.modify_task(new_task, insert_idx)
 
+    def _create_status_widget(self):
+        """创建状态标志组件"""
+        widget = QWidget(self)
+        widget.setFixedSize(24, 24)
+        widget.hide()  # 默认隐藏
+        # 创建布局用于放置状态图标或进度条
+        status_layout = QHBoxLayout(widget)
+        status_layout.setContentsMargins(0, 0, 0, 0)
+        status_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._status_icon = None
+        self._status_progress = None
+        self._current_status = ""
+        self._status_layout = status_layout
+        return widget
+    
+    def update_status(self, status: str):
+        """更新任务状态显示
+        
+        Args:
+            status: 状态字符串，可选值: "running", "completed", "failed", "restart_success", "waiting", ""(清除状态)
+        """
+        self._current_status = status
+        
+        # 清除之前的状态组件
+        if self._status_icon:
+            self._status_layout.removeWidget(self._status_icon)
+            self._status_icon.deleteLater()
+            self._status_icon = None
+        if self._status_progress:
+            self._status_layout.removeWidget(self._status_progress)
+            # 只对 IndeterminateProgressRing 调用 stop() 方法
+            if isinstance(self._status_progress, IndeterminateProgressRing):
+                self._status_progress.stop()
+            self._status_progress.deleteLater()
+            self._status_progress = None
+        
+        # 根据状态显示不同的图标
+        if status == "running":
+            # 显示加载动画
+            self._status_progress = IndeterminateProgressRing(self.status_widget)
+            self._status_progress.setFixedSize(20, 20)
+            # 设置进度环宽度为更细
+            self._status_progress.setStrokeWidth(2)
+            self._status_layout.addWidget(self._status_progress)
+            self._status_progress.start()
+            self.status_widget.show()
+        elif status == "completed":
+            # 显示完成图标
+            self._status_icon = IconWidget(FIF.ACCEPT, self.status_widget)
+            self._status_icon.setFixedSize(20, 20)
+            self._status_layout.addWidget(self._status_icon)
+            self.status_widget.show()
+        elif status == "failed":
+            # 显示错误图标
+            self._status_icon = IconWidget(FIF.CLOSE, self.status_widget)
+            self._status_icon.setFixedSize(20, 20)
+            self._status_layout.addWidget(self._status_icon)
+            self.status_widget.show()
+        elif status == "restart_success":
+            # 显示信息图标（重启后成功）
+            self._status_icon = IconWidget(FIF.ROTATE, self.status_widget)
+            self._status_icon.setFixedSize(20, 20)
+            self._status_layout.addWidget(self._status_icon)
+            self.status_widget.show()
+        elif status == "waiting":
+            # 显示等待图标：使用进度环显示 100% 进度，颜色为灰色
+            self._status_progress = ProgressRing(self.status_widget)
+            self._status_progress.setFixedSize(20, 20)
+            # 设置进度环宽度为更细
+            self._status_progress.setStrokeWidth(2)
+            # 设置进度为 100%
+            self._status_progress.setValue(100)
+            # 设置颜色为灰色（使用相同的灰色作为前景和背景色）
+            gray_color = QColor(128, 128, 128)  # 灰色
+            self._status_progress.setCustomBarColor(gray_color, gray_color)
+            self._status_layout.addWidget(self._status_progress)
+            self.status_widget.show()
+        else:
+            # 清除状态，隐藏组件
+            self.status_widget.hide()
+    
     def _create_setting_button(self):
         """重写基类方法，创建删除按钮"""
         button = TransparentToolButton(FIF.DELETE)

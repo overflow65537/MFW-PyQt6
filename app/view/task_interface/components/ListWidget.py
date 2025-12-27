@@ -141,6 +141,8 @@ class TaskDragListWidget(BaseListWidget):
         self._pending_tasks: list[TaskItem] = []
         self._render_index: int = 0
         self._loading_tasks: bool = False
+        # 维护待处理的任务状态（当 widget 还未创建时）
+        self._pending_task_statuses: dict[str, str] = {}
 
         self._init_loading_overlay()
 
@@ -154,6 +156,10 @@ class TaskDragListWidget(BaseListWidget):
         )
         service_coordinator.fs_signal_bus.fs_task_modified.connect(self.modify_task)
         service_coordinator.fs_signal_bus.fs_task_removed.connect(self.remove_task)
+        
+        # 监听任务状态变化信号
+        from app.common.signal_bus import signalBus
+        signalBus.task_status_changed.connect(self._on_task_status_changed)
         
         self._bulk_toggle_queue: list[tuple[TaskListItem, bool]] = []
         self._bulk_toggle_timer = QTimer(self)
@@ -391,6 +397,7 @@ class TaskDragListWidget(BaseListWidget):
         self.setCurrentRow(-1)
         self._task_widgets.clear()
         self._skeleton_items.clear()
+        # 不清除待处理状态，因为任务列表刷新后这些状态仍然有效
         all_tasks = self.service_coordinator.task.get_tasks()
         task_list = [t for t in all_tasks if self._should_include(t)]
         if self._filter_mode == "special":
@@ -469,6 +476,11 @@ class TaskDragListWidget(BaseListWidget):
         list_item.setFlags(flags)
         self.setItemWidget(list_item, task_widget)
         self._task_widgets[task.item_id] = task_widget
+        
+        # 检查是否有待处理的状态，如果有则立即应用
+        if task.item_id in self._pending_task_statuses:
+            pending_status = self._pending_task_statuses.pop(task.item_id)
+            task_widget.update_status(pending_status)
 
     def modify_task(self, task: TaskItem):
         """添加或更新任务项到列表（如果存在同 id 的任务则更新，否则新增）。"""
@@ -761,6 +773,42 @@ class TaskDragListWidget(BaseListWidget):
                 widget.checkbox.setChecked(target_state)
         if self._bulk_toggle_queue:
             self._bulk_toggle_timer.start(1)
+    
+    def _on_task_status_changed(self, task_id: str, status: str):
+        """处理任务状态变化
+        
+        Args:
+            task_id: 任务ID
+            status: 状态字符串，可选值: "running", "completed", "failed", "restart_success", "waiting", ""(清除状态)
+        """
+        # 从任务widget映射中查找对应的widget
+        widget = self._task_widgets.get(task_id)
+        if widget and isinstance(widget, TaskListItem):
+            widget.update_status(status)
+            # 清除待处理状态
+            self._pending_task_statuses.pop(task_id, None)
+        else:
+            # 如果widget还没有创建，尝试在列表中查找
+            found = False
+            for i in range(self.count()):
+                item = self.item(i)
+                item_widget = self.itemWidget(item)
+                if isinstance(item_widget, TaskListItem) and item_widget.task.item_id == task_id:
+                    item_widget.update_status(status)
+                    # 更新映射，以便下次直接找到
+                    self._task_widgets[task_id] = item_widget
+                    # 清除待处理状态
+                    self._pending_task_statuses.pop(task_id, None)
+                    found = True
+                    break
+            
+            # 如果找不到 widget，保存状态待后续应用
+            if not found:
+                if status:
+                    self._pending_task_statuses[task_id] = status
+                else:
+                    # 如果状态为空（清除状态），从待处理列表中移除
+                    self._pending_task_statuses.pop(task_id, None)
     
 
 

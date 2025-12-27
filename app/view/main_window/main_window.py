@@ -154,7 +154,7 @@ class MainWindow(MSFluentWindow):
         self.SpecialTaskInterface = SpecialTaskInterface(self.service_coordinator)
         self.addSubInterface(
             self.SpecialTaskInterface,
-            FIF.CHECKBOX,
+            FIF.TILES,
             self.tr("Special Task"),
         )
         self.MonitorInterface = MonitorInterface(self.service_coordinator)

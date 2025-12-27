@@ -184,6 +184,21 @@ class TaskFlowRunner(QObject):
             self._timeout_timer.stop()
             self._current_running_task_id = None
         is_single_task_mode = task_id is not None
+        
+        # 初始化任务状态：仅在完整运行时将所有选中的任务设置为等待中
+        # 单独运行时，只会在对应的任务处显示进行中/完成/失败，不显示等待图标
+        # 使用 QTimer 延迟发送，确保任务列表 UI 已经准备好
+        def set_waiting_status():
+            # 只在完整运行模式（非单任务模式）时设置等待状态
+            if not is_single_task_mode:
+                all_tasks = self.task_service.get_tasks()
+                for task in all_tasks:
+                    if not task.is_base_task() and task.is_checked and not task.is_hidden:
+                        # 完整运行时，设置所有选中的任务为等待中
+                        signalBus.task_status_changed.emit(task.item_id, "waiting")
+        
+        # 延迟 200ms 发送，确保任务列表已经渲染完成
+        QTimer.singleShot(200, set_waiting_status)
 
         # 初始化日志收集列表
         log_messages: list[tuple[str, str]] = []  # (level, text)
@@ -336,9 +351,13 @@ class TaskFlowRunner(QObject):
                 self._current_task_ok = True
                 # 记录当前正在执行的任务，用于超时处理
                 self._current_running_task_id = task.item_id
+                # 发送任务运行中状态
+                signalBus.task_status_changed.emit(task.item_id, "running")
                 await self.run_task(task_id, skip_speedrun=True)
                 # 检查任务执行结果并发送通知
                 if not self._current_task_ok:
+                    # 发送任务失败状态
+                    signalBus.task_status_changed.emit(task.item_id, "failed")
                     # 发送任务失败通知
                     send_notice(
                         NoticeTiming.WHEN_TASK_FAILED,
@@ -346,6 +365,9 @@ class TaskFlowRunner(QObject):
                         self.tr("Task '{}' was aborted or failed.").format(task.name),
                     )
                 else:
+                    # 判断是否为重启后成功
+                    status = "restart_success" if is_timeout_restart else "completed"
+                    signalBus.task_status_changed.emit(task.item_id, status)
                     # 发送任务成功通知
                     send_notice(
                         NoticeTiming.WHEN_TASK_SUCCESS,
@@ -383,14 +405,24 @@ class TaskFlowRunner(QObject):
                     self._current_task_ok = True
                     # 记录当前正在执行的任务，用于超时处理
                     self._current_running_task_id = task.item_id
+                    # 发送任务运行中状态
+                    signalBus.task_status_changed.emit(task.item_id, "running")
                     try:
                         task_result = await self.run_task(task.item_id)
                         if task_result == "skipped":
+                            # 跳过任务时清除运行状态
+                            # 完整运行时恢复等待状态，单独运行时清除状态
+                            if not is_single_task_mode:
+                                signalBus.task_status_changed.emit(task.item_id, "waiting")
+                            else:
+                                signalBus.task_status_changed.emit(task.item_id, "")
                             continue
                         # 如果任务显式返回 False，视为致命失败，终止整个任务流
                         if task_result is False:
                             msg = f"任务执行失败: {task.name}, 返回 False，终止流程"
                             logger.error(msg)
+                            # 发送任务失败状态
+                            signalBus.task_status_changed.emit(task.item_id, "failed")
                             # 发送任务失败通知
                             send_notice(
                                 NoticeTiming.WHEN_TASK_FAILED,
@@ -406,6 +438,8 @@ class TaskFlowRunner(QObject):
                             logger.warning(
                                 f"任务执行被中途中止(abort): {task.name}，切换到下一个任务"
                             )
+                            # 发送任务失败状态
+                            signalBus.task_status_changed.emit(task.item_id, "failed")
                             # 发送任务失败通知
                             send_notice(
                                 NoticeTiming.WHEN_TASK_FAILED,
@@ -413,6 +447,9 @@ class TaskFlowRunner(QObject):
                                 self.tr("Task '{}' was aborted.").format(task.name),
                             )
                         else:
+                            # 判断是否为重启后成功
+                            status = "restart_success" if is_timeout_restart else "completed"
+                            signalBus.task_status_changed.emit(task.item_id, status)
                             # 发送任务成功通知
                             send_notice(
                                 NoticeTiming.WHEN_TASK_SUCCESS,
@@ -427,6 +464,8 @@ class TaskFlowRunner(QObject):
 
                     except Exception as exc:
                         logger.error(f"任务执行失败: {task.name}, 错误: {str(exc)}")
+                        # 发送任务失败状态
+                        signalBus.task_status_changed.emit(task.item_id, "failed")
                         # 发送任务失败通知
                         send_notice(
                             NoticeTiming.WHEN_TASK_FAILED,
@@ -498,6 +537,12 @@ class TaskFlowRunner(QObject):
                 )
 
             self._is_running = False
+            
+            # 清除所有任务状态
+            all_tasks = self.task_service.get_tasks()
+            for task in all_tasks:
+                if not task.is_base_task():
+                    signalBus.task_status_changed.emit(task.item_id, "")
 
             next_config = self._next_config_to_run
             self._next_config_to_run = None
