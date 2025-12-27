@@ -64,16 +64,14 @@ class LogoutputWidget(QWidget):
             self.monitor_title_label.setStyleSheet("font-size: 20px;")
             monitor_title_layout.addWidget(self.monitor_title_label)
             
+            # 添加伸缩器（标题和按钮之间）
+            monitor_title_layout.addStretch()
+            
             # 开始/停止监控按钮（仅图标）
             self.monitor_control_button = ToolButton(FIF.PLAY, self)
             self.monitor_control_button.setIconSize(QSize(20, 20))
             self.monitor_control_button.clicked.connect(self._on_monitor_control_clicked)
             self.monitor_control_button.setToolTip(self.tr("Start monitoring task"))
-            # 标题和按钮之间添加间距
-            monitor_title_layout.addSpacing(8)
-            monitor_title_layout.addWidget(self.monitor_control_button)
-            
-            monitor_title_layout.addStretch()
             self.main_layout.addLayout(monitor_title_layout)
             
             # 创建监控卡片外壳（和日志组件一样的外壳包裹）

@@ -586,6 +586,12 @@ class MonitorWidget(QWidget):
         """处理开始/停止监控按钮点击"""
         if self._monitoring_active:
             self._stop_monitoring()
+        elif self._starting_monitoring:
+            # 如果正在启动过程中，停止启动
+            self._starting_monitoring = False
+            if self.external_button:
+                self.external_button.setEnabled(True)
+                self._update_button_state()
         else:
             self._start_monitoring()
 
@@ -604,9 +610,9 @@ class MonitorWidget(QWidget):
         
         async def _start_sequence():
             try:
-                # 优先检查任务流是否已连接设备
+                # 先尝试连接一次（不管是否设置了等待时间）
                 if not self._is_controller_connected():
-                    # 如果任务流正在运行，等待它连接设备
+                    # 如果任务流正在运行，先尝试等待配置的启动时间，然后等待连接
                     if hasattr(self.service_coordinator, 'run_manager'):
                         task_flow = self.service_coordinator.run_manager
                         if task_flow and task_flow.is_running:
@@ -617,8 +623,16 @@ class MonitorWidget(QWidget):
                                 signalBus.info_bar_requested.emit(
                                     "info", self.tr("Waiting for device startup...")
                                 )
-                                # 等待启动时间
-                                await asyncio.sleep(wait_time)
+                                # 等待启动时间（可中断）
+                                check_interval = 0.1  # 每100ms检查一次是否被停止
+                                waited_time = 0.0
+                                while waited_time < wait_time:
+                                    if not self._starting_monitoring:
+                                        # 用户点击了停止按钮
+                                        return
+                                    sleep_time = min(check_interval, wait_time - waited_time)
+                                    await asyncio.sleep(sleep_time)
+                                    waited_time += sleep_time
                             
                             # 显示等待连接提示
                             signalBus.info_bar_requested.emit(
@@ -630,6 +644,9 @@ class MonitorWidget(QWidget):
                             check_interval = 0.05  # 每50ms检查一次
                             waited_time = 0.0
                             while waited_time < max_wait_time:
+                                if not self._starting_monitoring:
+                                    # 用户点击了停止按钮
+                                    return
                                 await asyncio.sleep(check_interval)
                                 waited_time += check_interval
                                 if self._is_controller_connected():
@@ -637,12 +654,14 @@ class MonitorWidget(QWidget):
                                     break
                             
                             if not self._is_controller_connected():
-                                signalBus.info_bar_requested.emit(
-                                    "error", self.tr("Device connection timeout. Please check device connection.")
-                                )
+                                if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
+                                    signalBus.info_bar_requested.emit(
+                                        "error", self.tr("Device connection timeout. Please check device connection.")
+                                    )
                                 self._starting_monitoring = False
                                 if self.external_button:
                                     self.external_button.setEnabled(True)
+                                    self._update_button_state()
                                 return
                         else:
                             # 任务流未运行
@@ -652,6 +671,7 @@ class MonitorWidget(QWidget):
                             self._starting_monitoring = False
                             if self.external_button:
                                 self.external_button.setEnabled(True)
+                                self._update_button_state()
                             return
                     else:
                         # 无法获取任务流
@@ -661,6 +681,7 @@ class MonitorWidget(QWidget):
                         self._starting_monitoring = False
                         if self.external_button:
                             self.external_button.setEnabled(True)
+                            self._update_button_state()
                         return
                 
                 # 启动监控循环
@@ -671,12 +692,14 @@ class MonitorWidget(QWidget):
                 
                 # 检查监控是否真的启动了
                 if not self._monitoring_active:
-                    signalBus.info_bar_requested.emit(
-                        "error", self.tr("Failed to start monitoring loop")
-                    )
+                    if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
+                        signalBus.info_bar_requested.emit(
+                            "error", self.tr("Failed to start monitoring loop")
+                        )
                     self._starting_monitoring = False
                     if self.external_button:
                         self.external_button.setEnabled(True)
+                        self._update_button_state()
                     return
                 
                 self._update_button_state()
@@ -695,9 +718,10 @@ class MonitorWidget(QWidget):
                     if pil_image:
                         self._apply_preview_from_pil(pil_image)
             except Exception as exc:
-                signalBus.info_bar_requested.emit(
-                    "error", self.tr("Failed to start monitoring: ") + str(exc)
-                )
+                if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
+                    signalBus.info_bar_requested.emit(
+                        "error", self.tr("Failed to start monitoring: ") + str(exc)
+                    )
                 self._starting_monitoring = False
                 if self._monitoring_active:
                     self._stop_monitor_loop()
@@ -705,6 +729,7 @@ class MonitorWidget(QWidget):
                 self._starting_monitoring = False
                 if self.external_button:
                     self.external_button.setEnabled(True)
+                    self._update_button_state()
 
         QTimer.singleShot(0, lambda: asyncio.create_task(_start_sequence()))
 
