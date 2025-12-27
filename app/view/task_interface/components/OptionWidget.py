@@ -731,7 +731,14 @@ class OptionWidget(QWidget):
 
         # 只使用form_structure更新表单
         if form_structure:
-            self.current_config = self.service_coordinator.option.get_options()
+            # 获取最新配置并更新到共享字典中（保持字典引用不变，这样所有子组件都能看到更新）
+            new_config = self.service_coordinator.option.get_options()
+            self.current_config.clear()
+            self.current_config.update(new_config)
+            # 同步更新所有子组件的 current_config（它们应该指向同一个字典）
+            self.controller_setting_widget.current_config = self.current_config
+            self.resource_setting_widget.current_config = self.current_config
+            self.post_action_setting_widget.current_config = self.current_config
 
             # 判断任务类型
             form_type = form_structure.get("type")
@@ -876,6 +883,19 @@ class OptionWidget(QWidget):
     def _apply_post_action_settings_with_animation(self):
         """在动画回调中应用完成后操作设置"""
         self._clear_options()
+        
+        # 从 POST_ACTION 任务的配置中获取完成后操作配置，并设置到 current_config 中
+        from app.common.constants import POST_ACTION
+        post_action_task = self.service_coordinator.task_service.get_task(POST_ACTION)
+        if post_action_task and isinstance(post_action_task.task_option, dict):
+            post_action_config = post_action_task.task_option.get("post_action", {})
+            if post_action_config:
+                # 确保 current_config 中有 post_action 字段
+                self.current_config["post_action"] = post_action_config
+                # 同时更新 post_action_setting_widget 的 current_config（它们共享同一个字典）
+                self.post_action_setting_widget.current_config["post_action"] = post_action_config
+        
+        # 创建完成后操作设置（此时 current_config 中已经有 post_action 值了）
         self.post_action_setting_widget.create_settings()
         logger.info("完成后操作设置表单已创建")
 
