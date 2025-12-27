@@ -916,7 +916,7 @@ class SettingInterface(QWidget):
         self.hotkeyGroup.addSettingCard(self.start_shortcut_card)
         self.hotkeyGroup.addSettingCard(self.stop_shortcut_card)
         self.add_setting_group(self.hotkeyGroup)
-        
+
         # 检测权限并禁用设置（如果权限不足）
         self._check_and_disable_hotkey_settings()
 
@@ -925,13 +925,14 @@ class SettingInterface(QWidget):
         try:
             # 创建一个临时的 GlobalHotkeyManager 来检测权限
             import asyncio
+
             try:
                 loop = asyncio.get_event_loop()
             except RuntimeError:
                 loop = None
             temp_manager = GlobalHotkeyManager(loop)
             has_permission = temp_manager.check_permission()
-            
+
             if not has_permission:
                 # 禁用快捷键设置
                 if hasattr(self, "start_shortcut_card"):
@@ -1112,7 +1113,7 @@ class SettingInterface(QWidget):
         self.noticeGroup.addSettingCard(self.SMTP_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.WxPusher_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.QYWX_noticeTypeCard)
-        
+
         # 添加通知时机设置按钮
         self.notice_timing_card = PrimaryPushSettingCard(
             text=self.tr("Configure"),
@@ -1122,7 +1123,7 @@ class SettingInterface(QWidget):
             parent=self.noticeGroup,
         )
         self.noticeGroup.addSettingCard(self.notice_timing_card)
-        
+
         self.add_setting_group(self.noticeGroup)
 
     def initialize_task_settings(self):
@@ -1179,7 +1180,9 @@ class SettingInterface(QWidget):
             ),
             texts=[
                 self.tr("Restart Immediately"),  # 0 直接重启
-                self.tr("Run last list entry then restart"),  # 1 运行列表中最后一项任务后重启
+                self.tr(
+                    "Run last list entry then restart"
+                ),  # 1 运行列表中最后一项任务后重启
             ],
             parent=self.taskGroup,
         )
@@ -1192,10 +1195,20 @@ class SettingInterface(QWidget):
             self._on_task_timeout_action_changed
         )
 
+        # 自动开始监控
+        self.auto_start_monitoring_card = SwitchSettingCard(
+            FIF.VIDEO,
+            self.tr("Auto Start Monitoring"),
+            self.tr("Automatically start monitoring when a task begins"),
+            configItem=cfg.auto_start_monitoring,
+            parent=self.taskGroup,
+        )
+
         self.taskGroup.addSettingCard(self.task_timeout_enable_card)
         self.taskGroup.addSettingCard(self.task_timeout_card)
         self.taskGroup.addSettingCard(self.task_timeout_action_card)
         self.taskGroup.addSettingCard(self.task_timeout_restart_mode_card)
+        self.taskGroup.addSettingCard(self.auto_start_monitoring_card)
         self.add_setting_group(self.taskGroup)
 
     def _on_task_timeout_edited(self):
@@ -1226,9 +1239,7 @@ class SettingInterface(QWidget):
 
         try:
             action = Config.TaskTimeoutAction(action_value)
-            enable_restart_mode = (
-                action == Config.TaskTimeoutAction.RESTART_AND_NOTIFY
-            )
+            enable_restart_mode = action == Config.TaskTimeoutAction.RESTART_AND_NOTIFY
         except Exception:
             # 兼容性兜底：1 对应 RESTART_AND_NOTIFY
             enable_restart_mode = action_value == 1
@@ -1417,7 +1428,7 @@ class SettingInterface(QWidget):
     def _onMirrorCardChange(self):
         """处理 Mirror CDK 输入变化，检查并删除行尾空格后保存。"""
         current_text = self.MirrorCard.lineEdit.text()
-        
+
         # 检查行尾是否有空格，如果有则删除
         if current_text and current_text.rstrip() != current_text:
             # 删除行尾空格
@@ -1427,7 +1438,7 @@ class SettingInterface(QWidget):
             self.MirrorCard.lineEdit.setText(cleaned_text)
             self.MirrorCard.lineEdit.blockSignals(False)
             current_text = cleaned_text
-        
+
         # 保存配置
         try:
             encrypted = crypto_manager.encrypt_payload(current_text)
@@ -1440,7 +1451,9 @@ class SettingInterface(QWidget):
             logger.info("Mirror CDK 已保存")
         except Exception as exc:
             logger.error("加密 Mirror CDK 失败: %s", exc)
-            signalBus.info_bar_requested.emit("error", self.tr("Failed to save Mirror CDK: {}").format(str(exc)))
+            signalBus.info_bar_requested.emit(
+                "error", self.tr("Failed to save Mirror CDK: {}").format(str(exc))
+            )
             return
 
     def _on_github_api_key_change(self, text: str):
@@ -1563,16 +1576,16 @@ class SettingInterface(QWidget):
 
     def _get_project_name(self) -> str:
         """获取当前项目名称，用于更新日志等功能。
-        
+
         优先使用已保存的 self.name，如果不存在则从 interface 数据中获取。
-        
+
         Returns:
             项目名称，如果无法获取则返回默认值 "MFW_CFA"
         """
         # 如果已经设置了 self.name，直接使用
         if hasattr(self, "name") and self.name:
             return self.name
-        
+
         # 否则从 interface 数据中获取
         metadata = self._get_interface_metadata()
         name = metadata.get("name", "")
@@ -1580,7 +1593,7 @@ class SettingInterface(QWidget):
             # 保存到 self.name 以便后续使用
             self.name = name
             return name
-        
+
         # 如果都获取不到，返回默认值
         return "MFW_CFA"
 
@@ -1766,9 +1779,9 @@ class SettingInterface(QWidget):
     def _update_bundle_config_internal(self, name: str, bundle_dir: Path):
         """
         更新 multi_config.json 中的 bundle 配置（内部方法）。
-        
+
         在文件移动到 bundle 目录后，更新主配置文件中对应 bundle 的路径。
-        
+
         Args:
             name: bundle 名称（从 interface.json 中获取）
             bundle_dir: bundle 目录路径
@@ -1795,10 +1808,16 @@ class SettingInterface(QWidget):
         # 如果当前路径是 "./" 或空，或者路径不正确，则强制更新
         needs_update = False
         if not current_path or current_path == "./" or current_path == ".":
-            logger.info(f"检测到 bundle 路径为 '{current_path}'，需要更新为 '{bundle_path}'")
+            logger.info(
+                f"检测到 bundle 路径为 '{current_path}'，需要更新为 '{bundle_path}'"
+            )
             needs_update = True
-        elif current_path != bundle_path and not current_path.endswith(f"/bundle/{name}"):
-            logger.info(f"检测到 bundle 路径不正确 '{current_path}'，需要更新为 '{bundle_path}'")
+        elif current_path != bundle_path and not current_path.endswith(
+            f"/bundle/{name}"
+        ):
+            logger.info(
+                f"检测到 bundle 路径不正确 '{current_path}'，需要更新为 '{bundle_path}'"
+            )
             needs_update = True
         else:
             logger.info(f"bundle 配置已正确，跳过更新: {name} -> {current_path}")
@@ -1944,7 +1963,9 @@ class SettingInterface(QWidget):
                             target_path = bundle_dir / item.name
                             # 如果目标已存在，先删除或重命名
                             if target_path.exists():
-                                logger.warning(f"目标目录已存在: {target_path}，将被覆盖")
+                                logger.warning(
+                                    f"目标目录已存在: {target_path}，将被覆盖"
+                                )
                                 if target_path.is_dir():
                                     shutil.rmtree(target_path)
                                 else:
@@ -1983,7 +2004,7 @@ class SettingInterface(QWidget):
 
         if not skip_migration:
             logger.info(f"文件移动完成，共移动 {moved_count} 个文件到 {bundle_dir}")
-        
+
         # 文件移动完成后（或跳过迁移时），更新 multi_config.json 中的 bundle 配置
         # 此时 name 和 bundle_dir 已经确定，可以直接更新配置
         self._update_bundle_config_internal(name, bundle_dir)
@@ -2168,7 +2189,7 @@ class SettingInterface(QWidget):
         dialog = QYWXNoticeType(parent)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._update_notice_card_status("QYWX")
-    
+
     def _on_notice_timing_clicked(self):
         """处理通知时机设置卡片点击事件"""
         parent = self.window() or self
@@ -2667,7 +2688,9 @@ class SettingInterface(QWidget):
         # 如果检测不到更新包，尝试延迟一下再检测（可能是文件系统延迟）
         if not package:
             logger.warning("首次检测未发现本地更新包，延迟100ms后重试")
-            QTimer.singleShot(100, lambda: self._retry_trigger_instant_update(auto_accept))
+            QTimer.singleShot(
+                100, lambda: self._retry_trigger_instant_update(auto_accept)
+            )
             return
         self._prepare_instant_update_state(restart_required=True)
         logger.info(
@@ -2676,7 +2699,7 @@ class SettingInterface(QWidget):
             bool(self._local_update_package),
         )
         self._handle_instant_update(auto_accept=auto_accept, notify_if_cancel=True)
-    
+
     def _retry_trigger_instant_update(self, auto_accept: bool) -> None:
         """重试触发立即更新确认（用于处理文件系统延迟）。"""
         self._restart_update_required = True
@@ -2684,8 +2707,7 @@ class SettingInterface(QWidget):
         if not package:
             logger.error("重试后仍未检测到本地更新包，无法触发立即更新确认")
             signalBus.info_bar_requested.emit(
-                "error",
-                self.tr("Update package not found, please try updating again.")
+                "error", self.tr("Update package not found, please try updating again.")
             )
             signalBus.update_stopped.emit(3)
             return

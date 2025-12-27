@@ -271,6 +271,9 @@ class ResourceSettingWidget(QWidget):
                         if hasattr(self, "_set_description") and self._set_description:
                             description = resource.get("description", "")
                             self._set_description(description, has_options=True)
+                            # 如果有描述，显示描述区域
+                            if description and hasattr(self, "_toggle_description") and self._toggle_description:
+                                self._toggle_description(True)
                         break
             else:
                 logger.warning(f"未找到资源标签 {target_label} 在下拉框中")
@@ -295,6 +298,9 @@ class ResourceSettingWidget(QWidget):
                     if hasattr(self, "_set_description") and self._set_description:
                         description = first_resource.get("description", "")
                         self._set_description(description, has_options=True)
+                        # 如果有描述，显示描述区域
+                        if description and hasattr(self, "_toggle_description") and self._toggle_description:
+                            self._toggle_description(True)
                 else:
                     logger.warning(f"未找到资源标签 {first_resource_label} 在下拉框中")
         

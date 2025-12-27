@@ -105,11 +105,15 @@ class TaskInterface(UI_TaskInterface, QWidget):
             self.start_bar.run_button.setIcon(FIF.CLOSE)
             # 任务流运行时，禁用任务列表的编辑功能
             self._set_task_list_editable(False)
+            # 切换选项区域为日志
+            self._switch_option_to_log(True)
         else:
             self.start_bar.run_button.setText(self.tr("Start"))
             self.start_bar.run_button.setIcon(FIF.PLAY)
             # 任务流停止时，启用任务列表的编辑功能
             self._set_task_list_editable(True)
+            # 切换选项区域为选项
+            self._switch_option_to_log(False)
             # 如果正在等待重启且按钮已启用，触发重启
             if self._timeout_restarting and status.get("status") == "enabled":
                 QTimer.singleShot(100, lambda: self._trigger_restart_if_ready())
@@ -157,12 +161,55 @@ class TaskInterface(UI_TaskInterface, QWidget):
             widget = task_list.itemWidget(item)
             if not widget:
                 continue
-            # 禁用/启用 checkbox
-            if hasattr(widget, 'checkbox'):
-                widget.checkbox.setEnabled(enabled)
+            # 禁用/启用 checkbox（基础任务始终保持禁用）
+            if hasattr(widget, 'checkbox') and hasattr(widget, 'task'):
+                # 基础任务的 checkbox 始终保持禁用状态
+                if not widget.task.is_base_task():
+                    widget.checkbox.setEnabled(enabled)
             # 禁用/启用删除按钮
             if hasattr(widget, 'setting_button'):
                 widget.setting_button.setEnabled(enabled)
+    
+    def _switch_option_to_log(self, show_log: bool):
+        """切换选项区域显示日志或选项
+        
+        Args:
+            show_log: True 显示日志，False 显示选项
+        """
+        # option_stack 是在 UI_TaskInterface.setupUi 中创建的
+        # 由于 TaskInterface 继承自 UI_TaskInterface，可以直接访问
+        option_stack_animator = None
+        if hasattr(self, 'option_stack_animator'):
+            option_stack_animator = self.option_stack_animator
+        elif hasattr(self, 'option_stack'):
+            # 如果没有动画器，直接使用 option_stack
+            option_stack = self.option_stack
+            # 0: 选项面板, 1: 日志面板
+            if show_log:
+                option_stack.setCurrentIndex(1)
+            else:
+                option_stack.setCurrentIndex(0)
+            return
+        elif hasattr(self, 'option_panel_widget'):
+            # 如果直接访问失败，尝试通过 option_panel_widget 访问
+            option_stack = getattr(self.option_panel_widget, 'option_stack', None)
+            if option_stack:
+                # 0: 选项面板, 1: 日志面板
+                if show_log:
+                    option_stack.setCurrentIndex(1)
+                else:
+                    option_stack.setCurrentIndex(0)
+            return
+        
+        if not option_stack_animator:
+            logger.warning("无法找到 option_stack_animator，无法切换选项/日志显示")
+            return
+        
+        # 0: 选项面板, 1: 日志面板
+        if show_log:
+            option_stack_animator.setCurrentIndex(1, animated=True)
+        else:
+            option_stack_animator.setCurrentIndex(0, animated=True)
 
     def _on_timeout_restart_requested(self, entry: str, attempts: int):
         """处理任务超时需要重启的请求

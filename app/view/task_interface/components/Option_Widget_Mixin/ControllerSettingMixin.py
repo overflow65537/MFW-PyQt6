@@ -428,6 +428,9 @@ class ControllerSettingWidget(QWidget):
             if hasattr(self, "_set_description") and self._set_description:
                 description = self.current_controller_info.get("description", "")
                 self._set_description(description, has_options=True)
+                # 如果有描述，显示描述区域
+                if description and hasattr(self, "_toggle_description") and self._toggle_description:
+                    self._toggle_description(True)
 
             # 强制调用刷新函数，确保界面更新（即使索引没有变化）
             self._on_controller_type_changed(matched_label)

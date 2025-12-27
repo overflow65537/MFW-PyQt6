@@ -190,9 +190,11 @@ class SpecialTaskInterface(UI_SpecialTaskInterface, QWidget):
             widget = task_list.itemWidget(item)
             if not widget:
                 continue
-            # 禁用/启用 checkbox（特殊任务界面可能隐藏了 checkbox，但为了安全还是设置）
-            if hasattr(widget, 'checkbox'):
-                widget.checkbox.setEnabled(enabled)
+            # 禁用/启用 checkbox（基础任务始终保持禁用）
+            if hasattr(widget, 'checkbox') and hasattr(widget, 'task'):
+                # 基础任务的 checkbox 始终保持禁用状态
+                if not widget.task.is_base_task():
+                    widget.checkbox.setEnabled(enabled)
             # 禁用/启用删除按钮
             if hasattr(widget, 'setting_button'):
                 widget.setting_button.setEnabled(enabled)

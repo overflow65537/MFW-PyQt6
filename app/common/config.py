@@ -156,6 +156,10 @@ class Config(QConfig):
         "Task", "task_timeout_enable", False
     )  # 是否开启任务超时设置
     task_timeout = ConfigItem("Task", "task_timeout", 900)  # 默认900秒
+    
+    auto_start_monitoring = ConfigItem(
+        "Task", "auto_start_monitoring", True, BoolValidator()
+    )  # 任务开始时是否自动启动监控
 
     # 任务超时后动作
     class TaskTimeoutAction(Enum):

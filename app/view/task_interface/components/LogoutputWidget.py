@@ -2,7 +2,7 @@ from datetime import datetime
 from html import escape
 import re
 
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QTimer
 from PySide6.QtGui import QFont, QPalette
 from PySide6.QtWidgets import (
     QFrame,
@@ -18,6 +18,7 @@ from qfluentwidgets import (
     ScrollArea,
     SimpleCardWidget,
     PushButton,
+    ToolButton,
     FluentIcon as FIF,
     isDarkTheme,
     qconfig,
@@ -25,6 +26,8 @@ from qfluentwidgets import (
 
 from app.common.signal_bus import signalBus
 from app.utils.logger import logger
+from app.core.core import ServiceCoordinator
+from app.view.task_interface.components.MonitorWidget import MonitorWidget
 
 
 class LogoutputWidget(QWidget):
@@ -32,8 +35,9 @@ class LogoutputWidget(QWidget):
     日志输出组件
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, service_coordinator: ServiceCoordinator | None = None, parent=None):
         super().__init__(parent)
+        self.service_coordinator = service_coordinator
         # 级别颜色映射（随主题自动更新）
         self._level_color: dict[str, str] = {}
         self._log_entries: list[tuple[BodyLabel, str, bool]] = []
@@ -45,14 +49,73 @@ class LogoutputWidget(QWidget):
         self._apply_theme_colors()
         qconfig.themeChanged.connect(self._apply_theme_colors)
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 12, 0, 18)
+        self.main_layout.setContentsMargins(0, 8, 0, 10)
         self.main_layout.setSpacing(8)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        
+        # 添加监控组件（如果有 service_coordinator）
+        if self.service_coordinator:
+            # 监控标题栏
+            monitor_title_layout = QHBoxLayout()
+            monitor_title_layout.setContentsMargins(0, 0, 0, 0)
+            monitor_title_layout.setSpacing(8)
+            
+            self.monitor_title_label = BodyLabel(self.tr("Monitor"))
+            self.monitor_title_label.setStyleSheet("font-size: 20px;")
+            monitor_title_layout.addWidget(self.monitor_title_label)
+            
+            # 开始/停止监控按钮（仅图标）
+            self.monitor_control_button = ToolButton(FIF.PLAY, self)
+            self.monitor_control_button.setIconSize(QSize(20, 20))
+            self.monitor_control_button.clicked.connect(self._on_monitor_control_clicked)
+            self.monitor_control_button.setToolTip(self.tr("Start monitoring task"))
+            # 标题和按钮之间添加间距
+            monitor_title_layout.addSpacing(8)
+            monitor_title_layout.addWidget(self.monitor_control_button)
+            
+            monitor_title_layout.addStretch()
+            self.main_layout.addLayout(monitor_title_layout)
+            
+            # 创建监控卡片外壳（和日志组件一样的外壳包裹）
+            # 16:9比例，宽度344px，高度 = 344 * 9 / 16 = 194px
+            self._monitor_width = 344
+            self._monitor_height = 194
+            
+            self.monitor_card = SimpleCardWidget()
+            self.monitor_card.setClickEnabled(False)
+            self.monitor_card.setBorderRadius(8)
+            # 设置监控卡片为固定大小（344x194，16:9比例，与监控组件内部尺寸一致）
+            self.monitor_card.setFixedSize(self._monitor_width, self._monitor_height)
+            # 设置大小策略为固定，不影响其他组件
+            monitor_card_policy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            self.monitor_card.setSizePolicy(monitor_card_policy)
+            
+            # 创建监控组件，并传递按钮引用用于状态更新
+            self.monitor_widget = MonitorWidget(
+                self.service_coordinator, 
+                self,
+                button=self.monitor_control_button
+            )
+            
+            # 将监控组件添加到卡片中
+            monitor_card_layout = QVBoxLayout(self.monitor_card)
+            monitor_card_layout.setContentsMargins(0, 0, 0, 0)
+            monitor_card_layout.addWidget(self.monitor_widget)
+            # 卡片内容居中对齐
+            monitor_card_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            
+            # 监控组件使用固定尺寸，不使用拉伸因子
+            self.main_layout.addWidget(self.monitor_card, 0)
+        
         self.main_layout.addLayout(self.log_output_title_layout)
-        self.main_layout.addWidget(self.log_output_widget)
+        # 日志区域占据较少空间（拉伸因子为 1）
+        self.main_layout.addWidget(self.log_output_widget, 1)
 
         # 连接日志输出信号
         signalBus.log_output.connect(self._on_log_output)
+        
+        # 打印日志组件宽度（在组件显示后）
+        QTimer.singleShot(100, self._print_log_width)
         signalBus.log_clear_requested.connect(self.clear_log)
         signalBus.log_zip_started.connect(
             lambda: self.generate_log_zip_button.setEnabled(False)
@@ -252,6 +315,8 @@ class LogoutputWidget(QWidget):
         """在尺寸变化时重新计算每行高度，避免文本被截断"""
         super().resizeEvent(event)
         self._sync_row_heights()
+        # 打印日志组件宽度（尺寸变化时）
+        self._print_log_width()
 
     def _sanitize_color(self, raw: str) -> str:
         """过滤颜色字符串，防止注入并保留常见格式"""
@@ -352,3 +417,25 @@ class LogoutputWidget(QWidget):
 
             if content_label.minimumHeight() != required_height:
                 content_label.setMinimumHeight(required_height)
+    
+    def _on_monitor_control_clicked(self) -> None:
+        """处理开始/停止监控按钮点击"""
+        if hasattr(self, 'monitor_widget'):
+            self.monitor_widget._on_monitor_control_clicked()
+    
+    def _print_log_width(self) -> None:
+        """打印日志组件的宽度"""
+        log_width = self.log_output_widget.width()
+        log_height = self.log_output_widget.height()
+        self_width = self.width()
+        self_height = self.height()
+        logger.info(f"[日志组件调试] LogoutputWidget 总宽度: {self_width}px, 总高度: {self_height}px")
+        logger.info(f"[日志组件调试] log_output_widget 宽度: {log_width}px, 高度: {log_height}px")
+        logger.info(f"[日志组件调试] log_output_widget 实际尺寸: {self.log_output_widget.size().width()}x{self.log_output_widget.size().height()}")
+        logger.info(f"[日志组件调试] log_output_widget 最小尺寸: {self.log_output_widget.minimumSize().width()}x{self.log_output_widget.minimumSize().height()}")
+        logger.info(f"[日志组件调试] log_output_widget 最大尺寸: {self.log_output_widget.maximumSize().width()}x{self.log_output_widget.maximumSize().height()}")
+        print(f"[日志组件调试] ========== 日志组件尺寸信息 ==========")
+        print(f"[日志组件调试] LogoutputWidget 总宽度: {self_width}px, 总高度: {self_height}px")
+        print(f"[日志组件调试] log_output_widget 宽度: {log_width}px, 高度: {log_height}px")
+        print(f"[日志组件调试] log_output_widget 实际尺寸: {self.log_output_widget.size().width()}x{self.log_output_widget.size().height()}")
+        print(f"[日志组件调试] ======================================")
