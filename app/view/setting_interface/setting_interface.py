@@ -1415,16 +1415,44 @@ class SettingInterface(QWidget):
             return ""
 
     def _onMirrorCardChange(self):
+        """处理 Mirror CDK 输入变化，验证格式并保存。"""
+        current_text = self.MirrorCard.lineEdit.text()
+        
+        # 验证输入格式：只允许 0-9 和 a-f（十六进制字符）
+        # 使用 hasattr 和 getattr 来安全访问方法
+        is_valid = getattr(self.MirrorCard, 'is_valid_input', None)
+        if is_valid and not is_valid(current_text):
+            # 输入无效，不保存并提示用户
+            invalid_chars = set()
+            for char in current_text:
+                if not re.match(r'^[0-9a-fA-F]$', char, re.IGNORECASE):
+                    invalid_chars.add(char)
+            
+            invalid_str = ", ".join(f"'{c}'" for c in sorted(invalid_chars))
+            warning_msg = self.tr(
+                "Invalid characters detected: {}. Only 0-9 and a-f are allowed. Please correct the input before saving."
+            ).format(invalid_str)
+            
+            # 使用信号总线显示提示信息
+            signalBus.info_bar_requested.emit("warning", warning_msg)
+            logger.warning(f"Mirror CDK 输入包含无效字符: {invalid_str}，未保存配置")
+            
+            # 不恢复上一次的值，让用户继续编辑，但阻止保存
+            return
+        
+        # 输入有效，保存配置
         try:
-            encrypted = crypto_manager.encrypt_payload(self.MirrorCard.lineEdit.text())
+            encrypted = crypto_manager.encrypt_payload(current_text)
             encrypted_value = (
                 encrypted.decode("utf-8", errors="ignore")
                 if isinstance(encrypted, bytes)
                 else str(encrypted)
             )
             cfg.set(cfg.Mcdk, encrypted_value)
+            logger.info("Mirror CDK 已保存")
         except Exception as exc:
             logger.error("加密 Mirror CDK 失败: %s", exc)
+            signalBus.info_bar_requested.emit("error", self.tr("Failed to save Mirror CDK: {}").format(str(exc)))
             return
 
     def _on_github_api_key_change(self, text: str):
