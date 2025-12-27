@@ -813,15 +813,23 @@ class TaskFlowRunner(QObject):
             logger.error(f"未找到控制器配置: {controller_raw}")
             return False
 
-        # 获取控制器类型（adb或win32）
+        # 获取控制器类型和名称
         controller_type = self._get_controller_type(controller_raw)
+        controller_name = self._get_controller_name(controller_raw)
 
         self.adb_controller_raw = controller_raw
         self.adb_activate_controller = activate_controller
 
-        # 使用控制器类型作为键来获取配置
-        controller_raw.setdefault(controller_type, {})
-        controller_config = controller_raw[controller_type]
+        # 使用控制器名称作为键来获取配置（兼容旧配置：如果找不到则尝试使用控制器类型）
+        if controller_name in controller_raw:
+            controller_config = controller_raw[controller_name]
+        elif controller_type in controller_raw:
+            # 兼容旧配置：迁移到控制器名称
+            controller_config = controller_raw[controller_type]
+            controller_raw[controller_name] = controller_config
+        else:
+            controller_config = {}
+            controller_raw[controller_name] = controller_config
         self.adb_controller_config = controller_config
 
         # 提前读取并保存原始的 input_methods 和 screencap_methods
@@ -835,8 +843,8 @@ class TaskFlowRunner(QObject):
         )
         if found_device:
             logger.info("检测到与配置匹配的 ADB 设备，更新连接参数")
-            self._save_device_to_config(controller_raw, controller_type, found_device)
-            controller_config = controller_raw[controller_type]
+            self._save_device_to_config(controller_raw, controller_name, found_device)
+            controller_config = controller_raw[controller_name]
             self.adb_controller_config = controller_config
             # 恢复原始的 input_methods 和 screencap_methods
             if raw_input_method != -1:
@@ -931,12 +939,20 @@ class TaskFlowRunner(QObject):
             logger.error(f"未找到控制器配置: {controller_raw}")
             return False
 
-        # 获取控制器类型（adb或win32）
+        # 获取控制器类型和名称
         controller_type = self._get_controller_type(controller_raw)
+        controller_name = self._get_controller_name(controller_raw)
 
-        # 使用控制器类型作为键来获取配置
-        controller_raw.setdefault(controller_type, {})
-        controller_config = controller_raw[controller_type]
+        # 使用控制器名称作为键来获取配置（兼容旧配置：如果找不到则尝试使用控制器类型）
+        if controller_name in controller_raw:
+            controller_config = controller_raw[controller_name]
+        elif controller_type in controller_raw:
+            # 兼容旧配置：迁移到控制器名称
+            controller_config = controller_raw[controller_type]
+            controller_raw[controller_name] = controller_config
+        else:
+            controller_config = {}
+            controller_raw[controller_name] = controller_config
 
         # 提前读取并保存原始的配置值
         raw_screencap_method = controller_config.get("win32_screencap_methods")
@@ -950,8 +966,8 @@ class TaskFlowRunner(QObject):
         )
         if found_device:
             logger.info("检测到与配置匹配的 Win32 窗口，更新连接参数")
-            self._save_device_to_config(controller_raw, controller_type, found_device)
-            controller_config = controller_raw[controller_type]
+            self._save_device_to_config(controller_raw, controller_name, found_device)
+            controller_config = controller_raw[controller_name]
             # 恢复原始的配置值
             if raw_screencap_method is not None:
                 controller_config["win32_screencap_methods"] = raw_screencap_method
@@ -1115,6 +1131,29 @@ class TaskFlowRunner(QObject):
             await asyncio.sleep(1)
         return True
 
+    def _get_controller_name(self, controller_raw: Dict[str, Any]) -> str:
+        """获取控制器名称"""
+        if not isinstance(controller_raw, dict):
+            raise TypeError(
+                f"controller_raw 类型错误，期望 dict，实际 {type(controller_raw)}: {controller_raw}"
+            )
+
+        controller_config = controller_raw.get("controller_type", {})
+        if isinstance(controller_config, str):
+            controller_name = controller_config
+        elif isinstance(controller_config, dict):
+            controller_name = controller_config.get("value", "")
+        else:
+            controller_name = ""
+
+        # 验证控制器名称是否存在
+        controller_name_lower = controller_name.lower()
+        for controller in self.task_service.interface.get("controller", []):
+            if controller.get("name", "").lower() == controller_name_lower:
+                return controller.get("name", "")
+
+        raise ValueError(f"未找到控制器名称: {controller_raw}")
+
     def _get_controller_type(self, controller_raw: Dict[str, Any]) -> str:
         """获取控制器类型"""
         if not isinstance(controller_raw, dict):
@@ -1222,23 +1261,23 @@ class TaskFlowRunner(QObject):
     def _save_device_to_config(
         self,
         controller_raw: Dict[str, Any],
-        controller_type: str,
+        controller_name: str,
         device_info: Dict[str, Any],
     ) -> None:
         """保存设备信息到配置
 
         Args:
             controller_raw: 控制器原始配置
-            controller_type: 控制器类型（"adb"或"win32"）
+            controller_name: 控制器名称（name）
             device_info: 设备信息字典
         """
         try:
-            # 确保控制器配置存在（使用控制器类型作为键）
-            if controller_type not in controller_raw:
-                controller_raw[controller_type] = {}
+            # 确保控制器配置存在（使用控制器名称作为键）
+            if controller_name not in controller_raw:
+                controller_raw[controller_name] = {}
 
             # 更新设备信息
-            controller_raw[controller_type].update(device_info)
+            controller_raw[controller_name].update(device_info)
 
             # 获取预配置任务并更新
             if controller_cfg := self.task_service.get_task(_CONTROLLER_):

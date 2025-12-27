@@ -710,8 +710,8 @@ class ControllerSettingWidget(QWidget):
         current_controller_name = self.current_controller_name
         current_controller_type = self.current_controller_type
         if current_controller_type == "adb":
-            self.current_config[current_controller_type] = self.current_config.get(
-                current_controller_type,
+            self.current_config[current_controller_name] = self.current_config.get(
+                current_controller_name,
                 {
                     "adb_path": "",
                     "address": "",
@@ -725,8 +725,8 @@ class ControllerSettingWidget(QWidget):
             )
 
         elif current_controller_type == "win32":
-            self.current_config[current_controller_type] = self.current_config.get(
-                current_controller_type,
+            self.current_config[current_controller_name] = self.current_config.get(
+                current_controller_name,
                 {
                     "hwnd": "",
                     "program_path": "",
@@ -740,15 +740,15 @@ class ControllerSettingWidget(QWidget):
         # Parse JSON string back to dict for "config" key
         if key == "config":
             try:
-                self.current_config[current_controller_type][key] = jsonc.loads(value)
+                self.current_config[current_controller_name][key] = jsonc.loads(value)
             except (jsonc.JSONDecodeError, ValueError):
                 # If parsing fails, keep the string as-is or use an empty dict
-                self.current_config[current_controller_type][key] = value
+                self.current_config[current_controller_name][key] = value
         else:
-            self.current_config[current_controller_type][key] = value
+            self.current_config[current_controller_name][key] = value
         # 仅提交当前控制器的配置，避免无关字段触发任务列表误刷新
         self._auto_save_options(
-            {current_controller_type: self.current_config[current_controller_type]}
+            {current_controller_name: self.current_config[current_controller_name]}
         )
 
     def _normalize_config_for_json(self, config: Any) -> Any:
@@ -805,12 +805,14 @@ class ControllerSettingWidget(QWidget):
                     ]
                 if "custom" in self.current_config:
                     controller_task_option["custom"] = self.current_config["custom"]
-                # 保存控制器特定的配置（adb, win32）
-                for key in ["adb", "win32"]:
-                    if key in self.current_config:
+                # 保存控制器特定的配置（使用控制器名称作为键）
+                # 遍历所有控制器名称，保存其配置
+                for controller_info in self.controller_type_mapping.values():
+                    controller_name = controller_info["name"]
+                    if controller_name in self.current_config:
                         # 规范化配置数据，确保所有路径类型都被转换为字符串
-                        controller_task_option[key] = self._normalize_config_for_json(
-                            self.current_config[key]
+                        controller_task_option[controller_name] = self._normalize_config_for_json(
+                            self.current_config[controller_name]
                         )
 
                 # 更新任务选项（只更新相关字段，保留其他字段）
@@ -863,8 +865,19 @@ class ControllerSettingWidget(QWidget):
         if controller_type is None:
             logger.warning(f"未能为控制器 {controller_name!r} 找到对应的类型配置")
             return
-        # 使用控制器类型作为键，而不是控制器名称
-        controller_cfg = self.current_config.setdefault(controller_type, {})
+        # 使用控制器名称作为键，而不是控制器类型
+        # 兼容旧配置：如果使用控制器名称找不到，尝试使用控制器类型
+        if controller_name in self.current_config:
+            controller_cfg = self.current_config[controller_name]
+        elif controller_type in self.current_config:
+            # 迁移旧配置：将控制器类型的配置迁移到控制器名称
+            controller_cfg = self.current_config[controller_type]
+            self.current_config[controller_name] = controller_cfg
+            # 可选：删除旧的控制器类型键（如果需要清理旧配置）
+            # del self.current_config[controller_type]
+        else:
+            controller_cfg = {}
+            self.current_config[controller_name] = controller_cfg
         if controller_type == "adb":
             adb_defaults = {
                 "adb_path": "",
@@ -891,21 +904,21 @@ class ControllerSettingWidget(QWidget):
         for name, widget in self.resource_setting_widgets.items():
             if name.endswith("_label"):
                 continue
-            elif name in self.current_config[controller_type]:
+            elif name in self.current_config[controller_name]:
                 if isinstance(widget, (LineEdit, PathLineEdit)):
-                    value = self.current_config[controller_type][name]
+                    value = self.current_config[controller_name][name]
                     # Convert dict to JSON string
                     widget.setText(
                         jsonc.dumps(value) if isinstance(value, dict) else str(value)
                     )
                 elif isinstance(widget, ComboBox):
-                    target = self.current_config[controller_type][name]
+                    target = self.current_config[controller_name][name]
                     widget.setCurrentIndex(self._value_to_index(widget, target))
         self._fill_custom_option()
         self._fill_gpu_option()
         self._fill_agent_timeout_option()
         # 填充设备名称
-        device_name = self.current_config[controller_type].get(
+        device_name = self.current_config[controller_name].get(
             "device_name", self.tr("Unknown Device")
         )
         # 阻断下拉框信号发送
@@ -1134,9 +1147,9 @@ class ControllerSettingWidget(QWidget):
                 break
         if not current_controller_type:
             return
-        # 使用控制器类型作为键
+        # 使用控制器名称作为键
         current_controller_config = self.current_config.setdefault(
-            current_controller_type, {}
+            current_controller_name, {}
         )
         find_device_info = self.resource_setting_widgets[
             "search_combo"
@@ -1171,7 +1184,7 @@ class ControllerSettingWidget(QWidget):
         )
 
         # 仅提交当前控制器配置，避免无关字段导致任务列表重载
-        self._auto_save_options({current_controller_type: current_controller_config})
+        self._auto_save_options({current_controller_name: current_controller_config})
         self._fill_children_option(current_controller_name)
 
     def _toggle_children_visible(self, option_list: list, visible: bool):
