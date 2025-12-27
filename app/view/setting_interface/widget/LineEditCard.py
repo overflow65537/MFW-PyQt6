@@ -3,7 +3,6 @@ from PySide6.QtGui import (
     QIcon,
     QIntValidator,
 )
-import re
 
 
 from qfluentwidgets import (
@@ -136,9 +135,6 @@ class MirrorCdkLineEditCard(LineEditCard):
         else:
             self.hBoxLayout.addWidget(self.bodyLabel)
 
-        # 不阻止输入，但会进行提示
-        # 移除验证器，允许输入任何字符，但会通过视觉反馈提示无效字符
-        
         self._timer = QTimer(self)
         self._timer.setInterval(1000)
         self._timer.timeout.connect(self._refresh_remaining_time)
@@ -146,59 +142,11 @@ class MirrorCdkLineEditCard(LineEditCard):
         self.lineEdit.textChanged.connect(self._on_line_edit_changed)
         self._refresh_remaining_time()
         
-        # 用于存储原始样式，以便恢复
-        self._original_style = self.lineEdit.styleSheet()
-        # 用于存储上一次有效的输入值
-        self._last_valid_text = ""
-
     def _on_line_edit_changed(self, text: str):
-        """CDK 更改时重置过期时间并更新提示，同时验证输入格式。"""
+        """CDK 更改时重置过期时间并更新提示。"""
         if cfg.get(cfg.cdk_expired_time) != -1:
             cfg.set(cfg.cdk_expired_time, -1)
         self._refresh_remaining_time()
-        
-        # 验证输入格式：只允许 0-9 和 a-f（十六进制字符）
-        self._validate_input(text)
-    
-    def is_valid_input(self, text: str) -> bool:
-        """检查输入是否有效（只包含十六进制字符）。"""
-        if not text:
-            return True  # 空字符串视为有效
-        hex_pattern = re.compile(r'^[0-9a-fA-F]*$')
-        return bool(hex_pattern.match(text))
-    
-    def _validate_input(self, text: str):
-        """验证输入格式，如果包含无效字符则给出提示。"""
-        if not text:
-            # 输入为空时，恢复原始样式
-            self.lineEdit.setStyleSheet(self._original_style)
-            self.lineEdit.setToolTip("")
-            self._last_valid_text = ""
-            return
-        
-        # 检查是否包含无效字符（非十六进制字符）
-        if self.is_valid_input(text):
-            # 输入有效，恢复原始样式并保存为有效值
-            self.lineEdit.setStyleSheet(self._original_style)
-            self.lineEdit.setToolTip("")
-            self._last_valid_text = text
-        else:
-            # 包含无效字符，找出所有无效字符
-            invalid_chars = set()
-            for char in text:
-                if not re.match(r'^[0-9a-fA-F]$', char, re.IGNORECASE):
-                    invalid_chars.add(char)
-            
-            if invalid_chars:
-                invalid_str = ", ".join(f"'{c}'" for c in sorted(invalid_chars))
-                tooltip_text = self.tr(
-                    "Invalid characters detected: {}. Only 0-9 and a-f are allowed. Please correct the input."
-                ).format(invalid_str)
-                self.lineEdit.setToolTip(tooltip_text)
-                # 改变输入框边框颜色为警告色（橙色）
-                self.lineEdit.setStyleSheet(
-                    "border: 1px solid #f59f00; border-radius: 4px;"
-                )
 
     def _refresh_remaining_time(self):
         raw = cfg.get(cfg.cdk_expired_time)
