@@ -2,6 +2,7 @@ import asyncio
 import calendar
 import os
 import platform
+import re
 import shlex
 import subprocess
 import sys
@@ -1084,6 +1085,22 @@ class TaskFlowRunner(QObject):
             return host.strip(), port.strip() or None
         return raw_address, None
 
+    def _extract_device_base_name(self, device_name: str) -> str:
+        """从设备名称中提取基础名称
+        
+        例如：
+        - "雷电模拟器-LDPlayer[0](emulator-5554)" -> "雷电模拟器-LDPlayer[0]"
+        - "MuMu模拟器(127.0.0.1:7555)" -> "MuMu模拟器"
+        - "雷电模拟器-LDPlayer[0]" -> "雷电模拟器-LDPlayer[0]"
+        """
+        # 只去掉 (address) 部分，保留 [index] 部分
+        # 匹配格式：name[index](address) 或 name(address) 或 name[index]
+        pattern = r'^(.+?)(?:\(.*?\))?$'
+        match = re.match(pattern, device_name.strip())
+        if match:
+            return match.group(1).strip()
+        return device_name.strip()
+
     def _should_use_new_adb_device(
         self,
         old_config: Dict[str, Any],
@@ -1093,24 +1110,21 @@ class TaskFlowRunner(QObject):
         if not new_device:
             return False
 
-        old_name = (old_config.get("device_name") or "").strip()
-        new_name = (new_device.get("device_name") or "").strip()
-        old_host, old_port = self._parse_address_components(old_config.get("address"))
-        new_host, new_port = self._parse_address_components(new_device.get("address"))
+        old_adb_path = (old_config.get("adb_path") or "").strip()
+        new_adb_path = (new_device.get("adb_path") or "").strip()
+        
+        old_name = self._extract_device_base_name(old_config.get("device_name") or "")
+        new_name = self._extract_device_base_name(new_device.get("device_name") or "")
 
-        fields_present = sum(bool(value) for value in (old_name, old_host, old_port))
-        if fields_present < 2:
+        # 如果旧配置中 adb_path 或 device_name 为空，则使用新配置
+        if not old_adb_path or not old_name:
             return True
 
-        match_count = 0
-        if old_name and new_name and old_name == new_name:
-            match_count += 1
-        if old_host and new_host and old_host == new_host:
-            match_count += 1
-        if old_port and new_port and old_port == new_port:
-            match_count += 1
+        # 两者都必须匹配
+        adb_path_match = old_adb_path == new_adb_path
+        name_match = old_name == new_name
 
-        return match_count >= 2
+        return adb_path_match and name_match
 
     def _should_use_new_win32_window(
         self,
@@ -1236,15 +1250,22 @@ class TaskFlowRunner(QObject):
 
             all_device_infos = []
             for device in devices:
-                # 优先使用 config 中的雷电 pid，补充给解析函数
-                ld_pid_cfg = (
-                    controller_config.get("config", {})
+                # 优先使用设备自身的 pid，如果没有则使用配置中的 pid
+                device_ld_pid = (
+                    (getattr(device, "config", {}) or {})
                     .get("extras", {})
                     .get("ld", {})
                     .get("pid")
                 )
+                if device_ld_pid is None:
+                    device_ld_pid = (
+                        controller_config.get("config", {})
+                        .get("extras", {})
+                        .get("ld", {})
+                        .get("pid")
+                    )
                 device_index = EmulatorHelper.resolve_emulator_index(
-                    device, ld_pid=ld_pid_cfg
+                    device, ld_pid=device_ld_pid
                 )
                 display_name = (
                     f"{device.name}[{device_index}]({device.address})"
