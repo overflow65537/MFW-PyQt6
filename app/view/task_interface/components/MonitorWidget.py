@@ -293,9 +293,22 @@ class MonitorWidget(QWidget):
         y = preview_size.height() - overlay_size.height() - margin
         self._fps_overlay.move(max(x, 0), max(y, 0))
 
+    def _get_controller(self):
+        """获取控制器：优先使用任务流的控制器，如果没有则使用监控任务的控制器"""
+        # 优先使用任务流的控制器（如果任务流已连接）
+        if hasattr(self.service_coordinator, 'run_manager'):
+            task_flow = self.service_coordinator.run_manager
+            if task_flow and hasattr(task_flow, 'maafw'):
+                controller = getattr(task_flow.maafw, 'controller', None)
+                if controller is not None:
+                    return controller
+        
+        # 回退到监控任务的控制器
+        return getattr(self.monitor_task.maafw, 'controller', None)
+    
     def _capture_frame(self) -> Image.Image:
         """捕获一帧"""
-        controller = self.monitor_task.maafw.controller
+        controller = self._get_controller()
         if controller is None:
             raise RuntimeError("控制器尚未初始化，无法抓取画面")
         raw_frame = controller.post_screencap().wait().get()
@@ -361,12 +374,98 @@ class MonitorWidget(QWidget):
         return self._target_interval
 
     def _is_controller_connected(self) -> bool:
-        """检查控制器是否连接"""
+        """检查控制器是否连接：优先检查任务流的控制器"""
+        # 优先检查任务流的控制器
+        if hasattr(self.service_coordinator, 'run_manager'):
+            task_flow = self.service_coordinator.run_manager
+            if task_flow and hasattr(task_flow, 'maafw'):
+                controller = getattr(task_flow.maafw, 'controller', None)
+                if controller is not None:
+                    connected = getattr(controller, "connected", None)
+                    if connected is not False:
+                        return True
+        
+        # 回退到监控任务的控制器
         controller = getattr(self.monitor_task.maafw, "controller", None)
         if controller is None:
             return False
         connected = getattr(controller, "connected", None)
         return connected is not False
+    
+    async def _get_required_wait_time(self) -> float:
+        """从配置中获取需要的等待时间（如果配置了启动模拟器或程序）"""
+        from app.common.constants import _CONTROLLER_
+        
+        try:
+            # 获取控制器配置
+            controller_cfg = self.service_coordinator.task_service.get_task(_CONTROLLER_)
+            if not controller_cfg:
+                return 0.0
+            
+            controller_raw = controller_cfg.task_option
+            if not isinstance(controller_raw, dict):
+                return 0.0
+            
+            # 获取控制器类型和名称
+            controller_type = self._get_controller_type_from_config(controller_raw)
+            controller_name = self._get_controller_name_from_config(controller_raw)
+            
+            # 获取控制器配置
+            if controller_name in controller_raw:
+                controller_config = controller_raw[controller_name]
+            elif controller_type in controller_raw:
+                controller_config = controller_raw[controller_type]
+            else:
+                controller_config = {}
+            
+            # 根据控制器类型检查等待时间
+            if controller_type == "adb":
+                # ADB 控制器：检查是否有模拟器路径和等待时间
+                if controller_config.get("emulator_path", ""):
+                    wait_time = int(controller_config.get("wait_time", 0))
+                    return float(wait_time)
+            elif controller_type == "win32":
+                # Win32 控制器：检查是否有程序路径和等待时间
+                if controller_config.get("program_path", ""):
+                    wait_time = int(controller_config.get("wait_launch_time", 0))
+                    return float(wait_time)
+            
+            return 0.0
+        except Exception:
+            # 如果获取配置失败，返回0（不等待）
+            return 0.0
+    
+    def _get_controller_type_from_config(self, controller_raw: dict) -> str:
+        """从配置中获取控制器类型"""
+        try:
+            controller_config = controller_raw.get("controller_type", {})
+            if isinstance(controller_config, str):
+                controller_name = controller_config
+            elif isinstance(controller_config, dict):
+                controller_name = controller_config.get("value", "")
+            else:
+                controller_name = ""
+            
+            controller_name = controller_name.lower()
+            for controller in self.service_coordinator.task_service.interface.get("controller", []):
+                if controller.get("name", "").lower() == controller_name:
+                    return controller.get("type", "").lower()
+            
+            return ""
+        except Exception:
+            return ""
+    
+    def _get_controller_name_from_config(self, controller_raw: dict) -> str:
+        """从配置中获取控制器名称"""
+        try:
+            controller_config = controller_raw.get("controller_type", {})
+            if isinstance(controller_config, str):
+                return controller_config
+            elif isinstance(controller_config, dict):
+                return controller_config.get("value", "")
+            return ""
+        except Exception:
+            return ""
 
     async def _handle_controller_disconnection(self) -> None:
         """处理控制器断开"""
@@ -438,7 +537,7 @@ class MonitorWidget(QWidget):
         coords = self._map_visual_click_to_device(x, y)
         if not coords:
             return
-        controller = getattr(self.monitor_task.maafw, "controller", None)
+        controller = self._get_controller()
         if controller is None:
             return
 
@@ -505,11 +604,59 @@ class MonitorWidget(QWidget):
         
         async def _start_sequence():
             try:
+                # 优先检查任务流是否已连接设备
                 if not self._is_controller_connected():
-                    connected = await self.monitor_task._connect()
-                    if not connected:
+                    # 如果任务流正在运行，等待它连接设备
+                    if hasattr(self.service_coordinator, 'run_manager'):
+                        task_flow = self.service_coordinator.run_manager
+                        if task_flow and task_flow.is_running:
+                            # 检查配置中是否需要启动模拟器或程序，并等待对应时间
+                            wait_time = await self._get_required_wait_time()
+                            if wait_time > 0:
+                                # 显示等待提示
+                                signalBus.info_bar_requested.emit(
+                                    "info", self.tr("Waiting for device startup...")
+                                )
+                                # 等待启动时间
+                                await asyncio.sleep(wait_time)
+                            
+                            # 显示等待连接提示
+                            signalBus.info_bar_requested.emit(
+                                "info", self.tr("Waiting for device connection...")
+                            )
+                            # 等待任务流连接设备（最多等待10秒，每0.05秒检查一次）
+                            # 使用更短的间隔，确保一旦连接成功就立即继续
+                            max_wait_time = 10.0  # 最多等待10秒
+                            check_interval = 0.05  # 每50ms检查一次
+                            waited_time = 0.0
+                            while waited_time < max_wait_time:
+                                await asyncio.sleep(check_interval)
+                                waited_time += check_interval
+                                if self._is_controller_connected():
+                                    # 连接成功，立即继续，不额外等待
+                                    break
+                            
+                            if not self._is_controller_connected():
+                                signalBus.info_bar_requested.emit(
+                                    "error", self.tr("Device connection timeout. Please check device connection.")
+                                )
+                                self._starting_monitoring = False
+                                if self.external_button:
+                                    self.external_button.setEnabled(True)
+                                return
+                        else:
+                            # 任务流未运行
+                            signalBus.info_bar_requested.emit(
+                                "error", self.tr("Device not connected. Please start the task first.")
+                            )
+                            self._starting_monitoring = False
+                            if self.external_button:
+                                self.external_button.setEnabled(True)
+                            return
+                    else:
+                        # 无法获取任务流
                         signalBus.info_bar_requested.emit(
-                            "error", self.tr("Device connection failed, cannot start monitoring")
+                            "error", self.tr("Device not connected. Please start the task first.")
                         )
                         self._starting_monitoring = False
                         if self.external_button:

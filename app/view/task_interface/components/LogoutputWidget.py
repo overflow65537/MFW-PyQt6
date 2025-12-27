@@ -113,9 +113,7 @@ class LogoutputWidget(QWidget):
 
         # 连接日志输出信号
         signalBus.log_output.connect(self._on_log_output)
-        
-        # 打印日志组件宽度（在组件显示后）
-        QTimer.singleShot(100, self._print_log_width)
+
         signalBus.log_clear_requested.connect(self.clear_log)
         signalBus.log_zip_started.connect(
             lambda: self.generate_log_zip_button.setEnabled(False)
@@ -315,8 +313,6 @@ class LogoutputWidget(QWidget):
         """在尺寸变化时重新计算每行高度，避免文本被截断"""
         super().resizeEvent(event)
         self._sync_row_heights()
-        # 打印日志组件宽度（尺寸变化时）
-        self._print_log_width()
 
     def _sanitize_color(self, raw: str) -> str:
         """过滤颜色字符串，防止注入并保留常见格式"""
@@ -423,19 +419,3 @@ class LogoutputWidget(QWidget):
         if hasattr(self, 'monitor_widget'):
             self.monitor_widget._on_monitor_control_clicked()
     
-    def _print_log_width(self) -> None:
-        """打印日志组件的宽度"""
-        log_width = self.log_output_widget.width()
-        log_height = self.log_output_widget.height()
-        self_width = self.width()
-        self_height = self.height()
-        logger.info(f"[日志组件调试] LogoutputWidget 总宽度: {self_width}px, 总高度: {self_height}px")
-        logger.info(f"[日志组件调试] log_output_widget 宽度: {log_width}px, 高度: {log_height}px")
-        logger.info(f"[日志组件调试] log_output_widget 实际尺寸: {self.log_output_widget.size().width()}x{self.log_output_widget.size().height()}")
-        logger.info(f"[日志组件调试] log_output_widget 最小尺寸: {self.log_output_widget.minimumSize().width()}x{self.log_output_widget.minimumSize().height()}")
-        logger.info(f"[日志组件调试] log_output_widget 最大尺寸: {self.log_output_widget.maximumSize().width()}x{self.log_output_widget.maximumSize().height()}")
-        print(f"[日志组件调试] ========== 日志组件尺寸信息 ==========")
-        print(f"[日志组件调试] LogoutputWidget 总宽度: {self_width}px, 总高度: {self_height}px")
-        print(f"[日志组件调试] log_output_widget 宽度: {log_width}px, 高度: {log_height}px")
-        print(f"[日志组件调试] log_output_widget 实际尺寸: {self.log_output_widget.size().width()}x{self.log_output_widget.size().height()}")
-        print(f"[日志组件调试] ======================================")
