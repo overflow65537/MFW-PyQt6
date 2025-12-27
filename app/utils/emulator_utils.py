@@ -175,7 +175,9 @@ class EmulatorHelper:
                 f"ldconsole quit 序号 {ld_index} 成功，输出: {result.stdout.strip()}"
             )
         except subprocess.CalledProcessError as e:
-            logger.error(f"ldconsole quit 序号 {ld_index} 失败，错误信息: {e.stderr.strip()}")
+            logger.error(
+                f"ldconsole quit 序号 {ld_index} 失败，错误信息: {e.stderr.strip()}"
+            )
         return True
 
     @staticmethod
@@ -219,8 +221,10 @@ class EmulatorHelper:
             return indices[0] if indices else None
 
         # 雷电 / 其它：目前无法通过地址反推序号
-        if ("雷电" in normalized_name) or ("ld" in normalized_name) or (
-            "ldplayer" in normalized_name
+        if (
+            ("雷电" in normalized_name)
+            or ("ld" in normalized_name)
+            or ("ldplayer" in normalized_name)
         ):
             return None
 
@@ -248,8 +252,11 @@ class EmulatorHelper:
             device_name = device_name or getattr(device, "name", None)
             if ld_pid is None:
                 ld_pid = (
-                    getattr(device, "config", {}) or {}
-                ).get("extras", {}).get("ld", {}).get("pid")
+                    (getattr(device, "config", {}) or {})
+                    .get("extras", {})
+                    .get("ld", {})
+                    .get("pid")
+                )
 
         if direct_index is not None:
             return str(direct_index)
@@ -258,11 +265,15 @@ class EmulatorHelper:
 
         # MuMu 序号
         if "mumu" in normalized_name:
-            return EmulatorHelper.get_index_by_adb_address(adb_path, address, device_name)
+            return EmulatorHelper.get_index_by_adb_address(
+                adb_path, address, device_name
+            )
 
         # 雷电序号：需要 pid + ldconsole
-        elif ("雷电" in normalized_name) or ("ld" in normalized_name) or (
-            "ldplayer" in normalized_name
+        elif (
+            ("雷电" in normalized_name)
+            or ("ld" in normalized_name)
+            or ("ldplayer" in normalized_name)
         ):
             if not ld_pid:
                 return None
@@ -320,7 +331,7 @@ class EmulatorHelper:
             # 检测 LDPlayer.exe
             ldplayer_path = emulator_dir / "dnplayer.exe"
             if ldplayer_path.exists():
-                return str(ldplayer_path), f"--index {device_index}"
+                return str(ldplayer_path), f"index={device_index}"
 
             # 不存在，返回空
             return "", ""
