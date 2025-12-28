@@ -2,6 +2,7 @@ from typing import Optional
 import asyncio
 from datetime import datetime
 from pathlib import Path
+import numpy as np
 
 from PIL import Image
 from PySide6.QtCore import QSize, Qt, QTimer
@@ -30,6 +31,7 @@ from app.utils.logger import (
     suppress_qasync_logging,
 )
 from app.common.signal_bus import signalBus
+from app.common.config import cfg
 
 
 class MonitorWidget(QWidget):
@@ -45,6 +47,8 @@ class MonitorWidget(QWidget):
         self._monitor_loop_task: Optional[asyncio.Task] = None
         self._starting_monitoring = False  # 防止重复启动
         self._target_interval = 1.0 / 30
+        self._low_power_mode = False  # 低功耗模式标志
+        self._low_power_timer: Optional[QTimer] = None  # 低功耗模式使用的定时器
         
         self.monitor_task = MonitorTask(
             task_service=self.service_coordinator.task_service,
@@ -154,12 +158,10 @@ class MonitorWidget(QWidget):
 
     def _on_task_status_changed(self, status: dict):
         """处理任务状态变化"""
-        from app.common.config import cfg
         is_running = status.get("text") == "STOP"
         if is_running and not self._monitoring_active and not self._starting_monitoring:
-            # 任务开始，根据配置决定是否自动开始监控
-            if cfg.get(cfg.auto_start_monitoring):
-                self._start_monitoring()
+            # 任务开始，自动开始监控
+            self._start_monitoring()
         elif not is_running and self._monitoring_active:
             # 任务停止，自动停止监控
             self._stop_monitoring()
@@ -268,6 +270,32 @@ class MonitorWidget(QWidget):
         if raw_frame is None:
             raise ValueError("采集返回空帧")
         return Image.fromarray(raw_frame[..., ::-1])
+    
+    def _get_cached_image(self) -> Optional[Image.Image]:
+        """从缓存的图像中获取一帧（低功耗模式使用）"""
+        try:
+            controller = self._get_controller()
+            if controller is None:
+                return None
+            
+            # 尝试从 cached_image 获取图像
+            cached_image = getattr(controller, 'cached_image', None)
+            if cached_image is None:
+                return None
+            
+            # cached_image 可能是 numpy array，需要转换为 PIL Image
+            if isinstance(cached_image, np.ndarray):
+                # 如果是 BGR 格式，需要转换为 RGB
+                if len(cached_image.shape) == 3 and cached_image.shape[2] == 3:
+                    return Image.fromarray(cached_image[..., ::-1])
+                else:
+                    return Image.fromarray(cached_image)
+            elif isinstance(cached_image, Image.Image):
+                return cached_image
+            else:
+                return None
+        except Exception:
+            return None
 
     def _start_monitor_loop(self) -> None:
         """启动监控循环"""
@@ -286,6 +314,38 @@ class MonitorWidget(QWidget):
             restore_asyncify_logging()
             restore_qasync_logging()
             raise
+    
+    def _start_low_power_monitoring(self) -> None:
+        """启动低功耗模式监控（使用 QTimer 和 cached_image）"""
+        if self._monitoring_active:
+            return
+        
+        self._monitoring_active = True
+        self._low_power_mode = True
+        
+        # 创建定时器，24帧 = 1/24 秒间隔
+        self._low_power_timer = QTimer(self)
+        self._low_power_timer.timeout.connect(self._low_power_refresh)
+        interval_ms = int(1000 / 24)  # 24帧每秒
+        self._low_power_timer.start(interval_ms)
+        
+        # 立即刷新一次
+        self._low_power_refresh()
+    
+    def _low_power_refresh(self) -> None:
+        """低功耗模式刷新（从 cached_image 获取图像）"""
+        if not self._monitoring_active or not self._low_power_mode:
+            return
+        
+        # 检查控制器是否连接
+        if not self._is_controller_connected():
+            self._stop_monitoring()
+            return
+        
+        # 从缓存的图像获取
+        pil_image = self._get_cached_image()
+        if pil_image:
+            self._apply_preview_from_pil(pil_image)
 
     def _stop_monitor_loop(self) -> None:
         """停止监控循环"""
@@ -296,6 +356,14 @@ class MonitorWidget(QWidget):
             task.cancel()
         restore_asyncify_logging()
         restore_qasync_logging()
+    
+    def _stop_low_power_monitoring(self) -> None:
+        """停止低功耗模式监控"""
+        self._monitoring_active = False
+        self._low_power_mode = False
+        if self._low_power_timer:
+            self._low_power_timer.stop()
+            self._low_power_timer = None
 
     async def _monitor_loop(self) -> None:
         """监控循环"""
@@ -324,6 +392,9 @@ class MonitorWidget(QWidget):
 
     def _get_target_interval(self) -> float:
         """获取目标间隔"""
+        # 低功耗模式下使用24帧，否则使用30帧
+        if self._low_power_mode:
+            return 1.0 / 24
         return self._target_interval
 
     def _is_controller_connected(self) -> bool:
@@ -547,37 +618,45 @@ class MonitorWidget(QWidget):
                         self._update_button_state()
                         return
                 
-                # 启动监控循环
-                self._start_monitor_loop()
+                # 根据配置决定使用哪种监控模式
+                use_low_power = cfg.get(cfg.low_power_monitoring_mode)
                 
-                # 等待一小段时间确保循环已启动
-                await asyncio.sleep(0.1)
-                
-                # 检查监控是否真的启动了
-                if not self._monitoring_active:
-                    if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
-                        signalBus.info_bar_requested.emit(
-                            "error", self.tr("Failed to start monitoring loop")
-                        )
-                    self._starting_monitoring = False
-                    self._update_button_state()
-                    return
+                if use_low_power:
+                    # 低功耗模式：使用 QTimer 和 cached_image
+                    self._start_low_power_monitoring()
+                else:
+                    # 正常模式：使用异步监控循环
+                    self._start_monitor_loop()
+                    
+                    # 等待一小段时间确保循环已启动
+                    await asyncio.sleep(0.1)
+                    
+                    # 检查监控是否真的启动了
+                    if not self._monitoring_active:
+                        if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
+                            signalBus.info_bar_requested.emit(
+                                "error", self.tr("Failed to start monitoring loop")
+                            )
+                        self._starting_monitoring = False
+                        self._update_button_state()
+                        return
                 
                 self._update_button_state()
                 signalBus.info_bar_requested.emit("success", self.tr("Monitoring started"))
                 
-                # 尝试捕获第一帧
-                try:
-                    if not self._is_controller_connected():
-                        await self._handle_controller_disconnection()
-                        return
-                    pil_image = await asyncio.to_thread(self._capture_frame)
-                except Exception:
-                    # 静默处理错误，不输出到日志组件
-                    pass
-                else:
-                    if pil_image:
-                        self._apply_preview_from_pil(pil_image)
+                # 尝试捕获第一帧（仅正常模式）
+                if not use_low_power:
+                    try:
+                        if not self._is_controller_connected():
+                            await self._handle_controller_disconnection()
+                            return
+                        pil_image = await asyncio.to_thread(self._capture_frame)
+                    except Exception:
+                        # 静默处理错误，不输出到日志组件
+                        pass
+                    else:
+                        if pil_image:
+                            self._apply_preview_from_pil(pil_image)
             except Exception as exc:
                 if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
                     signalBus.info_bar_requested.emit(
@@ -604,7 +683,11 @@ class MonitorWidget(QWidget):
                 # 隐藏加载图标
                 self._hide_loading_overlay()
                 
-                self._stop_monitor_loop()
+                # 根据模式停止相应的监控
+                if self._low_power_mode:
+                    self._stop_low_power_monitoring()
+                else:
+                    self._stop_monitor_loop()
                 
                 try:
                     await self.monitor_task.maafw.stop_task()

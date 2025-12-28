@@ -1195,12 +1195,12 @@ class SettingInterface(QWidget):
             self._on_task_timeout_action_changed
         )
 
-        # 自动开始监控
-        self.auto_start_monitoring_card = SwitchSettingCard(
-            FIF.VIDEO,
-            self.tr("Auto Start Monitoring"),
-            self.tr("Automatically start monitoring when a task begins"),
-            configItem=cfg.auto_start_monitoring,
+        # 低功耗监控模式
+        self.low_power_monitoring_mode_card = SwitchSettingCard(
+            FIF.POWER_BUTTON,
+            self.tr("Low Power Monitoring Mode"),
+            self.tr("Use cached images instead of dedicated monitoring thread, refresh rate: 24 FPS"),
+            configItem=cfg.low_power_monitoring_mode,
             parent=self.taskGroup,
         )
 
@@ -1208,7 +1208,7 @@ class SettingInterface(QWidget):
         self.taskGroup.addSettingCard(self.task_timeout_card)
         self.taskGroup.addSettingCard(self.task_timeout_action_card)
         self.taskGroup.addSettingCard(self.task_timeout_restart_mode_card)
-        self.taskGroup.addSettingCard(self.auto_start_monitoring_card)
+        self.taskGroup.addSettingCard(self.low_power_monitoring_mode_card)
         self.add_setting_group(self.taskGroup)
 
     def _on_task_timeout_edited(self):
