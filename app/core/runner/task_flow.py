@@ -81,6 +81,9 @@ class TaskFlowRunner(QObject):
         # bundle 相关：在任务流开始时根据当前配置初始化
         self.bundle_path: str = "./"
 
+        # 默认 pipeline_override（来自 Resource 任务）
+        self._default_pipeline_override: Dict[str, Any] = {}
+
         # 任务超时相关
         self._timeout_timer = QTimer(self)
         self._timeout_timer.setSingleShot(True)
@@ -325,6 +328,17 @@ class TaskFlowRunner(QObject):
                 logger.error("资源加载失败，流程终止")
                 return
             logger.info("资源加载成功")
+
+            # 将资源选项转换为 pipeline_override 作为默认 override
+            from app.core.utils.pipeline_helper import (
+                get_pipeline_override_from_task_option,
+            )
+            self._default_pipeline_override = get_pipeline_override_from_task_option(
+                self.task_service.interface, resource_cfg.task_option, _RESOURCE_
+            )
+            logger.info(
+                f"资源选项已转换为默认 pipeline_override: {self._default_pipeline_override}"
+            )
 
             if self.task_service.interface.get("agent", None):
                 logger.info("传入agent配置...")
@@ -749,7 +763,12 @@ class TaskFlowRunner(QObject):
             return
 
         entry = raw_info.get("entry", "") or ""
-        pipeline_override = raw_info.get("pipeline_override", {})
+        task_pipeline_override = raw_info.get("pipeline_override", {})
+
+        # 合并默认 override（来自 Resource 任务）和任务自身的 override
+        # 先应用默认 override，再应用任务 override（任务 override 优先级更高）
+        pipeline_override = self._default_pipeline_override.copy()
+        pipeline_override.update(task_pipeline_override)
 
         if not self.maafw.resource:
             logger.error("资源未初始化，无法执行任务")

@@ -3,12 +3,12 @@
 提供从任务选项中提取 pipeline_override 的功能。
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from app.utils.logger import logger
 
 
 def get_pipeline_override_from_task_option(
-    interface: Dict[str, Any], task_options: Dict[str, Any]
+    interface: Dict[str, Any], task_options: Dict[str, Any], task_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """从任务选项中提取 pipeline_override
 
@@ -36,6 +36,8 @@ def get_pipeline_override_from_task_option(
                     }
                 }
             }
+            对于 Resource 任务，资源选项保存在 "resource_options" 字段中
+        task_id: 任务ID，用于判断是否为 Resource 任务
 
     Returns:
         Dict: 合并后的 pipeline_override
@@ -47,11 +49,26 @@ def get_pipeline_override_from_task_option(
     merged_override = {}
     options = interface.get("option", {})
 
-    for option_name, option_value in task_options.items():
-        # 处理选项（包括递归处理子选项）
-        _process_option_recursive(
-            options, option_name, option_value, merged_override
-        )
+    # 如果是 Resource 任务，从 resource_options 字段中提取选项
+    from app.common.constants import _RESOURCE_
+    if task_id == _RESOURCE_ and "resource_options" in task_options:
+        # 只处理 resource_options 字段中的选项
+        resource_options = task_options["resource_options"]
+        for option_name, option_value in resource_options.items():
+            # 处理选项（包括递归处理子选项）
+            _process_option_recursive(
+                options, option_name, option_value, merged_override
+            )
+    else:
+        # 非 Resource 任务，按原来的逻辑处理所有选项
+        for option_name, option_value in task_options.items():
+            # 跳过内部字段和 resource_options 字段本身
+            if option_name.startswith("_") or option_name == "resource_options":
+                continue
+            # 处理选项（包括递归处理子选项）
+            _process_option_recursive(
+                options, option_name, option_value, merged_override
+            )
 
     return merged_override
 
