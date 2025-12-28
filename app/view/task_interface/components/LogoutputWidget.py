@@ -48,7 +48,7 @@ class LogoutputWidget(QWidget):
         self._apply_theme_colors()
         qconfig.themeChanged.connect(self._apply_theme_colors)
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 8, 0, 10)
+        self.main_layout.setContentsMargins(0, 8,0, 20)
         self.main_layout.setSpacing(8)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         
@@ -56,7 +56,7 @@ class LogoutputWidget(QWidget):
         if self.service_coordinator:
             # 监控标题栏
             monitor_title_layout = QHBoxLayout()
-            monitor_title_layout.setContentsMargins(0, 15, 0, 0)  # 上部避让16px
+            monitor_title_layout.setContentsMargins(0, 22, 0, 0)  # 上部避让12px
             monitor_title_layout.setSpacing(8)
             
             self.monitor_title_label = BodyLabel(self.tr("Monitor"))

@@ -28,6 +28,11 @@ class UI_TaskInterface(object):
         # 主窗口
         self.main_layout = QHBoxLayout()
         self.log_output_widget = LogoutputWidget(service_coordinator=self.service_coordinator)
+        
+        # 设置日志区域固定宽度，取消侧向拉伸
+        self.log_output_widget.setFixedWidth(344)  # 设置固定宽度344px
+        log_policy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
+        self.log_output_widget.setSizePolicy(log_policy)
 
         self._init_control_panel()
         self._init_option_panel()
@@ -35,9 +40,9 @@ class UI_TaskInterface(object):
         self.main_layout.addWidget(self.control_panel)
         self.main_layout.addWidget(self.option_panel_widget)
         self.main_layout.addWidget(self.log_output_widget)
-        self.main_layout.setStretch(0, 1)
-        self.main_layout.setStretch(1, 1)
-        self.main_layout.setStretch(2, 99)
+        self.main_layout.setStretch(0, 0)  # 控制面板：固定宽度，不拉伸
+        self.main_layout.setStretch(1, 1)  # 选项/公告面板：可拉伸
+        self.main_layout.setStretch(2, 0)  # 日志区域：固定宽度，不拉伸
 
         TaskInterface.setLayout(self.main_layout)
         self.retranslateUi(TaskInterface)
@@ -48,7 +53,11 @@ class UI_TaskInterface(object):
         self.option_panel_widget = QWidget()
         self.option_panel_layout = QVBoxLayout(self.option_panel_widget)
         self.option_panel = OptionWidget(service_coordinator=self.service_coordinator)
-        self.option_panel.setFixedWidth(344)
+        # 移除固定宽度限制，允许选项面板横向拉伸
+        self.option_panel.setMinimumWidth(344)  # 设置最小宽度而不是固定宽度
+        # 设置大小策略：水平方向可拉伸，垂直方向可拉伸
+        option_policy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.option_panel.setSizePolicy(option_policy)
         self.option_panel_layout.addWidget(self.option_panel)
 
     def _init_control_panel(self):

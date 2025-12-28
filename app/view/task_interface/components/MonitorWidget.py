@@ -19,6 +19,7 @@ from qfluentwidgets import (
     PixmapLabel,
     SimpleCardWidget,
     IndeterminateProgressRing,
+    isDarkTheme,
 )
 
 from app.core.core import ServiceCoordinator
@@ -67,14 +68,16 @@ class MonitorWidget(QWidget):
         self.main_layout.setSpacing(0)
         
         # 预览区域（保留 SimpleCardWidget 作为内部包裹）
-        # 16:9比例，宽度344px，高度 = 344 * 9 / 16 = 194px
+        # 默认横向：16:9比例，宽度344px，高度 = 344 * 9 / 16 = 194px
+        # 纵向：9:16比例，宽度194px，高度 = 194 * 16 / 9 = 344px
         self._monitor_width = 344
         self._monitor_height = 194
+        self._is_landscape = True  # 默认横向
         
         self.preview_card = SimpleCardWidget()
         self.preview_card.setClickEnabled(False)
         self.preview_card.setBorderRadius(8)
-        # 设置固定尺寸（16:9比例）：宽度344px，高度194px
+        # 设置初始尺寸（16:9比例）：宽度344px，高度194px
         self.preview_card.setFixedSize(self._monitor_width, self._monitor_height)
         # 设置大小策略为固定，不影响其他组件
         card_policy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
@@ -87,7 +90,7 @@ class MonitorWidget(QWidget):
         self.preview_label = PixmapLabel(self)
         self.preview_label.setObjectName("monitorPreviewLabel")
         self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # 设置固定尺寸（16:9比例）：宽度344px，高度194px
+        # 设置初始尺寸（16:9比例）：宽度344px，高度194px
         self.preview_label.setFixedSize(self._monitor_width, self._monitor_height)
         # 使用固定大小策略，不影响其他组件
         self.preview_label.setSizePolicy(
@@ -167,16 +170,21 @@ class MonitorWidget(QWidget):
             self._stop_monitoring()
 
     def _load_placeholder_image(self) -> None:
-        """加载占位图像（创建一个简单的灰色占位图，固定大小 1280x720）"""
-        # 监控图片固定大小：1280x720（16:9比例）
+        """加载占位图像（创建一个简单的灰色占位图，默认横向 1280x720）"""
+        # 默认使用横向尺寸：1280x720（16:9比例）
         self._monitor_image_width = 1280
         self._monitor_image_height = 720
+        self._is_landscape = True
+        if isDarkTheme():
+            placeholder_color = (50, 50, 50)  # 深灰色
+        else:
+            placeholder_color = (200, 200, 200)  # 浅灰色
         
         # 使用PIL创建一个灰色占位图
         placeholder_image = Image.new(
             'RGB', 
             (self._monitor_image_width, self._monitor_image_height), 
-            color=(40, 40, 40)
+            color=placeholder_color
         )
         
         # 转换为QPixmap
@@ -200,16 +208,16 @@ class MonitorWidget(QWidget):
         self._refresh_preview_image()
 
     def _refresh_preview_image(self) -> None:
-        """刷新预览图像（将1280x720的图片缩放到344x194的预览标签）"""
+        """刷新预览图像（根据图片尺寸缩放到预览标签）"""
         if not self._preview_pixmap:
             return
         
-        # 使用固定的目标尺寸（344x194），而不是从标签获取（可能标签还没正确初始化）
+        # 使用当前的目标尺寸，而不是从标签获取（可能标签还没正确初始化）
         target_width = getattr(self, '_monitor_width', 344)
         target_height = getattr(self, '_monitor_height', 194)
         target_size = QSize(target_width, target_height)
         
-        # 直接将图片缩放到预览标签的精确大小（344x194）
+        # 直接将图片缩放到预览标签的精确大小
         # 使用 SmoothTransformation 保证缩放质量
         scaled = self._preview_pixmap.scaled(
             target_size,
@@ -219,19 +227,68 @@ class MonitorWidget(QWidget):
         
         self.preview_label.setPixmap(scaled)
 
-    def _apply_preview_from_pil(self, pil_image: Image.Image) -> None:
-        """从 PIL 图像应用预览（确保图片固定为 1280x720）"""
-        # 确保监控图片固定大小：1280x720
-        if not hasattr(self, '_monitor_image_width'):
-            self._monitor_image_width = 1280
-            self._monitor_image_height = 720
+    def _update_component_size(self, image_width: int, image_height: int) -> None:
+        """根据图片尺寸更新组件大小"""
+        # 判断是横向还是纵向
+        is_landscape = image_width >= image_height
         
-        # 将图片调整为固定大小（如果尺寸不匹配则进行缩放）
-        if pil_image.size != (self._monitor_image_width, self._monitor_image_height):
-            pil_image = pil_image.resize(
-                (self._monitor_image_width, self._monitor_image_height),
-                Image.Resampling.LANCZOS
-            )
+        # 如果方向没有变化，不需要更新
+        if hasattr(self, '_is_landscape') and self._is_landscape == is_landscape:
+            # 检查尺寸是否匹配
+            if is_landscape:
+                if self._monitor_width == 344 and self._monitor_height == 194:
+                    return
+            else:
+                if self._monitor_width == 194 and self._monitor_height == 344:
+                    return
+        
+        # 更新方向标志
+        self._is_landscape = is_landscape
+        
+        # 根据方向设置预览尺寸
+        if is_landscape:
+            # 横向：1280x720 -> 344x194 (16:9)
+            self._monitor_width = 344
+            self._monitor_height = 194
+        else:
+            # 纵向：720x1280 -> 194x344 (9:16)
+            self._monitor_width = 194
+            self._monitor_height = 344
+        
+        # 更新组件尺寸
+        self.preview_card.setFixedSize(self._monitor_width, self._monitor_height)
+        self.preview_label.setFixedSize(self._monitor_width, self._monitor_height)
+        self.setFixedSize(self._monitor_width, self._monitor_height)
+        
+        # 更新加载覆盖层位置
+        if hasattr(self, '_loading_overlay') and self._loading_overlay.isVisible():
+            self._loading_overlay.setGeometry(0, 0, self._monitor_width, self._monitor_height)
+
+    def _apply_preview_from_pil(self, pil_image: Image.Image) -> None:
+        """从 PIL 图像应用预览（支持 1280x720 和 720x1280 两种尺寸）"""
+        # 获取图片实际尺寸
+        image_width, image_height = pil_image.size
+        
+        # 更新组件大小以适应图片方向
+        self._update_component_size(image_width, image_height)
+        
+        # 保存原始图片尺寸
+        self._monitor_image_width = image_width
+        self._monitor_image_height = image_height
+        
+        # 保持原始图片尺寸，不进行缩放（除非尺寸不匹配）
+        # 如果图片尺寸不是预期的两种之一，则缩放到最接近的尺寸
+        if (image_width, image_height) not in [(1280, 720), (720, 1280)]:
+            # 判断应该使用哪种尺寸
+            if image_width >= image_height:
+                # 横向，缩放到 1280x720
+                target_size = (1280, 720)
+            else:
+                # 纵向，缩放到 720x1280
+                target_size = (720, 1280)
+            
+            pil_image = pil_image.resize(target_size, Image.Resampling.LANCZOS)
+            self._monitor_image_width, self._monitor_image_height = target_size
         
         rgb_image = pil_image.convert("RGB")
         bytes_per_line = self._monitor_image_width * 3
@@ -245,7 +302,7 @@ class MonitorWidget(QWidget):
         )
         self._preview_pixmap = QPixmap.fromImage(qimage)
         self._current_pil_image = rgb_image.copy()
-        # 第一张真实监控图片到达后，进行正确的缩放（固定尺寸，无需更新高度）
+        # 刷新预览图像
         self._refresh_preview_image()
 
     def _get_controller(self):

@@ -151,12 +151,12 @@ class MainWindow(MSFluentWindow):
         # 创建子界面
         self.TaskInterface = TaskInterface(self.service_coordinator)
         self.addSubInterface(self.TaskInterface, FIF.CHECKBOX, self.tr("Task"))
-        self.SpecialTaskInterface = SpecialTaskInterface(self.service_coordinator)
+        """self.SpecialTaskInterface = SpecialTaskInterface(self.service_coordinator)
         self.addSubInterface(
             self.SpecialTaskInterface,
             FIF.TILES,
             self.tr("Special Task"),
-        )
+        )"""
         self.MonitorInterface = MonitorInterface(self.service_coordinator)
         self.addSubInterface(
             self.MonitorInterface,

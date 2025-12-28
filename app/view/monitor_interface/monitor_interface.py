@@ -58,14 +58,20 @@ class MonitorInterface(QWidget):
         self._preview_pixmap: Optional[QPixmap] = None
         self._current_pil_image: Optional[Image.Image] = None
         self._preview_scaled_size: QSize = QSize(0, 0)
+        self._image_width: Optional[int] = None
+        self._image_height: Optional[int] = None
+        self._is_landscape: Optional[bool] = None
         self._setup_ui()
         self.monitor_task = MonitorTask(
             task_service=self.service_coordinator.task_service,
             config_service=self.service_coordinator.config_service,
         )
         self._monitor_loop_task: Optional[asyncio.Task] = None
+        self._image_processing_task: Optional[asyncio.Task] = None
         self._monitoring_active = False
-        self._target_interval = 1.0 / 30
+        self._target_interval = 1.0 / 120  # 120 FPS
+        self._image_queue: Optional[asyncio.Queue] = None
+        self._max_queue_size = 2  # 限制队列大小，避免内存占用过大
 
     def _setup_ui(self) -> None:
         self.main_layout = QVBoxLayout(self)
@@ -76,6 +82,8 @@ class MonitorInterface(QWidget):
         self.preview_label.setObjectName("monitorPreviewLabel")
         self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.preview_label.setMinimumHeight(360)
+        self.preview_label.setMinimumWidth(640)
+        # 初始使用 Expanding 策略，当检测到图片尺寸后会调整
         self.preview_label.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
@@ -172,13 +180,75 @@ class MonitorInterface(QWidget):
         self._current_pil_image = None
         self._refresh_preview_image()
 
+    def _update_preview_size_policy(self, image_width: int, image_height: int, force_update: bool = False) -> None:
+        """根据图片尺寸更新预览标签的大小策略"""
+        # 判断是横向还是纵向
+        is_landscape = image_width >= image_height
+        
+        # 如果方向没有变化且不是强制更新，检查是否需要更新
+        if not force_update and self._is_landscape == is_landscape and self._image_width == image_width and self._image_height == image_height:
+            # 检查当前预览标签大小是否合理，如果不合理则更新
+            current_size = self.preview_label.size()
+            if current_size.width() > 0 and current_size.height() > 0:
+                # 如果当前大小合理，不需要更新
+                return
+        
+        # 更新图片尺寸信息
+        self._image_width = image_width
+        self._image_height = image_height
+        self._is_landscape = is_landscape
+        
+        # 计算宽高比
+        aspect_ratio = image_width / image_height if image_height > 0 else 1.0
+        
+        # 获取可用空间
+        available_width = self.width() - 56  # 减去左右边距 (28 * 2)
+        available_height = self.height() - 200  # 减去上下边距和控件高度
+        
+        # 根据宽高比和可用空间计算合适的尺寸
+        if is_landscape:
+            # 横向：以宽度为主
+            target_width = min(available_width, 1280)
+            target_height = int(target_width / aspect_ratio)
+            # 确保不超过可用高度
+            if target_height > available_height:
+                target_height = available_height
+                target_width = int(target_height * aspect_ratio)
+        else:
+            # 纵向：以高度为主
+            target_height = min(available_height, 1280)
+            target_width = int(target_height * aspect_ratio)
+            # 确保不超过可用宽度
+            if target_width > available_width:
+                target_width = available_width
+                target_height = int(target_width / aspect_ratio)
+        
+        # 设置最小尺寸，确保不会太小
+        min_width = 640 if is_landscape else 360
+        min_height = 360 if is_landscape else 640
+        
+        target_width = max(target_width, min_width)
+        target_height = max(target_height, min_height)
+        
+        # 设置预览标签的固定尺寸（保持宽高比）
+        self.preview_label.setFixedSize(target_width, target_height)
+        # 更新大小策略为固定，保持宽高比
+        self.preview_label.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
+        )
+
     def _apply_preview_from_pil(self, pil_image: Image.Image) -> None:
+        # 获取图片尺寸
+        image_width, image_height = pil_image.size
+        
+        # 根据图片尺寸更新预览标签大小
+        self._update_preview_size_policy(image_width, image_height)
+        
         rgb_image = pil_image.convert("RGB")
-        width, height = rgb_image.size
-        bytes_per_line = width * 3
+        bytes_per_line = image_width * 3
         buffer = rgb_image.tobytes("raw", "RGB")
         qimage = QImage(
-            buffer, width, height, bytes_per_line, QImage.Format.Format_RGB888
+            buffer, image_width, image_height, bytes_per_line, QImage.Format.Format_RGB888
         )
         self._preview_pixmap = QPixmap.fromImage(qimage)
         self._current_pil_image = rgb_image.copy()
@@ -237,18 +307,46 @@ class MonitorInterface(QWidget):
         suppress_asyncify_logging()
         suppress_qasync_logging()
         self._monitoring_active = True
+        # 创建图片处理队列
+        self._image_queue = asyncio.Queue(maxsize=self._max_queue_size)
+        # 启动图片处理任务
+        self._image_processing_task = asyncio.create_task(self._image_processing_loop())
+        # 启动监控循环
         self._monitor_loop_task = asyncio.create_task(self._monitor_loop())
 
     def _stop_monitor_loop(self) -> None:
         self._monitoring_active = False
+        # 停止监控循环
         task = self._monitor_loop_task
         self._monitor_loop_task = None
         if task and not task.done():
             task.cancel()
+        # 图片处理任务会在处理完队列中的图片后自动退出
+        # 不立即取消，让它处理完剩余的图片
         restore_asyncify_logging()
         restore_qasync_logging()
+    
+    async def _wait_for_image_processing_complete(self, timeout: float = 1.0) -> None:
+        """等待图片处理任务完成（处理完队列中的图片）"""
+        if self._image_processing_task and not self._image_processing_task.done():
+            try:
+                await asyncio.wait_for(self._image_processing_task, timeout=timeout)
+            except asyncio.TimeoutError:
+                # 超时，取消任务
+                if not self._image_processing_task.done():
+                    self._image_processing_task.cancel()
+                    try:
+                        await self._image_processing_task
+                    except asyncio.CancelledError:
+                        pass
+            except Exception:
+                pass
+        # 清空队列引用
+        self._image_queue = None
+        self._image_processing_task = None
 
     async def _monitor_loop(self) -> None:
+        """监控循环：只负责截图，不处理图片"""
         loop = asyncio.get_running_loop()
         try:
             while self._monitoring_active:
@@ -257,11 +355,27 @@ class MonitorInterface(QWidget):
                     await self._handle_controller_disconnection()
                     return
                 try:
+                    # 异步截图，不阻塞
                     pil_image = await asyncio.to_thread(self._capture_frame)
-                except Exception:
+                except Exception as exc:
+                    logger.debug("监控循环：截图失败：%s", exc)
                     pil_image = None
-                if pil_image:
-                    self._apply_preview_from_pil(pil_image)
+                
+                # 将截图放入队列，由图片处理任务处理
+                if pil_image and self._image_queue is not None:
+                    try:
+                        # 如果队列已满，丢弃最旧的图片，放入新图片
+                        if self._image_queue.full():
+                            try:
+                                self._image_queue.get_nowait()
+                            except asyncio.QueueEmpty:
+                                pass
+                        self._image_queue.put_nowait(pil_image)
+                    except asyncio.QueueFull:
+                        # 队列已满，跳过这一帧
+                        pass
+                
+                # 计算等待时间，保持目标 FPS
                 elapsed = loop.time() - start
                 wait = max(0, self._get_target_interval() - elapsed)
                 await asyncio.sleep(wait)
@@ -271,6 +385,32 @@ class MonitorInterface(QWidget):
             self._monitor_loop_task = None
             restore_asyncify_logging()
             restore_qasync_logging()
+    
+    async def _image_processing_loop(self) -> None:
+        """图片处理循环：从队列中取出图片并处理，不影响截图速度"""
+        try:
+            while self._monitoring_active or (self._image_queue and not self._image_queue.empty()):
+                # 检查队列是否存在
+                if self._image_queue is None:
+                    break
+                try:
+                    # 从队列中获取图片，设置超时避免无限等待
+                    pil_image = await asyncio.wait_for(
+                        self._image_queue.get(),
+                        timeout=0.1
+                    )
+                    # 处理图片（转换为 QPixmap 并更新 UI）
+                    if pil_image:
+                        self._apply_preview_from_pil(pil_image)
+                except asyncio.TimeoutError:
+                    # 超时，继续循环检查
+                    continue
+                except Exception as exc:
+                    logger.debug("图片处理循环：处理图片失败：%s", exc)
+        except asyncio.CancelledError:
+            pass
+        finally:
+            self._image_processing_task = None
 
     def _is_controller_connected(self) -> bool:
         controller = getattr(self.monitor_task.maafw, "controller", None)
@@ -316,6 +456,9 @@ class MonitorInterface(QWidget):
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
+        # 如果已经有图片尺寸信息，重新计算预览标签大小（强制更新）
+        if self._image_width is not None and self._image_height is not None:
+            self._update_preview_size_policy(self._image_width, self._image_height, force_update=True)
         self._refresh_preview_image()
 
     def _on_save_screenshot(self) -> None:
@@ -466,6 +609,9 @@ class MonitorInterface(QWidget):
             try:
                 # 停止监控循环
                 self._stop_monitor_loop()
+                
+                # 等待图片处理任务完成（最多等待1秒）
+                await self._wait_for_image_processing_complete(timeout=1.0)
                 
                 # 停止任务
                 try:
