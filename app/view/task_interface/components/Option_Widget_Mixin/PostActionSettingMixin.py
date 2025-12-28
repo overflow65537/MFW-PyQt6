@@ -1,23 +1,23 @@
 from typing import Any, Dict, List, Tuple
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout
 from qfluentwidgets import BodyLabel, CheckBox, ComboBox, LineEdit
+from PySide6.QtWidgets import QVBoxLayout
 
-from app.core.core import ServiceCoordinator
+
 from app.utils.logger import logger
 from app.widget.PathLineEdit import PathLineEdit
 
+from app.core.core import ServiceCoordinator
 
-class PostActionSettingWidget(QWidget):
+
+class PostActionSettingMixin:
     """
-    完成后操作设置组件，提供固定 UI 与互斥逻辑。
+    完成后操作设置 Mixin - 提供完成后操作设置功能
+    使用方法：在 OptionWidget 中使用多重继承添加此 mixin
     """
-    
-    # 这些方法由 OptionWidget 动态设置
-    _toggle_description: Any = None
-    _set_description: Any = None
-    _clear_options: Any = None
-    # tr 方法继承自 QWidget，不需要手动设置
+
+    option_page_layout: QVBoxLayout
+    service_coordinator: ServiceCoordinator
 
     _CONFIG_KEY = "post_action"
     _ACTION_ORDER: List[str] = [
@@ -43,19 +43,17 @@ class PostActionSettingWidget(QWidget):
         "program_args": "",
     }
 
-    def __init__(
-        self,
-        service_coordinator: ServiceCoordinator,
-        parent_layout: QVBoxLayout,
-        parent=None,
-    ):
-        super().__init__(parent)
-        self.service_coordinator = service_coordinator
-        self.parent_layout = parent_layout
-        self.current_config: Dict[str, Any] = {}
-        self._syncing = False
-        self.post_action_widgets: Dict[str, Any] = {}
-        self._post_action_state: Dict[str, Any] = {}
+    def tr(self, text: str) -> str: ...
+
+
+
+    def _init_post_action_settings(self):
+        """初始化完成后操作设置相关属性"""
+        if not hasattr(self, "post_action_widgets"):
+            self.post_action_widgets: Dict[str, Any] = {}
+        self._post_action_syncing = False
+        if not hasattr(self, "_post_action_state"):
+            self._post_action_state: Dict[str, Any] = {}
 
     def _get_action_label(self, action_key: str) -> str:
         """返回动作对应的可翻译文案"""
@@ -70,34 +68,38 @@ class PostActionSettingWidget(QWidget):
         return mapping.get(action_key, action_key)
 
     # region UI 构建
-    def create_settings(self) -> None:
+    def create_post_action_settings(self) -> None:
         """创建完成后操作设置界面"""
-        if not isinstance(self.parent_layout, QVBoxLayout):
+        if not hasattr(self, "option_page_layout"):
             raise ValueError(
-                self.tr("Parent layout is not set, cannot render post action options")
+                self.tr(
+                    "option_page_layout is not set, cannot render post action options"
+                )
             )
 
-        self._clear_options()
-        self._toggle_description(False)
-        self._ensure_state()
+        # 注意：_clear_options() 和 _toggle_description(False) 已经在 _apply_post_action_settings_with_animation 中调用
+        # 这里不再重复调用，避免重复清理导致问题
+        self._ensure_post_action_state()
 
         self.post_action_widgets.clear()
 
         title = BodyLabel(self.tr("Finish"))
-        self.parent_layout.addWidget(title)
-        self.parent_layout.addSpacing(8)
+        self.option_page_layout.addWidget(title)
+        self.option_page_layout.addSpacing(8)
 
         for action_key in self._ACTION_ORDER:
             checkbox = CheckBox(self._get_action_label(action_key))
             checkbox.toggled.connect(
-                lambda checked, key=action_key: self._on_checkbox_changed(key, checked)
+                lambda checked, key=action_key: self._on_post_action_checkbox_changed(
+                    key, checked
+                )
             )
-            self.parent_layout.addWidget(checkbox)
+            self.option_page_layout.addWidget(checkbox)
             self.post_action_widgets[action_key] = checkbox
 
-        self.parent_layout.addSpacing(12)
+        self.option_page_layout.addSpacing(12)
         combo_label = BodyLabel(self.tr("Select the configuration to run"))
-        self.parent_layout.addWidget(combo_label)
+        self.option_page_layout.addWidget(combo_label)
 
         combo = ComboBox()
         for config_id, display_name in self._load_available_configs():
@@ -105,16 +107,16 @@ class PostActionSettingWidget(QWidget):
         combo.currentIndexChanged.connect(
             lambda index: self._on_other_config_changed(combo, index)
         )
-        self.parent_layout.addWidget(combo)
+        self.option_page_layout.addWidget(combo)
         self.post_action_widgets["target_config"] = combo
 
         self._create_program_input_fields()
-        self._apply_state_to_widgets()
+        self._apply_post_action_state_to_widgets()
 
     # endregion
 
     # region 状态 & 互斥逻辑
-    def _ensure_state(self) -> None:
+    def _ensure_post_action_state(self) -> None:
         """确保配置中存在完成后操作状态"""
         if not isinstance(self.current_config, dict):
             self.current_config = {}
@@ -133,9 +135,9 @@ class PostActionSettingWidget(QWidget):
         # 新的互斥逻辑：只有"无动作"与其他选项互斥
         if merged.get("none"):
             # 如果"无动作"被选中，其他选项都设为False
-            for action_key in self._PRIMARY_ACTIONS.union(self._SECONDARY_ACTIONS).union(
-                self._OPTIONAL_ACTIONS
-            ):
+            for action_key in self._PRIMARY_ACTIONS.union(
+                self._SECONDARY_ACTIONS
+            ).union(self._OPTIONAL_ACTIONS):
                 if action_key != "none":
                     merged[action_key] = False
         else:
@@ -153,9 +155,9 @@ class PostActionSettingWidget(QWidget):
         self.current_config[self._CONFIG_KEY] = merged
         self._post_action_state = merged
 
-    def _apply_state_to_widgets(self) -> None:
+    def _apply_post_action_state_to_widgets(self) -> None:
         """同步状态到控件"""
-        self._syncing = True
+        self._post_action_syncing = True
         for action_key in self._PRIMARY_ACTIONS.union(self._SECONDARY_ACTIONS).union(
             self._OPTIONAL_ACTIONS
         ):
@@ -178,19 +180,19 @@ class PostActionSettingWidget(QWidget):
 
         self._apply_program_inputs_state()
         self._update_program_inputs_enabled()
-        self._syncing = False
+        self._post_action_syncing = False
 
-    def _on_checkbox_changed(self, key: str, checked: bool) -> None:
-        if self._syncing:
+    def _on_post_action_checkbox_changed(self, key: str, checked: bool) -> None:
+        if self._post_action_syncing:
             return
 
-        self._syncing = True
+        self._post_action_syncing = True
         self._post_action_state[key] = checked
 
         if checked:
             if key == "none":
                 # 选中"无动作"时，取消所有其他选项
-                self._deactivate_all_actions_except_none()
+                self._deactivate_all_post_actions_except_none()
             else:
                 # 选中其他任何选项时，取消"无动作"
                 self._deactivate_none_action()
@@ -201,9 +203,9 @@ class PostActionSettingWidget(QWidget):
                     self._deactivate_shutdown()
         else:
             # 取消选择后，检查是否所有动作选项都未选中
-            all_action_keys = self._PRIMARY_ACTIONS.union(self._SECONDARY_ACTIONS).union(
-                self._OPTIONAL_ACTIONS
-            )
+            all_action_keys = self._PRIMARY_ACTIONS.union(
+                self._SECONDARY_ACTIONS
+            ).union(self._OPTIONAL_ACTIONS)
             has_any_selected = any(
                 self._post_action_state.get(action_key, False)
                 for action_key in all_action_keys
@@ -217,27 +219,14 @@ class PostActionSettingWidget(QWidget):
 
         self._update_combo_enabled_state()
         self._update_program_inputs_enabled()
-        self._syncing = False
-        self._save_state()
+        self._post_action_syncing = False
+        self._save_post_action_state()
 
-    def _set_allowed_actions(self, allowed: set[str]) -> None:
-        """根据互斥规则重置复选框"""
-        for action_key in self._PRIMARY_ACTIONS.union(self._SECONDARY_ACTIONS):
-            if action_key in allowed:
-                continue
-            widget = self.post_action_widgets.get(action_key)
-            if isinstance(widget, CheckBox):
-                widget.setChecked(False)
-            self._post_action_state[action_key] = False
-
-    def _deactivate_all_actions_except_none(self) -> None:
+    def _deactivate_all_post_actions_except_none(self) -> None:
         """取消除"无动作"外的所有选项"""
-        all_other_actions = (
-            self._PRIMARY_ACTIONS.union(self._SECONDARY_ACTIONS).union(
-                self._OPTIONAL_ACTIONS
-            )
-            - {"none"}
-        )
+        all_other_actions = self._PRIMARY_ACTIONS.union(self._SECONDARY_ACTIONS).union(
+            self._OPTIONAL_ACTIONS
+        ) - {"none"}
         for action_key in all_other_actions:
             widget = self.post_action_widgets.get(action_key)
             if isinstance(widget, CheckBox):
@@ -269,10 +258,10 @@ class PostActionSettingWidget(QWidget):
         self._post_action_state["close_software"] = False
 
     def _on_other_config_changed(self, combo: ComboBox, index: int) -> None:
-        if self._syncing:
+        if self._post_action_syncing:
             return
         self._post_action_state["target_config"] = combo.itemData(index) or ""
-        self._save_state()
+        self._save_post_action_state()
 
     def _update_combo_enabled_state(self) -> None:
         combo = self.post_action_widgets.get("target_config")
@@ -298,44 +287,27 @@ class PostActionSettingWidget(QWidget):
             combo.blockSignals(False)
             self._post_action_state["target_config"] = ""
 
-    def _deactivate_conflicting_primary_for_program(self) -> None:
-        """运行其他程序被选中时，关闭与其互斥的主动作（运行其他配置 / 无动作）"""
-        for key in ("run_other", "none"):
-            widget = self.post_action_widgets.get(key)
-            if isinstance(widget, CheckBox):
-                widget.setChecked(False)
-            self._post_action_state[key] = False
-        self._update_combo_enabled_state()
-
-    def _deactivate_run_program_option(self) -> None:
-        """主动作（运行其他配置 / 无动作）被选中时，关闭运行其他程序"""
-        run_program_widget = self.post_action_widgets.get("run_program")
-        if isinstance(run_program_widget, CheckBox):
-            run_program_widget.setChecked(False)
-        self._post_action_state["run_program"] = False
-        self._update_program_inputs_enabled()
-
     def _create_program_input_fields(self) -> None:
         """创建运行其他程序的路径与参数输入框"""
         path_label = BodyLabel(self.tr("Program path"))
-        self.parent_layout.addWidget(path_label)
+        self.option_page_layout.addWidget(path_label)
 
         path_input = PathLineEdit()
         path_input.setPlaceholderText(self.tr("Select executable path"))
         path_input.textChanged.connect(
             lambda text: self._on_program_input_changed("program_path", text)
         )
-        self.parent_layout.addWidget(path_input)
+        self.option_page_layout.addWidget(path_input)
 
         args_label = BodyLabel(self.tr("Program arguments"))
-        self.parent_layout.addWidget(args_label)
+        self.option_page_layout.addWidget(args_label)
 
         args_input = LineEdit()
         args_input.setPlaceholderText(self.tr("Extra startup arguments"))
         args_input.textChanged.connect(
             lambda text: self._on_program_input_changed("program_args", text)
         )
-        self.parent_layout.addWidget(args_input)
+        self.option_page_layout.addWidget(args_input)
 
         self.post_action_widgets["program_path_label"] = path_label
         self.post_action_widgets["program_path"] = path_input
@@ -370,10 +342,10 @@ class PostActionSettingWidget(QWidget):
                 widget.setEnabled(enabled)
 
     def _on_program_input_changed(self, key: str, value: str) -> None:
-        if self._syncing:
+        if self._post_action_syncing:
             return
         self._post_action_state[key] = value
-        self._save_state()
+        self._save_post_action_state()
 
     # endregion
 
@@ -396,9 +368,9 @@ class PostActionSettingWidget(QWidget):
             logger.error(f"加载配置列表失败: {exc}")
         return configs
 
-    def _save_state(self) -> None:
+    def _save_post_action_state(self) -> None:
         try:
-            # 仅写入 post_action 片段，避免携带无关键导致覆盖
+            # 仅写入 post_action 片段，避免携带无关字段导致覆盖
             payload = dict(self._post_action_state)
             self.current_config[self._CONFIG_KEY] = payload
             option_service = self.service_coordinator.option_service
@@ -422,4 +394,3 @@ class PostActionSettingWidget(QWidget):
             logger.error(f"保存完成后操作配置失败: {exc}")
 
     # endregion
-

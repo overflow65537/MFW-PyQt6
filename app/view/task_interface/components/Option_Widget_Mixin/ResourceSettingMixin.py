@@ -1,5 +1,4 @@
 from typing import Dict, Any
-from PySide6.QtWidgets import QWidget, QVBoxLayout
 from qfluentwidgets import (
     BodyLabel,
     ComboBox,
@@ -7,34 +6,22 @@ from qfluentwidgets import (
 )
 
 from app.utils.logger import logger
-from app.core.core import ServiceCoordinator
 
 
-class ResourceSettingWidget(QWidget):
+class ResourceSettingMixin:
     """
-    资源设置组件 - 仅包含资源下拉框相关逻辑
+    资源设置 Mixin - 提供资源下拉框相关功能
+    使用方法：在 OptionWidget 中使用多重继承添加此 mixin
     """
-    
-    # 这些方法由 OptionWidget 动态设置
-    _toggle_description: Any = None
-    _set_description: Any = None
-    _clear_options: Any = None
-    # tr 方法继承自 QWidget，不需要手动设置
 
-    def __init__(
-        self,
-        service_coordinator: ServiceCoordinator,
-        parent_layout: QVBoxLayout,
-        parent=None,
-    ):
-        super().__init__(parent)
-        self.service_coordinator = service_coordinator
-        self.parent_layout = parent_layout
-        self.current_config: Dict[str, Any] = {}
-        self._syncing = False
-        self.resource_setting_widgets: Dict[str, Any] = {}
+    def _init_resource_settings(self):
+        """初始化资源设置相关属性"""
+        if not hasattr(self, "resource_setting_widgets"):
+            self.resource_setting_widgets: Dict[str, Any] = {}
+        self._resource_syncing = False
         self.current_resource: str | None = None
-        self.current_controller_label: str | None = None
+        if not hasattr(self, "current_controller_label"):
+            self.current_controller_label: str | None = None
         # 构建资源映射表
         self._rebuild_resource_mapping()
 
@@ -43,7 +30,7 @@ class ResourceSettingWidget(QWidget):
         # 获取最新的interface
         interface = self.service_coordinator.interface
 
-        # 获取控制器类型映射（应该由 ControllerSettingWidget 提供）
+        # 获取控制器类型映射（应该由 ControllerSettingMixin 提供）
         if not hasattr(self, "controller_type_mapping") or not self.controller_type_mapping:
             # 如果没有控制器映射，创建一个临时的
             self.controller_type_mapping = {
@@ -86,7 +73,7 @@ class ResourceSettingWidget(QWidget):
                             f"控制器标签 {label} 不在资源映射表中，无法添加资源 {resource.get('name', '')}"
                         )
 
-    def create_settings(self) -> None:
+    def create_resource_settings(self) -> None:
         """创建固定的资源设置UI"""
         # 在多配置模式下，重新构建资源映射表以确保使用最新的interface
         self._rebuild_resource_mapping()
@@ -100,10 +87,10 @@ class ResourceSettingWidget(QWidget):
     def _create_resource_option(self):
         """创建资源选择下拉框"""
         resource_label = BodyLabel(self.tr("Resource"))
-        self.parent_layout.addWidget(resource_label)
+        self.option_page_layout.addWidget(resource_label)
 
         resource_combox = ComboBox()
-        self.parent_layout.addWidget(resource_combox)
+        self.option_page_layout.addWidget(resource_combox)
         # 存储 label 和 combo，确保可以被正确控制显示/隐藏
         self.resource_setting_widgets["resource_combo_label"] = resource_label
         self.resource_setting_widgets["resource_combo"] = resource_combox
@@ -111,7 +98,7 @@ class ResourceSettingWidget(QWidget):
 
     def _on_resource_combox_changed(self, new_resource):
         """资源变化时的处理函数（只有用户主动更改时才触发）"""
-        if self._syncing:
+        if self._resource_syncing:
             return
         
         # 如果新资源与当前资源相同，不处理（避免重复触发）
@@ -122,10 +109,10 @@ class ResourceSettingWidget(QWidget):
         self.current_resource = new_resource
 
         # 确保 current_controller_label 存在
-        if not hasattr(self, "current_controller_label"):
+        if not hasattr(self, "current_controller_label") or not self.current_controller_label:
             return
 
-        current_controller_label = getattr(self, "current_controller_label")
+        current_controller_label = self.current_controller_label
 
         if current_controller_label not in self.resource_mapping:
             return
@@ -146,12 +133,12 @@ class ResourceSettingWidget(QWidget):
                     res_combo.installEventFilter(ToolTipFilter(res_combo))
                     res_combo.setToolTip(description)
                     # 设置资源描述到公告页面
-                    if hasattr(self, "_set_description") and self._set_description:
-                        self._set_description(description, has_options=True)
+                    if hasattr(self, "set_description"):
+                        self.set_description(description, has_options=True)
                 else:
                     # 如果没有描述，清空公告页面
-                    if hasattr(self, "_set_description") and self._set_description:
-                        self._set_description("", has_options=True)
+                    if hasattr(self, "set_description"):
+                        self.set_description("", has_options=True)
                 # 保存资源选项到Resource任务
                 self._auto_save_resource_option(new_resource_name)
                 # 资源变化时，通知任务列表更新（仅携带 resource 字段）
@@ -165,7 +152,7 @@ class ResourceSettingWidget(QWidget):
             resource_name: 资源名称
             skip_sync_check: 是否跳过 _syncing 检查（用于控制器类型切换时的自动保存）
         """
-        if not skip_sync_check and self._syncing:
+        if not skip_sync_check and self._resource_syncing:
             return
         try:
             from app.common.constants import _RESOURCE_
@@ -223,7 +210,7 @@ class ResourceSettingWidget(QWidget):
             resource_combo.blockSignals(False)
             return
 
-        current_controller_label = getattr(self, "current_controller_label")
+        current_controller_label = self.current_controller_label
         
         # 确保资源映射表已构建
         if not hasattr(self, "resource_mapping") or not self.resource_mapping:
@@ -268,11 +255,11 @@ class ResourceSettingWidget(QWidget):
                     if resource.get("label", resource.get("name", "")) == target_label:
                         self.current_config["resource"] = resource.get("name", "")
                         # 设置资源描述到公告页面
-                        if hasattr(self, "_set_description") and self._set_description:
+                        if hasattr(self, "set_description"):
                             description = resource.get("description", "")
-                            self._set_description(description, has_options=True)
+                            self.set_description(description, has_options=True)
                             # 如果有描述，显示描述区域
-                            if description and hasattr(self, "_toggle_description") and self._toggle_description:
+                            if description and hasattr(self, "_toggle_description"):
                                 self._toggle_description(True)
                         break
             else:
@@ -295,11 +282,11 @@ class ResourceSettingWidget(QWidget):
                     self._auto_save_resource_option(first_resource_name, skip_sync_check=True)
                     
                     # 设置资源描述到公告页面
-                    if hasattr(self, "_set_description") and self._set_description:
+                    if hasattr(self, "set_description"):
                         description = first_resource.get("description", "")
-                        self._set_description(description, has_options=True)
+                        self.set_description(description, has_options=True)
                         # 如果有描述，显示描述区域
-                        if description and hasattr(self, "_toggle_description") and self._toggle_description:
+                        if description and hasattr(self, "_toggle_description"):
                             self._toggle_description(True)
                 else:
                     logger.warning(f"未找到资源标签 {first_resource_label} 在下拉框中")

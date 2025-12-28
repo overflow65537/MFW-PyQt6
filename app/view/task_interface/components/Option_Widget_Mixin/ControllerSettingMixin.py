@@ -1,7 +1,7 @@
 from typing import Dict, Any
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout
 from PySide6.QtGui import QIntValidator
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from qfluentwidgets import (
     BodyLabel,
     ComboBox,
@@ -929,13 +929,33 @@ class ControllerSettingWidget(QWidget):
             "search_combo"
         ]
         # 确保 no_device_found 信号连接到 InfoBar 提示槽
-        try:
-            # 防止重复连接：先尝试断开旧连接（若未连接会抛异常，忽略即可）
-            search_option.no_device_found.disconnect(self._on_no_device_found)
-        except Exception:
-            pass
-        search_option.no_device_found.connect(self._on_no_device_found)
-
+        # 使用更安全的方式断开信号连接，避免 RuntimeWarning
+        if search_option:
+            try:
+                # 先尝试断开旧连接（若未连接会抛 RuntimeError，忽略即可）
+                # 使用 warnings 来抑制 PySide6 的 RuntimeWarning
+                import warnings
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    search_option.no_device_found.disconnect(self._on_no_device_found)
+            except (RuntimeError, TypeError):
+                # 如果断开失败（连接不存在或对象已销毁），忽略错误
+                pass
+            except Exception:
+                # 捕获其他所有异常，确保不会影响后续连接
+                pass
+            
+            # 连接信号
+            try:
+                search_option.no_device_found.connect(self._on_no_device_found)
+            except (AttributeError, RuntimeError) as e:
+                logger.warning(f"连接 no_device_found 信号失败: {e}")
+        
+        # 确保 search_option 有效后再访问 combo_box
+        if not search_option:
+            logger.warning("search_option 为 None，无法设置设备名称")
+            return
+        
         combo_box = search_option.combo_box
         combo_box.blockSignals(True)
         # 先尝试定位已有的设备项，避免重复添加
@@ -955,27 +975,51 @@ class ControllerSettingWidget(QWidget):
 
     def _on_no_device_found(self, controller_type: str) -> None:
         """当未找到任何设备时，通过信号总线弹出 InfoBar 提示"""
-        if not hasattr(self, "service_coordinator"):
-            return
-
-        # InfoBar 信号定义: info_bar_requested = Signal(str, str)  # (level, message)
-        level = "warning"
-        if controller_type.lower() == "adb":
-            message = self.tr(
-                "No ADB devices were found. Please check emulator or device connection."
-            )
-        elif controller_type.lower() == "win32":
-            message = self.tr("No desktop windows were found that match the filter.")
-        else:
-            message = self.tr("No devices were found for current controller type.")
-
-        from app.common.signal_bus import signalBus
-
         try:
-            # 直接使用全局 signalBus，避免类型推断不到 service_coordinator.signal_bus 的属性
-            signalBus.info_bar_requested.emit(level, message)
+            # 检查对象是否仍然有效
+            if not hasattr(self, "service_coordinator"):
+                return
+
+            # 检查 controller_type 是否为有效字符串
+            if not isinstance(controller_type, str):
+                controller_type = str(controller_type) if controller_type else "unknown"
+
+            # InfoBar 信号定义: info_bar_requested = Signal(str, str)  # (level, message)
+            level = "warning"
+            if controller_type.lower() == "adb":
+                message = self.tr(
+                    "No ADB devices were found. Please check emulator or device connection."
+                )
+            elif controller_type.lower() == "win32":
+                message = self.tr("No desktop windows were found that match the filter.")
+            else:
+                message = self.tr("No devices were found for current controller type.")
+
+            from app.common.signal_bus import signalBus
+
+            # 确保 signalBus 对象有效后再发送信号
+            if signalBus and hasattr(signalBus, "info_bar_requested"):
+                try:
+                    # 使用 QTimer 延迟发送信号，确保在界面更新完成后再显示 InfoBar
+                    # 这样可以避免在清理选项组件时 InfoBar 被立即关闭
+                    # 延迟时间需要足够长，确保界面切换和动画完成
+                    def delayed_emit():
+                        try:
+                            # 再次检查对象有效性（防止在延迟期间对象被销毁）
+                            if signalBus and hasattr(signalBus, "info_bar_requested"):
+                                signalBus.info_bar_requested.emit(level, message)
+                        except Exception as e:
+                            logger.warning(f"延迟发送 InfoBar 提示失败: {e}")
+                    
+                    # 延迟 300ms 发送，确保界面更新和动画完成后再显示 InfoBar
+                    # 如果是在清理选项时触发的信号，这个延迟可以确保界面已经稳定
+                    QTimer.singleShot(300, delayed_emit)
+                except (RuntimeError, AttributeError) as e:
+                    # 如果对象已销毁或信号不存在，记录警告但不崩溃
+                    logger.warning(f"发送 InfoBar 提示失败（对象可能已销毁）: {e}")
         except Exception as e:
-            logger.warning(f"发送 InfoBar 提示失败: {e}")
+            # 捕获所有其他异常，防止回调崩溃
+            logger.warning(f"处理 no_device_found 信号时发生错误: {e}")
 
     def _fill_custom_option(self):
         custom_edit = self.resource_setting_widgets.get("custom")
@@ -1200,6 +1244,20 @@ class ControllerSettingWidget(QWidget):
 
     def _clear_options(self):
         """清空选项区域"""
+        # 在清理之前，先断开所有信号连接，避免在清理过程中触发信号导致 InfoBar 显示问题
+        if "search_combo" in self.resource_setting_widgets:
+            search_option = self.resource_setting_widgets.get("search_combo")
+            if search_option and hasattr(search_option, "no_device_found"):
+                try:
+                    import warnings
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", RuntimeWarning)
+                        search_option.no_device_found.disconnect(self._on_no_device_found)
+                except (RuntimeError, TypeError):
+                    pass
+                except Exception:
+                    pass
+        
         # 从布局中移除所有控件
         widgets_to_remove = list(self.resource_setting_widgets.values())
 

@@ -12,11 +12,11 @@ from app.view.task_interface.components.Option_Framework import (
     OptionFormWidget,
     SpeedrunConfigWidget,
 )
-from app.view.task_interface.components.Option_Widget_Mixin.PostActionSettingWidget import (
-    PostActionSettingWidget,
+from app.view.task_interface.components.Option_Widget_Mixin.PostActionSettingMixin import (
+    PostActionSettingMixin,
 )
-from app.view.task_interface.components.Option_Widget_Mixin.ResourceSettingWidget import (
-    ResourceSettingWidget,
+from app.view.task_interface.components.Option_Widget_Mixin.ResourceSettingMixin import (
+    ResourceSettingMixin,
 )
 from app.view.task_interface.components.Option_Widget_Mixin.ControllerSettingMixin import (
     ControllerSettingWidget,
@@ -24,7 +24,7 @@ from app.view.task_interface.components.Option_Widget_Mixin.ControllerSettingMix
 from ....core.core import ServiceCoordinator
 
 
-class OptionWidget(QWidget):
+class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
     current_config: Dict[str, Any]
     parent_layout: QVBoxLayout
 
@@ -42,47 +42,26 @@ class OptionWidget(QWidget):
         # 初始化UI组件（需要先创建布局）
         self._init_ui()
 
-        # 初始化三个设置组件
+        # 初始化控制器设置组件（仍然使用 Widget 方式，因为它比较复杂）
         self.controller_setting_widget = ControllerSettingWidget(
             service_coordinator, self.option_page_layout
         )
-        self.resource_setting_widget = ResourceSettingWidget(
-            service_coordinator, self.option_page_layout
-        )
-        self.post_action_setting_widget = PostActionSettingWidget(
-            service_coordinator, self.option_page_layout
-        )
 
-        # 设置三个子组件的 current_config
+        # 设置控制器组件的 current_config
         self.current_config = self.controller_setting_widget.current_config
-        self.resource_setting_widget.current_config = self.current_config
-        self.post_action_setting_widget.current_config = self.current_config
 
-        # 注意：不需要设置 tr 方法，这些组件继承自 QWidget，已经有自己的 tr 方法
-        # 直接赋值会导致使用错误的上下文（OptionWidget 而不是各自的类名）
-
-        # 设置 _clear_options、_set_description 和 _toggle_description 方法
+        # 设置控制器组件的回调方法
         self.controller_setting_widget._clear_options = self._clear_options
         self.controller_setting_widget._set_description = self.set_description
         self.controller_setting_widget._toggle_description = self._toggle_description
-        self.resource_setting_widget._clear_options = self._clear_options
-        self.resource_setting_widget._set_description = self.set_description
-        self.resource_setting_widget._toggle_description = self._toggle_description
-        self.post_action_setting_widget._clear_options = self._clear_options
-        self.post_action_setting_widget._set_description = self.set_description
-        self.post_action_setting_widget._toggle_description = self._toggle_description
 
-        # 共享控制器相关属性（ResourceSettingWidget 需要）
-        setattr(
-            self.resource_setting_widget,
-            "controller_type_mapping",
-            self.controller_setting_widget.controller_type_mapping,
-        )
-        setattr(
-            self.resource_setting_widget,
-            "current_controller_label",
-            self.controller_setting_widget.current_controller_label,
-        )
+        # 初始化 Resource 和 PostAction Mixin（它们现在是 OptionWidget 的一部分）
+        self._init_resource_settings()
+        self._init_post_action_settings()
+        
+        # 共享控制器相关属性到 Resource Mixin（ResourceSettingMixin 需要）
+        self.controller_type_mapping = self.controller_setting_widget.controller_type_mapping
+        self.current_controller_label = self.controller_setting_widget.current_controller_label
 
         # 设置控制器类型变化时的回调，用于更新资源下拉框
         def on_controller_type_changed(label, is_initializing=False):
@@ -92,37 +71,37 @@ class OptionWidget(QWidget):
                 label: 控制器标签
                 is_initializing: 是否在初始化阶段（如果是，不触发任务列表更新）
             """
-            # 更新资源组件的控制器标签
-            self.resource_setting_widget.current_controller_label = label
-            # 更新资源组件的控制器映射（以防有变化）
-            self.resource_setting_widget.controller_type_mapping = (
+            # 更新资源 Mixin 的控制器标签
+            self.current_controller_label = label
+            # 更新资源 Mixin 的控制器映射（以防有变化）
+            self.controller_type_mapping = (
                 self.controller_setting_widget.controller_type_mapping
             )
             # 重新构建资源映射表（确保使用最新的控制器信息）
-            self.resource_setting_widget._rebuild_resource_mapping()
+            self._rebuild_resource_mapping()
 
-            if label not in self.resource_setting_widget.resource_mapping:
+            if label not in self.resource_mapping:
                 logger.warning(
-                    f"控制器 {label} 不在资源映射表中！可用的控制器: {list(self.resource_setting_widget.resource_mapping.keys())}"
+                    f"控制器 {label} 不在资源映射表中！可用的控制器: {list(self.resource_mapping.keys())}"
                 )
 
             # 刷新资源下拉框（如果资源下拉框已创建）
             if (
                 "resource_combo"
-                in self.resource_setting_widget.resource_setting_widgets
+                in self.resource_setting_widgets
             ):
-                if hasattr(self.resource_setting_widget, "_fill_resource_option"):
-                    self.resource_setting_widget._fill_resource_option()
+                if hasattr(self, "_fill_resource_option"):
+                    self._fill_resource_option()
 
                     # 控制器类型变化后，强制保存一次资源设置（仅在非初始化时）
                     if not is_initializing:
                         current_resource = (
-                            self.resource_setting_widget.current_config.get(
+                            self.current_config.get(
                                 "resource", ""
                             )
                         )
                         if current_resource:
-                            self.resource_setting_widget._auto_save_resource_option(
+                            self._auto_save_resource_option(
                                 current_resource, skip_sync_check=True
                             )
                             # 触发任务列表更新（延迟触发，确保资源已保存）
@@ -137,8 +116,8 @@ class OptionWidget(QWidget):
             else:
                 # 即使资源下拉框不存在，也需要更新资源任务的配置
                 # 检查当前资源是否在新控制器的资源列表中
-                if label in self.resource_setting_widget.resource_mapping:
-                    current_resources = self.resource_setting_widget.resource_mapping[
+                if label in self.resource_mapping:
+                    current_resources = self.resource_mapping[
                         label
                     ]
                     if current_resources:
@@ -435,13 +414,13 @@ class OptionWidget(QWidget):
 
     def _clear_options(self):
         """清空选项区域"""
-        # 清空三个设置组件的字典
+        # 清空设置组件的字典
         if hasattr(self, "controller_setting_widget"):
             self.controller_setting_widget.resource_setting_widgets.clear()
-        if hasattr(self, "resource_setting_widget"):
-            self.resource_setting_widget.resource_setting_widgets.clear()
-        if hasattr(self, "post_action_setting_widget"):
-            self.post_action_setting_widget.post_action_widgets.clear()
+        if hasattr(self, "resource_setting_widgets"):
+            self.resource_setting_widgets.clear()
+        if hasattr(self, "post_action_widgets"):
+            self.post_action_widgets.clear()
 
         # 使用新框架清空选项
         self.option_form_widget._clear_options()
@@ -588,14 +567,12 @@ class OptionWidget(QWidget):
 
         # 只使用form_structure更新表单
         if form_structure:
-            # 获取最新配置并更新到共享字典中（保持字典引用不变，这样所有子组件都能看到更新）
+            # 获取最新配置并更新到共享字典中（保持字典引用不变）
             new_config = self.service_coordinator.option.get_options()
             self.current_config.clear()
             self.current_config.update(new_config)
-            # 同步更新所有子组件的 current_config（它们应该指向同一个字典）
+            # 同步更新控制器组件的 current_config（Resource 和 PostAction 现在直接使用 self.current_config）
             self.controller_setting_widget.current_config = self.current_config
-            self.resource_setting_widget.current_config = self.current_config
-            self.post_action_setting_widget.current_config = self.current_config
 
             # 判断任务类型
             form_type = form_structure.get("type")
@@ -691,8 +668,8 @@ class OptionWidget(QWidget):
         # 但资源下拉框需要控制器信息，所以先初始化控制器数据
         self.controller_setting_widget._rebuild_interface_data()
 
-        # 同步控制器相关属性到资源组件
-        self.resource_setting_widget.controller_type_mapping = (
+        # 同步控制器相关属性到资源 Mixin
+        self.controller_type_mapping = (
             self.controller_setting_widget.controller_type_mapping
         )
 
@@ -715,7 +692,7 @@ class OptionWidget(QWidget):
                 ctrl_info,
             ) in self.controller_setting_widget.controller_type_mapping.items():
                 if ctrl_info["name"] == controller_name:
-                    self.resource_setting_widget.current_controller_label = label
+                    self.current_controller_label = label
                     break
             else:
                 # 如果找不到，使用第一个控制器
@@ -723,17 +700,17 @@ class OptionWidget(QWidget):
                     first_label = list(
                         self.controller_setting_widget.controller_type_mapping.keys()
                     )[0]
-                    self.resource_setting_widget.current_controller_label = first_label
+                    self.current_controller_label = first_label
         else:
             # 如果没有配置，使用第一个控制器
             if self.controller_setting_widget.controller_type_mapping:
                 first_label = list(
                     self.controller_setting_widget.controller_type_mapping.keys()
                 )[0]
-                self.resource_setting_widget.current_controller_label = first_label
+                self.current_controller_label = first_label
 
         # 从Resource任务的配置中获取当前资源值，并设置到current_config中
-        # 注意：必须在 create_settings 之前设置，因为 create_settings 会调用 _fill_resource_option
+        # 注意：必须在 create_resource_settings 之前设置，因为 create_resource_settings 会调用 _fill_resource_option
         from app.common.constants import _RESOURCE_
 
         resource_task = self.service_coordinator.task_service.get_task(_RESOURCE_)
@@ -742,11 +719,9 @@ class OptionWidget(QWidget):
             if resource_name:
                 # 确保 current_config 中有 resource 字段
                 self.current_config["resource"] = resource_name
-                # 同时更新 resource_setting_widget 的 current_config（它们共享同一个字典）
-                self.resource_setting_widget.current_config["resource"] = resource_name
 
         # 创建资源下拉框（此时 current_config 中已经有 resource 值了）
-        self.resource_setting_widget.create_settings()
+        self.create_resource_settings()
 
     def _apply_controller_settings_with_animation(self):
         """在动画回调中应用控制器设置"""
@@ -771,14 +746,6 @@ class OptionWidget(QWidget):
         self._clear_options()
         # 确保选项区域可见
         self.option_area_card.show()
-        # 确保 _toggle_description 方法已设置（防止在某些情况下丢失）
-        if (
-            not hasattr(self.post_action_setting_widget, "_toggle_description")
-            or self.post_action_setting_widget._toggle_description is None
-        ):
-            self.post_action_setting_widget._toggle_description = (
-                self._toggle_description
-            )
 
         # 从 POST_ACTION 任务的配置中获取完成后操作配置，并设置到 current_config 中
         from app.common.constants import POST_ACTION
@@ -789,13 +756,15 @@ class OptionWidget(QWidget):
             if post_action_config:
                 # 确保 current_config 中有 post_action 字段
                 self.current_config["post_action"] = post_action_config
-                # 同时更新 post_action_setting_widget 的 current_config（它们共享同一个字典）
-                self.post_action_setting_widget.current_config["post_action"] = (
-                    post_action_config
-                )
 
         # 创建完成后操作设置（此时 current_config 中已经有 post_action 值了）
-        self.post_action_setting_widget.create_settings()
+        self.create_post_action_settings()
+        
+        # 设置一个空的公告内容，确保公告区域存在且显示（避免崩溃）
+        # 即使是空内容，也要显示公告区域，这样可以避免在清理时出现问题
+        self.set_description("", has_options=True)
+        self._toggle_description(True)
+        
         logger.info("完成后操作设置表单已创建")
 
     def _set_layout_visibility(self, layout, visible):
