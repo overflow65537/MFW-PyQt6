@@ -330,11 +330,9 @@ class ControllerSettingWidget(QWidget):
         filtered_controllers = []
         for ctrl in controllers:
             ctrl_type = ctrl.get("type", "").lower()
-            # 如果是 playcover 类型，只在 macOS 上显示
-            # 暂时注释掉，用于测试
-            # if ctrl_type == "playcover":
-            #     if sys.platform != "darwin":
-            #         continue
+            # PlayCover 控制器只在 macOS 上显示
+            if ctrl_type == "playcover" and sys.platform != "darwin":
+                continue
             filtered_controllers.append(ctrl)
         
         self.controller_type_mapping = {

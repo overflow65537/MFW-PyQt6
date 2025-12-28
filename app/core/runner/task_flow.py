@@ -653,15 +653,6 @@ class TaskFlowRunner(QObject):
     async def connect_device(self, controller_raw: Dict[str, Any]):
         """连接 MaaFW 控制器"""
         controller_type = self._get_controller_type(controller_raw)
-        
-        # PlayCover 只在 macOS 上支持
-        if controller_type == "playcover":
-            if sys.platform != "darwin":
-                error_msg = self.tr("PlayCover controller is only supported on macOS")
-                logger.error("PlayCover 控制器仅在 macOS 上支持")
-                signalBus.log_output.emit("ERROR", error_msg)
-                return False
-        
         if self.fs_signal_bus:
             self.fs_signal_bus.fs_start_button_status.emit(
                 {"text": "STOP", "status": "enabled"}
@@ -1248,7 +1239,11 @@ class TaskFlowRunner(QObject):
         )
 
         logger.info(f"正在连接 PlayCover: {address} (UUID: {uuid})")
-        signalBus.log_output.emit("INFO", self.tr(f"Connecting to PlayCover: {address} (UUID: {uuid})"))
+        msg = self.tr("Connecting to PlayCover: {address} (UUID: {uuid})").format(
+            address=address,
+            uuid=uuid,
+        )
+        signalBus.log_output.emit("INFO", msg)
 
         if await self.maafw.connect_playcover(address, uuid):
             logger.info("PlayCover 连接成功")
