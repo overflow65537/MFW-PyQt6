@@ -62,7 +62,7 @@ from app.common.signal_bus import signalBus
 
 class MaaContextSink(ContextEventSink):
     def on_raw_notification(self, context: Context, msg: str, details: dict):
-        if detial := details.get("focus", {}).get(msg, ""):
+        if detial := (details.get("focus") or {}).get(msg, ""):
             detial = detial.replace("{name}", details.get("name", ""))
             detial = detial.replace("{task_id}", str(details.get("task_id", "")))
             detial = detial.replace("{list}", details.get("list", ""))

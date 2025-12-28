@@ -199,9 +199,11 @@ class TaskInterface(UI_TaskInterface, QWidget):
                 # 基础任务的 checkbox 始终保持禁用状态
                 if not widget.task.is_base_task():
                     widget.checkbox.setEnabled(enabled)
-            # 禁用/启用删除按钮
-            if hasattr(widget, 'setting_button'):
-                widget.setting_button.setEnabled(enabled)
+            # 禁用/启用删除按钮（基础任务的删除按钮始终保持禁用）
+            if hasattr(widget, 'setting_button') and hasattr(widget, 'task'):
+                # 基础任务的删除按钮始终保持禁用状态
+                if not widget.task.is_base_task():
+                    widget.setting_button.setEnabled(enabled)
     
     def _on_timeout_restart_requested(self, entry: str, attempts: int):
         """处理任务超时需要重启的请求
