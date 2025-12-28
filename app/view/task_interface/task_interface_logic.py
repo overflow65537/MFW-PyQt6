@@ -30,6 +30,10 @@ class TaskInterface(UI_TaskInterface, QWidget):
 
         # 连接启动/停止按钮事件
         self.start_bar.run_button.clicked.connect(self._on_run_button_clicked)
+        
+        # 连接切换按钮事件（如果存在）
+        if hasattr(self.task_info, 'switch_button'):
+            self.task_info.switch_button.clicked.connect(self._on_switch_button_clicked)
 
         # 连接服务协调器的信号，用于更新按钮状态
         self.service_coordinator.fs_signals.fs_start_button_status.connect(
@@ -71,18 +75,51 @@ class TaskInterface(UI_TaskInterface, QWidget):
             # 强制处理UI事件，确保按钮状态立即更新
             QApplication.processEvents()
 
-            self._timeout_restarting = False
-            self._timeout_restart_entry = None
-            self._timeout_restart_attempts = 0
-            # 清除超时重启状态（正常启动时）
-            self._clear_timeout_restart_state()
-
-            def _start_task():
+            # 检查当前是否为特殊任务模式
+            is_special_mode = (
+                hasattr(self.task_info, '_task_filter_mode') 
+                and self.task_info._task_filter_mode == "special"
+            )
+            
+            if is_special_mode:
+                # 特殊任务模式：需要先检查是否有选中的特殊任务
                 self.log_output_widget.clear_log()
-                asyncio.create_task(self.service_coordinator.run_tasks_flow())
+                target_task = self._get_selected_special_task()
+                if not target_task:
+                    from app.common.signal_bus import signalBus
+                    signalBus.info_bar_requested.emit(
+                        "warning", self.tr("Please select a special task to run.")
+                    )
+                    self.start_bar.run_button.setEnabled(True)
+                    return
 
-            # 使用 QTimer 延迟执行，避免阻塞UI更新
-            QTimer.singleShot(0, _start_task)
+                # 同步内存态：确保服务层当前任务列表中只有该特殊任务被视为选中，但不落盘
+                try:
+                    for task in self.service_coordinator.task.get_tasks():
+                        if task.is_special:
+                            task.is_checked = task.item_id == target_task.item_id
+                except Exception:
+                    pass
+
+                def _start_special_task():
+                    asyncio.create_task(
+                        self.service_coordinator.run_tasks_flow(task_id=target_task.item_id)
+                    )
+                QTimer.singleShot(0, _start_special_task)
+            else:
+                # 普通任务模式：使用原有逻辑
+                self._timeout_restarting = False
+                self._timeout_restart_entry = None
+                self._timeout_restart_attempts = 0
+                # 清除超时重启状态（正常启动时）
+                self._clear_timeout_restart_state()
+
+                def _start_task():
+                    self.log_output_widget.clear_log()
+                    asyncio.create_task(self.service_coordinator.run_tasks_flow())
+
+                # 使用 QTimer 延迟执行，避免阻塞UI更新
+                QTimer.singleShot(0, _start_task)
         else:
             # 立即禁用按钮
             self.start_bar.run_button.setDisabled(True)
@@ -105,15 +142,11 @@ class TaskInterface(UI_TaskInterface, QWidget):
             self.start_bar.run_button.setIcon(FIF.CLOSE)
             # 任务流运行时，禁用任务列表的编辑功能
             self._set_task_list_editable(False)
-            # 切换选项区域为日志
-            self._switch_option_to_log(True)
         else:
             self.start_bar.run_button.setText(self.tr("Start"))
             self.start_bar.run_button.setIcon(FIF.PLAY)
             # 任务流停止时，启用任务列表的编辑功能
             self._set_task_list_editable(True)
-            # 切换选项区域为选项
-            self._switch_option_to_log(False)
             # 如果正在等待重启且按钮已启用，触发重启
             if self._timeout_restarting and status.get("status") == "enabled":
                 QTimer.singleShot(100, lambda: self._trigger_restart_if_ready())
@@ -170,47 +203,6 @@ class TaskInterface(UI_TaskInterface, QWidget):
             if hasattr(widget, 'setting_button'):
                 widget.setting_button.setEnabled(enabled)
     
-    def _switch_option_to_log(self, show_log: bool):
-        """切换选项区域显示日志或选项
-        
-        Args:
-            show_log: True 显示日志，False 显示选项
-        """
-        # option_stack 是在 UI_TaskInterface.setupUi 中创建的
-        # 由于 TaskInterface 继承自 UI_TaskInterface，可以直接访问
-        option_stack_animator = None
-        if hasattr(self, 'option_stack_animator'):
-            option_stack_animator = self.option_stack_animator
-        elif hasattr(self, 'option_stack'):
-            # 如果没有动画器，直接使用 option_stack
-            option_stack = self.option_stack
-            # 0: 选项面板, 1: 日志面板
-            if show_log:
-                option_stack.setCurrentIndex(1)
-            else:
-                option_stack.setCurrentIndex(0)
-            return
-        elif hasattr(self, 'option_panel_widget'):
-            # 如果直接访问失败，尝试通过 option_panel_widget 访问
-            option_stack = getattr(self.option_panel_widget, 'option_stack', None)
-            if option_stack:
-                # 0: 选项面板, 1: 日志面板
-                if show_log:
-                    option_stack.setCurrentIndex(1)
-                else:
-                    option_stack.setCurrentIndex(0)
-            return
-        
-        if not option_stack_animator:
-            logger.warning("无法找到 option_stack_animator，无法切换选项/日志显示")
-            return
-        
-        # 0: 选项面板, 1: 日志面板
-        if show_log:
-            option_stack_animator.setCurrentIndex(1, animated=True)
-        else:
-            option_stack_animator.setCurrentIndex(0, animated=True)
-
     def _on_timeout_restart_requested(self, entry: str, attempts: int):
         """处理任务超时需要重启的请求
 
@@ -421,3 +413,34 @@ class TaskInterface(UI_TaskInterface, QWidget):
                     # 强制更新UI，确保选中状态完全清除
                     task_list.update()
         QTimer.singleShot(50, _reset_ui)
+    
+    def _on_switch_button_clicked(self):
+        """处理切换按钮点击事件，切换任务列表的过滤模式"""
+        try:
+            if hasattr(self.task_info, 'switch_filter_mode'):
+                self.task_info.switch_filter_mode()
+                logger.info(f"已切换任务列表过滤模式为: {self.task_info._task_filter_mode}")
+                # 清除选项面板的选中状态
+                if hasattr(self, 'option_panel'):
+                    self.option_panel.reset()
+        except Exception as exc:
+            logger.error(f"切换任务列表过滤模式失败: {exc}", exc_info=True)
+    
+    def _get_selected_special_task(self):
+        """从特殊任务列表中获取当前选中的任务（仅内存态）。"""
+        task_list_widget = getattr(self.task_info, "task_list", None)
+        if not task_list_widget:
+            return None
+        try:
+            for row in range(task_list_widget.count()):
+                item = task_list_widget.item(row)
+                widget = task_list_widget.itemWidget(item)
+                if isinstance(widget, type(None)):  # 防御性，避免 None
+                    continue
+                task = getattr(widget, "task", None)
+                # 直接检查task.is_checked，不依赖checkbox的可见性
+                if task and task.is_special and task.is_checked:
+                    return task
+        except Exception:
+            pass
+        return None

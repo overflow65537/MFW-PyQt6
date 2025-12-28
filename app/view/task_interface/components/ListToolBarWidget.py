@@ -73,6 +73,15 @@ class BaseListToolBarWidget(QWidget):
         )
         self.delete_button.setToolTip(self.tr("Delete"))
 
+        # 切换按钮（用于切换到特殊任务列表）
+        self.switch_button = ToolButton(FIF.RIGHT_ARROW)
+        self.switch_button.installEventFilter(
+            ToolTipFilter(self.switch_button, 0, ToolTipPosition.TOP)
+        )
+        self.switch_button.setToolTip(self.tr("Switch"))
+        # 默认隐藏，只在普通任务模式下显示
+        self.switch_button.hide()
+
         # 布局
         self.title_layout = QHBoxLayout()
         # 设置边距
@@ -81,6 +90,7 @@ class BaseListToolBarWidget(QWidget):
         self.title_layout.addWidget(self.deselect_all_button)
         self.title_layout.addWidget(self.delete_button)
         self.title_layout.addWidget(self.add_button)
+        self.title_layout.addWidget(self.switch_button)
 
     def _init_task_list(self):
         """初始化任务列表"""
@@ -212,6 +222,9 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         self.core_signalBus = self.service_coordinator.signal_bus
         if self._task_filter_mode == "special":
             self._apply_special_mode_ui()
+        elif self._task_filter_mode == "normal":
+            # 普通任务模式下显示切换按钮
+            self.switch_button.show()
         # 选择全部按钮
         self.select_all_button.clicked.connect(self.select_all)
         # 取消选择全部按钮
@@ -317,7 +330,7 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         return {name: opts for name, opts in task_map.items() if _include(name)}
 
     def _apply_special_mode_ui(self):
-        """特殊任务界面隐藏批量与增删按钮"""
+        """特殊任务界面隐藏批量与增删按钮，但显示切换按钮"""
         for btn in (
             self.select_all_button,
             self.deselect_all_button,
@@ -325,6 +338,42 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             self.delete_button,
         ):
             btn.hide()
+        # 特殊任务模式下显示切换按钮（用于切换回普通任务）
+        self.switch_button.show()
+        # 更新切换按钮的图标和提示文本
+        from qfluentwidgets import FluentIcon as FIF
+        self.switch_button.setIcon(FIF.LEFT_ARROW)
+        self.switch_button.setToolTip(self.tr("Switch to Normal Tasks"))
+    
+    def switch_filter_mode(self):
+        """切换任务列表的过滤模式（normal <-> special）"""
+        if self._task_filter_mode == "normal":
+            # 切换到特殊任务模式
+            self._task_filter_mode = "special"
+            self._apply_special_mode_ui()
+            self.set_title(self.tr("Special Tasks"))
+        elif self._task_filter_mode == "special":
+            # 切换到普通任务模式
+            self._task_filter_mode = "normal"
+            # 显示所有按钮
+            self.select_all_button.show()
+            self.deselect_all_button.show()
+            self.add_button.show()
+            self.delete_button.show()
+            self.switch_button.show()
+            # 更新切换按钮的图标和提示文本
+            from qfluentwidgets import FluentIcon as FIF
+            self.switch_button.setIcon(FIF.RIGHT_ARROW)
+            self.switch_button.setToolTip(self.tr("Switch"))
+            self.set_title(self.tr("Tasks"))
+        else:
+            # all 模式不支持切换
+            return
+        
+        # 更新任务列表的过滤模式并刷新
+        if hasattr(self, 'task_list') and self.task_list:
+            self.task_list._filter_mode = self._task_filter_mode
+            self.task_list.update_list()
 
     def remove_selected_task(self):
         cur = self.task_list.currentItem()
