@@ -841,6 +841,11 @@ class TaskListItem(BaseListItem):
         Args:
             status: 状态字符串，可选值: "running", "completed", "failed", "restart_success", "waiting", ""(清除状态)
         """
+        # 基础任务不显示状态标志
+        if self.task.is_base_task():
+            self.status_widget.hide()
+            return
+        
         self._current_status = status
         
         # 清除之前的状态组件
