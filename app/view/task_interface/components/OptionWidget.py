@@ -530,20 +530,59 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             self._description_animator.expand(force_from_zero=not has_options)
 
     def _process_remote_images(self, html: str) -> str:
-        """下载公告中的网络图片到本地缓存，并替换为本地路径以保证可显示/预览。"""
+        """处理公告中的图片（网络图片下载到本地缓存，本地图片转换为URI格式）。"""
         if not html:
             return html
         
+        # 处理网络图片（http/https）
         urls = set(re.findall(r"https?://[^\s\"'>]+", html))
-        if not urls:
-            return html
-        
         for url in urls:
             local_path = self._cache_remote_image(url)
             if not local_path:
                 continue
             local_uri = Path(local_path).as_uri()
             html = html.replace(url, local_uri)
+        
+        # 处理本地图片路径（转换为 file:// URI 格式）
+        # 匹配 <img> 标签中的 src 属性，支持相对路径和绝对路径
+        img_pattern = re.compile(
+            r'(<img[^>]*src=["\'])([^"\']+)(["\'][^>]*>)',
+            re.IGNORECASE
+        )
+        
+        def replace_local_path(match):
+            prefix = match.group(1)
+            src = match.group(2)
+            suffix = match.group(3)
+            
+            # 如果已经是 file:// URI 或 http/https，跳过
+            if src.startswith(('file://', 'http://', 'https://')):
+                return match.group(0)
+            
+            # 如果是相对路径或绝对路径，转换为 file:// URI
+            try:
+                # 尝试解析为路径
+                img_path = Path(src)
+                # 如果是相对路径，尝试相对于当前工作目录
+                if not img_path.is_absolute():
+                    # 相对路径保持原样，让 Qt 自己处理
+                    # 或者可以尝试相对于 bundle 路径
+                    pass
+                
+                # 如果文件存在，转换为绝对路径的 URI
+                if img_path.exists():
+                    absolute_path = img_path.resolve()
+                    uri = absolute_path.as_uri()
+                    return f'{prefix}{uri}{suffix}'
+                else:
+                    # 文件不存在，保持原样（可能是相对路径，运行时才能确定）
+                    return match.group(0)
+            except Exception:
+                # 解析失败，保持原样
+                return match.group(0)
+        
+        html = img_pattern.sub(replace_local_path, html)
+        
         return html
 
     def _cache_remote_image(self, url: str) -> str | None:

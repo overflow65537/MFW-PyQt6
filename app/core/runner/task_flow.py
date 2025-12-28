@@ -164,7 +164,8 @@ class TaskFlowRunner(QObject):
         self._is_timeout_restart = is_timeout_restart
         # 跟踪任务流是否成功启动并执行了任务
         self._tasks_started = False
-        
+
+        """# 基础文本测试
         long_text = (
             "这是一段非常长的测试日志内容，用于测试日志组件的显示效果。"
             "这段文本包含了大量的中文字符，用来验证日志组件在处理长文本时的表现。"
@@ -179,26 +180,22 @@ class TaskFlowRunner(QObject):
             "再添加一些特殊字符：<>&\"'，以及一些表情符号测试：😀😃😄😁😆😅😂🤣。"
             "最后再添加一些URL测试：https://www.example.com/very/long/path/to/test/url/display/in/log/component。"
             "这段文本应该足够长，能够测试日志组件在处理超长文本时的换行、滚动和显示效果。\n"
-            "\n=== Markdown 测试 ===\n"
-            "# Markdown 一级标题\n"
-            "## Markdown 二级标题\n"
-            "### Markdown 三级标题\n"
-            "**粗体文本** 和 *斜体文本* 以及 ***粗斜体文本***\n"
-            "`行内代码` 和 ```代码块```\n"
-            "- Markdown 无序列表项 1\n"
-            "- Markdown 无序列表项 2\n"
-            "- Markdown 无序列表项 3\n"
-            "1. Markdown 有序列表项 1\n"
-            "2. Markdown 有序列表项 2\n"
-            "3. Markdown 有序列表项 3\n"
-            "[Markdown 链接](https://www.example.com)\n"
-            "> Markdown 引用文本\n"
-            "> 多行引用内容\n"
+        )
+        signalBus.log_output.emit("INFO", long_text)
+        
+        # Markdown 测试
+        markdown_test1 = (
+
             "| Markdown 表格 | 列1 | 列2 |\n"
             "|--------------|-----|-----|\n"
             "| 行1          | A   | B   |\n"
             "| 行2          | C   | D   |\n"
-            "\n=== HTML 测试 ===\n"
+        )
+        signalBus.log_output.emit("INFO", markdown_test1)
+        
+        # HTML 测试
+        html_test = (
+            "=== HTML 测试 ===\n"
             "<h1>HTML 一级标题</h1>\n"
             "<h2>HTML 二级标题</h2>\n"
             "<h3>HTML 三级标题</h3>\n"
@@ -207,7 +204,7 @@ class TaskFlowRunner(QObject):
             "<code>HTML 行内代码</code> 和 <pre>HTML 代码块</pre>\n"
             "<ul><li>HTML 无序列表项 1</li><li>HTML 无序列表项 2</li><li>HTML 无序列表项 3</li></ul>\n"
             "<ol><li>HTML 有序列表项 1</li><li>HTML 有序列表项 2</li><li>HTML 有序列表项 3</li></ol>\n"
-            "<a href=\"https://www.example.com\">HTML 链接</a>\n"
+            '<a href="https://www.example.com">HTML 链接</a>\n'
             "<blockquote>HTML 引用文本</blockquote>\n"
             "<div>HTML div 容器</div>\n"
             "<span>HTML span 内联元素</span>\n"
@@ -216,12 +213,12 @@ class TaskFlowRunner(QObject):
             "<table><tr><th>HTML 表格</th><th>列1</th><th>列2</th></tr>"
             "<tr><td>行1</td><td>A</td><td>B</td></tr>"
             "<tr><td>行2</td><td>C</td><td>D</td></tr></table>\n"
-            "<img src=\"https://example.com/image.png\" alt=\"HTML 图片\">\n"
-            "<input type=\"text\" value=\"HTML 输入框\">\n"
+            '<img src="https://example.com/image.png" alt="HTML 图片">\n'
+            '<input type="text" value="HTML 输入框">\n'
             "<button>HTML 按钮</button>\n"
         )
-        signalBus.log_output.emit("INFO", long_text)
-        
+        signalBus.log_output.emit("INFO", html_test)"""
+
         # 发送任务流启动通知
         send_notice(
             NoticeTiming.WHEN_FLOW_STARTED,
@@ -242,7 +239,7 @@ class TaskFlowRunner(QObject):
             self._timeout_timer.stop()
             self._current_running_task_id = None
         is_single_task_mode = task_id is not None
-        
+
         # 初始化任务状态：仅在完整运行时将所有选中的任务设置为等待中
         # 单独运行时，只会在对应的任务处显示进行中/完成/失败，不显示等待图标
         # 使用 QTimer 延迟发送，确保任务列表 UI 已经准备好
@@ -251,10 +248,14 @@ class TaskFlowRunner(QObject):
             if not is_single_task_mode:
                 all_tasks = self.task_service.get_tasks()
                 for task in all_tasks:
-                    if not task.is_base_task() and task.is_checked and not task.is_hidden:
+                    if (
+                        not task.is_base_task()
+                        and task.is_checked
+                        and not task.is_hidden
+                    ):
                         # 完整运行时，设置所有选中的任务为等待中
                         signalBus.task_status_changed.emit(task.item_id, "waiting")
-        
+
         # 延迟 200ms 发送，确保任务列表已经渲染完成
         QTimer.singleShot(200, set_waiting_status)
 
@@ -430,7 +431,9 @@ class TaskFlowRunner(QObject):
                     send_notice(
                         NoticeTiming.WHEN_TASK_SUCCESS,
                         self.tr("Task Completed"),
-                        self.tr("Task '{}' has been completed successfully.").format(task.name),
+                        self.tr("Task '{}' has been completed successfully.").format(
+                            task.name
+                        ),
                     )
                 # 清除当前执行任务记录
                 self._current_running_task_id = None
@@ -471,7 +474,9 @@ class TaskFlowRunner(QObject):
                             # 跳过任务时清除运行状态
                             # 完整运行时恢复等待状态，单独运行时清除状态
                             if not is_single_task_mode:
-                                signalBus.task_status_changed.emit(task.item_id, "waiting")
+                                signalBus.task_status_changed.emit(
+                                    task.item_id, "waiting"
+                                )
                             else:
                                 signalBus.task_status_changed.emit(task.item_id, "")
                             continue
@@ -485,7 +490,9 @@ class TaskFlowRunner(QObject):
                             send_notice(
                                 NoticeTiming.WHEN_TASK_FAILED,
                                 self.tr("Task Failed"),
-                                self.tr("Task '{}' failed and the flow was terminated.").format(task.name),
+                                self.tr(
+                                    "Task '{}' failed and the flow was terminated."
+                                ).format(task.name),
                             )
                             await self.stop_task()
                             break
@@ -506,13 +513,17 @@ class TaskFlowRunner(QObject):
                             )
                         else:
                             # 判断是否为重启后成功
-                            status = "restart_success" if is_timeout_restart else "completed"
+                            status = (
+                                "restart_success" if is_timeout_restart else "completed"
+                            )
                             signalBus.task_status_changed.emit(task.item_id, status)
                             # 发送任务成功通知
                             send_notice(
                                 NoticeTiming.WHEN_TASK_SUCCESS,
                                 self.tr("Task Completed"),
-                                self.tr("Task '{}' has been completed successfully.").format(task.name),
+                                self.tr(
+                                    "Task '{}' has been completed successfully."
+                                ).format(task.name),
                             )
 
                         logger.info(f"任务执行完成: {task.name}")
@@ -528,7 +539,9 @@ class TaskFlowRunner(QObject):
                         send_notice(
                             NoticeTiming.WHEN_TASK_FAILED,
                             self.tr("Task Failed"),
-                            self.tr("Task '{}' failed with error: {}").format(task.name, str(exc)),
+                            self.tr("Task '{}' failed with error: {}").format(
+                                task.name, str(exc)
+                            ),
                         )
                         # 任务失败后也重置重启计数
                         # 注意：状态清除由 UI 层控制，这里只重置内存中的计数
@@ -595,7 +608,7 @@ class TaskFlowRunner(QObject):
                 )
 
             self._is_running = False
-            
+
             # 清除所有任务状态
             all_tasks = self.task_service.get_tasks()
             for task in all_tasks:
@@ -1083,9 +1096,21 @@ class TaskFlowRunner(QObject):
 
         hwnd = int(controller_config.get("hwnd", 0))
         # 使用之前保存的原始值，如果不存在则使用配置中的值或默认值
-        screencap_method = raw_screencap_method if raw_screencap_method is not None else controller_config.get("win32_screencap_methods", 1)
-        mouse_method = raw_mouse_method if raw_mouse_method is not None else controller_config.get("mouse_input_methods", 1)
-        keyboard_method = raw_keyboard_method if raw_keyboard_method is not None else controller_config.get("keyboard_input_methods", 1)
+        screencap_method = (
+            raw_screencap_method
+            if raw_screencap_method is not None
+            else controller_config.get("win32_screencap_methods", 1)
+        )
+        mouse_method = (
+            raw_mouse_method
+            if raw_mouse_method is not None
+            else controller_config.get("mouse_input_methods", 1)
+        )
+        keyboard_method = (
+            raw_keyboard_method
+            if raw_keyboard_method is not None
+            else controller_config.get("keyboard_input_methods", 1)
+        )
 
         # 检查 hwnd 是否为空
         if not hwnd:
@@ -1144,7 +1169,7 @@ class TaskFlowRunner(QObject):
 
     def _extract_device_base_name(self, device_name: str) -> str:
         """从设备名称中提取基础名称
-        
+
         例如：
         - "雷电模拟器-LDPlayer[0](emulator-5554)" -> "雷电模拟器-LDPlayer[0]"
         - "MuMu模拟器(127.0.0.1:7555)" -> "MuMu模拟器"
@@ -1152,7 +1177,7 @@ class TaskFlowRunner(QObject):
         """
         # 只去掉 (address) 部分，保留 [index] 部分
         # 匹配格式：name[index](address) 或 name(address) 或 name[index]
-        pattern = r'^(.+?)(?:\(.*?\))?$'
+        pattern = r"^(.+?)(?:\(.*?\))?$"
         match = re.match(pattern, device_name.strip())
         if match:
             return match.group(1).strip()
@@ -1169,7 +1194,7 @@ class TaskFlowRunner(QObject):
 
         old_adb_path = (old_config.get("adb_path") or "").strip()
         new_adb_path = (new_device.get("adb_path") or "").strip()
-        
+
         old_name = self._extract_device_base_name(old_config.get("device_name") or "")
         new_name = self._extract_device_base_name(new_device.get("device_name") or "")
 
