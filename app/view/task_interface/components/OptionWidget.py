@@ -1,13 +1,22 @@
+import hashlib
+import re
+import tempfile
+import urllib.parse
+import urllib.request
+from pathlib import Path
 from typing import Dict, Any
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QSplitter
 from qfluentwidgets import BodyLabel, ScrollArea, SimpleCardWidget, SegmentedWidget
 
 from app.utils.logger import logger
+from app.utils.markdown_helper import render_markdown
 from app.view.task_interface.animations.optionwidget import (
+    DescriptionTransitionAnimator,
     OptionTransitionAnimator,
 )
+from app.view.task_interface.components.ImagePreviewDialog import ImagePreviewDialog
 from app.view.task_interface.components.Option_Framework import (
     OptionFormWidget,
     SpeedrunConfigWidget,
@@ -32,11 +41,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self,
         service_coordinator: ServiceCoordinator,
         parent=None,
-        description_widget=None,
     ):
         # 先调用QWidget的初始化
         self.service_coordinator = service_coordinator
-        self.description_widget = description_widget  # 外部传入的说明组件
         QWidget.__init__(self, parent)
 
         # 初始化UI组件（需要先创建布局）
@@ -206,6 +213,16 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 连接CoreSignalBus的options_loaded信号
         service_coordinator.signal_bus.options_loaded.connect(self._on_options_loaded)
         service_coordinator.signal_bus.config_changed.connect(self._on_config_changed)
+        
+        # 监听运行状态变化，禁用/启用选项编辑
+        from app.common.signal_bus import signalBus
+        signalBus.task_status_changed.connect(self._on_task_status_changed)
+        
+        # 初始化时隐藏描述区域
+        self._toggle_description(visible=False, animate=False)
+        
+        # 初始化时检查运行状态并设置选项可用性
+        self._update_options_enabled()
 
     def _init_ui(self):
         """初始化UI"""
@@ -295,11 +312,107 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         card_layout.setContentsMargins(0, 0, 0, 0)
         self.option_area_card.setLayout(card_layout)
 
+        # ==================== 描述区域 ==================== #
+        # 创建描述标题（直接放在主布局中）
+        self.description_title = BodyLabel(self.tr("Function Description"))
+        self.description_title.setStyleSheet("font-size: 20px;")
+        self.description_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        # 创建描述卡片
+        self.description_area_card = SimpleCardWidget()
+        self.description_area_card.setClickEnabled(False)
+        self.description_area_card.setBorderRadius(8)
+
+        # 正确的布局层次结构
+        self.description_area_widget = (
+            QWidget()
+        )  # 使用普通Widget作为容器，而不是ScrollArea
+        self.description_layout = QVBoxLayout(
+            self.description_area_widget
+        )  # 这个布局只属于widget
+        self.description_layout.setContentsMargins(10, 10, 10, 10)  # 设置适当的边距
+
+        # 描述内容区域
+        self.description_content = BodyLabel()
+        self.description_content.setWordWrap(True)
+        self.description_content.setTextFormat(Qt.TextFormat.RichText)
+        # 启用链接点击交互（用于图片点击）
+        self.description_content.setTextInteractionFlags(
+            Qt.TextInteractionFlag.LinksAccessibleByMouse
+        )
+        self.description_content.setOpenExternalLinks(False)  # 不自动打开外部链接
+        self.description_content.linkActivated.connect(self._on_link_activated)
+        self.description_content.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.NoContextMenu
+        )
+        self.description_content.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.description_layout.addWidget(self.description_content)
+
+        self.description_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        # 创建滚动区域来包裹内容
+        self.description_scroll_area = ScrollArea()
+        self.description_scroll_area.setWidget(self.description_area_widget)
+        self.description_scroll_area.setWidgetResizable(True)
+        self.description_scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self.description_scroll_area.enableTransparentBackground()
+        self.description_scroll_area.setStyleSheet(
+            "background-color: transparent; border: none;"
+        )
+
+        # 将滚动区域添加到卡片
+        card_layout = QVBoxLayout(self.description_area_card)
+        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.addWidget(self.description_scroll_area)
+
+        # ==================== 分割器 ==================== #
+        # 创建垂直分割器，实现可调整比例功能
+        self.splitter = QSplitter(Qt.Orientation.Vertical)
+        self.splitter.setStyleSheet(
+            """
+            QSplitter::handle:vertical {
+                background: transparent;   
+            }
+            """
+        )
+
+        # 创建选项区域容器（仅用于分割器）
+        self.option_splitter_widget = QWidget()
+        self.option_splitter_layout = QVBoxLayout(self.option_splitter_widget)
+        self.option_splitter_layout.addWidget(self.option_area_card)
+        self.option_splitter_layout.setContentsMargins(0, 13, 0, 0)
+
+        # 创建描述区域容器（仅用于分割器）
+        self.description_splitter_widget = QWidget()
+        self.description_splitter_layout = QVBoxLayout(self.description_splitter_widget)
+        self.description_splitter_layout.addWidget(self.description_title)
+        self.description_splitter_layout.addWidget(self.description_area_card)
+        # 设置占用比例
+        self.description_splitter_layout.setStretch(0, 1)  # 标题占用1单位
+        self.description_splitter_layout.setStretch(1, 99)  # 内容占用99单位
+        self.description_splitter_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 添加到分割器
+        self.splitter.addWidget(self.option_splitter_widget)  # 上方：选项区域
+        self.splitter.addWidget(self.description_splitter_widget)  # 下方：描述区域
+
+        # 设置初始比例
+        self.splitter.setSizes([90, 10])  # 90% 和 10% 的初始比例
+        self._description_animator = DescriptionTransitionAnimator(
+            self.splitter,
+            self.description_splitter_widget,
+            content_widget=self.description_content,  # 传入内容控件用于计算实际高度
+            max_ratio=0.5,  # 默认最大比例50%
+            min_height=90,
+        )
+
         # 添加到主布局
         self.main_layout.addWidget(self.title_widget)  # 直接添加标题
-        self.main_layout.addWidget(self.option_area_card)  # 添加选项卡片
-        # 添加主布局间距和上边距（24px避让，与其他组件对齐）
-        self.main_layout.setContentsMargins(0, 24, 0, 10)
+        self.main_layout.addWidget(self.splitter)  # 添加分割器
+        # 添加主布局间距
+        self.main_layout.setContentsMargins(10, 10, 10, 10)
         self.main_layout.setSpacing(5)
 
     # ==================== UI 辅助方法 ==================== #
@@ -372,33 +485,137 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             logger.error(f"保存速通配置失败: {exc}")
 
     def set_description(self, description: str, has_options: bool = True):
-        """设置描述内容（转发到外部说明组件）
-
+        """设置描述内容
+        
         :param description: 描述内容
-        :param has_options: 是否有选项内容（保留参数以兼容现有调用）
+        :param has_options: 是否有选项内容，用于确定公告最大占比
+                           - True: 最大占比50%
+                           - False: 最大占比100%
         """
-        if self.description_widget:
-            self.description_widget.set_description(description or "")
+        # 处理 None 或空字符串
+        if not description:
+            description = ""
+        
+        # 如果description为空，隐藏描述区域
+        if not description.strip():
+            self.description_content.setText("")
+            self._toggle_description(visible=False)
+            return
 
-    def _toggle_description(self, show: bool):
+        # 计算新的最大比例
+        new_max_ratio = 0.5 if has_options else 1.0
+        # 获取旧的最大比例来判断是否有变化
+        old_max_ratio = self._description_animator.max_ratio
+        ratio_changed = abs(new_max_ratio - old_max_ratio) > 0.1
+        
+        # 设置最大比例：有选项时50%，无选项时100%
+        self._description_animator.set_max_ratio(new_max_ratio)
+
+        html = render_markdown(description)
+        html = self._process_remote_images(html)
+        
+        # 检查公告是否已经展开
+        was_expanded = self._description_animator.is_expanded()
+        
+        # 设置内容
+        self.description_content.setText(html)
+        
+        if was_expanded:
+            # 如果已经展开，直接平滑过渡到新高度（不收回再展开）
+            # 如果比例发生了变化，强制播放动画
+            self._description_animator.update_size(force_animation=ratio_changed)
+        else:
+            # 如果之前是隐藏的，正常展开
+            # 如果没有选项（100%），强制从零开始动画，防止瞬间占满
+            self._description_animator.expand(force_from_zero=not has_options)
+
+    def _process_remote_images(self, html: str) -> str:
+        """下载公告中的网络图片到本地缓存，并替换为本地路径以保证可显示/预览。"""
+        if not html:
+            return html
+        
+        urls = set(re.findall(r"https?://[^\s\"'>]+", html))
+        if not urls:
+            return html
+        
+        for url in urls:
+            local_path = self._cache_remote_image(url)
+            if not local_path:
+                continue
+            local_uri = Path(local_path).as_uri()
+            html = html.replace(url, local_uri)
+        return html
+
+    def _cache_remote_image(self, url: str) -> str | None:
+        """缓存网络图片到临时目录，返回本地路径。失败则返回None。"""
+        try:
+            parsed = urllib.parse.urlparse(url)
+            if parsed.scheme not in ("http", "https"):
+                return None
+            
+            cache_dir = Path(tempfile.gettempdir()) / "mfw_remote_images"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            
+            ext = Path(parsed.path).suffix
+            # 简单兜底，避免过长或缺少后缀
+            if not ext or len(ext) > 5:
+                ext = ".img"
+            
+            filename = hashlib.sha1(url.encode("utf-8")).hexdigest() + ext
+            file_path = cache_dir / filename
+            if file_path.exists():
+                return str(file_path)
+            
+            req = urllib.request.Request(url, headers={"User-Agent": "MFW-PyQt6"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = resp.read()
+            file_path.write_bytes(data)
+            return str(file_path)
+        except Exception as e:
+            logger.warning(f"下载网络图片失败: {url}, {e}")
+            return None
+
+    def _toggle_description(self, visible: bool | None = None, animate: bool = True) -> None:
         """切换描述区域的显示/隐藏
-
-        :param show: True 显示，False 隐藏
+        visible: True显示，False隐藏，None切换当前状态
         """
-        if self.description_widget:
-            self.description_widget.setVisible(show)
+        if visible is None:
+            # 切换当前状态
+            visible = not self._description_animator.is_expanded()
+
+        if visible:
+            if animate:
+                self._description_animator.expand()
+            else:
+                self._description_animator.set_visible_immediate(True)
+        else:
+            if animate:
+                self._description_animator.collapse()
+            else:
+                self._description_animator.set_visible_immediate(False)
+    
+    def _on_link_activated(self, link: str):
+        """处理链接点击事件"""
+        if link.startswith("image:"):
+            # 提取图片路径
+            image_path = link[6:]  # 移除 "image:" 前缀
+            # 打开图片预览对话框
+            dialog = ImagePreviewDialog(image_path, self)
+            dialog.exec()
 
     # ==================== 公共方法 ====================
 
     def reset(self):
         """重置选项区域和描述区域"""
         self._clear_options()
-        if self.description_widget:
-            self.description_widget.clear_description()
+        self.description_content.setText("")
+        self._toggle_description(visible=False)
         self.segmented_switcher.setCurrentItem("options")
         self.segmented_switcher.setVisible(False)
         self.option_stack.setCurrentIndex(0)
         self.speedrun_widget.set_config(None, emit=False)
+        # 显示选项区域，因为已经专门的方法清除选项
+        self.option_splitter_widget.show()
 
         self.current_task = None
         self.current_config = {}
@@ -510,6 +727,8 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 构建新选项
         self.option_form_widget.build_from_structure(form_structure, config)
         self._connect_option_signals()
+        # 更新选项的启用/禁用状态
+        self._update_options_enabled()
 
     def get_current_form_config(self):
         """
@@ -658,6 +877,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             self.option_stack.setCurrentIndex(1)
             self._apply_speedrun_config()
             self.segmented_switcher.setCurrentItem("speedrun")
+        
+        # 更新选项的启用/禁用状态（在所有选项加载完成后）
+        self._update_options_enabled()
 
     def _apply_resource_settings_with_animation(self):
         """在动画回调中应用资源设置（只显示资源下拉框）"""
@@ -722,6 +944,8 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
         # 创建资源下拉框（此时 current_config 中已经有 resource 值了）
         self.create_resource_settings()
+        # 更新选项的启用/禁用状态
+        self._update_options_enabled()
 
     def _apply_controller_settings_with_animation(self):
         """在动画回调中应用控制器设置"""
@@ -738,6 +962,8 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             )
         # 控制器任务只显示控制器设置，不显示资源下拉框
         self.controller_setting_widget.create_settings()
+        # 更新选项的启用/禁用状态
+        self._update_options_enabled()
 
         logger.info("控制器设置表单已创建")
 
@@ -759,11 +985,8 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
         # 创建完成后操作设置（此时 current_config 中已经有 post_action 值了）
         self.create_post_action_settings()
-        
-        # 设置一个空的公告内容，确保公告区域存在且显示（避免崩溃）
-        # 即使是空内容，也要显示公告区域，这样可以避免在清理时出现问题
-        self.set_description("", has_options=True)
-        self._toggle_description(True)
+        # 更新选项的启用/禁用状态
+        self._update_options_enabled()
         
         logger.info("完成后操作设置表单已创建")
 
@@ -779,3 +1002,94 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
                 item.widget().setVisible(visible)
             elif item.layout():
                 self._set_layout_visibility(item.layout(), visible)
+
+    def _on_task_status_changed(self, task_id: str, status: str):
+        """监听任务状态变化，更新选项的启用/禁用状态"""
+        self._update_options_enabled()
+
+    def _update_options_enabled(self):
+        """根据运行状态更新所有选项的启用/禁用状态"""
+        # 检查是否有任务正在运行
+        is_running = self.service_coordinator.run_manager.is_running
+        self._set_options_enabled(not is_running)
+
+    def _set_options_enabled(self, enabled: bool):
+        """设置所有选项控件的启用/禁用状态
+        
+        :param enabled: True 启用，False 禁用
+        """
+        # 禁用/启用控制器设置组件中的控件
+        if hasattr(self, 'controller_setting_widget'):
+            # 先设置整个组件的启用状态（这会递归处理布局中的所有子控件）
+            self._set_widget_enabled(self.controller_setting_widget, enabled)
+            # 同时确保 resource_setting_widgets 字典中的所有控件都被处理
+            # （有些控件可能不在布局中，需要单独处理）
+            if hasattr(self.controller_setting_widget, 'resource_setting_widgets'):
+                for widget in self.controller_setting_widget.resource_setting_widgets.values():
+                    if widget and hasattr(widget, 'setEnabled'):
+                        widget.setEnabled(enabled)
+        
+        # 禁用/启用资源设置组件中的控件
+        if hasattr(self, 'resource_setting_widgets'):
+            for widget in self.resource_setting_widgets.values():
+                if widget:
+                    self._set_widget_enabled(widget, enabled)
+        
+        # 禁用/启用完成后操作设置组件中的控件
+        if hasattr(self, 'post_action_widgets'):
+            for widget in self.post_action_widgets.values():
+                if widget:
+                    self._set_widget_enabled(widget, enabled)
+        
+        # 禁用/启用普通任务的选项表单控件
+        if hasattr(self, 'option_form_widget'):
+            self._set_widget_enabled(self.option_form_widget, enabled)
+        
+        # 禁用/启用速通配置控件
+        if hasattr(self, 'speedrun_widget'):
+            self._set_widget_enabled(self.speedrun_widget, enabled)
+
+    def _set_widget_enabled(self, widget, enabled: bool):
+        """递归设置控件及其子控件的启用/禁用状态
+        
+        :param widget: 要设置的控件
+        :param enabled: True 启用，False 禁用
+        """
+        if widget is None:
+            return
+        
+        # 设置控件本身的启用状态
+        if hasattr(widget, 'setEnabled'):
+            widget.setEnabled(enabled)
+        
+        # 如果控件有布局，处理布局中的控件（这会递归处理所有子控件）
+        if hasattr(widget, 'layout') and widget.layout():
+            self._set_layout_enabled(widget.layout(), enabled)
+        # 如果没有布局，直接处理子控件
+        elif hasattr(widget, 'children'):
+            for child in widget.children():
+                self._set_widget_enabled(child, enabled)
+
+    def _set_layout_enabled(self, layout, enabled: bool):
+        """递归设置布局中所有控件的启用/禁用状态
+        
+        :param layout: 要设置的布局
+        :param enabled: True 启用，False 禁用
+        """
+        if layout is None:
+            return
+        
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            if item is None:
+                continue
+            
+            if item.widget():
+                widget = item.widget()
+                if widget and hasattr(widget, 'setEnabled'):
+                    widget.setEnabled(enabled)
+                # 递归处理子控件
+                self._set_widget_enabled(widget, enabled)
+            elif item.layout():
+                # 递归处理子布局
+                self._set_layout_enabled(item.layout(), enabled)

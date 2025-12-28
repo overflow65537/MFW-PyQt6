@@ -43,7 +43,7 @@ class PostActionSettingMixin:
         "program_args": "",
     }
 
-    def tr(self, text: str) -> str: ...
+    def tr(self, sourceText: str, /, disambiguation: str | None = None, n: int = -1) -> str: ...
 
 
 
