@@ -18,7 +18,6 @@ from qfluentwidgets import (
     ScrollArea,
     SimpleCardWidget,
     PushButton,
-    ToolButton,
     FluentIcon as FIF,
     isDarkTheme,
     qconfig,
@@ -64,14 +63,6 @@ class LogoutputWidget(QWidget):
             self.monitor_title_label.setStyleSheet("font-size: 20px;")
             monitor_title_layout.addWidget(self.monitor_title_label)
             
-            # 添加伸缩器（标题和按钮之间）
-            monitor_title_layout.addStretch()
-            
-            # 开始/停止监控按钮（仅图标）
-            self.monitor_control_button = ToolButton(FIF.PLAY, self)
-            self.monitor_control_button.setIconSize(QSize(20, 20))
-            self.monitor_control_button.clicked.connect(self._on_monitor_control_clicked)
-            self.monitor_control_button.setToolTip(self.tr("Start monitoring task"))
             self.main_layout.addLayout(monitor_title_layout)
             
             # 创建监控卡片外壳（和日志组件一样的外壳包裹）
@@ -88,11 +79,10 @@ class LogoutputWidget(QWidget):
             monitor_card_policy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
             self.monitor_card.setSizePolicy(monitor_card_policy)
             
-            # 创建监控组件，并传递按钮引用用于状态更新
+            # 创建监控组件
             self.monitor_widget = MonitorWidget(
                 self.service_coordinator, 
-                self,
-                button=self.monitor_control_button
+                self
             )
             
             # 将监控组件添加到卡片中
@@ -411,9 +401,4 @@ class LogoutputWidget(QWidget):
 
             if content_label.minimumHeight() != required_height:
                 content_label.setMinimumHeight(required_height)
-    
-    def _on_monitor_control_clicked(self) -> None:
-        """处理开始/停止监控按钮点击"""
-        if hasattr(self, 'monitor_widget'):
-            self.monitor_widget._on_monitor_control_clicked()
     

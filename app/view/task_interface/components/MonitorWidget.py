@@ -1,13 +1,11 @@
 from typing import Optional
-from asyncify import asyncify
 import asyncio
 from datetime import datetime
 from pathlib import Path
-from time import time
 
 from PIL import Image
-from PySide6.QtCore import QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QImage, QPixmap, QIcon
+from PySide6.QtCore import QSize, Qt, QTimer
+from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QSizePolicy,
@@ -16,12 +14,10 @@ from PySide6.QtWidgets import (
 )
 
 from qfluentwidgets import (
-    BodyLabel,
     FluentIcon as FIF,
     PixmapLabel,
-    PrimaryPushButton,
     SimpleCardWidget,
-    MessageBoxBase,
+    IndeterminateProgressRing,
 )
 
 from app.core.core import ServiceCoordinator
@@ -36,36 +32,19 @@ from app.utils.logger import (
 from app.common.signal_bus import signalBus
 
 
-class _ClickablePreviewLabel(PixmapLabel):
-    clicked = Signal(int, int)
-
-    def __init__(self, parent=None):
-        super().__init__(parent=parent)
-
-    def mouseReleaseEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            pos = event.position()
-            self.clicked.emit(int(pos.x()), int(pos.y()))
-        super().mouseReleaseEvent(event)
-
-
 class MonitorWidget(QWidget):
     """简化的监控组件，用于嵌入到日志输出组件中"""
 
-    def __init__(self, service_coordinator: ServiceCoordinator, parent=None, button=None):
+    def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         super().__init__(parent=parent)
         self.setObjectName("MonitorWidget")
         self.service_coordinator = service_coordinator
-        self.external_button = button  # 外部按钮引用（如果提供）
         self._preview_pixmap: Optional[QPixmap] = None
         self._current_pil_image: Optional[Image.Image] = None
-        self._preview_scaled_size: QSize = QSize(0, 0)
         self._monitoring_active = False
         self._monitor_loop_task: Optional[asyncio.Task] = None
         self._starting_monitoring = False  # 防止重复启动
         self._target_interval = 1.0 / 30
-        self._last_frame_timestamp: Optional[float] = None
-        self._last_fps_overlay_update: Optional[float] = None
         
         self.monitor_task = MonitorTask(
             task_service=self.service_coordinator.task_service,
@@ -75,6 +54,7 @@ class MonitorWidget(QWidget):
         self._setup_ui()
         self._connect_signals()
         self._load_placeholder_image()
+        self._init_loading_overlay()
 
     def _setup_ui(self) -> None:
         """设置UI（标题和按钮由外部管理，这里只包含预览区域）"""
@@ -100,7 +80,7 @@ class MonitorWidget(QWidget):
         card_layout.setContentsMargins(0, 0, 0, 0)
         card_layout.setSpacing(0)
         
-        self.preview_label = _ClickablePreviewLabel(self)
+        self.preview_label = PixmapLabel(self)
         self.preview_label.setObjectName("monitorPreviewLabel")
         self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         # 设置固定尺寸（16:9比例）：宽度344px，高度194px
@@ -111,7 +91,6 @@ class MonitorWidget(QWidget):
         )
         # 设置缩放模式：不自动缩放，使用精确尺寸
         self.preview_label.setScaledContents(False)  # 禁用自动缩放，我们手动控制
-        self.preview_label.setCursor(Qt.CursorShape.PointingHandCursor)
         self.preview_label.setStyleSheet(
             """
             QLabel#monitorPreviewLabel {
@@ -121,8 +100,6 @@ class MonitorWidget(QWidget):
             }
             """
         )
-        self.preview_label.clicked.connect(self._on_preview_clicked)
-        self.preview_label.setToolTip(self.tr("Click to sync this frame to the device"))
         
         card_layout.addWidget(self.preview_label)
         # 不使用拉伸因子，使用固定尺寸
@@ -131,25 +108,41 @@ class MonitorWidget(QWidget):
         # 设置整个组件为固定大小
         self.setFixedSize(self._monitor_width, self._monitor_height)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        
-        # FPS 覆盖层
-        self._fps_overlay = BodyLabel(self.tr("FPS: --"), self.preview_label)
-        self._fps_overlay.setObjectName("monitorFpsOverlay")
-        self._fps_overlay.setStyleSheet(
-            """
-            QLabel#monitorFpsOverlay {
-                background-color: rgba(0, 0, 0, 0.55);
-                color: #ffffff;
-                border-radius: 6px;
-                padding: 2px 8px;
-                font-size: 12px;
-            }
-            """
+
+    def _init_loading_overlay(self) -> None:
+        """初始化加载图标覆盖层"""
+        self._loading_overlay = QWidget(self.preview_label)
+        self._loading_overlay.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents
         )
-        self._fps_overlay.setAttribute(
-            Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
+        self._loading_overlay.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+        self._loading_overlay.setStyleSheet(
+            "background-color: rgba(0, 0, 0, 60); border-radius: 8px;"
         )
-        self._fps_overlay.adjustSize()
+        layout = QHBoxLayout(self._loading_overlay)
+        layout.setContentsMargins(24, 16, 24, 16)
+        layout.setSpacing(0)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self._loading_indicator = IndeterminateProgressRing(self._loading_overlay)
+        self._loading_indicator.setFixedSize(28, 28)
+        layout.addWidget(self._loading_indicator)
+
+        self._loading_overlay.hide()
+
+    def _show_loading_overlay(self) -> None:
+        """显示加载图标"""
+        if hasattr(self, '_loading_overlay'):
+            preview_size = self.preview_label.size()
+            self._loading_overlay.setGeometry(0, 0, preview_size.width(), preview_size.height())
+            self._loading_overlay.show()
+            self._loading_indicator.start()
+
+    def _hide_loading_overlay(self) -> None:
+        """隐藏加载图标"""
+        if hasattr(self, '_loading_overlay'):
+            self._loading_overlay.hide()
+            self._loading_indicator.stop()
 
     def _connect_signals(self):
         """连接信号"""
@@ -203,7 +196,6 @@ class MonitorWidget(QWidget):
         self._preview_pixmap = pixmap
         # 占位图也需要缩放到预览标签大小
         self._refresh_preview_image()
-        self._update_fps_overlay(None)
 
     def _refresh_preview_image(self) -> None:
         """刷新预览图像（将1280x720的图片缩放到344x194的预览标签）"""
@@ -224,8 +216,6 @@ class MonitorWidget(QWidget):
         )
         
         self.preview_label.setPixmap(scaled)
-        self._preview_scaled_size = scaled.size()
-        self._reposition_fps_overlay()
 
     def _apply_preview_from_pil(self, pil_image: Image.Image) -> None:
         """从 PIL 图像应用预览（确保图片固定为 1280x720）"""
@@ -255,43 +245,6 @@ class MonitorWidget(QWidget):
         self._current_pil_image = rgb_image.copy()
         # 第一张真实监控图片到达后，进行正确的缩放（固定尺寸，无需更新高度）
         self._refresh_preview_image()
-        current_timestamp = time()
-        fps_value: Optional[float] = None
-        if self._last_frame_timestamp is not None:
-            interval = current_timestamp - self._last_frame_timestamp
-            if interval > 0:
-                fps_value = 1.0 / interval
-        self._last_frame_timestamp = current_timestamp
-        self._update_fps_overlay(fps_value)
-
-    def _update_fps_overlay(self, fps_value: Optional[float]) -> None:
-        """更新 FPS 覆盖层"""
-        if fps_value is None:
-            text = f"{self.tr('FPS')}: --"
-            self._last_fps_overlay_update = None
-        else:
-            now = time()
-            if (
-                self._last_fps_overlay_update is not None
-                and now - self._last_fps_overlay_update < 0.5
-            ):
-                return
-            self._last_fps_overlay_update = now
-            text = f"{self.tr('FPS')}: {fps_value:.1f}"
-        self._fps_overlay.setText(text)
-        self._fps_overlay.adjustSize()
-        self._reposition_fps_overlay()
-
-    def _reposition_fps_overlay(self) -> None:
-        """重新定位 FPS 覆盖层"""
-        if not self._fps_overlay:
-            return
-        preview_size = self.preview_label.size()
-        overlay_size = self._fps_overlay.size()
-        margin = 12
-        x = preview_size.width() - overlay_size.width() - margin
-        y = preview_size.height() - overlay_size.height() - margin
-        self._fps_overlay.move(max(x, 0), max(y, 0))
 
     def _get_controller(self):
         """获取控制器：优先使用任务流的控制器，如果没有则使用监控任务的控制器"""
@@ -392,6 +345,23 @@ class MonitorWidget(QWidget):
         connected = getattr(controller, "connected", None)
         return connected is not False
     
+    def _check_task_flow_controller_ready(self) -> bool:
+        """检查任务流的控制器是否就绪（存在且connected为true）"""
+        if not hasattr(self.service_coordinator, 'run_manager'):
+            return False
+        
+        task_flow = self.service_coordinator.run_manager
+        if not task_flow or not hasattr(task_flow, 'maafw'):
+            return False
+        
+        maafw = task_flow.maafw
+        controller = getattr(maafw, 'controller', None)
+        if controller is None:
+            return False
+        
+        connected = getattr(controller, 'connected', None)
+        return connected is True
+    
     async def _get_required_wait_time(self) -> float:
         """从配置中获取需要的等待时间（如果配置了启动模拟器或程序）"""
         from app.common.constants import _CONTROLLER_
@@ -489,19 +459,17 @@ class MonitorWidget(QWidget):
         self._update_button_state()
 
     def _update_button_state(self):
-        """更新按钮状态（更新外部按钮，如果存在）"""
-        if self.external_button:
-            if self._monitoring_active:
-                self.external_button.setIcon(FIF.CLOSE)
-                self.external_button.setToolTip(self.tr("Stop monitoring task"))
-            else:
-                self.external_button.setIcon(FIF.PLAY)
-                self.external_button.setToolTip(self.tr("Start monitoring task"))
+        """更新按钮状态（已废弃，保留以保持兼容性）"""
+        pass
 
     def resizeEvent(self, event) -> None:
         """处理尺寸变化（固定尺寸，只刷新图像）"""
         super().resizeEvent(event)
         self._refresh_preview_image()
+        # 更新加载图标覆盖层的位置
+        if hasattr(self, '_loading_overlay') and self._loading_overlay.isVisible():
+            preview_size = self.preview_label.size()
+            self._loading_overlay.setGeometry(0, 0, preview_size.width(), preview_size.height())
 
     def _on_save_screenshot(self) -> None:
         """保存截图"""
@@ -519,69 +487,6 @@ class MonitorWidget(QWidget):
         except Exception as exc:
             signalBus.info_bar_requested.emit("error", self.tr("Failed to save screenshot: ") + str(exc))
 
-    def _on_preview_clicked(self, x: int, y: int) -> None:
-        """处理预览点击"""
-        if not self.service_coordinator:
-            return
-        if not self._is_controller_connected():
-            self._schedule_controller_disconnection()
-            return
-        handler = getattr(self.service_coordinator, "sync_monitor_preview_click", None)
-        if callable(handler):
-            try:
-                handler()
-            except Exception:
-                # 静默处理错误，不输出到日志组件
-                pass
-
-        coords = self._map_visual_click_to_device(x, y)
-        if not coords:
-            return
-        controller = self._get_controller()
-        if controller is None:
-            return
-
-        try:
-            controller.post_click(*coords).wait()
-        except Exception:
-            # 静默处理错误，不输出到日志组件
-            pass
-
-    def _map_visual_click_to_device(self, x: int, y: int) -> tuple[int, int] | None:
-        """将 UI 中的点击位置映射为标准 1280×720 的设备坐标"""
-        if (
-            not self._preview_scaled_size
-            or self._preview_scaled_size.width() <= 0
-            or self._preview_scaled_size.height() <= 0
-        ):
-            return None
-
-        label_width = self.preview_label.width()
-        label_height = self.preview_label.height()
-        scaled_width = self._preview_scaled_size.width()
-        scaled_height = self._preview_scaled_size.height()
-
-        x_offset = max(0, (label_width - scaled_width) // 2)
-        y_offset = max(0, (label_height - scaled_height) // 2)
-
-        rel_x = x - x_offset
-        rel_y = y - y_offset
-        if rel_x < 0 or rel_y < 0 or rel_x >= scaled_width or rel_y >= scaled_height:
-            return None
-
-        normalized_x = rel_x / scaled_width
-        normalized_y = rel_y / scaled_height
-
-        # 使用固定的监控图片尺寸：1280x720
-        target_width = getattr(self, '_monitor_image_width', 1280)
-        target_height = getattr(self, '_monitor_image_height', 720)
-        device_x = int(round(normalized_x * target_width))
-        device_y = int(round(normalized_y * target_height))
-        device_x = max(0, min(device_x, target_width - 1))
-        device_y = max(0, min(device_y, target_height - 1))
-
-        return device_x, device_y
-
     def _on_monitor_control_clicked(self) -> None:
         """处理开始/停止监控按钮点击"""
         if self._monitoring_active:
@@ -589,9 +494,7 @@ class MonitorWidget(QWidget):
         elif self._starting_monitoring:
             # 如果正在启动过程中，停止启动
             self._starting_monitoring = False
-            if self.external_button:
-                self.external_button.setEnabled(True)
-                self._update_button_state()
+            self._update_button_state()
         else:
             self._start_monitoring()
 
@@ -602,86 +505,46 @@ class MonitorWidget(QWidget):
             return
         
         self._starting_monitoring = True
-        if self.external_button:
-            self.external_button.setEnabled(False)
         
         # 先显示占位图
         self._load_placeholder_image()
         
         async def _start_sequence():
             try:
-                # 先尝试连接一次（不管是否设置了等待时间）
-                if not self._is_controller_connected():
-                    # 如果任务流正在运行，先尝试等待配置的启动时间，然后等待连接
-                    if hasattr(self.service_coordinator, 'run_manager'):
-                        task_flow = self.service_coordinator.run_manager
-                        if task_flow and task_flow.is_running:
-                            # 检查配置中是否需要启动模拟器或程序，并等待对应时间
-                            wait_time = await self._get_required_wait_time()
-                            if wait_time > 0:
-                                # 显示等待提示
-                                signalBus.info_bar_requested.emit(
-                                    "info", self.tr("Waiting for device startup...")
-                                )
-                                # 等待启动时间（可中断）
-                                check_interval = 0.1  # 每100ms检查一次是否被停止
-                                waited_time = 0.0
-                                while waited_time < wait_time:
-                                    if not self._starting_monitoring:
-                                        # 用户点击了停止按钮
-                                        return
-                                    sleep_time = min(check_interval, wait_time - waited_time)
-                                    await asyncio.sleep(sleep_time)
-                                    waited_time += sleep_time
-                            
-                            # 显示等待连接提示
-                            signalBus.info_bar_requested.emit(
-                                "info", self.tr("Waiting for device connection...")
-                            )
-                            # 等待任务流连接设备（最多等待10秒，每0.05秒检查一次）
-                            # 使用更短的间隔，确保一旦连接成功就立即继续
-                            max_wait_time = 10.0  # 最多等待10秒
-                            check_interval = 0.05  # 每50ms检查一次
-                            waited_time = 0.0
-                            while waited_time < max_wait_time:
-                                if not self._starting_monitoring:
-                                    # 用户点击了停止按钮
-                                    return
-                                await asyncio.sleep(check_interval)
-                                waited_time += check_interval
-                                if self._is_controller_connected():
-                                    # 连接成功，立即继续，不额外等待
-                                    break
-                            
-                            if not self._is_controller_connected():
-                                if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
-                                    signalBus.info_bar_requested.emit(
-                                        "error", self.tr("Device connection timeout. Please check device connection.")
-                                    )
-                                self._starting_monitoring = False
-                                if self.external_button:
-                                    self.external_button.setEnabled(True)
-                                    self._update_button_state()
-                                return
-                        else:
-                            # 任务流未运行
-                            signalBus.info_bar_requested.emit(
-                                "error", self.tr("Device not connected. Please start the task first.")
-                            )
-                            self._starting_monitoring = False
-                            if self.external_button:
-                                self.external_button.setEnabled(True)
-                                self._update_button_state()
+                # 检查任务流的控制器是否就绪
+                if not self._check_task_flow_controller_ready():
+                    # 显示加载图标
+                    self._show_loading_overlay()
+                    
+                    # 等待任务流的控制器就绪（最多等待30秒，每0.1秒检查一次）
+                    max_wait_time = 30.0  # 最多等待30秒
+                    check_interval = 0.1  # 每100ms检查一次
+                    waited_time = 0.0
+                    
+                    while waited_time < max_wait_time:
+                        if not self._starting_monitoring:
+                            # 用户点击了停止按钮
+                            self._hide_loading_overlay()
                             return
-                    else:
-                        # 无法获取任务流
-                        signalBus.info_bar_requested.emit(
-                            "error", self.tr("Device not connected. Please start the task first.")
-                        )
+                        
+                        # 检查控制器是否就绪
+                        if self._check_task_flow_controller_ready():
+                            # 控制器就绪，隐藏加载图标并继续
+                            self._hide_loading_overlay()
+                            break
+                        
+                        await asyncio.sleep(check_interval)
+                        waited_time += check_interval
+                    
+                    # 再次检查是否就绪
+                    if not self._check_task_flow_controller_ready():
+                        if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
+                            signalBus.info_bar_requested.emit(
+                                "error", self.tr("Controller not ready. Please ensure the device is connected.")
+                            )
+                        self._hide_loading_overlay()
                         self._starting_monitoring = False
-                        if self.external_button:
-                            self.external_button.setEnabled(True)
-                            self._update_button_state()
+                        self._update_button_state()
                         return
                 
                 # 启动监控循环
@@ -697,9 +560,7 @@ class MonitorWidget(QWidget):
                             "error", self.tr("Failed to start monitoring loop")
                         )
                     self._starting_monitoring = False
-                    if self.external_button:
-                        self.external_button.setEnabled(True)
-                        self._update_button_state()
+                    self._update_button_state()
                     return
                 
                 self._update_button_state()
@@ -722,24 +583,27 @@ class MonitorWidget(QWidget):
                     signalBus.info_bar_requested.emit(
                         "error", self.tr("Failed to start monitoring: ") + str(exc)
                     )
+                self._hide_loading_overlay()
                 self._starting_monitoring = False
                 if self._monitoring_active:
                     self._stop_monitor_loop()
             finally:
+                self._hide_loading_overlay()
                 self._starting_monitoring = False
-                if self.external_button:
-                    self.external_button.setEnabled(True)
-                    self._update_button_state()
+                self._update_button_state()
 
         QTimer.singleShot(0, lambda: asyncio.create_task(_start_sequence()))
 
     def _stop_monitoring(self) -> None:
         """停止监控"""
-        if self.external_button:
-            self.external_button.setEnabled(False)
+        # 设置停止标志，中断等待过程
+        self._starting_monitoring = False
         
         async def _stop_sequence():
             try:
+                # 隐藏加载图标
+                self._hide_loading_overlay()
+                
                 self._stop_monitor_loop()
                 
                 try:
@@ -764,9 +628,6 @@ class MonitorWidget(QWidget):
                 signalBus.info_bar_requested.emit(
                     "error", self.tr("Failed to stop monitoring: ") + str(exc)
                 )
-            finally:
-                if self.external_button:
-                    self.external_button.setEnabled(True)
         
         QTimer.singleShot(0, lambda: asyncio.create_task(_stop_sequence()))
 
