@@ -11,6 +11,7 @@ from qfluentwidgets import (
 from pathlib import Path
 
 import jsonc
+import sys
 from app.utils.gpu_cache import gpu_cache
 from app.utils.logger import logger
 from app.common.config import cfg
@@ -324,15 +325,27 @@ class ControllerSettingWidget(QWidget):
         # 获取最新的interface
         interface = self.service_coordinator.interface
 
-        # 构建控制器类型映射
+        # 构建控制器类型映射，过滤 playcover（只在 macOS 上显示）
+        controllers = interface.get("controller", [])
+        filtered_controllers = []
+        for ctrl in controllers:
+            ctrl_type = ctrl.get("type", "").lower()
+            # 如果是 playcover 类型，只在 macOS 上显示
+            # 暂时注释掉，用于测试
+            # if ctrl_type == "playcover":
+            #     if sys.platform != "darwin":
+            #         continue
+            filtered_controllers.append(ctrl)
+        
         self.controller_type_mapping = {
             ctrl.get("label", ctrl.get("name", "")): {
                 "name": ctrl.get("name", ""),
                 "type": ctrl.get("type", ""),
                 "icon": ctrl.get("icon", ""),
                 "description": ctrl.get("description", ""),
+                "playcover": ctrl.get("playcover", {}),  # 保存 playcover 配置
             }
-            for ctrl in interface.get("controller", [])
+            for ctrl in filtered_controllers
         }
         self.win32_method_alias_map = self._build_win32_method_alias_map()
         self.win32_default_mapping = self._build_win32_default_mapping(
@@ -376,12 +389,14 @@ class ControllerSettingWidget(QWidget):
             self._create_agent_timeout_option()
             # 创建自定义模块路径输入（隐藏选项）
             self._create_custom_option()
-            # 创建ADB和Win32子选项
+            # 创建ADB、Win32和PlayCover子选项
             self._create_adb_children_option()
             self._create_win32_children_option()
+            self._create_playcover_children_option()
             # 默认隐藏所有子选项
             self._toggle_win32_children_option(False)
             self._toggle_adb_children_option(False)
+            self._toggle_playcover_children_option(False)
             # 设置初始值为当前配置中的控制器类型
             ctrl_combo: ComboBox = self.resource_setting_widgets["ctrl_combo"]
             controller_list = list(self.controller_type_mapping)
@@ -459,6 +474,7 @@ class ControllerSettingWidget(QWidget):
         """创建搜索设备下拉框"""
         search_label = BodyLabel(self.tr("Search Device"))
         self.parent_layout.addWidget(search_label)
+        self.resource_setting_widgets["search_combo_label"] = search_label
 
         search_combo = DeviceFinderWidget()
         self.resource_setting_widgets["search_combo"] = search_combo
@@ -536,6 +552,7 @@ class ControllerSettingWidget(QWidget):
         config_key: str,
         change_callback,
         path_lineedit: bool = False,
+        placeholder: str = "",
     ):
         """创建LineEdit组件的通用方法"""
         label = BodyLabel(label_text)
@@ -544,6 +561,8 @@ class ControllerSettingWidget(QWidget):
             edit = PathLineEdit()
         else:
             edit = LineEdit()
+        if placeholder:
+            edit.setPlaceholderText(placeholder)
         self.parent_layout.addWidget(edit)
 
         # 存储控件到字典 - 注意这里的键名保持不变，以便在_toggle方法中使用
@@ -689,6 +708,16 @@ class ControllerSettingWidget(QWidget):
             self._on_child_option_changed,
         )
 
+    def _create_playcover_children_option(self):
+        """创建PlayCover子选项"""
+        # Address
+        self._create_resource_line_edit(
+            self.tr("Address"),
+            "playcover_address",
+            lambda text: self._on_child_option_changed("playcover_address", text),
+            placeholder="host:port",
+        )
+
     def _on_child_option_changed(self, key: str, value: Any):
         """子选项变化处理"""
         if self._syncing:
@@ -740,6 +769,23 @@ class ControllerSettingWidget(QWidget):
                     "win32_screencap_methods": 0,
                 },
             )
+        elif current_controller_type == "playcover":
+            # 获取默认 UUID（从 interface 配置中）
+            default_uuid = "maa.playcover"
+            if self.current_controller_info and "playcover" in self.current_controller_info:
+                playcover_config = self.current_controller_info.get("playcover", {})
+                default_uuid = playcover_config.get("uuid", "maa.playcover")
+            
+            self.current_config[current_controller_name] = self.current_config.get(
+                current_controller_name,
+                {
+                    "uuid": default_uuid,
+                    "address": "",
+                },
+            )
+            # 确保 uuid 字段存在（如果配置中已有但为空，使用默认值）
+            if "uuid" not in self.current_config[current_controller_name] or not self.current_config[current_controller_name].get("uuid"):
+                self.current_config[current_controller_name]["uuid"] = default_uuid
         # Parse JSON string back to dict for "config" key
         if key == "config":
             try:
@@ -747,8 +793,17 @@ class ControllerSettingWidget(QWidget):
             except (jsonc.JSONDecodeError, ValueError):
                 # If parsing fails, keep the string as-is or use an empty dict
                 self.current_config[current_controller_name][key] = value
+        elif key == "playcover_address":
+            # 将 playcover_address 映射到 address
+            self.current_config[current_controller_name]["address"] = value
         else:
             self.current_config[current_controller_name][key] = value
+        
+        # 如果是 playcover 类型，清理掉旧的 playcover_uuid 字段
+        if current_controller_type == "playcover":
+            if "playcover_uuid" in self.current_config[current_controller_name]:
+                del self.current_config[current_controller_name]["playcover_uuid"]
+        
         # 仅提交当前控制器的配置，避免无关字段触发任务列表误刷新
         self._auto_save_options(
             {current_controller_name: self.current_config[current_controller_name]}
@@ -902,6 +957,26 @@ class ControllerSettingWidget(QWidget):
             }
             self._ensure_defaults(controller_cfg, win32_defaults)
             self._ensure_win32_input_defaults(controller_cfg, controller_name)
+        elif controller_type == "playcover":
+            # 清理掉旧的 playcover_uuid 字段（如果存在）
+            if "playcover_uuid" in controller_cfg:
+                del controller_cfg["playcover_uuid"]
+            # 获取默认 UUID（从 interface 配置中）
+            default_uuid = "maa.playcover"
+            controller_info = None
+            for ctrl_info in self.controller_type_mapping.values():
+                if ctrl_info["name"] == controller_name:
+                    controller_info = ctrl_info
+                    break
+            if controller_info and "playcover" in controller_info:
+                playcover_config = controller_info.get("playcover", {})
+                default_uuid = playcover_config.get("uuid", "maa.playcover")
+            
+            playcover_defaults = {
+                "uuid": default_uuid,
+                "address": "",
+            }
+            self._ensure_defaults(controller_cfg, playcover_defaults)
         else:
             raise
         for name, widget in self.resource_setting_widgets.items():
@@ -917,6 +992,11 @@ class ControllerSettingWidget(QWidget):
                 elif isinstance(widget, ComboBox):
                     target = self.current_config[controller_name][name]
                     widget.setCurrentIndex(self._value_to_index(widget, target))
+            elif name == "playcover_address" and controller_type == "playcover":
+                # 对于 playcover，将 address 的值填充到 playcover_address 输入框
+                if isinstance(widget, (LineEdit, PathLineEdit)):
+                    value = self.current_config[controller_name].get("address", "")
+                    widget.setText(str(value))
         self._fill_custom_option()
         self._fill_gpu_option()
         self._fill_agent_timeout_option()
@@ -1119,6 +1199,13 @@ class ControllerSettingWidget(QWidget):
         self._toggle_children_visible(win32_widgets, visible)
         self._toggle_children_visible(win32_hide_widgets, visible)
 
+    def _toggle_playcover_children_option(self, visible: bool):
+        """控制PlayCover子选项的隐藏和显示"""
+        playcover_widgets = [
+            "playcover_address",
+        ]
+        self._toggle_children_visible(playcover_widgets, visible)
+
     def _on_controller_type_changed(self, label: str):
         """控制器类型变化时的处理函数"""
         # 更新当前控制器信息变量
@@ -1132,19 +1219,54 @@ class ControllerSettingWidget(QWidget):
 
         # 更新当前配置
         self.current_config["controller_type"] = ctrl_info["name"]
-        # 仅提交 controller_type 字段
-        self._auto_save_options({"controller_type": ctrl_info["name"]})
+        
+        # 如果是 playcover 类型，确保 uuid 字段存在并保存
+        if new_type == "playcover":
+            controller_name = ctrl_info["name"]
+            if controller_name not in self.current_config:
+                self.current_config[controller_name] = {}
+            # 获取默认 UUID（从 interface 配置中）
+            default_uuid = "maa.playcover"
+            if "playcover" in ctrl_info:
+                playcover_config = ctrl_info.get("playcover", {})
+                default_uuid = playcover_config.get("uuid", "maa.playcover")
+            # 如果配置中没有 uuid 或为空，设置默认值
+            if "uuid" not in self.current_config[controller_name] or not self.current_config[controller_name].get("uuid"):
+                self.current_config[controller_name]["uuid"] = default_uuid
+            # 确保 address 字段存在
+            if "address" not in self.current_config[controller_name]:
+                self.current_config[controller_name]["address"] = ""
+            # 清理掉旧的 playcover_uuid 字段（如果存在）
+            if "playcover_uuid" in self.current_config[controller_name]:
+                del self.current_config[controller_name]["playcover_uuid"]
+            # 保存 playcover 配置（包括 uuid 和 address）
+            self._auto_save_options({
+                "controller_type": ctrl_info["name"],
+                controller_name: self.current_config[controller_name]
+            })
+        else:
+            # 仅提交 controller_type 字段
+            self._auto_save_options({"controller_type": ctrl_info["name"]})
 
-        # 更换搜索设备类型
+        # 更换搜索设备类型（playcover 不显示搜索设备）
         search_option: DeviceFinderWidget = self.resource_setting_widgets[
             "search_combo"
         ]
-        search_option.change_controller_type(new_type)
-        if new_type == "win32":
-            class_regex, window_regex = self._get_win32_regex_filters(ctrl_info["name"])
-            search_option.set_win32_filters(class_regex, window_regex)
+        if new_type == "playcover":
+            # playcover 不显示搜索设备
+            search_option.setVisible(False)
+            if "search_combo_label" in self.resource_setting_widgets:
+                self.resource_setting_widgets["search_combo_label"].setVisible(False)
         else:
-            search_option.set_win32_filters(None, None)
+            search_option.setVisible(True)
+            if "search_combo_label" in self.resource_setting_widgets:
+                self.resource_setting_widgets["search_combo_label"].setVisible(True)
+            search_option.change_controller_type(new_type)
+            if new_type == "win32":
+                class_regex, window_regex = self._get_win32_regex_filters(ctrl_info["name"])
+                search_option.set_win32_filters(class_regex, window_regex)
+            else:
+                search_option.set_win32_filters(None, None)
 
         # 填充新的信息
         self._fill_children_option(ctrl_info["name"])
@@ -1178,9 +1300,15 @@ class ControllerSettingWidget(QWidget):
         if new_type == "adb":
             self._toggle_adb_children_option(True)
             self._toggle_win32_children_option(False)
+            self._toggle_playcover_children_option(False)
         elif new_type == "win32":
             self._toggle_adb_children_option(False)
             self._toggle_win32_children_option(True)
+            self._toggle_playcover_children_option(False)
+        elif new_type == "playcover":
+            self._toggle_adb_children_option(False)
+            self._toggle_win32_children_option(False)
+            self._toggle_playcover_children_option(True)
 
     def _on_search_combo_changed(self, device_name):
         if self._syncing:
