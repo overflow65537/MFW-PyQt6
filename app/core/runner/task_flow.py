@@ -751,10 +751,6 @@ class TaskFlowRunner(QObject):
                     + reason,
                 )
                 return "skipped"
-            else:
-                signalBus.log_output.emit(
-                    "INFO", self.tr("Speedrun rule allows execution")
-                )
 
         raw_info = self.task_service.get_task_execution_info(task_id)
         logger.info(f"任务 '{task.name}' 的执行信息: {raw_info}")
