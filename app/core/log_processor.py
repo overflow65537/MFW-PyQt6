@@ -3,8 +3,10 @@ MFW-ChainFlow Assistant
 日志处理器 - 将 callback 信号转换为 log_output 信号
 作者:overflow65537
 """
+
 from PySide6.QtCore import QObject
 from app.common.signal_bus import signalBus
+from app.core.service.i18n_service import get_i18n_service
 
 
 class CallbackLogProcessor(QObject):
@@ -52,6 +54,8 @@ class CallbackLogProcessor(QObject):
         elif signal_name == "context":
             details = signal.get("details", "")
             if details:
+                # 使用全局 i18n 服务，根据原始 label 翻译为当前语言文本
+                details = get_i18n_service().translate_label(details)
                 signalBus.log_output.emit("INFO", details)
 
     def _handle_resource_signal(self, status: int):

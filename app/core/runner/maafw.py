@@ -67,8 +67,13 @@ class MaaContextSink(ContextEventSink):
             detial = detial.replace("{task_id}", str(details.get("task_id", "")))
             detial = detial.replace("{list}", details.get("list", ""))
             signalBus.callback.emit({"name": "context", "details": detial})
-            if msg == "Node.Recognition.Succeeded" and details.get("abort", False):
-                signalBus.callback.emit({"name": "abort"})
+            if msg == "Node.Recognition.Succeeded" :
+                if details.get("Abort", False):
+                    signalBus.callback.emit({"name": "abort"})
+                if details.get("Notice", False):
+                    pass
+
+
 
     def on_node_next_list(
         self,

@@ -10,6 +10,7 @@ from copy import deepcopy
 
 from app.common.config import cfg
 from app.utils.logger import logger
+from app.core.service.i18n_service import I18nService
 
 
 class InterfaceManager:
@@ -18,7 +19,6 @@ class InterfaceManager:
     _instance = None
     _translated_interface: Dict[str, Any] = {}
     _original_interface: Dict[str, Any] = {}
-    _translations: Dict[str, str] = {}
     _current_language: str = "zh_cn"
     _interface_path: Optional[Path] = None
     _interface_dir: Path = Path.cwd()
@@ -38,9 +38,10 @@ class InterfaceManager:
         self._initialized = False
         self._original_interface = {}
         self._translated_interface = {}
-        self._translations = {}
         self._interface_path = None
         self._interface_dir = Path.cwd()
+        # i18n 服务实例随 interface 生命周期重建
+        self._i18n_service = I18nService(language=self._current_language)
 
     def _normalize_interface_path(
         self, interface_path: Optional[Path | str]
@@ -113,6 +114,8 @@ class InterfaceManager:
         self._interface_path = desired_path
         self._interface_dir = desired_path.parent if desired_path else Path.cwd()
         self._current_language = desired_language
+        # 更新 i18n 服务语言
+        self._i18n_service = I18nService(language=self._current_language)
 
         # 加载原始 interface 配置
         if self._interface_path is None:
@@ -138,64 +141,20 @@ class InterfaceManager:
         if language is None and self._current_language == "zh_cn":
             self._current_language = self._detect_language_from_config()
 
-        # 加载翻译文件
+        # 通过 i18n 服务加载翻译文件并翻译 interface
         self._load_translations()
-
-        # 翻译 interface
         self._translate_interface()
 
         self._initialized = True
 
     def _load_translations(self):
-        """加载翻译文件"""
+        """加载翻译文件到 i18n 服务"""
         if not self._original_interface:
             return
-
-        # 从 interface 配置获取语言文件映射
-        languages = self._original_interface.get("languages", {})
-        translation_file = languages.get(self._current_language)
-
-        if not translation_file:
-            logger.warning(f"未找到语言 {self._current_language} 的翻译文件配置")
-            return
-
-        # 加载翻译文件
-        translation_path = self._interface_dir / translation_file
-        try:
-            with open(translation_path, "r", encoding="utf-8") as f:
-                self._translations = jsonc.load(f)
-            logger.debug(
-                f"已加载翻译文件: {translation_path} ({len(self._translations)} 条翻译)"
-            )
-        except FileNotFoundError:
-            logger.warning(f"未找到翻译文件: {translation_path}")
-            self._translations = {}
-        except jsonc.JSONDecodeError as e:
-            logger.error(f"翻译文件格式错误: {e}")
-            self._translations = {}
-
-    def _translate_text(self, text: str) -> str:
-        """
-        翻译单个文本
-
-        Args:
-            text: 待翻译的文本
-
-        Returns:
-            翻译后的文本
-        """
-        if not text:
-            return text
-
-        # 如果文本以 $ 开头，进行翻译
-        if text.startswith("$"):
-            key = text[1:]  # 去掉 $ 前缀
-            return self._translations.get(
-                key, text
-            )  # 找不到翻译时返回原始文本（保留 $）
-
-        # 不以 $ 开头的文本直接返回
-        return text
+        # 委托给 I18nService，根据当前语言从 interface 中加载翻译
+        self._i18n_service.load_translations_from_interface(
+            self._original_interface, self._interface_dir
+        )
 
     def _translate_interface(self):
         """翻译整个 interface 配置"""
@@ -232,16 +191,20 @@ class InterfaceManager:
             # 递归翻译字典中的每个值
             for key, value in data.items():
                 # 特殊处理 label, icon, description, title, welcome, contact 等需要翻译的字段
-                if key in (
-                    "label",
-                    "icon",
-                    "description",
-                    "license",
-                    "title",
-                    "welcome",
-                    "contact",
-                ) and isinstance(value, str):
-                    data[key] = self._translate_text(value)
+                if (
+                    key
+                    in (
+                        "label",
+                        "icon",
+                        "description",
+                        "license",
+                        "title",
+                        "welcome",
+                        "contact",
+                    )
+                    and isinstance(value, str)
+                ):
+                    data[key] = self._i18n_service.translate_text(value)
                 else:
                     data[key] = self._translate_dict(value)
 
@@ -252,7 +215,7 @@ class InterfaceManager:
 
         elif isinstance(data, str):
             # 直接翻译字符串（如果以 $ 开头）
-            return self._translate_text(data)
+            return self._i18n_service.translate_text(data)
 
         return data
 
@@ -363,7 +326,6 @@ class InterfaceManager:
         backup_initialized = self._initialized
         backup_original_interface = deepcopy(self._original_interface)
         backup_translated_interface = deepcopy(self._translated_interface)
-        backup_translations = deepcopy(self._translations)
         backup_language = self._current_language
         backup_interface_path = self._interface_path
         backup_interface_dir = self._interface_dir
@@ -384,7 +346,8 @@ class InterfaceManager:
                 # 复用当前语言
                 self._current_language = backup_language
 
-            # 加载翻译并生成翻译后的 interface
+            # 为预览重新构建 i18n 服务并加载翻译
+            self._i18n_service = I18nService(language=self._current_language)
             self._load_translations()
             self._translate_interface()
 
@@ -398,7 +361,6 @@ class InterfaceManager:
             self._initialized = backup_initialized
             self._original_interface = backup_original_interface
             self._translated_interface = backup_translated_interface
-            self._translations = backup_translations
             self._current_language = backup_language
             self._interface_path = backup_interface_path
             self._interface_dir = backup_interface_dir
@@ -423,6 +385,8 @@ class InterfaceManager:
             return
 
         self._current_language = language
+        # 同步到 i18n 服务
+        self._i18n_service.language = language
 
         # 重新加载翻译
         self._load_translations()
