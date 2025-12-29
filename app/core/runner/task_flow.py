@@ -97,6 +97,8 @@ class TaskFlowRunner(QObject):
         self._manual_stop = False
         # 标记是否为"超时停止"，用于避免重复发送通知
         self._timeout_stop = False
+        # 任务结果摘要：task_id -> 状态字符串（running/completed/failed/restart_success/waiting/skipped等）
+        self._task_results: dict[str, str] = {}
         # 任务运行状态标记：每个任务开始前置为 True，收到 abort 信号时置为 False
         self._current_task_ok: bool = True
 
@@ -167,6 +169,8 @@ class TaskFlowRunner(QObject):
         self._is_timeout_restart = is_timeout_restart
         # 跟踪任务流是否成功启动并执行了任务
         self._tasks_started = False
+        # 重置本次任务流的结果摘要
+        self._task_results.clear()
 
         """# 基础文本测试
         long_text = (
@@ -429,6 +433,8 @@ class TaskFlowRunner(QObject):
                 await self.run_task(task_id, skip_speedrun=True)
                 # 检查任务执行结果并发送通知
                 if not self._current_task_ok:
+                    # 记录任务结果
+                    self._task_results[task.item_id] = "failed"
                     # 发送任务失败状态
                     signalBus.task_status_changed.emit(task.item_id, "failed")
                     # 发送任务失败通知
@@ -440,6 +446,8 @@ class TaskFlowRunner(QObject):
                 else:
                     # 判断是否为重启后成功
                     status = "restart_success" if is_timeout_restart else "completed"
+                    # 记录任务结果
+                    self._task_results[task.item_id] = status
                     signalBus.task_status_changed.emit(task.item_id, status)
                     # 发送任务成功通知
                     send_notice(
@@ -485,19 +493,16 @@ class TaskFlowRunner(QObject):
                     try:
                         task_result = await self.run_task(task.item_id)
                         if task_result == "skipped":
-                            # 跳过任务时清除运行状态
-                            # 完整运行时恢复等待状态，单独运行时清除状态
-                            if not is_single_task_mode:
-                                signalBus.task_status_changed.emit(
-                                    task.item_id, "waiting"
-                                )
-                            else:
-                                signalBus.task_status_changed.emit(task.item_id, "")
+                            # 因 speedrun 限制被跳过：记录结果并在列表中显示为“已跳过”
+                            self._task_results[task.item_id] = "skipped"
+                            signalBus.task_status_changed.emit(task.item_id, "skipped")
                             continue
                         # 如果任务显式返回 False，视为致命失败，终止整个任务流
                         if task_result is False:
                             msg = f"任务执行失败: {task.name}, 返回 False，终止流程"
                             logger.error(msg)
+                            # 记录任务结果
+                            self._task_results[task.item_id] = "failed"
                             # 发送任务失败状态
                             signalBus.task_status_changed.emit(task.item_id, "failed")
                             # 发送任务失败通知
@@ -517,7 +522,8 @@ class TaskFlowRunner(QObject):
                             logger.warning(
                                 f"任务执行被中途中止(abort): {task.name}，切换到下一个任务"
                             )
-                            # 发送任务失败状态
+                            # 记录任务结果并发送任务失败状态
+                            self._task_results[task.item_id] = "failed"
                             signalBus.task_status_changed.emit(task.item_id, "failed")
                             # 发送任务失败通知
                             send_notice(
@@ -530,6 +536,8 @@ class TaskFlowRunner(QObject):
                             status = (
                                 "restart_success" if is_timeout_restart else "completed"
                             )
+                            # 记录任务结果
+                            self._task_results[task.item_id] = status
                             signalBus.task_status_changed.emit(task.item_id, status)
                             # 发送任务成功通知
                             send_notice(
@@ -606,20 +614,63 @@ class TaskFlowRunner(QObject):
 
             # 发送收集的日志信息（仅在非手动停止且非超时停止时发送）
             # 超时停止时已经发送了超时通知，避免重复发送任务流完成通知
-            if not self._manual_stop and not self._timeout_stop and log_messages:
+            if not self._manual_stop and not self._timeout_stop and (
+                log_messages or self._task_results
+            ):
+                # 先构造任务结果摘要
+                summary_lines: list[str] = []
+                if self._task_results:
+                    status_label_map = {
+                        "completed": self.tr("Completed"),
+                        "failed": self.tr("Failed"),
+                        "restart_success": self.tr("Restarted and completed"),
+                        "waiting": self.tr("Waiting"),
+                        "running": self.tr("Running"),
+                        "skipped": self.tr("Skipped by speedrun limit"),
+                        "": self.tr("Unknown"),
+                    }
+                    summary_lines.append(self.tr("Task results summary:"))
+                    # 尽量按 current_tasks 顺序输出
+                    seen: set[str] = set()
+                    for task in getattr(self.task_service, "current_tasks", []):
+                        tid = getattr(task, "item_id", "")
+                        if tid in self._task_results:
+                            status_key = self._task_results.get(tid, "")
+                            status_label = status_label_map.get(
+                                status_key, status_label_map[""]
+                            )
+                            summary_lines.append(f"- {task.name}: {status_label}")
+                            seen.add(tid)
+                    # 补充可能遗漏但在结果中的任务
+                    for tid, status_key in self._task_results.items():
+                        if tid in seen:
+                            continue
+                        status_label = status_label_map.get(
+                            status_key, status_label_map[""]
+                        )
+                        summary_lines.append(f"- {tid}: {status_label}")
+
                 # 将日志信息格式化为文本
-                log_text_lines = []
+                log_text_lines: list[str] = []
                 for level, text in log_messages:
                     # 翻译日志级别
                     translated_level = self._translate_log_level(level)
                     log_text_lines.append(f"[{translated_level}] {text}")
-                log_text = "\n".join(log_text_lines)
 
-                send_notice(
-                    NoticeTiming.WHEN_POST_TASK,
-                    self.tr("Task Flow Completed"),
-                    log_text,
-                )
+                # 合并摘要和日志内容
+                parts: list[str] = []
+                if summary_lines:
+                    parts.append("\n".join(summary_lines))
+                if log_text_lines:
+                    parts.append("\n".join(log_text_lines))
+                log_text = "\n\n".join(parts) if parts else ""
+
+                if log_text:
+                    send_notice(
+                        NoticeTiming.WHEN_POST_TASK,
+                        self.tr("Task Flow Completed"),
+                        log_text,
+                    )
 
             self._is_running = False
 

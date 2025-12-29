@@ -839,7 +839,9 @@ class TaskListItem(BaseListItem):
         """更新任务状态显示
         
         Args:
-            status: 状态字符串，可选值: "running", "completed", "failed", "restart_success", "waiting", ""(清除状态)
+            status: 状态字符串，可选值:
+                "running", "completed", "failed", "restart_success",
+                "waiting", "skipped", ""(清除状态)
         """
         # 基础任务不显示状态标志
         if self.task.is_base_task():
@@ -886,6 +888,12 @@ class TaskListItem(BaseListItem):
         elif status == "restart_success":
             # 显示信息图标（重启后成功）
             self._status_icon = IconWidget(FIF.ROTATE, self.status_widget)
+            self._status_icon.setFixedSize(20, 20)
+            self._status_layout.addWidget(self._status_icon)
+            self.status_widget.show()
+        elif status == "skipped":
+            # 因 speedrun 被跳过：使用与完成相同的图标
+            self._status_icon = IconWidget(FIF.ACCEPT, self.status_widget)
             self._status_icon.setFixedSize(20, 20)
             self._status_layout.addWidget(self._status_icon)
             self.status_widget.show()
