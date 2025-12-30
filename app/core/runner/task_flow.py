@@ -420,11 +420,12 @@ class TaskFlowRunner(QObject):
                     # 发送任务失败状态
                     signalBus.task_status_changed.emit(task.item_id, "failed")
                     # 发送任务失败通知
-                    send_notice(
-                        NoticeTiming.WHEN_TASK_FAILED,
-                        self.tr("Task Failed"),
-                        self.tr("Task '{}' was aborted or failed.").format(task.name),
-                    )
+                    if not self._manual_stop:
+                        send_notice(
+                            NoticeTiming.WHEN_TASK_FAILED,
+                            self.tr("Task Failed"),
+                            self.tr("Task '{}' was aborted or failed.").format(task.name),
+                        )
                 else:
                     # 记录任务结果
                     status = "completed"
@@ -487,13 +488,14 @@ class TaskFlowRunner(QObject):
                             # 发送任务失败状态
                             signalBus.task_status_changed.emit(task.item_id, "failed")
                             # 发送任务失败通知
-                            send_notice(
-                                NoticeTiming.WHEN_TASK_FAILED,
-                                self.tr("Task Failed"),
-                                self.tr(
-                                    "Task '{}' failed and the flow was terminated."
-                                ).format(task.name),
-                            )
+                            if not self._manual_stop:
+                                send_notice(
+                                    NoticeTiming.WHEN_TASK_FAILED,
+                                    self.tr("Task Failed"),
+                                    self.tr(
+                                        "Task '{}' failed and the flow was terminated."
+                                    ).format(task.name),
+                                )
                             await self.stop_task()
                             break
 
@@ -507,11 +509,12 @@ class TaskFlowRunner(QObject):
                             self._task_results[task.item_id] = "failed"
                             signalBus.task_status_changed.emit(task.item_id, "failed")
                             # 发送任务失败通知
-                            send_notice(
-                                NoticeTiming.WHEN_TASK_FAILED,
-                                self.tr("Task Failed"),
-                                self.tr("Task '{}' was aborted.").format(task.name),
-                            )
+                            if not self._manual_stop:
+                                send_notice(
+                                    NoticeTiming.WHEN_TASK_FAILED,
+                                    self.tr("Task Failed"),
+                                    self.tr("Task '{}' was aborted.").format(task.name),
+                                )
                         else:
                             # 记录任务结果
                             status = "completed"
@@ -533,13 +536,14 @@ class TaskFlowRunner(QObject):
                         # 发送任务失败状态
                         signalBus.task_status_changed.emit(task.item_id, "failed")
                         # 发送任务失败通知
-                        send_notice(
-                            NoticeTiming.WHEN_TASK_FAILED,
-                            self.tr("Task Failed"),
-                            self.tr("Task '{}' failed with error: {}").format(
-                                task.name, str(exc)
-                            ),
-                        )
+                        if not self._manual_stop:
+                            send_notice(
+                                NoticeTiming.WHEN_TASK_FAILED,
+                                self.tr("Task Failed"),
+                                self.tr("Task '{}' failed with error: {}").format(
+                                    task.name, str(exc)
+                                ),
+                            )
 
                     # 清除当前执行任务记录
                     self._current_running_task_id = None
@@ -807,11 +811,12 @@ class TaskFlowRunner(QObject):
         ):
             logger.error(f"任务 '{task.name}' 执行失败")
             # 发送任务失败通知
-            send_notice(
-                NoticeTiming.WHEN_TASK_FAILED,
-                self.tr("Task Failed"),
-                self.tr("Task '{}' execution failed.").format(task.name),
-            )
+            if not self._manual_stop:
+                send_notice(
+                    NoticeTiming.WHEN_TASK_FAILED,
+                    self.tr("Task Failed"),
+                    self.tr("Task '{}' execution failed.").format(task.name),
+                )
             self._stop_task_timeout()
             return
         self._stop_task_timeout()
@@ -825,11 +830,12 @@ class TaskFlowRunner(QObject):
         Args:
             manual: 是否为“手动停止”（由用户或外部调用显式触发）。
         """
+        if manual:
+            # 在任何情况下都记录手动停止的意图，避免后续错误发送通知
+            self._manual_stop = True
         if self.need_stop:
             return
         self.need_stop = True
-        if manual:
-            self._manual_stop = True
         self._stop_task_timeout()
         if self.fs_signal_bus:
             signalBus.log_output.emit("INFO", self.tr("Stopping task..."))
