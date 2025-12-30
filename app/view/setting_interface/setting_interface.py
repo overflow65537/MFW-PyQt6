@@ -1132,69 +1132,6 @@ class SettingInterface(QWidget):
             self.tr("Task Settings"), self.Setting_scroll_widget
         )
 
-        # 开启任务超时设置
-        self.task_timeout_enable_card = SwitchSettingCard(
-            FIF.SETTING,
-            self.tr("Enable Task Timeout"),
-            self.tr("Enable or disable task timeout settings"),
-            configItem=cfg.task_timeout_enable,
-            parent=self.taskGroup,
-        )
-
-        # 任务超时时间
-        self.task_timeout_card = LineEditCard(
-            FIF.SETTING,
-            self.tr("Task Timeout"),
-            holderText=str(cfg.get(cfg.task_timeout)),
-            content=self.tr(
-                "Set the maximum time allowed for a task to run (in seconds)"
-            ),
-            parent=self.taskGroup,
-            num_only=True,
-            button=False,
-        )
-        self.task_timeout_card.lineEdit.editingFinished.connect(
-            lambda: self._on_task_timeout_edited()
-        )
-
-        # 任务超时后动作
-        self.task_timeout_action_card = ComboBoxSettingCard(
-            cfg.task_timeout_action,
-            FIF.SETTING,
-            self.tr("Task Timeout Action"),
-            self.tr("Set the action to take when a task times out"),
-            texts=[
-                self.tr("Notify Only"),  # 0
-                self.tr("Restart and Notify"),  # 1
-            ],
-            parent=self.taskGroup,
-        )
-
-        # 任务超时重启模式（仅在“重启并通知”时可用）
-        self.task_timeout_restart_mode_card = ComboBoxSettingCard(
-            cfg.task_timeout_restart_mode,
-            FIF.SETTING,
-            self.tr("Task Timeout Restart Mode"),
-            self.tr(
-                "Select how to restart when task timeout action is 'Restart and Notify'"
-            ),
-            texts=[
-                self.tr("Restart Immediately"),  # 0 直接重启
-                self.tr(
-                    "Run last list entry then restart"
-                ),  # 1 运行列表中最后一项任务后重启
-            ],
-            parent=self.taskGroup,
-        )
-
-        # 根据当前配置初始化启用状态
-        current_action = cfg.get(cfg.task_timeout_action)
-        self._update_task_timeout_restart_mode_enabled(current_action)
-        # 监听配置变更，动态更新启用状态
-        cfg.task_timeout_action.valueChanged.connect(
-            self._on_task_timeout_action_changed
-        )
-
         # 低功耗监控模式
         self.low_power_monitoring_mode_card = SwitchSettingCard(
             FIF.POWER_BUTTON,
@@ -1204,47 +1141,8 @@ class SettingInterface(QWidget):
             parent=self.taskGroup,
         )
 
-        self.taskGroup.addSettingCard(self.task_timeout_enable_card)
-        self.taskGroup.addSettingCard(self.task_timeout_card)
-        self.taskGroup.addSettingCard(self.task_timeout_action_card)
-        self.taskGroup.addSettingCard(self.task_timeout_restart_mode_card)
         self.taskGroup.addSettingCard(self.low_power_monitoring_mode_card)
         self.add_setting_group(self.taskGroup)
-
-    def _on_task_timeout_edited(self):
-        """处理任务超时时间编辑完成事件"""
-        value = self.task_timeout_card.lineEdit.text().strip()
-        if not value:
-            # 若输入为空，恢复默认值
-            self.task_timeout_card.lineEdit.setText(str(cfg.get(cfg.task_timeout)))
-            return
-
-        try:
-            timeout = int(value)
-            if timeout <= 0:
-                raise ValueError("Timeout must be a positive integer")
-            cfg.set(cfg.task_timeout, timeout)
-        except ValueError:
-            # 若输入无效，恢复默认值
-            self.task_timeout_card.lineEdit.setText(str(cfg.get(cfg.task_timeout)))
-
-    def _on_task_timeout_action_changed(self, value: int) -> None:
-        """当任务超时动作修改时，更新重启模式下拉框的可用状态。"""
-        self._update_task_timeout_restart_mode_enabled(value)
-
-    def _update_task_timeout_restart_mode_enabled(self, action_value: int) -> None:
-        """根据当前任务超时动作，启用或禁用重启模式设置。"""
-        if not hasattr(self, "task_timeout_restart_mode_card"):
-            return
-
-        try:
-            action = Config.TaskTimeoutAction(action_value)
-            enable_restart_mode = action == Config.TaskTimeoutAction.RESTART_AND_NOTIFY
-        except Exception:
-            # 兼容性兜底：1 对应 RESTART_AND_NOTIFY
-            enable_restart_mode = action_value == 1
-
-        self.task_timeout_restart_mode_card.setEnabled(enable_restart_mode)
 
     def initialize_update_settings(self):
         """插入更新设置卡片组（跟原先的 UpdateSettingsSection 等价）。"""
