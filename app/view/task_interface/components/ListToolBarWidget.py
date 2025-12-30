@@ -78,7 +78,7 @@ class BaseListToolBarWidget(QWidget):
         self.switch_button.installEventFilter(
             ToolTipFilter(self.switch_button, 0, ToolTipPosition.TOP)
         )
-        self.switch_button.setToolTip(self.tr("Switch"))
+        self.switch_button.setToolTip(self.tr("Switch to Special Tasks"))
         # 默认隐藏，只在普通任务模式下显示
         self.switch_button.hide()
 
@@ -364,7 +364,7 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             # 更新切换按钮的图标和提示文本
             from qfluentwidgets import FluentIcon as FIF
             self.switch_button.setIcon(FIF.RIGHT_ARROW)
-            self.switch_button.setToolTip(self.tr("Switch"))
+            self.switch_button.setToolTip(self.tr("Switch to Special Tasks"))
             self.set_title(self.tr("Tasks"))
         else:
             # all 模式不支持切换

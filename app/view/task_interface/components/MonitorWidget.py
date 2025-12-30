@@ -217,11 +217,11 @@ class MonitorWidget(QWidget):
         target_height = getattr(self, '_monitor_height', 194)
         target_size = QSize(target_width, target_height)
         
-        # 直接将图片缩放到预览标签的精确大小
+        # 保持宽高比缩放，留出边距以显示背景
         # 使用 SmoothTransformation 保证缩放质量
         scaled = self._preview_pixmap.scaled(
             target_size,
-            Qt.AspectRatioMode.IgnoreAspectRatio,  # 忽略宽高比，精确填充
+            Qt.AspectRatioMode.KeepAspectRatio,  # 保持宽高比，留出边距显示背景
             Qt.TransformationMode.SmoothTransformation,
         )
         
