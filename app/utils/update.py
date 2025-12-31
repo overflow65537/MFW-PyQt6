@@ -1481,7 +1481,7 @@ class Update(BaseUpdate):
         self.release_note = ""
 
         # 尝试 Mirror 源（强制下载模式跳过）
-        if not self.force_full_download:
+        if not self.force_full_download and self.current_res_id:
             logger.info("  [检查更新] 尝试 MirrorChyan 源...")
             mirror_result = self.mirror_check(
                 res_id=self.current_res_id,
