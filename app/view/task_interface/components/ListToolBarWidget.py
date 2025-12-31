@@ -223,8 +223,11 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         if self._task_filter_mode == "special":
             self._apply_special_mode_ui()
         elif self._task_filter_mode == "normal":
-            # 普通任务模式下显示切换按钮
-            self.switch_button.show()
+            # 普通任务模式下，检查是否有特殊任务，有则显示切换按钮
+            if self._has_special_tasks():
+                self.switch_button.show()
+            else:
+                self.switch_button.hide()
         # 选择全部按钮
         self.select_all_button.clicked.connect(self.select_all)
         # 取消选择全部按钮
@@ -237,6 +240,9 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         # 设置任务列表标题
         self.set_title(self.tr("Tasks"))
 
+        # 监听配置切换信号，当配置切换时重新检查是否有特殊任务
+        self.core_signalBus.config_changed.connect(self._on_config_changed)
+
         # 初始填充任务列表
         # 不在工具栏直接刷新列表：视图会订阅 ServiceCoordinator 的信号自行更新
 
@@ -247,6 +253,40 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             parent=self,
             filter_mode=self._task_filter_mode,
         )
+    
+    def _has_special_tasks(self) -> bool:
+        """检查当前 interface 中是否有带特殊任务标志的任务
+        
+        Returns:
+            bool: 如果有特殊任务返回 True，否则返回 False
+        """
+        try:
+            interface = getattr(self.service_coordinator.task, "interface", {})
+            if not interface:
+                return False
+            
+            task_defs = interface.get("task", [])
+            if not isinstance(task_defs, list):
+                return False
+            
+            # 检查是否有任务的 spt 字段为 True
+            for task_def in task_defs:
+                if task_def.get("spt", False):
+                    return True
+            
+            return False
+        except Exception:
+            # 如果检查过程中出现异常，默认返回 False（隐藏按钮）
+            return False
+    
+    def _on_config_changed(self, config_id: str):
+        """配置切换时的回调，重新检查是否有特殊任务并更新按钮状态"""
+        if self._task_filter_mode == "normal":
+            # 只在普通任务模式下更新按钮状态
+            if self._has_special_tasks():
+                self.switch_button.show()
+            else:
+                self.switch_button.hide()
 
     def select_all(self):
         """选择全部"""
@@ -360,7 +400,11 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             self.deselect_all_button.show()
             self.add_button.show()
             self.delete_button.show()
-            self.switch_button.show()
+            # 检查是否有特殊任务，有则显示切换按钮，否则隐藏
+            if self._has_special_tasks():
+                self.switch_button.show()
+            else:
+                self.switch_button.hide()
             # 更新切换按钮的图标和提示文本
             from qfluentwidgets import FluentIcon as FIF
             self.switch_button.setIcon(FIF.RIGHT_ARROW)
