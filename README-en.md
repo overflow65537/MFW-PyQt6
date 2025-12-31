@@ -24,6 +24,7 @@ Cross-platform GUI built with **[PySide6](https://doc.qt.io/qtforpython-6)** and
 - [Common CLI Parameters](#common-cli-parameters)
 - [External Notifications](#external-notifications)
 - [Scheduling](#scheduling)
+- [Hot Update](#hot-update)
 - [Dynamic Custom Actions/Recognizers](#dynamic-custom-actionsrecognizers)
 - [GitHub Action Build](#github-action-build)
 - [License](#license)
@@ -42,6 +43,7 @@ MFW-ChainFlow Assistant provides a ready-to-use visual orchestrator for MaaFrame
 - Built-in scheduler: once / daily / weekly / monthly with queue or force run
 - Dynamic custom actions and recognizers, with Agent support for tailored flows
 - Speedrun mode: limit runs per day/week/month with minimal intervals to avoid repeats
+- Hot update: automatically enabled when `update_flag.txt` in resource repo matches local, faster and no restart required
 
 ## Speedrun Mode
 
@@ -61,6 +63,10 @@ Supports DingTalk, Lark/Feishu, SMTP, WxPusher, and WeCom bot; enable as needed 
 ## Scheduling
 
 Run saved configurations on once / daily / weekly / monthly cadence. Choose force start or queued execution; toggle or delete schedules directly in the list.
+
+## Hot Update
+
+When the content of `update_flag.txt` in the resource repository matches the local `update_flag.txt`, hot update mode will be enabled, which is faster and requires no restart.
 
 ## Dynamic Custom Actions/Recognizers
 
