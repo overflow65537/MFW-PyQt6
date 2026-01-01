@@ -749,6 +749,13 @@ class TaskListItem(BaseListItem):
             run_action.setEnabled(False)
         menu.addAction(run_action)
 
+        if not self.task.is_base_task():
+            run_from_action = Action(
+                FIF.RIGHT_ARROW, self.tr("Run from here")
+            )
+            run_from_action.triggered.connect(self._run_from_task)
+            menu.addAction(run_from_action)
+
         # 插入任务选项（post action 和 controller 不显示）
 
         if self.task.item_id not in [POST_ACTION, _CONTROLLER_]:
@@ -763,6 +770,15 @@ class TaskListItem(BaseListItem):
         if not self.service_coordinator:
             return
         asyncio.create_task(self.service_coordinator.run_tasks_flow(self.task.item_id))
+
+    def _run_from_task(self):
+        if not self.service_coordinator or self.task.is_base_task():
+            return
+        asyncio.create_task(
+            self.service_coordinator.run_manager.run_tasks_flow(
+                start_task_id=self.task.item_id
+            )
+        )
 
     def _insert_task(self):
         """插入任务：在当前任务下方插入新任务"""

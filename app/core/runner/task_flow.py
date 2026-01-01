@@ -150,8 +150,13 @@ class TaskFlowRunner(QObject):
     async def run_tasks_flow(
         self,
         task_id: str | None = None,
+        *,
+        start_task_id: str | None = None,
     ):
-        """任务完整流程：连接设备、加载资源、批量运行任务"""
+        """任务完整流程：连接设备、加载资源、批量运行任务
+
+        :param start_task_id: 可选，指定从某个任务开始执行，其前面的任务会被跳过。
+        """
         if self._is_running:
             logger.warning("任务流已经在运行，忽略新的启动请求")
             return
@@ -228,6 +233,19 @@ class TaskFlowRunner(QObject):
         # 重置超时状态
         self._reset_task_timeout_state()
         is_single_task_mode = task_id is not None
+        effective_start_task_id = None
+        if not is_single_task_mode and start_task_id:
+            current_tasks = getattr(self.task_service, "current_tasks", [])
+            for task in current_tasks:
+                if task.item_id == start_task_id:
+                    effective_start_task_id = start_task_id
+                    break
+            if effective_start_task_id is None:
+                logger.warning(
+                    "未找到起始任务 '%s'，将从头开始执行任务序列", start_task_id
+                )
+        else:
+            effective_start_task_id = None
 
         # 初始化任务状态：仅在完整运行时将所有选中的任务设置为等待中
         # 单独运行时，只会在对应的任务处显示进行中/完成/失败，不显示等待图标
@@ -236,13 +254,20 @@ class TaskFlowRunner(QObject):
             # 只在完整运行模式（非单任务模式）时设置等待状态
             if not is_single_task_mode:
                 all_tasks = self.task_service.get_tasks()
+                start_reached = effective_start_task_id is None
                 for task in all_tasks:
+                    if effective_start_task_id and not start_reached:
+                        if task.item_id == effective_start_task_id:
+                            start_reached = True
+                        else:
+                            continue
+
                     if (
                         not task.is_base_task()
                         and task.is_checked
                         and not task.is_hidden
                     ):
-                        # 完整运行时，设置所有选中的任务为等待中
+                        # 完整运行时，设置当前起始任务及之后的选中任务为等待中
                         signalBus.task_status_changed.emit(task.item_id, "waiting")
 
         # 延迟 200ms 发送，确保任务列表已经渲染完成
@@ -445,7 +470,14 @@ class TaskFlowRunner(QObject):
             else:
                 logger.info("开始执行任务序列...")
                 self._tasks_started = True
+                start_reached = effective_start_task_id is None
                 for task in self.task_service.current_tasks:
+                    if effective_start_task_id and not start_reached:
+                        if task.item_id == effective_start_task_id:
+                            start_reached = True
+                        else:
+                            continue
+
                     if task.name in [_CONTROLLER_, _RESOURCE_, POST_ACTION]:
                         continue
 
