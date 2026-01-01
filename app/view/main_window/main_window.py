@@ -1049,6 +1049,13 @@ class MainWindow(MSFluentWindow):
             QTimer.singleShot(
                 0, lambda: self._on_announcement_button_clicked(auto_show=True)
             )
+        else:
+            QTimer.singleShot(0, self._maybe_start_tutorial_for_no_announcement)
+
+    def _maybe_start_tutorial_for_no_announcement(self):
+        if self._announcement_content:
+            return
+        self._start_tutorial_sequence()
 
     def _build_tutorial_steps(self) -> list[TutorialStep]:
         def get_config_area():
