@@ -5,12 +5,13 @@ Interface 管理器
 
 import jsonc
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Sequence
 from copy import deepcopy
 
 from app.common.config import cfg
 from app.utils.logger import logger
 from app.core.service.i18n_service import I18nService
+from app.utils.custom_builder import build_custom_bundle
 
 
 class InterfaceManager:
@@ -135,6 +136,9 @@ class InterfaceManager:
             logger.error(f"配置文件格式错误: {e}")
             self._original_interface = {}
             return
+
+        # 检查 agent 嵌入式配置并尝试转换
+        self.apply_agent_customization()
 
         # 设置当前语言
         # 如果未显式传入语言且当前语言为默认值，使用配置推断（兼容旧逻辑）
@@ -299,6 +303,61 @@ class InterfaceManager:
             原始 interface 字典
         """
         return self._original_interface
+
+    def apply_agent_customization(self):
+        """
+        若 interface 中 agent 存在且设置了 embedded，则复制入口目录并生成 custom。
+
+        该方法对外公开，供每次更新后调用（无需再检测是否更新）。
+        """
+        self._handle_embedded_agent()
+
+    def _handle_embedded_agent(self):
+        agent_info = self._original_interface.get("agent")
+        if not agent_info:
+            return
+        if not agent_info.get("embedded"):
+            return
+
+        child_args = agent_info.get("child_args", [])
+        entry_path = self._resolve_agent_entry(child_args)
+        if entry_path is None:
+            logger.warning("找不到 agent.child_args 指向的启动脚本，跳过嵌入式转换")
+            return
+
+        project_name = str(self._original_interface.get("name") or self._interface_dir.name).strip() or "custom"
+        custom_dir = self._interface_dir / f"{project_name}_custom"
+
+        try:
+            build_custom_bundle(entry_path, custom_dir)
+        except Exception as exc:
+            logger.exception("转换嵌入式 agent 失败: %s", exc)
+            return
+
+        self._original_interface["_agent_backup"] = deepcopy(agent_info)
+        self._original_interface.pop("agent", None)
+
+        custom_relative = Path(custom_dir.name) / "custom.json"
+        self._original_interface["custom"] = custom_relative.as_posix()
+
+    def _resolve_agent_entry(self, child_args: Sequence[Any]) -> Path | None:
+        """
+        解析 agent.child_args 的入口脚本路径（优先前两个参数）。
+        """
+        for idx in range(min(2, len(child_args))):
+            arg = child_args[idx]
+            if not isinstance(arg, str):
+                continue
+            candidate = arg.strip()
+            if not candidate:
+                continue
+            candidate = candidate.replace("{PROJECT_DIR}", str(self._interface_dir))
+            candidate_path = Path(candidate)
+            if not candidate_path.is_absolute():
+                candidate_path = (self._interface_dir / candidate_path).resolve()
+            if candidate_path.exists():
+                return candidate_path
+        return None
 
     def preview_interface(
         self,
