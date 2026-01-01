@@ -31,11 +31,13 @@ MFW-ChainFlow Assistant 主界面
 
 
 import asyncio
+import json
 import shutil
 import sys
 import threading
 import zipfile
 
+from collections import OrderedDict
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional
@@ -1019,16 +1021,76 @@ class MainWindow(MSFluentWindow):
         self._announcement_empty_hint = self.tr(
             "There is no announcement at the moment."
         )
+        self._pending_announcement_sections: list[tuple[str, str]] = []
+        self._current_welcome_text = ""
 
-        cfg_announcement = cfg.get(cfg.announcement)
-        res_announcement = self.service_coordinator.task.interface.get("welcome", "")
-        self.set_announcement_content(self.tr("Announcement"), res_announcement)
-        # 保存待更新的公告内容，只有在用户关闭对话框时才会更新配置
-        self._pending_announcement_content = res_announcement
-        if cfg_announcement != res_announcement:
+        cfg_announcement = self._get_stored_welcome()
+        self._refresh_announcement_sections()
+        if self._current_welcome_text and cfg_announcement != self._current_welcome_text:
             # 公告内容不一致，在界面准备好后弹出对话框
             # 注意：此时不更新配置，只有在用户关闭对话框时才更新
             self._announcement_pending_show = True
+
+    def _get_stored_welcome(self) -> str:
+        """兼容旧版保存的公告格式，只提取 welcome 内容作为签名。"""
+        raw_value = cfg.get(cfg.announcement) or ""
+        if not raw_value:
+            return ""
+        try:
+            parsed = json.loads(raw_value)
+        except json.JSONDecodeError:
+            return raw_value
+        if isinstance(parsed, list) and parsed:
+            first = parsed[0]
+            if isinstance(first, (list, tuple)) and len(first) >= 2:
+                return str(first[1])
+        return raw_value
+
+    def _refresh_announcement_sections(self) -> None:
+        """重新读取欢迎信息和 resource/announcement.md，更新公告内容。"""
+        welcome_content = self.service_coordinator.task.interface.get(
+            "welcome", ""
+        )
+        sections: list[tuple[str, str]] = []
+        if welcome_content:
+            sections.append((self.tr("Welcome"), welcome_content))
+        sections.extend(self._load_resource_announcements())
+        if sections:
+            ordered_content = OrderedDict((title, body) for title, body in sections)
+            self.set_announcement_content(self._announcement_title, ordered_content)
+        else:
+            self.set_announcement_content(self._announcement_title, {})
+        self._pending_announcement_sections = sections
+        self._current_welcome_text = welcome_content
+
+    def _load_resource_announcements(self) -> list[tuple[str, str]]:
+        """按名称顺序读取 resource/announcement 目录下的 Markdown 文件。"""
+        announcement_dir = Path.cwd() / "resource" / "announcement"
+        if not announcement_dir.is_dir():
+            return []
+        sections = []
+        for file_path in sorted(announcement_dir.glob("*.md")):
+            try:
+                raw_text = file_path.read_text(encoding="utf-8")
+            except Exception:
+                logger.warning("加载公告文件失败: %s", file_path)
+                continue
+            content = raw_text.strip()
+            if not content:
+                continue
+            title = self._extract_markdown_title(content) or file_path.stem
+            sections.append((title, content))
+        return sections
+
+    def _extract_markdown_title(self, content: str) -> str | None:
+        """从 Markdown 内容中提取第一个标题，作为章节名称。"""
+        for line in content.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                title = stripped.lstrip("#").strip()
+                if title:
+                    return title
+        return None
 
     def _insert_announcement_nav_item(self):
         """在设置入口上方插入公告按钮，并挂载点击行为。"""
@@ -1391,20 +1453,19 @@ class MainWindow(MSFluentWindow):
         if not getattr(self, "_announcement_enabled", True):
             return
 
+        self._refresh_announcement_sections()
+
         if not self._announcement_content:
             self.show_info_bar("info", self._announcement_empty_hint)
             return
 
         # 检查当前记录的公告和当前运行的公告是否一致
-        cfg_announcement = cfg.get(cfg.announcement)
-        res_announcement = getattr(self, "_pending_announcement_content", "")
-        if not res_announcement:
-            res_announcement = self.service_coordinator.task.interface.get(
-                "welcome", ""
-            )
-
-        # 只有当公告内容不一致时，才需要5秒延迟
-        announcement_mismatch = cfg_announcement != res_announcement
+        cfg_announcement = self._get_stored_welcome()
+        current_welcome = self._current_welcome_text
+        # 只有当 welcome 内容不一致时，才需要5秒延迟
+        announcement_mismatch = bool(current_welcome) and (
+            cfg_announcement != current_welcome
+        )
 
         # 根据公告内容是否一致决定使用哪个对话框类
         if announcement_mismatch:
@@ -1429,9 +1490,9 @@ class MainWindow(MSFluentWindow):
 
         # 只有在公告内容不一致且用户关闭对话框时，才更新配置
         # 这样如果用户不关闭对话框，下次启动时还会弹出
-        if announcement_mismatch and hasattr(self, "_pending_announcement_content"):
+        if announcement_mismatch and current_welcome:
             # 用户关闭了对话框，更新配置，下次不会再弹出
-            cfg.set(cfg.announcement, self._pending_announcement_content)
+            cfg.set(cfg.announcement, current_welcome)
             logger.info("用户关闭公告对话框，已更新公告配置")
         self._on_announcement_closed()
 
