@@ -124,17 +124,22 @@ def rename_updater_binary(old_name: str, new_name: str) -> None:
         os.rename(old_name, new_name)
 
 
-def launch_updater_process() -> None:
+def launch_updater_process(*extra_args: str) -> None:
     """启动更新器进程的底层实现，由调用方负责异常处理/提示。"""
     import sys
     import subprocess
 
     if sys.platform.startswith("win32"):
-        logger.info("启动更新程序: ./MFWUpdater1.exe -update")
-        subprocess.Popen(["./MFWUpdater1.exe", "-update"])
+        cmd = ["./MFWUpdater1.exe", "-update"]
+        logger.info("启动更新程序: %s", " ".join(cmd + list(extra_args)))
     elif sys.platform.startswith(("darwin", "linux")):
-        logger.info("启动更新程序: ./MFWUpdater1 -update")
-        subprocess.Popen(["./MFWUpdater1", "-update"])
+        cmd = ["./MFWUpdater1", "-update"]
+        logger.info("启动更新程序: %s", " ".join(cmd + list(extra_args)))
+    else:
+        raise NotImplementedError("Unsupported platform")
+    if extra_args:
+        cmd.extend(extra_args)
+    subprocess.Popen(cmd)
     else:
         raise NotImplementedError("Unsupported platform")
 
@@ -162,12 +167,15 @@ class SettingInterface(QWidget):
         self,
         service_coordinator: ServiceCoordinator,
         parent=None,
+        *,
+        propagate_direct_run_arg: bool = False,
     ):
         super().__init__(parent=parent)
         self.setObjectName("settingInterface")
         self._service_coordinator = service_coordinator
         self.interface_data = self._service_coordinator.task.interface
         self._suppress_multi_resource_signal = False
+        self._propagate_direct_run_arg = bool(propagate_direct_run_arg)
 
         self._license_content = self.interface_data.get("license", "")
         self._github_url = self.interface_data.get(
@@ -2689,7 +2697,8 @@ class SettingInterface(QWidget):
     def _start_updater(self):
         """启动更新程序（允许更新器自行显示界面）。"""
         try:
-            launch_updater_process()
+            extra_args = ["-d"] if self._propagate_direct_run_arg else []
+            launch_updater_process(*extra_args)
         except Exception as e:
             logger.error(f"启动更新程序失败: {e}")
             signalBus.info_bar_requested.emit("error", str(e))

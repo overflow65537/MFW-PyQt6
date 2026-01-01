@@ -9,9 +9,21 @@ import tempfile
 import time
 from dataclasses import dataclass
 from datetime import datetime
+from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from typing import List, Tuple
 from uuid import uuid4
+
+DIRECT_RUN_EXTRA_ARGS: list[str] = []
+
+def _collect_direct_run_args(argv: list[str]) -> list[str]:
+    args = []
+    if "-d" in argv or "--direct-run" in argv:
+        args.append("-d")
+    return args
+
+
+DIRECT_RUN_EXTRA_ARGS = _collect_direct_run_args(sys.argv)
 
 FULL_UPDATE_EXCLUDES = [
     "config",
@@ -67,7 +79,7 @@ def ensure_mfw_not_running():
     if is_mfw_running():
         error_message = f"更新失败：经过{max_checks}次检查后MFW仍在运行，无法继续更新"
         update_logger.error(f"[步骤1] {error_message}")
-        log_error(error_message)
+        update_logger.error(error_message)
         print(error_message)
         sys.exit(error_message)
 
@@ -196,7 +208,7 @@ def extract_zip_file_with_validation(update_file_path):
         return False
 
     if not update_file_path.lower().endswith(".zip"):
-        log_error(f"不支持的文件格式: {update_file_path}")
+        update_logger.error(f"不支持的文件格式: {update_file_path}")
         return False
 
     current_dir = os.getcwd()
@@ -239,7 +251,7 @@ def extract_zip_file_with_validation(update_file_path):
                 print(f"✓ 已复制: {dest_file}")
         return True
     except Exception as exc:
-        log_error(f"解压过程出错: {exc}")
+        update_logger.error(f"解压过程出错: {exc}")
         cleanup_update_artifacts(update_file_path)
         start_mfw_process()
         return False
@@ -247,24 +259,21 @@ def extract_zip_file_with_validation(update_file_path):
         shutil.rmtree(extract_dir, ignore_errors=True)
 
 
-def log_error(error_message):
-    """
-    记录错误日志。
-
-    仅使用 update_logger 记录即可，无需手动写文件。
-    """
-    print(f"错误已记录: {error_message}")
-    update_logger.error(error_message)
-
-
 def start_mfw_process():
     try:
         if sys.platform.startswith("win32"):
-            subprocess.Popen(".\\MFW.exe")
+            cmd = [".\\MFW.exe"]
+        elif sys.platform.startswith(("darwin", "linux")):
+            cmd = ["./MFW"]
         else:
-            subprocess.Popen("./MFW")
+            update_logger.error("不支持的操作系统")
+            return
+        if DIRECT_RUN_EXTRA_ARGS:
+            cmd.extend(DIRECT_RUN_EXTRA_ARGS)
+        update_logger.info("重启/启动 MFW 进程: %s", " ".join(cmd))
+        subprocess.Popen(cmd)
     except Exception as exc:
-        log_error(f"启动MFW程序失败: {exc}")
+        update_logger.error(f"启动MFW程序失败: {exc}")
 
 
 def cleanup_update_artifacts(update_file_path, metadata_path=None):
@@ -286,7 +295,7 @@ def cleanup_update_artifacts(update_file_path, metadata_path=None):
                 update_logger.debug(f"[步骤6] 文件不存在，跳过清理: {path}")
         except Exception as exc:
             update_logger.error(f"[步骤6] 清理更新文件失败: {path} -> {exc}")
-            log_error(f"清理更新 artifacts 失败: {path} -> {exc}")
+            update_logger.error(f"清理更新 artifacts 失败: {path} -> {exc}")
     
     update_logger.debug(f"[步骤6] 更新文件清理完成，共清理 {cleaned_count}/{len(target_files)} 个文件")
 
@@ -330,34 +339,35 @@ def generate_metadata_samples(target_dir: str | Path | None = None):
                 json.dump(metadata, f, indent=2, ensure_ascii=False)
             print(f"生成元数据: {path}")
         except Exception as exc:
-            log_error(f"写入元数据失败: {exc}")
+            update_logger.error(f"写入元数据失败: {exc}")
 
 
 def setup_update_logger():
     debug_dir = Path("debug")
     debug_dir.mkdir(exist_ok=True)
-    index_file = debug_dir / "run_index.txt"
-    try:
-        current = int(index_file.read_text().strip() or "0")
-    except Exception:
-        current = 0
-    current = (current % 5) + 1
-    index_file.write_text(str(current))
-    log_path = debug_dir / f"updater_{current}.log"
-    if log_path.exists():
-        log_path.unlink()
-    logger = logging.getLogger("updater")
-    logger.setLevel(logging.DEBUG)
-    logger.handlers.clear()
-    handler = logging.FileHandler(log_path, encoding="utf-8")
-    handler.setLevel(logging.DEBUG)
+    log_path = debug_dir / "updater.log"
+    updater_logger = logging.getLogger("updater")
+    updater_logger.setLevel(logging.DEBUG)
+    updater_logger.handlers.clear()
+    rotating_handler = TimedRotatingFileHandler(
+        log_path,
+        when="midnight",
+        backupCount=3,
+        encoding="utf-8",
+    )
+    rotating_handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    return logger
+    rotating_handler.setFormatter(formatter)
+    updater_logger.addHandler(rotating_handler)
+    return updater_logger
 
 
 update_logger = setup_update_logger()
+if DIRECT_RUN_EXTRA_ARGS:
+    update_logger.info(
+        "启动参数检测到直接运行标志，即将向 MFW 透传: %s",
+        DIRECT_RUN_EXTRA_ARGS,
+    )
 
 
 def load_update_metadata(update_dir):
@@ -368,7 +378,7 @@ def load_update_metadata(update_dir):
         with open(metadata_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as exc:
-        log_error(f"读取更新元数据失败: {exc}")
+        update_logger.error(f"读取更新元数据失败: {exc}")
         return {}
 
 
@@ -377,7 +387,7 @@ def save_update_metadata(metadata_path: str, metadata: dict) -> None:
         with open(metadata_path, "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=2, ensure_ascii=False)
     except Exception as exc:
-        log_error(f"写入更新元数据失败: {exc}")
+        update_logger.error(f"写入更新元数据失败: {exc}")
 
 
 def read_file_list(file_list_path):
@@ -392,7 +402,7 @@ def read_file_list(file_list_path):
                     continue
                 entries.append(line)
     except Exception as exc:
-        log_error(f"读取 file_list.txt 失败: {exc}")
+        update_logger.error(f"读取 file_list.txt 失败: {exc}")
     return entries
 
 
@@ -433,7 +443,7 @@ def _restore_from_backup(backups):
                     os.remove(src)
                 shutil.copy2(backup, src)
         except Exception as exc:
-            log_error(f"恢复 {src} 失败: {exc}")
+            update_logger.error(f"恢复 {src} 失败: {exc}")
 
 
 def _cleanup_root_except(exclude_relatives):
@@ -488,7 +498,7 @@ def safe_delete_all_except(exclude_relatives):
                 os.remove(abs_entry)
         return SafeDeleteResult(True, backups, backup_dir)
     except Exception as exc:
-        log_error(f"安全删除失败: {exc}")
+        update_logger.error(f"安全删除失败: {exc}")
         _restore_from_backup(backups)
         shutil.rmtree(backup_dir, ignore_errors=True)
         return SafeDeleteResult(False, [], None)
@@ -503,7 +513,7 @@ def _extract_zip_to_temp(zip_path: Path):
             archive.extractall(temp_dir)
         return temp_dir
     except Exception as exc:
-        log_error(f"解压更新包到临时目录失败: {exc}")
+        update_logger.error(f"解压更新包到临时目录失败: {exc}")
         shutil.rmtree(temp_dir, ignore_errors=True)
         return None
 
@@ -537,7 +547,7 @@ def _increment_attempts(metadata: dict, metadata_path: str):
     try:
         save_update_metadata(metadata_path, metadata)
     except Exception as exc:
-        log_error(f"更新尝试次数记录失败: {exc}")
+        update_logger.error(f"更新尝试次数记录失败: {exc}")
 
 
 def _handle_full_update_failure(
@@ -573,7 +583,7 @@ def perform_full_update(package_path: str, metadata_path: str, metadata: dict) -
     try:
         _copy_temp_to_root(temp_dir)
     except Exception as exc:
-        log_error(f"覆盖目录失败: {exc}")
+        update_logger.error(f"覆盖目录失败: {exc}")
         _handle_full_update_failure(
             package_path, metadata_path, metadata, delete_result.backups
         )
@@ -607,7 +617,7 @@ def safe_delete_paths(relative_paths):
         shutil.rmtree(backup_dir, ignore_errors=True)
         return True
     except Exception as exc:
-        log_error(f"删除失败: {exc}")
+        update_logger.error(f"删除失败: {exc}")
         _restore_from_backup(backups)
         shutil.rmtree(backup_dir, ignore_errors=True)
         return False
@@ -661,7 +671,7 @@ def safe_delete_except(keep_relative_paths, skip_paths=None, extra_keep=None):
         shutil.rmtree(backup_dir, ignore_errors=True)
         return True
     except Exception as exc:
-        log_error(f"安全删除失败: {exc}")
+        update_logger.error(f"安全删除失败: {exc}")
         _restore_from_backup(backups)
         shutil.rmtree(backup_dir, ignore_errors=True)
         return False
@@ -678,7 +688,7 @@ def backup_model_dir():
         shutil.copytree(model_path, backup_model)
         return backup_root
     except Exception as exc:
-        log_error(f"备份 model 目录失败: {exc}")
+        update_logger.error(f"备份 model 目录失败: {exc}")
         shutil.rmtree(backup_root, ignore_errors=True)
         return None
 
@@ -696,7 +706,7 @@ def restore_model_dir(backup_root):
     try:
         shutil.copytree(backup_model, target)
     except Exception as exc:
-        log_error(f"恢复 model 目录失败: {exc}")
+        update_logger.error(f"恢复 model 目录失败: {exc}")
     finally:
         shutil.rmtree(backup_root, ignore_errors=True)
 
@@ -717,7 +727,7 @@ def extract_interface_folder(zip_path):
                 None,
             )
             if not interface_member:
-                log_error("未在更新包中找到 interface.json/ interface.jsonc")
+                update_logger.error("未在更新包中找到 interface.json/ interface.jsonc")
                 return False
 
             interface_dir = os.path.dirname(interface_member)
@@ -740,7 +750,7 @@ def extract_interface_folder(zip_path):
                     os.chmod(target_path, 0o755)
         return True
     except Exception as exc:
-        log_error(f"解压 interface 文件夹失败: {exc}")
+        update_logger.error(f"解压 interface 文件夹失败: {exc}")
         return False
 
 
@@ -758,7 +768,7 @@ def load_change_entries(zip_path):
                 None,
             )
             if not candidate:
-                log_error("更新包中未包含 change.json/changes.json")
+                update_logger.error("更新包中未包含 change.json/changes.json")
                 return None
             with zf.open(candidate) as change_file:
                 data = json.load(change_file)
@@ -771,7 +781,7 @@ def load_change_entries(zip_path):
                     entries.extend(modified)
                 return entries
     except Exception as exc:
-        log_error(f"读取 change.json 失败: {exc}")
+        update_logger.error(f"读取 change.json 失败: {exc}")
         return None
 
 
@@ -1152,7 +1162,7 @@ def apply_mirror_hotfix(package_path):
     if deletes is None:
         return False
     if not safe_delete_paths(deletes):
-        log_error("执行镜像热更新的安全删除阶段失败")
+        update_logger.error("执行镜像热更新的安全删除阶段失败")
         return False
     return extract_zip_file_with_validation(package_path)
 
@@ -1174,7 +1184,7 @@ def find_latest_zip_file(directory):
     except FileNotFoundError:
         return None
     except Exception as e:
-        log_error(f"查找更新包时出错: {e}")
+        update_logger.error(f"查找更新包时出错: {e}")
         return None
 
 
@@ -1198,23 +1208,31 @@ def move_update_archive_to_backup(src_path, backup_dir, metadata_path=None):
             shutil.move(metadata_path, metadata_dest)
             print(f"更新元数据已随包移动: {metadata_dest}")
     except Exception as e:
-        log_error(f"移动更新包到备份目录失败: {e}")
+        update_logger.error(f"移动更新包到备份目录失败: {e}")
 
 
 def standard_update():
     """
     标准更新模式
     """
-    import subprocess
-
     update_logger.info("标准更新模式开始")
     # 检查MFW是否在运行
     if not ensure_mfw_not_running():
         return
 
     new_version_dir, update_back_dir = ensure_update_directories()
+    update_logger.debug(
+        "更新目录准备完毕: new_version_dir=%s, update_back_dir=%s",
+        new_version_dir,
+        update_back_dir,
+    )
     metadata_path = os.path.join(new_version_dir, "update_metadata.json")
     metadata = load_update_metadata(new_version_dir)
+    update_logger.debug(
+        "读取元数据完成: metadata_path=%s, metadata=%s",
+        metadata_path,
+        metadata,
+    )
     if metadata:
         metadata["attempts"] = metadata.get("attempts", 0) + 1
         save_update_metadata(metadata_path, metadata)
@@ -1230,22 +1248,25 @@ def standard_update():
     package_path = os.path.join(new_version_dir, package_name) if package_name else None
     if not package_path or not os.path.isfile(package_path):
         package_path = find_latest_zip_file(new_version_dir)
+    update_logger.debug("选定的更新包路径: %s", package_path)
 
     if not package_path:
         print("未找到更新文件，清理元数据并启动MFW")
+        update_logger.warning("未找到有效更新包，尝试清理元数据并重启 MFW")
         # 删除元数据文件
         if os.path.exists(metadata_path):
             try:
                 os.remove(metadata_path)
                 update_logger.info("已删除元数据文件: %s", metadata_path)
             except Exception as exc:
-                log_error(f"删除元数据文件失败: {exc}")
+                update_logger.error(f"删除元数据文件失败: {exc}")
         # 启动MFW程序
         start_mfw_process()
         # 自身退出
         sys.exit(0)
 
-    if metadata and metadata.get("attempts", 0) > 3:
+    attempts = metadata.get("attempts", 0) if metadata else 0
+    if metadata and attempts > 3:
         update_logger.warning("更新尝试次数已大于3次，清理更新包与元数据")
         if package_path and os.path.exists(package_path):
             os.remove(package_path)
@@ -1256,6 +1277,13 @@ def standard_update():
     source = metadata.get("source", "unknown") if metadata else "unknown"
     mode = metadata.get("mode", "full") if metadata else "full"
     version = metadata.get("version", "")
+    update_logger.info(
+        "检测到更新包: name=%s source=%s mode=%s version=%s",
+        os.path.basename(package_path),
+        source,
+        mode,
+        version,
+    )
     print(
         f"检测到更新包: {os.path.basename(package_path)} "
         f"来源: {source} 模式: {mode} 版本: {version}"
@@ -1279,42 +1307,31 @@ def standard_update():
         success = extract_zip_file_with_validation(package_path)
 
     if success:
+        update_logger.info("更新文件处理成功，准备备份包并重启主程序")
         print("更新文件处理完成")
         metadata_path = os.path.join(new_version_dir, "update_metadata.json")
         move_update_archive_to_backup(
             package_path, update_back_dir, metadata_path=metadata_path
         )
+        update_logger.info(
+            "更新包已移动到备份目录，并将元数据一并转移: package=%s",
+            package_path,
+        )
     else:
+        update_logger.error("更新文件处理失败")
         error_message = "更新文件处理失败"
-        log_error(error_message)
+        update_logger.error(error_message)
         sys.exit(error_message)
 
     # 重启程序
     print("重启MFW程序...")
-    try:
-        if sys.platform.startswith("win32"):
-            subprocess.Popen(".\\MFW.exe")
-        elif sys.platform.startswith("darwin"):
-            subprocess.Popen("./MFW")
-        elif sys.platform.startswith("linux"):
-            subprocess.Popen("./MFW")
-        else:
-            error_message = "不支持的操作系统"
-            log_error(error_message)
-            sys.exit(error_message)
-    except Exception as e:
-        error_message = f"启动MFW程序失败: {e}"
-        log_error(error_message)
-        print(error_message)
-        sys.exit(error_message)
+    start_mfw_process()
 
 
 def recovery_mode():
     """
     恢复模式
     """
-    import subprocess
-
     update_logger.info("恢复模式开始")
     # 检查MFW是否在运行
     if not ensure_mfw_not_running():
@@ -1329,30 +1346,19 @@ def recovery_mode():
 
     if update_file:
         if extract_zip_file_with_validation(update_file):
+            update_logger.info("恢复更新包执行成功，准备重启")
             print("恢复更新成功")
         else:
             error_message = "恢复更新失败"
-            log_error(error_message)
+            update_logger.error(error_message)
             sys.exit(error_message)
     else:
         print("未找到恢复更新文件")
+        update_logger.warning("恢复更新失败：没有可用的备份压缩包")
 
     # 重启程序
-    try:
-        if sys.platform.startswith("win32"):
-            subprocess.Popen(".\\MFW.exe")
-        elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
-            subprocess.Popen("./MFW")
-        else:
-            error_message = "不支持的操作系统"
-            log_error(error_message)
-            sys.exit(error_message)
-        print("程序已重启")
-    except Exception as e:
-        error_message = f"启动MFW程序失败: {e}"
-        log_error(error_message)
-        print(error_message)
-        sys.exit(error_message)
+    start_mfw_process()
+    print("程序已重启")
 
 
 if __name__ == "__main__":
@@ -1360,9 +1366,9 @@ if __name__ == "__main__":
     # 在日志中记录本次更新开始
     import time
 
-    log_entry = (
-        f"\n{'='*60}\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] 更新程序启动\n{'='*60}\n"
-    )
+    separator = "=" * 60
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    update_logger.info("\n%s\n[%s] 更新程序启动\n%s", separator, timestamp, separator)
     update_logger.info("更新程序启动, argv=%s", sys.argv)
 
     try:
@@ -1397,7 +1403,7 @@ if __name__ == "__main__":
     except Exception as e:
         # 捕获所有未处理的异常并记录
         error_message = f"更新程序发生未捕获的异常: {type(e).__name__}: {e}"
-        log_error(error_message)
+        update_logger.error(error_message)
         print(f"\n{error_message}")
 
         input("按回车键退出... / Press Enter to exit...")
