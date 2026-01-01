@@ -132,6 +132,9 @@ class Config(QConfig):
     save_screenshot = ConfigItem(
         "Compatibility", "save_screenshot", False, BoolValidator()
     )
+    special_task_tutorial_shown = ConfigItem(
+        "General", "special_task_tutorial_shown", False, BoolValidator()
+    )
 
     announcement = ConfigItem("General", "announcement", "")
 

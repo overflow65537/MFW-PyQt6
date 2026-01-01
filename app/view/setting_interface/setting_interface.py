@@ -140,8 +140,6 @@ def launch_updater_process(*extra_args: str) -> None:
     if extra_args:
         cmd.extend(extra_args)
     subprocess.Popen(cmd)
-    else:
-        raise NotImplementedError("Unsupported platform")
 
 
 class SettingInterface(QWidget):

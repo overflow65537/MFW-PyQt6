@@ -16,6 +16,7 @@ from uuid import uuid4
 
 DIRECT_RUN_EXTRA_ARGS: list[str] = []
 
+
 def _collect_direct_run_args(argv: list[str]) -> list[str]:
     args = []
     if "-d" in argv or "--direct-run" in argv:
@@ -63,13 +64,15 @@ def ensure_mfw_not_running():
     max_checks = 3
     check_count = 0
     update_logger.info(f"[步骤1] 检查MFW进程状态（最多检查{max_checks}次）...")
-    
+
     while check_count < max_checks:
         if not is_mfw_running():
             update_logger.info(f"[步骤1] MFW进程未运行，可以继续更新")
             return True
         check_count += 1
-        update_logger.warning(f"[步骤1] MFW仍在运行（第{check_count}/{max_checks}次检查），5秒后重新检查...")
+        update_logger.warning(
+            f"[步骤1] MFW仍在运行（第{check_count}/{max_checks}次检查），5秒后重新检查..."
+        )
         print("MFW仍在运行，5秒后重新检查...")
         for sec in range(5, 0, -1):
             print(f"{sec}秒后重新检查...")
@@ -282,7 +285,7 @@ def cleanup_update_artifacts(update_file_path, metadata_path=None):
         target_files.append(Path(metadata_path))
     else:
         target_files.append(Path(update_file_path).parent / "update_metadata.json")
-    
+
     update_logger.debug(f"[步骤6] 准备清理 {len(target_files)} 个更新文件...")
     cleaned_count = 0
     for path in target_files:
@@ -296,8 +299,10 @@ def cleanup_update_artifacts(update_file_path, metadata_path=None):
         except Exception as exc:
             update_logger.error(f"[步骤6] 清理更新文件失败: {path} -> {exc}")
             update_logger.error(f"清理更新 artifacts 失败: {path} -> {exc}")
-    
-    update_logger.debug(f"[步骤6] 更新文件清理完成，共清理 {cleaned_count}/{len(target_files)} 个文件")
+
+    update_logger.debug(
+        f"[步骤6] 更新文件清理完成，共清理 {cleaned_count}/{len(target_files)} 个文件"
+    )
 
 
 def ensure_update_directories():
@@ -790,7 +795,9 @@ def _get_bundle_path_from_metadata(metadata: dict) -> str | None:
     从 metadata 中获取 bundle 路径。
     尝试从常见位置查找 bundle 路径。
     """
-    update_logger.debug("[步骤4] 开始从 metadata 和 interface 配置中获取 bundle 路径...")
+    update_logger.debug(
+        "[步骤4] 开始从 metadata 和 interface 配置中获取 bundle 路径..."
+    )
     # 尝试从 interface.json 中获取
     repo_root = os.getcwd()
     interface_paths = [
@@ -806,7 +813,9 @@ def _get_bundle_path_from_metadata(metadata: dict) -> str | None:
                     # 假设 bundle 路径在当前目录或 bundle 目录下
                     bundle_name = interface_data.get("name", "")
                     if bundle_name:
-                        update_logger.debug(f"[步骤4] 从 interface 配置中获取到 bundle 名称: {bundle_name}")
+                        update_logger.debug(
+                            f"[步骤4] 从 interface 配置中获取到 bundle 名称: {bundle_name}"
+                        )
                         bundle_paths = [
                             os.path.join(repo_root, "bundle", bundle_name),
                             os.path.join(repo_root, bundle_name),
@@ -815,11 +824,17 @@ def _get_bundle_path_from_metadata(metadata: dict) -> str | None:
                             if os.path.exists(bp):
                                 update_logger.debug(f"[步骤4] 找到 bundle 路径: {bp}")
                                 return bp
-                        update_logger.warning(f"[步骤4] bundle 名称存在但路径不存在: {bundle_paths}")
+                        update_logger.warning(
+                            f"[步骤4] bundle 名称存在但路径不存在: {bundle_paths}"
+                        )
                     else:
-                        update_logger.warning(f"[步骤4] interface 配置中未找到 bundle 名称 (name 字段)")
+                        update_logger.warning(
+                            f"[步骤4] interface 配置中未找到 bundle 名称 (name 字段)"
+                        )
             except Exception as exc:
-                update_logger.warning(f"[步骤4] 读取 interface 文件失败: {interface_path} -> {exc}")
+                update_logger.warning(
+                    f"[步骤4] 读取 interface 文件失败: {interface_path} -> {exc}"
+                )
                 pass
     update_logger.warning("[步骤4] 未找到有效的 interface 配置文件或 bundle 路径")
     return None
@@ -871,7 +886,9 @@ def _extract_zip_to_hotfix_dir(zip_path: str, extract_to: str) -> str | None:
         with zipfile.ZipFile(zip_path, "r", metadata_encoding="utf-8") as archive:
             members = archive.namelist()
             total_files = len(members)
-            update_logger.info(f"[步骤3] 打开更新包成功，包含 {total_files} 个文件/目录")
+            update_logger.info(
+                f"[步骤3] 打开更新包成功，包含 {total_files} 个文件/目录"
+            )
 
             # 查找 interface.json 或 interface.jsonc
             update_logger.debug("[步骤3] 查找 interface.json/interface.jsonc 文件...")
@@ -881,11 +898,15 @@ def _extract_zip_to_hotfix_dir(zip_path: str, extract_to: str) -> str | None:
                 if member_path.name.lower() in interface_names:
                     # 获取 interface 文件所在的目录
                     interface_dir_parts = member_path.parent.parts
-                    update_logger.info(f"[步骤3] 找到 interface 文件: {member}，所在目录: {'/'.join(interface_dir_parts)}")
+                    update_logger.info(
+                        f"[步骤3] 找到 interface 文件: {member}，所在目录: {'/'.join(interface_dir_parts)}"
+                    )
                     break
-            
+
             if not interface_dir_parts:
-                update_logger.warning("[步骤3] 未在更新包中找到 interface.json/interface.jsonc 文件，将解压所有文件")
+                update_logger.warning(
+                    "[步骤3] 未在更新包中找到 interface.json/interface.jsonc 文件，将解压所有文件"
+                )
 
             # 解压文件
             update_logger.info("[步骤3] 开始解压文件...")
@@ -917,7 +938,9 @@ def _extract_zip_to_hotfix_dir(zip_path: str, extract_to: str) -> str | None:
                         shutil.copyfileobj(source, target)
                     extracted_count += 1
                     if extracted_count % 100 == 0:
-                        update_logger.debug(f"[步骤3] 已解压 {extracted_count} 个文件...")
+                        update_logger.debug(
+                            f"[步骤3] 已解压 {extracted_count} 个文件..."
+                        )
 
             update_logger.info(f"[步骤3] 文件解压完成，共解压 {extracted_count} 个文件")
 
@@ -926,7 +949,9 @@ def _extract_zip_to_hotfix_dir(zip_path: str, extract_to: str) -> str | None:
                 return str(extract_to_path)
             return str(extract_to_path)
     except Exception as exc:
-        update_logger.exception(f"[步骤3] 解压文件失败 {zip_path} -> {extract_to}: {exc}")
+        update_logger.exception(
+            f"[步骤3] 解压文件失败 {zip_path} -> {extract_to}: {exc}"
+        )
         return None
 
 
@@ -947,7 +972,7 @@ def apply_github_hotfix(package_path, metadata=None):
     update_logger.info("=" * 50)
     update_logger.info("[GitHub热更新] 开始执行热更新流程")
     update_logger.info(f"[GitHub热更新] 更新包路径: {package_path}")
-    
+
     # 检查MFW是否在运行
     update_logger.info("[步骤1] 检查MFW进程状态...")
     if not ensure_mfw_not_running():
@@ -960,14 +985,14 @@ def apply_github_hotfix(package_path, metadata=None):
     if not metadata:
         update_logger.warning("[步骤2] 缺少更新元数据，无法执行热更新")
         return False
-    
+
     version = metadata.get("version", "")
     package_name = metadata.get("package_name", "unknown")
-    update_logger.info(f"[步骤2] 元数据验证通过 - 版本: {version}, 包名: {package_name}")
-
     update_logger.info(
-        f"[步骤3] 准备解压更新包: 版本={version}, 包名={package_name}"
+        f"[步骤2] 元数据验证通过 - 版本: {version}, 包名: {package_name}"
     )
+
+    update_logger.info(f"[步骤3] 准备解压更新包: 版本={version}, 包名={package_name}")
 
     # 步骤3: 解压更新包到 hotfix 目录
     hotfix_dir = os.path.join(os.getcwd(), "hotfix")
@@ -1035,7 +1060,9 @@ def apply_github_hotfix(package_path, metadata=None):
                     backup_target = resource_backup_dir / resource_path.name
                     try:
                         # 先备份资源
-                        update_logger.info(f"[步骤5] 备份资源目录: {resource_path} -> {backup_target}")
+                        update_logger.info(
+                            f"[步骤5] 备份资源目录: {resource_path} -> {backup_target}"
+                        )
                         if backup_target.is_dir():
                             shutil.rmtree(backup_target)
                         shutil.copytree(str(resource_path), str(backup_target))
@@ -1048,15 +1075,21 @@ def apply_github_hotfix(package_path, metadata=None):
                         # 再删除旧的 pipeline 目录，避免影响后续覆盖
                         pipeline_path = resource_path / "pipeline"
                         if pipeline_path.exists():
-                            update_logger.info(f"[步骤5] 删除旧 pipeline 目录: {pipeline_path}")
+                            update_logger.info(
+                                f"[步骤5] 删除旧 pipeline 目录: {pipeline_path}"
+                            )
                             shutil.rmtree(str(pipeline_path))
-                            update_logger.info(f"[步骤5] pipeline 目录删除完成: {pipeline_path}")
+                            update_logger.info(
+                                f"[步骤5] pipeline 目录删除完成: {pipeline_path}"
+                            )
                     except Exception as backup_err:
                         update_logger.exception(
                             f"[步骤5] 备份或清理资源目录时出错: {resource_path} -> {backup_err}"
                         )
                         raise
-        update_logger.info(f"[步骤5] 资源备份和清理完成，共处理 {backup_count} 个资源目录")
+        update_logger.info(
+            f"[步骤5] 资源备份和清理完成，共处理 {backup_count} 个资源目录"
+        )
 
         update_logger.info(f"[步骤5] 开始覆盖项目目录: {hotfix_root} -> {project_path}")
         # 允许目标目录已存在（Python 3.8+ 支持 dirs_exist_ok）
@@ -1065,7 +1098,9 @@ def apply_github_hotfix(package_path, metadata=None):
         update_logger.info(f"[步骤5] 项目目录覆盖完成: {project_path}")
 
         # 更新 interface.jsonc 中的版本号
-        update_logger.info(f"[步骤5] 开始更新 interface 配置文件中的版本号为: {version}")
+        update_logger.info(
+            f"[步骤5] 开始更新 interface 配置文件中的版本号为: {version}"
+        )
         version_updated = False
         for path in interface_paths:
             if path.exists():
@@ -1081,7 +1116,9 @@ def apply_github_hotfix(package_path, metadata=None):
                     except ImportError:
                         with open(path, "w", encoding="utf-8") as f:
                             json.dump(interface, f, indent=4, ensure_ascii=False)
-                    update_logger.info(f"[步骤5] 版本号更新成功: {path.name} ({old_version} -> {version})")
+                    update_logger.info(
+                        f"[步骤5] 版本号更新成功: {path.name} ({old_version} -> {version})"
+                    )
                     version_updated = True
                     break
         if not version_updated:
@@ -1097,7 +1134,9 @@ def apply_github_hotfix(package_path, metadata=None):
         update_logger.info("[步骤6] 开始清理更新数据...")
         download_dir = Path(package_path).parent
         metadata_file = str(download_dir / "update_metadata.json")
-        update_logger.info(f"[步骤6] 准备清理: 更新包={package_path}, 元数据={metadata_file}")
+        update_logger.info(
+            f"[步骤6] 准备清理: 更新包={package_path}, 元数据={metadata_file}"
+        )
         cleanup_update_artifacts(package_path, metadata_file)
         update_logger.info("[步骤6] 更新数据清理完成")
         update_logger.info("=" * 50)
@@ -1110,14 +1149,20 @@ def apply_github_hotfix(package_path, metadata=None):
         # 资源目录异常回滚
         update_logger.error(f"[步骤5] 热更新过程中出现错误: {e}")
         if resource_backups:
-            update_logger.warning(f"[步骤5] 更新失败，正在恢复 {len(resource_backups)} 个资源备份目录...")
+            update_logger.warning(
+                f"[步骤5] 更新失败，正在恢复 {len(resource_backups)} 个资源备份目录..."
+            )
             restore_count = 0
             for original_path, backup_path in reversed(resource_backups):
                 try:
                     if not backup_path.exists():
-                        update_logger.warning(f"[步骤5] 备份路径不存在，跳过恢复: {backup_path}")
+                        update_logger.warning(
+                            f"[步骤5] 备份路径不存在，跳过恢复: {backup_path}"
+                        )
                         continue
-                    update_logger.info(f"[步骤5] 恢复资源目录: {backup_path} -> {original_path}")
+                    update_logger.info(
+                        f"[步骤5] 恢复资源目录: {backup_path} -> {original_path}"
+                    )
                     # 清理已被部分覆盖/删除的原目录
                     if original_path.exists():
                         if original_path.is_file():
@@ -1136,7 +1181,9 @@ def apply_github_hotfix(package_path, metadata=None):
                     update_logger.exception(
                         f"[步骤5] 恢复资源目录失败: {original_path} -> {restore_err}"
                     )
-            update_logger.info(f"[步骤5] 资源备份恢复完成，成功恢复 {restore_count}/{len(resource_backups)} 个目录")
+            update_logger.info(
+                f"[步骤5] 资源备份恢复完成，成功恢复 {restore_count}/{len(resource_backups)} 个目录"
+            )
         else:
             update_logger.warning("[步骤5] 没有需要恢复的资源备份")
         update_logger.exception("[GitHub热更新] 热更新失败，详细信息:")

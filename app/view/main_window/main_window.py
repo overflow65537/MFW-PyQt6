@@ -37,13 +37,19 @@ import threading
 import zipfile
 
 from pathlib import Path
-from typing import Dict, Optional
+from dataclasses import dataclass
+from typing import Callable, Dict, Optional
 
-from PySide6.QtCore import QSize, QTimer, Qt, QUrl
+from PySide6.QtCore import QSize, QTimer, Qt, QUrl, QPoint, QRect, QRectF, Signal
 from PySide6.QtGui import (
     QIcon,
     QDesktopServices,
     QPixmap,
+    QPainter,
+    QColor,
+    QPen,
+    QFont,
+    QPainterPath,
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -87,6 +93,116 @@ from app.core.core import ServiceCoordinator
 from app.widget.notice_message import NoticeMessageBox, DelayedCloseNoticeMessageBox
 
 
+class TutorialHighlightOverlay(QWidget):
+    """覆盖层：突出显示目标控件并附加文字说明。"""
+
+    closed = Signal()
+
+    _HOLE_MARGIN = 6
+    _LABEL_MAX_WIDTH = 300
+
+    def __init__(self, parent, target_widget):
+        super().__init__(parent)
+        self._target_widget = target_widget
+        self._highlight_rect = QRect()
+        self._instruction_label = QLabel(self)
+        self._instruction_label.setWordWrap(True)
+        self._instruction_label.setStyleSheet(
+            "color: white; background: transparent; font-size: 12px;"
+        )
+        self._instruction_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self._instruction_label.setMargin(4)
+        self._instruction_label.setMaximumWidth(self._LABEL_MAX_WIDTH)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setWindowFlags(
+            Qt.WindowType.Widget | Qt.WindowType.FramelessWindowHint
+        )
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def set_message(self, message: str):
+        self._instruction_label.setText(message)
+
+    def showEvent(self, event):
+        parent = self.parentWidget()
+        if parent:
+            self.resize(parent.size())
+        self.raise_()
+        self._update_geometry()
+        super().showEvent(event)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_geometry()
+
+    def _update_geometry(self):
+        if not self._target_widget or not self._target_widget.isVisible():
+            self._highlight_rect = QRect()
+            self._instruction_label.hide()
+            self.update()
+            return
+
+        global_top_left = self._target_widget.mapToGlobal(QPoint(0, 0))
+        top_left = self.mapFromGlobal(global_top_left)
+        highlight = QRect(top_left, self._target_widget.size())
+        highlight = highlight.adjusted(
+            -self._HOLE_MARGIN,
+            -self._HOLE_MARGIN,
+            self._HOLE_MARGIN,
+            self._HOLE_MARGIN,
+        )
+        self._highlight_rect = highlight
+        label_width = min(
+            self._LABEL_MAX_WIDTH, max(highlight.width(), 220)
+        )
+        label_height = self._instruction_label.sizeHint().height()
+
+        label_x = max(8, min(highlight.left(), self.width() - label_width - 8))
+        label_y = highlight.bottom() + 10
+        if label_y + label_height > self.height() - 8:
+            label_y = highlight.top() - 10 - label_height
+        label_y = max(8, label_y)
+
+        self._instruction_label.setGeometry(
+            label_x, label_y, label_width, label_height
+        )
+        self._instruction_label.show()
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        path = QPainterPath()
+        path.setFillRule(Qt.FillRule.OddEvenFill)
+        path.addRect(QRectF(self.rect()))
+        if self._highlight_rect.isValid():
+            path.addRoundedRect(QRectF(self._highlight_rect), 8, 8)
+        painter.fillPath(path, QColor(0, 0, 0, 160))
+        if self._highlight_rect.isValid():
+            painter.setPen(QPen(QColor(255, 255, 255, 200), 2))
+            painter.drawRoundedRect(self._highlight_rect, 8, 8)
+        painter.end()
+
+    def mousePressEvent(self, event):
+        self.close()
+        event.accept()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Escape:
+            self.close()
+        else:
+            super().keyPressEvent(event)
+
+    def closeEvent(self, event):
+        self.closed.emit()
+        super().closeEvent(event)
+
+
+@dataclass
+class TutorialStep:
+    target_getter: Callable[[], QWidget | None]
+    message: str
+
+
 class CustomSystemThemeListener(SystemThemeListener):
     def run(self):
         try:
@@ -127,6 +243,9 @@ class MainWindow(MSFluentWindow):
         )
         self._setting_update_completed = False  # 设置更新是否完成
         self._bundle_update_in_progress = False  # bundle 更新是否正在进行
+        self._tutorial_steps: list[TutorialStep] = []
+        self._tutorial_index = 0
+        self._tutorial_overlay: TutorialHighlightOverlay | None = None
 
         cfg.set(cfg.save_screenshot, False)
         cfg.set(cfg.show_advanced_startup_options, False)
@@ -931,6 +1050,102 @@ class MainWindow(MSFluentWindow):
                 0, lambda: self._on_announcement_button_clicked(auto_show=True)
             )
 
+    def _build_tutorial_steps(self) -> list[TutorialStep]:
+        def get_config_area():
+            task_interface = getattr(self, "TaskInterface", None)
+            return getattr(task_interface, "config_selection", None)
+
+        def get_task_area():
+            task_interface = getattr(self, "TaskInterface", None)
+            return getattr(task_interface, "task_info", None)
+
+        def get_monitor_area():
+            return getattr(self, "MonitorInterface", None)
+
+        def get_log_button():
+            log_widget = getattr(
+                getattr(self, "TaskInterface", None), "log_output_widget", None
+            )
+            return getattr(log_widget, "generate_log_zip_button", None)
+
+        def get_special_button():
+            task_info = getattr(
+                getattr(self, "TaskInterface", None), "task_info", None
+            )
+            return getattr(task_info, "switch_button", None)
+
+        return [
+            TutorialStep(
+                target_getter=get_config_area,
+                message=self.tr(
+                    "This is the configuration area. Each configuration maps to different task sets."
+                ),
+            ),
+            TutorialStep(
+                target_getter=get_task_area,
+                message=self.tr(
+                    "This is the task area. Set the controller and resource configurations first; aside from those two, every task can be dragged to reorder before running."
+                ),
+            ),
+            TutorialStep(
+                target_getter=get_monitor_area,
+                message=self.tr(
+                    "The monitor area displays live footage once tasks are running."
+                ),
+            ),
+            TutorialStep(
+                target_getter=get_log_button,
+                message=self.tr(
+                    "When you encounter issues while running, click this button and send the resulting debug.zip to the developers."
+                ),
+            ),
+            TutorialStep(
+                target_getter=get_special_button,
+                message=self.tr(
+                    "Click this button to switch to special tasks; only tasks marked as special will execute."
+                ),
+            ),
+        ]
+
+    def _start_tutorial_sequence(self):
+        if cfg.get(cfg.special_task_tutorial_shown):
+            return
+        if self._tutorial_overlay:
+            return
+        self._tutorial_steps = self._build_tutorial_steps()
+        self._tutorial_index = 0
+        self._show_next_tutorial_step()
+
+    def _show_next_tutorial_step(self):
+        while self._tutorial_index < len(self._tutorial_steps):
+            step = self._tutorial_steps[self._tutorial_index]
+            target = step.target_getter()
+            if not target or not target.isVisible():
+                self._tutorial_index += 1
+                continue
+            overlay = TutorialHighlightOverlay(self, target)
+            overlay.set_message(step.message)
+            overlay.closed.connect(self._on_tutorial_overlay_closed)
+            overlay.show()
+            self._tutorial_overlay = overlay
+            logger.info("展示教程步骤: %s", step.message)
+            return
+        self._complete_tutorial_sequence()
+
+    def _on_tutorial_overlay_closed(self):
+        self._tutorial_overlay = None
+        self._tutorial_index += 1
+        self._show_next_tutorial_step()
+
+    def _complete_tutorial_sequence(self):
+        if cfg.get(cfg.special_task_tutorial_shown):
+            return
+        cfg.set(cfg.special_task_tutorial_shown, True)
+        logger.info("所有教程步骤已完成，配置已记录")
+
+    def _on_announcement_closed(self):
+        QTimer.singleShot(0, self._start_tutorial_sequence)
+
     def _bootstrap_auto_update_and_run(self) -> None:
         """启动自动更新并串行等待，更新后再执行自动任务。"""
         self._pending_auto_run = bool(
@@ -1211,6 +1426,7 @@ class MainWindow(MSFluentWindow):
             # 用户关闭了对话框，更新配置，下次不会再弹出
             cfg.set(cfg.announcement, self._pending_announcement_content)
             logger.info("用户关闭公告对话框，已更新公告配置")
+        self._on_announcement_closed()
 
     def set_announcement_content(self, title: Optional[str], content) -> None:
         """更新公告数据，外部可以通过调用该方法传入内容。"""
@@ -1318,6 +1534,8 @@ class MainWindow(MSFluentWindow):
         if hasattr(self, "splashScreen"):
             self.splashScreen.resize(self.size())
         self._update_background_geometry()
+        if self._tutorial_overlay:
+            self._tutorial_overlay.resize(self.size())
 
     def _save_window_geometry_if_needed(self):
         """在关闭时保存当前窗口的位置与大小，用于下次恢复。"""
