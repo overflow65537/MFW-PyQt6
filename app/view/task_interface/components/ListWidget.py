@@ -779,7 +779,9 @@ class TaskDragListWidget(BaseListWidget):
         
         Args:
             task_id: 任务ID
-            status: 状态字符串，可选值: "running", "completed", "failed", "restart_success", "waiting", ""(清除状态)
+            status: 状态字符串，可选值:
+                "running", "completed", "failed", "restart_success",
+                "waiting", "skipped", ""(清除状态)
         """
         # 从任务widget映射中查找对应的widget
         widget = self._task_widgets.get(task_id)

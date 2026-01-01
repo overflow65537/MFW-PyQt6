@@ -89,8 +89,16 @@ class BaseNoticeType(MessageBoxBase):
             return decrypted.decode("utf-8")
         except InvalidToken:
             logger.exception("密钥解密失败: %s", key_name)
+            signalBus.info_bar_requested.emit(
+                "warning",
+                self.tr("decrypt notice key failed: {}，please fill in again and save.").format(key_name),
+            )
         except Exception:
             logger.exception("解析密钥时发生错误: %s", key_name)
+            signalBus.info_bar_requested.emit(
+                "warning",
+                self.tr("parse notice key error: {}，please save again.").format(key_name),
+            )
         return ""
 
     def on_yes(self):

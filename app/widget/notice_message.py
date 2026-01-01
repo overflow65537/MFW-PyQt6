@@ -46,11 +46,16 @@ from qfluentwidgets import (
     ScrollArea,
 )
 import re
-import markdown
 from functools import partial
+from pathlib import Path
 from typing import List, Dict
 
+from app.utils.markdown_helper import render_markdown, remote_image_cache
+
 # 以下代码引用自 AUTO_MAA 项目的 ./app/ui/Widget.py 文件，用于创建公告对话框
+ANNOUNCEMENT_BASE_DIR = Path.cwd() / "resource" / "announcement"
+
+
 class NoticeMessageBox(MessageBoxBase):
     """公告对话框"""
 
@@ -96,16 +101,19 @@ class NoticeMessageBox(MessageBoxBase):
 
         # 将组件添加到布局中
         self.viewLayout.addLayout(self.h_layout)
-        self.widget.setFixedSize(800, 600)
+        self.widget.setFixedSize(1000, 640)
 
         self.index.index_changed.connect(self.__update_text)
         self.button_yes.clicked.connect(self.yesButton.click)
         self.button_cancel.clicked.connect(self.cancelButton.click)
         self.index.index_cards[0].clicked.emit()
+        remote_image_cache.image_cached.connect(self._on_remote_image_cached)
+        self._last_rendered_text = ""
 
     def __update_text(self, text: str):
+        self._last_rendered_text = text
 
-        html = markdown.markdown(text).replace("\n", "")
+        html = render_markdown(text, base_path=ANNOUNCEMENT_BASE_DIR)
         html = re.sub(
             r"<code>(.*?)</code>",
             r"<span style='color: #009faa;'>\1</span>",
@@ -118,6 +126,10 @@ class NoticeMessageBox(MessageBoxBase):
         html = re.sub(r"<ul>(.*?)</ul>", r"\1", html)
 
         self.text.setText(f"<body>{html}</body>")
+
+    def _on_remote_image_cached(self, _url: str):
+        if self._last_rendered_text:
+            self.__update_text(self._last_rendered_text)
 
     class NoticeIndexCard(HeaderCardWidget):
 

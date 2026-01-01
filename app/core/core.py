@@ -39,6 +39,7 @@ class ServiceCoordinator:
         
         # 存储待显示的错误信息（用于在 UI 初始化完成后显示）
         self._pending_error_message: tuple[str, str] | None = None
+        self._main_config_path = main_config_path
 
         # 根据传入参数或主配置中的 bundle.path 解析 interface 路径
         self._interface_path = self._resolve_interface_path(
@@ -210,7 +211,19 @@ class ServiceCoordinator:
             return None
 
         try:
-            bundle_info = self.config_service.get_bundle(bundle_name)
+            bundle_info = None
+            if hasattr(self, "config_service") and self.config_service:
+                bundle_info = self.config_service.get_bundle(bundle_name)
+            else:
+                bundle_path_str = self._get_bundle_path_from_main_config(
+                    bundle_name
+                )
+                if not bundle_path_str:
+                    logger.warning(
+                        f"未在主配置中找到 bundle: {bundle_name}"
+                    )
+                    return None
+                bundle_info = {"path": bundle_path_str}
         except FileNotFoundError:
             logger.warning(f"未在主配置中找到 bundle: {bundle_name}")
             return None
@@ -235,6 +248,28 @@ class ServiceCoordinator:
             return None
 
         return candidate
+
+    def _get_bundle_path_from_main_config(self, bundle_name: str) -> str | None:
+        """在 config_service 可用前，从 multi_config.json 中查找 bundle 的 path。"""
+        main_config_path = getattr(self, "_main_config_path", None)
+        if not main_config_path or not main_config_path.exists():
+            return None
+
+        try:
+            with open(main_config_path, "r", encoding="utf-8") as mf:
+                main_cfg: Dict[str, Any] = jsonc.load(mf)
+        except Exception:
+            return None
+
+        bundle_dict = main_cfg.get("bundle") or {}
+        if not isinstance(bundle_dict, dict):
+            return None
+
+        bundle_info = bundle_dict.get(bundle_name)
+        if isinstance(bundle_info, dict):
+            return bundle_info.get("path")
+
+        return None
 
     def _handle_config_load_error(
         self, main_config_path: Path, configs_dir: Path, error: Exception
@@ -745,22 +780,13 @@ class ServiceCoordinator:
             logger.error(f"重新初始化服务协调器失败: {e}")
 
     async def run_tasks_flow(
-        self, task_id: str | None = None, is_timeout_restart: bool = False,
-        timeout_restart_entry: str | None = None, timeout_restart_attempts: int = 0
+        self, task_id: str | None = None
     ):
         """运行任务流的对外封装。
 
         :param task_id: 指定只运行某个任务（可选）
-        :param is_timeout_restart: 是否为超时重启触发
-        :param timeout_restart_entry: 超时重启的entry（可选）
-        :param timeout_restart_attempts: 超时重启的次数（可选）
         """
-        return await self.task_runner.run_tasks_flow(
-            task_id, 
-            is_timeout_restart=is_timeout_restart,
-            timeout_restart_entry=timeout_restart_entry,
-            timeout_restart_attempts=timeout_restart_attempts
-        )
+        return await self.task_runner.run_tasks_flow(task_id)
 
     async def stop_task_flow(self):
         """停止当前任务流（UI/外部调用，视为手动停止）。"""

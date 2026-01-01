@@ -124,19 +124,22 @@ def rename_updater_binary(old_name: str, new_name: str) -> None:
         os.rename(old_name, new_name)
 
 
-def launch_updater_process() -> None:
+def launch_updater_process(*extra_args: str) -> None:
     """启动更新器进程的底层实现，由调用方负责异常处理/提示。"""
     import sys
     import subprocess
 
     if sys.platform.startswith("win32"):
-        logger.info("启动更新程序: ./MFWUpdater1.exe -update")
-        subprocess.Popen(["./MFWUpdater1.exe", "-update"])
+        cmd = ["./MFWUpdater1.exe", "-update"]
+        logger.info("启动更新程序: %s", " ".join(cmd + list(extra_args)))
     elif sys.platform.startswith(("darwin", "linux")):
-        logger.info("启动更新程序: ./MFWUpdater1 -update")
-        subprocess.Popen(["./MFWUpdater1", "-update"])
+        cmd = ["./MFWUpdater1", "-update"]
+        logger.info("启动更新程序: %s", " ".join(cmd + list(extra_args)))
     else:
         raise NotImplementedError("Unsupported platform")
+    if extra_args:
+        cmd.extend(extra_args)
+    subprocess.Popen(cmd)
 
 
 class SettingInterface(QWidget):
@@ -162,12 +165,15 @@ class SettingInterface(QWidget):
         self,
         service_coordinator: ServiceCoordinator,
         parent=None,
+        *,
+        propagate_direct_run_arg: bool = False,
     ):
         super().__init__(parent=parent)
         self.setObjectName("settingInterface")
         self._service_coordinator = service_coordinator
         self.interface_data = self._service_coordinator.task.interface
         self._suppress_multi_resource_signal = False
+        self._propagate_direct_run_arg = bool(propagate_direct_run_arg)
 
         self._license_content = self.interface_data.get("license", "")
         self._github_url = self.interface_data.get(
@@ -1132,69 +1138,6 @@ class SettingInterface(QWidget):
             self.tr("Task Settings"), self.Setting_scroll_widget
         )
 
-        # 开启任务超时设置
-        self.task_timeout_enable_card = SwitchSettingCard(
-            FIF.SETTING,
-            self.tr("Enable Task Timeout"),
-            self.tr("Enable or disable task timeout settings"),
-            configItem=cfg.task_timeout_enable,
-            parent=self.taskGroup,
-        )
-
-        # 任务超时时间
-        self.task_timeout_card = LineEditCard(
-            FIF.SETTING,
-            self.tr("Task Timeout"),
-            holderText=str(cfg.get(cfg.task_timeout)),
-            content=self.tr(
-                "Set the maximum time allowed for a task to run (in seconds)"
-            ),
-            parent=self.taskGroup,
-            num_only=True,
-            button=False,
-        )
-        self.task_timeout_card.lineEdit.editingFinished.connect(
-            lambda: self._on_task_timeout_edited()
-        )
-
-        # 任务超时后动作
-        self.task_timeout_action_card = ComboBoxSettingCard(
-            cfg.task_timeout_action,
-            FIF.SETTING,
-            self.tr("Task Timeout Action"),
-            self.tr("Set the action to take when a task times out"),
-            texts=[
-                self.tr("Notify Only"),  # 0
-                self.tr("Restart and Notify"),  # 1
-            ],
-            parent=self.taskGroup,
-        )
-
-        # 任务超时重启模式（仅在“重启并通知”时可用）
-        self.task_timeout_restart_mode_card = ComboBoxSettingCard(
-            cfg.task_timeout_restart_mode,
-            FIF.SETTING,
-            self.tr("Task Timeout Restart Mode"),
-            self.tr(
-                "Select how to restart when task timeout action is 'Restart and Notify'"
-            ),
-            texts=[
-                self.tr("Restart Immediately"),  # 0 直接重启
-                self.tr(
-                    "Run last list entry then restart"
-                ),  # 1 运行列表中最后一项任务后重启
-            ],
-            parent=self.taskGroup,
-        )
-
-        # 根据当前配置初始化启用状态
-        current_action = cfg.get(cfg.task_timeout_action)
-        self._update_task_timeout_restart_mode_enabled(current_action)
-        # 监听配置变更，动态更新启用状态
-        cfg.task_timeout_action.valueChanged.connect(
-            self._on_task_timeout_action_changed
-        )
-
         # 低功耗监控模式
         self.low_power_monitoring_mode_card = SwitchSettingCard(
             FIF.POWER_BUTTON,
@@ -1204,47 +1147,8 @@ class SettingInterface(QWidget):
             parent=self.taskGroup,
         )
 
-        self.taskGroup.addSettingCard(self.task_timeout_enable_card)
-        self.taskGroup.addSettingCard(self.task_timeout_card)
-        self.taskGroup.addSettingCard(self.task_timeout_action_card)
-        self.taskGroup.addSettingCard(self.task_timeout_restart_mode_card)
         self.taskGroup.addSettingCard(self.low_power_monitoring_mode_card)
         self.add_setting_group(self.taskGroup)
-
-    def _on_task_timeout_edited(self):
-        """处理任务超时时间编辑完成事件"""
-        value = self.task_timeout_card.lineEdit.text().strip()
-        if not value:
-            # 若输入为空，恢复默认值
-            self.task_timeout_card.lineEdit.setText(str(cfg.get(cfg.task_timeout)))
-            return
-
-        try:
-            timeout = int(value)
-            if timeout <= 0:
-                raise ValueError("Timeout must be a positive integer")
-            cfg.set(cfg.task_timeout, timeout)
-        except ValueError:
-            # 若输入无效，恢复默认值
-            self.task_timeout_card.lineEdit.setText(str(cfg.get(cfg.task_timeout)))
-
-    def _on_task_timeout_action_changed(self, value: int) -> None:
-        """当任务超时动作修改时，更新重启模式下拉框的可用状态。"""
-        self._update_task_timeout_restart_mode_enabled(value)
-
-    def _update_task_timeout_restart_mode_enabled(self, action_value: int) -> None:
-        """根据当前任务超时动作，启用或禁用重启模式设置。"""
-        if not hasattr(self, "task_timeout_restart_mode_card"):
-            return
-
-        try:
-            action = Config.TaskTimeoutAction(action_value)
-            enable_restart_mode = action == Config.TaskTimeoutAction.RESTART_AND_NOTIFY
-        except Exception:
-            # 兼容性兜底：1 对应 RESTART_AND_NOTIFY
-            enable_restart_mode = action_value == 1
-
-        self.task_timeout_restart_mode_card.setEnabled(enable_restart_mode)
 
     def initialize_update_settings(self):
         """插入更新设置卡片组（跟原先的 UpdateSettingsSection 等价）。"""
@@ -1423,6 +1327,10 @@ class SettingInterface(QWidget):
             return str(decrypted)
         except Exception as exc:
             logger.warning("解密 Mirror CDK 失败: %s", exc)
+            signalBus.info_bar_requested.emit(
+                "warning",
+                self.tr("decrypt Mirror CDK failed, please fill in again and save."),
+            )
             return ""
 
     def _onMirrorCardChange(self):
@@ -2791,7 +2699,8 @@ class SettingInterface(QWidget):
     def _start_updater(self):
         """启动更新程序（允许更新器自行显示界面）。"""
         try:
-            launch_updater_process()
+            extra_args = ["-d"] if self._propagate_direct_run_arg else []
+            launch_updater_process(*extra_args)
         except Exception as e:
             logger.error(f"启动更新程序失败: {e}")
             signalBus.info_bar_requested.emit("error", str(e))

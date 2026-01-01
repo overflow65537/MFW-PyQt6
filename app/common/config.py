@@ -132,6 +132,9 @@ class Config(QConfig):
     save_screenshot = ConfigItem(
         "Compatibility", "save_screenshot", False, BoolValidator()
     )
+    special_task_tutorial_shown = ConfigItem(
+        "General", "special_task_tutorial_shown", False, BoolValidator()
+    )
 
     announcement = ConfigItem("General", "announcement", "")
 
@@ -152,49 +155,9 @@ class Config(QConfig):
     )
 
     # ===== 任务设置 =====
-    task_timeout_enable = ConfigItem(
-        "Task", "task_timeout_enable", False
-    )  # 是否开启任务超时设置
-    task_timeout = ConfigItem("Task", "task_timeout", 900)  # 默认900秒
-
     low_power_monitoring_mode = ConfigItem(
         "Task", "low_power_monitoring_mode", True, BoolValidator()
     )  # 低功耗监控模式：使用缓存的图像而不是专用监控线程
-
-    # 任务超时后动作
-    class TaskTimeoutAction(Enum):
-        """Task timeout action options."""
-
-        NOTIFY_ONLY = 0  # 仅通知
-        RESTART_AND_NOTIFY = 1  # 重启并通知
-
-    _task_timeout_action_validator = OptionsValidator(
-        [item.value for item in TaskTimeoutAction]
-    )
-
-    task_timeout_action = OptionsConfigItem(
-        "Task",
-        "task_timeout_action",
-        TaskTimeoutAction.NOTIFY_ONLY.value,
-        _task_timeout_action_validator,
-    )
-
-    class TaskTimeoutRestartMode(Enum):
-        """Task timeout restart mode when action is RESTART_AND_NOTIFY."""
-
-        DIRECT_RESTART = 0  # 直接重启
-        RUN_LAST_ENTRY_THEN_RESTART = 1  # 运行列表中最后一项任务后重启
-
-    _task_timeout_restart_mode_validator = OptionsValidator(
-        [item.value for item in TaskTimeoutRestartMode]
-    )
-
-    task_timeout_restart_mode = OptionsConfigItem(
-        "Task",
-        "task_timeout_restart_mode",
-        TaskTimeoutRestartMode.DIRECT_RESTART.value,
-        _task_timeout_restart_mode_validator,
-    )
 
     # ===== 通知 =====
     Notice_DingTalk_status = ConfigItem("Notice", "DingTalk_status", False)

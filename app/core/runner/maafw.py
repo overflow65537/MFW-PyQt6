@@ -62,13 +62,18 @@ from app.common.signal_bus import signalBus
 
 class MaaContextSink(ContextEventSink):
     def on_raw_notification(self, context: Context, msg: str, details: dict):
-        if detial := details.get("focus", {}).get(msg, ""):
+        if detial := (details.get("focus") or {}).get(msg, ""):
             detial = detial.replace("{name}", details.get("name", ""))
             detial = detial.replace("{task_id}", str(details.get("task_id", "")))
             detial = detial.replace("{list}", details.get("list", ""))
             signalBus.callback.emit({"name": "context", "details": detial})
-            if msg == "Node.Recognition.Succeeded" and details.get("abort", False):
-                signalBus.callback.emit({"name": "abort"})
+            if msg == "Node.Recognition.Succeeded" :
+                if details.get("Abort", False):
+                    signalBus.callback.emit({"name": "abort"})
+                if details.get("Notice", False):
+                    pass
+
+
 
     def on_node_next_list(
         self,

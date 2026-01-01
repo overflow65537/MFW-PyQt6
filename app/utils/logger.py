@@ -44,6 +44,19 @@ class LoggerManager:
         # 关闭requests模块的日志输出
         requests_logger = logging.getLogger("urllib3")
         requests_logger.setLevel(logging.CRITICAL)
+        # 屏蔽 markdown 相关模块的所有输出，避免 DEBUG 级别日志
+        markdown_logger = logging.getLogger("markdown")
+        markdown_logger.setLevel(logging.CRITICAL)
+        markdown_logger.propagate = False
+        markdown_extensions_logger = logging.getLogger("markdown.extensions")
+        markdown_extensions_logger.setLevel(logging.CRITICAL)
+        markdown_extensions_logger.propagate = False
+        markdown_core_logger = logging.getLogger("markdown.core")
+        markdown_core_logger.setLevel(logging.CRITICAL)
+        markdown_core_logger.propagate = False
+        markdown_upper_logger = logging.getLogger("MARKDOWN")
+        markdown_upper_logger.setLevel(logging.CRITICAL)
+        markdown_upper_logger.propagate = False
         self._asyncify_logger = logging.getLogger("asyncify")
         self._qasync_logger = logging.getLogger("qasync")
         self._logger_state_cache: dict[str, tuple[int, bool]] = {}

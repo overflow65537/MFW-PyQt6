@@ -31,19 +31,27 @@ MFW-ChainFlow Assistant 主界面
 
 
 import asyncio
+import json
 import shutil
 import sys
 import threading
 import zipfile
 
+from collections import OrderedDict
 from pathlib import Path
-from typing import Dict, Optional
+from dataclasses import dataclass
+from typing import Callable, Dict, Optional
 
-from PySide6.QtCore import QSize, QTimer, Qt, QUrl
+from PySide6.QtCore import QSize, QTimer, Qt, QUrl, QPoint, QRect, QRectF, Signal
 from PySide6.QtGui import (
     QIcon,
     QDesktopServices,
     QPixmap,
+    QPainter,
+    QColor,
+    QPen,
+    QFont,
+    QPainterPath,
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -87,6 +95,116 @@ from app.core.core import ServiceCoordinator
 from app.widget.notice_message import NoticeMessageBox, DelayedCloseNoticeMessageBox
 
 
+class TutorialHighlightOverlay(QWidget):
+    """覆盖层：突出显示目标控件并附加文字说明。"""
+
+    closed = Signal()
+
+    _HOLE_MARGIN = 6
+    _LABEL_MAX_WIDTH = 300
+
+    def __init__(self, parent, target_widget):
+        super().__init__(parent)
+        self._target_widget = target_widget
+        self._highlight_rect = QRect()
+        self._instruction_label = QLabel(self)
+        self._instruction_label.setWordWrap(True)
+        self._instruction_label.setStyleSheet(
+            "color: white; background: transparent; font-size: 12px;"
+        )
+        self._instruction_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self._instruction_label.setMargin(4)
+        self._instruction_label.setMaximumWidth(self._LABEL_MAX_WIDTH)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setWindowFlags(
+            Qt.WindowType.Widget | Qt.WindowType.FramelessWindowHint
+        )
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def set_message(self, message: str):
+        self._instruction_label.setText(message)
+
+    def showEvent(self, event):
+        parent = self.parentWidget()
+        if parent:
+            self.resize(parent.size())
+        self.raise_()
+        self._update_geometry()
+        super().showEvent(event)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_geometry()
+
+    def _update_geometry(self):
+        if not self._target_widget or not self._target_widget.isVisible():
+            self._highlight_rect = QRect()
+            self._instruction_label.hide()
+            self.update()
+            return
+
+        global_top_left = self._target_widget.mapToGlobal(QPoint(0, 0))
+        top_left = self.mapFromGlobal(global_top_left)
+        highlight = QRect(top_left, self._target_widget.size())
+        highlight = highlight.adjusted(
+            -self._HOLE_MARGIN,
+            -self._HOLE_MARGIN,
+            self._HOLE_MARGIN,
+            self._HOLE_MARGIN,
+        )
+        self._highlight_rect = highlight
+        label_width = min(
+            self._LABEL_MAX_WIDTH, max(highlight.width(), 220)
+        )
+        label_height = self._instruction_label.sizeHint().height()
+
+        label_x = max(8, min(highlight.left(), self.width() - label_width - 8))
+        label_y = highlight.bottom() + 10
+        if label_y + label_height > self.height() - 8:
+            label_y = highlight.top() - 10 - label_height
+        label_y = max(8, label_y)
+
+        self._instruction_label.setGeometry(
+            label_x, label_y, label_width, label_height
+        )
+        self._instruction_label.show()
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        path = QPainterPath()
+        path.setFillRule(Qt.FillRule.OddEvenFill)
+        path.addRect(QRectF(self.rect()))
+        if self._highlight_rect.isValid():
+            path.addRoundedRect(QRectF(self._highlight_rect), 8, 8)
+        painter.fillPath(path, QColor(0, 0, 0, 160))
+        if self._highlight_rect.isValid():
+            painter.setPen(QPen(QColor(255, 255, 255, 200), 2))
+            painter.drawRoundedRect(self._highlight_rect, 8, 8)
+        painter.end()
+
+    def mousePressEvent(self, event):
+        self.close()
+        event.accept()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Escape:
+            self.close()
+        else:
+            super().keyPressEvent(event)
+
+    def closeEvent(self, event):
+        self.closed.emit()
+        super().closeEvent(event)
+
+
+@dataclass
+class TutorialStep:
+    target_getter: Callable[[], QWidget | None]
+    message: str
+
+
 class CustomSystemThemeListener(SystemThemeListener):
     def run(self):
         try:
@@ -122,9 +240,14 @@ class MainWindow(MSFluentWindow):
         self._auto_update_pending_restart = False
         self._pending_auto_run = False
         self._auto_run_scheduled = False  # 标记是否已调度过启动后自动运行，避免重复触发
-        self._bundle_interface_added_to_nav = False  # 标记 BundleInterface 是否已添加到导航栏
+        self._bundle_interface_added_to_nav = (
+            False  # 标记 BundleInterface 是否已添加到导航栏
+        )
         self._setting_update_completed = False  # 设置更新是否完成
         self._bundle_update_in_progress = False  # bundle 更新是否正在进行
+        self._tutorial_steps: list[TutorialStep] = []
+        self._tutorial_index = 0
+        self._tutorial_overlay: TutorialHighlightOverlay | None = None
 
         cfg.set(cfg.save_screenshot, False)
         cfg.set(cfg.show_advanced_startup_options, False)
@@ -185,16 +308,20 @@ class MainWindow(MSFluentWindow):
         except Exception as exc:
             logger.error(f"创建 BundleInterface 失败: {exc}", exc_info=True)
             self.BundleInterface = None
-        
-        self.SettingInterface = SettingInterface(self.service_coordinator)
-        
+
+        self.SettingInterface = SettingInterface(
+            self.service_coordinator, propagate_direct_run_arg=self._cli_auto_run
+        )
+
         # 根据多资源适配状态控制 Bundle 和 Announcement 的显示
         # 如果多资源适配已开启：显示 Bundle，不显示 Announcement
         # 如果多资源适配未开启：显示 Announcement，不显示 Bundle
         multi_res_enabled = cfg.get(cfg.multi_resource_adaptation)
         logger.info(f"检查多资源适配状态（启动时）: {multi_res_enabled}")
         if multi_res_enabled:
-            logger.info("多资源适配已开启，添加 BundleInterface 到导航栏，隐藏 Announcement")
+            logger.info(
+                "多资源适配已开启，添加 BundleInterface 到导航栏，隐藏 Announcement"
+            )
             # 添加 Bundle，确保它在 Setting 之前
             if hasattr(self, "BundleInterface") and self.BundleInterface is not None:
                 self.addSubInterface(
@@ -206,8 +333,10 @@ class MainWindow(MSFluentWindow):
                 self._bundle_interface_added_to_nav = True
                 logger.info("✓ BundleInterface 已添加到导航栏")
         else:
-            logger.info("多资源适配未开启，显示 Announcement，BundleInterface 不会显示在导航栏")
-        
+            logger.info(
+                "多资源适配未开启，显示 Announcement，BundleInterface 不会显示在导航栏"
+            )
+
         # 添加 SettingInterface
         self.addSubInterface(
             self.SettingInterface,
@@ -215,7 +344,7 @@ class MainWindow(MSFluentWindow):
             self.tr("Setting"),
             position=NavigationItemPosition.BOTTOM,
         )
-        
+
         # 根据多资源适配状态决定是否插入 Announcement
         if not multi_res_enabled:
             # 多资源适配未开启时，插入 Announcement（使用 insertItem(0) 确保它在最前面）
@@ -223,7 +352,7 @@ class MainWindow(MSFluentWindow):
             logger.info("✓ Announcement 已添加到导航栏")
         else:
             logger.info("多资源适配已开启，Announcement 不会显示在导航栏")
-        
+
         # 添加导航项
         self.splashScreen.finish()
         self._maybe_show_pending_announcement()
@@ -234,7 +363,7 @@ class MainWindow(MSFluentWindow):
 
         # 连接公共信号
         self.connectSignalToSlot()
-        
+
         # 检查是否有待显示的错误信息（配置加载错误等）
         pending_error = self.service_coordinator.get_pending_error_message()
         if pending_error:
@@ -252,7 +381,7 @@ class MainWindow(MSFluentWindow):
             stop_factory=lambda: self.service_coordinator.stop_task_flow(),
         )
         signalBus.hotkey_shortcuts_changed.connect(self._reload_global_hotkeys)
-        
+
         # 检测快捷键权限（macOS/Linux）
         self._check_hotkey_permission()
         self._reload_global_hotkeys()
@@ -277,7 +406,7 @@ class MainWindow(MSFluentWindow):
         """
         try:
             logger.info("_add_bundle_interface_to_navigation 被调用")
-            
+
             if not hasattr(self, "BundleInterface") or self.BundleInterface is None:
                 logger.warning("BundleInterface 未初始化，无法添加到导航栏")
                 return
@@ -289,19 +418,22 @@ class MainWindow(MSFluentWindow):
 
             logger.info("开始添加 BundleInterface 到导航栏（动态启用多资源适配）...")
             logger.info(f"BundleInterface 对象: {self.BundleInterface}")
-            
+
             # 隐藏 Announcement（如果存在）并禁用其功能
             try:
                 # 禁用公告功能
                 self._announcement_enabled = False
                 logger.info("✓ Announcement 功能已禁用")
-                
+
                 # 尝试通过查找导航项并隐藏它
                 # 由于 qfluentwidgets 的 NavigationBar 可能没有直接的隐藏方法，
                 # 我们通过查找对应的导航项并设置其可见性
                 nav_items = getattr(self.navigationInterface, "items", [])
                 for item in nav_items:
-                    if hasattr(item, "routeKey") and item.routeKey == "announcement_button":
+                    if (
+                        hasattr(item, "routeKey")
+                        and item.routeKey == "announcement_button"
+                    ):
                         if hasattr(item, "setVisible"):
                             item.setVisible(False)
                             logger.info("✓ Announcement 已隐藏")
@@ -311,13 +443,15 @@ class MainWindow(MSFluentWindow):
                             logger.info("✓ Announcement 已隐藏")
                             break
             except Exception as hide_exc:
-                logger.debug(f"隐藏 Announcement 时出错（可能不存在或已隐藏）: {hide_exc}")
-            
+                logger.debug(
+                    f"隐藏 Announcement 时出错（可能不存在或已隐藏）: {hide_exc}"
+                )
+
             # 首先确保 BundleInterface 被添加到 stackedWidget
             if self.stackedWidget.indexOf(self.BundleInterface) == -1:
                 self.stackedWidget.addWidget(self.BundleInterface)
                 logger.info("BundleInterface 已添加到 stackedWidget")
-            
+
             # 添加 Bundle 到导航栏（在 Setting 之前）
             # 注意：由于多资源适配开启时公告不会显示，所以直接添加 Bundle 即可
             try:
@@ -327,7 +461,9 @@ class MainWindow(MSFluentWindow):
                     "bundle_interface",
                     FIF.FOLDER,
                     self.tr("Bundle"),
-                    onClick=lambda: self.stackedWidget.setCurrentWidget(self.BundleInterface),
+                    onClick=lambda: self.stackedWidget.setCurrentWidget(
+                        self.BundleInterface
+                    ),
                     selectable=True,
                     position=NavigationItemPosition.BOTTOM,
                 )
@@ -341,12 +477,13 @@ class MainWindow(MSFluentWindow):
                     self.tr("Bundle"),
                     position=NavigationItemPosition.BOTTOM,
                 )
-            
+
             self._bundle_interface_added_to_nav = True
             logger.info("✓ BundleInterface 已成功添加到导航栏！")
         except Exception as exc:
             logger.error(f"添加 BundleInterface 到导航栏失败: {exc}", exc_info=True)
             import traceback
+
             logger.error(f"详细错误信息: {traceback.format_exc()}")
 
     def initWindow(self):
@@ -600,10 +737,10 @@ class MainWindow(MSFluentWindow):
 
     def _translate_config_error(self, message: str) -> str:
         """翻译配置错误消息
-        
+
         Args:
             message: 英文错误消息
-            
+
         Returns:
             str: 翻译后的消息
         """
@@ -612,24 +749,36 @@ class MainWindow(MSFluentWindow):
                 # 提取错误详情
                 if "Error details:" in message:
                     error_detail = message.split("Error details:")[-1].strip()
-                    base_msg = self.tr("Config load failed, automatically reset to default. Backup of corrupted config file completed. Error details:")
+                    base_msg = self.tr(
+                        "Config load failed, automatically reset to default. Backup of corrupted config file completed. Error details:"
+                    )
                     return f"{base_msg} {error_detail}"
-                return self.tr("Config load failed, automatically reset to default. Backup of corrupted config file completed.")
+                return self.tr(
+                    "Config load failed, automatically reset to default. Backup of corrupted config file completed."
+                )
             elif "Failed to backup corrupted config file" in message:
                 # 提取错误详情
                 if "Error details:" in message:
                     error_detail = message.split("Error details:")[-1].strip()
-                    base_msg = self.tr("Config load failed, automatically reset to default. Failed to backup corrupted config file. Error details:")
+                    base_msg = self.tr(
+                        "Config load failed, automatically reset to default. Failed to backup corrupted config file. Error details:"
+                    )
                     return f"{base_msg} {error_detail}"
-                return self.tr("Config load failed, automatically reset to default. Failed to backup corrupted config file.")
+                return self.tr(
+                    "Config load failed, automatically reset to default. Failed to backup corrupted config file."
+                )
         elif "Config load failed and error occurred while resetting config" in message:
             error_detail = message.split(":")[-1].strip() if ":" in message else ""
             if error_detail:
-                base_msg = self.tr("Config load failed and error occurred while resetting config:")
+                base_msg = self.tr(
+                    "Config load failed and error occurred while resetting config:"
+                )
                 return f"{base_msg} {error_detail}"
-            return self.tr("Config load failed and error occurred while resetting config.")
+            return self.tr(
+                "Config load failed and error occurred while resetting config."
+            )
         return message
-    
+
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
         signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
@@ -668,17 +817,17 @@ class MainWindow(MSFluentWindow):
         """检测全局快捷键权限，如果不可用则禁用设置。"""
         if not getattr(self, "_hotkey_manager", None):
             return
-        
+
         # 检测权限
         has_permission = self._hotkey_manager.check_permission()
-        
+
         # 仅在 macOS/Linux 平台且权限不足时禁用设置
         if sys.platform in ("darwin", "linux") and not has_permission:
             logger.warning("全局快捷键权限不足，已禁用快捷键设置")
-            
+
             # 禁用快捷键设置界面
             self._disable_hotkey_settings()
-    
+
     def _disable_hotkey_settings(self):
         """禁用快捷键设置界面。"""
         try:
@@ -872,16 +1021,76 @@ class MainWindow(MSFluentWindow):
         self._announcement_empty_hint = self.tr(
             "There is no announcement at the moment."
         )
+        self._pending_announcement_sections: list[tuple[str, str]] = []
+        self._current_welcome_text = ""
 
-        cfg_announcement = cfg.get(cfg.announcement)
-        res_announcement = self.service_coordinator.task.interface.get("welcome", "")
-        self.set_announcement_content(self.tr("Announcement"), res_announcement)
-        # 保存待更新的公告内容，只有在用户关闭对话框时才会更新配置
-        self._pending_announcement_content = res_announcement
-        if cfg_announcement != res_announcement:
+        cfg_announcement = self._get_stored_welcome()
+        self._refresh_announcement_sections()
+        if self._current_welcome_text and cfg_announcement != self._current_welcome_text:
             # 公告内容不一致，在界面准备好后弹出对话框
             # 注意：此时不更新配置，只有在用户关闭对话框时才更新
             self._announcement_pending_show = True
+
+    def _get_stored_welcome(self) -> str:
+        """兼容旧版保存的公告格式，只提取 welcome 内容作为签名。"""
+        raw_value = cfg.get(cfg.announcement) or ""
+        if not raw_value:
+            return ""
+        try:
+            parsed = json.loads(raw_value)
+        except json.JSONDecodeError:
+            return raw_value
+        if isinstance(parsed, list) and parsed:
+            first = parsed[0]
+            if isinstance(first, (list, tuple)) and len(first) >= 2:
+                return str(first[1])
+        return raw_value
+
+    def _refresh_announcement_sections(self) -> None:
+        """重新读取欢迎信息和 resource/announcement.md，更新公告内容。"""
+        welcome_content = self.service_coordinator.task.interface.get(
+            "welcome", ""
+        )
+        sections: list[tuple[str, str]] = []
+        if welcome_content:
+            sections.append((self.tr("Welcome"), welcome_content))
+        sections.extend(self._load_resource_announcements())
+        if sections:
+            ordered_content = OrderedDict((title, body) for title, body in sections)
+            self.set_announcement_content(self._announcement_title, ordered_content)
+        else:
+            self.set_announcement_content(self._announcement_title, {})
+        self._pending_announcement_sections = sections
+        self._current_welcome_text = welcome_content
+
+    def _load_resource_announcements(self) -> list[tuple[str, str]]:
+        """按名称顺序读取 resource/announcement 目录下的 Markdown 文件。"""
+        announcement_dir = Path.cwd() / "resource" / "announcement"
+        if not announcement_dir.is_dir():
+            return []
+        sections = []
+        for file_path in sorted(announcement_dir.glob("*.md")):
+            try:
+                raw_text = file_path.read_text(encoding="utf-8")
+            except Exception:
+                logger.warning("加载公告文件失败: %s", file_path)
+                continue
+            content = raw_text.strip()
+            if not content:
+                continue
+            title = self._extract_markdown_title(content) or file_path.stem
+            sections.append((title, content))
+        return sections
+
+    def _extract_markdown_title(self, content: str) -> str | None:
+        """从 Markdown 内容中提取第一个标题，作为章节名称。"""
+        for line in content.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                title = stripped.lstrip("#").strip()
+                if title:
+                    return title
+        return None
 
     def _insert_announcement_nav_item(self):
         """在设置入口上方插入公告按钮，并挂载点击行为。"""
@@ -899,7 +1108,112 @@ class MainWindow(MSFluentWindow):
         """在主界面完成初始化后延迟展示公告对话框。"""
         if self._announcement_pending_show:
             self._announcement_pending_show = False
-            QTimer.singleShot(0, lambda: self._on_announcement_button_clicked(auto_show=True))
+            QTimer.singleShot(
+                0, lambda: self._on_announcement_button_clicked(auto_show=True)
+            )
+        else:
+            QTimer.singleShot(0, self._maybe_start_tutorial_for_no_announcement)
+
+    def _maybe_start_tutorial_for_no_announcement(self):
+        if self._announcement_content:
+            return
+        self._start_tutorial_sequence()
+
+    def _build_tutorial_steps(self) -> list[TutorialStep]:
+        def get_config_area():
+            task_interface = getattr(self, "TaskInterface", None)
+            return getattr(task_interface, "config_selection", None)
+
+        def get_task_area():
+            task_interface = getattr(self, "TaskInterface", None)
+            return getattr(task_interface, "task_info", None)
+
+        def get_monitor_area():
+            return getattr(self, "MonitorInterface", None)
+
+        def get_log_button():
+            log_widget = getattr(
+                getattr(self, "TaskInterface", None), "log_output_widget", None
+            )
+            return getattr(log_widget, "generate_log_zip_button", None)
+
+        def get_special_button():
+            task_info = getattr(
+                getattr(self, "TaskInterface", None), "task_info", None
+            )
+            return getattr(task_info, "switch_button", None)
+
+        return [
+            TutorialStep(
+                target_getter=get_config_area,
+                message=self.tr(
+                    "This is the configuration area. Each configuration maps to different task sets."
+                ),
+            ),
+            TutorialStep(
+                target_getter=get_task_area,
+                message=self.tr(
+                    "This is the task area. Set the controller and resource configurations first; aside from those two, every task can be dragged to reorder before running."
+                ),
+            ),
+            TutorialStep(
+                target_getter=get_monitor_area,
+                message=self.tr(
+                    "The monitor area displays live footage once tasks are running."
+                ),
+            ),
+            TutorialStep(
+                target_getter=get_log_button,
+                message=self.tr(
+                    "When you encounter issues while running, click this button and send the resulting debug.zip to the developers."
+                ),
+            ),
+            TutorialStep(
+                target_getter=get_special_button,
+                message=self.tr(
+                    "Click this button to switch to special tasks; only tasks marked as special will execute."
+                ),
+            ),
+        ]
+
+    def _start_tutorial_sequence(self):
+        if cfg.get(cfg.special_task_tutorial_shown):
+            return
+        if self._tutorial_overlay:
+            return
+        self._tutorial_steps = self._build_tutorial_steps()
+        self._tutorial_index = 0
+        self._show_next_tutorial_step()
+
+    def _show_next_tutorial_step(self):
+        while self._tutorial_index < len(self._tutorial_steps):
+            step = self._tutorial_steps[self._tutorial_index]
+            target = step.target_getter()
+            if not target or not target.isVisible():
+                self._tutorial_index += 1
+                continue
+            overlay = TutorialHighlightOverlay(self, target)
+            overlay.set_message(step.message)
+            overlay.closed.connect(self._on_tutorial_overlay_closed)
+            overlay.show()
+            self._tutorial_overlay = overlay
+            logger.info("展示教程步骤: %s", step.message)
+            return
+        self._complete_tutorial_sequence()
+
+    def _on_tutorial_overlay_closed(self):
+        self._tutorial_overlay = None
+        self._tutorial_index += 1
+        self._show_next_tutorial_step()
+
+    def _complete_tutorial_sequence(self):
+        if cfg.get(cfg.special_task_tutorial_shown):
+            return
+        cfg.set(cfg.special_task_tutorial_shown, True)
+        logger.info("所有教程步骤已完成，配置已记录")
+
+    def _on_announcement_closed(self):
+        QTimer.singleShot(0, self._start_tutorial_sequence)
 
     def _bootstrap_auto_update_and_run(self) -> None:
         """启动自动更新并串行等待，更新后再执行自动任务。"""
@@ -926,7 +1240,9 @@ class MainWindow(MSFluentWindow):
 
         setting_interface = getattr(self, "SettingInterface", None)
         if not self.service_coordinator or setting_interface is None:
-            logger.warning("自动更新未启动：更新器未就绪，改为检查并执行 bundle 自动更新")
+            logger.warning(
+                "自动更新未启动：更新器未就绪，改为检查并执行 bundle 自动更新"
+            )
             # UI 自动更新无法启动时，直接进入 bundle 自动更新阶段
             self._check_and_start_bundle_update()
             return
@@ -999,7 +1315,7 @@ class MainWindow(MSFluentWindow):
             self._setting_update_completed,
             self._bundle_update_in_progress,
         )
-        
+
         # 判断是设置更新还是 bundle 更新
         if self._auto_update_in_progress and not self._bundle_update_in_progress:
             # 这是设置更新完成
@@ -1007,7 +1323,7 @@ class MainWindow(MSFluentWindow):
             self._setting_update_completed = True
             self._auto_update_in_progress = False
             self._auto_update_thread = None
-            
+
             if status == 1:
                 # 热更新完成后，重新设置窗口标题（延迟到下一个事件循环，确保 reinit 完成）
                 QTimer.singleShot(0, self.set_title)
@@ -1031,18 +1347,18 @@ class MainWindow(MSFluentWindow):
                 else:
                     logger.warning("SettingInterface 不存在，无法触发立即更新提示")
                 return
-            
+
             # 其他 status，检查是否需要启动 bundle 更新
             self._check_and_start_bundle_update()
             return
-        
+
         if self._bundle_update_in_progress:
             # 这是 bundle 更新完成（单个bundle）
             logger.info("Bundle 更新完成（单个），status=%s", status)
             # 注意：所有bundle更新完成信号由 bundle_interface 的 _start_next_update 发送
             # 这里不需要发送 all_updates_completed 信号
             return
-        
+
         # 其他情况（可能是手动触发的更新）
         self._auto_update_in_progress = False
         self._auto_update_thread = None
@@ -1072,12 +1388,12 @@ class MainWindow(MSFluentWindow):
         if self._pending_auto_run:
             self._schedule_auto_run()
         self._pending_auto_run = False
-    
+
     def _check_and_start_bundle_update(self):
         """检查并启动 bundle 更新"""
         # 检查 bundle 自动更新是否开启
         bundle_auto_update_enabled = cfg.get(cfg.bundle_auto_update)
-        
+
         if not bundle_auto_update_enabled:
             logger.info("Bundle 自动更新未开启，直接发送所有更新完成信号")
             signalBus.all_updates_completed.emit()
@@ -1086,7 +1402,7 @@ class MainWindow(MSFluentWindow):
                 self._schedule_auto_run()
             self._pending_auto_run = False
             return
-        
+
         # 检查是否有 bundle 需要更新
         bundle_interface = getattr(self, "BundleInterface", None)
         if not bundle_interface:
@@ -1096,7 +1412,7 @@ class MainWindow(MSFluentWindow):
                 self._schedule_auto_run()
             self._pending_auto_run = False
             return
-        
+
         # 启动 bundle 自动更新
         logger.info("Bundle 自动更新已开启，开始更新所有 bundle")
         self._bundle_update_in_progress = True
@@ -1109,7 +1425,7 @@ class MainWindow(MSFluentWindow):
             if self._pending_auto_run:
                 self._schedule_auto_run()
             self._pending_auto_run = False
-    
+
     def _on_all_updates_completed(self):
         """所有更新完成回调"""
         logger.info("收到所有更新完成信号")
@@ -1127,7 +1443,7 @@ class MainWindow(MSFluentWindow):
 
     def _on_announcement_button_clicked(self, auto_show: bool = False):
         """处理公告按钮点击，弹出公告对话框或提示无内容。
-        
+
         Args:
             auto_show: 如果为 True，表示是通过方法自动唤醒的（第一次打开或公告更新），
                       将使用带延迟关闭功能的对话框；如果为 False，表示用户手动点击，
@@ -1136,20 +1452,21 @@ class MainWindow(MSFluentWindow):
         # 如果公告功能被禁用，直接返回
         if not getattr(self, "_announcement_enabled", True):
             return
-        
+
+        self._refresh_announcement_sections()
+
         if not self._announcement_content:
             self.show_info_bar("info", self._announcement_empty_hint)
             return
 
         # 检查当前记录的公告和当前运行的公告是否一致
-        cfg_announcement = cfg.get(cfg.announcement)
-        res_announcement = getattr(self, "_pending_announcement_content", "")
-        if not res_announcement:
-            res_announcement = self.service_coordinator.task.interface.get("welcome", "")
-        
-        # 只有当公告内容不一致时，才需要5秒延迟
-        announcement_mismatch = cfg_announcement != res_announcement
-        
+        cfg_announcement = self._get_stored_welcome()
+        current_welcome = self._current_welcome_text
+        # 只有当 welcome 内容不一致时，才需要5秒延迟
+        announcement_mismatch = bool(current_welcome) and (
+            cfg_announcement != current_welcome
+        )
+
         # 根据公告内容是否一致决定使用哪个对话框类
         if announcement_mismatch:
             # 公告内容不一致，使用带延迟关闭功能的对话框
@@ -1166,17 +1483,18 @@ class MainWindow(MSFluentWindow):
                 title=self._announcement_title,
                 content=self._announcement_content,
             )
-        
+
         dialog.button_yes.hide()
         dialog.button_cancel.setText(self.tr("Close"))
         result = dialog.exec()
-        
+
         # 只有在公告内容不一致且用户关闭对话框时，才更新配置
         # 这样如果用户不关闭对话框，下次启动时还会弹出
-        if announcement_mismatch and hasattr(self, "_pending_announcement_content"):
+        if announcement_mismatch and current_welcome:
             # 用户关闭了对话框，更新配置，下次不会再弹出
-            cfg.set(cfg.announcement, self._pending_announcement_content)
+            cfg.set(cfg.announcement, current_welcome)
             logger.info("用户关闭公告对话框，已更新公告配置")
+        self._on_announcement_closed()
 
     def set_announcement_content(self, title: Optional[str], content) -> None:
         """更新公告数据，外部可以通过调用该方法传入内容。"""
@@ -1284,6 +1602,8 @@ class MainWindow(MSFluentWindow):
         if hasattr(self, "splashScreen"):
             self.splashScreen.resize(self.size())
         self._update_background_geometry()
+        if self._tutorial_overlay:
+            self._tutorial_overlay.resize(self.size())
 
     def _save_window_geometry_if_needed(self):
         """在关闭时保存当前窗口的位置与大小，用于下次恢复。"""

@@ -1481,7 +1481,7 @@ class Update(BaseUpdate):
         self.release_note = ""
 
         # 尝试 Mirror 源（强制下载模式跳过）
-        if not self.force_full_download:
+        if not self.force_full_download and self.current_res_id:
             logger.info("  [检查更新] 尝试 MirrorChyan 源...")
             mirror_result = self.mirror_check(
                 res_id=self.current_res_id,
@@ -1630,16 +1630,14 @@ class Update(BaseUpdate):
                 result_data["release_note"] = self.release_note
             return result_data
 
-        download_url = None
-        for assets in github_result.get("assets", []) or []:
-            if not isinstance(assets, dict):
-                continue
-            if assets.get("name") in [
-                f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{target_version}.zip",
-                f"{self.project_name}-{self.current_os_type}-{self.current_arch}-{target_version}.tar.gz",
-            ]:
-                download_url = assets.get("browser_download_url")
-                break
+        download_asset = self._select_github_asset_by_keywords(
+            github_result.get("assets", []) or [], target_version
+        )
+        if not download_asset:
+            logger.warning("  [检查更新] GitHub: 未找到下载地址")
+            return False
+
+        download_url = download_asset.get("browser_download_url")
 
         if not download_url:
             logger.warning("  [检查更新] GitHub: 未找到下载地址")
@@ -1663,6 +1661,61 @@ class Update(BaseUpdate):
         if self.release_note:
             result_data["release_note"] = self.release_note
         return result_data
+
+    def _select_github_asset_by_keywords(
+        self,
+        assets: Any,
+        target_version: str,
+        primary_name: str | None = None,
+    ) -> dict | None:
+        """
+        在 GitHub release 资产中使用项目名、版本、OS、架构和压缩后缀组合匹配命中率最高的文件。
+        """
+        normalized_tokens = []
+        for part in (
+            primary_name or self.project_name,
+            target_version,
+            self.current_os_type,
+            self.current_arch,
+        ):
+            if isinstance(part, str) and part:
+                normalized_tokens.append(part.lower())
+
+        version = str(target_version or "")
+        stripped_version = version.lstrip("vV")
+        if stripped_version and stripped_version != version:
+            normalized_tokens.append(stripped_version.lower())
+
+        normalized_assets = assets if isinstance(assets, list) else []
+        best_asset = None
+        best_score = -1
+        for asset in normalized_assets:
+            if not isinstance(asset, dict):
+                continue
+            asset_name = asset.get("name")
+            if not isinstance(asset_name, str):
+                continue
+            normalized_name = asset_name.lower()
+            if normalized_name.endswith(".tar.gz"):
+                pass
+            elif normalized_name.endswith(".zip"):
+                pass
+            else:
+                continue
+
+            score = sum(1 for token in normalized_tokens if token in normalized_name)
+            if (
+                best_asset is None
+                or score > best_score
+                or (
+                    score == best_score
+                    and len(normalized_name) < len(best_asset.get("name", "") or "")
+                )
+            ):
+                best_asset = asset
+                best_score = int(score)
+
+        return best_asset
 
     def check_ui_update(self, fetch_download_url: bool = True) -> dict | bool:
         """
@@ -1839,16 +1892,16 @@ class Update(BaseUpdate):
                 result_data["release_note"] = self.release_note
             return result_data
 
-        download_url = None
-        for assets in github_result.get("assets", []) or []:
-            if not isinstance(assets, dict):
-                continue
-            if assets.get("name") in [
-                f"{ui_name}-{self.current_os_type}-{self.current_arch}-{target_version}.zip",
-                f"{ui_name}-{self.current_os_type}-{self.current_arch}-{target_version}.tar.gz",
-            ]:
-                download_url = assets.get("browser_download_url")
-                break
+        download_asset = self._select_github_asset_by_keywords(
+            github_result.get("assets", []) or [],
+            target_version,
+            primary_name=ui_name,
+        )
+        if not download_asset:
+            logger.warning("  [检查更新] GitHub: 未找到下载地址")
+            return False
+
+        download_url = download_asset.get("browser_download_url")
 
         if not download_url:
             logger.warning("  [检查更新] GitHub: 未找到下载地址")
