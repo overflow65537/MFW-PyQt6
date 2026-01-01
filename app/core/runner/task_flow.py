@@ -727,6 +727,8 @@ class TaskFlowRunner(QObject):
             return await self._connect_adb_controller(controller_raw)
         elif controller_type == "win32":
             return await self._connect_win32_controller(controller_raw)
+        elif controller_type == "playcover":
+            return await self._connect_playcover_controller(controller_raw)
         raise ValueError("不支持的控制器类型")
 
     async def load_resources(self, resource_raw: Dict[str, Any]):
@@ -1223,6 +1225,83 @@ class TaskFlowRunner(QObject):
         else:
             return False
         return True
+
+    async def _connect_playcover_controller(self, controller_raw: Dict[str, Any]):
+        """连接 PlayCover 控制器"""
+        # 验证平台：PlayCover 只在 macOS 上支持
+        if sys.platform != "darwin":
+            error_msg = self.tr("PlayCover controller is only supported on macOS")
+            logger.error("PlayCover 控制器仅在 macOS 上支持")
+            signalBus.log_output.emit("ERROR", error_msg)
+            return False
+        
+        if not isinstance(controller_raw, dict):
+            logger.error(
+                f"控制器配置格式错误(PlayCover)，期望 dict，实际 {type(controller_raw)}: {controller_raw}"
+            )
+            return False
+
+        activate_controller = controller_raw.get("controller_type")
+        if activate_controller is None:
+            logger.error(f"未找到控制器配置: {controller_raw}")
+            return False
+
+        # 获取控制器类型和名称
+        controller_type = self._get_controller_type(controller_raw)
+        controller_name = self._get_controller_name(controller_raw)
+
+        # 使用控制器名称作为键来获取配置（兼容旧配置：如果找不到则尝试使用控制器类型）
+        if controller_name in controller_raw:
+            controller_config = controller_raw[controller_name]
+        elif controller_type in controller_raw:
+            # 兼容旧配置：迁移到控制器名称
+            controller_config = controller_raw[controller_type]
+            controller_raw[controller_name] = controller_config
+        else:
+            controller_config = {}
+            controller_raw[controller_name] = controller_config
+
+        # 从配置中读取 uuid 和 address
+        uuid = controller_config.get("uuid", "")
+        address = controller_config.get("address", "")
+
+        # 检查 uuid 和 address 是否为空
+        if not uuid:
+            error_msg = self.tr(
+                "PlayCover UUID is empty, please configure UUID in settings"
+            )
+            logger.error("PlayCover UUID 为空")
+            signalBus.log_output.emit("ERROR", error_msg)
+            return False
+
+        if not address:
+            error_msg = self.tr(
+                "PlayCover connection address is empty, please configure address in settings"
+            )
+            logger.error("PlayCover 连接地址为空")
+            signalBus.log_output.emit("ERROR", error_msg)
+            return False
+
+        logger.debug(
+            f"PlayCover 参数: uuid={uuid}, address={address}"
+        )
+
+        logger.info(f"正在连接 PlayCover: {address} (UUID: {uuid})")
+        msg = self.tr("Connecting to PlayCover: {address} (UUID: {uuid})").format(
+            address=address,
+            uuid=uuid,
+        )
+        signalBus.log_output.emit("INFO", msg)
+
+        if await self.maafw.connect_playcover(address, uuid):
+            logger.info("PlayCover 连接成功")
+            signalBus.log_output.emit("INFO", self.tr("PlayCover connected successfully"))
+            return True
+        else:
+            error_msg = self.tr("Failed to connect to PlayCover")
+            logger.error("PlayCover 连接失败")
+            signalBus.log_output.emit("ERROR", error_msg)
+            return False
 
     def _parse_address_components(self, address: str | None) -> tuple[str, str | None]:
         """提取 ADB 地址和端口"""
