@@ -42,6 +42,7 @@ MFW-ChainFlow Assistant provides a ready-to-use visual orchestrator for MaaFrame
 - External notifications: DingTalk, Lark/Feishu, SMTP, WxPusher, WeCom bot
 - Built-in scheduler: once / daily / weekly / monthly with queue or force run
 - Dynamic custom actions and recognizers, with Agent support for tailored flows
+- Embedded Agent: enable built-in mode in the agent field to automatically convert to custom loading, using the UI's internal environment for a smaller and lighter footprint
 - Speedrun mode: limit runs per day/week/month with minimal intervals to avoid repeats
 - Hot update: automatically enabled when `update_flag.txt` in resource repo matches local, faster and no restart required
 
@@ -115,6 +116,27 @@ class ActionClass1(CustomAction):
 ```
 
 More examples: [MAA_Punish/assets](https://github.com/overflow65537/MAA_Punish/tree/main/assets).
+
+### Embedded Agent
+
+Set `embedded: true` in the `agent` field of `interface.json` to automatically convert the agent to custom loading mode. This approach runs within the UI's internal environment without a separate process, resulting in lower resource usage and faster startup.
+
+Example `interface.json` snippet:
+
+```json
+{
+  "agent": {
+    "embedded": true,
+    "child_args": ["{PROJECT_DIR}/agent/main.py"]
+  }
+}
+```
+
+When embedded mode is enabled, the system will automatically:
+
+1. Copy the agent entry directory
+2. Generate the corresponding `custom.json` configuration
+3. Remove the `agent` field and use the `custom` field for loading instead
 
 ## GitHub Action Build
 

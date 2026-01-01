@@ -44,6 +44,7 @@ MFW-ChainFlow Assistant 旨在为 MaaFramework 用户提供开箱即用的可视
 - 外部通知：钉钉、飞书、SMTP、WxPusher、企业微信机器人
 - 内置计划任务：单次 / 每日 / 每周 / 每月，多策略执行
 - 动态加载自定义动作与识别器的同时支持Agent，适配个性化流程
+- 嵌入式 Agent：在 agent 字段中启用内置模式，自动转换为 custom 加载方式，使用 UI 内部环境，更小更轻盈
 - 速通模式：按日 / 周 / 月限制运行次数与最小间隔，避免重复执行
 - 热更新：资源仓库与本地 update_flag.txt 一致时自动启用，速度更快且无需重启
 
@@ -118,6 +119,27 @@ class 动作对象1(CustomAction):
 ```
 
 更多示例可参考仓库：[MAA_Punish/assets](https://github.com/overflow65537/MAA_Punish/tree/main/assets)。
+
+### 嵌入式 Agent
+
+在 `interface.json` 的 `agent` 字段中设置 `embedded: true`，系统会自动将 agent 转换为 custom 加载方式。这种方式使用 UI 内部环境运行，无需独立进程，资源占用更小、启动更快。
+
+示例 `interface.json` 片段：
+
+```json
+{
+  "agent": {
+    "embedded": true,
+    "child_args": ["{PROJECT_DIR}/agent/main.py"]
+  }
+}
+```
+
+启用内置模式后，系统会自动：
+
+1. 复制 agent 入口目录
+2. 自动生成对应的 `custom.json` 配置
+3. 移除 `agent` 字段，改用 `custom` 字段加载
 
 ## 使用 GitHub Action 自动构建
 
