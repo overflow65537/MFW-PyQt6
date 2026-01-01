@@ -945,7 +945,7 @@ class TaskFlowRunner(QObject):
             notice_content = log_content if log_content else timeout_message
             send_notice(
                 NoticeTiming.WHEN_TASK_TIMEOUT,
-                self.tr("任务运行时间过长提醒"),
+                self.tr("Task running time too long"),
                 notice_content,
             )
         
