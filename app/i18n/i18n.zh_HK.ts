@@ -644,133 +644,133 @@ Please check for updates first, or visit the GitHub releases page.</source>
 <context>
     <name>ControllerSettingWidget</name>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="457"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="455"/>
         <source>Controller Type</source>
         <translation>控制器類型</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="475"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="473"/>
         <source>Search Device</source>
         <translation>搜索設備</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="489"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="487"/>
         <source>Agent Timeout</source>
         <translation>Agent 超時時間</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="493"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="491"/>
         <source>-1 means infinite</source>
         <translation>-1 代表不會超時</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="510"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="508"/>
         <source>Custom Module Path</source>
         <translation>Custom 模塊路徑</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="519"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="517"/>
         <source>GPU Acceleration</source>
         <translation>GPU選擇</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="539"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="537"/>
         <source>Auto</source>
         <translation>自動</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="540"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="538"/>
         <source>CPU</source>
         <translation>CPU</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="606"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="604"/>
         <source>ADB Path</source>
         <translation>ADB 路徑</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="613"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="611"/>
         <source>ADB Address</source>
         <translation>ADB 地址</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="619"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="617"/>
         <source>Emulator Path</source>
         <translation>模擬器路徑</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="626"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="624"/>
         <source>Emulator Params</source>
         <translation>模擬器參數</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="632"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="630"/>
         <source>Wait for Emulator StartUp Time</source>
         <translation>模擬器啟動等待時間</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="639"/>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="705"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="637"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="703"/>
         <source>Screencap Method</source>
         <translation>截圖方式</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="647"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="645"/>
         <source>Input Method</source>
         <translation>輸入方式</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="655"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="653"/>
         <source>Special Config</source>
         <translation>特化配置</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="670"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="668"/>
         <source>Program Path</source>
         <translation>程序路徑</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="677"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="675"/>
         <source>Program Params</source>
         <translation>程序參數</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="683"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="681"/>
         <source>Wait for Launch Time</source>
         <translation>等待程序啟動時間</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="690"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="688"/>
         <source>Mouse Input Method</source>
         <translation>鼠標輸入方式</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="697"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="695"/>
         <source>Keyboard Input Method</source>
         <translation>鍵盤輸入方式</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="715"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="713"/>
         <source>Address</source>
         <translation>地址</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1005"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1003"/>
         <source>Unknown Device</source>
         <translation>未知設備</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1071"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1069"/>
         <source>No ADB devices were found. Please check emulator or device connection.</source>
         <translation>未找到ADB設備。請檢查模擬器或設備連接。</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1074"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1072"/>
         <source>No desktop windows were found that match the filter.</source>
         <translation>未找到符合篩選條件的桌面視窗。</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1076"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1074"/>
         <source>No devices were found for current controller type.</source>
         <translation>未找到與目前控制器類型相符的裝置。</translation>
     </message>
@@ -3095,17 +3095,17 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation>自訂元件載入失敗，流程終止：</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="406"/>
-        <location filename="../core/runner/task_flow.py" line="726"/>
+        <location filename="../core/runner/task_flow.py" line="417"/>
+        <location filename="../core/runner/task_flow.py" line="783"/>
         <source>please try to reset resource in setting</source>
         <translation>請嘗試在設定中重置資源</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="437"/>
-        <location filename="../core/runner/task_flow.py" line="506"/>
-        <location filename="../core/runner/task_flow.py" line="525"/>
-        <location filename="../core/runner/task_flow.py" line="555"/>
-        <location filename="../core/runner/task_flow.py" line="797"/>
+        <location filename="../core/runner/task_flow.py" line="451"/>
+        <location filename="../core/runner/task_flow.py" line="526"/>
+        <location filename="../core/runner/task_flow.py" line="547"/>
+        <location filename="../core/runner/task_flow.py" line="574"/>
+        <location filename="../core/runner/task_flow.py" line="851"/>
         <source>Task Failed</source>
         <translation>任務失敗</translation>
     </message>
@@ -3212,179 +3212,190 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation>嚴重</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="660"/>
-        <location filename="../core/runner/task_flow.py" line="1194"/>
+        <location filename="../core/runner/task_flow.py" line="964"/>
+        <source>{} hours {} minutes</source>
+        <translation>{} 小時 {} 分鐘</translation>
+    </message>
+    <message>
+        <location filename="../core/runner/task_flow.py" line="966"/>
+        <source>{} minutes</source>
+        <translation>{} 分鐘</translation>
+    </message>
+    <message>
+        <location filename="../core/runner/task_flow.py" line="969"/>
+        <source>Task entry &apos;{}&apos; has been running for {}. This may indicate a problem. Please check the task status.</source>
+        <translation>任務條目“{}”已運行{}分鐘。這可能表示存在問題。請檢查任務狀態。</translation>
+    </message>
+    <message>
+        <location filename="../core/runner/task_flow.py" line="982"/>
+        <source>Task running time too long</source>
+        <translation>任務運行時間過長</translation>
+    </message>
+    <message>
+        <location filename="../core/runner/task_flow.py" line="1233"/>
         <source>PlayCover controller is only supported on macOS</source>
         <translation>PlayCover 控制器僅支援 macOS。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="720"/>
+        <location filename="../core/runner/task_flow.py" line="777"/>
         <source>Resource </source>
         <translation>資源 </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="722"/>
+        <location filename="../core/runner/task_flow.py" line="779"/>
         <source> not found in bundle: </source>
         <translation>不存在於資源包包: </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="759"/>
+        <location filename="../core/runner/task_flow.py" line="816"/>
         <source>Task </source>
         <translation>任務 </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="761"/>
+        <location filename="../core/runner/task_flow.py" line="818"/>
         <source> follows speedrun limit, skipping this run: </source>
         <translation>遵循speedrun限制,跳過本次運行</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="767"/>
         <source>Speedrun rule allows execution</source>
         <translation type="vanished">速通規則允許執行</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="798"/>
+        <location filename="../core/runner/task_flow.py" line="852"/>
         <source>Task &apos;{}&apos; execution failed.</source>
         <translation>任務「{}」執行失敗。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="820"/>
+        <location filename="../core/runner/task_flow.py" line="875"/>
         <source>Stopping task...</source>
         <translation>停止任務中</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="843"/>
-        <location filename="../core/runner/task_flow.py" line="899"/>
+        <location filename="../core/runner/task_flow.py" line="889"/>
+        <location filename="../core/runner/task_flow.py" line="958"/>
         <source>Unknown Task Entry</source>
         <translation>未知任務</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="884"/>
         <source>Task entry {} timed out, restarting attempt {}/3.</source>
         <translation type="vanished">任務 {} 超時, 重啟中 {}/3</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="900"/>
         <source>Task entry {} timed out after {} seconds.</source>
         <translation type="vanished">任務 {} 運行時長超過 {} 秒</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="916"/>
         <source>Task Timeout</source>
         <translation type="vanished">任務超時</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="917"/>
         <source>Task entry &apos;{}&apos; timed out after {} seconds.</source>
         <translation type="vanished">任務 {} 運行時長超過 {} 秒</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="931"/>
         <source>Task entry {} timed out after {} restarts, stopping flow.</source>
         <translation type="vanished">任務 {} 超時,經過 {} 次重啟仍無法解決,終止任務流</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="940"/>
         <source>Task Timeout - Flow Stopped</source>
         <translation type="vanished">任務超時</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="942"/>
         <source>Task entry &apos;{}&apos; timed out after {} restart attempts, flow stopped.</source>
         <translation type="vanished">任務 {} 超時,經過 {} 次重啟仍無法解決,終止任務流</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="986"/>
+        <location filename="../core/runner/task_flow.py" line="1025"/>
         <source>Auto searching ADB devices...</source>
         <translation>z自動搜索ADB設備中</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1009"/>
+        <location filename="../core/runner/task_flow.py" line="1048"/>
         <source>ADB path is empty, please configure ADB path in settings</source>
         <translation>ADB路徑為空，請在設定中設定ADB路徑。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1017"/>
+        <location filename="../core/runner/task_flow.py" line="1056"/>
         <source>ADB connection address is empty, please configure device connection in settings</source>
         <translation>ADB 連線位址為空，請在設定中設定設備連線。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1056"/>
+        <location filename="../core/runner/task_flow.py" line="1095"/>
         <source>try to start emulator</source>
         <translation>嘗試啟動模擬器</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1065"/>
+        <location filename="../core/runner/task_flow.py" line="1104"/>
         <source>waiting for emulator start...</source>
         <translation>等待模擬器啟動中</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1078"/>
+        <location filename="../core/runner/task_flow.py" line="1117"/>
         <source>Device connection failed</source>
         <translation>設備連接失敗</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1109"/>
+        <location filename="../core/runner/task_flow.py" line="1148"/>
         <source>Auto searching Win32 windows...</source>
         <translation>自動搜索win32中</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1148"/>
+        <location filename="../core/runner/task_flow.py" line="1187"/>
         <source>Window handle (hwnd) is empty, please configure window connection in settings</source>
         <translation>視窗句柄 (hwnd) 為空，請在設定中設定視窗連線。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1167"/>
+        <location filename="../core/runner/task_flow.py" line="1206"/>
         <source>try to start program</source>
         <translation>嘗試啟動程序</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1175"/>
+        <location filename="../core/runner/task_flow.py" line="1214"/>
         <source>waiting for program start...</source>
         <translation>等待程序啟動</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1232"/>
+        <location filename="../core/runner/task_flow.py" line="1271"/>
         <source>PlayCover UUID is empty, please configure UUID in settings</source>
         <translation>PlayCover UUID 為空，請在設定中設定 UUID。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1240"/>
+        <location filename="../core/runner/task_flow.py" line="1279"/>
         <source>PlayCover connection address is empty, please configure address in settings</source>
         <translation>PlayCover 連線位址為空，請在設定中設定位址。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1251"/>
+        <location filename="../core/runner/task_flow.py" line="1290"/>
         <source>Connecting to PlayCover: {address} (UUID: {uuid})</source>
         <translation>正在連接到 PlayCover：{address}（UUID：{uuid}）</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1255"/>
+        <location filename="../core/runner/task_flow.py" line="1298"/>
         <source>PlayCover connected successfully</source>
         <translation>PlayCover 已成功連接</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1258"/>
+        <location filename="../core/runner/task_flow.py" line="1301"/>
         <source>Failed to connect to PlayCover</source>
         <translation>連線 PlayCover 失敗</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1370"/>
+        <location filename="../core/runner/task_flow.py" line="1413"/>
         <source> seconds</source>
         <translation> 秒</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1779"/>
+        <location filename="../core/runner/task_flow.py" line="1822"/>
         <source>This period&apos;s remaining execution count is 0</source>
         <translation>本週期剩餘執行次數為 0</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1791"/>
+        <location filename="../core/runner/task_flow.py" line="1834"/>
         <source>Not enough time passed since last run. Minimum interval is </source>
         <translation>上次運轉至今時間不足。最小間隔為 </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1794"/>
+        <location filename="../core/runner/task_flow.py" line="1837"/>
         <source> hours.</source>
         <translation>時</translation>
     </message>

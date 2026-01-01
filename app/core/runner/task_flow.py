@@ -663,7 +663,10 @@ class TaskFlowRunner(QObject):
                         status_label = status_label_map.get(
                             status_key, status_label_map[""]
                         )
-                        summary_lines.append(f"- {tid}: {status_label}")
+                        # 通过任务ID获取任务对象，使用任务名称而不是ID
+                        task = self.task_service.get_task(tid)
+                        task_name = task.name if task else tid
+                        summary_lines.append(f"- {task_name}: {status_label}")
 
                 # 将日志信息格式化为文本
                 log_text_lines: list[str] = []
