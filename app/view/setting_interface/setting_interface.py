@@ -1327,6 +1327,10 @@ class SettingInterface(QWidget):
             return str(decrypted)
         except Exception as exc:
             logger.warning("解密 Mirror CDK 失败: %s", exc)
+            signalBus.info_bar_requested.emit(
+                "warning",
+                self.tr("decrypt Mirror CDK failed, please fill in again and save."),
+            )
             return ""
 
     def _onMirrorCardChange(self):
