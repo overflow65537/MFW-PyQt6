@@ -143,9 +143,16 @@ class 动作对象1(CustomAction):
 
 ## 使用 GitHub Action 自动构建
 
+0. 注意:此方案只适用于使用maafw模板构建的项目
 1. 将 `deploy/install.yml` 中的 `MaaXXX` 替换为你的项目名。
 2. 提交并推送到 GitHub 仓库的 `.github/workflows` 目录。
 3. 推送新版本后，GitHub Action 会自动构建发布。
+
+## 自行打包
+
+1. 根据自身需求下载对应系统和架构的项目资产
+2. 将`interface.json`,maafw资源等代码或者描述文件放入资产根目录(MFW执行方式同级)
+3. 运行
 
 ## 许可证
 
