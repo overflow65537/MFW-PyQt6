@@ -162,14 +162,30 @@ class 动作对象1(CustomAction):
 
 ### 开源项目
 
-- **[PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)**\
+- [PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)\
     A fluent design widgets library based on C++ Qt/PyQt/PySide. Make Qt Great Again.
-- **[MaaFramework](https://github.com/MaaAssistantArknights/MaaFramework)**\
+- [MaaFramework](https://github.com/MaaAssistantArknights/MaaFramework)\
     基于图像识别的自动化黑盒测试框架。
-- **[MirrorChyan](https://github.com/MirrorChyan/docs)**\
-    Mirror酱更新服务
-- **[AutoMAA](https://github.com/DLmaster361/AUTO_MAA)**\
+- [MaaDebugger](https://github.com/MaaXYZ/MaaDebugger)\
+    基于 MaaFramework 的调试器，用于查看和分析 MaaFramework 运行时的状态。
+- [AutoMAA](https://github.com/DLmaster361/AUTO_MAA)\
     明日方舟 MAA 插件，多账号管理与自动化工具。
+
+### 思路灵感
+
+- [MFAAvalonia](https://github.com/SweetSmellFox/MFAAvalonia)\
+    基于 Avalonia 的 MAAFramework 通用 GUI 项目 | A universal GUI project for MAAFramework based on Avalonia\
+  **MFW-ChainFlow Assistant 参考了 MFAAvalonia 的布局,但未使用其任何源代码。**
+
+- [MFWPH](https://github.com/TanyaShue/MFWPH)\
+    基于 MaaFramework 的 UI 启动器，可加载与管理多种自动化资源脚本\
+  **MFW-ChainFlow Assistant 参考了 MFWPH 的布局,但未使用其任何源代码。**
+
+### 其他支持
+
+- [MirrorChyan](https://github.com/MirrorChyan/docs)\
+    Mirror酱更新服务\
+  **MFW-ChainFlow Assistant 使用了 MirrorChyan 的更新服务。**
 
 ### 开发者
 
