@@ -344,6 +344,7 @@ class TaskFlowRunner(QObject):
             from app.core.utils.pipeline_helper import (
                 get_pipeline_override_from_task_option,
             )
+
             self._default_pipeline_override = get_pipeline_override_from_task_option(
                 self.task_service.interface, resource_cfg.task_option, _RESOURCE_
             )
@@ -449,7 +450,9 @@ class TaskFlowRunner(QObject):
                         send_notice(
                             NoticeTiming.WHEN_TASK_FAILED,
                             self.tr("Task Failed"),
-                            self.tr("Task '{}' was aborted or failed.").format(task.name),
+                            self.tr("Task '{}' was aborted or failed.").format(
+                                task.name
+                            ),
                         )
                 else:
                     # 记录任务结果
@@ -618,7 +621,7 @@ class TaskFlowRunner(QObject):
             # 在调用 stop_task 之前保存 _manual_stop 标志，避免被覆盖
             # 因为 stop_task 可能会在 finally 块中被调用，但我们需要保留手动停止的状态
             was_manual_stop = self._manual_stop
-            
+
             # 在 finally 块中调用 stop_task
             # 如果 _manual_stop 已经是 True，说明是手动停止，stop_task 会直接返回（因为 need_stop 已经是 True）
             # 如果 _manual_stop 是 False，说明是正常完成或异常退出，调用 stop_task 时也不设置 manual
@@ -893,11 +896,11 @@ class TaskFlowRunner(QObject):
         # 如果entry不同，重置状态
         if entry_text != self._timeout_active_entry:
             self._timeout_active_entry = entry_text
-        
+
         # 记录任务开始时间
         if self._current_running_task_id:
             self._task_start_times[self._current_running_task_id] = _time.time()
-        
+
         # 每小时（3600秒）检查一次
         timeout_seconds = 3600
         self._timeout_timer.stop()
@@ -907,7 +910,10 @@ class TaskFlowRunner(QObject):
         """停止任务超时计时"""
         self._timeout_timer.stop()
         # 清除当前任务的开始时间
-        if self._current_running_task_id and self._current_running_task_id in self._task_start_times:
+        if (
+            self._current_running_task_id
+            and self._current_running_task_id in self._task_start_times
+        ):
             del self._task_start_times[self._current_running_task_id]
 
     def _reset_task_timeout_state(self):
@@ -918,7 +924,6 @@ class TaskFlowRunner(QObject):
         # 清空所有任务开始时间记录
         self._task_start_times.clear()
 
-
     def _is_tasks_flow_completed_normally(self) -> bool:
         """判断任务流是否正常完成（非手动停止）"""
         return not self.need_stop and not self._manual_stop
@@ -927,14 +932,14 @@ class TaskFlowRunner(QObject):
         """获取收集到的任务日志内容"""
         if not self._log_messages:
             return ""
-        
+
         # 将日志信息格式化为文本
         log_text_lines: list[str] = []
         for level, text in self._log_messages:
             # 翻译日志级别
             translated_level = self._translate_log_level(level)
             log_text_lines.append(f"[{translated_level}] {text}")
-        
+
         return "\n".join(log_text_lines)
 
     def _on_task_timeout(self):
@@ -943,23 +948,23 @@ class TaskFlowRunner(QObject):
             # 没有正在运行的任务，停止定时器
             self._timeout_timer.stop()
             return
-        
+
         # 获取当前任务的开始时间
         task_start_time = self._task_start_times.get(self._current_running_task_id)
         if not task_start_time:
             # 没有开始时间记录，重新记录并继续
             self._task_start_times[self._current_running_task_id] = _time.time()
             return
-        
+
         # 计算任务运行时间
         current_time = _time.time()
         elapsed_seconds = current_time - task_start_time
         elapsed_hours = elapsed_seconds / 3600
-        
+
         # 如果运行时间超过1小时，发送通知
         if elapsed_hours >= 1.0:
             entry_text = self._timeout_active_entry or self.tr("Unknown Task Entry")
-            
+
             # 格式化运行时间
             hours = int(elapsed_hours)
             minutes = int((elapsed_seconds % 3600) / 60)
@@ -967,17 +972,17 @@ class TaskFlowRunner(QObject):
                 time_str = self.tr("{} hours {} minutes").format(hours, minutes)
             else:
                 time_str = self.tr("{} minutes").format(minutes)
-            
+
             timeout_message = self.tr(
                 "Task entry '{}' has been running for {}. This may indicate a problem. Please check the task status."
             ).format(entry_text, time_str)
-            
+
             logger.warning(timeout_message)
             signalBus.log_output.emit("WARNING", timeout_message)
-            
+
             # 获取收集到的任务日志内容
             log_content = self._get_collected_logs()
-            
+
             # 发送外部通知（类型为"任务超时"），内容为任务总结中的日志
             notice_content = log_content if log_content else timeout_message
             send_notice(
@@ -985,7 +990,7 @@ class TaskFlowRunner(QObject):
                 self.tr("Task running time too long"),
                 notice_content,
             )
-        
+
         # 定时器会继续运行，一小时后再次检查
 
     async def _connect_adb_controller(self, controller_raw: Dict[str, Any]):
@@ -1147,44 +1152,99 @@ class TaskFlowRunner(QObject):
         raw_mouse_method = controller_config.get("mouse_input_methods")
         raw_keyboard_method = controller_config.get("keyboard_input_methods")
 
-        logger.info("每次连接前自动搜索 Win32 窗口...")
-        signalBus.log_output.emit("INFO", self.tr("Auto searching Win32 windows..."))
-        found_device = await self._auto_find_win32_window(
-            controller_raw, controller_type, controller_config
-        )
-        if found_device:
-            logger.info("检测到与配置匹配的 Win32 窗口，更新连接参数")
-            self._save_device_to_config(controller_raw, controller_name, found_device)
-            controller_config = controller_raw[controller_name]
-            # 恢复原始的配置值
+        def _restore_raw_methods():
             if raw_screencap_method is not None:
                 controller_config["win32_screencap_methods"] = raw_screencap_method
             if raw_mouse_method is not None:
                 controller_config["mouse_input_methods"] = raw_mouse_method
             if raw_keyboard_method is not None:
                 controller_config["keyboard_input_methods"] = raw_keyboard_method
+
+        def _collect_win32_params():
+            hwnd_raw = controller_config.get("hwnd", 0)
+            try:
+                hwnd_value = int(hwnd_raw)
+            except (TypeError, ValueError):
+                hwnd_value = 0
+            screencap = (
+                raw_screencap_method
+                if raw_screencap_method is not None
+                else controller_config.get("win32_screencap_methods", 1)
+            )
+            mouse = (
+                raw_mouse_method
+                if raw_mouse_method is not None
+                else controller_config.get("mouse_input_methods", 1)
+            )
+            keyboard = (
+                raw_keyboard_method
+                if raw_keyboard_method is not None
+                else controller_config.get("keyboard_input_methods", 1)
+            )
+            return hwnd_value, screencap, mouse, keyboard
+
+        logger.info("每次连接前自动搜索 Win32 窗口...")
+        signalBus.log_output.emit("INFO", self.tr("Auto searching Win32 windows..."))
+        found_device = await self._auto_find_win32_window(
+            controller_raw, controller_type, controller_name, controller_config
+        )
+        matched_device = bool(found_device)
+        if found_device:
+            logger.info("检测到与配置匹配的 Win32 窗口，更新连接参数")
+            self._save_device_to_config(controller_raw, controller_name, found_device)
+            controller_config = controller_raw[controller_name]
+            _restore_raw_methods()
         else:
-            logger.debug("未匹配到与配置一致的 Win32 窗口，继续使用当前配置")
+            logger.debug("未匹配到与配置一致的 Win32 窗口")
 
-        hwnd = int(controller_config.get("hwnd", 0))
-        # 使用之前保存的原始值，如果不存在则使用配置中的值或默认值
-        screencap_method = (
-            raw_screencap_method
-            if raw_screencap_method is not None
-            else controller_config.get("win32_screencap_methods", 1)
-        )
-        mouse_method = (
-            raw_mouse_method
-            if raw_mouse_method is not None
-            else controller_config.get("mouse_input_methods", 1)
-        )
-        keyboard_method = (
-            raw_keyboard_method
-            if raw_keyboard_method is not None
-            else controller_config.get("keyboard_input_methods", 1)
+        hwnd, screencap_method, mouse_method, keyboard_method = (
+            _collect_win32_params()
         )
 
-        # 检查 hwnd 是否为空
+        logger.debug(
+            f"Win32 参数类型: hwnd={hwnd}, screencap_method={screencap_method}, mouse_method={mouse_method}, keyboard_method={keyboard_method}"
+        )
+
+        if matched_device:
+            connect_success = await self.maafw.connect_win32hwnd(
+                hwnd,
+                screencap_method,
+                mouse_method,
+                keyboard_method,
+            )
+            if connect_success:
+                return True
+        program_path = controller_config.get("program_path", "")
+        if not program_path:
+            logger.error("Win32 控制器未匹配窗口且未配置启动程序")
+            signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+            return False
+        signalBus.log_output.emit("INFO", self.tr("try to start program"))
+        logger.info("尝试启动程序")
+        program_params = controller_config.get("program_params", "")
+        wait_program_start = int(controller_config.get("wait_launch_time", 0))
+        self.process = self._start_process(program_path, program_params)
+        if wait_program_start > 0:
+            countdown_ok = await self._countdown_wait(
+                wait_program_start,
+                self.tr("waiting for program start..."),
+            )
+            if not countdown_ok:
+                return False
+        found_after_launch = await self._auto_find_win32_window(
+            controller_raw, controller_type, controller_name, controller_config
+        )
+        if not found_after_launch:
+            logger.error("启动程序后未找到与配置匹配的 Win32 窗口")
+            signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+            return False
+        logger.info("检测到启动后的 Win32 窗口，更新连接参数")
+        self._save_device_to_config(controller_raw, controller_name, found_after_launch)
+        controller_config = controller_raw[controller_name]
+        _restore_raw_methods()
+        hwnd, screencap_method, mouse_method, keyboard_method = (
+            _collect_win32_params()
+        )
         if not hwnd:
             error_msg = self.tr(
                 "Window handle (hwnd) is empty, please configure window connection in settings"
@@ -1192,11 +1252,6 @@ class TaskFlowRunner(QObject):
             logger.error("Win32 窗口句柄为空")
             signalBus.log_output.emit("ERROR", error_msg)
             return False
-
-        logger.debug(
-            f"Win32 参数类型: hwnd={hwnd}, screencap_method={screencap_method}, mouse_method={mouse_method}, keyboard_method={keyboard_method}"
-        )
-
         if await self.maafw.connect_win32hwnd(
             hwnd,
             screencap_method,
@@ -1204,30 +1259,8 @@ class TaskFlowRunner(QObject):
             keyboard_method,
         ):
             return True
-        elif controller_config.get("program_path", ""):
-            logger.info("尝试启动程序")
-            signalBus.log_output.emit("INFO", self.tr("try to start program"))
-            program_path = controller_config.get("program_path", "")
-            program_params = controller_config.get("program_params", "")
-            wait_program_start = int(controller_config.get("wait_launch_time", 0))
-            self.process = self._start_process(program_path, program_params)
-            if wait_program_start > 0:
-                countdown_ok = await self._countdown_wait(
-                    wait_program_start,
-                    self.tr("waiting for program start..."),
-                )
-                if not countdown_ok:
-                    return False
-            if await self.maafw.connect_win32hwnd(
-                hwnd,
-                screencap_method,
-                mouse_method,
-                keyboard_method,
-            ):
-                return False
-        else:
-            return False
-        return True
+        signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+        return False
 
     async def _connect_playcover_controller(self, controller_raw: Dict[str, Any]):
         """连接 PlayCover 控制器"""
@@ -1237,7 +1270,7 @@ class TaskFlowRunner(QObject):
             logger.error("PlayCover 控制器仅在 macOS 上支持")
             signalBus.log_output.emit("ERROR", error_msg)
             return False
-        
+
         if not isinstance(controller_raw, dict):
             logger.error(
                 f"控制器配置格式错误(PlayCover)，期望 dict，实际 {type(controller_raw)}: {controller_raw}"
@@ -1285,9 +1318,7 @@ class TaskFlowRunner(QObject):
             signalBus.log_output.emit("ERROR", error_msg)
             return False
 
-        logger.debug(
-            f"PlayCover 参数: uuid={uuid}, address={address}"
-        )
+        logger.debug(f"PlayCover 参数: uuid={uuid}, address={address}")
 
         logger.info(f"正在连接 PlayCover: {address} (UUID: {uuid})")
         msg = self.tr("Connecting to PlayCover: {address} (UUID: {uuid})").format(
@@ -1298,7 +1329,9 @@ class TaskFlowRunner(QObject):
 
         if await self.maafw.connect_playcover(address, uuid):
             logger.info("PlayCover 连接成功")
-            signalBus.log_output.emit("INFO", self.tr("PlayCover connected successfully"))
+            signalBus.log_output.emit(
+                "INFO", self.tr("PlayCover connected successfully")
+            )
             return True
         else:
             error_msg = self.tr("Failed to connect to PlayCover")
@@ -1377,6 +1410,61 @@ class TaskFlowRunner(QObject):
             return old_name == new_name
         else:
             return False
+
+    def _get_interface_controller_entry(
+        self, controller_name: str
+    ) -> Dict[str, Any] | None:
+        """根据控制器名称查找 interface 中的控制器定义"""
+        if not controller_name:
+            return None
+        controller_lower = controller_name.strip().lower()
+        for controller in self.task_service.interface.get("controller", []):
+            if controller.get("name", "").lower() == controller_lower:
+                return controller
+        return None
+
+    def _compile_win32_regex(
+        self, pattern: str | None, label: str
+    ) -> re.Pattern | None:
+        """编译 Win32 过滤正则，失败时返回 None"""
+        if not pattern:
+            return None
+        try:
+            return re.compile(pattern)
+        except re.error as exc:
+            logger.warning(f"Win32 {label} 过滤正则编译失败: {exc}")
+            return None
+
+    def _get_win32_filter_patterns(
+        self, controller_name: str
+    ) -> tuple[re.Pattern | None, re.Pattern | None]:
+        """从 interface 中提取 Win32 过滤正则"""
+        controller_entry = self._get_interface_controller_entry(controller_name)
+        if not controller_entry:
+            return None, None
+        win32_cfg = controller_entry.get("win32") or {}
+        return (
+            self._compile_win32_regex(win32_cfg.get("class_regex"), "类名"),
+            self._compile_win32_regex(win32_cfg.get("window_regex"), "窗口名"),
+        )
+
+    def _window_matches_win32_filters(
+        self,
+        window_info: Dict[str, Any],
+        class_pattern: re.Pattern | None,
+        window_pattern: re.Pattern | None,
+    ) -> bool:
+        """检查窗口是否满足 Win32 过滤正则（类名+窗口名）"""
+        if not class_pattern and not window_pattern:
+            return True
+
+        class_name = str(window_info.get("class_name") or "")
+        window_name = str(window_info.get("window_name") or "")
+        class_match = bool(class_pattern.search(class_name)) if class_pattern else True
+        window_match = (
+            bool(window_pattern.search(window_name)) if window_pattern else True
+        )
+        return class_match and window_match
 
     def _start_process(
         self, entry: str | Path, argv: list[str] | tuple[str, ...] | str | None = None
@@ -1527,6 +1615,7 @@ class TaskFlowRunner(QObject):
         self,
         controller_raw: Dict[str, Any],
         controller_type: str,
+        controller_name: str,
         controller_config: Dict[str, Any],
     ) -> Dict[str, Any] | None:
         """自动搜索 Win32 窗口并找到与旧配置一致的那一项"""
@@ -1537,6 +1626,9 @@ class TaskFlowRunner(QObject):
                 return None
 
             all_window_infos = []
+            class_pattern, window_pattern = self._get_win32_filter_patterns(
+                controller_name
+            )
             for window in windows:
                 window_info = {
                     "hwnd": str(window.hwnd),
@@ -1545,6 +1637,10 @@ class TaskFlowRunner(QObject):
                     "device_name": f"{window.window_name or 'Unknown Window'}({window.hwnd})",
                 }
                 all_window_infos.append(window_info)
+                if not self._window_matches_win32_filters(
+                    window_info, class_pattern, window_pattern
+                ):
+                    continue
                 if self._should_use_new_win32_window(controller_config, window_info):
                     return window_info
             logger.debug("Win32 窗口列表均未满足与配置匹配的条件，跳过更新")
