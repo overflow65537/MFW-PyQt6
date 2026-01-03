@@ -28,6 +28,7 @@ import hmac
 import hashlib
 import base64
 import urllib.parse
+import threading
 from enum import IntEnum
 
 import requests
@@ -315,6 +316,8 @@ class NoticeSendThread(QThread):
         self.setObjectName("NoticeSendThread")
         self._stop_flag = False
         self.queue = Queue()  # 创建消息队列
+        self._active_tasks = 0
+        self._lock = threading.Lock()
         # 内置映射表，将通知类型映射到对应的发送函数
         self.notice_mapping = {
             "dingtalk": dingtalk_send,
@@ -339,6 +342,8 @@ class NoticeSendThread(QThread):
         while not self._stop_flag:
             if not self.queue.empty():
                 send_func, msg_dict, status = self.queue.get()
+                with self._lock:
+                    self._active_tasks += 1
                 try:
                     result = send_func(msg_dict, status)
                     signalBus.notice_finished.emit(int(result), send_func.__name__)
@@ -409,6 +414,10 @@ class NoticeSendThread(QThread):
                     signalBus.notice_finished.emit(
                         int(NoticeErrorCode.UNKNOWN_ERROR), send_func.__name__
                     )
+                finally:
+                    with self._lock:
+                        self._active_tasks -= 1
+                    self.queue.task_done()
             else:
                 self.msleep(100)
 
@@ -420,6 +429,21 @@ class NoticeSendThread(QThread):
     def __del__(self):
         """析构函数，确保线程在对象销毁前停止"""
         self.stop()
+
+    def is_idle(self) -> bool:
+        """判断当前队列和执行状态是否空闲"""
+        with self._lock:
+            active = self._active_tasks
+        return self.queue.empty() and active == 0
+
+    def wait_until_idle(self, timeout: float = 5.0) -> bool:
+        """等待队列处理完所有任务，最多等待 timeout 秒"""
+        deadline = time.time() + timeout
+        while not self.is_idle():
+            if time.time() >= deadline:
+                return self.is_idle()
+            time.sleep(0.05)
+        return True
 
 
 def dingtalk_send(

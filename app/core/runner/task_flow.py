@@ -21,7 +21,7 @@ from app.common.signal_bus import signalBus
 from app.common.config import cfg, Config
 
 from maa.toolkit import Toolkit
-from app.utils.notice import NoticeTiming, send_notice
+from app.utils.notice import NoticeTiming, send_notice, send_thread
 
 from app.utils.logger import logger
 from app.core.service.Config_Service import ConfigService
@@ -1197,9 +1197,7 @@ class TaskFlowRunner(QObject):
         else:
             logger.debug("未匹配到与配置一致的 Win32 窗口")
 
-        hwnd, screencap_method, mouse_method, keyboard_method = (
-            _collect_win32_params()
-        )
+        hwnd, screencap_method, mouse_method, keyboard_method = _collect_win32_params()
 
         logger.debug(
             f"Win32 参数类型: hwnd={hwnd}, screencap_method={screencap_method}, mouse_method={mouse_method}, keyboard_method={keyboard_method}"
@@ -1242,9 +1240,7 @@ class TaskFlowRunner(QObject):
         self._save_device_to_config(controller_raw, controller_name, found_after_launch)
         controller_config = controller_raw[controller_name]
         _restore_raw_methods()
-        hwnd, screencap_method, mouse_method, keyboard_method = (
-            _collect_win32_params()
-        )
+        hwnd, screencap_method, mouse_method, keyboard_method = _collect_win32_params()
         if not hwnd:
             error_msg = self.tr(
                 "Window handle (hwnd) is empty, please configure window connection in settings"
@@ -1791,8 +1787,31 @@ class TaskFlowRunner(QObject):
             logger.warning("完成后关闭软件: 无法获取 QCoreApplication 实例")
             return
 
+        logger.info("完成后关闭软件: 等待通知发送完成")
+        await self._wait_for_notice_delivery()
         logger.info("完成后关闭软件: 退出应用")
         app.quit()
+
+    async def _wait_for_notice_delivery(self, timeout: float = 10.0) -> None:
+        """等待通知线程将当前队列中的消息发送完毕"""
+        if not hasattr(send_thread, "wait_until_idle"):
+            return
+
+        try:
+            if not send_thread.is_idle():
+                signalBus.info_bar_requested.emit(
+                    "info",
+                    self.tr(
+                        "Notifications are being sent, please wait up to {} seconds"
+                    ).format(int(timeout)),
+                )
+            completed = await asyncio.to_thread(send_thread.wait_until_idle, timeout)
+            if not completed:
+                logger.warning(
+                    "等待通知发送完成超时: %s 秒，仍有未完成的通知任务", timeout
+                )
+        except Exception as exc:
+            logger.warning("等待通知发送完成时出错: %s", exc)
 
     def _close_emulator(self) -> None:
         """关闭模拟器"""
