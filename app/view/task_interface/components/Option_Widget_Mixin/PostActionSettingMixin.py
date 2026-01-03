@@ -155,6 +155,86 @@ class PostActionSettingMixin:
         self.current_config[self._CONFIG_KEY] = merged
         self._post_action_state = merged
 
+    def _get_current_controller_type(self) -> str | None:
+        """从配置中解析当前控制器类型，兼容 ControllerSettingMixin 的判断逻辑"""
+        controller_name = self.current_config.get("controller_type")
+        if not isinstance(controller_name, str) or not controller_name:
+            return None
+
+        controller_map = getattr(self, "controller_type_mapping", None) or {}
+        for ctrl_info in controller_map.values():
+            if ctrl_info.get("name") == controller_name:
+                ctrl_type = ctrl_info.get("type")
+                if isinstance(ctrl_type, str):
+                    return ctrl_type.lower()
+
+        controller_widget = getattr(self, "controller_setting_widget", None)
+        controller_type = getattr(controller_widget, "current_controller_type", None)
+        if isinstance(controller_type, str):
+            return controller_type.lower()
+        return None
+
+    def _has_non_none_actions_selected(self) -> bool:
+        """检查是否存在除了“无动作”以外的已选中项"""
+        if not hasattr(self, "_post_action_state"):
+            return False
+        action_keys = (
+            self._PRIMARY_ACTIONS.union(self._SECONDARY_ACTIONS)
+            .union(self._OPTIONAL_ACTIONS)
+            - {"none"}
+        )
+        return any(self._post_action_state.get(action_key, False) for action_key in action_keys)
+
+    def _select_none_action(self) -> bool:
+        """在没有其他动作时自动激活“无动作”"""
+        if self._post_action_state.get("none"):
+            return False
+        none_widget = self.post_action_widgets.get("none")
+        if isinstance(none_widget, CheckBox):
+            none_widget.blockSignals(True)
+            none_widget.setChecked(True)
+            none_widget.blockSignals(False)
+        self._post_action_state["none"] = True
+        return True
+
+    def _update_close_emulator_availability(self) -> None:
+        """根据控制器类型控制“关闭模拟器”选项的可用性"""
+        if not hasattr(self, "_post_action_state") or not self.post_action_widgets:
+            return
+        checkbox = self.post_action_widgets.get("close_emulator")
+        if not isinstance(checkbox, CheckBox):
+            return
+
+        controller_type = self._get_current_controller_type()
+        is_allowed = controller_type == "adb"
+        checkbox.setEnabled(is_allowed)
+        if is_allowed:
+            return
+
+        state_changed = False
+        if self._post_action_state.get("close_emulator"):
+            self._post_action_state["close_emulator"] = False
+            state_changed = True
+
+        if checkbox.isChecked():
+            checkbox.blockSignals(True)
+            checkbox.setChecked(False)
+            checkbox.blockSignals(False)
+
+        if not self._has_non_none_actions_selected():
+            state_changed = self._select_none_action() or state_changed
+
+        if state_changed:
+            self._update_combo_enabled_state()
+            self._update_program_inputs_enabled()
+            self._save_post_action_state()
+
+    def _on_post_action_controller_type_changed(self, label: str, is_initializing: bool = False) -> None:
+        """控制器类型变化时同步完成后动作面板的状态"""
+        if not self.post_action_widgets:
+            return
+        self._update_close_emulator_availability()
+
     def _apply_post_action_state_to_widgets(self) -> None:
         """同步状态到控件"""
         self._post_action_syncing = True
@@ -181,6 +261,7 @@ class PostActionSettingMixin:
         self._apply_program_inputs_state()
         self._update_program_inputs_enabled()
         self._post_action_syncing = False
+        self._update_close_emulator_availability()
 
     def _on_post_action_checkbox_changed(self, key: str, checked: bool) -> None:
         if self._post_action_syncing:
