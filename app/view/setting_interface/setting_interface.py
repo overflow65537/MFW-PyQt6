@@ -5,6 +5,7 @@ MFW-ChainFlow Assistant 设置界面
 """
 
 import json
+import os
 import re
 from time import perf_counter
 from pathlib import Path
@@ -124,21 +125,68 @@ def rename_updater_binary(old_name: str, new_name: str) -> None:
         os.rename(old_name, new_name)
 
 
+def _is_running_with_admin_privileges() -> bool:
+    """检查当前进程是否具有管理员/root 权限。"""
+    if sys.platform.startswith("win32"):
+        try:
+            import ctypes
+
+            return bool(ctypes.windll.shell32.IsUserAnAdmin())
+        except Exception as exc:  # pragma: no cover - admin 检测失败日志仍然有价值
+            logger.error("检查管理员权限失败: %s", exc)
+            return False
+
+    get_euid = getattr(os, "geteuid", None)
+    if callable(get_euid):
+        try:
+            return get_euid() == 0
+        except Exception as exc:  # pragma: no cover - 异常比较罕见
+            logger.error("检查 root 权限失败: %s", exc)
+    return False
+
+
+def _start_windows_process_with_admin(executable: Path, args: list[str]) -> None:
+    """使用 ShellExecuteW(runas) 在 Windows 上以管理员权限启动更新器。"""
+    import ctypes
+    import subprocess as _subprocess
+
+    cmdline = _subprocess.list2cmdline(args)
+    working_dir = str(executable.parent)
+    result = ctypes.windll.shell32.ShellExecuteW(
+        None, "runas", str(executable), cmdline, working_dir, 1
+    )
+    if result <= 32:
+        raise RuntimeError(f"以管理员权限启动更新器失败: ShellExecuteW 返回值 {result}")
+
+
 def launch_updater_process(*extra_args: str) -> None:
     """启动更新器进程的底层实现，由调用方负责异常处理/提示。"""
     import sys
     import subprocess
 
+    extra_arg_list = list(extra_args)
+
     if sys.platform.startswith("win32"):
-        cmd = ["./MFWUpdater1.exe", "-update"]
-        logger.info("启动更新程序: %s", " ".join(cmd + list(extra_args)))
+        updater_executable = Path("./MFWUpdater1.exe")
+        resolved_executable = updater_executable.resolve(strict=False)
+        args = ["-update"] + extra_arg_list
+        command_line = subprocess.list2cmdline([str(resolved_executable)] + args)
+        if _is_running_with_admin_privileges():
+            logger.info("主程序具有管理员权限，使用管理员方式启动更新程序: %s", command_line)
+            _start_windows_process_with_admin(resolved_executable, args)
+            return
+        logger.info("启动更新程序: %s", command_line)
+        cmd = [str(resolved_executable)] + args
     elif sys.platform.startswith(("darwin", "linux")):
-        cmd = ["./MFWUpdater1", "-update"]
-        logger.info("启动更新程序: %s", " ".join(cmd + list(extra_args)))
+        updater_executable = Path("./MFWUpdater1")
+        resolved_executable = updater_executable.resolve(strict=False)
+        args = ["-update"] + extra_arg_list
+        command_line = subprocess.list2cmdline([str(resolved_executable)] + args)
+        logger.info("启动更新程序: %s", command_line)
+        cmd = [str(resolved_executable)] + args
     else:
         raise NotImplementedError("Unsupported platform")
-    if extra_args:
-        cmd.extend(extra_args)
+
     subprocess.Popen(cmd)
 
 
