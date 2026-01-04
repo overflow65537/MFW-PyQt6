@@ -36,6 +36,7 @@ import shutil
 import sys
 import threading
 import zipfile
+from datetime import datetime, timedelta
 
 from collections import OrderedDict
 from pathlib import Path
@@ -879,6 +880,9 @@ class MainWindow(MSFluentWindow):
             signalBus.log_zip_finished.emit()
             return
 
+        # 在打包前清理旧文件
+        self._cleanup_old_files(debug_dir)
+
         zip_path = self._build_log_zip_path()
         errors: list[str] = []
         try:
@@ -905,6 +909,44 @@ class MainWindow(MSFluentWindow):
         finally:
             self._log_zip_running = False
             signalBus.log_zip_finished.emit()
+
+    def _cleanup_old_files(self, debug_dir: Path) -> None:
+        """清理debug目录中的旧文件。
+        
+        - on_error文件夹内的文件，只保留三天内的
+        - vision文件夹内的文件，只保留一天内的
+        """
+        now = datetime.now()
+        three_days_ago = now - timedelta(days=3)
+        one_day_ago = now - timedelta(days=1)
+        
+        # 清理 on_error 文件夹内的文件（保留三天内的）
+        on_error_dir = debug_dir / "on_error"
+        if on_error_dir.exists() and on_error_dir.is_dir():
+            for file_path in on_error_dir.iterdir():
+                if file_path.is_file():
+                    try:
+                        # 获取文件的修改时间
+                        mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
+                        if mtime < three_days_ago:
+                            file_path.unlink()
+                            logger.info(f"删除过期文件（on_error，超过3天）：{file_path}")
+                    except Exception as exc:
+                        logger.warning(f"清理on_error文件失败：{file_path} ({exc})")
+        
+        # 清理 vision 文件夹内的文件（保留一天内的）
+        vision_dir = debug_dir / "vision"
+        if vision_dir.exists() and vision_dir.is_dir():
+            for file_path in vision_dir.iterdir():
+                if file_path.is_file():
+                    try:
+                        # 获取文件的修改时间
+                        mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
+                        if mtime < one_day_ago:
+                            file_path.unlink()
+                            logger.info(f"删除过期文件（vision，超过1天）：{file_path}")
+                    except Exception as exc:
+                        logger.warning(f"清理vision文件失败：{file_path} ({exc})")
 
     def _write_locked_log(
         self,
