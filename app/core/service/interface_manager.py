@@ -317,7 +317,9 @@ class InterfaceManager:
         if not agent_info:
             return
         if not agent_info.get("embedded"):
+            logger.debug("agent 配置中没有 embedded 字段，跳过嵌入式转换")
             return
+        logger.debug("处理嵌入式 agent")
 
         child_args = agent_info.get("child_args", [])
         entry_path = self._resolve_agent_entry(child_args)
@@ -337,8 +339,18 @@ class InterfaceManager:
         self._original_interface["_agent_backup"] = deepcopy(agent_info)
         self._original_interface.pop("agent", None)
 
-        custom_relative = Path(custom_dir.name) / "custom.json"
+        # 计算相对于 bundle 目录（_interface_dir）的相对路径
+        custom_relative = custom_dir.relative_to(self._interface_dir) / "custom.json"
         self._original_interface["custom"] = custom_relative.as_posix()
+
+        # 将修改后的 interface 保存回文件（保存到正确的 bundlepath 位置）
+        if self._interface_path:
+            try:
+                with open(self._interface_path, "w", encoding="utf-8") as f:
+                    jsonc.dump(self._original_interface, f, indent=4, ensure_ascii=False)
+                logger.debug(f"已将 custom 字段保存到: {self._interface_path}")
+            except Exception as exc:
+                logger.exception(f"保存 interface 文件失败: {exc}")
 
     def _resolve_agent_entry(self, child_args: Sequence[Any]) -> Path | None:
         """

@@ -137,6 +137,17 @@ class BundleListItem(QWidget):
         )
         layout.addWidget(self.update_log_button)
 
+        # 删除按钮
+        self.delete_button = ToolButton(FIF.DELETE, self)
+        self.delete_button.setFixedSize(32, 32)
+        self.delete_button.installEventFilter(
+            ToolTipFilter(self.delete_button, 0, ToolTipPosition.TOP)
+        )
+        self.delete_button.setToolTip(
+            QCoreApplication.translate("BundleInterface", "Delete bundle")
+        )
+        layout.addWidget(self.delete_button)
+
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
     def update_latest_version(self, latest_version: Optional[str]):
@@ -605,6 +616,13 @@ class BundleInterface(UI_BundleInterface, QWidget):
                     # 连接更新日志按钮的点击事件
                     item_widget.update_log_button.clicked.connect(
                         lambda checked=False, name=bundle_name: self._open_bundle_update_log( # type: ignore
+                            name
+                        )
+                    )
+
+                    # 连接删除按钮的点击事件
+                    item_widget.delete_button.clicked.connect(
+                        lambda checked=False, name=bundle_name: self._on_delete_bundle_clicked( # type: ignore
                             name
                         )
                     )
@@ -1259,6 +1277,12 @@ class BundleInterface(UI_BundleInterface, QWidget):
             self._check_single_bundle_update(bundle_name)
 
         logger.info(f"已添加新 bundle: {bundle_name} -> {bundle_path}")
+        
+        # 显示成功提示
+        signalBus.info_bar_requested.emit(
+            "success",
+            self.tr("Bundle '{}' added successfully").format(bundle_name)
+        )
 
     def _load_release_notes(self, bundle_name: str) -> dict:
         """加载指定 bundle 的更新日志
@@ -1320,6 +1344,112 @@ class BundleInterface(UI_BundleInterface, QWidget):
         dialog.button_yes.hide()
         dialog.exec()
 
+    def _on_delete_bundle_clicked(self, bundle_name: str):
+        """处理删除 bundle 按钮点击事件
+
+        Args:
+            bundle_name: bundle 名称
+        """
+        # 获取 bundle 显示名称
+        bundle_data = self._bundle_data.get(bundle_name, {})
+        bundle_display_name = bundle_data.get("name", bundle_name)
+
+        # 查找所有使用该 bundle 的配置
+        configs_to_delete = []
+        try:
+            all_configs = self.service_coordinator.config.list_configs()
+            for config_info in all_configs:
+                config_id = config_info.get("item_id")
+                if not config_id:
+                    continue
+                
+                # 获取配置的完整数据
+                config_item = self.service_coordinator.config.get_config(config_id)
+                if config_item and config_item.bundle == bundle_name:
+                    configs_to_delete.append({
+                        "id": config_id,
+                        "name": config_item.name
+                    })
+        except Exception as e:
+            logger.error(f"查找使用 bundle '{bundle_name}' 的配置时出错: {e}")
+            signalBus.info_bar_requested.emit(
+                "error",
+                self.tr("Failed to find configurations using this bundle: {}").format(str(e))
+            )
+            return
+
+        # 构建确认消息
+        config_names = [cfg["name"] for cfg in configs_to_delete]
+        if config_names:
+            message = self.tr(
+                "Are you sure you want to delete bundle '{}'?\n\n"
+                "The following configurations using this bundle will also be deleted:\n"
+                "{}"
+            ).format(bundle_display_name, "\n".join(f"  - {name}" for name in config_names))
+        else:
+            message = self.tr(
+                "Are you sure you want to delete bundle '{}'?"
+            ).format(bundle_display_name)
+
+        # 弹出确认对话框
+        from qfluentwidgets import MessageBox
+        
+        msg_box = MessageBox(
+            self.tr("Delete Bundle"),
+            message,
+            self
+        )
+
+        if msg_box.exec() != msg_box.DialogCode.Accepted:
+            return
+
+        # 用户确认，开始删除
+        try:
+            # 先删除所有使用该 bundle 的配置
+            for config_info in configs_to_delete:
+                config_id = config_info["id"]
+                config_name = config_info["name"]
+                try:
+                    success = self.service_coordinator.delete_config(config_id)
+                    if success:
+                        logger.info(f"已删除配置: {config_name} ({config_id})")
+                    else:
+                        logger.warning(f"删除配置失败: {config_name} ({config_id})")
+                except Exception as e:
+                    logger.error(f"删除配置 '{config_name}' 时出错: {e}")
+
+            # 删除 bundle
+            success = self.service_coordinator.delete_bundle(bundle_name)
+            if success:
+                logger.info(f"已删除 bundle: {bundle_display_name} ({bundle_name})")
+                signalBus.info_bar_requested.emit(
+                    "success",
+                    self.tr("Bundle '{}' and {} related configuration(s) deleted successfully").format(
+                        bundle_display_name, len(configs_to_delete)
+                    )
+                )
+                
+                # 重新加载配置服务的主配置
+                try:
+                    self.service_coordinator.config_service.load_main_config()
+                except Exception as e:
+                    logger.warning(f"重新加载主配置失败: {e}")
+                
+                # 刷新 bundle 列表
+                self._load_bundles()
+            else:
+                logger.error(f"删除 bundle 失败: {bundle_display_name}")
+                signalBus.info_bar_requested.emit(
+                    "error",
+                    self.tr("Failed to delete bundle: {}").format(bundle_display_name)
+                )
+        except Exception as e:
+            logger.error(f"删除 bundle '{bundle_name}' 时发生错误: {e}", exc_info=True)
+            signalBus.info_bar_requested.emit(
+                "error",
+                self.tr("An error occurred while deleting bundle: {}").format(str(e))
+            )
+
 
 class AddBundleDialog(MessageBoxBase):
     """添加 Bundle 对话框"""
@@ -1372,10 +1502,17 @@ class AddBundleDialog(MessageBoxBase):
 
         self.yesButton.setText(self.tr("Confirm"))
         self.cancelButton.setText(self.tr("Cancel"))
+        # 先断开可能的默认连接，再连接我们的处理方法
+        try:
+            self.yesButton.clicked.disconnect()
+        except TypeError:
+            # 如果没有连接，disconnect() 会抛出 TypeError，忽略即可
+            pass
         self.yesButton.clicked.connect(self._on_confirm)
 
         self._bundle_name: str = ""
         self._bundle_path: str = ""
+        self._is_processing: bool = False  # 防止重复执行
 
     def _choose_bundle_source(self) -> None:
         """选择 interface.json 文件。"""
@@ -1383,10 +1520,7 @@ class AddBundleDialog(MessageBoxBase):
             self,
             self.tr("Choose Interface File"),
             "./",
-            self.tr(
-                "Interface Files (interface.json interface.jsonc);;"
-                "All Files (*)"
-            ),
+            self.tr("All Files (*.*)"),
         )
         if not file_path:
             return
@@ -1424,169 +1558,347 @@ class AddBundleDialog(MessageBoxBase):
                 self.name_edit.setText("Default Bundle")
 
     def _on_confirm(self) -> None:
+        # 防止重复执行
+        if self._is_processing:
+            logger.warning("[防重复] _on_confirm 已在处理中，忽略重复调用")
+            return
+        
+        self._is_processing = True
+        logger.info("=" * 60)
+        logger.info("开始添加 bundle 流程")
+        logger.info("=" * 60)
+        
         name = self.name_edit.text().strip()
         interface_file_path = self.path_edit.text().strip()
+        
+        logger.info(f"[步骤1] 获取用户输入:")
+        logger.info(f"  - 名称输入框内容: '{name}'")
+        logger.info(f"  - 路径输入框内容: '{interface_file_path}'")
 
         def _show_error(msg: str) -> None:
             # 通过信号总线发送 InfoBar 通知，由主窗口统一处理
+            logger.error(f"[错误] {msg}")
             signalBus.info_bar_requested.emit("error", msg)
+            self._is_processing = False  # 错误时重置标志
 
         try:
+            logger.info("[步骤2] 验证输入路径")
             if not interface_file_path:
+                logger.error("[步骤2] 失败: 路径为空")
                 _show_error(self.tr("Interface file path cannot be empty"))
                 return
+            logger.info(f"[步骤2] 路径不为空: '{interface_file_path}'")
 
             interface_path = Path(interface_file_path)
+            logger.info(f"[步骤2] 转换为 Path 对象: {interface_path}")
+            logger.info(f"[步骤2] 绝对路径: {interface_path.resolve()}")
+            
             if not interface_path.exists():
+                logger.error(f"[步骤2] 失败: 文件不存在 - {interface_path}")
                 _show_error(self.tr("Selected interface file does not exist"))
                 return
+            logger.info(f"[步骤2] 文件存在: {interface_path.exists()}")
 
             if not interface_path.is_file():
+                logger.error(f"[步骤2] 失败: 不是文件 - {interface_path}")
                 _show_error(self.tr("Selected path is not a file"))
                 return
+            logger.info(f"[步骤2] 是文件: {interface_path.is_file()}")
 
-            if interface_path.name.lower() not in ("interface.json", "interface.jsonc"):
+            file_name_lower = interface_path.name.lower()
+            logger.info(f"[步骤2] 文件名: '{interface_path.name}' (小写: '{file_name_lower}')")
+            if file_name_lower not in ("interface.json", "interface.jsonc"):
+                logger.error(f"[步骤2] 失败: 文件名不符合要求 - '{interface_path.name}'")
                 _show_error(self.tr("Please select interface.json or interface.jsonc file"))
                 return
+            logger.info(f"[步骤2] 文件名验证通过")
 
             # 读取 interface.json 获取 name
+            logger.info("[步骤3] 读取 interface.json 文件")
             interface_name = ""
             try:
+                logger.info(f"[步骤3] 打开文件: {interface_path}")
                 with open(interface_path, "r", encoding="utf-8") as f:
                     data = jsonc.load(f)
+                logger.info(f"[步骤3] 成功读取 JSON 数据，键: {list(data.keys())[:10]}...")
+                
                 iface_name = data.get("name")
+                logger.info(f"[步骤3] 从数据中获取 'name' 字段: '{iface_name}' (类型: {type(iface_name)})")
+                
                 if isinstance(iface_name, str) and iface_name.strip():
                     interface_name = iface_name.strip()
+                    logger.info(f"[步骤3] 提取的 bundle 名称: '{interface_name}'")
+                else:
+                    logger.warning(f"[步骤3] 'name' 字段无效: {iface_name}")
             except Exception as e:
-                logger.error(f"读取 interface.json 失败: {e}")
+                logger.error(f"[步骤3] 读取 interface.json 失败: {e}", exc_info=True)
                 _show_error(self.tr("Failed to read interface.json: {}").format(str(e)))
                 return
 
             # 使用 interface.json 中的 name 作为 bundle_name
             if not interface_name:
+                logger.error("[步骤3] 失败: interface.json 中没有有效的 'name' 字段")
                 _show_error(self.tr("interface.json does not contain a valid 'name' field"))
                 return
 
             bundle_name = interface_name
+            logger.info(f"[步骤3] 最终确定的 bundle 名称: '{bundle_name}'")
 
             # 通过服务层接口写入 bundle，避免直接操作私有 _main_config
+            logger.info("[步骤4] 检查服务协调器")
             if not self._service_coordinator:
+                logger.error("[步骤4] 失败: 服务协调器未初始化")
                 _show_error(self.tr("Service is not ready, cannot save bundle"))
                 return
+            logger.info("[步骤4] 服务协调器可用")
 
             coordinator = self._service_coordinator
             config_service = coordinator.config_service
+            logger.info(f"[步骤4] 获取配置服务: {type(config_service).__name__}")
 
             # 检查是否已存在同名的 bundle
+            logger.info("[步骤5] 检查是否已存在同名的 bundle")
             try:
                 existing_bundles = config_service.list_bundles()
+                logger.info(f"[步骤5] 现有 bundle 列表: {existing_bundles}")
+                logger.info(f"[步骤5] 检查 bundle 名称 '{bundle_name}' 是否已存在")
                 if bundle_name in existing_bundles:
+                    logger.error(f"[步骤5] 失败: bundle 名称 '{bundle_name}' 已存在")
                     _show_error(self.tr("Bundle name already exists"))
                     return
+                logger.info(f"[步骤5] bundle 名称 '{bundle_name}' 可用")
             except Exception as exc:
-                _show_error(self.tr("Failed to check existing bundles: {}").format(exc))
+                logger.error(f"[步骤5] 检查现有 bundle 时出错: {exc}", exc_info=True)
+                _show_error(self.tr("Failed to check existing bundles: {}").format(str(exc)))
                 return
 
+            # 获取 interface.json 的父目录（源 bundle 目录路径）
+            logger.info("[步骤6] 确定源 bundle 目录")
+            source_bundle_dir = interface_path.parent
+            logger.info(f"[步骤6] interface.json 父目录: {source_bundle_dir}")
+            logger.info(f"[步骤6] 绝对路径: {source_bundle_dir.resolve()}")
+
+            # 验证源 bundle 目录是否存在且为目录
+            logger.info("[步骤6] 验证源 bundle 目录")
+            if not source_bundle_dir.exists():
+                logger.error(f"[步骤6] 失败: 源目录不存在 - {source_bundle_dir}")
+                _show_error(self.tr("Bundle directory does not exist: {}").format(str(source_bundle_dir)))
+                return
+            logger.info(f"[步骤6] 源目录存在: {source_bundle_dir.exists()}")
+            
+            if not source_bundle_dir.is_dir():
+                logger.error(f"[步骤6] 失败: 不是目录 - {source_bundle_dir}")
+                _show_error(self.tr("Bundle path is not a directory: {}").format(str(source_bundle_dir)))
+                return
+            logger.info(f"[步骤6] 是目录: {source_bundle_dir.is_dir()}")
+            
+            # 列出源目录内容
+            try:
+                source_items = list(source_bundle_dir.iterdir())
+                logger.info(f"[步骤6] 源目录内容 ({len(source_items)} 项):")
+                for item in source_items[:10]:  # 只显示前10项
+                    logger.info(f"  - {item.name} ({'目录' if item.is_dir() else '文件'})")
+                if len(source_items) > 10:
+                    logger.info(f"  ... 还有 {len(source_items) - 10} 项")
+            except Exception as e:
+                logger.warning(f"[步骤6] 列出源目录内容时出错: {e}")
+
             # 确定目标 bundle 目录（使用 bundle_name 作为文件夹名）
+            logger.info("[步骤7] 确定目标 bundle 目录")
             bundle_dir = Path.cwd() / "bundle" / bundle_name
+            logger.info(f"[步骤7] 当前工作目录: {Path.cwd()}")
+            logger.info(f"[步骤7] 目标目录: {bundle_dir}")
+            logger.info(f"[步骤7] 目标目录绝对路径: {bundle_dir.resolve()}")
 
-            # 如果目标目录已存在，询问是否覆盖
-            if bundle_dir.exists():
-                from qfluentwidgets import MessageBox
-
-                msg_box = MessageBox(
-                    self.tr("Bundle Already Exists"),
-                    self.tr(
-                        "Bundle directory '{}' already exists. Do you want to replace it?"
-                    ).format(bundle_name),
-                    self,
-                )
-                if msg_box.exec() != msg_box.DialogCode.Accepted:
+            # 检查源目录是否已经是目标目录（规范化路径比较）
+            logger.info("[步骤8] 检查源目录和目标目录的关系")
+            try:
+                source_resolved = source_bundle_dir.resolve()
+                bundle_resolved = bundle_dir.resolve()
+                logger.info(f"[步骤8] 源目录绝对路径: {source_resolved}")
+                logger.info(f"[步骤8] 目标目录绝对路径: {bundle_resolved}")
+                logger.info(f"[步骤8] 路径是否相同: {source_resolved == bundle_resolved}")
+                
+                if source_resolved == bundle_resolved:
+                    # 源目录已经是目标目录，不需要移动，直接使用
+                    logger.info(f"[步骤8] 源目录已经是目标目录，跳过移动: {bundle_dir}")
+                elif bundle_resolved.is_relative_to(source_resolved):
+                    # 目标目录是源目录的子目录，这是不允许的
+                    logger.error(f"[步骤8] 失败: 目标目录是源目录的子目录")
+                    logger.error(f"[步骤8] 源目录: {source_resolved}")
+                    logger.error(f"[步骤8] 目标目录: {bundle_resolved}")
+                    _show_error(
+                        self.tr("Cannot move bundle: target directory is inside source directory")
+                    )
                     return
+                else:
+                    logger.info(f"[步骤8] 源目录和目标目录不同，需要移动")
+            except Exception as e:
+                logger.warning(f"[步骤8] 检查源目录和目标目录关系时出错: {e}", exc_info=True)
 
+            # 如果目标目录已存在，直接删除并覆盖
+            logger.info("[步骤9] 检查目标目录是否存在")
+            logger.info(f"[步骤9] 目标目录存在: {bundle_dir.exists()}")
+            if bundle_dir.exists():
+                logger.info(f"[步骤9] 目标目录已存在，直接删除并覆盖")
+                
                 # 删除现有目录
+                logger.info("[步骤9] 开始删除现有目录")
                 try:
                     if bundle_dir.is_dir():
+                        logger.info(f"[步骤9] 删除目录: {bundle_dir}")
                         shutil.rmtree(bundle_dir)
+                        logger.info(f"[步骤9] 目录删除成功")
                     else:
+                        logger.info(f"[步骤9] 删除文件: {bundle_dir}")
                         bundle_dir.unlink()
+                        logger.info(f"[步骤9] 文件删除成功")
                 except Exception as e:
-                    logger.error(f"删除现有 bundle 目录失败: {e}")
+                    logger.error(f"[步骤9] 删除现有 bundle 目录失败: {e}", exc_info=True)
                     _show_error(
                         self.tr(
                             "Failed to remove existing bundle directory: {}"
                         ).format(str(e))
                     )
                     return
+                logger.info(f"[步骤9] 现有目录已删除，目标目录现在不存在: {not bundle_dir.exists()}")
 
-            # 创建目标目录
+            # 只在源目录不是目标目录时才需要移动
+            logger.info("[步骤10] 判断是否需要移动文件")
             try:
-                bundle_dir.mkdir(parents=True, exist_ok=True)
+                source_resolved = source_bundle_dir.resolve()
+                bundle_resolved = bundle_dir.resolve()
+                need_move = source_resolved != bundle_resolved
+                logger.info(f"[步骤10] 需要移动: {need_move}")
             except Exception as e:
-                logger.error(f"创建 bundle 目录失败: {e}")
-                _show_error(
-                    self.tr("Failed to create bundle directory: {}").format(str(e))
-                )
-                return
+                logger.warning(f"[步骤10] 判断是否需要移动时出错，默认需要移动: {e}")
+                need_move = True
 
-            # 获取 interface.json 的父目录（同级目录）
-            source_dir = interface_path.parent
-
-            # 复制同级目录下的所有文件和文件夹到目标目录
-            try:
-                for item in source_dir.iterdir():
-                    target_item = bundle_dir / item.name
-                    if item.is_dir():
-                        if target_item.exists():
-                            shutil.rmtree(target_item)
-                        shutil.copytree(str(item), str(target_item))
-                    else:
-                        if target_item.exists():
-                            target_item.unlink()
-                        shutil.copy2(str(item), str(target_item))
-                logger.info(f"已将 bundle 内容复制到: {bundle_dir}")
-            except Exception as e:
-                logger.error(f"复制 bundle 到目标目录失败: {e}")
-                _show_error(
-                    self.tr("Failed to copy bundle to target directory: {}").format(
-                        str(e)
-                    )
-                )
-                # 清理：如果复制失败，删除已创建的目标目录
+            if need_move:
+                logger.info("[步骤11] 开始移动文件流程")
+                # 创建目标目录
+                logger.info("[步骤11.1] 创建目标目录")
                 try:
-                    if bundle_dir.exists():
-                        shutil.rmtree(bundle_dir)
-                except Exception:
-                    pass
-                return
+                    logger.info(f"[步骤11.1] 创建目录: {bundle_dir}")
+                    bundle_dir.mkdir(parents=True, exist_ok=True)
+                    logger.info(f"[步骤11.1] 目录创建成功，存在: {bundle_dir.exists()}")
+                except Exception as e:
+                    logger.error(f"[步骤11.1] 创建 bundle 目录失败: {e}", exc_info=True)
+                    _show_error(
+                        self.tr("Failed to create bundle directory: {}").format(str(e))
+                    )
+                    return
+
+                # 移动源目录下的所有文件和文件夹到目标目录
+                logger.info("[步骤11.2] 开始移动文件")
+                try:
+                    source_items = list(source_bundle_dir.iterdir())
+                    logger.info(f"[步骤11.2] 需要移动 {len(source_items)} 项")
+                    
+                    moved_count = 0
+                    for item in source_items:
+                        target_item = bundle_dir / item.name
+                        logger.info(f"[步骤11.2] 移动: {item.name} ({'目录' if item.is_dir() else '文件'})")
+                        logger.info(f"[步骤11.2]   源: {item}")
+                        logger.info(f"[步骤11.2]   目标: {target_item}")
+                        
+                        shutil.move(str(item), str(target_item))
+                        moved_count += 1
+                        logger.info(f"[步骤11.2]   移动成功 ({moved_count}/{len(source_items)})")
+                    
+                    logger.info(f"[步骤11.2] 所有文件移动完成，共移动 {moved_count} 项到: {bundle_dir}")
+                    
+                    # 验证目标目录内容
+                    try:
+                        target_items = list(bundle_dir.iterdir())
+                        logger.info(f"[步骤11.2] 目标目录现在包含 {len(target_items)} 项")
+                    except Exception as e:
+                        logger.warning(f"[步骤11.2] 验证目标目录内容时出错: {e}")
+                    
+                    # 如果源目录为空，尝试删除源目录（可选）
+                    logger.info("[步骤11.3] 检查源目录是否为空")
+                    try:
+                        remaining_items = list(source_bundle_dir.iterdir())
+                        logger.info(f"[步骤11.3] 源目录剩余项: {len(remaining_items)}")
+                        if not remaining_items:
+                            logger.info(f"[步骤11.3] 源目录为空，尝试删除: {source_bundle_dir}")
+                            source_bundle_dir.rmdir()
+                            logger.info(f"[步骤11.3] 源目录删除成功")
+                        else:
+                            logger.info(f"[步骤11.3] 源目录不为空，保留源目录")
+                    except Exception as e:
+                        logger.warning(f"[步骤11.3] 删除源目录时出错（可忽略）: {e}")
+                except Exception as e:
+                    logger.error(f"[步骤11.2] 移动 bundle 到目标目录失败: {e}", exc_info=True)
+                    _show_error(
+                        self.tr("Failed to move bundle to target directory: {}").format(
+                            str(e)
+                        )
+                    )
+                    # 清理：如果移动失败，删除已创建的目标目录
+                    logger.info("[步骤11.2] 清理失败的目标目录")
+                    try:
+                        if bundle_dir.exists():
+                            logger.info(f"[步骤11.2] 删除目标目录: {bundle_dir}")
+                            shutil.rmtree(bundle_dir)
+                            logger.info(f"[步骤11.2] 目标目录已清理")
+                    except Exception as cleanup_err:
+                        logger.error(f"[步骤11.2] 清理目标目录时出错: {cleanup_err}")
+                    return
+            else:
+                # 源目录已经是目标目录，不需要移动
+                logger.info(f"[步骤11] 源目录已经是目标目录，跳过移动: {bundle_dir}")
 
             # 将路径转换为相对路径
+            logger.info("[步骤12] 转换路径为相对路径")
             try:
-                rel = bundle_dir.resolve().relative_to(Path.cwd().resolve())
+                cwd_resolved = Path.cwd().resolve()
+                bundle_resolved = bundle_dir.resolve()
+                logger.info(f"[步骤12] 当前工作目录: {cwd_resolved}")
+                logger.info(f"[步骤12] bundle 绝对路径: {bundle_resolved}")
+                
+                rel = bundle_resolved.relative_to(cwd_resolved)
                 normalized = f"./{rel.as_posix()}"
-            except Exception:
+                logger.info(f"[步骤12] 相对路径: {rel}")
+                logger.info(f"[步骤12] 规范化路径: {normalized}")
+            except Exception as e:
+                logger.warning(f"[步骤12] 转换为相对路径失败，使用绝对路径: {e}")
                 normalized = os.path.abspath(str(bundle_dir))
+                logger.info(f"[步骤12] 使用绝对路径: {normalized}")
 
             # 更新 bundle 配置
+            logger.info("[步骤13] 更新 bundle 配置")
+            logger.info(f"[步骤13] bundle 名称: {bundle_name}")
+            logger.info(f"[步骤13] bundle 路径: {normalized}")
             try:
                 success = coordinator.update_bundle_path(
                     bundle_name=bundle_name,
                     new_path=normalized,
                     bundle_display_name=bundle_name,
                 )
+                logger.info(f"[步骤13] update_bundle_path 返回: {success}")
                 if not success:
+                    logger.error("[步骤13] 更新 bundle 路径失败")
                     _show_error(self.tr("Failed to update bundle path"))
                     return
+                logger.info("[步骤13] bundle 配置更新成功")
             except Exception as exc:
+                logger.error(f"[步骤13] 更新 bundle 路径时出错: {exc}", exc_info=True)
                 _show_error(self.tr("Failed to update bundle path: {}").format(str(exc)))
                 return
 
             self._bundle_name = bundle_name
             self._bundle_path = normalized
+            logger.info("=" * 60)
             logger.info(f"成功添加 bundle: {bundle_name} -> {normalized}")
+            logger.info("=" * 60)
+            self._is_processing = False  # 成功时重置标志
             self.accept()
         except Exception as e:
+            logger.error("=" * 60)
             logger.error(f"添加 bundle 时发生未预期的错误: {e}", exc_info=True)
+            logger.error("=" * 60)
+            self._is_processing = False  # 异常时重置标志
             _show_error(self.tr("An unexpected error occurred: {}").format(str(e)))
 
     def get_bundle_info(self) -> tuple[str, str]:

@@ -630,6 +630,31 @@ class ServiceCoordinator:
             logger.error(f"更新 bundle 路径失败: {e}")
             return False
 
+    def delete_bundle(self, bundle_name: str) -> bool:
+        """从主配置中移除指定 bundle 的索引"""
+        main_config = getattr(self.config_service, "_main_config", None)
+        if not isinstance(main_config, dict):
+            logger.warning("主配置缺失，无法删除 bundle")
+            return False
+
+        bundle_dict = main_config.get("bundle")
+        if not isinstance(bundle_dict, dict):
+            bundle_dict = {}
+
+        if bundle_name not in bundle_dict:
+            logger.info(f"Bundle '{bundle_name}' 不存在于主配置，跳过删除")
+            return True
+
+        bundle_dict.pop(bundle_name, None)
+        main_config["bundle"] = bundle_dict
+        success = self.config_service.save_main_config()
+        if success:
+            logger.info(f"已从主配置中移除 bundle: {bundle_name}")
+            return True
+
+        logger.error(f"保存主配置失败，bundle '{bundle_name}' 未被删除")
+        return False
+
     def add_config(self, config_item: ConfigItem) -> str:
         """添加配置，传入 ConfigItem 对象，返回新配置ID"""
         new_id = self.config_service.create_config(config_item)
