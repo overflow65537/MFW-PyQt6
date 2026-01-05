@@ -202,6 +202,10 @@ class MaaFW(QObject):
             "actions": {"success": [], "failed": []},
             "recognitions": {"success": [], "failed": []},
         }
+        # 记录添加到 sys.path 的路径，用于后续清理
+        self._custom_sys_paths: List[str] = []
+        # 记录上次加载的 custom_root，用于清理模块缓存
+        self._last_custom_root: Path | None = None
 
     def load_custom_objects(self, custom_config_path: str | Path) -> bool:
         """
@@ -239,6 +243,62 @@ class MaaFW(QObject):
             "recognitions": {"success": [], "failed": []},
         }
 
+        # 清理之前加载的模块：移除所有与之前 custom_root 相关的模块
+        # 包括主模块、子模块和顶级包模块（如 action, Recognition）
+        if hasattr(self, "_last_custom_root") and self._last_custom_root:
+            modules_to_remove = []
+            for module_key in list(sys.modules.keys()):
+                # 移除所有以文件路径为key的模块
+                if isinstance(module_key, str) and (
+                    module_key.startswith(str(self._last_custom_root))
+                    or (os.path.isabs(module_key) and Path(module_key).is_relative_to(self._last_custom_root))
+                ):
+                    modules_to_remove.append(module_key)
+                # 检查模块的 __file__ 或 __path__ 是否在旧的 custom_root 下
+                elif isinstance(module_key, str):
+                    try:
+                        module = sys.modules.get(module_key)
+                        if not module:
+                            continue
+                        
+                        # 检查普通模块的 __file__
+                        if hasattr(module, "__file__") and module.__file__:
+                            try:
+                                if Path(module.__file__).resolve().is_relative_to(self._last_custom_root):
+                                    modules_to_remove.append(module_key)
+                                    continue
+                            except (ValueError, OSError):
+                                pass
+                        
+                        # 检查包模块的 __path__
+                        if hasattr(module, "__path__"):
+                            try:
+                                for path_entry in module.__path__:
+                                    if Path(path_entry).resolve().is_relative_to(self._last_custom_root):
+                                        modules_to_remove.append(module_key)
+                                        break
+                            except (ValueError, OSError):
+                                pass
+                    except Exception:
+                        pass
+            
+            for module_key in set(modules_to_remove):
+                try:
+                    del sys.modules[module_key]
+                    logger.debug(f"已清理模块缓存: {module_key}")
+                except KeyError:
+                    pass
+
+        # 清理之前添加的 sys.path 条目（如果存在）
+        for path in self._custom_sys_paths:
+            if path in sys.path:
+                sys.path.remove(path)
+                logger.debug(f"已从 sys.path 移除: {path}")
+        self._custom_sys_paths.clear()
+
+        # 记录当前 custom_root，用于下次清理
+        self._last_custom_root = custom_root
+
         # 将custom_root的父目录添加到sys.path，以便模块可以使用绝对导入
         # 例如：from MPAcustom.action.tool.LoadSetting 需要 MPAcustom 的父目录在 sys.path 中
         # 同时也要添加custom_root本身，以便相对导入也能工作
@@ -248,11 +308,13 @@ class MaaFW(QObject):
         # 添加父目录到sys.path（用于绝对导入，如 from MPAcustom.xxx）
         if custom_root_parent not in sys.path:
             sys.path.insert(0, custom_root_parent)
+            self._custom_sys_paths.append(custom_root_parent)
             logger.debug(f"已将父目录 {custom_root_parent} 添加到 sys.path")
 
         # 添加custom_root本身到sys.path（用于相对导入）
         if custom_root_str not in sys.path:
             sys.path.insert(0, custom_root_str)
+            self._custom_sys_paths.append(custom_root_str)
             logger.debug(f"已将 {custom_root_str} 添加到 sys.path")
 
         def _get_bucket(type_name: str) -> str | None:
@@ -300,18 +362,33 @@ class MaaFW(QObject):
                 _record_failure(custom_type, custom_name, reason)
                 continue
 
-            # 使用文件名作为模块名，保持与custom内部引用一致
-            # 这样custom文件夹内部的代码可以使用 import custom 等正常引用
             module_name = Path(custom_file_path).stem
-
-            # 使用文件路径作为sys.modules的key，避免同名模块冲突
-            # 但模块的__name__仍然是文件名，这样custom内部的引用可以正常工作
             module_key = str(custom_file_path)
 
             # 如果该文件路径的模块已存在，先移除（可能是之前加载的）
             if module_key in sys.modules:
                 logger.debug(f"移除已存在的模块缓存: {module_key}")
                 del sys.modules[module_key]
+
+            # 计算模块的包名，用于支持相对导入
+            # 将 custom_root.name 作为包名，这样 from .action.Fishing 可以工作
+            custom_root_name = custom_root.name
+            try:
+                file_path_obj = Path(custom_file_path).resolve()
+                custom_root_obj = custom_root.resolve()
+                if file_path_obj.is_relative_to(custom_root_obj):
+                    relative_path = file_path_obj.relative_to(custom_root_obj)
+                    if len(relative_path.parts) > 1:
+                        # 文件在子目录中
+                        package_parts = [custom_root_name] + list(relative_path.parts[:-1])
+                        package_name = ".".join(package_parts)
+                    else:
+                        # 文件在根目录
+                        package_name = custom_root_name
+                else:
+                    package_name = custom_root_name
+            except (ValueError, AttributeError):
+                package_name = custom_root_name
 
             spec = importlib.util.spec_from_file_location(module_name, custom_file_path)
             if spec is None or spec.loader is None:
@@ -322,8 +399,11 @@ class MaaFW(QObject):
 
             try:
                 module = importlib.util.module_from_spec(spec)
+                # 设置 __package__ 以支持相对导入（from .action.Fishing）
+                # 绝对导入（from action.Fishing）通过 sys.path 自动支持
+                module.__package__ = package_name
+                
                 # 使用文件路径作为key存储到sys.modules，避免同名模块冲突
-                # 模块的__name__仍然是文件名，custom内部的引用可以正常工作
                 sys.modules[module_key] = module
                 spec.loader.exec_module(module)  # type: ignore[arg-type]
 
