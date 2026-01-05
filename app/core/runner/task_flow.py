@@ -73,6 +73,7 @@ class TaskFlowRunner(QObject):
         self.adb_controller_raw: dict[str, Any] | None = None
         self.adb_activate_controller: str | None = None
         self.adb_controller_config: dict[str, Any] | None = None
+        self._config_switch_delay = 0.5
 
         # bundle 相关：在任务流开始时根据当前配置初始化
         self.bundle_path: str = "./"
@@ -89,6 +90,8 @@ class TaskFlowRunner(QObject):
         self._current_running_task_id: str | None = None
         # 任务开始时间：task_id -> 开始时间戳
         self._task_start_times: dict[str, float] = {}
+        # 是否处于单任务模式（单任务模式下不进行长期任务检查）
+        self._is_single_task_mode: bool = False
         # 标记是否为"手动停止"，用于控制是否发送完成通知
         self._manual_stop = False
         # 任务结果摘要：task_id -> 状态字符串（running/completed/failed/waiting/skipped等）
@@ -233,6 +236,7 @@ class TaskFlowRunner(QObject):
         # 重置超时状态
         self._reset_task_timeout_state()
         is_single_task_mode = task_id is not None
+        self._is_single_task_mode = is_single_task_mode
         effective_start_task_id = None
         if not is_single_task_mode and start_task_id:
             current_tasks = getattr(self.task_service, "current_tasks", [])
@@ -420,155 +424,43 @@ class TaskFlowRunner(QObject):
                     )
                     await self.stop_task()
                     return
-            if task_id:
+            tasks_to_run = self._collect_tasks_to_run(
+                task_id=task_id,
+                effective_start_task_id=effective_start_task_id,
+                is_single_task_mode=is_single_task_mode,
+            )
+            if not tasks_to_run:
+                return
+            if is_single_task_mode:
                 logger.info(f"开始执行任务: {task_id}")
-                task = self.task_service.get_task(task_id)
+            else:
+                logger.info("开始执行任务序列...")
+            self._tasks_started = True
+            for task in tasks_to_run:
                 if not task:
-                    logger.error(f"任务 ID '{task_id}' 不存在")
-                    return
-                if task.is_hidden:
-                    logger.warning(f"任务 '{task.name}' 被隐藏，跳过执行")
-                    return
-                if not task.is_checked:
-                    logger.warning(f"任务 '{task.name}' 未被选中，跳过执行")
-                    return
-                self._tasks_started = True
+                    continue
                 # 每个任务开始前，假定其可以正常完成
                 self._current_task_ok = True
                 # 记录当前正在执行的任务，用于超时处理
                 self._current_running_task_id = task.item_id
                 # 发送任务运行中状态
                 signalBus.task_status_changed.emit(task.item_id, "running")
-                await self.run_task(task_id, skip_speedrun=True)
-                # 检查任务执行结果并发送通知
-                if not self._current_task_ok:
-                    # 记录任务结果
-                    self._task_results[task.item_id] = "failed"
-                    # 发送任务失败状态
-                    signalBus.task_status_changed.emit(task.item_id, "failed")
-                    # 发送任务失败通知
-                    if not self._manual_stop:
-                        send_notice(
-                            NoticeTiming.WHEN_TASK_FAILED,
-                            self.tr("Task Failed"),
-                            self.tr("Task '{}' was aborted or failed.").format(
-                                task.name
-                            ),
-                        )
-                else:
-                    # 记录任务结果
-                    status = "completed"
-                    self._task_results[task.item_id] = status
-                    signalBus.task_status_changed.emit(task.item_id, status)
-                    # 发送任务成功通知
-                    send_notice(
-                        NoticeTiming.WHEN_TASK_SUCCESS,
-                        self.tr("Task Completed"),
-                        self.tr("Task '{}' has been completed successfully.").format(
-                            task.name
-                        ),
+                try:
+                    task_result = await self.run_task(
+                        task.item_id,
+                        skip_speedrun=is_single_task_mode,
                     )
-                # 清除当前执行任务记录
-                self._current_running_task_id = None
-                return
-            else:
-                logger.info("开始执行任务序列...")
-                self._tasks_started = True
-                start_reached = effective_start_task_id is None
-                for task in self.task_service.current_tasks:
-                    if effective_start_task_id and not start_reached:
-                        if task.item_id == effective_start_task_id:
-                            start_reached = True
-                        else:
-                            continue
-
-                    if task.name in [_CONTROLLER_, _RESOURCE_, POST_ACTION]:
+                    if task_result == "skipped":
+                        # 因 speedrun 限制被跳过：记录结果并在列表中显示为“已跳过”
+                        self._task_results[task.item_id] = "skipped"
+                        signalBus.task_status_changed.emit(task.item_id, "skipped")
                         continue
-
-                    elif not task.is_checked:
-                        continue
-
-                    elif task.is_special:
-                        continue
-
-                    # 跳过被隐藏的任务
-                    if task.is_hidden:
-                        logger.info(f"任务 '{task.name}' 被隐藏，跳过执行")
-                        continue
-
-                    # 根据资源过滤任务：跳过隐藏的任务
-                    if not self._should_run_task_by_resource(task):
-                        logger.info(f"任务 '{task.name}' 因资源过滤被跳过")
-                        continue
-
-                    logger.info(f"开始执行任务: {task.name}")
-                    # 每个任务开始前，假定其可以正常完成
-                    self._current_task_ok = True
-                    # 记录当前正在执行的任务，用于超时处理
-                    self._current_running_task_id = task.item_id
-                    # 发送任务运行中状态
-                    signalBus.task_status_changed.emit(task.item_id, "running")
-                    try:
-                        task_result = await self.run_task(task.item_id)
-                        if task_result == "skipped":
-                            # 因 speedrun 限制被跳过：记录结果并在列表中显示为“已跳过”
-                            self._task_results[task.item_id] = "skipped"
-                            signalBus.task_status_changed.emit(task.item_id, "skipped")
-                            continue
-                        # 如果任务显式返回 False，视为致命失败，终止整个任务流
-                        if task_result is False:
-                            msg = f"任务执行失败: {task.name}, 返回 False，终止流程"
-                            logger.error(msg)
-                            # 记录任务结果
-                            self._task_results[task.item_id] = "failed"
-                            # 发送任务失败状态
-                            signalBus.task_status_changed.emit(task.item_id, "failed")
-                            # 发送任务失败通知
-                            if not self._manual_stop:
-                                send_notice(
-                                    NoticeTiming.WHEN_TASK_FAILED,
-                                    self.tr("Task Failed"),
-                                    self.tr(
-                                        "Task '{}' failed and the flow was terminated."
-                                    ).format(task.name),
-                                )
-                            await self.stop_task()
-                            break
-
-                        # 任务运行过程中如果触发了 abort 信号，则认为该任务未成功完成，
-                        # 但不中断整个任务流，直接切换到下一个任务。
-                        if not self._current_task_ok:
-                            logger.warning(
-                                f"任务执行被中途中止(abort): {task.name}，切换到下一个任务"
-                            )
-                            # 记录任务结果并发送任务失败状态
-                            self._task_results[task.item_id] = "failed"
-                            signalBus.task_status_changed.emit(task.item_id, "failed")
-                            # 发送任务失败通知
-                            if not self._manual_stop:
-                                send_notice(
-                                    NoticeTiming.WHEN_TASK_FAILED,
-                                    self.tr("Task Failed"),
-                                    self.tr("Task '{}' was aborted.").format(task.name),
-                                )
-                        else:
-                            # 记录任务结果
-                            status = "completed"
-                            self._task_results[task.item_id] = status
-                            signalBus.task_status_changed.emit(task.item_id, status)
-                            # 发送任务成功通知
-                            send_notice(
-                                NoticeTiming.WHEN_TASK_SUCCESS,
-                                self.tr("Task Completed"),
-                                self.tr(
-                                    "Task '{}' has been completed successfully."
-                                ).format(task.name),
-                            )
-
-                        logger.info(f"任务执行完成: {task.name}")
-
-                    except Exception as exc:
-                        logger.error(f"任务执行失败: {task.name}, 错误: {str(exc)}")
+                    # 如果任务显式返回 False，视为致命失败，终止整个任务流
+                    if task_result is False:
+                        msg = f"任务执行失败: {task.name}, 返回 False，终止流程"
+                        logger.error(msg)
+                        # 记录任务结果
+                        self._task_results[task.item_id] = "failed"
                         # 发送任务失败状态
                         signalBus.task_status_changed.emit(task.item_id, "failed")
                         # 发送任务失败通知
@@ -576,26 +468,74 @@ class TaskFlowRunner(QObject):
                             send_notice(
                                 NoticeTiming.WHEN_TASK_FAILED,
                                 self.tr("Task Failed"),
-                                self.tr("Task '{}' failed with error: {}").format(
-                                    task.name, str(exc)
-                                ),
+                                self.tr(
+                                    "Task '{}' failed and the flow was terminated."
+                                ).format(task.name),
                             )
-
-                    # 清除当前执行任务记录
-                    self._current_running_task_id = None
-
-                    if self.need_stop:
-                        if self._manual_stop:
-                            logger.info("收到手动停止请求，流程终止")
-                        else:
-                            logger.info("收到停止请求，流程终止")
+                        await self.stop_task()
                         break
 
-                # 只有在任务流正常完成（非手动停止）时才输出"所有任务都已完成"
-                if self._is_tasks_flow_completed_normally():
-                    signalBus.log_output.emit(
-                        "INFO", self.tr("All tasks have been completed")
-                    )
+                    # 任务运行过程中如果触发了 abort 信号，则认为该任务未成功完成，
+                    # 但不中断整个任务流，直接切换到下一个任务。
+                    if not self._current_task_ok:
+                        logger.warning(
+                            f"任务执行被中途中止(abort): {task.name}，切换到下一个任务"
+                        )
+                        # 记录任务结果并发送任务失败状态
+                        self._task_results[task.item_id] = "failed"
+                        signalBus.task_status_changed.emit(task.item_id, "failed")
+                        # 发送任务失败通知
+                        if not self._manual_stop:
+                            send_notice(
+                                NoticeTiming.WHEN_TASK_FAILED,
+                                self.tr("Task Failed"),
+                                self.tr("Task '{}' was aborted.").format(task.name),
+                            )
+                    else:
+                        # 记录任务结果
+                        status = "completed"
+                        self._task_results[task.item_id] = status
+                        signalBus.task_status_changed.emit(task.item_id, status)
+                        # 发送任务成功通知
+                        send_notice(
+                            NoticeTiming.WHEN_TASK_SUCCESS,
+                            self.tr("Task Completed"),
+                            self.tr(
+                                "Task '{}' has been completed successfully."
+                            ).format(task.name),
+                        )
+
+                    logger.info(f"任务执行完成: {task.name}")
+
+                except Exception as exc:
+                    logger.error(f"任务执行失败: {task.name}, 错误: {str(exc)}")
+                    # 发送任务失败状态
+                    signalBus.task_status_changed.emit(task.item_id, "failed")
+                    # 发送任务失败通知
+                    if not self._manual_stop:
+                        send_notice(
+                            NoticeTiming.WHEN_TASK_FAILED,
+                            self.tr("Task Failed"),
+                            self.tr("Task '{}' failed with error: {}").format(
+                                task.name, str(exc)
+                            ),
+                        )
+
+                # 清除当前执行任务记录
+                self._current_running_task_id = None
+
+                if self.need_stop:
+                    if self._manual_stop:
+                        logger.info("收到手动停止请求，流程终止")
+                    else:
+                        logger.info("收到停止请求，流程终止")
+                    break
+
+            # 只有在任务流正常完成（非手动停止）时才输出"所有任务都已完成"
+            if self._is_tasks_flow_completed_normally():
+                signalBus.log_output.emit(
+                    "INFO", self.tr("All tasks have been completed")
+                )
 
         except Exception as exc:
             logger.error(f"任务流程执行异常: {str(exc)}")
@@ -653,7 +593,7 @@ class TaskFlowRunner(QObject):
 
                 log_text = "\n".join(log_text_lines)
 
-                if log_text:
+                if log_text and not is_single_task_mode:
                     send_notice(
                         NoticeTiming.WHEN_POST_TASK,
                         self.tr("Task Flow Completed"),
@@ -671,8 +611,63 @@ class TaskFlowRunner(QObject):
             next_config = self._next_config_to_run
             self._next_config_to_run = None
             if next_config:
-                logger.info(f"完成后自动启动配置: {next_config}")
+                logger.info(
+                    "完成后自动启动配置: %s（等待 %.2f 秒）",
+                    next_config,
+                    self._config_switch_delay,
+                )
+                await asyncio.sleep(self._config_switch_delay)
                 asyncio.create_task(self.run_tasks_flow())
+
+    def _collect_tasks_to_run(
+        self,
+        task_id: str | None,
+        effective_start_task_id: str | None,
+        is_single_task_mode: bool,
+    ) -> list[TaskItem]:
+        """构建本次任务流要执行的任务列表"""
+        tasks: list[TaskItem] = []
+        if is_single_task_mode:
+            if not task_id:
+                return tasks
+            task = self.task_service.get_task(task_id)
+            if not task:
+                logger.error(f"任务 ID '{task_id}' 不存在")
+                return tasks
+            if task.is_hidden:
+                logger.warning(f"任务 '{task.name}' 被隐藏，跳过执行")
+                return tasks
+            if not task.is_checked:
+                logger.warning(f"任务 '{task.name}' 未被选中，跳过执行")
+                return tasks
+            tasks.append(task)
+            return tasks
+
+        start_reached = effective_start_task_id is None
+        for task in self.task_service.current_tasks:
+            if effective_start_task_id and not start_reached:
+                if task.item_id == effective_start_task_id:
+                    start_reached = True
+                else:
+                    continue
+
+            if task.name in [_CONTROLLER_, _RESOURCE_, POST_ACTION]:
+                continue
+
+            if not task.is_checked or task.is_special:
+                continue
+
+            if task.is_hidden:
+                logger.info(f"任务 '{task.name}' 被隐藏，跳过执行")
+                continue
+
+            if not self._should_run_task_by_resource(task):
+                logger.info(f"任务 '{task.name}' 因资源过滤被跳过")
+                continue
+
+            tasks.append(task)
+
+        return tasks
 
     def _translate_log_level(self, level: str) -> str:
         """翻译日志级别"""
@@ -858,7 +853,11 @@ class TaskFlowRunner(QObject):
         logger.info("任务流停止")
 
     def _start_task_timeout(self, entry: str):
-        """开始任务超时计时，每小时检查一次"""
+        """开始任务超时计时，每小时检查一次（单任务模式下不启动）"""
+        # 单任务模式下不进行长期任务检查
+        if self._is_single_task_mode:
+            return
+        
         entry_text = (entry or "").strip() or self.tr("Unknown Task Entry")
         # 如果entry不同，重置状态
         if entry_text != self._timeout_active_entry:
@@ -917,7 +916,12 @@ class TaskFlowRunner(QObject):
         return "\n".join(log_text_lines)
 
     def _on_task_timeout(self):
-        """任务超时处理：每小时检查一次，如果任务运行超过1小时则发送通知"""
+        """任务超时处理：每小时检查一次，如果任务运行超过1小时则发送通知（单任务模式下不执行）"""
+        # 单任务模式下不进行长期任务检查
+        if self._is_single_task_mode:
+            self._timeout_timer.stop()
+            return
+        
         if not self._current_running_task_id:
             # 没有正在运行的任务，停止定时器
             self._timeout_timer.stop()
@@ -1683,6 +1687,10 @@ class TaskFlowRunner(QObject):
         # 4. 如果选择了"运行其他配置"，切换配置（继续执行后续操作）
         if post_config.get("run_other"):
             if target_config := (post_config.get("target_config") or "").strip():
+                logger.info(
+                    "完成后操作: 运行其他配置，等待 %.2f 秒再切换", self._config_switch_delay
+                )
+                await asyncio.sleep(self._config_switch_delay)
                 await self._run_other_configuration(target_config)
             else:
                 logger.warning("完成后运行其他配置开关被激活，但未配置目标配置")
