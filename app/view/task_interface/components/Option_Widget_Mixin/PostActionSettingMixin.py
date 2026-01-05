@@ -83,9 +83,10 @@ class PostActionSettingMixin:
         # 这里不再重复调用，避免重复清理导致问题
         self._ensure_post_action_state()
         
-        # 在创建界面时，先检查控制器类型
+        # 在创建界面时，先检查控制器类型（用于调试）
         controller_type = self._get_current_controller_type()
-        logger.info(f"[PostAction] 创建界面时获取的控制器类型: {controller_type!r}")
+        if controller_type:
+            logger.debug(f"[PostAction] 创建界面时获取的控制器类型: {controller_type!r}")
 
         self.post_action_widgets.clear()
 
@@ -163,8 +164,6 @@ class PostActionSettingMixin:
 
     def _get_current_controller_type(self) -> str | None:
         """从 Controller 任务配置中解析当前控制器类型"""
-        logger.debug("[PostAction] 开始获取当前控制器类型")
-        
         # 首先尝试从 Controller 任务中获取控制器配置
         from app.common.constants import _CONTROLLER_
         controller_task = self.service_coordinator.task_service.get_task(_CONTROLLER_)
@@ -172,33 +171,27 @@ class PostActionSettingMixin:
         
         if controller_task and isinstance(controller_task.task_option, dict):
             controller_name = controller_task.task_option.get("controller_type", "")
-            logger.debug(f"[PostAction] 从 Controller 任务获取的 controller_type: {controller_name!r}")
         
         # 如果 Controller 任务中没有配置，尝试从 controller_setting_widget 获取
         if not controller_name:
-            logger.debug("[PostAction] Controller 任务中没有配置，尝试从 controller_setting_widget 获取")
             controller_widget = getattr(self, "controller_setting_widget", None)
             if controller_widget:
                 # 尝试从 widget 的 current_config 获取
                 widget_config = getattr(controller_widget, "current_config", {})
                 controller_name = widget_config.get("controller_type", "")
-                logger.debug(f"[PostAction] 从 controller_setting_widget.current_config 获取: {controller_name!r}")
                 
                 # 如果还是没有，尝试从 current_controller_type 属性获取
                 if not controller_name:
                     controller_type = getattr(controller_widget, "current_controller_type", None)
-                    logger.debug(f"[PostAction] 从 controller_setting_widget.current_controller_type 获取: {controller_type!r}")
                     if isinstance(controller_type, str):
                         # 如果直接获取到类型，需要找到对应的控制器名称
                         controller_map = getattr(controller_widget, "controller_type_mapping", None) or {}
                         for ctrl_info in controller_map.values():
                             if ctrl_info.get("type", "").lower() == controller_type.lower():
                                 controller_name = ctrl_info.get("name", "")
-                                logger.debug(f"[PostAction] 通过类型找到控制器名称: {controller_name!r}")
                                 break
         
         if not controller_name:
-            logger.debug("[PostAction] 无法获取控制器名称，返回 None")
             return None
 
         # 通过控制器名称查找控制器类型
@@ -209,16 +202,11 @@ class PostActionSettingMixin:
             if controller_widget:
                 controller_map = getattr(controller_widget, "controller_type_mapping", None) or {}
         
-        logger.debug(f"[PostAction] controller_type_mapping 键: {list(controller_map.keys())}")
-        
         for ctrl_info in controller_map.values():
             if ctrl_info.get("name") == controller_name:
                 ctrl_type = ctrl_info.get("type")
-                logger.debug(f"[PostAction] 在 controller_type_mapping 中找到匹配: name={ctrl_info.get('name')!r}, type={ctrl_type!r}")
                 if isinstance(ctrl_type, str):
-                    result = ctrl_type.lower()
-                    logger.info(f"[PostAction] 最终返回控制器类型: {result!r} (控制器名称: {controller_name!r})")
-                    return result
+                    return ctrl_type.lower()
 
         logger.warning(f"[PostAction] 在 controller_type_mapping 中未找到匹配的控制器: {controller_name!r}")
         return None
@@ -248,64 +236,52 @@ class PostActionSettingMixin:
 
     def _update_close_emulator_availability(self) -> None:
         """根据控制器类型控制"关闭模拟器"选项的可用性"""
-        logger.debug("[PostAction] 开始更新关闭模拟器选项的可用性")
-        
+        # 如果 post_action 界面还没有创建，直接返回（不记录日志，这是正常情况）
         if not hasattr(self, "_post_action_state") or not self.post_action_widgets:
-            logger.debug("[PostAction] _post_action_state 或 post_action_widgets 不存在，跳过更新")
             return
         
         checkbox = self.post_action_widgets.get("close_emulator")
         if not isinstance(checkbox, CheckBox):
-            logger.debug(f"[PostAction] close_emulator checkbox 不存在或类型错误: {type(checkbox)}")
             return
 
         controller_type = self._get_current_controller_type()
-        logger.info(f"[PostAction] 当前控制器类型: {controller_type!r}")
-        
         is_allowed = controller_type == "adb"
-        logger.info(f"[PostAction] 关闭模拟器选项是否允许: {is_allowed} (控制器类型: {controller_type!r})")
+        
+        # 只在状态发生变化时记录日志
+        current_enabled = checkbox.isEnabled()
+        if current_enabled != is_allowed:
+            logger.info(f"[PostAction] 更新关闭模拟器选项可用性: 控制器类型={controller_type!r}, 允许={is_allowed}")
         
         checkbox.setEnabled(is_allowed)
-        logger.debug(f"[PostAction] 已设置 close_emulator checkbox 的 enabled 状态为: {is_allowed}")
         
         if is_allowed:
-            logger.debug("[PostAction] 控制器类型为 adb，关闭模拟器选项已启用，无需进一步处理")
             return
 
-        logger.debug("[PostAction] 控制器类型不是 adb，需要禁用并取消选中关闭模拟器选项")
+        # 如果控制器类型不是 adb，需要禁用并取消选中
         state_changed = False
         if self._post_action_state.get("close_emulator"):
-            logger.debug("[PostAction] 检测到 close_emulator 在状态中为 True，需要取消")
             self._post_action_state["close_emulator"] = False
             state_changed = True
 
         if checkbox.isChecked():
-            logger.debug("[PostAction] checkbox 当前为选中状态，需要取消选中")
             checkbox.blockSignals(True)
             checkbox.setChecked(False)
             checkbox.blockSignals(False)
 
         if not self._has_non_none_actions_selected():
-            logger.debug("[PostAction] 没有其他动作被选中，自动选择'无动作'")
             state_changed = self._select_none_action() or state_changed
 
         if state_changed:
-            logger.debug("[PostAction] 状态已更改，更新相关UI并保存")
             self._update_combo_enabled_state()
             self._update_program_inputs_enabled()
             self._save_post_action_state()
-        else:
-            logger.debug("[PostAction] 状态未更改，无需保存")
 
     def _on_post_action_controller_type_changed(self, label: str, is_initializing: bool = False) -> None:
         """控制器类型变化时同步完成后动作面板的状态"""
-        logger.info(f"[PostAction] 控制器类型变化回调触发: label={label!r}, is_initializing={is_initializing}")
-        
+        # 如果 post_action 界面还没有创建，直接返回（不记录日志，这是正常情况）
         if not self.post_action_widgets:
-            logger.debug("[PostAction] post_action_widgets 不存在，跳过更新")
             return
         
-        logger.debug("[PostAction] 调用 _update_close_emulator_availability 更新关闭模拟器选项")
         self._update_close_emulator_availability()
 
     def _apply_post_action_state_to_widgets(self) -> None:
@@ -334,7 +310,6 @@ class PostActionSettingMixin:
         self._apply_program_inputs_state()
         self._update_program_inputs_enabled()
         self._post_action_syncing = False
-        logger.debug("[PostAction] 在 _apply_post_action_state_to_widgets 结束时调用 _update_close_emulator_availability")
         self._update_close_emulator_availability()
 
     def _on_post_action_checkbox_changed(self, key: str, checked: bool) -> None:
