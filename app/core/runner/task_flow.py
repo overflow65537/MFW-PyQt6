@@ -96,7 +96,7 @@ class TaskFlowRunner(QObject):
         # 任务运行状态标记：每个任务开始前置为 True，收到 abort 信号时置为 False
         self._current_task_ok: bool = True
         # 日志收集列表：用于收集任务运行过程中的日志，供超时通知使用
-        self._log_messages: list[tuple[str, str]] = []  # (level, text)
+        self._log_messages: list[tuple[str, str, str]] = []  # (level, text, timestamp)
 
         # 监听 MaaFW 回调信号，用于接收 abort 等特殊事件
         signalBus.callback.connect(self._handle_maafw_callback)
@@ -277,8 +277,9 @@ class TaskFlowRunner(QObject):
         self._log_messages.clear()
 
         def collect_log(level: str, text: str):
-            """收集日志信息"""
-            self._log_messages.append((level, text))
+            """收集日志信息（包含收到的时间戳）"""
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            self._log_messages.append((level, text, timestamp))
 
         # 连接日志输出信号
         signalBus.log_output.connect(collect_log)
@@ -635,56 +636,22 @@ class TaskFlowRunner(QObject):
 
             # 发送收集的日志信息（仅在非手动停止时发送）
             # 注意：这里检查 _manual_stop 标志，如果为 True 则不发送通知
-            if not self._manual_stop and (self._log_messages or self._task_results):
-                # 先构造任务结果摘要
-                summary_lines: list[str] = []
-                if self._task_results:
-                    status_label_map = {
-                        "completed": self.tr("Completed"),
-                        "failed": self.tr("Failed"),
-                        "waiting": self.tr("Waiting"),
-                        "running": self.tr("Running"),
-                        "skipped": self.tr("Skipped by speedrun limit"),
-                        "": self.tr("Unknown"),
-                    }
-                    summary_lines.append(self.tr("Task results summary:"))
-                    # 尽量按 current_tasks 顺序输出
-                    seen: set[str] = set()
-                    for task in getattr(self.task_service, "current_tasks", []):
-                        tid = getattr(task, "item_id", "")
-                        if tid in self._task_results:
-                            status_key = self._task_results.get(tid, "")
-                            status_label = status_label_map.get(
-                                status_key, status_label_map[""]
-                            )
-                            summary_lines.append(f"- {task.name}: {status_label}")
-                            seen.add(tid)
-                    # 补充可能遗漏但在结果中的任务
-                    for tid, status_key in self._task_results.items():
-                        if tid in seen:
-                            continue
-                        status_label = status_label_map.get(
-                            status_key, status_label_map[""]
-                        )
-                        # 通过任务ID获取任务对象，使用任务名称而不是ID
-                        task = self.task_service.get_task(tid)
-                        task_name = task.name if task else tid
-                        summary_lines.append(f"- {task_name}: {status_label}")
-
-                # 将日志信息格式化为文本
+            if not self._manual_stop and self._log_messages:
+                # 将日志信息格式化为文本（包含收到的时间戳）
+                # 格式：[时间][日志等级]日志内容
                 log_text_lines: list[str] = []
-                for level, text in self._log_messages:
+                for log_item in self._log_messages:
+                    if len(log_item) == 3:
+                        level, text, timestamp = log_item
+                    else:
+                        # 兼容旧格式（没有时间戳的情况）
+                        level, text = log_item[:2]  # type: ignore[misc]
+                        timestamp = datetime.now().strftime("%H:%M:%S")
                     # 翻译日志级别
                     translated_level = self._translate_log_level(level)
-                    log_text_lines.append(f"[{translated_level}] {text}")
+                    log_text_lines.append(f"[{timestamp}][{translated_level}]{text}")
 
-                # 合并摘要和日志内容
-                parts: list[str] = []
-                if summary_lines:
-                    parts.append("\n".join(summary_lines))
-                if log_text_lines:
-                    parts.append("\n".join(log_text_lines))
-                log_text = "\n\n".join(parts) if parts else ""
+                log_text = "\n".join(log_text_lines)
 
                 if log_text:
                     send_notice(
@@ -933,12 +900,19 @@ class TaskFlowRunner(QObject):
         if not self._log_messages:
             return ""
 
-        # 将日志信息格式化为文本
+        # 将日志信息格式化为文本（包含收到的时间戳）
+        # 格式：[时间][日志等级]日志内容
         log_text_lines: list[str] = []
-        for level, text in self._log_messages:
+        for log_item in self._log_messages:
+            if len(log_item) == 3:
+                level, text, timestamp = log_item
+            else:
+                # 兼容旧格式（没有时间戳的情况）
+                level, text = log_item[:2]  # type: ignore[misc]
+                timestamp = datetime.now().strftime("%H:%M:%S")
             # 翻译日志级别
             translated_level = self._translate_log_level(level)
-            log_text_lines.append(f"[{translated_level}] {text}")
+            log_text_lines.append(f"[{timestamp}][{translated_level}]{text}")
 
         return "\n".join(log_text_lines)
 
