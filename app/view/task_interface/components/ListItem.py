@@ -1,4 +1,5 @@
 import asyncio
+import re
 from pathlib import Path
 
 from PySide6.QtWidgets import (
@@ -7,10 +8,11 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
     QFrame,
+    QLabel,
 )
 
 from PySide6.QtCore import Signal, Qt, QTimer
-from PySide6.QtGui import QPalette, QGuiApplication, QPixmap, QColor
+from PySide6.QtGui import QPalette, QGuiApplication, QPixmap, QColor, QPainter
 
 from qfluentwidgets import (
     CheckBox,
@@ -44,10 +46,217 @@ class ClickableLabel(BodyLabel):
         super().mousePressEvent(event)
 
 
-class OptionLabel(BodyLabel):
+class OptionLabel(QLabel):
     """选项标签：不拦截事件，让所有动作作用于父组件（ListItem）"""
 
-    pass
+    def __init__(self, text: str = "", parent=None):
+        # 这里不把 text 交给 QLabel/BodyLabel 的 setText（会影响 sizeHint，导致布局抖动）
+        super().__init__("", parent)
+        self._marquee_text: str = ""
+        self._text_width: int = 0
+        self._offset_px: float = 0.0  # 0 -> max_offset
+        self._direction: int = 1  # 1: 向左滚(偏移增大), -1: 向右滚(偏移减小)
+        self._paused: bool = False
+        self._text_color: QColor | None = None
+
+        # 速度与节奏配置
+        self._interval_ms: int = 30
+        self._pause_ms: int = 1000
+        self._speed_px_per_sec: float = 25.0  # 默认更慢一些
+        self._step_px: float = self._speed_px_per_sec * (self._interval_ms / 1000.0)
+
+        self._tick_timer = QTimer(self)
+        self._tick_timer.timeout.connect(self._on_tick)
+
+        self._pause_timer = QTimer(self)
+        self._pause_timer.setSingleShot(True)
+        self._pause_timer.timeout.connect(self._on_pause_finished)
+        self._pause_next_direction: int | None = None
+
+        if text:
+            self.setText(text)
+
+    def setStyleSheet(self, styleSheet: str) -> None:  # type: ignore[override]
+        # QLabel 的 stylesheet 不一定会改变 palette()，但我们是自绘，需要自己解析 color
+        super().setStyleSheet(styleSheet)
+        self._text_color = self._parse_color_from_stylesheet(styleSheet)
+        self.update()
+
+    @staticmethod
+    def _parse_color_from_stylesheet(styleSheet: str) -> QColor | None:
+        if not styleSheet:
+            return None
+        # 避免误匹配 background-color / border-color 等
+        m = re.search(
+            r"(?<![-\w])color\s*:\s*([^;]+)", styleSheet, flags=re.IGNORECASE
+        )
+        if not m:
+            return None
+        color_str = (m.group(1) or "").strip()
+        if not color_str:
+            return None
+        c = QColor(color_str)
+        return c if c.isValid() else None
+
+    def setMarqueeConfig(
+        self,
+        *,
+        speed_px_per_sec: float | None = None,
+        interval_ms: int | None = None,
+        pause_ms: int | None = None,
+    ) -> None:
+        """配置跑马灯滚动参数。"""
+        if interval_ms is not None and interval_ms > 0:
+            self._interval_ms = int(interval_ms)
+        if pause_ms is not None and pause_ms >= 0:
+            self._pause_ms = int(pause_ms)
+        if speed_px_per_sec is not None and speed_px_per_sec >= 0:
+            self._speed_px_per_sec = float(speed_px_per_sec)
+        self._step_px = self._speed_px_per_sec * (self._interval_ms / 1000.0)
+        self.refresh_scroll(reset_offset=False)
+
+    def text(self) -> str:  # type: ignore[override]
+        return self._marquee_text
+
+    def setText(self, text: str) -> None:  # type: ignore[override]
+        # 只更新内部文本，不交给父类，避免 sizeHint 跟随每次更新变化
+        self._marquee_text = text or ""
+        super().setText("")  # 保持 QLabel 的真实文本为空，稳定布局
+        self._offset_px = 0.0
+        self._direction = 1
+        self._paused = False
+        self._pause_next_direction = None
+        self._pause_timer.stop()
+        self._recalc_metrics()
+        self._update_timer_state()
+        # 初次/重置后：起点也停顿 1 秒，再开始向后滚动
+        if self._needs_scroll():
+            self._start_pause(next_direction=1)
+        self.update()
+
+    def refresh_scroll(self, reset_offset: bool = True) -> None:
+        """外部在 resize/布局变化后调用，用于重新计算是否需要滚动。"""
+        if reset_offset:
+            self._offset_px = 0.0
+            self._direction = 1
+            self._paused = False
+            self._pause_next_direction = None
+            self._pause_timer.stop()
+        self._recalc_metrics()
+        self._clamp_offset()
+        self._update_timer_state()
+        self.update()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        # 宽度变化会影响可滚动范围
+        self.refresh_scroll(reset_offset=False)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._update_timer_state()
+
+    def hideEvent(self, event) -> None:
+        super().hideEvent(event)
+        self._tick_timer.stop()
+        self._pause_timer.stop()
+
+    def _recalc_metrics(self) -> None:
+        fm = self.fontMetrics()
+        # horizontalAdvance 对中英文混排更稳定
+        self._text_width = fm.horizontalAdvance(self._marquee_text) if self._marquee_text else 0
+
+    def _available_width(self) -> int:
+        rect = self.contentsRect()
+        return max(0, rect.width())
+
+    def _max_offset(self) -> int:
+        return max(0, self._text_width - self._available_width())
+
+    def _needs_scroll(self) -> bool:
+        return bool(self._marquee_text) and self._max_offset() > 0 and self._step_px > 0
+
+    def _clamp_offset(self) -> None:
+        max_off = float(self._max_offset())
+        if self._offset_px < 0:
+            self._offset_px = 0.0
+        elif self._offset_px > max_off:
+            self._offset_px = max_off
+
+    def _update_timer_state(self) -> None:
+        if not self.isVisible():
+            self._tick_timer.stop()
+            return
+        if self._needs_scroll():
+            if not self._tick_timer.isActive():
+                self._tick_timer.start(self._interval_ms)
+        else:
+            self._tick_timer.stop()
+            self._paused = False
+            self._pause_timer.stop()
+            self._offset_px = 0.0
+            self._direction = 1
+
+    def _start_pause(self, next_direction: int) -> None:
+        if self._pause_timer.isActive():
+            return
+        self._paused = True
+        self._pause_next_direction = next_direction
+        self._pause_timer.start(self._pause_ms)
+
+    def _on_pause_finished(self) -> None:
+        if self._pause_next_direction is not None:
+            self._direction = self._pause_next_direction
+        self._pause_next_direction = None
+        self._paused = False
+
+    def _on_tick(self) -> None:
+        if not self._needs_scroll():
+            self._update_timer_state()
+            return
+        if self._paused:
+            return
+
+        max_off = float(self._max_offset())
+        if max_off <= 0:
+            self._offset_px = 0.0
+            self._direction = 1
+            self.update()
+            return
+
+        self._offset_px += self._direction * self._step_px
+
+        # 到头后：停 1 秒 -> 反向滚动；到起点：停 1 秒 -> 正向滚动
+        if self._offset_px >= max_off:
+            self._offset_px = max_off
+            self._start_pause(next_direction=-1)
+        elif self._offset_px <= 0.0:
+            self._offset_px = 0.0
+            self._start_pause(next_direction=1)
+
+        self.update()
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
+
+        rect = self.contentsRect()
+        painter.setClipRect(rect)
+
+        # 颜色优先取 stylesheet 里的 color，其次用 palette
+        painter.setPen(
+            self._text_color
+            if self._text_color is not None
+            else self.palette().color(QPalette.ColorRole.WindowText)
+        )
+
+        if not self._marquee_text:
+            return
+
+        fm = self.fontMetrics()
+        baseline_y = rect.y() + (rect.height() + fm.ascent() - fm.descent()) // 2
+        x = rect.x() - int(self._offset_px)
+        painter.drawText(x, baseline_y, self._marquee_text)
 
 
 # 列表项基类
@@ -314,8 +523,10 @@ class TaskListItem(BaseListItem):
     def eventFilter(self, obj, event):
         """事件过滤器，用于监听选项标签的大小变化"""
         if obj == self.option_label and event.type() == event.Type.Resize:
-            # 当选项标签大小改变时，重新检查是否需要滚动
-            QTimer.singleShot(50, self._check_and_start_scroll)
+            # 当选项标签大小改变时，重新计算是否需要滚动（不重置滚动位置）
+            QTimer.singleShot(
+                50, lambda: self.option_label.refresh_scroll(reset_offset=False)
+            )
         return super().eventFilter(obj, event)
 
     def _get_task_icon_path(self) -> str | None:
@@ -426,7 +637,7 @@ class TaskListItem(BaseListItem):
         label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         return label
 
-    def _ensure_font_valid(self, label: BodyLabel):
+    def _ensure_font_valid(self, label: QWidget):
         """确保标签的字体大小有效，防止出现负数"""
         font = label.font()
         if font.pointSize() <= 0:
@@ -452,10 +663,9 @@ class TaskListItem(BaseListItem):
         # 禁用文本选择，让所有事件（点击、拖动等）直接作用于父组件 ListItem
         label.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
 
-        # 初始化滚动相关变量
-        self._option_scroll_timer = QTimer()
-        self._option_scroll_timer.timeout.connect(self._scroll_option_text)
-        self._option_scroll_position = 0
+        # 跑马灯：慢速 + 两端停顿 1s + 往返滚动
+        label.setMarqueeConfig(speed_px_per_sec=25.0, interval_ms=30, pause_ms=1000)
+
         self._option_full_text = ""
 
         return label
@@ -584,10 +794,6 @@ class TaskListItem(BaseListItem):
 
     def _update_option_display(self):
         """更新选项显示"""
-        # 停止之前的滚动
-        if hasattr(self, "_option_scroll_timer"):
-            self._option_scroll_timer.stop()
-
         # 尝试从 service_coordinator 获取最新的 task 对象，确保使用最新的 task_option
         if self.service_coordinator:
             try:
@@ -603,7 +809,6 @@ class TaskListItem(BaseListItem):
             self._option_full_text = ""
             self.option_label.setText("")
             self.option_label.setToolTip("")
-            self._option_scroll_position = 0
             return
 
         # 提取选项值（只显示当前选择的选项）
@@ -619,116 +824,12 @@ class TaskListItem(BaseListItem):
             display_text = " · ".join(option_values)
             self._option_full_text = display_text
             self.option_label.setToolTip(display_text)  # 设置工具提示以便查看完整内容
-
-            # 检查文本是否需要滚动
-            self._check_and_start_scroll()
+            # 交给 OptionLabel 自己判断是否需要滚动
+            self.option_label.setText(display_text)
         else:
             self._option_full_text = ""
             self.option_label.setText("")
             self.option_label.setToolTip("")
-            self._option_scroll_position = 0
-
-    def _check_and_start_scroll(self):
-        """检查文本是否需要滚动，如果需要则启动自动滚动"""
-        if not hasattr(self, "option_label") or not self._option_full_text:
-            return
-
-        # 获取标签的可用宽度
-        label_width = self.option_label.width()
-        if label_width <= 0:
-            # 如果宽度还未确定，延迟检查
-            QTimer.singleShot(100, self._check_and_start_scroll)
-            return
-
-        # 确保字体大小有效，防止出现负数
-        self._ensure_font_valid(self.option_label)
-
-        # 获取文本宽度
-        try:
-            font_metrics = self.option_label.fontMetrics()
-            text_width = font_metrics.boundingRect(self._option_full_text).width()
-        except Exception:
-            # 如果获取字体度量失败，直接显示文本，不滚动
-            self.option_label.setText(self._option_full_text)
-            self._option_scroll_timer.stop()
-            return
-
-        # 如果文本宽度超过标签宽度，启动滚动
-        if text_width > label_width:
-            self._option_scroll_position = 0
-            self._option_scroll_timer.start(50)  # 每50ms更新一次
-        else:
-            # 文本不需要滚动，直接显示
-            self.option_label.setText(self._option_full_text)
-            self._option_scroll_timer.stop()
-
-    def _scroll_option_text(self):
-        """滚动选项文本"""
-        if not hasattr(self, "option_label") or not self._option_full_text:
-            self._option_scroll_timer.stop()
-            return
-
-        label_width = self.option_label.width()
-        if label_width <= 0:
-            return
-
-        # 确保字体大小有效，防止出现负数
-        self._ensure_font_valid(self.option_label)
-
-        try:
-            font_metrics = self.option_label.fontMetrics()
-            text_width = font_metrics.boundingRect(self._option_full_text).width()
-        except Exception:
-            # 如果获取字体度量失败，停止滚动
-            self.option_label.setText(self._option_full_text)
-            self._option_scroll_timer.stop()
-            self._option_scroll_position = 0
-            return
-
-        # 如果文本不再需要滚动，停止滚动
-        if text_width <= label_width:
-            self.option_label.setText(self._option_full_text)
-            self._option_scroll_timer.stop()
-            self._option_scroll_position = 0
-            return
-
-        # 计算显示的文本部分
-        # 添加分隔符以便滚动更平滑
-        scroll_text = self._option_full_text + " · "
-        try:
-            total_width = font_metrics.boundingRect(scroll_text).width()
-        except Exception:
-            # 如果计算失败，停止滚动
-            self.option_label.setText(self._option_full_text)
-            self._option_scroll_timer.stop()
-            self._option_scroll_position = 0
-            return
-
-        # 计算当前应该显示的文本起始位置
-        # 使用字符位置而不是像素位置，更简单
-        chars_per_scroll = 1  # 每次滚动1个字符
-        max_chars = len(scroll_text)
-
-        # 计算当前显示的文本
-        start_pos = self._option_scroll_position % max_chars
-        display_text = scroll_text[start_pos:] + scroll_text[:start_pos]
-
-        # 截取适合宽度的文本
-        displayed = ""
-        for char in display_text:
-            test_text = displayed + char
-            try:
-                if font_metrics.boundingRect(test_text).width() > label_width:
-                    break
-            except Exception:
-                # 如果计算失败，使用当前文本
-                break
-            displayed = test_text
-
-        self.option_label.setText(displayed)
-
-        # 更新滚动位置
-        self._option_scroll_position += chars_per_scroll
 
     def on_checkbox_changed(self, state):
         # 复选框状态变更处理
