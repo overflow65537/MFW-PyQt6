@@ -45,7 +45,13 @@ class LogoutputWidget(QWidget):
         self._max_log_entries = 500
         # 缩略图预览框（自动保持比例：16:9 或 9:16）
         self._thumb_box = QSize(72, 72)
-        self._thumb_jpg_quality = 80
+        # 图片压缩：质量提高到 90（减少细节损失），最低分辨率 720P（1280x720）
+        self._thumb_jpg_quality = 90
+        self._min_resolution = (1280, 720)  # 720P 作为最低分辨率
+        # 图片去重：与上一张相似度 >= 阈值则复用上一张，不新增存储
+        self._image_similarity_threshold = 0.99
+        self._last_image_bytes: QByteArray | None = None
+        self._last_image_small_gray = None  # numpy.ndarray(uint8) | None
         self._placeholder_icon: QIcon = self._load_placeholder_icon()
         # 级别颜色映射（随主题自动更新）
         self._level_color: dict[str, str] = {}
@@ -140,9 +146,7 @@ class LogoutputWidget(QWidget):
         """主题变化时刷新已有日志颜色"""
         base_color = self._resolve_base_text_color()
         for item in self._log_items:
-            level = (
-                getattr(item, "_data", None).level if hasattr(item, "_data") else "INFO"
-            )
+            level = item.level
             color = self._level_color.get(
                 level, self._level_color.get("INFO", base_color)
             )
@@ -236,6 +240,9 @@ class LogoutputWidget(QWidget):
             if w:
                 w.deleteLater()
         self._log_items.clear()
+        # 清理“上一张图片”缓存，避免跨 session 复用旧图
+        self._last_image_bytes = None
+        self._last_image_small_gray = None
         self._add_tail_spacer()
 
     def _on_log_output(self, level: str, text: str):
@@ -297,10 +304,15 @@ class LogoutputWidget(QWidget):
         # 任务名：使用 TaskFlowRunner 当前任务映射（可靠，不依赖翻译后的文本）
         task_name = self._get_current_task_name()
 
-        # 日志出现时抓取一帧作为预览（优先 cached_image；None 则不显示）
-        image_bytes = self._try_capture_cached_image_bytes()
-        if image_bytes is not None and image_bytes.isEmpty():
+        # System 任务：不捕获图片，使用图标 icon，不占用 500 张配额
+        # 其他任务：正常捕获图片
+        if task_name == self.tr("System"):
             image_bytes = None
+        else:
+            # 日志出现时抓取一帧作为预览（优先 cached_image；None 则不显示）
+            image_bytes = self._try_capture_cached_image_bytes()
+            if image_bytes is not None and image_bytes.isEmpty():
+                image_bytes = None
 
         data = LogItemData(
             level=level,
@@ -478,15 +490,19 @@ class LogoutputWidget(QWidget):
         """尝试从 controller.cached_image 获取一帧，并压缩为 JPG bytes。"""
         controller = self._get_controller()
         if controller is None:
+            logger.debug("[LogImage] No controller available")
             return None
         try:
             cached_attr = getattr(controller, "cached_image", None)
             if cached_attr is None:
+                logger.debug("[LogImage] controller has no cached_image attribute")
                 return None
             cached = cached_attr() if callable(cached_attr) else cached_attr
             if cached is None:
+                logger.debug("[LogImage] cached_image returned None")
                 return None
-        except Exception:
+        except Exception as e:
+            logger.debug(f"[LogImage] Failed to get cached_image: {e}")
             return None
 
         # 兼容：cached 期望是 numpy.ndarray（BGR）
@@ -494,17 +510,57 @@ class LogoutputWidget(QWidget):
             import numpy as np  # type: ignore
 
             if not isinstance(cached, np.ndarray):
+                logger.debug(f"[LogImage] cached is not numpy array, type: {type(cached)}")
                 return None
             if cached.ndim < 2:
+                logger.debug(f"[LogImage] cached ndim < 2, ndim: {cached.ndim}")
                 return None
             h, w = int(cached.shape[0]), int(cached.shape[1])
             if h <= 0 or w <= 0:
+                logger.debug(f"[LogImage] Invalid dimensions: {w}x{h}")
                 return None
+            logger.debug(f"[LogImage] Got frame: {w}x{h}, ndim={cached.ndim}, dtype={cached.dtype}")
 
             # 常见情况：HWC, 3 通道 BGR
             if cached.ndim == 3 and cached.shape[2] >= 3:
+                # 先做相似度去重：缩小成灰度图比较
+                curr_small = self._to_small_gray(cached, size=(64, 64))
+                if (
+                    curr_small is not None
+                    and self._last_image_small_gray is not None
+                    and self._last_image_bytes is not None
+                ):
+                    similarity = self._image_similarity(curr_small, self._last_image_small_gray)
+                    logger.info(f"[图片相似度] 当前相似度: {similarity:.2%} (阈值: {self._image_similarity_threshold:.2%})")
+                    if similarity >= self._image_similarity_threshold:
+                        logger.info(f"[图片相似度] 检测到相同图片（相似度 {similarity:.2%} >= {self._image_similarity_threshold:.2%}），复用上一张图片，不新增存储")
+                        return self._last_image_bytes
+
                 bgr = cached[:, :, :3]
                 rgb = bgr[..., ::-1]
+                # 确保是 uint8，避免 QImage/save 因 dtype 异常导致编码失败
+                if rgb.dtype != np.uint8:
+                    rgb = np.clip(rgb, 0, 255).astype(np.uint8)
+                
+                # 智能缩放：如果大于 720P，缩放到 720P（保持比例）；小于 720P 保持原尺寸
+                max_w, max_h = self._min_resolution
+                if w > max_w or h > max_h:
+                    # 计算缩放比例（保持宽高比）
+                    scale_w = max_w / w
+                    scale_h = max_h / h
+                    scale = min(scale_w, scale_h)  # 取较小的比例，确保不超出边界
+                    new_w = int(w * scale)
+                    new_h = int(h * scale)
+                    # 使用高质量缩放（LANCZOS 插值）
+                    from PIL import Image
+                    pil_img = Image.fromarray(rgb)
+                    pil_resized = pil_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                    rgb = np.array(pil_resized, dtype=np.uint8)
+                    w, h = new_w, new_h
+                    logger.debug(f"[图片压缩] 原图 {cached.shape[1]}x{cached.shape[0]} 缩放到 {w}x{h} (720P)")
+                else:
+                    logger.debug(f"[图片压缩] 原图 {w}x{h} 小于 720P，保持原尺寸")
+                
                 rgb = np.ascontiguousarray(rgb)
                 bytes_per_line = 3 * w
                 qimg = QImage(
@@ -514,14 +570,98 @@ class LogoutputWidget(QWidget):
                 # 其他格式不处理（避免误解码）
                 return None
 
+            # 使用 QImageWriter 更可靠（避免 QImage.save 的参数顺序/类型问题）
+            from PySide6.QtGui import QImageWriter
+            
             ba = QByteArray()
             buf = QBuffer(ba)
             buf.open(QIODevice.OpenModeFlag.WriteOnly)
-            qimg.save(buf, "JPG", self._thumb_jpg_quality)
+            
+            writer = QImageWriter()
+            writer.setDevice(buf)
+            writer.setFormat(b"JPG")
+            writer.setQuality(self._thumb_jpg_quality)
+            ok = writer.write(qimg)
             buf.close()
-            return ba if not ba.isEmpty() else None
+            
+            if (not ok) or ba.isEmpty():
+                logger.debug(f"[LogImage] JPG save failed: {writer.errorString()}, trying PNG")
+                # 有些环境缺少 JPG 编码插件，fallback 到 PNG
+                ba = QByteArray()
+                buf = QBuffer(ba)
+                buf.open(QIODevice.OpenModeFlag.WriteOnly)
+                
+                writer = QImageWriter()
+                writer.setDevice(buf)
+                writer.setFormat(b"PNG")
+                ok = writer.write(qimg)
+                buf.close()
+                if (not ok) or ba.isEmpty():
+                    logger.warning(f"[LogImage] Both JPG and PNG save failed: {writer.errorString()}")
+                    return None
+                logger.debug(f"[LogImage] PNG save succeeded, size: {ba.size()} bytes")
+            else:
+                logger.debug(f"[LogImage] JPG save succeeded, size: {ba.size()} bytes")
+
+            # 更新“上一张图片”缓存（用于后续去重复用）
+            try:
+                self._last_image_bytes = ba
+                if "curr_small" not in locals() or curr_small is None:
+                    curr_small = self._to_small_gray(cached, size=(64, 64))
+                self._last_image_small_gray = curr_small
+            except Exception:
+                pass
+
+            return ba
+        except Exception as e:
+            logger.exception(f"[LogImage] Exception during image processing: {e}")
+            return None
+
+    def _to_small_gray(self, frame_bgr, *, size: tuple[int, int]):
+        """将 BGR numpy 图像缩小并转为灰度 uint8，用于相似度比较。"""
+        try:
+            import numpy as np  # type: ignore
+
+            if frame_bgr is None or not isinstance(frame_bgr, np.ndarray):
+                return None
+            if frame_bgr.ndim != 3 or frame_bgr.shape[2] < 3:
+                return None
+            h, w = int(frame_bgr.shape[0]), int(frame_bgr.shape[1])
+            th, tw = int(size[0]), int(size[1])
+            if h <= 1 or w <= 1 or th <= 0 or tw <= 0:
+                return None
+
+            ys = np.linspace(0, h - 1, th).astype(np.int32)
+            xs = np.linspace(0, w - 1, tw).astype(np.int32)
+            small = frame_bgr[np.ix_(ys, xs)]  # (th, tw, c)
+            b = small[..., 0].astype(np.float32)
+            g = small[..., 1].astype(np.float32)
+            r = small[..., 2].astype(np.float32)
+            gray = (0.114 * b + 0.587 * g + 0.299 * r).clip(0, 255).astype(np.uint8)
+            return gray
         except Exception:
             return None
+
+    def _image_similarity(self, a_gray, b_gray) -> float:
+        """返回 [0,1] 相似度；1 表示完全相同。"""
+        try:
+            import numpy as np  # type: ignore
+
+            if a_gray is None or b_gray is None:
+                return 0.0
+            if not isinstance(a_gray, np.ndarray) or not isinstance(b_gray, np.ndarray):
+                return 0.0
+            if a_gray.shape != b_gray.shape:
+                return 0.0
+            diff = np.abs(a_gray.astype(np.int16) - b_gray.astype(np.int16)).mean()
+            sim = 1.0 - float(diff) / 255.0
+            if sim < 0.0:
+                return 0.0
+            if sim > 1.0:
+                return 1.0
+            return sim
+        except Exception:
+            return 0.0
 
     def _get_current_task_name(self) -> str:
         """获取当前正在执行的任务名（如果无法获取则返回 'System'）。"""
@@ -566,7 +706,7 @@ class LogoutputWidget(QWidget):
         # 2) 应用 window icon
         try:
             app = QApplication.instance()
-            if app:
+            if isinstance(app, QApplication):
                 ico = app.windowIcon()
                 if ico and not ico.isNull():
                     return ico
@@ -574,3 +714,32 @@ class LogoutputWidget(QWidget):
             pass
 
         return QIcon()
+
+    def collect_log_images(self) -> dict[str, tuple[QByteArray, list[int]]]:
+        """
+        收集所有日志条目中的图片，建立图片到日志索引的映射。
+        
+        Returns:
+            dict: key 为图片的唯一标识（hash），value 为 (image_bytes, [日志索引列表])
+        """
+        from hashlib import md5
+        
+        image_map: dict[str, tuple[QByteArray, list[int]]] = {}
+        
+        for idx, item in enumerate(self._log_items):
+            data = getattr(item, "_data", None)
+            if not data or not data.image_bytes or data.image_bytes.isEmpty():
+                continue
+            
+            # 使用图片 bytes 的 MD5 作为唯一标识
+            raw_bytes = data.image_bytes.data()
+            img_hash = md5(raw_bytes).hexdigest()
+            
+            if img_hash in image_map:
+                # 同一张图片，追加日志索引
+                image_map[img_hash][1].append(idx)
+            else:
+                # 新图片，创建映射
+                image_map[img_hash] = (data.image_bytes, [idx])
+        
+        return image_map

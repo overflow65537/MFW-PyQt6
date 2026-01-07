@@ -111,8 +111,13 @@ class LogItemWidget(QWidget):
             return
 
         if data.image_bytes and not data.image_bytes.isEmpty():
+            from app.utils.logger import logger
+            logger.debug(f"[LogItemWidget] Loading image, bytes size: {data.image_bytes.size()}")
             pixmap = QPixmap()
-            if pixmap.loadFromData(data.image_bytes):
+            # 显式转为 bytes，避免某些 PySide6 环境下 QByteArray 隐式转换失败
+            raw = data.image_bytes.data()
+            if pixmap.loadFromData(raw):
+                logger.debug(f"[LogItemWidget] Image loaded successfully, size: {pixmap.width()}x{pixmap.height()}")
                 # 自动适配 16:9 或 9:16：保持比例缩放到方形盒内
                 scaled = pixmap.scaled(
                     self._thumb_box,
@@ -126,6 +131,8 @@ class LogItemWidget(QWidget):
                 self._preview_button.setCursor(Qt.CursorShape.PointingHandCursor)
                 self._preview_button.setToolTip(self.tr("Click to view full image"))
                 return
+            else:
+                logger.warning("[LogItemWidget] Failed to load image from bytes, showing placeholder")
 
         # 没有图片：显示占位 icon（优先 interface icon，其次应用 icon；都没有则隐藏）
         if not self._placeholder_icon.isNull():
@@ -139,6 +146,10 @@ class LogItemWidget(QWidget):
             self._preview_button.setIcon(QIcon())
             self._preview_button.setToolTip("")
             self._preview_button.setVisible(False)
+
+    @property
+    def level(self) -> str:
+        return self._data.level or "INFO"
 
     def apply_theme(self, *, base_text_color: str, level_color: str) -> None:
         """由外层统一刷新主题色。"""
@@ -157,7 +168,9 @@ class LogItemWidget(QWidget):
         if not data.image_bytes or data.image_bytes.isEmpty():
             return
         pixmap = QPixmap()
-        if not pixmap.loadFromData(data.image_bytes):
+        # 显式转为 bytes，避免某些 PySide6 环境下 QByteArray 隐式转换失败
+        raw = data.image_bytes.data()
+        if not pixmap.loadFromData(raw):
             return
 
         dlg = QDialog(self)

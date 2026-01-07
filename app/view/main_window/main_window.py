@@ -886,6 +886,7 @@ class MainWindow(MSFluentWindow):
         errors: list[str] = []
         try:
             with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                # 先打包常规日志文件
                 for file_path in debug_dir.rglob("*"):
                     if file_path.is_dir():
                         continue
@@ -894,6 +895,9 @@ class MainWindow(MSFluentWindow):
                         self._write_locked_log(zf, file_path, arcname, errors)
                     else:
                         self._write_file_to_zip(zf, file_path, arcname, errors)
+                
+                # 保存日志组件中的图片到 live 文件夹
+                self._save_log_images_to_zip(zf, errors)
 
             self._close_log_zip_progress()
             self._notify_log_zip_result(zip_path, errors)
@@ -978,6 +982,66 @@ class MainWindow(MSFluentWindow):
         except Exception as exc:
             errors.append(f"{arcname} ({exc})")
             logger.warning(" 添加日志文件失败：%s (%s)", file_path, exc)
+
+    def _save_log_images_to_zip(self, zf: zipfile.ZipFile, errors: list[str]) -> None:
+        """将日志组件中的图片保存到压缩包的 live 文件夹中。"""
+        try:
+            # 获取日志组件实例
+            log_widget = getattr(
+                getattr(self, "TaskInterface", None), "log_output_widget", None
+            )
+            if not log_widget or not hasattr(log_widget, "collect_log_images"):
+                return
+            
+            # 收集所有图片
+            image_map = log_widget.collect_log_images()
+            if not image_map:
+                return
+            
+            # 获取所有日志条目的时间戳（用于文件名）
+            log_items = getattr(log_widget, "_log_items", [])
+            timestamps = []
+            for item in log_items:
+                data = getattr(item, "_data", None)
+                if data:
+                    timestamps.append(data.timestamp)
+                else:
+                    timestamps.append("")
+            
+            # 保存每张图片
+            for img_hash, (image_bytes, indices) in image_map.items():
+                if not image_bytes or image_bytes.isEmpty():
+                    continue
+                
+                # 生成文件名
+                min_idx = min(indices)
+                max_idx = max(indices)
+                
+                # 使用最小索引对应的时间戳
+                timestamp_str = timestamps[min_idx] if min_idx < len(timestamps) else datetime.now().strftime("%H%M%S")
+                # 将时间戳中的冒号替换为下划线（文件名安全）
+                timestamp_str = timestamp_str.replace(":", "_")
+                
+                if len(indices) == 1:
+                    # 单条日志：序号+时间
+                    filename = f"{min_idx:04d}_{timestamp_str}.jpg"
+                else:
+                    # 多条日志共享：最小序号+[最小序号-最大序号]+时间
+                    filename = f"{min_idx:04d}_[{min_idx:04d}-{max_idx:04d}]_{timestamp_str}.jpg"
+                
+                arcname = f"{Path('debug').name}/live/{filename}"
+                
+                # 写入压缩包
+                try:
+                    raw_bytes = image_bytes.data()
+                    zf.writestr(arcname, raw_bytes)
+                    logger.debug(f"已保存日志图片到压缩包: {arcname} (绑定 {len(indices)} 条日志)")
+                except Exception as exc:
+                    errors.append(f"{arcname} ({exc})")
+                    logger.warning(f"保存日志图片失败：{arcname} ({exc})")
+        except Exception as exc:
+            logger.exception("保存日志图片到压缩包时出错")
+            errors.append(f"live/图片保存失败 ({exc})")
 
     def _build_log_zip_path(self) -> Path:
         """生成日志压缩包路径（放在 debug 目录内），如已存在则删除后重建。"""
