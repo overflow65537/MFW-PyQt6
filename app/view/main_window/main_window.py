@@ -998,15 +998,18 @@ class MainWindow(MSFluentWindow):
             if not image_map:
                 return
             
-            # 获取所有日志条目的时间戳（用于文件名）
+            # 获取所有日志条目的时间戳和任务名（用于文件名）
             log_items = getattr(log_widget, "_log_items", [])
             timestamps = []
+            task_names = []
             for item in log_items:
                 data = getattr(item, "_data", None)
                 if data:
                     timestamps.append(data.timestamp)
+                    task_names.append(data.task_name)
                 else:
                     timestamps.append("")
+                    task_names.append("")
             
             # 保存每张图片
             for img_hash, (image_bytes, indices) in image_map.items():
@@ -1017,17 +1020,26 @@ class MainWindow(MSFluentWindow):
                 min_idx = min(indices)
                 max_idx = max(indices)
                 
-                # 使用最小索引对应的时间戳
+                # 使用最小索引对应的时间戳和任务名
                 timestamp_str = timestamps[min_idx] if min_idx < len(timestamps) else datetime.now().strftime("%H%M%S")
                 # 将时间戳中的冒号替换为下划线（文件名安全）
                 timestamp_str = timestamp_str.replace(":", "_")
                 
+                # 获取任务名（如果多条日志共享，使用最小索引的任务名）
+                task_name = task_names[min_idx] if min_idx < len(task_names) else "Unknown"
+                # 清理任务名中的文件名不安全字符（替换为下划线）
+                import re
+                safe_task_name = re.sub(r'[<>:"/\\|?*]', '_', task_name).strip()
+                safe_task_name = safe_task_name.replace(' ', '_')  # 空格也替换为下划线
+                if not safe_task_name:
+                    safe_task_name = "Unknown"
+                
                 if len(indices) == 1:
-                    # 单条日志：序号+时间
-                    filename = f"{min_idx:04d}_{timestamp_str}.jpg"
+                    # 单条日志：序号+任务名+时间
+                    filename = f"{min_idx:04d}_{safe_task_name}_{timestamp_str}.jpg"
                 else:
-                    # 多条日志共享：最小序号+[最小序号-最大序号]+时间
-                    filename = f"{min_idx:04d}_[{min_idx:04d}-{max_idx:04d}]_{timestamp_str}.jpg"
+                    # 多条日志共享：最小序号+[最小序号-最大序号]+任务名+时间
+                    filename = f"{min_idx:04d}_[{min_idx:04d}-{max_idx:04d}]_{safe_task_name}_{timestamp_str}.jpg"
                 
                 arcname = f"{Path('debug').name}/live/{filename}"
                 

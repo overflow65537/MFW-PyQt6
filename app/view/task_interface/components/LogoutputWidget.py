@@ -45,9 +45,10 @@ class LogoutputWidget(QWidget):
         self._max_log_entries = 500
         # 缩略图预览框（自动保持比例：16:9 或 9:16）
         self._thumb_box = QSize(72, 72)
-        # 图片压缩：质量提高到 90（减少细节损失），最低分辨率 720P（1280x720）
-        self._thumb_jpg_quality = 90
-        self._min_resolution = (1280, 720)  # 720P 作为最低分辨率
+        # 图片压缩：目标小于50KB，图像细节不重要
+        self._thumb_jpg_quality = 60  # 降低质量以减小文件大小
+        self._target_max_size_kb = 50  # 目标最大50KB
+        self._min_resolution = (640, 360)  # 降低到360P（640x360）以减小文件大小
         # 图片去重：与上一张相似度 >= 阈值则复用上一张，不新增存储
         self._image_similarity_threshold = 0.99
         self._last_image_bytes: QByteArray | None = None
@@ -542,7 +543,7 @@ class LogoutputWidget(QWidget):
                 if rgb.dtype != np.uint8:
                     rgb = np.clip(rgb, 0, 255).astype(np.uint8)
                 
-                # 智能缩放：如果大于 720P，缩放到 720P（保持比例）；小于 720P 保持原尺寸
+                # 智能缩放：如果大于目标分辨率，缩放到目标分辨率（保持比例）
                 max_w, max_h = self._min_resolution
                 if w > max_w or h > max_h:
                     # 计算缩放比例（保持宽高比）
@@ -551,15 +552,15 @@ class LogoutputWidget(QWidget):
                     scale = min(scale_w, scale_h)  # 取较小的比例，确保不超出边界
                     new_w = int(w * scale)
                     new_h = int(h * scale)
-                    # 使用高质量缩放（LANCZOS 插值）
+                    # 使用快速缩放（BILINEAR 插值，细节不重要）
                     from PIL import Image
                     pil_img = Image.fromarray(rgb)
-                    pil_resized = pil_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                    pil_resized = pil_img.resize((new_w, new_h), Image.Resampling.BILINEAR)
                     rgb = np.array(pil_resized, dtype=np.uint8)
                     w, h = new_w, new_h
-                    logger.debug(f"[图片压缩] 原图 {cached.shape[1]}x{cached.shape[0]} 缩放到 {w}x{h} (720P)")
+                    logger.debug(f"[图片压缩] 原图 {cached.shape[1]}x{cached.shape[0]} 缩放到 {w}x{h} (360P)")
                 else:
-                    logger.debug(f"[图片压缩] 原图 {w}x{h} 小于 720P，保持原尺寸")
+                    logger.debug(f"[图片压缩] 原图 {w}x{h} 小于 360P，保持原尺寸")
                 
                 rgb = np.ascontiguousarray(rgb)
                 bytes_per_line = 3 * w
@@ -577,31 +578,55 @@ class LogoutputWidget(QWidget):
             buf = QBuffer(ba)
             buf.open(QIODevice.OpenModeFlag.WriteOnly)
             
-            writer = QImageWriter()
-            writer.setDevice(buf)
-            writer.setFormat(b"JPG")
-            writer.setQuality(self._thumb_jpg_quality)
-            ok = writer.write(qimg)
-            buf.close()
+            # 尝试压缩，如果文件太大则进一步降低质量
+            target_size_bytes = self._target_max_size_kb * 1024
+            quality = self._thumb_jpg_quality
+            ba = None
             
-            if (not ok) or ba.isEmpty():
-                logger.debug(f"[LogImage] JPG save failed: {writer.errorString()}, trying PNG")
-                # 有些环境缺少 JPG 编码插件，fallback 到 PNG
+            for attempt in range(3):  # 最多尝试3次
                 ba = QByteArray()
                 buf = QBuffer(ba)
                 buf.open(QIODevice.OpenModeFlag.WriteOnly)
                 
                 writer = QImageWriter()
                 writer.setDevice(buf)
-                writer.setFormat(b"PNG")
+                writer.setFormat(b"JPG")
+                writer.setQuality(quality)
                 ok = writer.write(qimg)
                 buf.close()
+                
                 if (not ok) or ba.isEmpty():
-                    logger.warning(f"[LogImage] Both JPG and PNG save failed: {writer.errorString()}")
-                    return None
-                logger.debug(f"[LogImage] PNG save succeeded, size: {ba.size()} bytes")
-            else:
-                logger.debug(f"[LogImage] JPG save succeeded, size: {ba.size()} bytes")
+                    logger.debug(f"[LogImage] JPG save failed: {writer.errorString()}, trying PNG")
+                    # 有些环境缺少 JPG 编码插件，fallback 到 PNG
+                    ba = QByteArray()
+                    buf = QBuffer(ba)
+                    buf.open(QIODevice.OpenModeFlag.WriteOnly)
+                    
+                    writer = QImageWriter()
+                    writer.setDevice(buf)
+                    writer.setFormat(b"PNG")
+                    ok = writer.write(qimg)
+                    buf.close()
+                    if (not ok) or ba.isEmpty():
+                        logger.warning(f"[LogImage] Both JPG and PNG save failed: {writer.errorString()}")
+                        return None
+                    logger.debug(f"[LogImage] PNG save succeeded, size: {ba.size()} bytes")
+                    break
+                
+                # 检查文件大小
+                if ba.size() <= target_size_bytes:
+                    logger.debug(f"[图片压缩] JPG 保存成功，大小: {ba.size()} bytes ({ba.size()/1024:.1f}KB), 质量: {quality}")
+                    break
+                
+                # 文件太大，降低质量重试
+                if attempt < 2:  # 还有重试机会
+                    quality = max(30, quality - 15)  # 每次降低15，最低30
+                    logger.debug(f"[图片压缩] 文件大小 {ba.size()} bytes ({ba.size()/1024:.1f}KB) 超过目标 {target_size_bytes} bytes，降低质量到 {quality} 重试")
+                else:
+                    logger.debug(f"[图片压缩] JPG 保存成功，大小: {ba.size()} bytes ({ba.size()/1024:.1f}KB), 质量: {quality} (已达到最低质量)")
+            
+            if ba is None or ba.isEmpty():
+                return None
 
             # 更新“上一张图片”缓存（用于后续去重复用）
             try:
