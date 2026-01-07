@@ -79,9 +79,6 @@ from qfluentwidgets import FluentIcon as FIF
 
 
 from app.view.task_interface.task_interface_logic import TaskInterface
-from app.view.special_task_interface.special_task_interface import (
-    SpecialTaskInterface,
-)
 from app.view.monitor_interface import MonitorInterface
 from app.view.schedule_interface.schedule_interface import ScheduleInterface
 from app.view.setting_interface.setting_interface import (
