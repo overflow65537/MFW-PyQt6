@@ -45,10 +45,10 @@ class LogoutputWidget(QWidget):
         self._max_log_entries = 500
         # 缩略图预览框（自动保持比例：16:9 或 9:16）
         self._thumb_box = QSize(72, 72)
-        # 图片压缩：目标小于50KB，图像细节不重要
-        self._thumb_jpg_quality = 60  # 降低质量以减小文件大小
-        self._target_max_size_kb = 50  # 目标最大50KB
-        self._min_resolution = (640, 360)  # 降低到360P（640x360）以减小文件大小
+        # 图片压缩：目标小于100KB，兼顾图像质量
+        self._thumb_jpg_quality = 80  # 提高质量以保持细节
+        self._target_max_size_kb = 100  # 目标最大100KB
+        self._min_resolution = (640, 360)  # 保持360P（640x360）
         # 图片去重：与上一张相似度 >= 阈值则复用上一张，不新增存储
         self._image_similarity_threshold = 0.99
         self._last_image_bytes: QByteArray | None = None
@@ -233,7 +233,7 @@ class LogoutputWidget(QWidget):
         self.generate_log_zip_button.clicked.connect(signalBus.request_log_zip)
 
     def clear_log(self):
-        """清空日志内容"""
+        """清空日志内容，清除缓存图像并重置序号"""
         self._remove_tail_spacer()
         while self.log_list_layout.count():
             item = self.log_list_layout.takeAt(0)
@@ -241,9 +241,12 @@ class LogoutputWidget(QWidget):
             if w:
                 w.deleteLater()
         self._log_items.clear()
-        # 清理“上一张图片”缓存，避免跨 session 复用旧图
+        
+        # 清除缓存图像，避免跨 session 复用旧图
         self._last_image_bytes = None
         self._last_image_small_gray = None
+        logger.info("[日志清除] 已清除所有日志条目和缓存图像，序号已重置")
+        
         self._add_tail_spacer()
 
     def _on_log_output(self, level: str, text: str):
@@ -620,7 +623,7 @@ class LogoutputWidget(QWidget):
                 
                 # 文件太大，降低质量重试
                 if attempt < 2:  # 还有重试机会
-                    quality = max(30, quality - 15)  # 每次降低15，最低30
+                    quality = max(50, quality - 10)  # 每次降低10，最低50（保持一定质量）
                     logger.debug(f"[图片压缩] 文件大小 {ba.size()} bytes ({ba.size()/1024:.1f}KB) 超过目标 {target_size_bytes} bytes，降低质量到 {quality} 重试")
                 else:
                     logger.debug(f"[图片压缩] JPG 保存成功，大小: {ba.size()} bytes ({ba.size()/1024:.1f}KB), 质量: {quality} (已达到最低质量)")

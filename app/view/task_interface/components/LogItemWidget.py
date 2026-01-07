@@ -7,7 +7,7 @@ from PySide6.QtGui import QPixmap, QIcon
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QToolButton, QDialog
 from PySide6.QtWidgets import QApplication
 
-from qfluentwidgets import BodyLabel, ScrollArea
+from qfluentwidgets import BodyLabel, ScrollArea, SimpleCardWidget
 
 
 @dataclass(slots=True)
@@ -22,7 +22,7 @@ class LogItemData:
     image_bytes: QByteArray | None = None
 
 
-class LogItemWidget(QWidget):
+class LogItemWidget(SimpleCardWidget):
     """单条日志条目控件：左预览，右组合布局（等级+任务名 / 信息 / 时间）。"""
 
     def __init__(
@@ -34,6 +34,8 @@ class LogItemWidget(QWidget):
         parent: QWidget | None = None,
     ):
         super().__init__(parent)
+        self.setClickEnabled(False)
+        self.setBorderRadius(8)
         self._data = data
         self._thumb_box = thumb_box
         self._placeholder_icon = placeholder_icon or QIcon()
@@ -48,8 +50,10 @@ class LogItemWidget(QWidget):
         self.set_data(data)
 
     def _build_ui(self) -> None:
-        root = QHBoxLayout(self)
-        root.setContentsMargins(0, 0, 0, 0)
+        # SimpleCardWidget 内部已有布局，我们需要创建内容容器
+        content_widget = QWidget(self)
+        root = QHBoxLayout(content_widget)
+        root.setContentsMargins(12, 12, 12, 12)
         root.setSpacing(10)
         root.setAlignment(Qt.AlignmentFlag.AlignTop)
 
@@ -96,6 +100,11 @@ class LogItemWidget(QWidget):
         right.addWidget(self._time_label, 0, Qt.AlignmentFlag.AlignLeft)
 
         root.addLayout(right, 1)
+        
+        # 将内容容器添加到 SimpleCardWidget
+        card_layout = QVBoxLayout(self)
+        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.addWidget(content_widget)
 
     def set_data(self, data: LogItemData) -> None:
         self._data = data
