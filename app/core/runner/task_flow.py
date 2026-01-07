@@ -1198,7 +1198,7 @@ class TaskFlowRunner(QObject):
         signalBus.log_output.emit("INFO", self.tr("try to start program"))
         logger.info("尝试启动程序")
         program_params = controller_config.get("program_params", "")
-        wait_program_start = int(controller_config.get("wait_launch_time", 0))
+        wait_program_start = int(controller_config.get("wait_time", 0))
         self.process = self._start_process(program_path, program_params)
         if wait_program_start > 0:
             countdown_ok = await self._countdown_wait(

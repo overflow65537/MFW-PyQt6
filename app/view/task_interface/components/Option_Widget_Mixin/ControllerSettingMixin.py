@@ -679,8 +679,8 @@ class ControllerSettingWidget(QWidget):
         # 等待启动时间
         self._create_resource_line_edit(
             self.tr("Wait for Launch Time"),
-            "wait_launch_time",
-            lambda text: self._on_child_option_changed("wait_launch_time", text),
+            "wait_time",
+            lambda text: self._on_child_option_changed("wait_time", text),
         )
 
         # 鼠标输入方式
@@ -761,7 +761,7 @@ class ControllerSettingWidget(QWidget):
                     "hwnd": "",
                     "program_path": "",
                     "program_params": "",
-                    "wait_launch_time": "30",  # 默认等待程序启动 30s
+                    "wait_time": "30",  # 默认等待程序启动 30s
                     "mouse_input_methods": 0,
                     "keyboard_input_methods": 0,
                     "win32_screencap_methods": 0,
@@ -951,7 +951,7 @@ class ControllerSettingWidget(QWidget):
                 "hwnd": "",
                 "program_path": "",
                 "program_params": "",
-                "wait_launch_time": "30",  # 默认等待程序启动 30s
+                "wait_time": "30",  # 默认等待程序启动 30s
             }
             self._ensure_defaults(controller_cfg, win32_defaults)
             self._ensure_win32_input_defaults(controller_cfg, controller_name)
@@ -1187,7 +1187,7 @@ class ControllerSettingWidget(QWidget):
             "hwnd",
             "program_path",
             "program_params",
-            "wait_launch_time",
+            "wait_time",
         ]
         win32_hide_widgets = [
             "mouse_input_methods",
