@@ -3,6 +3,7 @@ import asyncio
 from datetime import datetime
 from pathlib import Path
 import numpy as np
+import random
 
 from PIL import Image
 from PySide6.QtCore import QSize, Qt, QTimer
@@ -313,10 +314,16 @@ class MonitorWidget(QWidget):
             if task_flow and hasattr(task_flow, 'maafw'):
                 controller = getattr(task_flow.maafw, 'controller', None)
                 if controller is not None:
+                    logger.debug("[MonitorWidget] 使用任务流的控制器")
                     return controller
         
         # 回退到监控任务的控制器
-        return getattr(self.monitor_task.maafw, 'controller', None)
+        controller = getattr(self.monitor_task.maafw, 'controller', None)
+        if controller is not None:
+            logger.debug("[MonitorWidget] 使用监控任务的控制器")
+        else:
+            logger.debug("[MonitorWidget] 未找到可用的控制器")
+        return controller
     
     def _capture_frame(self) -> Image.Image:
         """捕获一帧"""
@@ -357,16 +364,21 @@ class MonitorWidget(QWidget):
     def _start_monitor_loop(self) -> None:
         """启动监控循环"""
         if self._monitor_loop_task and not self._monitor_loop_task.done():
+            logger.debug("[MonitorWidget] 监控循环任务已存在，跳过启动")
             return
         if self._monitoring_active:
+            logger.debug("[MonitorWidget] 监控已激活，跳过启动")
             return
+        logger.info("[MonitorWidget] 开始启动监控循环（正常模式）")
         suppress_asyncify_logging()
         suppress_qasync_logging()
         self._monitoring_active = True
         try:
             self._monitor_loop_task = asyncio.create_task(self._monitor_loop())
-        except Exception:
+            logger.info("[MonitorWidget] 监控循环任务已创建")
+        except Exception as e:
             # 如果创建任务失败，重置状态
+            logger.error(f"[MonitorWidget] 创建监控循环任务失败: {e}")
             self._monitoring_active = False
             restore_asyncify_logging()
             restore_qasync_logging()
@@ -375,8 +387,10 @@ class MonitorWidget(QWidget):
     def _start_low_power_monitoring(self) -> None:
         """启动低功耗模式监控（使用 QTimer 和 cached_image）"""
         if self._monitoring_active:
+            logger.debug("[MonitorWidget] 监控已激活，跳过启动低功耗模式")
             return
         
+        logger.info("[MonitorWidget] 开始启动低功耗模式监控")
         self._monitoring_active = True
         self._low_power_mode = True
         
@@ -385,6 +399,7 @@ class MonitorWidget(QWidget):
         self._low_power_timer.timeout.connect(self._low_power_refresh)
         interval_ms = int(1000 / 24)  # 24帧每秒
         self._low_power_timer.start(interval_ms)
+        logger.info(f"[MonitorWidget] 低功耗模式定时器已启动，间隔: {interval_ms}ms (24fps)")
         
         # 立即刷新一次
         self._low_power_refresh()
@@ -396,6 +411,7 @@ class MonitorWidget(QWidget):
         
         # 检查控制器是否连接
         if not self._is_controller_connected():
+            logger.warning("[MonitorWidget] 低功耗模式中检测到控制器断开")
             self._stop_monitoring()
             return
         
@@ -403,46 +419,64 @@ class MonitorWidget(QWidget):
         pil_image = self._get_cached_image()
         if pil_image:
             self._apply_preview_from_pil(pil_image)
+        else:
+            # 偶尔输出日志，避免日志过多
+            if random.random() < 0.01:  # 约1%的概率输出日志
+                logger.debug("[MonitorWidget] 低功耗模式：无法从缓存获取图像")
 
     def _stop_monitor_loop(self) -> None:
         """停止监控循环"""
+        logger.debug("[MonitorWidget] 停止监控循环")
         self._monitoring_active = False
         task = self._monitor_loop_task
         self._monitor_loop_task = None
         if task and not task.done():
+            logger.debug("[MonitorWidget] 取消监控循环任务")
             task.cancel()
         restore_asyncify_logging()
         restore_qasync_logging()
     
     def _stop_low_power_monitoring(self) -> None:
         """停止低功耗模式监控"""
+        logger.debug("[MonitorWidget] 停止低功耗模式监控")
         self._monitoring_active = False
         self._low_power_mode = False
         if self._low_power_timer:
             self._low_power_timer.stop()
             self._low_power_timer = None
+            logger.debug("[MonitorWidget] 低功耗模式定时器已停止")
 
     async def _monitor_loop(self) -> None:
         """监控循环"""
         loop = asyncio.get_running_loop()
+        frame_count = 0
+        logger.info("[MonitorWidget] 监控循环已开始运行")
         try:
             while self._monitoring_active:
                 start = loop.time()
                 if not self._is_controller_connected():
+                    logger.warning("[MonitorWidget] 监控循环中检测到控制器断开")
                     await self._handle_controller_disconnection()
                     return
                 try:
                     pil_image = await asyncio.to_thread(self._capture_frame)
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"[MonitorWidget] 捕获帧失败: {e}")
                     pil_image = None
                 if pil_image:
+                    frame_count += 1
+                    # 每30帧输出一次日志（约每秒一次）
+                    if frame_count % 30 == 0:
+                        logger.debug(f"[MonitorWidget] 监控循环运行中，已捕获 {frame_count} 帧")
                     self._apply_preview_from_pil(pil_image)
                 elapsed = loop.time() - start
                 wait = max(0, self._get_target_interval() - elapsed)
                 await asyncio.sleep(wait)
         except asyncio.CancelledError:
+            logger.info(f"[MonitorWidget] 监控循环被取消，共捕获 {frame_count} 帧")
             pass
         finally:
+            logger.info(f"[MonitorWidget] 监控循环结束，共捕获 {frame_count} 帧")
             self._monitor_loop_task = None
             restore_asyncify_logging()
             restore_qasync_logging()
@@ -464,13 +498,16 @@ class MonitorWidget(QWidget):
                 if controller is not None:
                     connected = getattr(controller, "connected", None)
                     if connected is not False:
+                        logger.debug(f"[MonitorWidget] 任务流控制器连接状态: {connected}")
                         return True
         
         # 回退到监控任务的控制器
         controller = getattr(self.monitor_task.maafw, "controller", None)
         if controller is None:
+            logger.debug("[MonitorWidget] 监控任务控制器不存在")
             return False
         connected = getattr(controller, "connected", None)
+        logger.debug(f"[MonitorWidget] 监控任务控制器连接状态: {connected}")
         return connected is not False
     
     def _check_task_flow_controller_ready(self) -> bool:
@@ -488,7 +525,8 @@ class MonitorWidget(QWidget):
             return False
         
         connected = getattr(controller, 'connected', None)
-        return connected is True
+        is_ready = connected is True
+        return is_ready
     
     async def _get_required_wait_time(self) -> float:
         """从配置中获取需要的等待时间（如果配置了启动模拟器或程序）"""
@@ -525,13 +563,70 @@ class MonitorWidget(QWidget):
             elif controller_type == "win32":
                 # Win32 控制器：检查是否有程序路径和等待时间
                 if controller_config.get("program_path", ""):
-                    wait_time = int(controller_config.get("wait_launch_time", 0))
+                    wait_time = int(controller_config.get("wait_time", 0))
                     return float(wait_time)
             
             return 0.0
         except Exception:
             # 如果获取配置失败，返回0（不等待）
             return 0.0
+    
+    async def _get_controller_wait_time(self) -> float:
+        """从配置中获取控制器的wait_time（不管是否有模拟器路径）"""
+        from app.common.constants import _CONTROLLER_
+        
+        try:
+            # 获取控制器配置
+            controller_cfg = self.service_coordinator.task_service.get_task(_CONTROLLER_)
+            if not controller_cfg:
+                return 30.0  # 默认30秒
+            
+            controller_raw = controller_cfg.task_option
+            if not isinstance(controller_raw, dict):
+                return 30.0  # 默认30秒
+            
+            # 获取控制器类型和名称
+            controller_type = self._get_controller_type_from_config(controller_raw)
+            controller_name = self._get_controller_name_from_config(controller_raw)
+            
+            # 获取控制器配置
+            if controller_name in controller_raw:
+                controller_config = controller_raw[controller_name]
+            elif controller_type in controller_raw:
+                controller_config = controller_raw[controller_type]
+            else:
+                controller_config = {}
+            
+            # 根据控制器类型获取等待时间
+            if controller_type == "adb":
+                # ADB 控制器：获取wait_time（可能是字符串或数字）
+                wait_time_str = controller_config.get("wait_time", "30")
+                try:
+                    wait_time = float(wait_time_str) if isinstance(wait_time_str, str) else float(wait_time_str)
+                    return wait_time
+                except (ValueError, TypeError):
+                    return 30.0  # 默认30秒
+            elif controller_type == "win32":
+                # Win32 控制器：获取wait_time
+                wait_time_str = controller_config.get("wait_time", "30")
+                try:
+                    wait_time = float(wait_time_str) if isinstance(wait_time_str, str) else float(wait_time_str)
+                    return wait_time
+                except (ValueError, TypeError):
+                    return 30.0  # 默认30秒
+            elif controller_type == "playcover":
+                # PlayCover 控制器：目前不需要等待时间，但为了代码一致性，支持配置wait_time
+                wait_time_str = controller_config.get("wait_time", "30")
+                try:
+                    wait_time = float(wait_time_str) if isinstance(wait_time_str, str) else float(wait_time_str)
+                    return wait_time
+                except (ValueError, TypeError):
+                    return 30.0  # 默认30秒
+            
+            return 30.0  # 默认30秒
+        except Exception:
+            # 如果获取配置失败，返回默认30秒
+            return 30.0
     
     def _get_controller_type_from_config(self, controller_raw: dict) -> str:
         """从配置中获取控制器类型"""
@@ -569,19 +664,24 @@ class MonitorWidget(QWidget):
         """处理控制器断开"""
         if not self._monitoring_active:
             return
+        logger.warning("[MonitorWidget] 检测到控制器断开连接，停止监控")
         self._monitoring_active = False
         current_task = asyncio.current_task()
         if current_task is not self._monitor_loop_task:
             self._stop_monitor_loop()
         try:
+            logger.debug("[MonitorWidget] 停止监控任务")
             await self.monitor_task.maafw.stop_task()
-        except Exception:
+        except Exception as e:
+            logger.warning(f"[MonitorWidget] 停止监控任务时出错: {e}")
             # 静默处理错误，不输出到日志组件
             pass
         try:
             if self.monitor_task.maafw.controller:
+                logger.debug("[MonitorWidget] 清除监控任务控制器引用")
                 self.monitor_task.maafw.controller = None
-        except Exception:
+        except Exception as e:
+            logger.warning(f"[MonitorWidget] 清除控制器引用时出错: {e}")
             # 静默处理错误，不输出到日志组件
             pass
         self._update_button_state()
@@ -630,8 +730,10 @@ class MonitorWidget(QWidget):
         """开始监控"""
         # 防止重复启动
         if self._monitoring_active or self._starting_monitoring:
+            logger.debug("[MonitorWidget] 监控已在运行或正在启动，跳过")
             return
         
+        logger.info("[MonitorWidget] 开始启动监控流程")
         self._starting_monitoring = True
         
         # 先显示占位图
@@ -639,25 +741,31 @@ class MonitorWidget(QWidget):
         
         async def _start_sequence():
             try:
+                logger.info("[MonitorWidget] 检查任务流控制器就绪状态")
                 # 检查任务流的控制器是否就绪
                 if not self._check_task_flow_controller_ready():
+                    logger.info("[MonitorWidget] 任务流控制器未就绪，开始等待连接...")
                     # 显示加载图标
                     self._show_loading_overlay()
                     
-                    # 等待任务流的控制器就绪（最多等待30秒，每0.1秒检查一次）
-                    max_wait_time = 30.0  # 最多等待30秒
+                    # 从配置中获取wait_time，并加1秒作为备用时间
+                    config_wait_time = await self._get_controller_wait_time()
+                    max_wait_time = config_wait_time + 1.0  # 配置的等待时间 + 1秒备用
+                    logger.info(f"[MonitorWidget] 等待控制器连接，最大等待时间: {max_wait_time:.1f}秒 (配置: {config_wait_time:.1f}秒 + 1秒备用)")
                     check_interval = 0.1  # 每100ms检查一次
                     waited_time = 0.0
                     
                     while waited_time < max_wait_time:
                         if not self._starting_monitoring:
                             # 用户点击了停止按钮
+                            logger.info("[MonitorWidget] 用户取消了监控启动")
                             self._hide_loading_overlay()
                             return
                         
                         # 检查控制器是否就绪
                         if self._check_task_flow_controller_ready():
                             # 控制器就绪，隐藏加载图标并继续
+                            logger.info(f"[MonitorWidget] 控制器已就绪，等待时间: {waited_time:.1f}秒")
                             self._hide_loading_overlay()
                             break
                         
@@ -666,6 +774,7 @@ class MonitorWidget(QWidget):
                     
                     # 再次检查是否就绪
                     if not self._check_task_flow_controller_ready():
+                        logger.warning(f"[MonitorWidget] 等待超时，控制器仍未就绪 (等待了 {waited_time:.1f}秒)")
                         if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
                             signalBus.info_bar_requested.emit(
                                 "error", self.tr("Controller not ready. Please ensure the device is connected.")
@@ -674,13 +783,17 @@ class MonitorWidget(QWidget):
                         self._starting_monitoring = False
                         self._update_button_state()
                         return
+                else:
+                    logger.info("[MonitorWidget] 任务流控制器已就绪，无需等待")
                 
                 # 根据配置决定使用哪种监控模式
                 use_low_power = cfg.get(cfg.low_power_monitoring_mode)
+                logger.info(f"[MonitorWidget] 使用监控模式: {'低功耗模式' if use_low_power else '正常模式'}")
                 
                 if use_low_power:
                     # 低功耗模式：使用 QTimer 和 cached_image
                     self._start_low_power_monitoring()
+                    logger.info("[MonitorWidget] 低功耗模式监控已启动")
                 else:
                     # 正常模式：使用异步监控循环
                     self._start_monitor_loop()
@@ -690,6 +803,7 @@ class MonitorWidget(QWidget):
                     
                     # 检查监控是否真的启动了
                     if not self._monitoring_active:
+                        logger.error("[MonitorWidget] 监控循环启动失败")
                         if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
                             signalBus.info_bar_requested.emit(
                                 "error", self.tr("Failed to start monitoring loop")
@@ -697,6 +811,7 @@ class MonitorWidget(QWidget):
                         self._starting_monitoring = False
                         self._update_button_state()
                         return
+                    logger.info("[MonitorWidget] 正常模式监控循环已启动")
                 
                 self._update_button_state()
                 signalBus.info_bar_requested.emit("success", self.tr("Monitoring started"))
@@ -704,17 +819,23 @@ class MonitorWidget(QWidget):
                 # 尝试捕获第一帧（仅正常模式）
                 if not use_low_power:
                     try:
+                        logger.debug("[MonitorWidget] 尝试捕获第一帧画面")
                         if not self._is_controller_connected():
+                            logger.warning("[MonitorWidget] 控制器未连接，无法捕获第一帧")
                             await self._handle_controller_disconnection()
                             return
                         pil_image = await asyncio.to_thread(self._capture_frame)
-                    except Exception:
+                        if pil_image:
+                            logger.debug(f"[MonitorWidget] 第一帧捕获成功，尺寸: {pil_image.size}")
+                            self._apply_preview_from_pil(pil_image)
+                        else:
+                            logger.warning("[MonitorWidget] 第一帧捕获返回空图像")
+                    except Exception as e:
+                        logger.warning(f"[MonitorWidget] 捕获第一帧失败: {e}")
                         # 静默处理错误，不输出到日志组件
                         pass
-                    else:
-                        if pil_image:
-                            self._apply_preview_from_pil(pil_image)
             except Exception as exc:
+                logger.error(f"[MonitorWidget] 启动监控流程失败: {exc}", exc_info=True)
                 if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
                     signalBus.info_bar_requested.emit(
                         "error", self.tr("Failed to start monitoring: ") + str(exc)
@@ -727,11 +848,13 @@ class MonitorWidget(QWidget):
                 self._hide_loading_overlay()
                 self._starting_monitoring = False
                 self._update_button_state()
+                logger.debug("[MonitorWidget] 监控启动流程结束")
 
         QTimer.singleShot(0, lambda: asyncio.create_task(_start_sequence()))
 
     def _stop_monitoring(self) -> None:
         """停止监控"""
+        logger.info("[MonitorWidget] 开始停止监控")
         # 设置停止标志，中断等待过程
         self._starting_monitoring = False
         
@@ -742,20 +865,26 @@ class MonitorWidget(QWidget):
                 
                 # 根据模式停止相应的监控
                 if self._low_power_mode:
+                    logger.info("[MonitorWidget] 停止低功耗模式监控")
                     self._stop_low_power_monitoring()
                 else:
+                    logger.info("[MonitorWidget] 停止正常模式监控循环")
                     self._stop_monitor_loop()
                 
                 try:
+                    logger.debug("[MonitorWidget] 停止监控任务")
                     await self.monitor_task.maafw.stop_task()
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"[MonitorWidget] 停止监控任务时出错: {e}")
                     # 静默处理错误，不输出到日志组件
                     pass
                 
                 try:
                     if self.monitor_task.maafw.controller:
+                        logger.debug("[MonitorWidget] 清除监控任务控制器引用")
                         self.monitor_task.maafw.controller = None
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"[MonitorWidget] 清除控制器引用时出错: {e}")
                     # 静默处理错误，不输出到日志组件
                     pass
                 
@@ -763,8 +892,10 @@ class MonitorWidget(QWidget):
                 self._load_placeholder_image()
                 
                 self._update_button_state()
+                logger.info("[MonitorWidget] 监控已停止")
                 signalBus.info_bar_requested.emit("success", self.tr("Monitoring stopped"))
             except Exception as exc:
+                logger.error(f"[MonitorWidget] 停止监控流程失败: {exc}", exc_info=True)
                 signalBus.info_bar_requested.emit(
                     "error", self.tr("Failed to stop monitoring: ") + str(exc)
                 )
