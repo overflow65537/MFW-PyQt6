@@ -1,18 +1,19 @@
 from datetime import datetime
 from html import escape
 import re
+from pathlib import Path
 
-from PySide6.QtCore import Qt, QSize, QTimer
-from PySide6.QtGui import QFont, QPalette
+from PySide6.QtCore import Qt, QSize, QTimer, QByteArray, QBuffer, QIODevice
+from PySide6.QtGui import QFont, QPalette, QImage, QIcon
 from PySide6.QtWidgets import (
     QFrame,
-    QGridLayout,
     QHBoxLayout,
     QSizePolicy,
     QSpacerItem,
     QWidget,
     QVBoxLayout,
 )
+from PySide6.QtWidgets import QApplication
 from qfluentwidgets import (
     BodyLabel,
     ScrollArea,
@@ -28,6 +29,7 @@ from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
 from app.view.task_interface.components.MonitorWidget import MonitorWidget
 from app.utils.markdown_helper import render_markdown
+from app.view.task_interface.components.LogItemWidget import LogItemWidget, LogItemData
 
 
 class LogoutputWidget(QWidget):
@@ -35,67 +37,71 @@ class LogoutputWidget(QWidget):
     日志输出组件
     """
 
-    def __init__(self, service_coordinator: ServiceCoordinator | None = None, parent=None):
+    def __init__(
+        self, service_coordinator: ServiceCoordinator | None = None, parent=None
+    ):
         super().__init__(parent)
         self.service_coordinator = service_coordinator
+        self._max_log_entries = 500
+        # 缩略图预览框（自动保持比例：16:9 或 9:16）
+        self._thumb_box = QSize(72, 72)
+        self._thumb_jpg_quality = 80
+        self._placeholder_icon: QIcon = self._load_placeholder_icon()
         # 级别颜色映射（随主题自动更新）
         self._level_color: dict[str, str] = {}
-        self._log_entries: list[tuple[BodyLabel, str, bool]] = []
-        self._log_row_index = 0
+        self._log_items: list[LogItemWidget] = []
         self._tail_spacer_item: QSpacerItem | None = None
-        self._tail_spacer_row: int | None = None
         self._init_log_output()
         self._add_tail_spacer()
         self._apply_theme_colors()
         qconfig.themeChanged.connect(self._apply_theme_colors)
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 8,0, 20)
+        self.main_layout.setContentsMargins(0, 8, 0, 20)
         self.main_layout.setSpacing(8)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        
+
         # 添加监控组件（如果有 service_coordinator）
         if self.service_coordinator:
             # 监控标题栏
             monitor_title_layout = QHBoxLayout()
             monitor_title_layout.setContentsMargins(0, 22, 0, 0)  # 上部避让12px
             monitor_title_layout.setSpacing(8)
-            
+
             self.monitor_title_label = BodyLabel(self.tr("Monitor"))
             self.monitor_title_label.setStyleSheet("font-size: 20px;")
             monitor_title_layout.addWidget(self.monitor_title_label)
-            
+
             self.main_layout.addLayout(monitor_title_layout)
-            
+
             # 创建监控卡片外壳（和日志组件一样的外壳包裹）
             # 16:9比例，宽度344px，高度 = 344 * 9 / 16 = 194px
             self._monitor_width = 344
             self._monitor_height = 194
-            
+
             self.monitor_card = SimpleCardWidget()
             self.monitor_card.setClickEnabled(False)
             self.monitor_card.setBorderRadius(8)
             # 设置监控卡片为固定大小（344x194，16:9比例，与监控组件内部尺寸一致）
             self.monitor_card.setFixedSize(self._monitor_width, self._monitor_height)
             # 设置大小策略为固定，不影响其他组件
-            monitor_card_policy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-            self.monitor_card.setSizePolicy(monitor_card_policy)
-            
-            # 创建监控组件
-            self.monitor_widget = MonitorWidget(
-                self.service_coordinator, 
-                self
+            monitor_card_policy = QSizePolicy(
+                QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
             )
-            
+            self.monitor_card.setSizePolicy(monitor_card_policy)
+
+            # 创建监控组件
+            self.monitor_widget = MonitorWidget(self.service_coordinator, self)
+
             # 将监控组件添加到卡片中
             monitor_card_layout = QVBoxLayout(self.monitor_card)
             monitor_card_layout.setContentsMargins(0, 0, 0, 0)
             monitor_card_layout.addWidget(self.monitor_widget)
             # 卡片内容居中对齐
             monitor_card_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            
+
             # 监控组件使用固定尺寸，不使用拉伸因子
             self.main_layout.addWidget(self.monitor_card, 0)
-        
+
         self.main_layout.addLayout(self.log_output_title_layout)
         # 日志区域占据较少空间（拉伸因子为 1）
         self.main_layout.addWidget(self.log_output_widget, 1)
@@ -132,20 +138,24 @@ class LogoutputWidget(QWidget):
 
     def _refresh_log_colors(self):
         """主题变化时刷新已有日志颜色"""
-        fallback = self._level_color.get("INFO", self._resolve_base_text_color())
         base_color = self._resolve_base_text_color()
-        for label, level, has_rich_content in self._log_entries:
-            if has_rich_content:
-                # 富文本内容使用基础颜色（内部可能有自己的颜色设置）
-                label.setStyleSheet(f"color: {base_color};")
-            else:
-                color = self._level_color.get(level, fallback)
-                label.setStyleSheet(f"color: {color};")
+        for item in self._log_items:
+            level = (
+                getattr(item, "_data", None).level if hasattr(item, "_data") else "INFO"
+            )
+            color = self._level_color.get(
+                level, self._level_color.get("INFO", base_color)
+            )
+            item.apply_theme(base_text_color=base_color, level_color=color)
 
     def _resolve_base_text_color(self) -> str:
         """获取当前可读的基础文本颜色，亮色主题下避免纯白"""
         # 优先使用日志容器的调色板，如果不存在则退回自身调色板
-        palette = self.log_container.palette() if hasattr(self, "log_container") else self.palette()
+        palette = (
+            self.log_container.palette()
+            if hasattr(self, "log_container")
+            else self.palette()
+        )
         color = palette.color(QPalette.ColorRole.WindowText)
         # 当亮度过高时（接近白色），在浅色主题下使用较深的默认色
         if not isDarkTheme() and color.lightness() > 220:
@@ -157,7 +167,9 @@ class LogoutputWidget(QWidget):
         self._log_output_title()
         self.log_scroll_area = ScrollArea()
         self.log_scroll_area.setWidgetResizable(True)
-        self.log_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.log_scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
         self.log_scroll_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.log_scroll_area.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.log_scroll_area.setFrameShape(QFrame.Shape.NoFrame)
@@ -166,13 +178,12 @@ class LogoutputWidget(QWidget):
             "background: transparent; border: none;"
         )
 
-        # 容器与表格布局（左侧时间，右侧内容）
+        # 容器：纵向列表布局（每条日志是一个独立控件）
         self.log_container = QWidget()
-        self.log_grid_layout = QGridLayout(self.log_container)
-        self.log_grid_layout.setContentsMargins(0, 0, 0, 0)
-        self.log_grid_layout.setHorizontalSpacing(12)
-        self.log_grid_layout.setVerticalSpacing(6)
-        self.log_grid_layout.setColumnStretch(1, 1)
+        self.log_list_layout = QVBoxLayout(self.log_container)
+        self.log_list_layout.setContentsMargins(0, 0, 0, 0)
+        self.log_list_layout.setSpacing(10)
+        self.log_list_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         font = QFont("Microsoft YaHei", 11)
         self.log_container.setFont(font)
         self.log_scroll_area.setWidget(self.log_container)
@@ -219,13 +230,12 @@ class LogoutputWidget(QWidget):
     def clear_log(self):
         """清空日志内容"""
         self._remove_tail_spacer()
-        while self.log_grid_layout.count():
-            item = self.log_grid_layout.takeAt(0)
-            widget = item.widget()
-            if widget:
-                widget.deleteLater()
-        self._log_entries.clear()
-        self._log_row_index = 0
+        while self.log_list_layout.count():
+            item = self.log_list_layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.deleteLater()
+        self._log_items.clear()
         self._add_tail_spacer()
 
     def _on_log_output(self, level: str, text: str):
@@ -245,23 +255,27 @@ class LogoutputWidget(QWidget):
         # 检测颜色标记
         if re.search(r"\[color:[^\]]+\].*?\[/color\]", text, re.IGNORECASE | re.DOTALL):
             return True
-        
+
         # 检测 HTML 标签
-        if re.search(r'<[a-zA-Z][^>]*(?:/>|>[^<]*</[a-zA-Z]+>|>)', text, re.DOTALL | re.IGNORECASE):
+        if re.search(
+            r"<[a-zA-Z][^>]*(?:/>|>[^<]*</[a-zA-Z]+>|>)",
+            text,
+            re.DOTALL | re.IGNORECASE,
+        ):
             return True
-        
+
         # 检测 Markdown 语法
         md_patterns = [
-            r'#{1,6}\s',  # 标题
-            r'\*\*[^*]+\*\*',  # 粗体
-            r'(?<!\*)\*(?!\*)[^*]+\*(?!\*)',  # 斜体
-            r'`[^`]+`',  # 行内代码
-            r'```',  # 代码块
-            r'\[[^\]]+\]\([^\)]+\)',  # 链接
-            r'^\s*[-*+]\s+',  # 无序列表
-            r'^\s*\d+\.\s+',  # 有序列表
-            r'\|.*\|',  # 表格
-            r'^\s*>\s+',  # 引用
+            r"#{1,6}\s",  # 标题
+            r"\*\*[^*]+\*\*",  # 粗体
+            r"(?<!\*)\*(?!\*)[^*]+\*(?!\*)",  # 斜体
+            r"`[^`]+`",  # 行内代码
+            r"```",  # 代码块
+            r"\[[^\]]+\]\([^\)]+\)",  # 链接
+            r"^\s*[-*+]\s+",  # 无序列表
+            r"^\s*\d+\.\s+",  # 有序列表
+            r"\|.*\|",  # 表格
+            r"^\s*>\s+",  # 引用
         ]
         return any(re.search(pattern, text, re.MULTILINE) for pattern in md_patterns)
 
@@ -269,68 +283,52 @@ class LogoutputWidget(QWidget):
         """将日志内容追加到滚动区域"""
         raw_text = str(msg)
         timestamp = datetime.now().strftime("%H:%M:%S")
-        
+
         # 将整个文本作为一条日志处理，这样可以：
         # 1. 保持表格、代码块等Markdown结构的完整性
         # 2. 正确处理换行符（在同一个日志条目内换行显示）
         self._add_log_row(timestamp, raw_text, level)
 
     def _add_log_row(self, timestamp: str, text: str, level: str):
-        """新增一行日志（左时间，右内容）"""
+        """新增一条日志（LogItemWidget）"""
         formatted_text, has_rich_content = self._format_colored_text(text)
-        base_color = self._resolve_base_text_color()
-        color = self._level_color.get(level, base_color)
-
-        # 保证底部仅一个填充项，防止行被均分
         self._remove_tail_spacer()
 
-        time_label = BodyLabel(timestamp)
-        time_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        time_policy = time_label.sizePolicy()
-        time_policy.setHorizontalPolicy(QSizePolicy.Policy.Minimum)
-        time_policy.setVerticalPolicy(QSizePolicy.Policy.Minimum)
-        time_label.setSizePolicy(time_policy)
+        # 任务名：使用 TaskFlowRunner 当前任务映射（可靠，不依赖翻译后的文本）
+        task_name = self._get_current_task_name()
 
-        content_label = BodyLabel(formatted_text)
-        # 如果有富文本内容（Markdown、HTML 或颜色标记），使用 RichText 格式
-        content_label.setTextFormat(
-            Qt.TextFormat.RichText if has_rich_content else Qt.TextFormat.PlainText
-        )
-        content_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        content_label.setWordWrap(True)
-        content_policy = content_label.sizePolicy()
-        content_policy.setHorizontalPolicy(QSizePolicy.Policy.Expanding)
-        content_policy.setVerticalPolicy(QSizePolicy.Policy.Minimum)
-        content_policy.setHeightForWidth(True)
-        content_label.setSizePolicy(content_policy)
-        if has_rich_content:
-            # 对于富文本内容，使用基础颜色（富文本内部可能有自己的颜色设置）
-            content_label.setStyleSheet(f"color: {base_color};")
-        else:
-            content_label.setStyleSheet(f"color: {color};")
+        # 日志出现时抓取一帧作为预览（优先 cached_image；None 则不显示）
+        image_bytes = self._try_capture_cached_image_bytes()
+        if image_bytes is not None and image_bytes.isEmpty():
+            image_bytes = None
 
-        self.log_grid_layout.addWidget(
-            time_label,
-            self._log_row_index,
-            0,
-            alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft,
+        data = LogItemData(
+            level=level,
+            task_name=task_name,
+            message=formatted_text,
+            has_rich_content=has_rich_content,
+            timestamp=timestamp,
+            image_bytes=image_bytes,
         )
-        self.log_grid_layout.addWidget(
-            content_label,
-            self._log_row_index,
-            1,
-            alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft,
+
+        item = LogItemWidget(
+            data,
+            thumb_box=self._thumb_box,
+            placeholder_icon=self._placeholder_icon,
+            parent=self.log_container,
         )
-        self._log_entries.append((content_label, level, has_rich_content))
-        self._log_row_index += 1
+        self._log_items.append(item)
+        self.log_list_layout.addWidget(item, 0)
+
+        # 上限淘汰：删除最旧条目
+        if len(self._log_items) > self._max_log_entries:
+            oldest = self._log_items.pop(0)
+            self.log_list_layout.removeWidget(oldest)
+            oldest.deleteLater()
+
         self._add_tail_spacer()
-        self._sync_row_heights()
+        self._refresh_log_colors()
         self._scroll_to_bottom()
-
-    def resizeEvent(self, event):
-        """在尺寸变化时重新计算每行高度，避免文本被截断"""
-        super().resizeEvent(event)
-        self._sync_row_heights()
 
     def _sanitize_color(self, raw: str) -> str:
         """过滤颜色字符串，防止注入并保留常见格式"""
@@ -345,52 +343,57 @@ class LogoutputWidget(QWidget):
         返回 (富文本字符串, 是否包含富文本内容)
         """
         # 检测是否包含颜色标记
-        color_pattern = re.compile(r"\[color:([^\]]+)\](.*?)\[/color\]", re.IGNORECASE | re.DOTALL)
+        color_pattern = re.compile(
+            r"\[color:([^\]]+)\](.*?)\[/color\]", re.IGNORECASE | re.DOTALL
+        )
         has_color_markup = bool(color_pattern.search(text))
-        
+
         # 快速检测是否可能包含 Markdown 或 HTML 内容
         # 检查 HTML 标签（包括自闭合标签如 <br>, <hr> 和成对标签）
-        html_tag_pattern = re.compile(r'<[a-zA-Z][^>]*(?:/>|>[^<]*</[a-zA-Z]+>|>)', re.DOTALL | re.IGNORECASE)
+        html_tag_pattern = re.compile(
+            r"<[a-zA-Z][^>]*(?:/>|>[^<]*</[a-zA-Z]+>|>)", re.DOTALL | re.IGNORECASE
+        )
         has_html = bool(html_tag_pattern.search(text))
-        
+
         # 检查常见的 Markdown 语法特征
         md_indicators = [
-            r'#{1,6}\s',  # 标题
-            r'\*\*[^*]+\*\*',  # 粗体
-            r'(?<!\*)\*(?!\*)[^*]+\*(?!\*)',  # 斜体（避免与粗体冲突）
-            r'`[^`]+`',  # 行内代码
-            r'```',  # 代码块标记
-            r'\[[^\]]+\]\([^\)]+\)',  # 链接
-            r'^\s*[-*+]\s+',  # 无序列表（必须以行首开始）
-            r'^\s*\d+\.\s+',  # 有序列表（必须以行首开始）
-            r'^\s*>\s+',  # 引用
+            r"#{1,6}\s",  # 标题
+            r"\*\*[^*]+\*\*",  # 粗体
+            r"(?<!\*)\*(?!\*)[^*]+\*(?!\*)",  # 斜体（避免与粗体冲突）
+            r"`[^`]+`",  # 行内代码
+            r"```",  # 代码块标记
+            r"\[[^\]]+\]\([^\)]+\)",  # 链接
+            r"^\s*[-*+]\s+",  # 无序列表（必须以行首开始）
+            r"^\s*\d+\.\s+",  # 有序列表（必须以行首开始）
+            r"^\s*>\s+",  # 引用
         ]
         # 使用MULTILINE模式，使^能够匹配每行的开始
-        has_markdown = any(re.search(pattern, text, re.MULTILINE) for pattern in md_indicators)
-        
+        has_markdown = any(
+            re.search(pattern, text, re.MULTILINE) for pattern in md_indicators
+        )
+
         # 表格检测：需要包含至少两列（至少两个|）和分隔行
         # 表格模式：包含|的行，且后面跟着包含-或=的分隔行
         table_pattern = re.compile(
-            r'\|[^\|]+\|[^\|]+.*\n.*\|[\s\-\=:]+\|', 
-            re.MULTILINE
+            r"\|[^\|]+\|[^\|]+.*\n.*\|[\s\-\=:]+\|", re.MULTILINE
         )
         if table_pattern.search(text):
             has_markdown = True
-        
+
         has_rich_content = has_color_markup or has_markdown or has_html
-        
+
         # 处理颜色标记：先提取颜色标记，对标记内的内容分别处理
         if has_color_markup:
             parts: list[str] = []
             last_index = 0
-            
+
             for match in color_pattern.finditer(text):
                 # 处理前置文本（可能包含 Markdown/HTML）
-                prefix = text[last_index:match.start()]
+                prefix = text[last_index : match.start()]
                 if prefix:
                     prefix_html = render_markdown(prefix)
                     parts.append(prefix_html)
-                
+
                 # 处理颜色标记内的内容（可能包含 Markdown/HTML）
                 color = self._sanitize_color(match.group(1))
                 content = match.group(2)
@@ -398,37 +401,37 @@ class LogoutputWidget(QWidget):
                 # 在渲染后的 HTML 上应用颜色样式
                 parts.append(f'<span style="color: {color};">{content_html}</span>')
                 last_index = match.end()
-            
+
             # 处理剩余文本
             if last_index < len(text):
                 suffix = text[last_index:]
                 suffix_html = render_markdown(suffix)
                 parts.append(suffix_html)
-            
+
             result = "".join(parts)
             # 如果渲染后包含 HTML 标签，说明有富文本内容
-            has_rich_result = bool(re.search(r'<[a-zA-Z]', result))
+            has_rich_result = bool(re.search(r"<[a-zA-Z]", result))
             return result, has_rich_result
         elif has_rich_content:
             # 有 Markdown/HTML 但没有颜色标记，直接渲染
             html_content = render_markdown(text)
             # 验证渲染后确实包含HTML标签（确保渲染成功）
-            if re.search(r'<[a-zA-Z]', html_content):
+            if re.search(r"<[a-zA-Z]", html_content):
                 return html_content, True
             else:
                 # 如果渲染后没有HTML标签，说明可能是纯文本，回退到纯文本处理
-                if '\n' in text:
+                if "\n" in text:
                     escaped_text = escape(text)
-                    escaped_text = escaped_text.replace('\n', '<br>')
+                    escaped_text = escaped_text.replace("\n", "<br>")
                     return escaped_text, True
                 else:
                     return escape(text), False
         else:
             # 纯文本：如果有换行符，需要转换为HTML的<br>标签以正确显示
-            if '\n' in text:
+            if "\n" in text:
                 escaped_text = escape(text)
                 # 将换行符转换为<br>标签
-                escaped_text = escaped_text.replace('\n', '<br>')
+                escaped_text = escaped_text.replace("\n", "<br>")
                 return escaped_text, True  # 需要RichText格式来渲染<br>
             else:
                 # 纯文本单行，直接返回转义后的内容
@@ -445,54 +448,129 @@ class LogoutputWidget(QWidget):
         if self._tail_spacer_item:
             # 已有则先移除，确保放在最后一行（-1 行）
             self._remove_tail_spacer()
-        self._tail_spacer_row = self._log_row_index
         self._tail_spacer_item = QSpacerItem(
             0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding
         )
-        # 跨两列，确保填充在网格底部
-        self.log_grid_layout.addItem(self._tail_spacer_item, self._tail_spacer_row, 0, 1, 2)
-        self.log_grid_layout.setRowStretch(self._tail_spacer_row, 1)
+        self.log_list_layout.addItem(self._tail_spacer_item)
 
     def _remove_tail_spacer(self):
         """移除已有的底部占位"""
         if self._tail_spacer_item:
-            if self._tail_spacer_row is not None:
-                # 清理旧行拉伸，避免上方日志被平均分散
-                self.log_grid_layout.setRowStretch(self._tail_spacer_row, 0)
-            self.log_grid_layout.removeItem(self._tail_spacer_item)
+            self.log_list_layout.removeItem(self._tail_spacer_item)
             self._tail_spacer_item = None
-            self._tail_spacer_row = None
 
-    def _sync_row_heights(self):
-        """根据可用宽度调整每行内容标签的最小高度，防止换行被裁剪"""
-        viewport_width = self.log_scroll_area.viewport().width()
-        spacing = self.log_grid_layout.horizontalSpacing()
-        if viewport_width <= 0:
-            return
+    def _get_controller(self):
+        """获取控制器：优先使用任务流的控制器。"""
+        if not self.service_coordinator:
+            return None
+        try:
+            if hasattr(self.service_coordinator, "run_manager"):
+                task_flow = self.service_coordinator.run_manager
+                if task_flow and hasattr(task_flow, "maafw"):
+                    controller = getattr(task_flow.maafw, "controller", None)
+                    if controller is not None:
+                        return controller
+        except Exception:
+            return None
+        return None
 
-        for row in range(self._log_row_index):
-            content_item = self.log_grid_layout.itemAtPosition(row, 1)
-            time_item = self.log_grid_layout.itemAtPosition(row, 0)
-            content_label = content_item.widget() if content_item else None
-            time_label = time_item.widget() if time_item else None
-            if not content_label:
-                continue
+    def _try_capture_cached_image_bytes(self) -> QByteArray | None:
+        """尝试从 controller.cached_image 获取一帧，并压缩为 JPG bytes。"""
+        controller = self._get_controller()
+        if controller is None:
+            return None
+        try:
+            cached_attr = getattr(controller, "cached_image", None)
+            if cached_attr is None:
+                return None
+            cached = cached_attr() if callable(cached_attr) else cached_attr
+            if cached is None:
+                return None
+        except Exception:
+            return None
 
-            available_width = viewport_width - spacing
-            if time_label:
-                available_width -= time_label.sizeHint().width()
-            if available_width <= 0:
-                continue
+        # 兼容：cached 期望是 numpy.ndarray（BGR）
+        try:
+            import numpy as np  # type: ignore
 
-            # 强制内容列占满可用宽度，避免被压缩后文字被裁剪
-            if content_label.minimumWidth() != available_width:
-                content_label.setMinimumWidth(available_width)
+            if not isinstance(cached, np.ndarray):
+                return None
+            if cached.ndim < 2:
+                return None
+            h, w = int(cached.shape[0]), int(cached.shape[1])
+            if h <= 0 or w <= 0:
+                return None
 
-            if content_label.hasHeightForWidth():
-                required_height = content_label.heightForWidth(available_width)
+            # 常见情况：HWC, 3 通道 BGR
+            if cached.ndim == 3 and cached.shape[2] >= 3:
+                bgr = cached[:, :, :3]
+                rgb = bgr[..., ::-1]
+                rgb = np.ascontiguousarray(rgb)
+                bytes_per_line = 3 * w
+                qimg = QImage(
+                    rgb.data, w, h, bytes_per_line, QImage.Format.Format_RGB888
+                ).copy()
             else:
-                required_height = content_label.sizeHint().height()
+                # 其他格式不处理（避免误解码）
+                return None
 
-            if content_label.minimumHeight() != required_height:
-                content_label.setMinimumHeight(required_height)
-    
+            ba = QByteArray()
+            buf = QBuffer(ba)
+            buf.open(QIODevice.OpenModeFlag.WriteOnly)
+            qimg.save(buf, "JPG", self._thumb_jpg_quality)
+            buf.close()
+            return ba if not ba.isEmpty() else None
+        except Exception:
+            return None
+
+    def _get_current_task_name(self) -> str:
+        """获取当前正在执行的任务名（如果无法获取则返回 'System'）。"""
+        if not self.service_coordinator:
+            return self.tr("System")
+        try:
+            runner = getattr(self.service_coordinator, "run_manager", None)
+            task_id = getattr(runner, "_current_running_task_id", None)
+            if not task_id:
+                return self.tr("System")
+            task_service = getattr(self.service_coordinator, "task", None)
+            tasks = task_service.get_tasks() if task_service else []
+            for t in tasks or []:
+                if getattr(t, "item_id", None) == task_id:
+                    return str(getattr(t, "name", "")) or self.tr("System")
+        except Exception:
+            return self.tr("System")
+        return self.tr("System")
+
+    def _load_placeholder_icon(self) -> QIcon:
+        """加载日志条目的占位图标：优先 interface.icon，其次应用 window icon。"""
+        # 1) interface.icon（相对于 interface 文件目录）
+        try:
+            if self.service_coordinator:
+                iface = getattr(self.service_coordinator, "interface", None) or {}
+                icon_rel = iface.get("icon") if isinstance(iface, dict) else None
+                if isinstance(icon_rel, str) and icon_rel.strip():
+                    base_path = getattr(
+                        self.service_coordinator, "_interface_path", None
+                    )
+                    base_dir = Path(base_path).parent if base_path else Path.cwd()
+                    icon_path = Path(icon_rel.strip())
+                    if not icon_path.is_absolute():
+                        icon_path = (base_dir / icon_path).resolve()
+                    if icon_path.exists():
+                        ico = QIcon(str(icon_path))
+                        if not ico.isNull():
+                            return ico
+        except Exception:
+            pass
+
+        # 2) 应用 window icon
+        try:
+            app = QApplication.instance()
+            if app:
+                ico = app.windowIcon()
+                if ico and not ico.isNull():
+                    return ico
+        except Exception:
+            pass
+
+        return QIcon()
