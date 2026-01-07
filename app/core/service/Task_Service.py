@@ -51,17 +51,44 @@ class TaskService:
                 self._check_know_task()
 
     def _check_know_task(self) -> bool:
-        unknown_tasks = []
+        unknown_tasks: list[str] = []
         if not self.interface:
             raise ValueError("Interface not loaded")
 
-        interface_tasks = [t["name"] for t in self.interface.get("task", [])]
+        interface_tasks = [t.get("name") for t in self.interface.get("task", [])]
+        interface_tasks = [t for t in interface_tasks if isinstance(t, str) and t]
+
+        # 当前配置中已存在的任务名（用于幂等：防止重复插入同名任务）
+        # 注意：在多资源模式切换 bundle 时，interface 可能先 reload 再 on_config_changed，
+        # 此时 self.current_tasks 仍是旧配置的任务列表；因此必须从“当前配置对象”取 tasks 判重。
+        config = self.config_service.get_config(self.config_service.current_config_id)
+        tasks_snapshot = (config.tasks if config else None) or (self.current_tasks or [])
+        existing_task_names = {t.name for t in tasks_snapshot if getattr(t, "name", None)}
+
+        # 现有 know_task 去重（保持原顺序）
+        seen_known: set[str] = set()
+        dedup_known: list[str] = []
+        for name in self.know_task or []:
+            if not isinstance(name, str) or not name:
+                continue
+            if name in seen_known:
+                continue
+            seen_known.add(name)
+            dedup_known.append(name)
+        self.know_task = dedup_known
+
         for task in interface_tasks:
-            if task not in self.know_task:
+            if task not in seen_known:
                 unknown_tasks.append(task)
+                seen_known.add(task)
+
         for unknown_task in unknown_tasks:
             self.know_task.append(unknown_task)
-            self.add_task(unknown_task)
+            # 仅在配置里不存在同名任务时才真正添加（防止重复；多资源/普通模式通用）
+            if unknown_task in existing_task_names:
+                continue
+            if self.add_task(unknown_task):
+                existing_task_names.add(unknown_task)
 
         # 同步到当前配置对象并持久化
         config = self.config_service.get_config(self.config_service.current_config_id)
