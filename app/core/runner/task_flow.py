@@ -1105,6 +1105,13 @@ class TaskFlowRunner(QObject):
 
     async def _connect_win32_controller(self, controller_raw: Dict[str, Any]):
         """连接 Win32 控制器"""
+        # 验证平台：Win32 只在 Windows 上支持
+        if sys.platform != "win32":
+            error_msg = self.tr("Win32 controller is only supported on Windows")
+            logger.error("Win32 控制器仅在 Windows 上支持")
+            signalBus.log_output.emit("ERROR", error_msg)
+            return False
+        
         activate_controller = controller_raw.get("controller_type")
         if activate_controller is None:
             logger.error(f"未找到控制器配置: {controller_raw}")

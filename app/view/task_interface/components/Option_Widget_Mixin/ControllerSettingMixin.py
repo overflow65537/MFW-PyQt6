@@ -325,7 +325,7 @@ class ControllerSettingWidget(QWidget):
         # 获取最新的interface
         interface = self.service_coordinator.interface
 
-        # 构建控制器类型映射，过滤 playcover（只在 macOS 上显示）
+        # 构建控制器类型映射，根据平台过滤控制器
         controllers = interface.get("controller", [])
         filtered_controllers = []
         for ctrl in controllers:
@@ -333,6 +333,10 @@ class ControllerSettingWidget(QWidget):
             # PlayCover 控制器只在 macOS 上显示
             if ctrl_type == "playcover" and sys.platform != "darwin":
                 continue
+            # Win32 控制器只在 Windows 上显示
+            if ctrl_type == "win32" and sys.platform != "win32":
+                continue
+            # ADB 控制器在所有平台都显示（不需要过滤）
             filtered_controllers.append(ctrl)
         
         self.controller_type_mapping = {
