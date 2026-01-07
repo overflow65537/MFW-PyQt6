@@ -314,15 +314,10 @@ class MonitorWidget(QWidget):
             if task_flow and hasattr(task_flow, 'maafw'):
                 controller = getattr(task_flow.maafw, 'controller', None)
                 if controller is not None:
-                    logger.debug("[MonitorWidget] 使用任务流的控制器")
                     return controller
         
         # 回退到监控任务的控制器
         controller = getattr(self.monitor_task.maafw, 'controller', None)
-        if controller is not None:
-            logger.debug("[MonitorWidget] 使用监控任务的控制器")
-        else:
-            logger.debug("[MonitorWidget] 未找到可用的控制器")
         return controller
     
     def _capture_frame(self) -> Image.Image:
@@ -498,16 +493,13 @@ class MonitorWidget(QWidget):
                 if controller is not None:
                     connected = getattr(controller, "connected", None)
                     if connected is not False:
-                        logger.debug(f"[MonitorWidget] 任务流控制器连接状态: {connected}")
                         return True
         
         # 回退到监控任务的控制器
         controller = getattr(self.monitor_task.maafw, "controller", None)
         if controller is None:
-            logger.debug("[MonitorWidget] 监控任务控制器不存在")
             return False
         connected = getattr(controller, "connected", None)
-        logger.debug(f"[MonitorWidget] 监控任务控制器连接状态: {connected}")
         return connected is not False
     
     def _check_task_flow_controller_ready(self) -> bool:
@@ -741,7 +733,6 @@ class MonitorWidget(QWidget):
         
         async def _start_sequence():
             try:
-                logger.info("[MonitorWidget] 检查任务流控制器就绪状态")
                 # 检查任务流的控制器是否就绪
                 if not self._check_task_flow_controller_ready():
                     logger.info("[MonitorWidget] 任务流控制器未就绪，开始等待连接...")
@@ -751,7 +742,6 @@ class MonitorWidget(QWidget):
                     # 从配置中获取wait_time，并加1秒作为备用时间
                     config_wait_time = await self._get_controller_wait_time()
                     max_wait_time = config_wait_time + 1.0  # 配置的等待时间 + 1秒备用
-                    logger.info(f"[MonitorWidget] 等待控制器连接，最大等待时间: {max_wait_time:.1f}秒 (配置: {config_wait_time:.1f}秒 + 1秒备用)")
                     check_interval = 0.1  # 每100ms检查一次
                     waited_time = 0.0
                     
@@ -783,8 +773,6 @@ class MonitorWidget(QWidget):
                         self._starting_monitoring = False
                         self._update_button_state()
                         return
-                else:
-                    logger.info("[MonitorWidget] 任务流控制器已就绪，无需等待")
                 
                 # 根据配置决定使用哪种监控模式
                 use_low_power = cfg.get(cfg.low_power_monitoring_mode)
@@ -819,17 +807,13 @@ class MonitorWidget(QWidget):
                 # 尝试捕获第一帧（仅正常模式）
                 if not use_low_power:
                     try:
-                        logger.debug("[MonitorWidget] 尝试捕获第一帧画面")
                         if not self._is_controller_connected():
                             logger.warning("[MonitorWidget] 控制器未连接，无法捕获第一帧")
                             await self._handle_controller_disconnection()
                             return
                         pil_image = await asyncio.to_thread(self._capture_frame)
                         if pil_image:
-                            logger.debug(f"[MonitorWidget] 第一帧捕获成功，尺寸: {pil_image.size}")
                             self._apply_preview_from_pil(pil_image)
-                        else:
-                            logger.warning("[MonitorWidget] 第一帧捕获返回空图像")
                     except Exception as e:
                         logger.warning(f"[MonitorWidget] 捕获第一帧失败: {e}")
                         # 静默处理错误，不输出到日志组件
@@ -848,7 +832,6 @@ class MonitorWidget(QWidget):
                 self._hide_loading_overlay()
                 self._starting_monitoring = False
                 self._update_button_state()
-                logger.debug("[MonitorWidget] 监控启动流程结束")
 
         QTimer.singleShot(0, lambda: asyncio.create_task(_start_sequence()))
 
