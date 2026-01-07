@@ -31,6 +31,7 @@ MFW-ChainFlow Assistant 主界面
 
 
 import asyncio
+import hashlib
 import json
 import shutil
 import sys
@@ -117,9 +118,7 @@ class TutorialHighlightOverlay(QWidget):
         self._instruction_label.setMargin(4)
         self._instruction_label.setMaximumWidth(self._LABEL_MAX_WIDTH)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setWindowFlags(
-            Qt.WindowType.Widget | Qt.WindowType.FramelessWindowHint
-        )
+        self.setWindowFlags(Qt.WindowType.Widget | Qt.WindowType.FramelessWindowHint)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def set_message(self, message: str):
@@ -154,9 +153,7 @@ class TutorialHighlightOverlay(QWidget):
             self._HOLE_MARGIN,
         )
         self._highlight_rect = highlight
-        label_width = min(
-            self._LABEL_MAX_WIDTH, max(highlight.width(), 220)
-        )
+        label_width = min(self._LABEL_MAX_WIDTH, max(highlight.width(), 220))
         label_height = self._instruction_label.sizeHint().height()
 
         label_x = max(8, min(highlight.left(), self.width() - label_width - 8))
@@ -165,9 +162,7 @@ class TutorialHighlightOverlay(QWidget):
             label_y = highlight.top() - 10 - label_height
         label_y = max(8, label_y)
 
-        self._instruction_label.setGeometry(
-            label_x, label_y, label_width, label_height
-        )
+        self._instruction_label.setGeometry(label_x, label_y, label_width, label_height)
         self._instruction_label.show()
         self.update()
 
@@ -262,7 +257,8 @@ class MainWindow(MSFluentWindow):
         self._apply_cli_switch_config()
 
         self._announcement_pending_show = False
-        self._announcement_enabled = True  # 标记公告是否启用
+        # 多资源适配开启时：公告功能彻底关闭（不加载、不比对、不自动弹窗、无入口）
+        self._announcement_enabled = not bool(cfg.get(cfg.multi_resource_adaptation))
         self._log_zip_running = False
         self._log_zip_infobar: InfoBar | None = None
         self._background_label: QLabel | None = None
@@ -424,6 +420,12 @@ class MainWindow(MSFluentWindow):
             try:
                 # 禁用公告功能
                 self._announcement_enabled = False
+                # 清理公告运行时状态，确保“彻底关闭”
+                self._announcement_pending_show = False
+                self._announcement_content = {}
+                self._pending_announcement_sections = []
+                self._announcement_signature = ""
+                self._current_welcome_text = ""
                 logger.info("✓ Announcement 功能已禁用")
 
                 # 尝试通过查找导航项并隐藏它
@@ -912,14 +914,14 @@ class MainWindow(MSFluentWindow):
 
     def _cleanup_old_files(self, debug_dir: Path) -> None:
         """清理debug目录中的旧文件。
-        
+
         - on_error文件夹内的文件，只保留三天内的
         - vision文件夹内的文件，只保留一天内的
         """
         now = datetime.now()
         three_days_ago = now - timedelta(days=3)
         one_day_ago = now - timedelta(days=1)
-        
+
         # 清理 on_error 文件夹内的文件（保留三天内的）
         on_error_dir = debug_dir / "on_error"
         if on_error_dir.exists() and on_error_dir.is_dir():
@@ -930,10 +932,12 @@ class MainWindow(MSFluentWindow):
                         mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
                         if mtime < three_days_ago:
                             file_path.unlink()
-                            logger.info(f"删除过期文件（on_error，超过3天）：{file_path}")
+                            logger.info(
+                                f"删除过期文件（on_error，超过3天）：{file_path}"
+                            )
                     except Exception as exc:
                         logger.warning(f"清理on_error文件失败：{file_path} ({exc})")
-        
+
         # 清理 vision 文件夹内的文件（保留一天内的）
         vision_dir = debug_dir / "vision"
         if vision_dir.exists() and vision_dir.is_dir():
@@ -1064,11 +1068,17 @@ class MainWindow(MSFluentWindow):
             "There is no announcement at the moment."
         )
         self._pending_announcement_sections: list[tuple[str, str]] = []
+        self._announcement_signature = ""
         self._current_welcome_text = ""
 
-        cfg_announcement = self._get_stored_welcome()
+        # 公告功能被禁用时（多资源适配开启），彻底跳过加载/比对/自动弹窗
+        if not getattr(self, "_announcement_enabled", True):
+            self._announcement_pending_show = False
+            return
+
         self._refresh_announcement_sections()
-        if self._current_welcome_text and cfg_announcement != self._current_welcome_text:
+        # 启动时根据“总公告签名”比对（welcome + resource/announcement/*.md）决定是否自动弹出
+        if self._announcement_content and self._is_announcement_mismatch():
             # 公告内容不一致，在界面准备好后弹出对话框
             # 注意：此时不更新配置，只有在用户关闭对话框时才更新
             self._announcement_pending_show = True
@@ -1082,17 +1092,70 @@ class MainWindow(MSFluentWindow):
             parsed = json.loads(raw_value)
         except json.JSONDecodeError:
             return raw_value
+        if isinstance(parsed, dict):
+            welcome = parsed.get("welcome")
+            return str(welcome) if welcome is not None else raw_value
         if isinstance(parsed, list) and parsed:
             first = parsed[0]
             if isinstance(first, (list, tuple)) and len(first) >= 2:
                 return str(first[1])
         return raw_value
 
+    def _get_stored_announcement_signature(self) -> str:
+        """读取已保存的“总公告签名”，兼容旧版 welcome-only 格式。"""
+        raw_value = cfg.get(cfg.announcement) or ""
+        if not raw_value:
+            return ""
+        try:
+            parsed = json.loads(raw_value)
+        except json.JSONDecodeError:
+            # 旧版：直接存 welcome 文本
+            return ""
+        if isinstance(parsed, dict):
+            sig = parsed.get("sig") or parsed.get("signature")
+            return str(sig) if isinstance(sig, str) else ""
+        # 旧版 list/tuple 格式不包含总签名
+        return ""
+
+    def _compute_announcement_signature(self, sections: list[tuple[str, str]]) -> str:
+        """计算公告总内容签名（用于判断是否需要弹窗）。"""
+        try:
+            payload = json.dumps(
+                sections,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+        except TypeError:
+            payload = repr(sections)
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def _get_current_announcement_signature(self) -> str:
+        return getattr(self, "_announcement_signature", "") or ""
+
+    def _is_announcement_mismatch(self) -> bool:
+        """判断当前公告（总内容）是否与已保存记录不一致。"""
+        current_sig = self._get_current_announcement_signature()
+        if not current_sig:
+            return False
+
+        stored_sig = self._get_stored_announcement_signature()
+        if stored_sig:
+            return stored_sig != current_sig
+
+        # 兼容旧版：仅比较 welcome；若除了 welcome 之外还有其他公告，则视为需要展示一次
+        stored_welcome = self._get_stored_welcome()
+        current_welcome = self._current_welcome_text or ""
+        if stored_welcome and current_welcome and stored_welcome != current_welcome:
+            return True
+
+        has_non_welcome_sections = any(
+            title != self.tr("Welcome") for title, _ in (self._pending_announcement_sections or [])
+        )
+        return bool(has_non_welcome_sections)
+
     def _refresh_announcement_sections(self) -> None:
         """重新读取欢迎信息和 resource/announcement.md，更新公告内容。"""
-        welcome_content = self.service_coordinator.task.interface.get(
-            "welcome", ""
-        )
+        welcome_content = self.service_coordinator.task.interface.get("welcome", "")
         sections: list[tuple[str, str]] = []
         if welcome_content:
             sections.append((self.tr("Welcome"), welcome_content))
@@ -1103,6 +1166,7 @@ class MainWindow(MSFluentWindow):
         else:
             self.set_announcement_content(self._announcement_title, {})
         self._pending_announcement_sections = sections
+        self._announcement_signature = self._compute_announcement_signature(sections)
         self._current_welcome_text = welcome_content
 
     def _load_resource_announcements(self) -> list[tuple[str, str]]:
@@ -1148,6 +1212,9 @@ class MainWindow(MSFluentWindow):
 
     def _maybe_show_pending_announcement(self):
         """在主界面完成初始化后延迟展示公告对话框。"""
+        # 公告功能被禁用时（多资源适配开启），彻底跳过自动弹窗与“无公告教程”分支
+        if not getattr(self, "_announcement_enabled", True):
+            return
         if self._announcement_pending_show:
             self._announcement_pending_show = False
             QTimer.singleShot(
@@ -1180,9 +1247,7 @@ class MainWindow(MSFluentWindow):
             return getattr(log_widget, "generate_log_zip_button", None)
 
         def get_special_button():
-            task_info = getattr(
-                getattr(self, "TaskInterface", None), "task_info", None
-            )
+            task_info = getattr(getattr(self, "TaskInterface", None), "task_info", None)
             return getattr(task_info, "switch_button", None)
 
         return [
@@ -1501,13 +1566,8 @@ class MainWindow(MSFluentWindow):
             self.show_info_bar("info", self._announcement_empty_hint)
             return
 
-        # 检查当前记录的公告和当前运行的公告是否一致
-        cfg_announcement = self._get_stored_welcome()
-        current_welcome = self._current_welcome_text
-        # 只有当 welcome 内容不一致时，才需要5秒延迟
-        announcement_mismatch = bool(current_welcome) and (
-            cfg_announcement != current_welcome
-        )
+        # 检查当前记录的公告与当前运行的“总公告内容”是否一致
+        announcement_mismatch = self._is_announcement_mismatch()
 
         # 根据公告内容是否一致决定使用哪个对话框类
         if announcement_mismatch:
@@ -1532,10 +1592,15 @@ class MainWindow(MSFluentWindow):
 
         # 只有在公告内容不一致且用户关闭对话框时，才更新配置
         # 这样如果用户不关闭对话框，下次启动时还会弹出
-        if announcement_mismatch and current_welcome:
+        if announcement_mismatch and self._announcement_content:
             # 用户关闭了对话框，更新配置，下次不会再弹出
-            cfg.set(cfg.announcement, current_welcome)
-            logger.info("用户关闭公告对话框，已更新公告配置")
+            payload = {
+                "v": 2,
+                "sig": self._get_current_announcement_signature(),
+                "welcome": self._current_welcome_text or "",
+            }
+            cfg.set(cfg.announcement, json.dumps(payload, ensure_ascii=False))
+            logger.info("用户关闭公告对话框，已更新公告配置（总公告签名）")
         self._on_announcement_closed()
 
     def set_announcement_content(self, title: Optional[str], content) -> None:

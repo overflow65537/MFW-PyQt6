@@ -2061,6 +2061,8 @@ class SettingInterface(QWidget):
                 self._suppress_multi_resource_signal = False
                 cfg.set(cfg.multi_resource_adaptation, False)
                 return
+            # 先写入配置，确保其他组件在收到信号时能立即读取到最新状态（例如主窗口立刻关闭公告功能）
+            cfg.set(cfg.multi_resource_adaptation, True)
             # 二次确认通过后，执行多资源适配启用后的后续操作
             self.run_multi_resource_post_enable_tasks()
             # 通知主界面等组件：多资源适配已启用，可初始化相关界面
@@ -2070,6 +2072,7 @@ class SettingInterface(QWidget):
                 logger.warning(
                     f"发射 multi_resource_adaptation_enabled 信号失败: {exc}"
                 )
+            return
 
         cfg.set(cfg.multi_resource_adaptation, bool(checked))
 
