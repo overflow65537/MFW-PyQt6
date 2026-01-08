@@ -824,6 +824,7 @@ class TaskDragListWidget(BaseListWidget):
 
 class ConfigListWidget(BaseListWidget):
     """配置拖拽列表组件：只支持添加/删除配置项，无复选框"""
+    _CONFIG_ITEM_HEIGHT = 44
 
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         super().__init__(service_coordinator, parent)
@@ -927,6 +928,8 @@ class ConfigListWidget(BaseListWidget):
     def _add_config_to_list(self, config: ConfigItem):
         """添加单个配置项到列表"""
         list_item = QListWidgetItem()
+        # 显式固定 item 高度，避免 hover/选中动画区域被 Qt 计算成更高
+        list_item.setSizeHint(QSize(0, self._CONFIG_ITEM_HEIGHT))
         config_widget = ConfigListItem(config, self.service_coordinator)
         self.addItem(list_item)
         self.setItemWidget(list_item, config_widget)
