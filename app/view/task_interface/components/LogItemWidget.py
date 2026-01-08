@@ -7,7 +7,7 @@ from PySide6.QtGui import QPixmap, QIcon
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QToolButton, QDialog
 from PySide6.QtWidgets import QApplication
 
-from qfluentwidgets import BodyLabel, ScrollArea, SimpleCardWidget
+from qfluentwidgets import BodyLabel, ScrollArea, SimpleCardWidget, ToolTipFilter, ToolTipPosition
 
 
 @dataclass(slots=True)
@@ -64,6 +64,10 @@ class LogItemWidget(SimpleCardWidget):
         self._preview_button.setFixedSize(self._thumb_box)
         self._preview_button.setIconSize(self._thumb_box)
         self._preview_button.clicked.connect(self._on_preview_clicked)
+        # 使用 qfluentwidgets 的 ToolTipFilter 优化 tooltip 显示
+        self._preview_button.installEventFilter(
+            ToolTipFilter(self._preview_button, 0, ToolTipPosition.TOP)
+        )
         root.addWidget(
             self._preview_button,
             0,
