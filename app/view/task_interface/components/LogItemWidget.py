@@ -29,7 +29,7 @@ class LogItemWidget(SimpleCardWidget):
         self,
         data: LogItemData,
         *,
-        thumb_box: QSize = QSize(72, 72),
+        thumb_box: QSize = QSize(54, 54),
         placeholder_icon: QIcon | None = None,
         parent: QWidget | None = None,
     ):
@@ -53,8 +53,8 @@ class LogItemWidget(SimpleCardWidget):
         # SimpleCardWidget 内部已有布局，我们需要创建内容容器
         content_widget = QWidget(self)
         root = QHBoxLayout(content_widget)
-        root.setContentsMargins(12, 12, 12, 12)
-        root.setSpacing(10)
+        root.setContentsMargins(9, 9, 9, 9)
+        root.setSpacing(8)
         root.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # 左侧：预览图标（可选）
@@ -73,7 +73,7 @@ class LogItemWidget(SimpleCardWidget):
         # 右侧：组合布局
         right = QVBoxLayout()
         right.setContentsMargins(0, 0, 0, 0)
-        right.setSpacing(4)
+        right.setSpacing(3)
         right.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         top_row = QHBoxLayout()

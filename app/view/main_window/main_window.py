@@ -987,6 +987,11 @@ class MainWindow(MSFluentWindow):
         """将日志组件中的图片保存到压缩包的 live 文件夹中。"""
         try:
             # 获取日志组件实例
+            # 检查配置：如果未启用打包图片功能，则跳过
+            if not cfg.get(cfg.log_zip_include_images):
+                logger.debug("日志压缩包图片打包功能已关闭，跳过图片保存")
+                return
+            
             log_widget = getattr(
                 getattr(self, "TaskInterface", None), "log_output_widget", None
             )

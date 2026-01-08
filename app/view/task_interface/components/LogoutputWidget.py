@@ -25,6 +25,7 @@ from qfluentwidgets import (
 )
 
 from app.common.signal_bus import signalBus
+from app.common.config import cfg
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
 from app.view.task_interface.components.MonitorWidget import MonitorWidget
@@ -44,11 +45,11 @@ class LogoutputWidget(QWidget):
         self.service_coordinator = service_coordinator
         self._max_log_entries = 500
         # 缩略图预览框（自动保持比例：16:9 或 9:16）
-        self._thumb_box = QSize(72, 72)
-        # 图片压缩：目标小于100KB，兼顾图像质量
-        self._thumb_jpg_quality = 80  # 提高质量以保持细节
-        self._target_max_size_kb = 100  # 目标最大100KB
-        self._min_resolution = (640, 360)  # 保持360P（640x360）
+        self._thumb_box = QSize(54, 54)
+        # 图片压缩：提高质量设置
+        self._thumb_jpg_quality = 90  # 提高质量以保持细节（从80提高到90）
+        self._target_max_size_kb = 200  # 目标最大200KB（从100KB提高到200KB，允许更高质量）
+        self._short_edge_target = 720  # 短边目标分辨率720（短边，不是固定宽或高）
         # 图片去重：与上一张相似度 >= 阈值则复用上一张，不新增存储
         self._image_similarity_threshold = 0.99
         self._last_image_bytes: QByteArray | None = None
@@ -344,8 +345,9 @@ class LogoutputWidget(QWidget):
         self._log_items.append(item)
         self.log_list_layout.addWidget(item, 0)
 
-        # 上限淘汰：删除最旧条目
-        if len(self._log_items) > self._max_log_entries:
+        # 上限淘汰：删除最旧条目（使用配置中的最大图片数量限制）
+        max_images = cfg.get(cfg.log_max_images) if hasattr(cfg, 'log_max_images') else self._max_log_entries
+        if len(self._log_items) > max_images:
             oldest = self._log_items.pop(0)
             self.log_list_layout.removeWidget(oldest)
             oldest.deleteLater()
@@ -554,24 +556,22 @@ class LogoutputWidget(QWidget):
                 if rgb.dtype != np.uint8:
                     rgb = np.clip(rgb, 0, 255).astype(np.uint8)
                 
-                # 智能缩放：如果大于目标分辨率，缩放到目标分辨率（保持比例）
-                max_w, max_h = self._min_resolution
-                if w > max_w or h > max_h:
-                    # 计算缩放比例（保持宽高比）
-                    scale_w = max_w / w
-                    scale_h = max_h / h
-                    scale = min(scale_w, scale_h)  # 取较小的比例，确保不超出边界
+                # 智能缩放：使用短边720（短边，不是固定宽或高）
+                short_edge = min(w, h)
+                if short_edge > self._short_edge_target:
+                    # 计算缩放比例（保持宽高比，短边缩放到目标值）
+                    scale = self._short_edge_target / short_edge
                     new_w = int(w * scale)
                     new_h = int(h * scale)
-                    # 使用快速缩放（BILINEAR 插值，细节不重要）
+                    # 使用高质量缩放（LANCZOS 插值，保持细节）
                     from PIL import Image
                     pil_img = Image.fromarray(rgb)
-                    pil_resized = pil_img.resize((new_w, new_h), Image.Resampling.BILINEAR)
+                    pil_resized = pil_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
                     rgb = np.array(pil_resized, dtype=np.uint8)
                     w, h = new_w, new_h
-                    logger.debug(f"[图片压缩] 原图 {cached.shape[1]}x{cached.shape[0]} 缩放到 {w}x{h} (360P)")
+                    logger.debug(f"[图片压缩] 原图 {cached.shape[1]}x{cached.shape[0]} (短边{short_edge}) 缩放到 {w}x{h} (短边{min(w, h)})")
                 else:
-                    logger.debug(f"[图片压缩] 原图 {w}x{h} 小于 360P，保持原尺寸")
+                    logger.debug(f"[图片压缩] 原图 {w}x{h} (短边{short_edge}) 短边已小于等于目标{self._short_edge_target}，保持原尺寸")
                 
                 rgb = np.ascontiguousarray(rgb)
                 bytes_per_line = 3 * w
@@ -808,16 +808,29 @@ class LogoutputWidget(QWidget):
 
     def collect_log_images(self) -> dict[str, tuple[QByteArray, list[int]]]:
         """
-        收集所有日志条目中的图片，建立图片到日志索引的映射。
+        收集日志条目中的图片，建立图片到日志索引的映射。
+        只收集最近 log_max_images 条日志中的图片，与界面显示的数量保持一致。
         
         Returns:
             dict: key 为图片的唯一标识（hash），value 为 (image_bytes, [日志索引列表])
         """
         from hashlib import md5
         
+        # 获取配置的最大图片数量，与界面显示保持一致
+        max_images = cfg.get(cfg.log_max_images) if hasattr(cfg, 'log_max_images') else self._max_log_entries
+        
         image_map: dict[str, tuple[QByteArray, list[int]]] = {}
         
-        for idx, item in enumerate(self._log_items):
+        # 只处理最近 max_images 条日志（从最新到最旧）
+        # 注意：_log_items 是从新到旧排列的（新添加的在前面，索引0是最新的）
+        items_to_process = self._log_items[:max_images]
+        
+        for local_idx, item in enumerate(items_to_process):
+            # local_idx 是 items_to_process 中的索引（0 到 max_images-1）
+            # 由于 items_to_process 是 _log_items 的前 max_images 个元素
+            # 所以 local_idx 就是 _log_items 中的原始索引
+            original_idx = local_idx
+            
             data = getattr(item, "_data", None)
             if not data or not data.image_bytes or data.image_bytes.isEmpty():
                 continue
@@ -827,10 +840,10 @@ class LogoutputWidget(QWidget):
             img_hash = md5(raw_bytes).hexdigest()
             
             if img_hash in image_map:
-                # 同一张图片，追加日志索引
-                image_map[img_hash][1].append(idx)
+                # 同一张图片，追加日志索引（使用原始索引）
+                image_map[img_hash][1].append(original_idx)
             else:
                 # 新图片，创建映射
-                image_map[img_hash] = (data.image_bytes, [idx])
+                image_map[img_hash] = (data.image_bytes, [original_idx])
         
         return image_map

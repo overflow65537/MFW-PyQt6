@@ -80,7 +80,7 @@ class CallbackLogProcessor(QObject):
         # status: 1=Starting, 2=Succeeded, 3=Failed
         task_text = task if task else self.tr("Unknown Task")
         # 跳过停止任务信号
-        if task_text == "MaaNS::Tasker::post_stop":
+        if task_text in ["MaaNS::Tasker::post_stop", "MaaTaskerPostStop"]:
             return
         elif status == 1:
             message = self.tr("Task started execution: ") + task_text

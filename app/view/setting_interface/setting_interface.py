@@ -172,7 +172,9 @@ def launch_updater_process(*extra_args: str) -> None:
         args = ["-update"] + extra_arg_list
         command_line = subprocess.list2cmdline([str(resolved_executable)] + args)
         if _is_running_with_admin_privileges():
-            logger.info("主程序具有管理员权限，使用管理员方式启动更新程序: %s", command_line)
+            logger.info(
+                "主程序具有管理员权限，使用管理员方式启动更新程序: %s", command_line
+            )
             _start_windows_process_with_admin(resolved_executable, args)
             return
         logger.info("启动更新程序: %s", command_line)
@@ -1190,7 +1192,9 @@ class SettingInterface(QWidget):
         self.low_power_monitoring_mode_card = SwitchSettingCard(
             FIF.POWER_BUTTON,
             self.tr("Low Power Monitoring Mode"),
-            self.tr("Use cached images instead of dedicated monitoring thread, refresh rate: 24 FPS"),
+            self.tr(
+                "Use cached images instead of dedicated monitoring thread, refresh rate: 24 FPS"
+            ),
             configItem=cfg.low_power_monitoring_mode,
             parent=self.taskGroup,
         )
@@ -1312,8 +1316,33 @@ class SettingInterface(QWidget):
             self.compatibility_group,
         )
 
+        self.log_zip_include_images_card = SwitchSettingCard(
+            FIF.PHOTO,
+            self.tr("Include images in log zip"),
+            self.tr(
+                "Include log images when generating log zip package. The number of images included equals the number displayed in the log interface."
+            ),
+            cfg.log_zip_include_images,
+            self.compatibility_group,
+        )
+
+        self.log_max_images_card = SliderSettingCard(
+            FIF.PHOTO,
+            self.tr("Max log images"),
+            self.tr(
+                "Maximum number of images to keep in log interface and log zip package (1-10000). This setting controls both the display count and the count saved to zip."
+            ),
+            parent=self.compatibility_group,
+            minimum=1,
+            maximum=1000,
+            step=10,
+            config_item=cfg.log_max_images,
+        )
+
         self.compatibility_group.addSettingCard(self.multi_resource_adaptation_card)
         self.compatibility_group.addSettingCard(self.save_screenshot_card)
+        self.compatibility_group.addSettingCard(self.log_zip_include_images_card)
+        self.compatibility_group.addSettingCard(self.log_max_images_card)
         self.add_setting_group(self.compatibility_group)
 
     def _initialize_proxy_controls(self):

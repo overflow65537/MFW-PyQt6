@@ -159,6 +159,14 @@ class Config(QConfig):
         "Task", "low_power_monitoring_mode", True, BoolValidator()
     )  # 低功耗监控模式：使用缓存的图像而不是专用监控线程
 
+    # ===== 日志设置 =====
+    log_zip_include_images = ConfigItem(
+        "Log", "log_zip_include_images", False, BoolValidator()
+    )  # 是否在日志压缩包中包含图片（默认关闭）
+    log_max_images = RangeConfigItem(
+        "Log", "log_max_images", 200, RangeValidator(1, 10000)
+    )  # 日志中保存的最大图片数量（默认200），同时控制界面显示和压缩包保存的数量
+
     # ===== 通知 =====
     Notice_DingTalk_status = ConfigItem("Notice", "DingTalk_status", False)
     Notice_DingTalk_url = ConfigItem("Notice", "DingTalk_url", "")
