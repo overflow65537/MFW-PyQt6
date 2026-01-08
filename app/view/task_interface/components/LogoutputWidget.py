@@ -53,6 +53,8 @@ class LogoutputWidget(QWidget):
         self._image_similarity_threshold = 0.99
         self._last_image_bytes: QByteArray | None = None
         self._last_image_small_gray = None  # numpy.ndarray(uint8) | None
+        # 占位图标路径缓存，用于检测路径变化
+        self._cached_placeholder_path: str | None = None
         self._placeholder_icon: QIcon = self._load_placeholder_icon()
         # 级别颜色映射（随主题自动更新）
         self._level_color: dict[str, str] = {}
@@ -304,6 +306,12 @@ class LogoutputWidget(QWidget):
         """新增一条日志（LogItemWidget）"""
         formatted_text, has_rich_content = self._format_colored_text(text)
         self._remove_tail_spacer()
+
+        # 检查占位图标路径是否变化（如果bundle path变化，需要重新加载）
+        # 每次添加日志时都检查，确保使用最新的占位图标
+        new_placeholder_icon = self._load_placeholder_icon()
+        if new_placeholder_icon != self._placeholder_icon:
+            self._placeholder_icon = new_placeholder_icon
 
         # 任务名：使用 TaskFlowRunner 当前任务映射（可靠，不依赖翻译后的文本）
         task_name = self._get_current_task_name()
@@ -710,8 +718,52 @@ class LogoutputWidget(QWidget):
         return self.tr("System")
 
     def _load_placeholder_icon(self) -> QIcon:
-        """加载日志条目的占位图标：优先 interface.icon，其次应用 window icon。"""
-        # 1) interface.icon（相对于 interface 文件目录）
+        """加载日志条目的占位图标：优先 interface.log，其次 interface.icon，最后应用 window icon。
+        
+        每次调用时检查路径是否变化，如果完整路径没有变化则不需要重新加载。
+        """
+        # 1) interface.log（相对于 bundle 路径）
+        try:
+            if self.service_coordinator:
+                iface = getattr(self.service_coordinator, "interface", None) or {}
+                log_rel = iface.get("log") if isinstance(iface, dict) else None
+                
+                if isinstance(log_rel, str) and log_rel.strip():
+                    # 获取当前配置的 bundle path
+                    try:
+                        config = self.service_coordinator.config_service.get_current_config()
+                        bundle_path_str = (
+                            self.service_coordinator.config_service.get_bundle_path_for_config(config)
+                            or ""
+                        )
+                        if bundle_path_str:
+                            bundle_path = Path(bundle_path_str)
+                            if not bundle_path.is_absolute():
+                                bundle_path = Path.cwd() / bundle_path
+                            
+                            # 构建完整路径：bundle path + log相对路径
+                            log_path = Path(log_rel.strip())
+                            if not log_path.is_absolute():
+                                log_path = (bundle_path / log_path).resolve()
+                            
+                            # 检查路径是否变化
+                            current_path = str(log_path)
+                            if current_path == self._cached_placeholder_path and self._placeholder_icon is not None:
+                                # 路径没有变化，返回缓存的图标
+                                return self._placeholder_icon
+                            
+                            # 路径变化了，更新缓存并重新加载
+                            if log_path.exists():
+                                ico = QIcon(str(log_path))
+                                if not ico.isNull():
+                                    self._cached_placeholder_path = current_path
+                                    return ico
+                    except Exception as e:
+                        logger.debug(f"[LogPlaceholder] 获取bundle path失败: {e}")
+        except Exception as e:
+            logger.debug(f"[LogPlaceholder] 加载interface.log失败: {e}")
+        
+        # 2) interface.icon（相对于 interface 文件目录，作为fallback）
         try:
             if self.service_coordinator:
                 iface = getattr(self.service_coordinator, "interface", None) or {}
@@ -724,23 +776,34 @@ class LogoutputWidget(QWidget):
                     icon_path = Path(icon_rel.strip())
                     if not icon_path.is_absolute():
                         icon_path = (base_dir / icon_path).resolve()
+                    
+                    # 检查路径是否变化
+                    current_path = str(icon_path)
+                    if current_path == self._cached_placeholder_path and self._placeholder_icon is not None:
+                        return self._placeholder_icon
+                    
                     if icon_path.exists():
                         ico = QIcon(str(icon_path))
                         if not ico.isNull():
+                            self._cached_placeholder_path = current_path
                             return ico
         except Exception:
             pass
 
-        # 2) 应用 window icon
+        # 3) 应用 window icon（不需要路径检测，因为不会变化）
         try:
             app = QApplication.instance()
             if isinstance(app, QApplication):
                 ico = app.windowIcon()
                 if ico and not ico.isNull():
+                    # 使用window icon时，清空路径缓存（因为不是文件路径）
+                    self._cached_placeholder_path = None
                     return ico
         except Exception:
             pass
 
+        # 清空路径缓存
+        self._cached_placeholder_path = None
         return QIcon()
 
     def collect_log_images(self) -> dict[str, tuple[QByteArray, list[int]]]:
