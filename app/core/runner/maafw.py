@@ -67,13 +67,11 @@ class MaaContextSink(ContextEventSink):
             detial = detial.replace("{task_id}", str(details.get("task_id", "")))
             detial = detial.replace("{list}", details.get("list", ""))
             signalBus.callback.emit({"name": "context", "details": detial})
-            if msg == "Node.Recognition.Succeeded" :
+            if msg == "Node.Recognition.Succeeded":
                 if details.get("Abort", False):
                     signalBus.callback.emit({"name": "abort"})
                 if details.get("Notice", False):
                     pass
-
-
 
     def on_node_next_list(
         self,
@@ -251,7 +249,10 @@ class MaaFW(QObject):
                 # 移除所有以文件路径为key的模块
                 if isinstance(module_key, str) and (
                     module_key.startswith(str(self._last_custom_root))
-                    or (os.path.isabs(module_key) and Path(module_key).is_relative_to(self._last_custom_root))
+                    or (
+                        os.path.isabs(module_key)
+                        and Path(module_key).is_relative_to(self._last_custom_root)
+                    )
                 ):
                     modules_to_remove.append(module_key)
                 # 检查模块的 __file__ 或 __path__ 是否在旧的 custom_root 下
@@ -260,28 +261,36 @@ class MaaFW(QObject):
                         module = sys.modules.get(module_key)
                         if not module:
                             continue
-                        
+
                         # 检查普通模块的 __file__
                         if hasattr(module, "__file__") and module.__file__:
                             try:
-                                if Path(module.__file__).resolve().is_relative_to(self._last_custom_root):
+                                if (
+                                    Path(module.__file__)
+                                    .resolve()
+                                    .is_relative_to(self._last_custom_root)
+                                ):
                                     modules_to_remove.append(module_key)
                                     continue
                             except (ValueError, OSError):
                                 pass
-                        
+
                         # 检查包模块的 __path__
                         if hasattr(module, "__path__"):
                             try:
                                 for path_entry in module.__path__:
-                                    if Path(path_entry).resolve().is_relative_to(self._last_custom_root):
+                                    if (
+                                        Path(path_entry)
+                                        .resolve()
+                                        .is_relative_to(self._last_custom_root)
+                                    ):
                                         modules_to_remove.append(module_key)
                                         break
                             except (ValueError, OSError):
                                 pass
                     except Exception:
                         pass
-            
+
             for module_key in set(modules_to_remove):
                 try:
                     del sys.modules[module_key]
@@ -380,7 +389,9 @@ class MaaFW(QObject):
                     relative_path = file_path_obj.relative_to(custom_root_obj)
                     if len(relative_path.parts) > 1:
                         # 文件在子目录中
-                        package_parts = [custom_root_name] + list(relative_path.parts[:-1])
+                        package_parts = [custom_root_name] + list(
+                            relative_path.parts[:-1]
+                        )
                         package_name = ".".join(package_parts)
                     else:
                         # 文件在根目录
@@ -402,7 +413,7 @@ class MaaFW(QObject):
                 # 设置 __package__ 以支持相对导入（from .action.Fishing）
                 # 绝对导入（from action.Fishing）通过 sys.path 自动支持
                 module.__package__ = package_name
-                
+
                 # 使用文件路径作为key存储到sys.modules，避免同名模块冲突
                 sys.modules[module_key] = module
                 spec.loader.exec_module(module)  # type: ignore[arg-type]
@@ -711,6 +722,11 @@ class MaaFW(QObject):
         if self.tasker:
             try:
                 self.tasker.post_stop().wait()
+                import time
+
+                logger.info("等待任务停止")
+                while bool(self.tasker.running):
+                    time.sleep(0.1)
             except Exception as e:
                 logger.error(f"停止任务失败: {e}")
             finally:
