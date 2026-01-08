@@ -1199,7 +1199,16 @@ class ConfigListItem(BaseListItem):
         parent=None,
     ):
         self.service_coordinator = service_coordinator
+        self._locked: bool = False
         super().__init__(config, parent)
+
+    def set_locked(self, locked: bool):
+        self._locked = bool(locked)
+        # 锁定时避免给出“可操作”的指针提示
+        if self._locked:
+            self.setCursor(Qt.CursorShape.ArrowCursor)
+        else:
+            self.unsetCursor()
 
     def _init_ui(self):
         # 创建水平布局

@@ -17,8 +17,14 @@ from qfluentwidgets import (
 )
 
 
-from app.view.task_interface.components.ListWidget import TaskDragListWidget, ConfigListWidget
-from app.view.task_interface.components.AddTaskMessageBox import AddConfigDialog, AddTaskDialog
+from app.view.task_interface.components.ListWidget import (
+    TaskDragListWidget,
+    ConfigListWidget,
+)
+from app.view.task_interface.components.AddTaskMessageBox import (
+    AddConfigDialog,
+    AddTaskDialog,
+)
 from app.core.core import ServiceCoordinator
 from app.view.task_interface.components.ListItem import TaskListItem, ConfigListItem
 from app.common.signal_bus import signalBus
@@ -117,6 +123,7 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
         super().__init__(service_coordinator=service_coordinator, parent=parent)
 
         self.service_coordinator = service_coordinator
+        self._locked: bool = False
 
         self.select_all_button.hide()
         self.deselect_all_button.hide()
@@ -127,6 +134,39 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
         # 设置配置列表标题
         self.set_title(self.tr("Configurations"))
 
+        # 任务运行中锁定配置列表（禁止切换/增删）
+        try:
+            self.service_coordinator.fs_signal_bus.fs_start_button_status.connect(
+                self._on_start_button_status_changed
+            )
+        except Exception:
+            pass
+
+    def _on_start_button_status_changed(self, status: dict):
+        """根据任务流状态锁定/解锁配置列表。"""
+        is_running = status.get("text") == "STOP"
+        self.set_locked(is_running)
+
+    def set_locked(self, locked: bool):
+        """锁定后禁止新增/删除配置，并通知列表组件拦截点击切换。"""
+        locked = bool(locked)
+        if self._locked == locked:
+            return
+        self._locked = locked
+
+        self.add_button.setEnabled(not locked)
+        self.delete_button.setEnabled(not locked)
+
+        if (
+            hasattr(self, "task_list")
+            and self.task_list
+            and hasattr(self.task_list, "set_locked")
+        ):
+            try:
+                self.task_list.set_locked(locked)
+            except Exception:
+                pass
+
     def _init_task_list(self):
         """初始化配置列表"""
         self.task_list = ConfigListWidget(
@@ -135,6 +175,11 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
 
     def add_config(self):
         """添加配置项。"""
+        if getattr(self, "_locked", False):
+            signalBus.info_bar_requested.emit(
+                "warning", self.tr("Task is running, configurations are locked.")
+            )
+            return
         # 通过对话框创建新配置
         bundles = []
         config_service = self.service_coordinator.config
@@ -180,10 +225,13 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
 
     def remove_config(self):
         """移除配置项"""
+        if getattr(self, "_locked", False):
+            signalBus.info_bar_requested.emit(
+                "warning", self.tr("Task is running, configurations are locked.")
+            )
+            return
         config_list = self.service_coordinator.config.list_configs()
         if len(config_list) <= 1:
-            from app.common.signal_bus import signalBus
-
             signalBus.info_bar_requested.emit(
                 "warning", self.tr("Cannot delete the last configuration!")
             )
@@ -216,7 +264,9 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         task_filter_mode: str = "all",
     ):
         self._task_filter_mode = (
-            task_filter_mode if task_filter_mode in ("all", "normal", "special") else "all"
+            task_filter_mode
+            if task_filter_mode in ("all", "normal", "special")
+            else "all"
         )
         super().__init__(service_coordinator=service_coordinator, parent=parent)
         self.core_signalBus = self.service_coordinator.signal_bus
@@ -253,10 +303,10 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             parent=self,
             filter_mode=self._task_filter_mode,
         )
-    
+
     def _has_special_tasks(self) -> bool:
         """检查当前 interface 中是否有带特殊任务标志的任务
-        
+
         Returns:
             bool: 如果有特殊任务返回 True，否则返回 False
         """
@@ -264,21 +314,21 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             interface = getattr(self.service_coordinator.task, "interface", {})
             if not interface:
                 return False
-            
+
             task_defs = interface.get("task", [])
             if not isinstance(task_defs, list):
                 return False
-            
+
             # 检查是否有任务的 spt 字段为 True
             for task_def in task_defs:
                 if task_def.get("spt", False):
                     return True
-            
+
             return False
         except Exception:
             # 如果检查过程中出现异常，默认返回 False（隐藏按钮）
             return False
-    
+
     def _on_config_changed(self, config_id: str):
         """配置切换时的回调，重新检查是否有特殊任务并更新按钮状态"""
         if self._task_filter_mode == "normal":
@@ -298,7 +348,7 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
 
     def add_task(self, idx: int = -2):
         """添加任务
-        
+
         Args:
             idx: 插入位置索引，默认为-2（倒数第二个位置）
         """
@@ -337,7 +387,9 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         # 获取当前配置中的资源
         current_resource_name = ""
         try:
-            pre_config_task = self.service_coordinator.task.get_task("Pre-Configuration")
+            pre_config_task = self.service_coordinator.task.get_task(
+                "Pre-Configuration"
+            )
             if pre_config_task:
                 current_resource_name = pre_config_task.task_option.get("resource", "")
         except Exception:
@@ -351,7 +403,7 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             elif self._task_filter_mode == "normal":
                 if is_special:
                     return False
-            
+
             # 根据资源过滤任务
             if current_resource_name:
                 for task_def in interface.get("task", []):
@@ -364,7 +416,7 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
                         if current_resource_name in task_resources:
                             return True
                         return False
-            
+
             return True
 
         return {name: opts for name, opts in task_map.items() if _include(name)}
@@ -382,9 +434,10 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         self.switch_button.show()
         # 更新切换按钮的图标和提示文本
         from qfluentwidgets import FluentIcon as FIF
+
         self.switch_button.setIcon(FIF.LEFT_ARROW)
         self.switch_button.setToolTip(self.tr("Switch to Normal Tasks"))
-    
+
     def switch_filter_mode(self):
         """切换任务列表的过滤模式（normal <-> special）"""
         if self._task_filter_mode == "normal":
@@ -407,15 +460,16 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
                 self.switch_button.hide()
             # 更新切换按钮的图标和提示文本
             from qfluentwidgets import FluentIcon as FIF
+
             self.switch_button.setIcon(FIF.RIGHT_ARROW)
             self.switch_button.setToolTip(self.tr("Switch to Special Tasks"))
             self.set_title(self.tr("Tasks"))
         else:
             # all 模式不支持切换
             return
-        
+
         # 更新任务列表的过滤模式并刷新
-        if hasattr(self, 'task_list') and self.task_list:
+        if hasattr(self, "task_list") and self.task_list:
             self.task_list._filter_mode = self._task_filter_mode
             self.task_list.update_list()
 

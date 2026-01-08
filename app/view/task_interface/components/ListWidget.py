@@ -7,7 +7,15 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QSizePolicy,
 )
-from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve, QTimer, QSize
+from PySide6.QtCore import (
+    Qt,
+    Signal,
+    QPropertyAnimation,
+    QEasingCurve,
+    QTimer,
+    QSize,
+    QEvent,
+)
 from qfluentwidgets import ListWidget, IndeterminateProgressRing, SimpleCardWidget
 
 from app.core.core import  ServiceCoordinator
@@ -819,6 +827,14 @@ class ConfigListWidget(BaseListWidget):
 
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         super().__init__(service_coordinator, parent)
+        self._locked: bool = False
+        # 运行中需要屏蔽用户点击/键盘切换，但保留滚轮滚动查看
+        self.installEventFilter(self)
+        try:
+            self.viewport().installEventFilter(self)
+        except Exception:
+            pass
+
         self.item_selected.connect(self._on_item_selected_to_service)
 
         self.service_coordinator.fs_signal_bus.fs_config_added.connect(self.add_config)
@@ -830,7 +846,62 @@ class ConfigListWidget(BaseListWidget):
         )
         self.update_list()
 
+    def set_locked(self, locked: bool):
+        """锁定后禁止用户通过点击/键盘切换配置，同时禁用配置项右键编辑入口。"""
+        locked = bool(locked)
+        if self._locked == locked:
+            return
+        self._locked = locked
+        # 同步每个 ConfigListItem 的锁定状态（用于禁用右键重命名等）
+        for i in range(self.count()):
+            item = self.item(i)
+            widget = self.itemWidget(item)
+            if isinstance(widget, ConfigListItem) and hasattr(widget, "set_locked"):
+                try:
+                    widget.set_locked(locked)
+                except Exception:
+                    pass
+
+    def eventFilter(self, obj, event):
+        if not getattr(self, "_locked", False):
+            return super().eventFilter(obj, event)
+
+        et = event.type()
+
+        # 屏蔽“切换配置”的交互：仅拦截左键（保留右键菜单与滚轮）
+        if et in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease):
+            btn = getattr(event, "button", lambda: None)()
+            if btn in (Qt.MouseButton.LeftButton, Qt.MouseButton.MiddleButton):
+                return True
+        if et == QEvent.Type.MouseButtonDblClick:
+            btn = getattr(event, "button", lambda: None)()
+            if btn == Qt.MouseButton.LeftButton:
+                return True
+
+        # 屏蔽键盘切换与删除类按键
+        if et in (QEvent.Type.KeyPress, QEvent.Type.ShortcutOverride):
+            key = getattr(event, "key", lambda: None)()
+            if key in (
+                Qt.Key.Key_Up,
+                Qt.Key.Key_Down,
+                Qt.Key.Key_PageUp,
+                Qt.Key.Key_PageDown,
+                Qt.Key.Key_Home,
+                Qt.Key.Key_End,
+                Qt.Key.Key_Delete,
+                Qt.Key.Key_Backspace,
+                Qt.Key.Key_Return,
+                Qt.Key.Key_Enter,
+                Qt.Key.Key_Space,
+            ):
+                return True
+
+        return super().eventFilter(obj, event)
+
     def _on_item_selected_to_service(self, item_id: str):
+        if getattr(self, "_locked", False):
+            # 运行中允许右键等操作，但不允许切换当前激活配置
+            return
         self.service_coordinator.select_config(item_id)
 
     def update_list(self):
