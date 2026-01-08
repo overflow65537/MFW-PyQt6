@@ -722,11 +722,6 @@ class MaaFW(QObject):
         if self.tasker:
             try:
                 self.tasker.post_stop().wait()
-                import time
-
-                logger.info("等待任务停止")
-                while bool(self.tasker.running):
-                    time.sleep(0.1)
             except Exception as e:
                 logger.error(f"停止任务失败: {e}")
             finally:
