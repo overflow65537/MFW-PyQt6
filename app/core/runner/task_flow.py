@@ -1765,6 +1765,7 @@ class TaskFlowRunner(QObject):
         config_service.current_config_id = config_id
         if config_service.current_config_id == config_id:
             logger.info(f"已切换至完成后指定配置: {config_id}")
+            signalBus.log_clear_requested.emit()
             self._next_config_to_run = config_id
         else:
             logger.warning(f"切换至配置 {config_id} 失败")
