@@ -1326,17 +1326,26 @@ class SettingInterface(QWidget):
             self.compatibility_group,
         )
 
+        # 初始化时计算描述
+        initial_count = cfg.get(cfg.log_max_images) if hasattr(cfg, 'log_max_images') else 200
+        image_size_kb = 200
+        total_memory_mb = (initial_count * image_size_kb) / 1024
+        if total_memory_mb < 1:
+            memory_str = f"{total_memory_mb * 1024:.0f} KB"
+        else:
+            memory_str = f"{total_memory_mb:.1f} MB"
+        initial_content = self.tr("Set cache image count, current cache usage: {}").format(memory_str)
+        
         self.log_max_images_card = SliderSettingCard(
             FIF.PHOTO,
             self.tr("Max log images"),
-            self.tr(
-                "Maximum number of images to keep in log interface and log zip package (1-10000). This setting controls both the display count and the count saved to zip."
-            ),
+            initial_content,
             parent=self.compatibility_group,
             minimum=1,
             maximum=1000,
             step=10,
             config_item=cfg.log_max_images,
+            on_value_changed=self._on_log_max_images_changed,
         )
 
         self.compatibility_group.addSettingCard(self.multi_resource_adaptation_card)
@@ -2108,6 +2117,27 @@ class SettingInterface(QWidget):
     def _on_save_screenshot_changed(self, checked: bool):
         """保存截图开关，无需二次确认。"""
         cfg.set(cfg.save_screenshot, bool(checked))
+
+    def _on_log_max_images_changed(self, value: int):
+        """日志图片数量改变时的回调，动态更新描述"""
+        # 按每张图片200KB计算
+        image_size_kb = 200
+        total_memory_mb = (value * image_size_kb) / 1024
+        
+        # 格式化内存大小显示
+        if total_memory_mb < 1:
+            memory_str = f"{total_memory_mb * 1024:.0f} KB"
+        else:
+            memory_str = f"{total_memory_mb:.1f} MB"
+        
+        # 更新描述文本
+        content = self.tr("Set cache image count, current cache usage: {}").format(memory_str)
+        
+        if hasattr(self, 'log_max_images_card'):
+            if hasattr(self.log_max_images_card, 'setContent'):
+                self.log_max_images_card.setContent(content)
+            elif hasattr(self.log_max_images_card, 'contentLabel'):
+                self.log_max_images_card.contentLabel.setText(content)
 
     def _update_notice_card_status(self, notice_type: str):
         """更新通知卡片的状态显示"""
