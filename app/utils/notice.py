@@ -439,11 +439,27 @@ class NoticeSendThread(QThread):
     def wait_until_idle(self, timeout: float = 5.0) -> bool:
         """等待队列处理完所有任务，最多等待 timeout 秒"""
         deadline = time.time() + timeout
-        while not self.is_idle():
+        check_interval = 0.05  # 50ms 检查一次
+        
+        # 等待直到队列为空且没有活跃任务，或超时
+        while True:
+            # 检查是否空闲
+            is_currently_idle = self.is_idle()
+            
+            if is_currently_idle:
+                # 为了确保没有竞态条件，再等待一小段时间后再次检查
+                # 这样可以确保在检查间隙添加的任务也能被检测到
+                time.sleep(check_interval)
+                if self.is_idle():
+                    return True
+            
+            # 检查是否超时
             if time.time() >= deadline:
+                # 超时后返回当前状态
                 return self.is_idle()
-            time.sleep(0.05)
-        return True
+            
+            # 等待一小段时间后再次检查
+            time.sleep(check_interval)
 
 
 def dingtalk_send(

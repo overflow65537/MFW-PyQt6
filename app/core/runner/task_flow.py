@@ -544,6 +544,36 @@ class TaskFlowRunner(QObject):
 
             logger.critical(traceback.format_exc())
         finally:
+            # 先发送任务完成通知（在完成后操作之前，以便退出软件时可以等待通知发送完成）
+            # 断开日志收集信号
+            signalBus.log_output.disconnect(collect_log)
+            
+            # 发送收集的日志信息（仅在非手动停止时发送）
+            # 注意：这里检查 _manual_stop 标志，如果为 True 则不发送通知
+            if not self._manual_stop and self._log_messages:
+                # 将日志信息格式化为文本（包含收到的时间戳）
+                # 格式：[时间][日志等级]日志内容
+                log_text_lines: list[str] = []
+                for log_item in self._log_messages:
+                    if len(log_item) == 3:
+                        level, text, timestamp = log_item
+                    else:
+                        # 兼容旧格式（没有时间戳的情况）
+                        level, text = log_item[:2]  # type: ignore[misc]
+                        timestamp = datetime.now().strftime("%H:%M:%S")
+                    # 翻译日志级别
+                    translated_level = self._translate_log_level(level)
+                    log_text_lines.append(f"[{timestamp}][{translated_level}]{text}")
+
+                log_text = "\n".join(log_text_lines)
+
+                if log_text and not is_single_task_mode:
+                    send_notice(
+                        NoticeTiming.WHEN_POST_TASK,
+                        self.tr("Task Flow Completed"),
+                        log_text,
+                    )
+            
             # 判断是否需要执行完成后操作
             should_run_post_action = (
                 not self.need_stop and not is_single_task_mode and self._tasks_started
@@ -570,35 +600,6 @@ class TaskFlowRunner(QObject):
 
             # 恢复 _manual_stop 标志（防止 stop_task 中的逻辑意外修改）
             self._manual_stop = was_manual_stop
-
-            # 断开日志收集信号
-            signalBus.log_output.disconnect(collect_log)
-
-            # 发送收集的日志信息（仅在非手动停止时发送）
-            # 注意：这里检查 _manual_stop 标志，如果为 True 则不发送通知
-            if not self._manual_stop and self._log_messages:
-                # 将日志信息格式化为文本（包含收到的时间戳）
-                # 格式：[时间][日志等级]日志内容
-                log_text_lines: list[str] = []
-                for log_item in self._log_messages:
-                    if len(log_item) == 3:
-                        level, text, timestamp = log_item
-                    else:
-                        # 兼容旧格式（没有时间戳的情况）
-                        level, text = log_item[:2]  # type: ignore[misc]
-                        timestamp = datetime.now().strftime("%H:%M:%S")
-                    # 翻译日志级别
-                    translated_level = self._translate_log_level(level)
-                    log_text_lines.append(f"[{timestamp}][{translated_level}]{text}")
-
-                log_text = "\n".join(log_text_lines)
-
-                if log_text and not is_single_task_mode:
-                    send_notice(
-                        NoticeTiming.WHEN_POST_TASK,
-                        self.tr("Task Flow Completed"),
-                        log_text,
-                    )
 
             self._is_running = False
 
