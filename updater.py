@@ -214,7 +214,6 @@ def extract_zip_file_with_validation(update_file_path):
         update_logger.error(f"不支持的文件格式: {update_file_path}")
         return False
 
-    current_dir = os.getcwd()
     extract_dir = Path(tempfile.mkdtemp(prefix="mfw_unpack_"))
     try:
         with zipfile.ZipFile(update_file_path, "r") as archive:
@@ -231,27 +230,7 @@ def extract_zip_file_with_validation(update_file_path):
                     print(f"✓ 已解压: {file_info}")
                 except Exception as exc:
                     raise Exception(f"提取 {file_info} 失败: {exc}") from exc
-        for root, dirs, files in os.walk(extract_dir):
-            rel_root = os.path.relpath(root, extract_dir)
-            dest_root = (
-                os.path.join(current_dir, rel_root)
-                if rel_root not in (".", "")
-                else current_dir
-            )
-            os.makedirs(dest_root, exist_ok=True)
-            for d in dirs:
-                os.makedirs(os.path.join(dest_root, d), exist_ok=True)
-            for file in files:
-                src_file = os.path.join(root, file)
-                dest_file = os.path.join(dest_root, file)
-                os.makedirs(os.path.dirname(dest_file), exist_ok=True)
-                shutil.copy2(src_file, dest_file)
-                if sys.platform != "win32" and os.path.basename(dest_file) in {
-                    "MFW",
-                    "MFWUpdater",
-                }:
-                    os.chmod(dest_file, 0o755)
-                print(f"✓ 已复制: {dest_file}")
+        _copy_temp_to_root(extract_dir, verbose=True)
         return True
     except Exception as exc:
         update_logger.error(f"解压过程出错: {exc}")
@@ -451,6 +430,82 @@ def _restore_from_backup(backups):
             update_logger.error(f"恢复 {src} 失败: {exc}")
 
 
+def _is_under_any(abs_path: str, parents: set[str]) -> bool:
+    """判断 abs_path 是否等于 parents 中任意路径，或位于其子路径下。"""
+    for parent in parents:
+        if not parent:
+            continue
+        if abs_path == parent or abs_path.startswith(parent + os.sep):
+            return True
+    return False
+
+
+def _collect_root_entries_for_delete(
+    root: str,
+    *,
+    keep_abs: set[str] | None = None,
+    exclude_abs: set[str] | None = None,
+    skip_abs: set[str] | None = None,
+) -> list[str]:
+    """
+    从 root 的一级目录/文件中，筛选出需要删除的绝对路径列表。
+    - keep_abs/exclude_abs: 作为“保留列表”，会保留其自身及其子路径
+    - skip_abs: 仅跳过与某个一级 entry 完全相等的路径（与历史行为一致）
+    """
+    keep_abs = keep_abs or set()
+    exclude_abs = exclude_abs or set()
+    skip_abs = skip_abs or set()
+
+    delete_candidates: list[str] = []
+    for entry in os.listdir(root):
+        abs_entry = os.path.abspath(os.path.join(root, entry))
+        if abs_entry in skip_abs:
+            continue
+        if _is_under_any(abs_entry, keep_abs) or _is_under_any(abs_entry, exclude_abs):
+            continue
+        delete_candidates.append(abs_entry)
+    return delete_candidates
+
+
+def _safe_backup_then_delete(
+    delete_candidates: list[str],
+    *,
+    root: str,
+    cleanup_backup_on_success: bool,
+) -> tuple[bool, list[tuple[str, str]], str | None]:
+    """
+    先备份 delete_candidates，再执行删除。失败则回滚。
+    返回 (success, backups, backup_dir)。
+    """
+    backup_dir = tempfile.mkdtemp(prefix="mfw_delete_backup_")
+    backups: list[tuple[str, str]] = []
+    try:
+        for abs_entry in delete_candidates:
+            if not os.path.exists(abs_entry):
+                continue
+            backup_entry = _copy_to_backup(abs_entry, backup_dir, root)
+            if backup_entry:
+                backups.append(backup_entry)
+
+        for abs_entry in delete_candidates:
+            if not os.path.exists(abs_entry):
+                continue
+            if os.path.isdir(abs_entry):
+                shutil.rmtree(abs_entry)
+            else:
+                os.remove(abs_entry)
+
+        if cleanup_backup_on_success:
+            shutil.rmtree(backup_dir, ignore_errors=True)
+            return True, backups, None
+        return True, backups, backup_dir
+    except Exception as exc:
+        update_logger.error(f"安全删除失败: {exc}")
+        _restore_from_backup(backups)
+        shutil.rmtree(backup_dir, ignore_errors=True)
+        return False, [], None
+
+
 def _cleanup_root_except(exclude_relatives):
     root = os.getcwd()
     exclude_abs = {
@@ -476,37 +531,15 @@ def safe_delete_all_except(exclude_relatives):
     exclude_abs = {
         os.path.abspath(os.path.join(root, rel)) for rel in exclude_relatives if rel
     }
-    delete_candidates = []
-    for entry in os.listdir(root):
-        abs_entry = os.path.abspath(os.path.join(root, entry))
-        if any(
-            abs_entry == ex or abs_entry.startswith(ex + os.sep) for ex in exclude_abs
-        ):
-            continue
-        delete_candidates.append(abs_entry)
-
-    backup_dir = tempfile.mkdtemp(prefix="mfw_delete_backup_")
-    backups: List[Tuple[str, str]] = []
-    try:
-        for abs_entry in delete_candidates:
-            if not os.path.exists(abs_entry):
-                continue
-            backup_entry = _copy_to_backup(abs_entry, backup_dir, root)
-            if backup_entry:
-                backups.append(backup_entry)
-        for abs_entry in delete_candidates:
-            if not os.path.exists(abs_entry):
-                continue
-            if os.path.isdir(abs_entry):
-                shutil.rmtree(abs_entry)
-            else:
-                os.remove(abs_entry)
-        return SafeDeleteResult(True, backups, backup_dir)
-    except Exception as exc:
-        update_logger.error(f"安全删除失败: {exc}")
-        _restore_from_backup(backups)
-        shutil.rmtree(backup_dir, ignore_errors=True)
+    delete_candidates = _collect_root_entries_for_delete(root, exclude_abs=exclude_abs)
+    success, backups, backup_dir = _safe_backup_then_delete(
+        delete_candidates,
+        root=root,
+        cleanup_backup_on_success=False,
+    )
+    if not success:
         return SafeDeleteResult(False, [], None)
+    return SafeDeleteResult(True, backups, backup_dir)
 
 
 def _extract_zip_to_temp(zip_path: Path):
@@ -523,7 +556,7 @@ def _extract_zip_to_temp(zip_path: Path):
         return None
 
 
-def _copy_temp_to_root(temp_dir: Path):
+def _copy_temp_to_root(temp_dir: Path, *, verbose: bool = False):
     current_dir = os.getcwd()
     for root_dir, dirs, files in os.walk(temp_dir):
         rel_root = os.path.relpath(root_dir, temp_dir)
@@ -545,6 +578,8 @@ def _copy_temp_to_root(temp_dir: Path):
                 "MFWUpdater",
             }:
                 os.chmod(dest_file, 0o755)
+            if verbose:
+                print(f"✓ 已复制: {dest_file}")
 
 
 def _increment_attempts(metadata: dict, metadata_path: str):
@@ -643,43 +678,17 @@ def safe_delete_except(keep_relative_paths, skip_paths=None, extra_keep=None):
         if os.path.isdir(abs_path):
             keep_abs.add(os.path.abspath(abs_path))
     skip_abs = {os.path.abspath(path) for path in (skip_paths or [])}
-
-    delete_candidates = []
-    for entry in os.listdir(root):
-        abs_entry = os.path.abspath(os.path.join(root, entry))
-        if abs_entry in skip_abs:
-            continue
-        if any(
-            abs_entry == keep_path or abs_entry.startswith(keep_path + os.sep)
-            for keep_path in keep_abs
-            if keep_path
-        ):
-            continue
-        delete_candidates.append(abs_entry)
-
-    backup_dir = tempfile.mkdtemp(prefix="mfw_delete_backup_")
-    backups = []
-    try:
-        for abs_entry in delete_candidates:
-            if not os.path.exists(abs_entry):
-                continue
-            backup_entry = _copy_to_backup(abs_entry, backup_dir, root)
-            if backup_entry:
-                backups.append(backup_entry)
-        for abs_entry in delete_candidates:
-            if not os.path.exists(abs_entry):
-                continue
-            if os.path.isdir(abs_entry):
-                shutil.rmtree(abs_entry)
-            else:
-                os.remove(abs_entry)
-        shutil.rmtree(backup_dir, ignore_errors=True)
-        return True
-    except Exception as exc:
-        update_logger.error(f"安全删除失败: {exc}")
-        _restore_from_backup(backups)
-        shutil.rmtree(backup_dir, ignore_errors=True)
-        return False
+    delete_candidates = _collect_root_entries_for_delete(
+        root,
+        keep_abs=keep_abs,
+        skip_abs=skip_abs,
+    )
+    success, _, _ = _safe_backup_then_delete(
+        delete_candidates,
+        root=root,
+        cleanup_backup_on_success=True,
+    )
+    return success
 
 
 def backup_model_dir():
@@ -892,12 +901,11 @@ def _extract_zip_to_hotfix_dir(zip_path: str, extract_to: str) -> str | None:
 
             # 查找 interface.json 或 interface.jsonc
             update_logger.debug("[步骤3] 查找 interface.json/interface.jsonc 文件...")
-            interface_dir_parts = None
+            interface_dir_parts: tuple[str, ...] | None = None
             for member in members:
                 member_path = Path(member.replace("\\", "/"))
                 if member_path.name.lower() in interface_names:
-                    # 获取 interface 文件所在的目录
-                    interface_dir_parts = member_path.parent.parts
+                    interface_dir_parts = tuple(member_path.parent.parts)
                     update_logger.info(
                         f"[步骤3] 找到 interface 文件: {member}，所在目录: {'/'.join(interface_dir_parts)}"
                     )
@@ -945,14 +953,138 @@ def _extract_zip_to_hotfix_dir(zip_path: str, extract_to: str) -> str | None:
             update_logger.info(f"[步骤3] 文件解压完成，共解压 {extracted_count} 个文件")
 
             # 返回解压后的根目录
-            if interface_dir_parts:
-                return str(extract_to_path)
             return str(extract_to_path)
     except Exception as exc:
         update_logger.exception(
             f"[步骤3] 解压文件失败 {zip_path} -> {extract_to}: {exc}"
         )
         return None
+
+
+def _load_interface_data(bundle_path: Path) -> tuple[list[Path], dict]:
+    """读取 bundle 下的 interface.jsonc/interface.json，返回 (候选路径列表, 解析后的数据)。"""
+    interface_paths = [bundle_path / "interface.jsonc", bundle_path / "interface.json"]
+    for path in interface_paths:
+        if not path.exists():
+            continue
+        update_logger.info(f"[步骤5] 找到 interface 文件: {path}")
+        interface_data = _read_config_file(str(path))
+        if interface_data:
+            update_logger.info("[步骤5] 成功读取 interface 配置")
+            return interface_paths, interface_data
+    update_logger.warning("[步骤5] 未找到有效的 interface 配置文件")
+    return interface_paths, {}
+
+
+def _get_resource_dirs_from_interface(interface_data: dict) -> list[Path]:
+    """从 interface 配置解析 resource.path，按原始 path 去重，仅保留存在的目录。"""
+    resource_list = interface_data.get("resource", [])
+    if not isinstance(resource_list, list):
+        return []
+    seen: set[str] = set()
+    dirs: list[Path] = []
+    for resource in resource_list:
+        if not isinstance(resource, dict):
+            continue
+        raw_paths = resource.get("path", [])
+        if not isinstance(raw_paths, list):
+            continue
+        for raw_path in raw_paths:
+            if not isinstance(raw_path, str) or raw_path in seen:
+                continue
+            seen.add(raw_path)
+            resolved = Path(raw_path.replace("{PROJECT_DIR}", "."))
+            if resolved.is_dir():
+                dirs.append(resolved)
+    return dirs
+
+
+def _backup_resources_and_cleanup_pipelines(
+    resource_dirs: list[Path],
+    backup_root: Path,
+) -> list[tuple[Path, Path]]:
+    """
+    备份资源目录到 backup_root，并删除每个资源目录下的 pipeline 目录（若存在）。
+    返回 (original_path, backup_path) 列表，用于失败回滚。
+    """
+    backup_root.mkdir(parents=True, exist_ok=True)
+    backups: list[tuple[Path, Path]] = []
+    for resource_path in resource_dirs:
+        backup_target = backup_root / resource_path.name
+        update_logger.info(f"[步骤5] 备份资源目录: {resource_path} -> {backup_target}")
+        if backup_target.is_dir():
+            shutil.rmtree(backup_target)
+        shutil.copytree(str(resource_path), str(backup_target))
+        update_logger.info(f"[步骤5] 资源目录备份完成: {resource_path}")
+        backups.append((resource_path, backup_target))
+
+        pipeline_path = resource_path / "pipeline"
+        if pipeline_path.exists():
+            update_logger.info(f"[步骤5] 删除旧 pipeline 目录: {pipeline_path}")
+            shutil.rmtree(str(pipeline_path))
+            update_logger.info(f"[步骤5] pipeline 目录删除完成: {pipeline_path}")
+    return backups
+
+
+def _update_interface_version(interface_paths: list[Path], version: str) -> bool:
+    update_logger.info(f"[步骤5] 开始更新 interface 配置文件中的版本号为: {version}")
+    for path in interface_paths:
+        if not path.exists():
+            continue
+        interface = _read_config_file(str(path))
+        if not interface:
+            continue
+        old_version = interface.get("version", "unknown")
+        interface["version"] = version
+        try:
+            import jsonc
+
+            with open(path, "w", encoding="utf-8") as f:
+                jsonc.dump(interface, f, indent=4, ensure_ascii=False)
+        except ImportError:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(interface, f, indent=4, ensure_ascii=False)
+        update_logger.info(
+            f"[步骤5] 版本号更新成功: {path.name} ({old_version} -> {version})"
+        )
+        return True
+    update_logger.warning("[步骤5] 未能更新 interface 配置文件中的版本号")
+    return False
+
+
+def _rollback_resource_backups(resource_backups: list[tuple[Path, Path]]) -> None:
+    if not resource_backups:
+        update_logger.warning("[步骤5] 没有需要恢复的资源备份")
+        return
+    update_logger.warning(
+        f"[步骤5] 更新失败，正在恢复 {len(resource_backups)} 个资源备份目录..."
+    )
+    restore_count = 0
+    for original_path, backup_path in reversed(resource_backups):
+        try:
+            if not backup_path.exists():
+                update_logger.warning(f"[步骤5] 备份路径不存在，跳过恢复: {backup_path}")
+                continue
+            update_logger.info(f"[步骤5] 恢复资源目录: {backup_path} -> {original_path}")
+            if original_path.exists():
+                if original_path.is_file():
+                    original_path.unlink()
+                else:
+                    shutil.rmtree(original_path)
+            if backup_path.is_dir():
+                shutil.copytree(backup_path, original_path)
+            else:
+                original_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(backup_path, original_path)
+            update_logger.info(f"[步骤5] 资源目录恢复成功: {original_path}")
+            restore_count += 1
+        except Exception as restore_err:
+            update_logger.exception(
+                f"[步骤5] 恢复资源目录失败: {original_path} -> {restore_err}"
+            )
+    update_logger.info(
+        f"[步骤5] 资源备份恢复完成，成功恢复 {restore_count}/{len(resource_backups)} 个目录"
+    )
 
 
 def apply_github_hotfix(package_path, metadata=None):
@@ -1025,70 +1157,19 @@ def apply_github_hotfix(package_path, metadata=None):
     update_logger.info(f"[步骤5] 创建资源备份目录: {resource_backup_dir}")
     resource_backup_dir.mkdir(parents=True, exist_ok=True)
 
-    # 读取 interface.json 获取 resource 列表
     update_logger.info("[步骤5] 读取 interface 配置文件...")
-    interface_paths = [
-        bundle_path_obj / "interface.jsonc",
-        bundle_path_obj / "interface.json",
-    ]
-    interface_data = {}
-    for path in interface_paths:
-        if path.exists():
-            update_logger.info(f"[步骤5] 找到 interface 文件: {path}")
-            interface_data = _read_config_file(str(path))
-            if interface_data:
-                update_logger.info(f"[步骤5] 成功读取 interface 配置")
-                break
-    if not interface_data:
-        update_logger.warning("[步骤5] 未找到有效的 interface 配置文件")
-
-    resource_list = interface_data.get("resource", [])
-    resource_count = len(resource_list)
-    update_logger.info(f"[步骤5] 获取到 {resource_count} 个资源配置项")
-    known_resources: list[str] = []
+    interface_paths, interface_data = _load_interface_data(bundle_path_obj)
+    resource_dirs = _get_resource_dirs_from_interface(interface_data)
+    update_logger.info(f"[步骤5] 获取到 {len(resource_dirs)} 个资源目录")
     resource_backups: list[tuple[Path, Path]] = []
 
     try:
         update_logger.info("[步骤5] 开始备份资源目录和清理 pipeline 目录...")
-        backup_count = 0
-        for resource in resource_list:
-            for resource_path_str in resource.get("path", []):
-                resource_path = Path(resource_path_str.replace("{PROJECT_DIR}", "."))
-                if resource_path.is_dir() and (
-                    resource_path_str not in known_resources
-                ):
-                    backup_target = resource_backup_dir / resource_path.name
-                    try:
-                        # 先备份资源
-                        update_logger.info(
-                            f"[步骤5] 备份资源目录: {resource_path} -> {backup_target}"
-                        )
-                        if backup_target.is_dir():
-                            shutil.rmtree(backup_target)
-                        shutil.copytree(str(resource_path), str(backup_target))
-                        update_logger.info(f"[步骤5] 资源目录备份完成: {resource_path}")
-
-                        resource_backups.append((resource_path, backup_target))
-                        known_resources.append(resource_path_str)
-                        backup_count += 1
-
-                        # 再删除旧的 pipeline 目录，避免影响后续覆盖
-                        pipeline_path = resource_path / "pipeline"
-                        if pipeline_path.exists():
-                            update_logger.info(
-                                f"[步骤5] 删除旧 pipeline 目录: {pipeline_path}"
-                            )
-                            shutil.rmtree(str(pipeline_path))
-                            update_logger.info(
-                                f"[步骤5] pipeline 目录删除完成: {pipeline_path}"
-                            )
-                    except Exception as backup_err:
-                        update_logger.exception(
-                            f"[步骤5] 备份或清理资源目录时出错: {resource_path} -> {backup_err}"
-                        )
-                        raise
+        resource_backups = _backup_resources_and_cleanup_pipelines(
+            resource_dirs, resource_backup_dir
+        )
         update_logger.info(
-            f"[步骤5] 资源备份和清理完成，共处理 {backup_count} 个资源目录"
+            f"[步骤5] 资源备份和清理完成，共处理 {len(resource_backups)} 个资源目录"
         )
 
         update_logger.info(f"[步骤5] 开始覆盖项目目录: {hotfix_root} -> {project_path}")
@@ -1097,33 +1178,7 @@ def apply_github_hotfix(package_path, metadata=None):
         shutil.copytree(hotfix_root, project_path, dirs_exist_ok=True)
         update_logger.info(f"[步骤5] 项目目录覆盖完成: {project_path}")
 
-        # 更新 interface.jsonc 中的版本号
-        update_logger.info(
-            f"[步骤5] 开始更新 interface 配置文件中的版本号为: {version}"
-        )
-        version_updated = False
-        for path in interface_paths:
-            if path.exists():
-                interface = _read_config_file(str(path))
-                if interface:
-                    old_version = interface.get("version", "unknown")
-                    interface["version"] = version
-                    try:
-                        import jsonc
-
-                        with open(path, "w", encoding="utf-8") as f:
-                            jsonc.dump(interface, f, indent=4, ensure_ascii=False)
-                    except ImportError:
-                        with open(path, "w", encoding="utf-8") as f:
-                            json.dump(interface, f, indent=4, ensure_ascii=False)
-                    update_logger.info(
-                        f"[步骤5] 版本号更新成功: {path.name} ({old_version} -> {version})"
-                    )
-                    version_updated = True
-                    break
-        if not version_updated:
-            update_logger.warning("[步骤5] 未能更新 interface 配置文件中的版本号")
-        else:
+        if _update_interface_version(interface_paths, version):
             update_logger.info("[步骤5] interface 配置同步完毕")
 
         # 步骤5: 完成
@@ -1148,44 +1203,7 @@ def apply_github_hotfix(package_path, metadata=None):
     except Exception as e:
         # 资源目录异常回滚
         update_logger.error(f"[步骤5] 热更新过程中出现错误: {e}")
-        if resource_backups:
-            update_logger.warning(
-                f"[步骤5] 更新失败，正在恢复 {len(resource_backups)} 个资源备份目录..."
-            )
-            restore_count = 0
-            for original_path, backup_path in reversed(resource_backups):
-                try:
-                    if not backup_path.exists():
-                        update_logger.warning(
-                            f"[步骤5] 备份路径不存在，跳过恢复: {backup_path}"
-                        )
-                        continue
-                    update_logger.info(
-                        f"[步骤5] 恢复资源目录: {backup_path} -> {original_path}"
-                    )
-                    # 清理已被部分覆盖/删除的原目录
-                    if original_path.exists():
-                        if original_path.is_file():
-                            original_path.unlink()
-                        else:
-                            shutil.rmtree(original_path)
-                    # 使用备份进行还原
-                    if backup_path.is_dir():
-                        shutil.copytree(backup_path, original_path)
-                    else:
-                        original_path.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.copy2(backup_path, original_path)
-                    update_logger.info(f"[步骤5] 资源目录恢复成功: {original_path}")
-                    restore_count += 1
-                except Exception as restore_err:
-                    update_logger.exception(
-                        f"[步骤5] 恢复资源目录失败: {original_path} -> {restore_err}"
-                    )
-            update_logger.info(
-                f"[步骤5] 资源备份恢复完成，成功恢复 {restore_count}/{len(resource_backups)} 个目录"
-            )
-        else:
-            update_logger.warning("[步骤5] 没有需要恢复的资源备份")
+        _rollback_resource_backups(resource_backups)
         update_logger.exception("[GitHub热更新] 热更新失败，详细信息:")
         update_logger.error("=" * 50)
         return False
