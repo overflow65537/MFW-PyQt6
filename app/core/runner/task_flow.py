@@ -547,7 +547,7 @@ class TaskFlowRunner(QObject):
             # 先发送任务完成通知（在完成后操作之前，以便退出软件时可以等待通知发送完成）
             # 断开日志收集信号
             signalBus.log_output.disconnect(collect_log)
-            
+
             # 发送收集的日志信息（仅在非手动停止时发送）
             # 注意：这里检查 _manual_stop 标志，如果为 True 则不发送通知
             if not self._manual_stop and self._log_messages:
@@ -573,7 +573,7 @@ class TaskFlowRunner(QObject):
                         self.tr("Task Flow Completed"),
                         log_text,
                     )
-            
+
             # 判断是否需要执行完成后操作
             should_run_post_action = (
                 not self.need_stop and not is_single_task_mode and self._tasks_started
@@ -858,7 +858,7 @@ class TaskFlowRunner(QObject):
         # 单任务模式下不进行长期任务检查
         if self._is_single_task_mode:
             return
-        
+
         entry_text = (entry or "").strip() or self.tr("Unknown Task Entry")
         # 如果entry不同，重置状态
         if entry_text != self._timeout_active_entry:
@@ -922,7 +922,7 @@ class TaskFlowRunner(QObject):
         if self._is_single_task_mode:
             self._timeout_timer.stop()
             return
-        
+
         if not self._current_running_task_id:
             # 没有正在运行的任务，停止定时器
             self._timeout_timer.stop()
@@ -1112,7 +1112,7 @@ class TaskFlowRunner(QObject):
             logger.error("Win32 控制器仅在 Windows 上支持")
             signalBus.log_output.emit("ERROR", error_msg)
             return False
-        
+
         activate_controller = controller_raw.get("controller_type")
         if activate_controller is None:
             logger.error(f"未找到控制器配置: {controller_raw}")
@@ -1679,10 +1679,10 @@ class TaskFlowRunner(QObject):
             logger.info("完成后操作: 无动作")
             return
 
-        # 2. 如果选择了"关闭模拟器"，执行关闭模拟器
-        if post_config.get("close_emulator"):
-            logger.info("完成后操作: 关闭模拟器")
-            self._close_emulator()
+        # 2. 如果选择了"关闭控制器"，执行关闭控制器
+        if post_config.get("close_controller"):
+            logger.info("完成后操作: 关闭控制器")
+            self._close_controller()
 
         # 3. 如果选择了"运行其他程序"，执行并等待程序退出
         if post_config.get("run_program"):
@@ -1696,7 +1696,8 @@ class TaskFlowRunner(QObject):
         if post_config.get("run_other"):
             if target_config := (post_config.get("target_config") or "").strip():
                 logger.info(
-                    "完成后操作: 运行其他配置，等待 %.2f 秒再切换", self._config_switch_delay
+                    "完成后操作: 运行其他配置，等待 %.2f 秒再切换",
+                    self._config_switch_delay,
                 )
                 await asyncio.sleep(self._config_switch_delay)
                 await self._run_other_configuration(target_config)
@@ -1804,34 +1805,76 @@ class TaskFlowRunner(QObject):
         except Exception as exc:
             logger.warning("等待通知发送完成时出错: %s", exc)
 
-    def _close_emulator(self) -> None:
-        """关闭模拟器"""
-        if self.adb_controller_config is None:
+    def _close_controller(self) -> None:
+        """关闭控制器 - 根据当前运行的控制器类型执行不同的关闭操作"""
+        controller_cfg = self.task_service.get_task(_CONTROLLER_)
+        if not controller_cfg:
+            logger.warning("未找到控制器配置，无法关闭控制器")
             return
 
-        adb_address = self.adb_controller_config.get("address", "")
-        if ":" in adb_address:
-            adb_port = adb_address.split(":")[-1]
-        elif "-" in adb_address:
-            adb_port = adb_address.split("-")[-1]
-        else:
-            adb_port = None
-        adb_path = self.adb_controller_config.get("adb_path")
+        controller_raw = controller_cfg.task_option
+        if not isinstance(controller_raw, dict):
+            logger.warning("控制器配置格式错误，无法关闭控制器")
+            return
 
-        device_name = self.adb_controller_config.get("device_name", "")
+        try:
+            controller_type = self._get_controller_type(controller_raw)
+        except Exception as exc:
+            logger.warning(f"获取控制器类型失败: {exc}")
+            return
 
-        if "mumuplayer12" in device_name.lower():
-            EmulatorHelper.close_mumu(adb_path, adb_port)
-        elif "ldplayer" in device_name.lower():
-            ld_pid_cfg = (
-                self.adb_controller_config.get("config", {})
-                .get("extras", {})
-                .get("ld", {})
-                .get("pid")
-            )
-            EmulatorHelper.close_ldplayer(adb_path, ld_pid_cfg)
+        if controller_type == "adb":
+            # 关闭 ADB 控制器：运行原本的关闭模拟器逻辑
+            if self.adb_controller_config is None:
+                logger.warning("ADB 控制器配置不存在，无法关闭")
+                return
+
+            adb_address = self.adb_controller_config.get("address", "")
+            if ":" in adb_address:
+                adb_port = adb_address.split(":")[-1]
+            elif "-" in adb_address:
+                adb_port = adb_address.split("-")[-1]
+            else:
+                adb_port = None
+            adb_path = self.adb_controller_config.get("adb_path")
+
+            device_name = self.adb_controller_config.get("device_name", "")
+
+            if "mumuplayer12" in device_name.lower():
+                EmulatorHelper.close_mumu(adb_path, adb_port)
+            elif "ldplayer" in device_name.lower():
+                ld_pid_cfg = (
+                    self.adb_controller_config.get("config", {})
+                    .get("extras", {})
+                    .get("ld", {})
+                    .get("pid")
+                )
+                EmulatorHelper.close_ldplayer(adb_path, ld_pid_cfg)
+            else:
+                logger.warning(f"未找到对应的模拟器: {device_name}")
+        elif controller_type == "win32":
+            # 关闭 Win32 控制器：通过 hwnd 关闭窗口
+            controller_name = self._get_controller_name(controller_raw)
+            if controller_name in controller_raw:
+                win32_config = controller_raw[controller_name]
+            elif controller_type in controller_raw:
+                win32_config = controller_raw[controller_type]
+            else:
+                logger.warning("未找到 Win32 控制器配置")
+                return
+
+            hwnd_raw = win32_config.get("hwnd", 0)
+            if not hwnd_raw:
+                logger.warning("Win32 控制器窗口句柄为空，无法关闭")
+                return
+
+            # 调用 EmulatorHelper 关闭窗口
+            EmulatorHelper.close_win32_window(hwnd_raw)
+        elif controller_type == "playcover":
+            # 关闭 PlayCover 控制器：什么都不做
+            logger.info("PlayCover 控制器无需关闭操作")
         else:
-            logger.warning(f"未找到对应的模拟器: {device_name}")
+            logger.warning(f"未知的控制器类型: {controller_type}")
 
     def shutdown(self):
         """

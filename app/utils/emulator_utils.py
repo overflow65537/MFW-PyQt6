@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -337,3 +338,67 @@ class EmulatorHelper:
             return "", ""
 
         return "", ""
+
+    @staticmethod
+    def close_win32_window(hwnd: int | str) -> bool:
+        """通过窗口句柄 (hwnd) 关闭 Windows 窗口
+        
+        Args:
+            hwnd: 窗口句柄，可以是整数或字符串
+            
+        Returns:
+            bool: 是否成功发送关闭消息
+        """
+        if sys.platform != "win32":
+            logger.warning("Win32 窗口关闭功能仅在 Windows 系统上支持")
+            return False
+
+        try:
+            # 将 hwnd 转换为整数
+            if isinstance(hwnd, str):
+                hwnd_value = int(hwnd)
+            else:
+                hwnd_value = int(hwnd)
+        except (TypeError, ValueError):
+            logger.error(f"无效的窗口句柄: {hwnd}")
+            return False
+
+        if hwnd_value <= 0:
+            logger.warning(f"窗口句柄无效: {hwnd_value}")
+            return False
+
+        try:
+            import ctypes
+
+            # 定义 Windows API 常量
+            WM_CLOSE = 0x0010
+            user32 = ctypes.windll.user32
+
+            # 检查窗口是否存在
+            if not user32.IsWindow(hwnd_value):
+                logger.warning(f"窗口句柄 {hwnd_value} 对应的窗口不存在")
+                return False
+
+            # 首先尝试使用 PostMessageW 发送 WM_CLOSE 消息（异步，不会阻塞）
+            # PostMessageW 返回非零值表示成功
+            result = user32.PostMessageW(hwnd_value, WM_CLOSE, 0, 0)
+            if result:
+                logger.info(f"成功发送关闭消息到窗口 {hwnd_value} (使用 PostMessageW)")
+                return True
+            else:
+                # PostMessageW 失败（返回 0），尝试使用 SendMessageW（同步，会等待窗口响应）
+                logger.debug(f"PostMessageW 失败，尝试使用 SendMessageW")
+                # SendMessageW 的返回值取决于窗口处理消息的方式，对于 WM_CLOSE 通常是 0
+                # 但我们需要通过 GetLastError 检查是否真的出错
+                user32.SendMessageW(hwnd_value, WM_CLOSE, 0, 0)
+                # 检查窗口是否还存在（如果窗口正常关闭，应该不存在了）
+                if not user32.IsWindow(hwnd_value):
+                    logger.info(f"成功关闭窗口 {hwnd_value} (使用 SendMessageW)")
+                    return True
+                else:
+                    logger.warning(f"无法关闭窗口 {hwnd_value}，窗口仍然存在")
+                    return False
+
+        except Exception as exc:
+            logger.error(f"关闭 Win32 窗口失败: {exc}", exc_info=True)
+            return False

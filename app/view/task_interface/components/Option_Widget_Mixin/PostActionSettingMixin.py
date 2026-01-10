@@ -22,19 +22,19 @@ class PostActionSettingMixin:
     _CONFIG_KEY = "post_action"
     _ACTION_ORDER: List[str] = [
         "none",
-        "close_emulator",
+        "close_controller",
         "run_other",
         "run_program",
         "close_software",
         "shutdown",
     ]
     _PRIMARY_ACTIONS = {"none", "shutdown", "run_other"}
-    _SECONDARY_ACTIONS = {"close_emulator", "close_software"}
+    _SECONDARY_ACTIONS = {"close_controller", "close_software"}
     _OPTIONAL_ACTIONS = {"run_program"}
     _DEFAULT_STATE: Dict[str, Any] = {
         "none": True,
         "shutdown": False,
-        "close_emulator": False,
+        "close_controller": False,
         "close_software": False,
         "run_other": False,
         "run_program": False,
@@ -43,9 +43,9 @@ class PostActionSettingMixin:
         "program_args": "",
     }
 
-    def tr(self, sourceText: str, /, disambiguation: str | None = None, n: int = -1) -> str: ...
-
-
+    def tr(
+        self, sourceText: str, /, disambiguation: str | None = None, n: int = -1
+    ) -> str: ...
 
     def _init_post_action_settings(self):
         """初始化完成后操作设置相关属性"""
@@ -60,7 +60,7 @@ class PostActionSettingMixin:
         mapping = {
             "none": self.tr("Do nothing"),
             "shutdown": self.tr("Shutdown"),
-            "close_emulator": self.tr("Close emulator"),
+            "close_controller": self.tr("Close controller"),
             "close_software": self.tr("Close software"),
             "run_other": self.tr("Run other configuration"),
             "run_program": self.tr("Run other program"),
