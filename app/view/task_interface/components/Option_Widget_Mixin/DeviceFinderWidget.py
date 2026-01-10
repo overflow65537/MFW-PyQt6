@@ -10,7 +10,7 @@ from qfluentwidgets import FluentIcon as FIF
 from maa.toolkit import Toolkit
 
 from app.utils.logger import logger
-from app.utils.emulator_utils import EmulatorHelper
+from app.utils.controller_utils import ControllerHelper
 
 
 class DeviceFinderTask(QRunnable):
@@ -35,7 +35,7 @@ class DeviceFinderTask(QRunnable):
                         .get("ld", {})
                         .get("pid")
                     )
-                    device_index = EmulatorHelper.resolve_emulator_index(
+                    device_index = ControllerHelper.resolve_emulator_index(
                         device, ld_pid=ld_pid
                     )
                     display_name = (
@@ -43,10 +43,10 @@ class DeviceFinderTask(QRunnable):
                         if device_index is not None
                         else f"{device.name}({device.address})"
                     )
-                    # 自动生成模拟器运行路径和参数
+                    # 自动生成 ADB 控制器（模拟器）运行路径和参数
                     adb_path_str = str(device.adb_path) if device.adb_path else None
                     emulator_path, emulator_params = (
-                        EmulatorHelper.generate_emulator_launch_info(
+                        ControllerHelper.generate_emulator_launch_info(
                             device.name, device_index, adb_path_str
                         )
                     )

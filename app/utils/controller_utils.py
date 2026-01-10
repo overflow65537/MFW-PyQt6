@@ -10,8 +10,8 @@ import jsonc
 from app.utils.logger import logger
 
 
-class EmulatorHelper:
-    """封装 MuMu 与雷电的查询/解析工具方法"""
+class ControllerHelper:
+    """控制器相关工具方法 - 包括 ADB 控制器（模拟器）、Win32 控制器等的管理功能"""
 
     @staticmethod
     def build_mumu_manager_path(adb_path: Optional[str]) -> Optional[str]:
@@ -107,17 +107,17 @@ class EmulatorHelper:
     @staticmethod
     def close_mumu(adb_path: Optional[str], adb_port: Optional[str]) -> bool:
         """根据 adb_path / adb_port 关闭 MuMu 模拟器，返回是否已处理"""
-        mumu_manager_path = EmulatorHelper.build_mumu_manager_path(adb_path)
+        mumu_manager_path = ControllerHelper.build_mumu_manager_path(adb_path)
         if not mumu_manager_path:
             logger.warning("MuMuManager.exe 路径未配置")
             return False
 
-        multi_dict = EmulatorHelper.get_mumu_info(mumu_manager_path)
+        multi_dict = ControllerHelper.get_mumu_info(mumu_manager_path)
         if not multi_dict:
             logger.warning("获取 MuMu 信息失败，跳过关闭")
             return False
 
-        mumu_indices = EmulatorHelper.get_mumu_indices_by_port(multi_dict, adb_port)
+        mumu_indices = ControllerHelper.get_mumu_indices_by_port(multi_dict, adb_port)
         if not mumu_indices:
             logger.debug("MuMu 未找到匹配端口，跳过关闭")
             return True
@@ -150,17 +150,17 @@ class EmulatorHelper:
     @staticmethod
     def close_ldplayer(adb_path: Optional[str], pid_cfg: Any) -> bool:
         """根据 adb_path / 配置 pid 关闭雷电模拟器，返回是否已处理"""
-        ldconsole_path = EmulatorHelper.build_ldconsole_path(adb_path)
+        ldconsole_path = ControllerHelper.build_ldconsole_path(adb_path)
         if not ldconsole_path:
             logger.warning("ldconsole.exe 路径未配置")
             return False
 
-        ld_output = EmulatorHelper.get_ld_list_output(ldconsole_path)
+        ld_output = ControllerHelper.get_ld_list_output(ldconsole_path)
         if not ld_output:
             logger.warning("获取 LD 列表信息失败，跳过关闭")
             return False
 
-        ld_index = EmulatorHelper.get_ld_index_from_list2(ld_output, pid_cfg)
+        ld_index = ControllerHelper.get_ld_index_from_list2(ld_output, pid_cfg)
         if ld_index is None:
             logger.debug("ldconsole list2 输出中没有匹配的第6个字段，跳过关闭")
             return True
@@ -188,7 +188,7 @@ class EmulatorHelper:
         device_name: Optional[str] = None,
     ) -> Optional[str]:
         """
-        尝试根据 adb 地址匹配模拟器序号：
+        尝试根据 adb 地址匹配 ADB 控制器（模拟器）序号：
         - MuMu: 通过 manager info + adb 端口获取序号
         - 雷电: 无法通过地址推断，直接返回 None
         """
@@ -210,15 +210,15 @@ class EmulatorHelper:
             if not adb_port:
                 return None
 
-            mumu_manager_path = EmulatorHelper.build_mumu_manager_path(adb_path)
+            mumu_manager_path = ControllerHelper.build_mumu_manager_path(adb_path)
             if not mumu_manager_path:
                 return None
 
-            multi_dict = EmulatorHelper.get_mumu_info(mumu_manager_path)
+            multi_dict = ControllerHelper.get_mumu_info(mumu_manager_path)
             if not multi_dict:
                 return None
 
-            indices = EmulatorHelper.get_mumu_indices_by_port(multi_dict, adb_port)
+            indices = ControllerHelper.get_mumu_indices_by_port(multi_dict, adb_port)
             return indices[0] if indices else None
 
         # 雷电 / 其它：目前无法通过地址反推序号
@@ -240,7 +240,7 @@ class EmulatorHelper:
         ld_pid: Optional[str] = None,
     ) -> Optional[str]:
         """
-        统一的序号推导方法：
+        统一的 ADB 控制器（模拟器）序号推导方法：
         1. 若 device 自带 index，直接返回
         2. MuMu：使用 adb_path + address + name 推导
         3. 雷电：若提供 pid（或从 config 提取 pid），通过 list2 反查序号
@@ -266,7 +266,7 @@ class EmulatorHelper:
 
         # MuMu 序号
         if "mumu" in normalized_name:
-            return EmulatorHelper.get_index_by_adb_address(
+            return ControllerHelper.get_index_by_adb_address(
                 adb_path, address, device_name
             )
 
@@ -278,13 +278,13 @@ class EmulatorHelper:
         ):
             if not ld_pid:
                 return None
-            ldconsole_path = EmulatorHelper.build_ldconsole_path(adb_path)
+            ldconsole_path = ControllerHelper.build_ldconsole_path(adb_path)
             if not ldconsole_path:
                 return None
-            ld_output = EmulatorHelper.get_ld_list_output(ldconsole_path)
+            ld_output = ControllerHelper.get_ld_list_output(ldconsole_path)
             if not ld_output:
                 return None
-            return EmulatorHelper.get_ld_index_from_list2(ld_output, ld_pid)
+            return ControllerHelper.get_ld_index_from_list2(ld_output, ld_pid)
 
         return None
 
@@ -295,7 +295,7 @@ class EmulatorHelper:
         adb_path: Optional[str],
     ) -> tuple[str, str]:
         """
-        根据设备名称、序号和adb路径生成模拟器运行路径和参数
+        根据设备名称、序号和adb路径生成 ADB 控制器（模拟器）运行路径和参数
 
         Args:
             device_name: 设备名称（如 "MuMu模拟器", "雷电模拟器"）

@@ -34,7 +34,7 @@ from app.core.runner.maafw import (
     maa_resource_sink,
     maa_tasker_sink,
 )
-from app.utils.emulator_utils import EmulatorHelper
+from app.utils.controller_utils import ControllerHelper
 
 from app.core.Item import FromeServiceCoordinator, TaskItem
 
@@ -1565,7 +1565,7 @@ class TaskFlowRunner(QObject):
                         .get("ld", {})
                         .get("pid")
                     )
-                device_index = EmulatorHelper.resolve_emulator_index(
+                device_index = ControllerHelper.resolve_emulator_index(
                     device, ld_pid=device_ld_pid
                 )
                 display_name = (
@@ -1841,7 +1841,7 @@ class TaskFlowRunner(QObject):
             device_name = self.adb_controller_config.get("device_name", "")
 
             if "mumuplayer12" in device_name.lower():
-                EmulatorHelper.close_mumu(adb_path, adb_port)
+                ControllerHelper.close_mumu(adb_path, adb_port)
             elif "ldplayer" in device_name.lower():
                 ld_pid_cfg = (
                     self.adb_controller_config.get("config", {})
@@ -1849,7 +1849,7 @@ class TaskFlowRunner(QObject):
                     .get("ld", {})
                     .get("pid")
                 )
-                EmulatorHelper.close_ldplayer(adb_path, ld_pid_cfg)
+                ControllerHelper.close_ldplayer(adb_path, ld_pid_cfg)
             else:
                 logger.warning(f"未找到对应的模拟器: {device_name}")
         elif controller_type == "win32":
@@ -1868,8 +1868,8 @@ class TaskFlowRunner(QObject):
                 logger.warning("Win32 控制器窗口句柄为空，无法关闭")
                 return
 
-            # 调用 EmulatorHelper 关闭窗口
-            EmulatorHelper.close_win32_window(hwnd_raw)
+            # 调用 ControllerHelper 关闭窗口
+            ControllerHelper.close_win32_window(hwnd_raw)
         elif controller_type == "playcover":
             # 关闭 PlayCover 控制器：什么都不做
             logger.info("PlayCover 控制器无需关闭操作")
