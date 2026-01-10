@@ -202,9 +202,6 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
                                         ),
                                     )
 
-            if hasattr(self, "_on_post_action_controller_type_changed"):
-                self._on_post_action_controller_type_changed(label, is_initializing)
-
         # 将回调设置到控制器组件
         setattr(
             self.controller_setting_widget,
@@ -1094,10 +1091,6 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 禁用/启用速通配置控件
         if hasattr(self, 'speedrun_widget'):
             self._set_widget_enabled(self.speedrun_widget, enabled)
-
-        # 完成后操作中可能有额外的可用性规则（如“关闭模拟器”只能在 ADB 上可用）
-        if hasattr(self, "_update_close_emulator_availability"):
-            self._update_close_emulator_availability()
 
     def _set_widget_enabled(self, widget, enabled: bool):
         """递归设置控件及其子控件的启用/禁用状态
