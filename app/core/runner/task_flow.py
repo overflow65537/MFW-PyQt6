@@ -1174,35 +1174,44 @@ class TaskFlowRunner(QObject):
         found_device = await self._auto_find_win32_window(
             controller_raw, controller_type, controller_name, controller_config
         )
-        matched_device = bool(found_device)
         if found_device:
             logger.info("检测到与配置匹配的 Win32 窗口，更新连接参数")
             self._save_device_to_config(controller_raw, controller_name, found_device)
             controller_config = controller_raw[controller_name]
             _restore_raw_methods()
-        else:
-            logger.debug("未匹配到与配置一致的 Win32 窗口")
+            hwnd, screencap_method, mouse_method, keyboard_method = _collect_win32_params()
+            logger.debug(
+                f"Win32 参数类型: hwnd={hwnd}, screencap_method={screencap_method}, mouse_method={mouse_method}, keyboard_method={keyboard_method}"
+            )
+            if not hwnd:
+                error_msg = self.tr(
+                    "Window handle (hwnd) is empty, please configure window connection in settings"
+                )
+                logger.error("Win32 窗口句柄为空")
+                signalBus.log_output.emit("ERROR", error_msg)
+                return False
 
-        hwnd, screencap_method, mouse_method, keyboard_method = _collect_win32_params()
-
-        logger.debug(
-            f"Win32 参数类型: hwnd={hwnd}, screencap_method={screencap_method}, mouse_method={mouse_method}, keyboard_method={keyboard_method}"
-        )
-
-        if matched_device:
+            # 需求：如果已搜索到窗口，则直接尝试连接并返回成功/失败（不再启动程序兜底）
             connect_success = await self.maafw.connect_win32hwnd(
                 hwnd,
                 screencap_method,
                 mouse_method,
                 keyboard_method,
             )
-            if connect_success:
-                return True
-        program_path = controller_config.get("program_path", "")
+            if not connect_success:
+                signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+            return bool(connect_success)
+
+        logger.debug("未匹配到与配置一致的 Win32 窗口")
+
+        # 需求：首次未搜索到窗口时，才检查是否配置了启动程序路径
+        program_path = (controller_config.get("program_path") or "").strip()
         if not program_path:
             logger.error("Win32 控制器未匹配窗口且未配置启动程序")
             signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
             return False
+
+        # 启动程序+参数并等待指定时间
         signalBus.log_output.emit("INFO", self.tr("try to start program"))
         logger.info("尝试启动程序")
         program_params = controller_config.get("program_params", "")
@@ -1215,6 +1224,8 @@ class TaskFlowRunner(QObject):
             )
             if not countdown_ok:
                 return False
+
+        # 时间到了再次搜索并尝试连接
         found_after_launch = await self._auto_find_win32_window(
             controller_raw, controller_type, controller_name, controller_config
         )
@@ -1222,11 +1233,16 @@ class TaskFlowRunner(QObject):
             logger.error("启动程序后未找到与配置匹配的 Win32 窗口")
             signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
             return False
+
         logger.info("检测到启动后的 Win32 窗口，更新连接参数")
         self._save_device_to_config(controller_raw, controller_name, found_after_launch)
         controller_config = controller_raw[controller_name]
         _restore_raw_methods()
+
         hwnd, screencap_method, mouse_method, keyboard_method = _collect_win32_params()
+        logger.debug(
+            f"Win32 参数类型: hwnd={hwnd}, screencap_method={screencap_method}, mouse_method={mouse_method}, keyboard_method={keyboard_method}"
+        )
         if not hwnd:
             error_msg = self.tr(
                 "Window handle (hwnd) is empty, please configure window connection in settings"
@@ -1234,15 +1250,16 @@ class TaskFlowRunner(QObject):
             logger.error("Win32 窗口句柄为空")
             signalBus.log_output.emit("ERROR", error_msg)
             return False
-        if await self.maafw.connect_win32hwnd(
+
+        connect_success = await self.maafw.connect_win32hwnd(
             hwnd,
             screencap_method,
             mouse_method,
             keyboard_method,
-        ):
-            return True
-        signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
-        return False
+        )
+        if not connect_success:
+            signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+        return bool(connect_success)
 
     async def _connect_playcover_controller(self, controller_raw: Dict[str, Any]):
         """连接 PlayCover 控制器"""
@@ -1448,6 +1465,19 @@ class TaskFlowRunner(QObject):
         )
         return class_match and window_match
 
+    def _strip_bracket_content(self, text: str) -> str:
+        """去除字符串中括号及括号内内容，用于窗口标题匹配消歧。
+
+        例：
+        - "雷电模拟器(123456)" -> "雷电模拟器"
+        - "Foo（bar）[baz]" -> "Foo"
+        """
+        if not text:
+            return ""
+        # 支持英文/中文圆括号、方括号、中文方括号
+        pattern = r"[\(\（\[\【].*?[\)\）\]\】]"
+        return re.sub(pattern, "", str(text)).strip()
+
     def _start_process(
         self, entry: str | Path, argv: list[str] | tuple[str, ...] | str | None = None
     ) -> subprocess.Popen:
@@ -1611,6 +1641,7 @@ class TaskFlowRunner(QObject):
             class_pattern, window_pattern = self._get_win32_filter_patterns(
                 controller_name
             )
+            matched_window_infos: list[Dict[str, Any]] = []
             for window in windows:
                 window_info = {
                     "hwnd": str(window.hwnd),
@@ -1623,8 +1654,24 @@ class TaskFlowRunner(QObject):
                     window_info, class_pattern, window_pattern
                 ):
                     continue
-                if self._should_use_new_win32_window(controller_config, window_info):
-                    return window_info
+                matched_window_infos.append(window_info)
+
+            # 先只基于 class/window 正则过滤；如果只有一个候选，直接返回它
+            if len(matched_window_infos) == 1:
+                return matched_window_infos[0]
+
+            # 若过滤出多个候选，再使用旧配置的 device_name 做消歧：
+            # 去除括号及括号内内容后，与 window_name 对比，命中则返回。
+            if len(matched_window_infos) > 1:
+                old_device_name = (controller_config.get("device_name") or "").strip()
+                old_title = self._strip_bracket_content(old_device_name)
+                if old_title:
+                    for win in matched_window_infos:
+                        if self._strip_bracket_content(win.get("window_name") or "") == old_title:
+                            return win
+
+                # 消歧失败时，保持行为确定性：返回第一个候选
+                return matched_window_infos[0]
             logger.debug("Win32 窗口列表均未满足与配置匹配的条件，跳过更新")
             logger.debug(f"所有 Win32 窗口信息: {all_window_infos}")
             return None
