@@ -1326,14 +1326,15 @@ class SettingInterface(QWidget):
             self.compatibility_group,
         )
 
-        # 初始化时计算描述
-        initial_count = cfg.get(cfg.log_max_images) if hasattr(cfg, 'log_max_images') else 200
-        image_size_kb = 200
-        total_memory_mb = (initial_count * image_size_kb) / 1024
-        if total_memory_mb < 1:
-            memory_str = f"{total_memory_mb * 1024:.0f} KB"
+        # 初始化时计算描述（按每张图片200KB计算）
+        initial_count = cfg.get(cfg.log_max_images) if hasattr(cfg, 'log_max_images') else 25
+        image_size_kb = 200  # 每张图片200KB
+        total_memory_kb = initial_count * image_size_kb
+        if total_memory_kb < 1024:
+            memory_str = f"{total_memory_kb:.0f} KB"
         else:
-            memory_str = f"{total_memory_mb:.1f} MB"
+            total_memory_mb = total_memory_kb / 1024
+            memory_str = f"{total_memory_mb:.2f} MB"
         initial_content = self.tr("Set cache image count, current cache usage: {}").format(memory_str)
         
         self.log_max_images_card = SliderSettingCard(
@@ -1342,8 +1343,8 @@ class SettingInterface(QWidget):
             initial_content,
             parent=self.compatibility_group,
             minimum=1,
-            maximum=1000,
-            step=10,
+            maximum=300,
+            step=1,
             config_item=cfg.log_max_images,
             on_value_changed=self._on_log_max_images_changed,
         )
@@ -2121,14 +2122,15 @@ class SettingInterface(QWidget):
     def _on_log_max_images_changed(self, value: int):
         """日志图片数量改变时的回调，动态更新描述"""
         # 按每张图片200KB计算
-        image_size_kb = 200
-        total_memory_mb = (value * image_size_kb) / 1024
+        image_size_kb = 200  # 每张图片200KB
+        total_memory_kb = value * image_size_kb
         
         # 格式化内存大小显示
-        if total_memory_mb < 1:
-            memory_str = f"{total_memory_mb * 1024:.0f} KB"
+        if total_memory_kb < 1024:
+            memory_str = f"{total_memory_kb:.0f} KB"
         else:
-            memory_str = f"{total_memory_mb:.1f} MB"
+            total_memory_mb = total_memory_kb / 1024
+            memory_str = f"{total_memory_mb:.2f} MB"
         
         # 更新描述文本
         content = self.tr("Set cache image count, current cache usage: {}").format(memory_str)

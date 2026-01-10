@@ -297,27 +297,27 @@
 <context>
     <name>BaseListToolBarWidget</name>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="53"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="59"/>
         <source>Select All</source>
         <translation>選擇全部</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="60"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="66"/>
         <source>Deselect All</source>
         <translation>取消選擇全部</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="67"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="73"/>
         <source>Add</source>
         <translation>添加</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="74"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="80"/>
         <source>Delete</source>
         <translation>刪除</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="81"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="87"/>
         <source>Switch to Special Tasks</source>
         <translation>切換到特殊任務</translation>
     </message>
@@ -690,12 +690,12 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>ConfigListItem</name>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="1325"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="1334"/>
         <source>Rename config</source>
         <translation>重新命名配置</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListItem.py" line="1330"/>
+        <location filename="../view/task_interface/components/ListItem.py" line="1339"/>
         <source>Copy config ID</source>
         <translation>複製配置 ID</translation>
     </message>
@@ -703,13 +703,19 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>ConfigListToolBarWidget</name>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="128"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="135"/>
         <source>Configurations</source>
         <translation>配置</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="188"/>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="191"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="180"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="230"/>
+        <source>Task is running, configurations are locked.</source>
+        <translation>任務正在運行，配置已鎖定。</translation>
+    </message>
+    <message>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="236"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="239"/>
         <source>Cannot delete the last configuration!</source>
         <translation>無法刪除最後一個配置</translation>
     </message>
@@ -717,133 +723,133 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>ControllerSettingWidget</name>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="455"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="459"/>
         <source>Controller Type</source>
         <translation>控制器類型</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="473"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="477"/>
         <source>Search Device</source>
         <translation>搜索設備</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="487"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="491"/>
         <source>Agent Timeout</source>
         <translation>Agent 超時時間</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="491"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="495"/>
         <source>-1 means infinite</source>
         <translation>-1 代表不會超時</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="508"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="512"/>
         <source>Custom Module Path</source>
         <translation>Custom 模塊路徑</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="517"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="521"/>
         <source>GPU Acceleration</source>
         <translation>GPU選擇</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="537"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="541"/>
         <source>Auto</source>
         <translation>自動</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="538"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="542"/>
         <source>CPU</source>
         <translation>CPU</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="604"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="608"/>
         <source>ADB Path</source>
         <translation>ADB 路徑</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="611"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="615"/>
         <source>ADB Address</source>
         <translation>ADB 地址</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="617"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="621"/>
         <source>Emulator Path</source>
         <translation>模擬器路徑</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="624"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="628"/>
         <source>Emulator Params</source>
         <translation>模擬器參數</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="630"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="634"/>
         <source>Wait for Emulator StartUp Time</source>
         <translation>模擬器啟動等待時間</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="637"/>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="703"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="641"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="707"/>
         <source>Screencap Method</source>
         <translation>截圖方式</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="645"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="649"/>
         <source>Input Method</source>
         <translation>輸入方式</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="653"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="657"/>
         <source>Special Config</source>
         <translation>特化配置</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="668"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="672"/>
         <source>Program Path</source>
         <translation>程序路徑</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="675"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="679"/>
         <source>Program Params</source>
         <translation>程序參數</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="681"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="685"/>
         <source>Wait for Launch Time</source>
         <translation>等待程序啟動時間</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="688"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="692"/>
         <source>Mouse Input Method</source>
         <translation>鼠標輸入方式</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="695"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="699"/>
         <source>Keyboard Input Method</source>
         <translation>鍵盤輸入方式</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="713"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="717"/>
         <source>Address</source>
         <translation>地址</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1003"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1007"/>
         <source>Unknown Device</source>
         <translation>未知設備</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1069"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1073"/>
         <source>No ADB devices were found. Please check emulator or device connection.</source>
         <translation>未找到ADB設備。請檢查模擬器或設備連接。</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1072"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1076"/>
         <source>No desktop windows were found that match the filter.</source>
         <translation>未找到符合篩選條件的桌面視窗。</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1074"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1078"/>
         <source>No devices were found for current controller type.</source>
         <translation>未找到與目前控制器類型相符的裝置。</translation>
     </message>
@@ -908,17 +914,17 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>LogItemWidget</name>
     <message>
-        <location filename="../view/task_interface/components/LogItemWidget.py" line="141"/>
+        <location filename="../view/task_interface/components/LogItemWidget.py" line="147"/>
         <source>Click to view full image</source>
         <translation>點擊看完整圖片</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/LogItemWidget.py" line="153"/>
+        <location filename="../view/task_interface/components/LogItemWidget.py" line="161"/>
         <source>No image</source>
         <translation>無圖片</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/LogItemWidget.py" line="186"/>
+        <location filename="../view/task_interface/components/LogItemWidget.py" line="204"/>
         <source>Log Image</source>
         <translation>日誌影像</translation>
     </message>
@@ -926,17 +932,17 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>LogoutputWidget</name>
     <message>
-        <location filename="../view/task_interface/components/LogoutputWidget.py" line="77"/>
+        <location filename="../view/task_interface/components/LogoutputWidget.py" line="80"/>
         <source>Monitor</source>
         <translation>監控</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/LogoutputWidget.py" line="313"/>
-        <location filename="../view/task_interface/components/LogoutputWidget.py" line="697"/>
-        <location filename="../view/task_interface/components/LogoutputWidget.py" line="702"/>
-        <location filename="../view/task_interface/components/LogoutputWidget.py" line="707"/>
-        <location filename="../view/task_interface/components/LogoutputWidget.py" line="709"/>
-        <location filename="../view/task_interface/components/LogoutputWidget.py" line="710"/>
+        <location filename="../view/task_interface/components/LogoutputWidget.py" line="322"/>
+        <location filename="../view/task_interface/components/LogoutputWidget.py" line="671"/>
+        <location filename="../view/task_interface/components/LogoutputWidget.py" line="676"/>
+        <location filename="../view/task_interface/components/LogoutputWidget.py" line="681"/>
+        <location filename="../view/task_interface/components/LogoutputWidget.py" line="683"/>
+        <location filename="../view/task_interface/components/LogoutputWidget.py" line="684"/>
         <source>System</source>
         <translation></translation>
     </message>
@@ -945,7 +951,7 @@ The following configurations using this bundle will also be deleted:
         <translation type="vanished">啟動監控任務</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/LogoutputWidget.py" line="223"/>
+        <location filename="../view/task_interface/components/LogoutputWidget.py" line="226"/>
         <source>generate log zip</source>
         <translation>生成日志壓縮包</translation>
     </message>
@@ -1040,111 +1046,111 @@ The following configurations using this bundle will also be deleted:
         <translation>日誌打包失敗</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1077"/>
+        <location filename="../view/main_window/main_window.py" line="1082"/>
         <source>, there are </source>
         <translation>還有</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1079"/>
+        <location filename="../view/main_window/main_window.py" line="1084"/>
         <source> files not added</source>
         <translation>個文件未被添加</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1083"/>
+        <location filename="../view/main_window/main_window.py" line="1088"/>
         <source>Log has been packaged, but some files failed to read:</source>
         <translation>日誌打包完成,但有些文件無法讀取</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1090"/>
+        <location filename="../view/main_window/main_window.py" line="1095"/>
         <source>Log has been packaged:</source>
         <translation>日誌打包完成</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1097"/>
+        <location filename="../view/main_window/main_window.py" line="1102"/>
         <source>Packing logs</source>
         <translation>打包日志</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1098"/>
+        <location filename="../view/main_window/main_window.py" line="1103"/>
         <source>Please wait...</source>
         <translation>請稍等...</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1138"/>
-        <location filename="../view/main_window/main_window.py" line="1280"/>
-        <location filename="../view/main_window/main_window.py" line="1681"/>
+        <location filename="../view/main_window/main_window.py" line="1143"/>
+        <location filename="../view/main_window/main_window.py" line="1285"/>
+        <location filename="../view/main_window/main_window.py" line="1686"/>
         <source>Announcement</source>
         <translation>公告</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1141"/>
+        <location filename="../view/main_window/main_window.py" line="1146"/>
         <source>There is no announcement at the moment.</source>
         <translation>展示沒有公告</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1225"/>
-        <location filename="../view/main_window/main_window.py" line="1234"/>
+        <location filename="../view/main_window/main_window.py" line="1230"/>
+        <location filename="../view/main_window/main_window.py" line="1239"/>
         <source>Welcome</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1330"/>
+        <location filename="../view/main_window/main_window.py" line="1335"/>
         <source>This is the configuration area. Each configuration maps to different task sets.</source>
         <translation>這是配置區域。每個配置對應不同的任務集。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1336"/>
+        <location filename="../view/main_window/main_window.py" line="1341"/>
         <source>This is the task area. Set the controller and resource configurations first; aside from those two, every task can be dragged to reorder before running.</source>
         <translation>這是任務區域。請先設定控制器和資源配置；除了這兩項之外，每個任務都可以拖曳以重新排序，然後再執行。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1342"/>
+        <location filename="../view/main_window/main_window.py" line="1347"/>
         <source>The monitor area displays live footage once tasks are running.</source>
         <translation>任務運行時，監控區域會顯示即時畫面。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1348"/>
+        <location filename="../view/main_window/main_window.py" line="1353"/>
         <source>When you encounter issues while running, click this button and send the resulting debug.zip to the developers.</source>
         <translation>運行過程中如果遇到問題，請點選此按鈕並將產生的 debug.zip 檔案傳送給開發人員。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1354"/>
+        <location filename="../view/main_window/main_window.py" line="1359"/>
         <source>Click this button to switch to special tasks; only tasks marked as special will execute.</source>
         <translation>點擊此按鈕切換到特殊任務；只有標記為特殊的任務才會執行。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1663"/>
+        <location filename="../view/main_window/main_window.py" line="1668"/>
         <source>Close</source>
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1698"/>
+        <location filename="../view/main_window/main_window.py" line="1703"/>
         <source>Item </source>
         <translation>元素</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1702"/>
+        <location filename="../view/main_window/main_window.py" line="1707"/>
         <source>Detail</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1713"/>
-        <location filename="../view/main_window/main_window.py" line="1716"/>
+        <location filename="../view/main_window/main_window.py" line="1718"/>
+        <location filename="../view/main_window/main_window.py" line="1721"/>
         <source>Info</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1714"/>
+        <location filename="../view/main_window/main_window.py" line="1719"/>
         <source>Warning</source>
         <translation>警告</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1715"/>
+        <location filename="../view/main_window/main_window.py" line="1720"/>
         <source>Error</source>
         <translation>錯誤</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1775"/>
+        <location filename="../view/main_window/main_window.py" line="1780"/>
         <source>admin</source>
         <translation>管理員</translation>
     </message>
@@ -1205,7 +1211,7 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>MonitorDialog</name>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="787"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="901"/>
         <source>Monitor</source>
         <translation>監控</translation>
     </message>
@@ -1308,17 +1314,17 @@ The following configurations using this bundle will also be deleted:
         <translation type="vanished">啟動監控任務</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="605"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="697"/>
         <source>No screenshot available to save</source>
         <translation>無法儲存螢幕截圖</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="613"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="705"/>
         <source>Screenshot saved to </source>
         <translation>截圖保存到 </translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="616"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="708"/>
         <source>Failed to save screenshot: </source>
         <translation>螢幕截圖保存失敗：</translation>
     </message>
@@ -1327,32 +1333,32 @@ The following configurations using this bundle will also be deleted:
         <translation type="vanished">設備連線失敗，無法開始監控</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="671"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="770"/>
         <source>Controller not ready. Please ensure the device is connected.</source>
         <translation>控制器尚未就緒。請確保設備已連線。</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="695"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="797"/>
         <source>Failed to start monitoring loop</source>
         <translation>啟動監控循環失敗</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="702"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="805"/>
         <source>Monitoring started</source>
         <translation>監控開始</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="720"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="825"/>
         <source>Failed to start monitoring: </source>
         <translation>啟動監控失敗：</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="766"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="879"/>
         <source>Monitoring stopped</source>
         <translation>監控停止</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="769"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="883"/>
         <source>Failed to stop monitoring: </source>
         <translation>停止監控失敗：</translation>
     </message>
@@ -1505,18 +1511,18 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>OptionWidget</name>
     <message>
-        <location filename="../view/task_interface/components/OptionWidget.py" line="234"/>
-        <location filename="../view/task_interface/components/OptionWidget.py" line="297"/>
+        <location filename="../view/task_interface/components/OptionWidget.py" line="231"/>
+        <location filename="../view/task_interface/components/OptionWidget.py" line="294"/>
         <source>Options</source>
         <translation>选项</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/OptionWidget.py" line="298"/>
+        <location filename="../view/task_interface/components/OptionWidget.py" line="295"/>
         <source>Speedrun</source>
         <translation>速通</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/OptionWidget.py" line="320"/>
+        <location filename="../view/task_interface/components/OptionWidget.py" line="317"/>
         <source>Function Description</source>
         <translation>功能描述</translation>
     </message>
@@ -1542,9 +1548,8 @@ The following configurations using this bundle will also be deleted:
         <translation>關機</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="63"/>
         <source>Close emulator</source>
-        <translation>退出模擬器</translation>
+        <translation type="vanished">退出模擬器</translation>
     </message>
     <message>
         <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="64"/>
@@ -1566,47 +1571,52 @@ The following configurations using this bundle will also be deleted:
         <translation type="vanished">父佈局未設置，無法渲染帖子操作選項</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="78"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="63"/>
+        <source>Close controller</source>
+        <translation>關閉控制器</translation>
+    </message>
+    <message>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="76"/>
         <source>option_page_layout is not set, cannot render post action options</source>
         <translation>option_page_layout 未設置，無法渲染帖子操作選項</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="93"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="86"/>
         <source>Finish</source>
         <translation>完成後</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="108"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="101"/>
         <source>Select the configuration to run</source>
         <translation>選擇一個配置來運行</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="302"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="173"/>
         <source>Unknown config</source>
         <translation>未知配置</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="422"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="292"/>
         <source>Program path</source>
         <translation>程序路徑</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="426"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="296"/>
         <source>Select executable path</source>
         <translation>選擇執行路徑</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="432"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="302"/>
         <source>Program arguments</source>
         <translation>程序參數</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="436"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="306"/>
         <source>Extra startup arguments</source>
         <translation>啟動參數</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="494"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/PostActionSettingMixin.py" line="364"/>
         <source>Unnamed Configuration</source>
         <translation>未命名配置</translation>
     </message>
@@ -2192,220 +2202,220 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>SettingInterface</name>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="383"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="385"/>
         <source>ChainFlow Assistant</source>
         <translation>鏈程助手</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="442"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="531"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1462"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1511"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="444"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="533"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1500"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1549"/>
         <source>License</source>
         <translation>許可證</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="445"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="447"/>
         <source>GitHub URL</source>
         <translation>GitHub連接</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="447"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="647"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1204"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="449"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="649"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1208"/>
         <source>Update</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="449"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="451"/>
         <source>Open update log</source>
         <translation>打開更新日志</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="508"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="510"/>
         <source>Description: </source>
         <translation>描述: </translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="594"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="596"/>
         <source>No update log</source>
         <translation>沒有更新日誌</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="595"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="597"/>
         <source>No update log found locally.
 
 Please check for updates first, or visit the GitHub releases page.</source>
         <translation>沒有更新日志</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="603"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="605"/>
         <source>Update Log</source>
         <translation>更新日志</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="661"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="663"/>
         <source>Update Now</source>
         <translation>立即更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="756"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="758"/>
         <source>Custom Startup</source>
         <translation>自定義啟動</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="760"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="762"/>
         <source>run after startup</source>
         <translation>啟動後直接運行</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="761"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="763"/>
         <source>Launch the task immediately after starting the GUI program</source>
         <translation>啟動 GUI 程式後立即運行任務</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="767"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="769"/>
         <source>Start minimized</source>
         <translation>最小化啟動</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="768"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="770"/>
         <source>Automatically minimize the window right after launch</source>
         <translation>啟動後自動轉為最小化</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="779"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="781"/>
         <source>Personalization</source>
         <translation>個性化設置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="784"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="786"/>
         <source>Mica Effect</source>
         <translation>雲母效果</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="785"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="787"/>
         <source>Apply semi transparent to windows and surfaces</source>
         <translation>對窗口和表面應用半透明效果</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="792"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="794"/>
         <source>Application Theme</source>
         <translation>應用主題</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="793"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="795"/>
         <source>Change the appearance of your application</source>
         <translation>更改應用的外觀</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="794"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="796"/>
         <source>Light</source>
         <translation>亮色</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="794"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="796"/>
         <source>Dark</source>
         <translation>暗色</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="794"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="815"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="796"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="817"/>
         <source>Use system setting</source>
         <translation>使用系統設置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="800"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="802"/>
         <source>Theme Color</source>
         <translation>主題顏色</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="801"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="803"/>
         <source>Change the theme color of your application</source>
         <translation>更改應用的主題顏色</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="807"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="809"/>
         <source>Interface Zoom</source>
         <translation>介面縮放</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="808"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="810"/>
         <source>Change the size of widgets and fonts</source>
         <translation>更改小部件和字體的大小</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="822"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="824"/>
         <source>Language</source>
         <translation>語言</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="823"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="825"/>
         <source>Set your preferred language for UI</source>
         <translation>設定您喜歡的使用者介面語言</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="830"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="832"/>
         <source>Restore window position</source>
         <translation>重設窗口位置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="832"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="834"/>
         <source>When enabled, the application reopens at the last recorded size and position</source>
         <translation>打開後,程序會記住上一次關閉時的位置和大小</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="839"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="841"/>
         <source>Advanced Settings</source>
         <translation>高級設置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="840"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="842"/>
         <source>Enable to show more options in Pre-configuration</source>
         <translation>打開後啟動前配置會展示更多選項</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="848"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="850"/>
         <source>Background Image</source>
         <translation>背景圖片</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="850"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="852"/>
         <source>Select an image as application background</source>
         <translation>選擇一個背景圖片</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="856"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="858"/>
         <source>Choose an image file (png/jpg/webp/bmp)</source>
         <translation>選擇一個圖片 (png/jpg/webp/bmp)</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="867"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="869"/>
         <source>Browse image file</source>
         <translation>選擇圖片文件</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="885"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="887"/>
         <source>Clear background image</source>
         <translation>清除背景圖片</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="895"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="897"/>
         <source>Background Opacity</source>
         <translation>背景圖片透明度</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="896"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="898"/>
         <source>Adjust transparency of the background image</source>
         <translation>調整背景影像的透明度</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="920"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="922"/>
         <source>Global Shortcuts</source>
         <translation>全局快捷鍵</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="928"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="930"/>
         <source>Start task shortcut</source>
         <translation>開始任務快捷鍵</translation>
     </message>
@@ -2414,7 +2424,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">默認快捷鍵是Ctrl+`, 即使焦點不在在主窗口上也可以觸發</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="936"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="938"/>
         <source>Ctrl+</source>
         <translation>Ctrl+</translation>
     </message>
@@ -2423,7 +2433,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">格式: 修飾鍵+[鍵] ,比如Crtl+`</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="951"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="953"/>
         <source>Stop task shortcut</source>
         <translation>停止任務快捷鍵</translation>
     </message>
@@ -2432,7 +2442,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">默認快捷鍵是Alt+`, 即使焦點不在在主窗口上也可以觸發</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="957"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="959"/>
         <source>Alt+</source>
         <translation>Alt+</translation>
     </message>
@@ -2441,184 +2451,184 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">格式: 修飾鍵+[鍵], 比如Alt+`</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="931"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="933"/>
         <source>Default Ctrl+F1, can also trigger when focus is not on the main window</source>
         <translation>預設快速鍵是 Ctrl+F1，即使焦點不在主視窗上也可以觸發。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="939"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="941"/>
         <source>Format: Modifier+[Key], e.g. Ctrl+F1</source>
         <translation>格式：修飾鍵+[按鍵]，例如 Ctrl+F1</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="953"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="955"/>
         <source>Default Alt+F1, used to interrupt tasks in advance</source>
         <translation>預設快捷鍵 Alt+F1，用於提前中斷任務。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="960"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="962"/>
         <source>Format: Modifier+[Key], e.g. Alt+F1</source>
         <translation>格式：修飾鍵+[按鍵]，例如 Alt+F1</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="998"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1001"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1009"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1012"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1000"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1003"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1011"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1014"/>
         <source>Permission denied, shortcuts disabled</source>
         <translation>權限不足，捷徑已停用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1028"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1030"/>
         <source>Key cannot be empty</source>
         <translation>快捷鍵不能為空</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1037"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1039"/>
         <source>Key format is invalid, restored to previous configuration.</source>
         <translation>快捷鍵格式化失敗,恢復配置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1046"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1048"/>
         <source>Ctrl</source>
         <translation>Ctrl</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1046"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1048"/>
         <source>Alt</source>
         <translation>Alt</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1049"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1051"/>
         <source>Start task</source>
         <translation>開始任務</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1051"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1053"/>
         <source>Stop task</source>
         <translation>結束任務</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1055"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1057"/>
         <source>Shortcut must start with %1+, used for %2.</source>
         <translation>快捷鍵必須要%1開頭,用於%2</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1104"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1106"/>
         <source>Notice</source>
         <translation>通知</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1107"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2087"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1109"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2146"/>
         <source>DingTalk Notification Enabled</source>
         <translation>通知已啟用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1109"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2089"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1111"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2148"/>
         <source>DingTalk Notification Disabled</source>
         <translation>通知已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1112"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1123"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1134"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1146"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1158"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1114"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1125"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1136"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1148"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1160"/>
         <source>Modify</source>
         <translation>更改</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1114"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1116"/>
         <source>DingTalk</source>
         <translation>釘釘</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1119"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2093"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1121"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2152"/>
         <source>Lark Notification Enabled</source>
         <translation>通知已啟用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1121"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2095"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1123"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2154"/>
         <source>Lark Notification Disabled</source>
         <translation>通知已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1125"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1127"/>
         <source>Lark</source>
         <translation>飛書</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1130"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2099"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1132"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2158"/>
         <source>SMTP Notification Enabled</source>
         <translation>通知已啟用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1132"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2101"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1134"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2160"/>
         <source>SMTP Notification Disabled</source>
         <translation>通知已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1136"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1138"/>
         <source>SMTP</source>
         <translation>SMTP</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1141"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2105"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1143"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2164"/>
         <source>WxPusher Notification Enabled</source>
         <translation>通知已啟用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1143"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2107"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1145"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2166"/>
         <source>WxPusher Notification Disabled</source>
         <translation>通知已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1148"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1150"/>
         <source>WxPusher</source>
         <translation>微信</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1153"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2111"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1155"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2170"/>
         <source>QYWX Notification Enabled</source>
         <translation>通知已啟用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1155"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2113"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1157"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2172"/>
         <source>QYWX Notification Disabled</source>
         <translation>通知已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1160"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1162"/>
         <source>QYWX</source>
         <translation>企業微信機器人</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1173"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1175"/>
         <source>Configure</source>
         <translation>配置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1175"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1177"/>
         <source>Notification Timing</source>
         <translation>通知時機</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1176"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1178"/>
         <source>Configure when to send notifications</source>
         <translation>配置何時發送通知</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1186"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1188"/>
         <source>Task Settings</source>
         <translation>任務設置</translation>
     </message>
@@ -2679,279 +2689,300 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">任務開始時自動啟動監控</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1192"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1194"/>
         <source>Low Power Monitoring Mode</source>
         <translation>低功耗監控模式</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1193"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1196"/>
         <source>Use cached images instead of dedicated monitoring thread, refresh rate: 24 FPS</source>
         <translation>使用快取影像而非專用監控線程，刷新率：24 FPS</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1209"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1213"/>
         <source>mirrorchyan CDK</source>
         <translation>Mirror醬CDK</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1210"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1351"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1214"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1389"/>
         <source>Enter mirrorchyan CDK for stable update path</source>
         <translation>輸入Mirror醬CDK以獲取穩定的更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1212"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1216"/>
         <source>About Mirror</source>
         <translation>關於Mirror醬</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1218"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1222"/>
         <source>Automatically update after startup</source>
         <translation>自動更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1219"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1223"/>
         <source>Automatically download and apply updates once available</source>
         <translation>啟動後自動檢查-下載,確認更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1228"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1232"/>
         <source>select update channel for resource</source>
         <translation>選擇更新通道</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1229"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1233"/>
         <source>select the update channel for the resource</source>
         <translation>選擇一個更新通道</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1236"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1240"/>
         <source>Force use GitHub</source>
         <translation>強制使用GitHub</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1237"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1241"/>
         <source>Force use GitHub for resource update</source>
         <translation>強制使用GitHub進行資源更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1243"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1247"/>
         <source>Reset</source>
         <translation>重置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1245"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1249"/>
         <source>Reset resource</source>
         <translation>重置資源</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1246"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1250"/>
         <source>Redownload resource package without version/tag check</source>
         <translation>重新下載資源</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1252"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1256"/>
         <source>GitHub API Key</source>
         <translation>GitHub API Key</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1254"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1258"/>
         <source>Personal access tokens increase GitHub API rate limits for update checks.</source>
         <translation>個人存取令牌可提高 GitHub API 更新檢查的速率限制</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1261"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1265"/>
         <source>Optional token for authenticated GitHub requests</source>
         <translation>用於已驗證 GitHub 請求的可選令牌</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1270"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1274"/>
         <source>Use Proxy</source>
         <translation>使用代理</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1272"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1276"/>
         <source>After filling in the proxy settings, all traffic except that to the Mirror will be proxied.</source>
         <translation>填寫代理后,會自動代理所有非Mirror醬的流量</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1295"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1299"/>
         <source>Experimental / Compatibility</source>
         <translation>實驗性</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1299"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1303"/>
         <source>Multi-resource adaptation</source>
         <translation>多重資源適應</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1301"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1305"/>
         <source>Experimental. Enable loading multiple resource bundles; may impact stability.</source>
         <translation>實驗性功能。啟用載入多個資源包；可能會影響穩定性。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1309"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1313"/>
         <source>Save screenshot</source>
         <translation>保存截圖</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1310"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1314"/>
         <source>Save a screenshot when experimental features run</source>
         <translation>開啟後會保存運行中的截圖</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1357"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1321"/>
+        <source>Include images in log zip</source>
+        <translation>日誌壓縮包中包含圖片</translation>
+    </message>
+    <message>
+        <location filename="../view/setting_interface/setting_interface.py" line="1323"/>
+        <source>Include log images when generating log zip package. The number of images included equals the number displayed in the log interface.</source>
+        <translation>產生日誌壓縮包時，請包含日誌鏡像檔。包含的鏡像檔案數量與日誌介面中顯示的數量一致。</translation>
+    </message>
+    <message>
+        <location filename="../view/setting_interface/setting_interface.py" line="1337"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2134"/>
+        <source>Set cache image count, current cache usage: {}</source>
+        <translation>設定快取圖片數量，目前快取使用：{}</translation>
+    </message>
+    <message>
+        <location filename="../view/setting_interface/setting_interface.py" line="1341"/>
+        <source>Max log images</source>
+        <translation>最大日誌影像數</translation>
+    </message>
+    <message>
+        <location filename="../view/setting_interface/setting_interface.py" line="1395"/>
         <source>Resource does not support Mirrorchyan, right-click about mirror to unlock input</source>
         <translation>资源不支援 Mirrorchyan，右鍵點擊關於鏡像以解鎖輸入</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1380"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1418"/>
         <source>decrypt Mirror CDK failed, please fill in again and save.</source>
         <translation>解密Mirror CDK 失敗，請重新填寫並儲存。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1411"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1449"/>
         <source>Failed to save Mirror CDK: {}</source>
         <translation>儲存鏡像 CDK 失敗：{}</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1444"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1499"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1482"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1537"/>
         <source>Current version: </source>
         <translation>當前版本</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1447"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1485"/>
         <source>Latest version: </source>
         <translation>最新版本</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1450"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1488"/>
         <source>UI version: </source>
         <translation>UI 版本</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1453"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1502"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1491"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1540"/>
         <source>MaaFW version: </source>
         <translation>MaaFW 版本</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1470"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1508"/>
         <source>MFW-ChainFlow Assistant</source>
         <translation>鏈程助手</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1483"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1521"/>
         <source>MFW-ChainFlow Assistant provides a visual orchestrator for MaaFramework users, covering configuration management, scheduling, notifications and custom extensions.</source>
         <translation>MFW-ChainFlow Assistant 為 MaaFramework 用戶提供了一個視覺化編排器，涵蓋設定管理、調度、通知和自訂擴充功能。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1598"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1636"/>
         <source>Select background image</source>
         <translation>選擇背景圖片</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1600"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1638"/>
         <source>Images (*.png *.jpg *.jpeg *.bmp *.webp)</source>
         <translation>圖片 (*.png *.jpg *.jpeg *.bmp *.webp)</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1617"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1655"/>
         <source>UI update feature is not implemented yet.</source>
         <translation>UI更新功能尚未實作。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1974"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2012"/>
         <source>Enable multi-resource adaptation?</source>
         <translation>啟用多資源自適應？</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1978"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2016"/>
         <source>After enabling the multi-configuration feature, the resource directories will be reconfigured. This operation is irreversible; please proceed with caution.</source>
         <translation>啟用多重設定功能後，資源目錄將會重新配置。此操作不可逆，請謹慎操作。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1991"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2029"/>
         <source>Enable</source>
         <translation>開啟</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1993"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2687"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2031"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2746"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2030"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2068"/>
         <source>Image file does not exist</source>
         <translation>圖片檔案不存在</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2161"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2220"/>
         <source>Configuration takes effect after restart</source>
         <translation>配置保存,重啟後生效</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2325"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2384"/>
         <source>Update failed too many times, local update package has been cleared.</source>
         <translation>多次更新失敗,清除更新包</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2401"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2444"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2527"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2571"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2460"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2503"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2586"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2630"/>
         <source>Stop update</source>
         <translation>停止更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2465"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2524"/>
         <source>New version available: </source>
         <translation>新版本可用:</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2559"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2618"/>
         <source>Update is already running</source>
         <translation>更新正在運行</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2565"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2624"/>
         <source>Service is not ready, cannot reset resource</source>
         <translation>服務未準備完成</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2669"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2728"/>
         <source>Update package not found, please try updating again.</source>
         <translation>未找到更新包，請重試更新。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2686"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2745"/>
         <source>Update now</source>
         <translation>立刻更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2690"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2749"/>
         <source>Restart required to update</source>
         <translation>重啟以完成更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2692"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2751"/>
         <source>Update package detected</source>
         <translation>更新包刪除</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2695"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2754"/>
         <source>Hot update is unavailable. A restart update is required. Proceed?</source>
         <translation>熱更新不可用,需要重啟完成更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2698"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2757"/>
         <source>Found a downloaded update package. Do you want to launch the updater now?</source>
         <translation>找到本地更新包,是否繼續</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2721"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2780"/>
         <source>Auto updating in %1 s</source>
         <translation>自動更新與 %1 秒</translation>
     </message>
@@ -3193,7 +3224,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="423"/>
-        <location filename="../core/runner/task_flow.py" line="751"/>
+        <location filename="../core/runner/task_flow.py" line="752"/>
         <source>please try to reset resource in setting</source>
         <translation>請嘗試在設定中重置資源</translation>
     </message>
@@ -3201,7 +3232,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <location filename="../core/runner/task_flow.py" line="470"/>
         <location filename="../core/runner/task_flow.py" line="491"/>
         <location filename="../core/runner/task_flow.py" line="518"/>
-        <location filename="../core/runner/task_flow.py" line="819"/>
+        <location filename="../core/runner/task_flow.py" line="820"/>
         <source>Task Failed</source>
         <translation>任務失敗</translation>
     </message>
@@ -3273,72 +3304,72 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">任務結果總結：</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="599"/>
+        <location filename="../core/runner/task_flow.py" line="573"/>
         <source>Task Flow Completed</source>
         <translation>任務流完成</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="676"/>
+        <location filename="../core/runner/task_flow.py" line="677"/>
         <source>INFO</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="677"/>
+        <location filename="../core/runner/task_flow.py" line="678"/>
         <source>WARNING</source>
         <translation>警告</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="678"/>
+        <location filename="../core/runner/task_flow.py" line="679"/>
         <source>ERROR</source>
         <translation>錯誤</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="679"/>
+        <location filename="../core/runner/task_flow.py" line="680"/>
         <source>CRITICAL</source>
         <translation>嚴重</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="950"/>
+        <location filename="../core/runner/task_flow.py" line="951"/>
         <source>{} hours {} minutes</source>
         <translation>{} 小時 {} 分鐘</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="952"/>
+        <location filename="../core/runner/task_flow.py" line="953"/>
         <source>{} minutes</source>
         <translation>{} 分鐘</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="955"/>
+        <location filename="../core/runner/task_flow.py" line="956"/>
         <source>Task entry &apos;{}&apos; has been running for {}. This may indicate a problem. Please check the task status.</source>
         <translation>任務條目“{}”已運行{}分鐘。這可能表示存在問題。請檢查任務狀態。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="968"/>
+        <location filename="../core/runner/task_flow.py" line="969"/>
         <source>Task running time too long</source>
         <translation>任務運行時間過長</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1243"/>
+        <location filename="../core/runner/task_flow.py" line="1251"/>
         <source>PlayCover controller is only supported on macOS</source>
         <translation>PlayCover 控制器僅支援 macOS。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="745"/>
+        <location filename="../core/runner/task_flow.py" line="746"/>
         <source>Resource </source>
         <translation>資源 </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="747"/>
+        <location filename="../core/runner/task_flow.py" line="748"/>
         <source> not found in bundle: </source>
         <translation>不存在於資源包包: </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="784"/>
+        <location filename="../core/runner/task_flow.py" line="785"/>
         <source>Task </source>
         <translation>任務 </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="786"/>
+        <location filename="../core/runner/task_flow.py" line="787"/>
         <source> follows speedrun limit, skipping this run: </source>
         <translation>遵循speedrun限制,跳過本次運行</translation>
     </message>
@@ -3347,18 +3378,18 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">速通規則允許執行</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="820"/>
+        <location filename="../core/runner/task_flow.py" line="821"/>
         <source>Task &apos;{}&apos; execution failed.</source>
         <translation>任務「{}」執行失敗。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="843"/>
+        <location filename="../core/runner/task_flow.py" line="844"/>
         <source>Stopping task...</source>
         <translation>停止任務中</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="861"/>
-        <location filename="../core/runner/task_flow.py" line="944"/>
+        <location filename="../core/runner/task_flow.py" line="862"/>
+        <location filename="../core/runner/task_flow.py" line="945"/>
         <source>Unknown Task Entry</source>
         <translation>未知任務</translation>
     </message>
@@ -3391,105 +3422,110 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">任務 {} 超時,經過 {} 次重啟仍無法解決,終止任務流</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1011"/>
+        <location filename="../core/runner/task_flow.py" line="1012"/>
         <source>Auto searching ADB devices...</source>
         <translation>z自動搜索ADB設備中</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1034"/>
+        <location filename="../core/runner/task_flow.py" line="1035"/>
         <source>ADB path is empty, please configure ADB path in settings</source>
         <translation>ADB路徑為空，請在設定中設定ADB路徑。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1042"/>
+        <location filename="../core/runner/task_flow.py" line="1043"/>
         <source>ADB connection address is empty, please configure device connection in settings</source>
         <translation>ADB 連線位址為空，請在設定中設定設備連線。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1081"/>
+        <location filename="../core/runner/task_flow.py" line="1082"/>
         <source>try to start emulator</source>
         <translation>嘗試啟動模擬器</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1090"/>
+        <location filename="../core/runner/task_flow.py" line="1091"/>
         <source>waiting for emulator start...</source>
         <translation>等待模擬器啟動中</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1103"/>
-        <location filename="../core/runner/task_flow.py" line="1196"/>
-        <location filename="../core/runner/task_flow.py" line="1215"/>
-        <location filename="../core/runner/task_flow.py" line="1236"/>
+        <location filename="../core/runner/task_flow.py" line="1104"/>
+        <location filename="../core/runner/task_flow.py" line="1204"/>
+        <location filename="../core/runner/task_flow.py" line="1223"/>
+        <location filename="../core/runner/task_flow.py" line="1244"/>
         <source>Device connection failed</source>
         <translation>設備連接失敗</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1165"/>
+        <location filename="../core/runner/task_flow.py" line="1173"/>
         <source>Auto searching Win32 windows...</source>
         <translation>自動搜索win32中</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1224"/>
+        <location filename="../core/runner/task_flow.py" line="1232"/>
         <source>Window handle (hwnd) is empty, please configure window connection in settings</source>
         <translation>視窗句柄 (hwnd) 為空，請在設定中設定視窗連線。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1198"/>
+        <location filename="../core/runner/task_flow.py" line="1206"/>
         <source>try to start program</source>
         <translation>嘗試啟動程序</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1206"/>
+        <location filename="../core/runner/task_flow.py" line="1111"/>
+        <source>Win32 controller is only supported on Windows</source>
+        <translation>Win32 控制器僅在 Windows 系統上支援。</translation>
+    </message>
+    <message>
+        <location filename="../core/runner/task_flow.py" line="1214"/>
         <source>waiting for program start...</source>
         <translation>等待程序啟動</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1281"/>
+        <location filename="../core/runner/task_flow.py" line="1289"/>
         <source>PlayCover UUID is empty, please configure UUID in settings</source>
         <translation>PlayCover UUID 為空，請在設定中設定 UUID。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1289"/>
+        <location filename="../core/runner/task_flow.py" line="1297"/>
         <source>PlayCover connection address is empty, please configure address in settings</source>
         <translation>PlayCover 連線位址為空，請在設定中設定位址。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1298"/>
+        <location filename="../core/runner/task_flow.py" line="1306"/>
         <source>Connecting to PlayCover: {address} (UUID: {uuid})</source>
         <translation>正在連接到 PlayCover：{address}（UUID：{uuid}）</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1307"/>
+        <location filename="../core/runner/task_flow.py" line="1315"/>
         <source>PlayCover connected successfully</source>
         <translation>PlayCover 已成功連接</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1311"/>
+        <location filename="../core/runner/task_flow.py" line="1319"/>
         <source>Failed to connect to PlayCover</source>
         <translation>連線 PlayCover 失敗</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1478"/>
+        <location filename="../core/runner/task_flow.py" line="1486"/>
         <source> seconds</source>
         <translation> 秒</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1787"/>
+        <location filename="../core/runner/task_flow.py" line="1797"/>
         <source>Notifications are being sent, please wait up to {} seconds</source>
         <translation>通知正在發送中，請稍候，最多{}秒。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1922"/>
+        <location filename="../core/runner/task_flow.py" line="1974"/>
         <source>This period&apos;s remaining execution count is 0</source>
         <translation>本週期剩餘執行次數為 0</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1934"/>
+        <location filename="../core/runner/task_flow.py" line="1986"/>
         <source>Not enough time passed since last run. Minimum interval is </source>
         <translation>上次運轉至今時間不足。最小間隔為 </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1937"/>
+        <location filename="../core/runner/task_flow.py" line="1989"/>
         <source> hours.</source>
         <translation>時</translation>
     </message>
@@ -3583,28 +3619,28 @@ Please check for updates first, or visit the GitHub releases page.</source>
 <context>
     <name>TaskListToolBarWidget</name>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="241"/>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="412"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="291"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="466"/>
         <source>Tasks</source>
         <translation>任務</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="311"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="361"/>
         <source>No available tasks to add.</source>
         <translation>無可用任務</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="386"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="439"/>
         <source>Switch to Normal Tasks</source>
         <translation>切換到普通任務</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="394"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="447"/>
         <source>Special Tasks</source>
         <translation>特殊任務</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="411"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="465"/>
         <source>Switch to Special Tasks</source>
         <translation>切換到特殊任務</translation>
     </message>
@@ -3613,7 +3649,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">切換</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="438"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="492"/>
         <source>Base tasks (Resource, Post-Task) cannot be deleted (ID: {id})</source>
         <translation>基礎任務無法被刪除</translation>
     </message>

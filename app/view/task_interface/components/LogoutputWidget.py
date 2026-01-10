@@ -46,9 +46,9 @@ class LogoutputWidget(QWidget):
         self._max_log_entries = 500
         # 缩略图预览框（自动保持比例：16:9 或 9:16）
         self._thumb_box = QSize(54, 54)
-        # 图片压缩：提高质量设置
-        self._thumb_jpg_quality = 90  # 提高质量以保持细节（从80提高到90）
-        self._target_max_size_kb = 200  # 目标最大200KB（从100KB提高到200KB，允许更高质量）
+        # 图片压缩：PNG格式，质量100，720p分辨率
+        self._thumb_png_quality = 100  # PNG质量100（无损压缩）
+        self._target_max_size_kb = 200  # 目标最大200KB
         self._short_edge_target = 720  # 短边目标分辨率720（短边，不是固定宽或高）
         # 图片去重：与上一张相似度 >= 阈值则复用上一张，不新增存储
         self._image_similarity_threshold = 0.99
@@ -582,61 +582,27 @@ class LogoutputWidget(QWidget):
                 # 其他格式不处理（避免误解码）
                 return None
 
-            # 使用 QImageWriter 更可靠（避免 QImage.save 的参数顺序/类型问题）
+            # 使用 QImageWriter 保存为 PNG 格式，质量100
             from PySide6.QtGui import QImageWriter
             
             ba = QByteArray()
             buf = QBuffer(ba)
             buf.open(QIODevice.OpenModeFlag.WriteOnly)
             
-            # 尝试压缩，如果文件太大则进一步降低质量
-            target_size_bytes = self._target_max_size_kb * 1024
-            quality = self._thumb_jpg_quality
-            ba = None
+            writer = QImageWriter()
+            writer.setDevice(buf)
+            writer.setFormat(b"PNG")
+            writer.setQuality(self._thumb_png_quality)  # PNG质量100
+            ok = writer.write(qimg)
+            buf.close()
             
-            for attempt in range(3):  # 最多尝试3次
-                ba = QByteArray()
-                buf = QBuffer(ba)
-                buf.open(QIODevice.OpenModeFlag.WriteOnly)
-                
-                writer = QImageWriter()
-                writer.setDevice(buf)
-                writer.setFormat(b"JPG")
-                writer.setQuality(quality)
-                ok = writer.write(qimg)
-                buf.close()
-                
-                if (not ok) or ba.isEmpty():
-                    logger.debug(f"[LogImage] JPG save failed: {writer.errorString()}, trying PNG")
-                    # 有些环境缺少 JPG 编码插件，fallback 到 PNG
-                    ba = QByteArray()
-                    buf = QBuffer(ba)
-                    buf.open(QIODevice.OpenModeFlag.WriteOnly)
-                    
-                    writer = QImageWriter()
-                    writer.setDevice(buf)
-                    writer.setFormat(b"PNG")
-                    ok = writer.write(qimg)
-                    buf.close()
-                    if (not ok) or ba.isEmpty():
-                        logger.warning(f"[LogImage] Both JPG and PNG save failed: {writer.errorString()}")
-                        return None
-                    logger.debug(f"[LogImage] PNG save succeeded, size: {ba.size()} bytes")
-                    break
-                
-                # 检查文件大小
-                if ba.size() <= target_size_bytes:
-                    logger.debug(f"[图片压缩] JPG 保存成功，大小: {ba.size()} bytes ({ba.size()/1024:.1f}KB), 质量: {quality}")
-                    break
-                
-                # 文件太大，降低质量重试
-                if attempt < 2:  # 还有重试机会
-                    quality = max(50, quality - 10)  # 每次降低10，最低50（保持一定质量）
-                    logger.debug(f"[图片压缩] 文件大小 {ba.size()} bytes ({ba.size()/1024:.1f}KB) 超过目标 {target_size_bytes} bytes，降低质量到 {quality} 重试")
-                else:
-                    logger.debug(f"[图片压缩] JPG 保存成功，大小: {ba.size()} bytes ({ba.size()/1024:.1f}KB), 质量: {quality} (已达到最低质量)")
+            if (not ok) or ba.isEmpty():
+                logger.warning(f"[LogImage] PNG save failed: {writer.errorString()}")
+                return None
             
-            if ba is None or ba.isEmpty():
+            logger.debug(f"[图片压缩] PNG 保存成功，大小: {ba.size()} bytes ({ba.size()/1024:.1f}KB), 质量: {self._thumb_png_quality}, 分辨率: {w}x{h}")
+            
+            if ba.isEmpty():
                 return None
 
             # 更新“上一张图片”缓存（用于后续去重复用）

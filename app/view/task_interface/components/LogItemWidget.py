@@ -125,27 +125,31 @@ class LogItemWidget(SimpleCardWidget):
 
         if data.image_bytes and not data.image_bytes.isEmpty():
             from app.utils.logger import logger
-            logger.debug(f"[LogItemWidget] Loading image, bytes size: {data.image_bytes.size()}")
-            pixmap = QPixmap()
-            # 显式转为 bytes，避免某些 PySide6 环境下 QByteArray 隐式转换失败
-            raw = data.image_bytes.data()
-            if pixmap.loadFromData(raw):
-                logger.debug(f"[LogItemWidget] Image loaded successfully, size: {pixmap.width()}x{pixmap.height()}")
-                # 自动适配 16:9 或 9:16：保持比例缩放到方形盒内
-                scaled = pixmap.scaled(
-                    self._thumb_box,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-                self._preview_button.setIcon(QIcon(scaled))
-                self._preview_button.setIconSize(self._thumb_box)
-                self._preview_button.setVisible(True)
-                self._preview_button.setEnabled(True)
-                self._preview_button.setCursor(Qt.CursorShape.PointingHandCursor)
-                self._preview_button.setToolTip(self.tr("Click to view full image"))
-                return
-            else:
-                logger.warning("[LogItemWidget] Failed to load image from bytes, showing placeholder")
+            try:
+                logger.debug(f"[LogItemWidget] Loading image, bytes size: {data.image_bytes.size()}")
+                pixmap = QPixmap()
+                # 显式转为 bytes，避免某些 PySide6 环境下 QByteArray 隐式转换失败
+                # 如果图片数据已被释放（所有引用该图片的条目都被删除），data() 可能返回无效数据
+                raw = data.image_bytes.data()
+                if raw and pixmap.loadFromData(raw):
+                    logger.debug(f"[LogItemWidget] Image loaded successfully, size: {pixmap.width()}x{pixmap.height()}")
+                    # 自动适配 16:9 或 9:16：保持比例缩放到方形盒内
+                    scaled = pixmap.scaled(
+                        self._thumb_box,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                    self._preview_button.setIcon(QIcon(scaled))
+                    self._preview_button.setIconSize(self._thumb_box)
+                    self._preview_button.setVisible(True)
+                    self._preview_button.setEnabled(True)
+                    self._preview_button.setCursor(Qt.CursorShape.PointingHandCursor)
+                    self._preview_button.setToolTip(self.tr("Click to view full image"))
+                    return
+                else:
+                    logger.warning("[LogItemWidget] Failed to load image from bytes (data may be released), showing placeholder")
+            except Exception as e:
+                logger.warning(f"[LogItemWidget] Exception loading image from bytes: {e}, showing placeholder")
 
         # 没有图片：显示占位 icon（优先 interface icon，其次应用 icon；都没有则隐藏）
         if not self._placeholder_icon.isNull():
@@ -180,10 +184,20 @@ class LogItemWidget(SimpleCardWidget):
         data = self._data
         if not data.image_bytes or data.image_bytes.isEmpty():
             return
-        pixmap = QPixmap()
-        # 显式转为 bytes，避免某些 PySide6 环境下 QByteArray 隐式转换失败
-        raw = data.image_bytes.data()
-        if not pixmap.loadFromData(raw):
+        try:
+            pixmap = QPixmap()
+            # 显式转为 bytes，避免某些 PySide6 环境下 QByteArray 隐式转换失败
+            # 如果图片数据已被释放（所有引用该图片的条目都被删除），data() 可能返回无效数据
+            raw = data.image_bytes.data()
+            if not raw or not pixmap.loadFromData(raw):
+                # 图片数据无效或已释放，无法显示预览
+                from app.utils.logger import logger
+                logger.warning("[LogItemWidget] Cannot preview image: data may be released")
+                return
+        except Exception as e:
+            # 处理可能的异常（例如数据已被释放导致访问无效内存）
+            from app.utils.logger import logger
+            logger.warning(f"[LogItemWidget] Exception previewing image: {e}")
             return
 
         dlg = QDialog(self)
