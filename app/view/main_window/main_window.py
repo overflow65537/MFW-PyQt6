@@ -1148,6 +1148,7 @@ class MainWindow(MSFluentWindow):
         self._pending_announcement_sections: list[tuple[str, str]] = []
         self._announcement_signature = ""
         self._current_welcome_text = ""
+        self._current_welcome_md5 = ""
 
         # 公告功能被禁用时（多资源适配开启），彻底跳过加载/比对/自动弹窗
         if not getattr(self, "_announcement_enabled", True):
@@ -1161,23 +1162,31 @@ class MainWindow(MSFluentWindow):
             # 注意：此时不更新配置，只有在用户关闭对话框时才更新
             self._announcement_pending_show = True
 
-    def _get_stored_welcome(self) -> str:
-        """兼容旧版保存的公告格式，只提取 welcome 内容作为签名。"""
+    def _compute_text_md5(self, text: str) -> str:
+        """计算文本的 MD5（用于 welcome 公告变更判断），为空返回空字符串。"""
+        if not text:
+            return ""
+        return hashlib.md5(text.encode("utf-8")).hexdigest()
+
+    def _get_stored_welcome_md5(self) -> str:
+        """读取已保存的 welcome MD5（不做兼容迁移；用于新存储格式）。"""
         raw_value = cfg.get(cfg.announcement) or ""
         if not raw_value:
             return ""
+
         try:
             parsed = json.loads(raw_value)
         except json.JSONDecodeError:
-            return raw_value
+            return ""
+
         if isinstance(parsed, dict):
-            welcome = parsed.get("welcome")
-            return str(welcome) if welcome is not None else raw_value
-        if isinstance(parsed, list) and parsed:
-            first = parsed[0]
-            if isinstance(first, (list, tuple)) and len(first) >= 2:
-                return str(first[1])
-        return raw_value
+            # 新版：只存 welcome_md5
+            welcome_md5 = parsed.get("welcome_md5") or parsed.get("welcomeMd5")
+            if isinstance(welcome_md5, str) and welcome_md5:
+                return welcome_md5
+            return ""
+
+        return ""
 
     def _get_stored_announcement_signature(self) -> str:
         """读取已保存的“总公告签名”，兼容旧版 welcome-only 格式。"""
@@ -1216,14 +1225,18 @@ class MainWindow(MSFluentWindow):
         if not current_sig:
             return False
 
+        # 本次更新强制弹一次：旧格式没有 welcome_md5，直接判定不一致
+        stored_welcome_md5 = self._get_stored_welcome_md5()
+        if not stored_welcome_md5:
+            return True
+
         stored_sig = self._get_stored_announcement_signature()
         if stored_sig:
             return stored_sig != current_sig
 
-        # 兼容旧版：仅比较 welcome；若除了 welcome 之外还有其他公告，则视为需要展示一次
-        stored_welcome = self._get_stored_welcome()
-        current_welcome = self._current_welcome_text or ""
-        if stored_welcome and current_welcome and stored_welcome != current_welcome:
+        # 兼容旧版：仅比较 welcome（使用 MD5，不保存 welcome 原文）
+        current_welcome_md5 = getattr(self, "_current_welcome_md5", "") or ""
+        if stored_welcome_md5 and current_welcome_md5 and stored_welcome_md5 != current_welcome_md5:
             return True
 
         has_non_welcome_sections = any(
@@ -1246,6 +1259,7 @@ class MainWindow(MSFluentWindow):
         self._pending_announcement_sections = sections
         self._announcement_signature = self._compute_announcement_signature(sections)
         self._current_welcome_text = welcome_content
+        self._current_welcome_md5 = self._compute_text_md5(welcome_content or "")
 
     def _load_resource_announcements(self) -> list[tuple[str, str]]:
         """按名称顺序读取 resource/announcement 目录下的 Markdown 文件。"""
@@ -1673,9 +1687,10 @@ class MainWindow(MSFluentWindow):
         if announcement_mismatch and self._announcement_content:
             # 用户关闭了对话框，更新配置，下次不会再弹出
             payload = {
-                "v": 2,
+                "v": 3,
                 "sig": self._get_current_announcement_signature(),
-                "welcome": self._current_welcome_text or "",
+                # 不保存 welcome 原文，只保存 md5 用于判断是否变更
+                "welcome_md5": getattr(self, "_current_welcome_md5", "") or "",
             }
             cfg.set(cfg.announcement, json.dumps(payload, ensure_ascii=False))
             logger.info("用户关闭公告对话框，已更新公告配置（总公告签名）")
