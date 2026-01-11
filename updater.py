@@ -26,6 +26,18 @@ def _collect_direct_run_args(argv: list[str]) -> list[str]:
 
 DIRECT_RUN_EXTRA_ARGS = _collect_direct_run_args(sys.argv)
 
+
+@dataclass
+class UpdaterRuntimeOptions:
+    parent_pid: int | None = None
+    parent_create_time: float | None = None
+    shutdown_timeout: float = 180.0
+    wait_poll_interval: float = 0.25
+    mfw_exe_path: str | None = None
+
+
+RUNTIME_OPTS = UpdaterRuntimeOptions()
+
 FULL_UPDATE_EXCLUDES = [
     "config",
     "bundle",
@@ -35,22 +47,102 @@ FULL_UPDATE_EXCLUDES = [
     "debug",
     "update",
     "MFWUpdater1.exe",
-    "MFWUpdate1",
+    "MFWUpdater1",
 ]
+
+
+def _norm_path(p: str) -> str:
+    try:
+        return os.path.normcase(os.path.abspath(p))
+    except Exception:
+        return p
+
+
+def _is_expected_parent_process(proc, *, expected_create_time: float | None) -> bool:
+    """
+    判断 pid 对应的进程是否仍然是“我们启动更新器时的那个主进程”。
+    通过 create_time 防止 PID 复用导致误判。
+    """
+    if expected_create_time is None:
+        return True
+    try:
+        actual = proc.create_time()
+    except Exception:
+        # 无法获取 create_time 时，宁可“认为是同一个”，由后续占用检查兜底
+        return True
+    # 允许极小的浮点误差
+    return abs(actual - expected_create_time) < 1e-3
+
+
+def wait_for_parent_exit(*, parent_pid: int | None, parent_create_time: float | None) -> None:
+    """
+    等待指定父进程退出（跨平台）。
+    若检测到 PID 已被复用（create_time 不匹配），视为父进程已退出。
+    """
+    if not parent_pid or parent_pid <= 0:
+        return
+
+    import psutil
+
+    update_logger.info(
+        "[步骤0] 等待主程序退出: pid=%s create_time=%s timeout=%ss",
+        parent_pid,
+        parent_create_time,
+        RUNTIME_OPTS.shutdown_timeout,
+    )
+    deadline = time.time() + float(RUNTIME_OPTS.shutdown_timeout)
+    while True:
+        try:
+            proc = psutil.Process(parent_pid)
+            if not _is_expected_parent_process(proc, expected_create_time=parent_create_time):
+                update_logger.warning(
+                    "[步骤0] 检测到 PID 可能已复用（create_time 不匹配），视为主程序已退出: pid=%s",
+                    parent_pid,
+                )
+                return
+            if not proc.is_running():
+                return
+            # 在退出过程中，可能短暂处于僵尸态（posix），这里继续等待即可
+        except psutil.NoSuchProcess:
+            return
+        except psutil.AccessDenied:
+            # 权限不足时降级为 pid_exists 轮询
+            if not psutil.pid_exists(parent_pid):
+                return
+        except Exception as exc:
+            update_logger.debug("[步骤0] 等待主程序退出时出现异常（将继续轮询）: %s", exc)
+
+        if time.time() >= deadline:
+            raise TimeoutError(
+                f"等待主程序退出超时: pid={parent_pid} timeout={RUNTIME_OPTS.shutdown_timeout}s"
+            )
+        time.sleep(float(RUNTIME_OPTS.wait_poll_interval))
 
 
 def is_mfw_running():
     import psutil
 
+    exe_target = _norm_path(RUNTIME_OPTS.mfw_exe_path) if RUNTIME_OPTS.mfw_exe_path else None
+    name_target = "MFW.exe" if sys.platform.startswith("win32") else "MFW"
+
     try:
-        if sys.platform.startswith("win32"):
-            for proc in psutil.process_iter(["name"]):
-                if proc.info["name"] == "MFW.exe":
+        # 优先用 exe 路径判断（更可靠），失败再回退到 name
+        if exe_target:
+            for proc in psutil.process_iter(["pid", "name"]):
+                try:
+                    if _norm_path(proc.exe()) == exe_target:
+                        return True
+                except (psutil.AccessDenied, psutil.NoSuchProcess):
+                    continue
+                except Exception:
+                    continue
+
+        for proc in psutil.process_iter(["name"]):
+            try:
+                if proc.info.get("name") == name_target:
                     return True
-        elif sys.platform.startswith("darwin") or sys.platform.startswith("linux"):
-            for proc in psutil.process_iter(["name"]):
-                if proc.info["name"] == "MFW":
-                    return True
+            except (psutil.AccessDenied, psutil.NoSuchProcess):
+                continue
         return False
     except psutil.Error:
         return False
@@ -61,7 +153,17 @@ def ensure_mfw_not_running():
     确保MFW不在运行，如果正在运行则等待或退出
     返回True表示可以继续，False表示应该退出
     """
-    max_checks = 3
+    # 先等待“触发更新的那个主程序实例”完全退出
+    try:
+        wait_for_parent_exit(
+            parent_pid=RUNTIME_OPTS.parent_pid,
+            parent_create_time=RUNTIME_OPTS.parent_create_time,
+        )
+    except Exception as exc:
+        update_logger.error("[步骤0] 等待主程序退出失败: %s", exc)
+        # 继续走原有的按进程名/路径检查逻辑，尽量自愈
+
+    max_checks = max(3, int(RUNTIME_OPTS.shutdown_timeout // 5))
     check_count = 0
     update_logger.info(f"[步骤1] 检查MFW进程状态（最多检查{max_checks}次）...")
 
@@ -1439,6 +1541,50 @@ if __name__ == "__main__":
     try:
         if len(sys.argv) > 1:
             if sys.argv[1] == "-update":
+                # 解析 -update 后的可选参数（保持兼容：无参数也能运行）
+                import argparse
+
+                parser = argparse.ArgumentParser(add_help=False)
+                parser.add_argument(
+                    "--parent-pid",
+                    type=int,
+                    default=None,
+                    help="触发更新器的主程序PID（用于精确等待退出）",
+                )
+                parser.add_argument(
+                    "--parent-create-time",
+                    type=float,
+                    default=None,
+                    help="主程序进程创建时间（防 PID 复用误判）",
+                )
+                parser.add_argument(
+                    "--shutdown-timeout",
+                    type=float,
+                    default=180.0,
+                    help="等待主程序/占用进程退出的超时时间（秒）",
+                )
+                parser.add_argument(
+                    "--wait-poll",
+                    type=float,
+                    default=0.25,
+                    help="等待轮询间隔（秒）",
+                )
+                parser.add_argument(
+                    "--mfw-exe-path",
+                    type=str,
+                    default=None,
+                    help="主程序可执行文件路径（更可靠的占用检测）",
+                )
+                # 兼容透传给主程序的 direct-run 标志（更新器自身不消费，但不能因未知参数失败）
+                parser.add_argument("-d", "--direct-run", action="store_true")
+
+                known, _unknown = parser.parse_known_args(sys.argv[2:])
+                RUNTIME_OPTS.parent_pid = known.parent_pid
+                RUNTIME_OPTS.parent_create_time = known.parent_create_time
+                RUNTIME_OPTS.shutdown_timeout = float(known.shutdown_timeout)
+                RUNTIME_OPTS.wait_poll_interval = float(known.wait_poll)
+                RUNTIME_OPTS.mfw_exe_path = known.mfw_exe_path
+
                 standard_update()
             elif sys.argv[1] == "-generate-metadata":
                 target = sys.argv[2] if len(sys.argv) > 2 else None

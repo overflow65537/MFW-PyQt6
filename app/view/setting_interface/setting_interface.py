@@ -163,13 +163,35 @@ def launch_updater_process(*extra_args: str) -> None:
     """启动更新器进程的底层实现，由调用方负责异常处理/提示。"""
     import sys
     import subprocess
+    import os
 
     extra_arg_list = list(extra_args)
+    # 透传“父进程信息”，供更新器跨平台精确等待主程序完全退出
+    # - parent_pid: 当前进程 PID
+    # - parent_create_time: 防止 PID 复用导致误判
+    # - mfw_exe_path: 若为 frozen，可用于更新器更可靠地识别其它残留实例
+    parent_args: list[str] = []
+    try:
+        parent_pid = os.getpid()
+        parent_args.extend(["--parent-pid", str(parent_pid)])
+        try:
+            import psutil  # type: ignore
+
+            parent_args.extend(
+                ["--parent-create-time", str(psutil.Process(parent_pid).create_time())]
+            )
+        except Exception as exc:
+            logger.debug("获取 parent_create_time 失败，降级为仅透传 PID: %s", exc)
+
+        if getattr(sys, "frozen", False):
+            parent_args.extend(["--mfw-exe-path", str(Path(sys.executable).resolve())])
+    except Exception as exc:
+        logger.debug("构造更新器父进程参数失败（将继续尝试启动更新器）: %s", exc)
 
     if sys.platform.startswith("win32"):
         updater_executable = Path("./MFWUpdater1.exe")
         resolved_executable = updater_executable.resolve(strict=False)
-        args = ["-update"] + extra_arg_list
+        args = ["-update"] + parent_args + ["--shutdown-timeout", "180"] + extra_arg_list
         command_line = subprocess.list2cmdline([str(resolved_executable)] + args)
         if _is_running_with_admin_privileges():
             logger.info(
@@ -182,7 +204,7 @@ def launch_updater_process(*extra_args: str) -> None:
     elif sys.platform.startswith(("darwin", "linux")):
         updater_executable = Path("./MFWUpdater1")
         resolved_executable = updater_executable.resolve(strict=False)
-        args = ["-update"] + extra_arg_list
+        args = ["-update"] + parent_args + ["--shutdown-timeout", "180"] + extra_arg_list
         command_line = subprocess.list2cmdline([str(resolved_executable)] + args)
         logger.info("启动更新程序: %s", command_line)
         cmd = [str(resolved_executable)] + args
