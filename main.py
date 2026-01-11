@@ -25,6 +25,9 @@ MFW-ChainFlow Assistant 启动文件
 import os
 import sys
 import argparse
+import atexit
+import hashlib
+import tempfile
 
 
 # 设置工作目录为运行方式位置
@@ -44,7 +47,7 @@ from qasync import QEventLoop, asyncio
 import app.utils.qasync_patch
 from qfluentwidgets import ConfigItem, FluentTranslator
 from PySide6.QtCore import Qt, QTranslator
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 
 from app.common.__version__ import __version__
@@ -54,7 +57,101 @@ from app.common.config import Language
 from app.utils.crypto import crypto_manager
 
 
+class _SingleInstanceLock:
+    """跨平台进程互斥（同一二进制/脚本只允许一个主进程运行）。
+
+    - Windows: msvcrt.locking(非阻塞)
+    - macOS/Linux: fcntl.flock(非阻塞)
+
+    只要当前进程不退出且文件句柄不关闭，锁就会一直持有；进程崩溃时 OS 会自动释放锁。
+    """
+
+    def __init__(self, lock_key: str):
+        self.lock_key = str(lock_key)
+        self._fp = None
+        self.lock_path = None
+
+    @staticmethod
+    def _make_lock_path(lock_key: str) -> str:
+        # 只做“同一二进制互斥”：用可执行文件绝对路径做 key，避免不同安装目录互相影响。
+        h = hashlib.sha256(lock_key.encode("utf-8")).hexdigest()[:16]
+        filename = f"mfw_single_instance_{h}.lock"
+        return os.path.join(tempfile.gettempdir(), filename)
+
+    def acquire(self) -> bool:
+        if self._fp is not None:
+            return True
+
+        self.lock_path = self._make_lock_path(self.lock_key)
+        os.makedirs(os.path.dirname(self.lock_path), exist_ok=True)
+
+        # a+：文件不存在时创建；不截断
+        self._fp = open(self.lock_path, "a+", encoding="utf-8")
+        self._fp.seek(0)
+
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                # 确保文件至少 1 字节，否则某些环境下锁定长度可能有坑
+                self._fp.seek(0, os.SEEK_END)
+                if self._fp.tell() == 0:
+                    self._fp.write("0")
+                    self._fp.flush()
+                self._fp.seek(0)
+                msvcrt.locking(self._fp.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(self._fp.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except Exception:
+            try:
+                self._fp.close()
+            except Exception:
+                pass
+            self._fp = None
+            return False
+
+    def release(self) -> None:
+        if self._fp is None:
+            return
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                self._fp.seek(0)
+                msvcrt.locking(self._fp.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(self._fp.fileno(), fcntl.LOCK_UN)
+        finally:
+            try:
+                self._fp.close()
+            finally:
+                self._fp = None
+
+
 if __name__ == "__main__":
+    _instance_key = os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__)
+    _single_instance = _SingleInstanceLock(_instance_key)
+    if not _single_instance.acquire():
+        try:
+            # 用 Qt 弹窗提示（GUI 打包时用户看不到 console）
+            _tmp_app = QApplication.instance() or QApplication([sys.argv[0]])
+            QMessageBox.warning(
+                None,
+                "提示",
+                "程序已经在运行中。\n\n请先关闭已打开的窗口，或在任务管理器中结束进程后再启动。",
+            )
+        except Exception:
+            # 兜底：控制台环境
+            print("程序已经在运行中，请先关闭已打开的实例后再启动。", file=sys.stderr)
+        sys.exit(0)
+
+    atexit.register(_single_instance.release)
+
     logger.info(f"MFW 版本:{__version__}")
     logger.info(f"当前工作目录: {os.getcwd()}")
 
