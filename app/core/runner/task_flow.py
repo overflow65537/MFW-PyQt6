@@ -582,8 +582,24 @@ class TaskFlowRunner(QObject):
                         logger.warning("发送任务流完成通知失败（忽略并继续完成后操作）: %s", exc)
 
             # 判断是否需要执行完成后操作
+            # - 默认：只有任务流未被 stop_task() 标记（need_stop=False）时才执行
+            # - 若完成后操作配置启用 always_run：即使流程因“非手动停止”的失败而触发 stop_task()，也会执行完成后操作
+            always_run_post_action = False
+            try:
+                post_task = self.task_service.get_task(POST_ACTION)
+                post_cfg = (
+                    post_task.task_option.get("post_action") if post_task else None
+                )
+                if isinstance(post_cfg, dict):
+                    always_run_post_action = bool(post_cfg.get("always_run"))
+            except Exception:
+                always_run_post_action = False
+
             should_run_post_action = (
-                not self.need_stop and not is_single_task_mode and self._tasks_started
+                not is_single_task_mode
+                and self._tasks_started
+                and not self._manual_stop
+                and (not self.need_stop or always_run_post_action)
             )
             try:
                 if should_run_post_action:
@@ -592,7 +608,7 @@ class TaskFlowRunner(QObject):
                     if not self._tasks_started:
                         logger.info("跳过完成后操作：任务流未成功启动")
                     else:
-                        logger.info("跳过完成后操作：手动停止或单任务执行")
+                        logger.info("跳过完成后操作：手动停止或单任务执行或流程终止")
             except Exception as exc:
                 logger.error(f"完成后操作执行失败: {exc}")
 

@@ -1,6 +1,13 @@
 from typing import Any, Dict, List, Tuple
 
-from qfluentwidgets import BodyLabel, CheckBox, ComboBox, LineEdit
+from qfluentwidgets import (
+    BodyLabel,
+    CheckBox,
+    ComboBox,
+    LineEdit,
+    ToolTipFilter,
+    ToolTipPosition,
+)
 from PySide6.QtWidgets import QVBoxLayout
 
 
@@ -20,6 +27,7 @@ class PostActionSettingMixin:
     service_coordinator: ServiceCoordinator
 
     _CONFIG_KEY = "post_action"
+    _ALWAYS_RUN_KEY = "always_run"
     _ACTION_ORDER: List[str] = [
         "none",
         "close_controller",
@@ -39,6 +47,7 @@ class PostActionSettingMixin:
         "close_software": False,
         "run_other": False,
         "run_program": False,
+        "always_run": False,
         "target_config": "",
         "program_path": "",
         "program_args": "",
@@ -88,6 +97,17 @@ class PostActionSettingMixin:
 
         title = BodyLabel(self.tr("Finish"))
         self.option_page_layout.addWidget(title)
+        self.option_page_layout.addSpacing(8)
+
+        # 独立开关：不参与任何互斥逻辑
+        always_run = CheckBox(self.tr("always run"))
+        always_run.toggled.connect(self._on_post_action_always_run_changed)
+        always_run.installEventFilter(
+            ToolTipFilter(always_run, 0, ToolTipPosition.TOP)
+        )
+        always_run.setToolTip(self.tr("Whether to run the post-action regardless of success or failure"))
+        self.option_page_layout.addWidget(always_run)
+        self.post_action_widgets[self._ALWAYS_RUN_KEY] = always_run
         self.option_page_layout.addSpacing(8)
 
         for action_key in self._ACTION_ORDER:
@@ -168,6 +188,12 @@ class PostActionSettingMixin:
     def _apply_post_action_state_to_widgets(self) -> None:
         """同步状态到控件"""
         self._post_action_syncing = True
+        always_run = self.post_action_widgets.get(self._ALWAYS_RUN_KEY)
+        if isinstance(always_run, CheckBox):
+            always_run.setChecked(
+                bool(self._post_action_state.get(self._ALWAYS_RUN_KEY))
+            )
+
         for action_key in self._PRIMARY_ACTIONS.union(self._SECONDARY_ACTIONS).union(
             self._OPTIONAL_ACTIONS
         ):
@@ -191,6 +217,13 @@ class PostActionSettingMixin:
         self._apply_program_inputs_state()
         self._update_program_inputs_enabled()
         self._post_action_syncing = False
+
+    def _on_post_action_always_run_changed(self, checked: bool) -> None:
+        """独立开关：始终运行完成后动作（不参与互斥）"""
+        if self._post_action_syncing:
+            return
+        self._post_action_state[self._ALWAYS_RUN_KEY] = checked
+        self._save_post_action_state()
 
     def _on_post_action_checkbox_changed(self, key: str, checked: bool) -> None:
         if self._post_action_syncing:
