@@ -421,10 +421,25 @@ class NoticeSendThread(QThread):
             else:
                 self.msleep(100)
 
-    def stop(self):
-        """主动停止线程"""
+    def stop(self, timeout_ms: int = 5000):
+        """主动停止线程（带超时，避免退出时卡死）"""
         self._stop_flag = True
-        self.wait()
+        try:
+            # run() 不是事件循环，quit() 不一定生效，但调用也无害
+            self.quit()
+        except Exception:
+            pass
+        try:
+            if hasattr(self, "wait"):
+                if not self.wait(timeout_ms):
+                    # 最后兜底：强制终止，避免 'Destroyed while thread is still running'
+                    try:
+                        self.terminate()
+                    except Exception:
+                        pass
+        except Exception:
+            # 极端情况下忽略停止异常，避免影响主流程退出
+            pass
 
     def __del__(self):
         """析构函数，确保线程在对象销毁前停止"""

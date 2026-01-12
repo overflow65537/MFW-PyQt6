@@ -51,6 +51,9 @@ class TaskFlowRunner(QObject):
         super().__init__()
         self.task_service = task_service
         self.config_service = config_service
+        # 提供给主窗口退出清理使用：停止外部通知线程
+        # 注意：send_thread 定义于 app.utils.notice，为全局单例
+        self.send_thread = send_thread
         if fs_signal_bus:
             self.maafw = MaaFW(
                 maa_context_sink=maa_context_sink,
@@ -568,11 +571,15 @@ class TaskFlowRunner(QObject):
                 log_text = "\n".join(log_text_lines)
 
                 if log_text and not is_single_task_mode:
-                    send_notice(
-                        NoticeTiming.WHEN_POST_TASK,
-                        self.tr("Task Flow Completed"),
-                        log_text,
-                    )
+                    # 注意：外部通知不应阻断后续完成后操作（关闭控制器/关机/退出等）
+                    try:
+                        send_notice(
+                            NoticeTiming.WHEN_POST_TASK,
+                            self.tr("Task Flow Completed"),
+                            log_text,
+                        )
+                    except Exception as exc:
+                        logger.warning("发送任务流完成通知失败（忽略并继续完成后操作）: %s", exc)
 
             # 判断是否需要执行完成后操作
             should_run_post_action = (
@@ -1711,7 +1718,14 @@ class TaskFlowRunner(QObject):
             logger.error(f"保存设备配置时出错: {e}")
 
     async def _handle_post_action(self) -> None:
-        """统一处理完成后操作顺序，按选项顺序执行，支持多个动作"""
+        """
+        统一处理完成后操作顺序（串行执行，避免动作未生效）：
+
+        规则：
+        - 关闭控制器、运行其他程序：优先执行，且会等待动作完成（尽力等待控制器真正关闭）
+        - 切换配置：只要求前两者完成，不等待外部通知（因为不关软件）
+        - 关机/退出软件：在执行前等待外部通知发送完成（避免通知丢失）
+        """
         post_task = self.task_service.get_task(POST_ACTION)
         if not post_task:
             return
@@ -1720,18 +1734,16 @@ class TaskFlowRunner(QObject):
         if not isinstance(post_config, dict):
             return
 
-        # 按照界面定义的顺序执行动作
-        # 1. 如果选择了"无动作"，直接返回（不会与其他选项同时存在）
+        # 1) 无动作：直接返回（不会与其他选项同时存在）
         if post_config.get("none"):
             logger.info("完成后操作: 无动作")
             return
 
-        # 2. 如果选择了"关闭控制器"，执行关闭控制器
+        # 2) 第一阶段：关闭控制器 / 运行其他程序（必须先完成）
         if post_config.get("close_controller"):
             logger.info("完成后操作: 关闭控制器")
-            self._close_controller()
+            await self._close_controller_and_wait()
 
-        # 3. 如果选择了"运行其他程序"，执行并等待程序退出
         if post_config.get("run_program"):
             logger.info("完成后操作: 运行其他程序")
             await self._run_program_from_post_action(
@@ -1739,7 +1751,7 @@ class TaskFlowRunner(QObject):
                 post_config.get("program_args", ""),
             )
 
-        # 4. 如果选择了"运行其他配置"，切换配置（继续执行后续操作）
+        # 3) 第二阶段：切换配置（不等待外部通知）
         if post_config.get("run_other"):
             if target_config := (post_config.get("target_config") or "").strip():
                 logger.info(
@@ -1751,16 +1763,15 @@ class TaskFlowRunner(QObject):
             else:
                 logger.warning("完成后运行其他配置开关被激活，但未配置目标配置")
 
-        # 5. 如果选择了"退出软件"，执行退出软件（这会退出应用）
+        # 4) 第三阶段：退出/关机（需要等待外部通知发送完成）
         if post_config.get("close_software"):
             logger.info("完成后操作: 退出软件")
             await self._close_software()
             return  # 退出软件后不再执行后续操作
 
-        # 6. 如果选择了"关机"，执行关机（这会关闭系统）
         if post_config.get("shutdown"):
             logger.info("完成后操作: 关机")
-            self._shutdown_system()
+            await self._shutdown_system_after_notice()
 
     async def _run_program_from_post_action(
         self, program_path: str, program_args: str
@@ -1851,6 +1862,122 @@ class TaskFlowRunner(QObject):
                 )
         except Exception as exc:
             logger.warning("等待通知发送完成时出错: %s", exc)
+
+    async def _shutdown_system_after_notice(self) -> None:
+        """关机前等待外部通知发送完成（避免通知丢失）"""
+        logger.info("完成后关机: 等待通知发送完成")
+        await self._wait_for_notice_delivery()
+        logger.info("完成后关机: 执行关机命令")
+        self._shutdown_system()
+
+    async def _close_controller_and_wait(self, timeout: float = 10.0) -> None:
+        """关闭控制器，并尽力等待控制器真正退出（避免紧接着退出软件/关机时关闭动作未生效）"""
+        # 先发起关闭动作（原逻辑）
+        self._close_controller()
+
+        # 再尽力等待真正关闭（仅对可检测的场景做等待；失败/超时不影响后续动作）
+        try:
+            controller_cfg = self.task_service.get_task(_CONTROLLER_)
+            if not controller_cfg or not isinstance(controller_cfg.task_option, dict):
+                return
+            controller_raw = controller_cfg.task_option
+
+            try:
+                controller_type = self._get_controller_type(controller_raw)
+            except Exception:
+                return
+
+            if controller_type == "win32":
+                controller_name = self._get_controller_name(controller_raw)
+                win32_config = None
+                if controller_name in controller_raw:
+                    win32_config = controller_raw.get(controller_name)
+                elif "win32" in controller_raw:
+                    win32_config = controller_raw.get("win32")
+                if not isinstance(win32_config, dict):
+                    return
+
+                hwnd_raw = win32_config.get("hwnd", 0)
+                if not hwnd_raw:
+                    return
+                await self._wait_win32_window_closed(hwnd_raw, timeout=timeout)
+                return
+
+            if controller_type == "adb":
+                # 通过当前记录的 ADB address 尽力判断设备是否仍存在
+                adb_cfg = getattr(self, "adb_controller_config", None)
+                if not isinstance(adb_cfg, dict):
+                    return
+                address = (adb_cfg.get("address") or "").strip()
+                if not address:
+                    return
+                await self._wait_adb_device_disconnected(address, timeout=timeout)
+                return
+        except Exception as exc:
+            logger.debug("等待控制器关闭时出错（忽略）: %s", exc)
+
+    async def _wait_win32_window_closed(self, hwnd: int | str, timeout: float = 10.0) -> None:
+        """等待 Win32 窗口关闭（短超时轮询）"""
+        if not sys.platform.startswith("win"):
+            return
+        try:
+            hwnd_value = int(hwnd) if isinstance(hwnd, str) else int(hwnd)
+        except Exception:
+            return
+        if hwnd_value <= 0:
+            return
+
+        def _is_window(hwnd_int: int) -> bool:
+            import ctypes
+
+            user32 = ctypes.windll.user32
+            return bool(user32.IsWindow(hwnd_int))
+
+        start = _time.time()
+        while True:
+            exists = await asyncio.to_thread(_is_window, hwnd_value)
+            if not exists:
+                logger.info("完成后关闭控制器: Win32 窗口已关闭 (hwnd=%s)", hwnd_value)
+                return
+            if _time.time() - start >= timeout:
+                logger.warning(
+                    "完成后关闭控制器: 等待 Win32 窗口关闭超时 (hwnd=%s, timeout=%.1fs)",
+                    hwnd_value,
+                    timeout,
+                )
+                return
+            await asyncio.sleep(0.2)
+
+    async def _wait_adb_device_disconnected(self, address: str, timeout: float = 10.0) -> None:
+        """等待 ADB 设备断开（短超时轮询，尽力而为）"""
+        normalized = (address or "").strip()
+        if not normalized:
+            return
+
+        def _still_exists(addr: str) -> bool:
+            try:
+                devices = Toolkit.find_adb_devices() or []
+                for dev in devices:
+                    if str(getattr(dev, "address", "")).strip() == addr:
+                        return True
+                return False
+            except Exception:
+                return False
+
+        start = _time.time()
+        while True:
+            exists = await asyncio.to_thread(_still_exists, normalized)
+            if not exists:
+                logger.info("完成后关闭控制器: ADB 设备已断开 (%s)", normalized)
+                return
+            if _time.time() - start >= timeout:
+                logger.warning(
+                    "完成后关闭控制器: 等待 ADB 设备断开超时 (%s, timeout=%.1fs)",
+                    normalized,
+                    timeout,
+                )
+                return
+            await asyncio.sleep(0.3)
 
     def _close_controller(self) -> None:
         """关闭控制器 - 根据当前运行的控制器类型执行不同的关闭操作"""
