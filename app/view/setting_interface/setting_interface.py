@@ -793,8 +793,21 @@ class SettingInterface(QWidget):
             configItem=cfg.auto_minimize_on_startup,
             parent=self.start_Setting,
         )
+        self.minimize_to_tray_card = SwitchSettingCard(
+            FIF.MINIMIZE,
+            self.tr("Minimize to tray (Windows)"),
+            self.tr(
+                "When enabled, minimizing the window will hide it to the system tray"
+            ),
+            configItem=cfg.minimize_to_tray_on_minimize_windows,
+            parent=self.start_Setting,
+        )
+        if not sys.platform.startswith("win32"):
+            # Windows 专属功能：其它平台禁用
+            self.minimize_to_tray_card.setEnabled(False)
         self.start_Setting.addSettingCard(self.run_after_startup)
         self.start_Setting.addSettingCard(self.auto_minimize_card)
+        self.start_Setting.addSettingCard(self.minimize_to_tray_card)
         self.add_setting_group(self.start_Setting)
 
     def initialize_personalization_settings(self):

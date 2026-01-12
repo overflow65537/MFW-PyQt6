@@ -2289,6 +2289,16 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation>启动后会自动最小化</translation>
     </message>
     <message>
+        <location filename="../view/setting_interface/setting_interface.py" line="778"/>
+        <source>Minimize to tray (Windows)</source>
+        <translation>最小化到托盘（Windows）</translation>
+    </message>
+    <message>
+        <location filename="../view/setting_interface/setting_interface.py" line="779"/>
+        <source>When enabled, minimizing the window will hide it to the system tray</source>
+        <translation>开启后，最小化窗口将直接隐藏到系统托盘</translation>
+    </message>
+    <message>
         <location filename="../view/setting_interface/setting_interface.py" line="781"/>
         <source>Personalization</source>
         <translation>个性化设置</translation>

@@ -44,8 +44,9 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional
 
-from PySide6.QtCore import QSize, QTimer, Qt, QUrl, QPoint, QRect, QRectF, Signal
+from PySide6.QtCore import QEvent, QSize, QTimer, Qt, QUrl, QPoint, QRect, QRectF, Signal
 from PySide6.QtGui import (
+    QAction,
     QIcon,
     QDesktopServices,
     QPixmap,
@@ -59,11 +60,13 @@ from PySide6.QtWidgets import (
     QApplication,
     QDialog,
     QLabel,
+    QMenu,
     QWidget,
     QGraphicsOpacityEffect,
     QSizePolicy,
     QHBoxLayout,
     QVBoxLayout,
+    QSystemTrayIcon,
 )
 
 from qfluentwidgets import (
@@ -241,6 +244,7 @@ class MainWindow(MSFluentWindow):
         self._tutorial_steps: list[TutorialStep] = []
         self._tutorial_index = 0
         self._tutorial_overlay: TutorialHighlightOverlay | None = None
+        self._tray_icon: QSystemTrayIcon | None = None
 
         cfg.set(cfg.save_screenshot, False)
         cfg.set(cfg.show_advanced_startup_options, False)
@@ -258,6 +262,15 @@ class MainWindow(MSFluentWindow):
         self._announcement_enabled = not bool(cfg.get(cfg.multi_resource_adaptation))
         self._log_zip_running = False
         self._log_zip_infobar: InfoBar | None = None
+
+        # 监听“最小化到托盘”开关变化：关闭时立刻清理托盘图标，避免残留
+        try:
+            cfg.minimize_to_tray_on_minimize_windows.valueChanged.connect(
+                self._on_minimize_to_tray_setting_changed
+            )
+        except Exception as exc:
+            logger.debug("绑定最小化到托盘开关变更信号失败（已忽略）: %s", exc)
+
         self._background_label: QLabel | None = None
         self._background_pixmap_original: QPixmap | None = None
         self._background_opacity_effect: QGraphicsOpacityEffect | None = None
@@ -390,6 +403,109 @@ class MainWindow(MSFluentWindow):
             logger.warning(f"运行多资源适配启动钩子失败: {exc}")
 
         logger.info(" 主界面初始化完成。")
+
+    def _is_windows_platform(self) -> bool:
+        return sys.platform.startswith("win32")
+
+    def _is_minimize_to_tray_enabled(self) -> bool:
+        if not self._is_windows_platform():
+            return False
+        try:
+            return bool(cfg.get(cfg.minimize_to_tray_on_minimize_windows))
+        except Exception:
+            return False
+
+    def _ensure_tray_icon(self) -> bool:
+        """确保托盘图标已初始化并可用。返回是否可用。"""
+        if not self._is_windows_platform():
+            return False
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return False
+
+        if self._tray_icon is not None:
+            return True
+
+        icon = self.windowIcon()
+        if icon.isNull():
+            icon = QIcon("./app/assets/icons/logo.png")
+
+        tray = QSystemTrayIcon(icon, self)
+        tray.setToolTip(self.windowTitle() or "MFW")
+
+        menu = QMenu()
+        action_show = QAction(self.tr("Show"), self)
+        action_hide = QAction(self.tr("Hide"), self)
+        action_quit = QAction(self.tr("Quit"), self)
+
+        action_show.triggered.connect(self._restore_from_tray)
+        action_hide.triggered.connect(self._hide_to_tray)
+        action_quit.triggered.connect(self.close)
+
+        menu.addAction(action_show)
+        menu.addAction(action_hide)
+        menu.addSeparator()
+        menu.addAction(action_quit)
+
+        tray.setContextMenu(menu)
+        tray.activated.connect(self._on_tray_activated)
+
+        self._tray_icon = tray
+        self._tray_icon.show()
+        return True
+
+    def _dispose_tray_icon(self) -> None:
+        """隐藏并销毁托盘图标（用于关闭开关/退出程序时清理）。"""
+        tray = self._tray_icon
+        if tray is None:
+            return
+        try:
+            tray.hide()
+        except Exception:
+            pass
+        try:
+            tray.deleteLater()
+        except Exception:
+            pass
+        self._tray_icon = None
+
+    def _on_minimize_to_tray_setting_changed(self, value) -> None:
+        # 关闭开关：立刻清理托盘图标
+        try:
+            if not bool(value):
+                self._dispose_tray_icon()
+        except Exception as exc:
+            logger.debug("处理最小化到托盘开关变化失败（已忽略）: %s", exc)
+
+    def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
+            self._restore_from_tray()
+
+    def _hide_to_tray(self) -> None:
+        if not self._ensure_tray_icon():
+            return
+        # 隐藏主窗口（托盘仍保持显示）
+        self.hide()
+
+    def _restore_from_tray(self) -> None:
+        # 还原窗口
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    def changeEvent(self, event):
+        """最小化事件：Windows + 开关开启时，最小化改为隐藏到托盘。"""
+        try:
+            if (
+                event.type() == QEvent.Type.WindowStateChange
+                and self._is_minimize_to_tray_enabled()
+                and (self.windowState() & Qt.WindowState.WindowMinimized)
+            ):
+                # 延迟执行，避免和 Qt 自己的状态变更冲突
+                QTimer.singleShot(0, self._hide_to_tray)
+        except Exception as exc:
+            logger.debug("处理最小化到托盘失败（已忽略）: %s", exc)
+
+        super().changeEvent(event)
 
     def _add_bundle_interface_to_navigation(self) -> None:
         """将 BundleInterface 添加到导航栏，并隐藏 Announcement。
@@ -1818,6 +1934,9 @@ class MainWindow(MSFluentWindow):
     def closeEvent(self, e):
         """关闭事件"""
         self._save_window_geometry_if_needed()
+
+        # 清理托盘图标，避免 Windows 托盘残影
+        self._dispose_tray_icon()
 
         # Shutdown hotkey manager first to unhook keyboard listeners
         if getattr(self, "_hotkey_manager", None):

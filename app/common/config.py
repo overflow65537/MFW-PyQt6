@@ -123,6 +123,9 @@ class Config(QConfig):
     auto_minimize_on_startup = ConfigItem(
         "General", "auto_minimize_on_startup", False, BoolValidator()
     )
+    minimize_to_tray_on_minimize_windows = ConfigItem(
+        "General", "minimize_to_tray_on_minimize_windows", False, BoolValidator()
+    )
     run_after_startup_arg = ConfigItem(
         "General", "run_after_startup_arg", False, BoolValidator()
     )
