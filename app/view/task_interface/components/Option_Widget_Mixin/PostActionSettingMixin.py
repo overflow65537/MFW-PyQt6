@@ -23,8 +23,9 @@ class PostActionSettingMixin:
     _ACTION_ORDER: List[str] = [
         "none",
         "close_controller",
-        "run_other",
         "run_program",
+        # 一组互斥：切换其他配置 / 退出软件 / 关机
+        "run_other",
         "close_software",
         "shutdown",
     ]
@@ -42,6 +43,8 @@ class PostActionSettingMixin:
         "program_path": "",
         "program_args": "",
     }
+
+    _EXCLUSIVE_EXIT_GROUP = {"run_other", "close_software", "shutdown"}
 
     def tr(
         self, sourceText: str, /, disambiguation: str | None = None, n: int = -1
@@ -128,9 +131,16 @@ class PostActionSettingMixin:
         merged = dict(self._DEFAULT_STATE)
         merged.update(raw_state)
 
-        # "关机"和"退出软件"互斥（优先级：如果两者都选中，保留关机）
-        if merged.get("shutdown") and merged.get("close_software"):
+        # 一组互斥：run_other / close_software / shutdown
+        # 兼容旧配置：若多选，按优先级保留一个（shutdown > close_software > run_other）
+        if merged.get("shutdown"):
             merged["close_software"] = False
+            merged["run_other"] = False
+        elif merged.get("close_software"):
+            merged["run_other"] = False
+        elif merged.get("run_other"):
+            merged["close_software"] = False
+            merged["shutdown"] = False
 
         # 新的互斥逻辑：只有"无动作"与其他选项互斥
         if merged.get("none"):
@@ -196,11 +206,14 @@ class PostActionSettingMixin:
             else:
                 # 选中其他任何选项时，取消"无动作"
                 self._deactivate_none_action()
-                # "关机"和"退出软件"互斥
-                if key == "shutdown":
-                    self._deactivate_close_software()
-                elif key == "close_software":
-                    self._deactivate_shutdown()
+                # 一组互斥：切换其他配置 / 退出软件 / 关机
+                if key in self._EXCLUSIVE_EXIT_GROUP:
+                    if key != "shutdown":
+                        self._deactivate_shutdown()
+                    if key != "close_software":
+                        self._deactivate_close_software()
+                    if key != "run_other":
+                        self._deactivate_run_other()
         else:
             # 取消选择后，检查是否所有动作选项都未选中
             all_action_keys = self._PRIMARY_ACTIONS.union(
@@ -256,6 +269,13 @@ class PostActionSettingMixin:
         if isinstance(close_software_widget, CheckBox):
             close_software_widget.setChecked(False)
         self._post_action_state["close_software"] = False
+
+    def _deactivate_run_other(self) -> None:
+        """取消"切换其他配置"选项"""
+        run_other_widget = self.post_action_widgets.get("run_other")
+        if isinstance(run_other_widget, CheckBox):
+            run_other_widget.setChecked(False)
+        self._post_action_state["run_other"] = False
 
     def _on_other_config_changed(self, combo: ComboBox, index: int) -> None:
         if self._post_action_syncing:
