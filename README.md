@@ -41,7 +41,7 @@ MFW-ChainFlow Assistant 旨在为 MaaFramework 用户提供开箱即用的可视
 - 完整支持 [interface v2 协议](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/3.3-ProjectInterfaceV2%E5%8D%8F%E8%AE%AE.md)
 - 跨平台支持：Windows / Linux / macOS
 - 可带参数启动：指定配置 ID 与自动执行任务
-- 外部通知：钉钉、飞书、SMTP、WxPusher、企业微信机器人
+- 外部通知：钉钉、飞书、SMTP、WxPusher、企业微信机器人、Gotify
 - 内置计划任务：单次 / 每日 / 每周 / 每月，多策略执行
 - 动态加载自定义动作与识别器的同时支持Agent，适配个性化流程
 - 嵌入式 Agent：在 agent 字段中启用内置模式，自动转换为 custom 加载方式，使用 UI 内部环境，更小更轻盈
@@ -62,7 +62,7 @@ MFW-ChainFlow Assistant 旨在为 MaaFramework 用户提供开箱即用的可视
 
 ## 外部通知
 
-当前支持：钉钉、飞书、SMTP、WxPusher、企业微信机器人，可按需在配置中启用。
+当前支持：钉钉、飞书、SMTP、WxPusher、企业微信机器人、Gotify，可按需在配置中启用。
 
 ## 计划任务
 
