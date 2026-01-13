@@ -70,6 +70,7 @@ from app.view.setting_interface.widget.NoticeType import (
     LarkNoticeType,
     SMTPNoticeType,
     WxPusherNoticeType,
+    GotifyNoticeType,
     NoticeTimingDialog,
 )
 
@@ -301,6 +302,7 @@ class SettingInterface(QWidget):
         self.SMTP_noticeTypeCard.clicked.connect(self._on_smtp_notice_clicked)
         self.WxPusher_noticeTypeCard.clicked.connect(self._on_wxpusher_notice_clicked)
         self.QYWX_noticeTypeCard.clicked.connect(self._on_qywx_notice_clicked)
+        self.gotify_noticeTypeCard.clicked.connect(self._on_gotify_notice_clicked)
         self.notice_timing_card.clicked.connect(self._on_notice_timing_clicked)
 
     def _setup_ui(self):
@@ -1199,11 +1201,25 @@ class SettingInterface(QWidget):
             parent=self.noticeGroup,
         )
 
+        if cfg.get(cfg.Notice_Gotify_status):
+            gotify_contene = self.tr("Gotify Notification Enabled")
+        else:
+            gotify_contene = self.tr("Gotify Notification Disabled")
+
+        self.gotify_noticeTypeCard = PrimaryPushSettingCard(
+            text=self.tr("Modify"),
+            icon=FIF.SEND,
+            title=self.tr("Gotify"),
+            content=gotify_contene,
+            parent=self.noticeGroup,
+        )
+
         self.noticeGroup.addSettingCard(self.dingtalk_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.lark_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.SMTP_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.WxPusher_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.QYWX_noticeTypeCard)
+        self.noticeGroup.addSettingCard(self.gotify_noticeTypeCard)
 
         # 添加通知时机设置按钮
         self.notice_timing_card = PrimaryPushSettingCard(
@@ -2208,6 +2224,12 @@ class SettingInterface(QWidget):
             else:
                 content = self.tr("QYWX Notification Disabled")
             self.QYWX_noticeTypeCard.setContent(content)
+        elif notice_type == "Gotify":
+            if cfg.get(cfg.Notice_Gotify_status):
+                content = self.tr("Gotify Notification Enabled")
+            else:
+                content = self.tr("Gotify Notification Disabled")
+            self.gotify_noticeTypeCard.setContent(content)
 
     def _on_dingtalk_notice_clicked(self):
         """处理钉钉通知卡片点击事件"""
@@ -2244,6 +2266,13 @@ class SettingInterface(QWidget):
         dialog = QYWXNoticeType(parent)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._update_notice_card_status("QYWX")
+
+    def _on_gotify_notice_clicked(self):
+        """处理Gotify通知卡片点击事件"""
+        parent = self.window() or self
+        dialog = GotifyNoticeType(parent)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._update_notice_card_status("Gotify")
 
     def _on_notice_timing_clicked(self):
         """处理通知时机设置卡片点击事件"""

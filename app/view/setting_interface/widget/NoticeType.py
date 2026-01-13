@@ -52,18 +52,16 @@ class BaseNoticeType(MessageBoxBase):
     def notice_send_finished(self):
         self.testButton.setEnabled(True)
 
-    def encrypt_key(self, obj):
-        """加密密钥"""
-        value = obj() if callable(obj) else obj
-        if value is None:
-            return ""
-
-        secret = str(value)
+    def encrypt_key(self, secret: str) -> str:
+        """加密密钥（返回可写入配置的 utf-8 字符串）。"""
+        secret = str(secret)
         if not secret:
             return ""
 
         encrypted = crypto_manager.encrypt_payload(secret)
-        return encrypted.decode("utf-8")
+        if isinstance(encrypted, (bytes, bytearray, memoryview)):
+            return bytes(encrypted).decode("utf-8")
+        return str(encrypted)
 
     def decode_key(self, key_name) -> str:
         """解密密钥"""
@@ -74,6 +72,7 @@ class BaseNoticeType(MessageBoxBase):
             "wxpusher": cfg.Notice_WxPusher_SPT_token,
             "qmsg": cfg.Notice_Qmsg_key,
             "QYWX": cfg.Notice_QYWX_key,
+            "gotify": cfg.Notice_Gotify_token,
         }
         cfg_key = mapping.get(key_name)
         if cfg_key is None:
@@ -162,7 +161,7 @@ class DingTalkNoticeType(BaseNoticeType):
         cfg.set(cfg.Notice_DingTalk_url, self.dingtalk_url_input.text())
         cfg.set(
             cfg.Notice_DingTalk_secret,
-            self.encrypt_key(self.dingtalk_secret_input.text),
+            self.encrypt_key(self.dingtalk_secret_input.text()),
         )
         cfg.set(cfg.Notice_DingTalk_status, self.dingtalk_status_switch.isChecked())
 
@@ -213,7 +212,7 @@ class LarkNoticeType(BaseNoticeType):
     def save_fields(self):
         """保存飞书相关的输入框"""
         cfg.set(cfg.Notice_Lark_url, self.lark_url_input.text())
-        cfg.set(cfg.Notice_Lark_secret, self.encrypt_key(self.lark_secret_input.text))
+        cfg.set(cfg.Notice_Lark_secret, self.encrypt_key(self.lark_secret_input.text()))
         cfg.set(cfg.Notice_Lark_status, self.lark_status_switch.isChecked())
 
 
@@ -278,7 +277,7 @@ class QmsgNoticeType(BaseNoticeType):
     def save_fields(self):
         """保存 Qmsg 相关的输入框"""
         cfg.set(cfg.Notice_Qmsg_sever, self.sever_input.text())
-        cfg.set(cfg.Notice_Qmsg_key, self.encrypt_key(self.key_input.text))
+        cfg.set(cfg.Notice_Qmsg_key, self.encrypt_key(self.key_input.text()))
         cfg.set(cfg.Notice_Qmsg_user_qq, self.user_qq_input.text())
         cfg.set(cfg.Notice_Qmsg_robot_qq, self.robot_qq_input.text())
         cfg.set(cfg.Notice_Qmsg_status, self.qmsg_status_switch.isChecked())
@@ -363,7 +362,7 @@ class SMTPNoticeType(BaseNoticeType):
         cfg.set(cfg.Notice_SMTP_sever_port, self.server_port_input.text())
         cfg.set(cfg.Notice_SMTP_used_ssl, self.used_ssl.isChecked())
         cfg.set(cfg.Notice_SMTP_user_name, self.user_name_input.text())
-        cfg.set(cfg.Notice_SMTP_password, self.encrypt_key(self.password_input.text))
+        cfg.set(cfg.Notice_SMTP_password, self.encrypt_key(self.password_input.text()))
         cfg.set(cfg.Notice_SMTP_receive_mail, self.receive_mail_input.text())
         cfg.set(cfg.Notice_SMTP_status, self.smtp_status_switch.isChecked())
 
@@ -409,7 +408,7 @@ class WxPusherNoticeType(BaseNoticeType):
         """保存 WxPusher 相关的输入框"""
         cfg.set(
             cfg.Notice_WxPusher_SPT_token,
-            self.encrypt_key(self.wxpusher_spt_input.text),
+            self.encrypt_key(self.wxpusher_spt_input.text()),
         )
         cfg.set(cfg.Notice_WxPusher_status, self.wxpusher_status_switch.isChecked())
 
@@ -453,8 +452,96 @@ class QYWXNoticeType(BaseNoticeType):
 
     def save_fields(self):
         """保存 QYWX 相关的输入框"""
-        cfg.set(cfg.Notice_QYWX_key, self.encrypt_key(self.qywx_key_input.text))
+        cfg.set(cfg.Notice_QYWX_key, self.encrypt_key(self.qywx_key_input.text()))
         cfg.set(cfg.Notice_QYWX_status, self.qywx_status_switch.isChecked())
+
+
+class GotifyNoticeType(BaseNoticeType):
+    """Gotify通知配置对话框"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent, "Gotify")
+        self.add_fields()
+
+    def add_fields(self):
+        """添加 Gotify 相关的输入框"""
+        gotify_url_title = BodyLabel(self)
+        gotify_token_title = BodyLabel(self)
+        gotify_priority_title = BodyLabel(self)
+        gotify_status_title = BodyLabel(self)
+
+        self.gotify_url_input = LineEdit(self)
+        self.gotify_token_input = PasswordLineEdit(self)
+        self.gotify_priority_input = LineEdit(self)
+        self.gotify_priority_input.setPlaceholderText("0-10")
+        # 使用 qfluentwidgets 的错误态能力进行手动验证
+        self.gotify_priority_input.textChanged.connect(self._validate_priority_silent)
+        self.gotify_priority_input.editingFinished.connect(self._validate_priority_loud)
+        self.gotify_status_switch = SwitchButton(self)
+
+        gotify_url_title.setText(self.tr("Gotify Server URL:"))
+        gotify_token_title.setText(self.tr("Gotify App Token:"))
+        gotify_priority_title.setText(self.tr("Notification Priority (0-10):"))
+        gotify_status_title.setText(self.tr("Gotify Status:"))
+
+        self.gotify_url_input.setText(cfg.get(cfg.Notice_Gotify_url))
+        self.gotify_token_input.setText(self.decode_key("gotify"))
+        self.gotify_priority_input.setText(cfg.get(cfg.Notice_Gotify_priority))
+        self.gotify_status_switch.setChecked(cfg.get(cfg.Notice_Gotify_status))
+
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
+
+        col1.addWidget(gotify_url_title)
+        col1.addWidget(gotify_token_title)
+        col1.addWidget(gotify_priority_title)
+        col1.addWidget(gotify_status_title)
+
+        col2.addWidget(self.gotify_url_input)
+        col2.addWidget(self.gotify_token_input)
+        col2.addWidget(self.gotify_priority_input)
+        col2.addWidget(self.gotify_status_switch)
+
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(col1)
+        mainLayout.addLayout(col2)
+
+        self.viewLayout.addLayout(mainLayout)
+        self.gotify_url_input.textChanged.connect(self.save_fields)
+        self.gotify_token_input.textChanged.connect(self.save_fields)
+        self.gotify_priority_input.textChanged.connect(self.save_fields)
+
+    def _is_priority_valid(self, text: str) -> bool:
+        """判断优先级是否为 0-10 的整数。"""
+        t = text.strip()
+        if not t or not t.isdigit():
+            return False
+        value = int(t)
+        return 0 <= value <= 10
+
+    def _validate_priority(self, *, show_hint: bool) -> bool:
+        """手动验证优先级，并用 LineEdit.setError 展示错误态。"""
+        text = self.gotify_priority_input.text()
+        valid = self._is_priority_valid(text)
+        self.gotify_priority_input.setError(not valid)
+        return valid
+
+    def _validate_priority_silent(self):
+        """实时校验：只更新错误态，不弹提示。"""
+        self._validate_priority(show_hint=False)
+
+    def _validate_priority_loud(self):
+        """失焦校验：更新错误态并弹提示。"""
+        self._validate_priority(show_hint=True)
+
+    def save_fields(self):
+        """保存 Gotify 相关的输入框"""
+        cfg.set(cfg.Notice_Gotify_url, self.gotify_url_input.text())
+        cfg.set(cfg.Notice_Gotify_token, self.encrypt_key(self.gotify_token_input.text()))
+        # priority 只有校验通过才写入，避免非法值落盘后仍可“照样运行”
+        if self._validate_priority(show_hint=False):
+            cfg.set(cfg.Notice_Gotify_priority, self.gotify_priority_input.text().strip())
+        cfg.set(cfg.Notice_Gotify_status, self.gotify_status_switch.isChecked())
 
 
 class NoticeTimingDialog(MessageBoxBase):

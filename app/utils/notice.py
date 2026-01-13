@@ -51,6 +51,7 @@ def decode_key(key_name) -> str:
         "smtp": cfg.Notice_SMTP_password,
         "wxpusher": cfg.Notice_WxPusher_SPT_token,
         "QYWX": cfg.Notice_QYWX_key,
+        "gotify": cfg.Notice_Gotify_token,
     }
 
     config_item = mapping.get(key_name)
@@ -301,11 +302,52 @@ class QYWX:
             return NoticeErrorCode.SUCCESS
 
 
+class Gotify:
+    def msg(self, msg_dict: dict) -> dict:
+        sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+        msg_text = f"{sendtime}: {msg_dict['text']}"
+        msg = {
+            "title": msg_dict["title"],
+            "message": msg_text,
+            "priority": int(cfg.get(cfg.Notice_Gotify_priority))
+        }
+        return msg
+
+    def send(self, msg_dict: dict) -> NoticeErrorCode:
+        gotify_token = decode_key("gotify")
+        url = cfg.get(cfg.Notice_Gotify_url)
+        if not url:
+            logger.error("Gotify URL为空")
+            return NoticeErrorCode.PARAM_EMPTY
+        
+        if not gotify_token:
+            logger.error("Gotify Token为空")
+            return NoticeErrorCode.PARAM_EMPTY
+        
+        msg = self.msg(msg_dict)
+        headers = {
+            "X-Gotify-Key": gotify_token,
+            "Content-Type": "application/json"
+        }
+        
+        try:
+            response = requests.post(url=url, json=msg, headers=headers)
+            if response.status_code == 200:
+                return NoticeErrorCode.SUCCESS
+            else:
+                logger.error(f"Gotify 发送失败，状态码: {response.status_code}，响应: {response.text}")
+                return NoticeErrorCode.RESPONSE_ERROR
+        except Exception as e:
+            logger.error(f"Gotify 发送失败 {e}")
+            return NoticeErrorCode.NETWORK_ERROR
+
+
 dingtalk = DingTalk()
 lark = Lark()
 smtp = SMTP()
 wxpusher = WxPusher()
 qywx = QYWX()
+gotify = Gotify()
 
 
 class NoticeSendThread(QThread):
@@ -325,6 +367,7 @@ class NoticeSendThread(QThread):
             "smtp": SMTP_send,
             "wxpusher": WxPusher_send,
             "qywx": QYWX_send,
+            "gotify": gotify_send,
         }
 
     def add_task(self, notice_type, msg_dict, status):
@@ -604,12 +647,25 @@ def QYWX_send(
     return result
 
 
+def gotify_send(
+    msg_dict: dict[str, str] = {"title": "Test", "text": "Test"}, status: bool = False
+) -> NoticeErrorCode:
+    if not status:
+        logger.info(f"Gotify 未启用")
+        return NoticeErrorCode.DISABLED
+
+    app = gotify
+    result = app.send(msg_dict)
+    return result
+
+
 NOTICE_CHANNEL_STATUS = {
     "dingtalk": cfg.Notice_DingTalk_status,
     "lark": cfg.Notice_Lark_status,
     "smtp": cfg.Notice_SMTP_status,
     "wxpusher": cfg.Notice_WxPusher_status,
     "qywx": cfg.Notice_QYWX_status,
+    "gotify": cfg.Notice_Gotify_status,
 }
 
 NOTICE_EVENT_CONFIG = {
