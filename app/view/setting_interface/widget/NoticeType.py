@@ -74,6 +74,7 @@ class BaseNoticeType(MessageBoxBase):
             "wxpusher": cfg.Notice_WxPusher_SPT_token,
             "qmsg": cfg.Notice_Qmsg_key,
             "QYWX": cfg.Notice_QYWX_key,
+            "gotify": cfg.Notice_Gotify_token,
         }
         cfg_key = mapping.get(key_name)
         if cfg_key is None:
@@ -455,6 +456,65 @@ class QYWXNoticeType(BaseNoticeType):
         """保存 QYWX 相关的输入框"""
         cfg.set(cfg.Notice_QYWX_key, self.encrypt_key(self.qywx_key_input.text))
         cfg.set(cfg.Notice_QYWX_status, self.qywx_status_switch.isChecked())
+
+
+class GotifyNoticeType(BaseNoticeType):
+    """Gotify通知配置对话框"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent, "Gotify")
+        self.add_fields()
+
+    def add_fields(self):
+        """添加 Gotify 相关的输入框"""
+        gotify_url_title = BodyLabel(self)
+        gotify_token_title = BodyLabel(self)
+        gotify_priority_title = BodyLabel(self)
+        gotify_status_title = BodyLabel(self)
+
+        self.gotify_url_input = LineEdit(self)
+        self.gotify_token_input = PasswordLineEdit(self)
+        self.gotify_priority_input = LineEdit(self)
+        self.gotify_status_switch = SwitchButton(self)
+
+        gotify_url_title.setText(self.tr("Gotify Server URL:"))
+        gotify_token_title.setText(self.tr("Gotify App Token:"))
+        gotify_priority_title.setText(self.tr("Notification Priority (0-10):"))
+        gotify_status_title.setText(self.tr("Gotify Status:"))
+
+        self.gotify_url_input.setText(cfg.get(cfg.Notice_Gotify_url))
+        self.gotify_token_input.setText(self.decode_key("gotify"))
+        self.gotify_priority_input.setText(cfg.get(cfg.Notice_Gotify_priority))
+        self.gotify_status_switch.setChecked(cfg.get(cfg.Notice_Gotify_status))
+
+        col1 = QVBoxLayout()
+        col2 = QVBoxLayout()
+
+        col1.addWidget(gotify_url_title)
+        col1.addWidget(gotify_token_title)
+        col1.addWidget(gotify_priority_title)
+        col1.addWidget(gotify_status_title)
+
+        col2.addWidget(self.gotify_url_input)
+        col2.addWidget(self.gotify_token_input)
+        col2.addWidget(self.gotify_priority_input)
+        col2.addWidget(self.gotify_status_switch)
+
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(col1)
+        mainLayout.addLayout(col2)
+
+        self.viewLayout.addLayout(mainLayout)
+        self.gotify_url_input.textChanged.connect(self.save_fields)
+        self.gotify_token_input.textChanged.connect(self.save_fields)
+        self.gotify_priority_input.textChanged.connect(self.save_fields)
+
+    def save_fields(self):
+        """保存 Gotify 相关的输入框"""
+        cfg.set(cfg.Notice_Gotify_url, self.gotify_url_input.text())
+        cfg.set(cfg.Notice_Gotify_token, self.encrypt_key(self.gotify_token_input.text))
+        cfg.set(cfg.Notice_Gotify_priority, self.gotify_priority_input.text())
+        cfg.set(cfg.Notice_Gotify_status, self.gotify_status_switch.isChecked())
 
 
 class NoticeTimingDialog(MessageBoxBase):
