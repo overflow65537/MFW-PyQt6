@@ -18,9 +18,7 @@ from PySide6.QtWidgets import (
 from qfluentwidgets import (
     FluentIcon as FIF,
     PixmapLabel,
-    SimpleCardWidget,
     IndeterminateProgressRing,
-    isDarkTheme,
 )
 
 from app.core.core import ServiceCoordinator
@@ -66,25 +64,32 @@ class MonitorWidget(QWidget):
         
         self._setup_ui()
         self._connect_signals()
+        # 预览区默认不显示任何占位图：无图像时保持透明，让父级背景透出
         self._load_placeholder_image()
         self._init_loading_overlay()
 
     def _setup_ui(self) -> None:
         """设置UI（标题和按钮由外部管理，这里只包含预览区域）"""
+        # 让监控预览区背景透明（无图像时不遮挡父级背景）
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setAutoFillBackground(False)
+
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
         
-        # 预览区域（保留 SimpleCardWidget 作为内部包裹）
+        # 预览区域（使用透明容器包裹，避免不透明背景遮挡父级）
         # 默认横向：16:9比例，宽度344px，高度 = 344 * 9 / 16 = 194px
         # 纵向：9:16比例，宽度194px，高度 = 194 * 16 / 9 = 344px
         self._monitor_width = 344
         self._monitor_height = 194
         self._is_landscape = True  # 默认横向
         
-        self.preview_card = SimpleCardWidget()
-        self.preview_card.setClickEnabled(False)
-        self.preview_card.setBorderRadius(8)
+        # 外层容器用普通 QWidget，避免 SimpleCardWidget 这类卡片控件在 paintEvent 里强制绘制底色
+        self.preview_card = QWidget(self)
+        self.preview_card.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.preview_card.setAutoFillBackground(False)
+        self.preview_card.setStyleSheet("background-color: transparent;")
         # 设置初始尺寸（16:9比例）：宽度344px，高度194px
         self.preview_card.setFixedSize(self._monitor_width, self._monitor_height)
         # 设置大小策略为固定，不影响其他组件
@@ -95,9 +100,11 @@ class MonitorWidget(QWidget):
         card_layout.setContentsMargins(0, 0, 0, 0)
         card_layout.setSpacing(0)
         
-        self.preview_label = PixmapLabel(self)
+        self.preview_label = PixmapLabel(self.preview_card)
         self.preview_label.setObjectName("monitorPreviewLabel")
         self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.preview_label.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.preview_label.setAutoFillBackground(False)
         # 设置初始尺寸（16:9比例）：宽度344px，高度194px
         self.preview_label.setFixedSize(self._monitor_width, self._monitor_height)
         # 使用固定大小策略，不影响其他组件
@@ -111,7 +118,7 @@ class MonitorWidget(QWidget):
             QLabel#monitorPreviewLabel {
                 border-radius: 8px;
                 border: 1px solid rgba(255, 255, 255, 0.12);
-                background-color: rgba(255, 255, 255, 0.02);
+                background-color: transparent;
             }
             """
         )
@@ -202,46 +209,25 @@ class MonitorWidget(QWidget):
             self._stop_monitoring()
 
     def _load_placeholder_image(self) -> None:
-        """加载占位图像（创建一个简单的灰色占位图，默认横向 1280x720）"""
-        # 默认使用横向尺寸：1280x720（16:9比例）
+        """无图像时的占位行为：保持透明，不强制显示灰色占位图。"""
+        # 仍保留默认图像尺寸信息（用于后续缩放逻辑/方向判断）
         self._monitor_image_width = 1280
         self._monitor_image_height = 720
         self._is_landscape = True
-        if isDarkTheme():
-            placeholder_color = (50, 50, 50)  # 深灰色
-        else:
-            placeholder_color = (200, 200, 200)  # 浅灰色
-        
-        # 使用PIL创建一个灰色占位图
-        placeholder_image = Image.new(
-            'RGB', 
-            (self._monitor_image_width, self._monitor_image_height), 
-            color=placeholder_color
-        )
-        
-        # 转换为QPixmap
-        rgb_image = placeholder_image.convert("RGB")
-        bytes_per_line = self._monitor_image_width * 3
-        buffer = rgb_image.tobytes("raw", "RGB")
-        qimage = QImage(
-            buffer, 
-            self._monitor_image_width, 
-            self._monitor_image_height, 
-            bytes_per_line, 
-            QImage.Format.Format_RGB888
-        )
-        pixmap = QPixmap.fromImage(qimage)
-        
-        if pixmap.isNull():
-            return
-        
-        self._preview_pixmap = pixmap
-        # 占位图也需要缩放到预览标签大小
-        self._refresh_preview_image()
+        self._clear_preview()
+
+    def _clear_preview(self) -> None:
+        """清空预览画面：无图像时保持透明，让父级背景透出。"""
+        self._preview_pixmap = None
+        self._current_pil_image = None
+        if hasattr(self, "preview_label"):
+            self.preview_label.clear()
 
     def _refresh_preview_image(self) -> None:
         """刷新预览图像（根据图片尺寸缩放到预览标签）"""
         if not self._preview_pixmap:
+            # 无图像时保持透明（不显示灰色占位图）
+            self._clear_preview()
             return
         
         # 使用当前的目标尺寸，而不是从标签获取（可能标签还没正确初始化）
@@ -446,6 +432,8 @@ class MonitorWidget(QWidget):
         if pil_image:
             self._apply_preview_from_pil(pil_image)
         else:
+            # 无图像时显示背景（透明，透出父级背景）
+            self._clear_preview()
             # 偶尔输出日志，避免日志过多
             if random.random() < 0.01:  # 约1%的概率输出日志
                 logger.debug("[MonitorWidget] 低功耗模式：无法从缓存获取图像")
@@ -495,6 +483,9 @@ class MonitorWidget(QWidget):
                     if frame_count % 30 == 0:
                         logger.debug(f"[MonitorWidget] 监控循环运行中，已捕获 {frame_count} 帧")
                     self._apply_preview_from_pil(pil_image)
+                else:
+                    # 没有有效图像时，显示背景（透明，透出父级背景）
+                    self._clear_preview()
                 elapsed = loop.time() - start
                 wait = max(0, self._get_target_interval() - elapsed)
                 await asyncio.sleep(wait)
