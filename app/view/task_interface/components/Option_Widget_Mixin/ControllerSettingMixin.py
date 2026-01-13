@@ -632,12 +632,12 @@ class ControllerSettingWidget(QWidget):
         # 等待模拟器启动时间
         self._create_resource_line_edit(
             self.tr("Wait for Emulator StartUp Time"),
-            "wait_time",
-            lambda text: self._on_child_option_changed("wait_time", text),
+            "adb_wait_time",
+            lambda text: self._on_child_option_changed("adb_wait_time", text),
             placeholder="0",
         )
-        # wait_time: 必须为非负整数（允许 0）
-        wait_time_edit = self.resource_setting_widgets.get("wait_time")
+        # adb_wait_time: 必须为非负整数（允许 0）
+        wait_time_edit = self.resource_setting_widgets.get("adb_wait_time")
         if isinstance(wait_time_edit, LineEdit):
             wait_time_edit.setValidator(QIntValidator(0, 2147483647, wait_time_edit))
 
@@ -688,12 +688,12 @@ class ControllerSettingWidget(QWidget):
         # 等待启动时间
         self._create_resource_line_edit(
             self.tr("Wait for Launch Time"),
-            "wait_time",
-            lambda text: self._on_child_option_changed("wait_time", text),
+            "win32_wait_time",
+            lambda text: self._on_child_option_changed("win32_wait_time", text),
             placeholder="0",
         )
-        # wait_time: 必须为非负整数（允许 0）
-        wait_time_edit = self.resource_setting_widgets.get("wait_time")
+        # win32_wait_time: 必须为非负整数（允许 0）
+        wait_time_edit = self.resource_setting_widgets.get("win32_wait_time")
         if isinstance(wait_time_edit, LineEdit):
             wait_time_edit.setValidator(QIntValidator(0, 2147483647, wait_time_edit))
 
@@ -805,7 +805,7 @@ class ControllerSettingWidget(QWidget):
             except (jsonc.JSONDecodeError, ValueError):
                 # If parsing fails, keep the string as-is or use an empty dict
                 self.current_config[current_controller_name][key] = value
-        elif key == "wait_time":
+        elif key in ("adb_wait_time", "win32_wait_time"):
             # 必须存在一个整数（不能为负数），空值自动回填为 0
             text = "" if value is None else str(value).strip()
             if text == "":
@@ -819,7 +819,7 @@ class ControllerSettingWidget(QWidget):
                 wait_time = 0
 
             # 同步回输入框，避免出现空字符串/非法值
-            edit = self.resource_setting_widgets.get("wait_time")
+            edit = self.resource_setting_widgets.get(key)
             if isinstance(edit, (LineEdit, PathLineEdit)):
                 canonical = str(wait_time)
                 if edit.text() != canonical:
@@ -829,7 +829,8 @@ class ControllerSettingWidget(QWidget):
                     finally:
                         self._syncing = False
 
-            self.current_config[current_controller_name][key] = wait_time
+            # 配置层仍然统一使用 wait_time 存储（避免 adb_wait_time/win32_wait_time 混入配置）
+            self.current_config[current_controller_name]["wait_time"] = wait_time
         elif key == "playcover_address":
             # 将 playcover_address 映射到 address
             self.current_config[current_controller_name]["address"] = value
@@ -935,7 +936,7 @@ class ControllerSettingWidget(QWidget):
             "address",
             "emulator_path",
             "emulator_params",
-            "wait_time",
+            "adb_wait_time",
         ]
         adb_hide_widgets = [
             "screencap_methods",
@@ -1019,27 +1020,26 @@ class ControllerSettingWidget(QWidget):
         for name, widget in self.resource_setting_widgets.items():
             if name.endswith("_label"):
                 continue
-            elif name in self.current_config[controller_name]:
-                if isinstance(widget, (LineEdit, PathLineEdit)):
+            elif isinstance(widget, (LineEdit, PathLineEdit)):
+                # 特殊：UI 上的 adb_wait_time/win32_wait_time 映射到配置里的 wait_time
+                if name in ("adb_wait_time", "win32_wait_time"):
+                    value = self.current_config[controller_name].get("wait_time", 0)
+                    try:
+                        v = int(value)
+                    except (TypeError, ValueError):
+                        v = 0
+                    if v < 0:
+                        v = 0
+                    self.current_config[controller_name]["wait_time"] = v
+                    widget.setText(str(v))
+                elif name in self.current_config[controller_name]:
                     value = self.current_config[controller_name][name]
-                    # Convert dict to JSON string
-                    if name == "wait_time":
-                        # 兼容旧配置/非法值：强制为非负整数（允许 0）
-                        try:
-                            v = int(value)
-                        except (TypeError, ValueError):
-                            v = 0
-                        if v < 0:
-                            v = 0
-                        self.current_config[controller_name][name] = v
-                        widget.setText(str(v))
-                    else:
-                        widget.setText(
-                            jsonc.dumps(value) if isinstance(value, dict) else str(value)
-                        )
-                elif isinstance(widget, ComboBox):
-                    target = self.current_config[controller_name][name]
-                    widget.setCurrentIndex(self._value_to_index(widget, target))
+                    widget.setText(
+                        jsonc.dumps(value) if isinstance(value, dict) else str(value)
+                    )
+            elif isinstance(widget, ComboBox) and name in self.current_config[controller_name]:
+                target = self.current_config[controller_name][name]
+                widget.setCurrentIndex(self._value_to_index(widget, target))
             elif name == "playcover_address" and controller_type == "playcover":
                 # 对于 playcover，将 address 的值填充到 playcover_address 输入框
                 if isinstance(widget, (LineEdit, PathLineEdit)):
@@ -1237,7 +1237,7 @@ class ControllerSettingWidget(QWidget):
             "hwnd",
             "program_path",
             "program_params",
-            "wait_time",
+            "win32_wait_time",
         ]
         win32_hide_widgets = [
             "mouse_input_methods",
