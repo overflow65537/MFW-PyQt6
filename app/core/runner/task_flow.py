@@ -11,16 +11,17 @@ import time as _time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict
-from PySide6.QtCore import QCoreApplication, QObject, Signal, QTimer
+from PySide6.QtCore import QCoreApplication, QObject,  QTimer
 from app.common.constants import (
     POST_ACTION,
     _CONTROLLER_,
     _RESOURCE_,
 )
 from app.common.signal_bus import signalBus
-from app.common.config import cfg, Config
+from app.common.config import cfg
 
 from maa.toolkit import Toolkit
+from maa.define import MaaWin32ScreencapMethodEnum
 from app.utils.notice import NoticeTiming, send_notice, send_thread
 
 from app.utils.logger import logger
@@ -719,6 +720,8 @@ class TaskFlowRunner(QObject):
             return await self._connect_adb_controller(controller_raw)
         elif controller_type == "win32":
             return await self._connect_win32_controller(controller_raw)
+        elif controller_type == "gamepad":
+            return await self._connect_gamepad_controller(controller_raw)
         elif controller_type == "playcover":
             return await self._connect_playcover_controller(controller_raw)
         raise ValueError("不支持的控制器类型")
@@ -1284,6 +1287,146 @@ class TaskFlowRunner(QObject):
             signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
         return bool(connect_success)
 
+    async def _connect_gamepad_controller(self, controller_raw: Dict[str, Any]):
+        """连接 Gamepad 控制器（复用 Win32 的窗口查找能力，但连接逻辑独立）"""
+        # 验证平台：Gamepad 只在 Windows 上支持
+        if sys.platform != "win32":
+            error_msg = self.tr("Gamepad controller is only supported on Windows")
+            logger.error("Gamepad 控制器仅在 Windows 上支持")
+            signalBus.log_output.emit("ERROR", error_msg)
+            return False
+
+        if not isinstance(controller_raw, dict):
+            logger.error(
+                f"控制器配置格式错误(Gamepad)，期望 dict，实际 {type(controller_raw)}: {controller_raw}"
+            )
+            return False
+
+        activate_controller = controller_raw.get("controller_type")
+        if activate_controller is None:
+            logger.error(f"未找到控制器配置: {controller_raw}")
+            return False
+
+        # 获取控制器类型和名称
+        controller_type = self._get_controller_type(controller_raw)
+        controller_name = self._get_controller_name(controller_raw)
+
+        # 使用控制器名称作为键来获取配置（兼容旧配置：如果找不到则尝试使用控制器类型）
+        if controller_name in controller_raw:
+            controller_config = controller_raw[controller_name]
+        elif controller_type in controller_raw:
+            controller_config = controller_raw[controller_type]
+            controller_raw[controller_name] = controller_config
+        else:
+            controller_config = {}
+            controller_raw[controller_name] = controller_config
+
+        def _collect_gamepad_params():
+            hwnd_raw = controller_config.get("hwnd", 0)
+            try:
+                hwnd_value = int(hwnd_raw)
+            except (TypeError, ValueError):
+                hwnd_value = 0
+            gamepad_type_raw = controller_config.get("gamepad_type", 0)
+            try:
+                gamepad_type_value = int(gamepad_type_raw)
+            except (TypeError, ValueError):
+                gamepad_type_value = 0
+            return hwnd_value, gamepad_type_value
+
+        # 优先用 interface.json 里的默认截图方式（可选）
+        def _resolve_gamepad_screencap_method() -> int:
+            entry = self._get_interface_controller_entry(controller_name) or {}
+            gamepad_cfg = entry.get("gamepad") or {}
+            raw = gamepad_cfg.get("screencap")
+            if isinstance(raw, int):
+                return raw
+            if isinstance(raw, str) and raw:
+                # 尝试从 MaaWin32ScreencapMethodEnum 里取同名成员（如 PrintWindow）
+                try:
+                    enum_val = getattr(MaaWin32ScreencapMethodEnum, raw)
+                    return int(getattr(enum_val, "value", enum_val))
+                except Exception:
+                    pass
+            # 兜底：与 maafw.connect_gamepad 默认保持一致
+            return int(getattr(MaaWin32ScreencapMethodEnum.DXGI_DesktopDup, "value", MaaWin32ScreencapMethodEnum.DXGI_DesktopDup))
+
+        screencap_method = _resolve_gamepad_screencap_method()
+
+        logger.info("每次连接前自动搜索 Gamepad 窗口...")
+        signalBus.log_output.emit("INFO", self.tr("Auto searching desktop windows..."))
+        found_device = await self._auto_find_win32_window(
+            controller_raw, controller_type, controller_name, controller_config
+        )
+        if found_device:
+            logger.info("检测到与配置匹配的窗口，更新连接参数")
+            self._save_device_to_config(controller_raw, controller_name, found_device)
+            controller_config = controller_raw[controller_name]
+            hwnd, gamepad_type = _collect_gamepad_params()
+            if not hwnd:
+                error_msg = self.tr(
+                    "Window handle (hwnd) is empty, please configure window connection in settings"
+                )
+                logger.error("Gamepad 窗口句柄为空")
+                signalBus.log_output.emit("ERROR", error_msg)
+                return False
+
+            connect_success = await self.maafw.connect_gamepad(
+                hwnd, gamepad_type, screencap_method
+            )
+            if not connect_success:
+                signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+            return bool(connect_success)
+
+        logger.debug("未匹配到与配置一致的窗口")
+
+        # 若未搜索到窗口时，才检查是否配置了启动程序路径
+        program_path = (controller_config.get("program_path") or "").strip()
+        if not program_path:
+            logger.error("Gamepad 控制器未匹配窗口且未配置启动程序")
+            signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+            return False
+
+        signalBus.log_output.emit("INFO", self.tr("try to start program"))
+        logger.info("尝试启动程序")
+        program_params = controller_config.get("program_params", "")
+        wait_program_start = int(controller_config.get("wait_time", 0))
+        self.process = self._start_process(program_path, program_params)
+        if wait_program_start > 0:
+            countdown_ok = await self._countdown_wait(
+                wait_program_start,
+                self.tr("waiting for program start..."),
+            )
+            if not countdown_ok:
+                return False
+
+        found_after_launch = await self._auto_find_win32_window(
+            controller_raw, controller_type, controller_name, controller_config
+        )
+        if not found_after_launch:
+            logger.error("启动程序后未找到与配置匹配的窗口")
+            signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+            return False
+
+        logger.info("检测到启动后的窗口，更新连接参数")
+        self._save_device_to_config(controller_raw, controller_name, found_after_launch)
+        controller_config = controller_raw[controller_name]
+        hwnd, gamepad_type = _collect_gamepad_params()
+        if not hwnd:
+            error_msg = self.tr(
+                "Window handle (hwnd) is empty, please configure window connection in settings"
+            )
+            logger.error("Gamepad 窗口句柄为空")
+            signalBus.log_output.emit("ERROR", error_msg)
+            return False
+
+        connect_success = await self.maafw.connect_gamepad(
+            hwnd, gamepad_type, screencap_method
+        )
+        if not connect_success:
+            signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+        return bool(connect_success)
+
     async def _connect_playcover_controller(self, controller_raw: Dict[str, Any]):
         """连接 PlayCover 控制器"""
         # 验证平台：PlayCover 只在 macOS 上支持
@@ -1468,6 +1611,19 @@ class TaskFlowRunner(QObject):
         return (
             self._compile_win32_regex(win32_cfg.get("class_regex"), "类名"),
             self._compile_win32_regex(win32_cfg.get("window_regex"), "窗口名"),
+        )
+
+    def _get_gamepad_filter_patterns(
+        self, controller_name: str
+    ) -> tuple[re.Pattern | None, re.Pattern | None]:
+        """从 interface 中提取 Gamepad 过滤正则（复用 Win32 的 regex 编译逻辑）"""
+        controller_entry = self._get_interface_controller_entry(controller_name)
+        if not controller_entry:
+            return None, None
+        gamepad_cfg = controller_entry.get("gamepad") or {}
+        return (
+            self._compile_win32_regex(gamepad_cfg.get("class_regex"), "类名"),
+            self._compile_win32_regex(gamepad_cfg.get("window_regex"), "窗口名"),
         )
 
     def _window_matches_win32_filters(
@@ -1661,9 +1817,14 @@ class TaskFlowRunner(QObject):
                 return None
 
             all_window_infos = []
-            class_pattern, window_pattern = self._get_win32_filter_patterns(
-                controller_name
-            )
+            if controller_type == "gamepad":
+                class_pattern, window_pattern = self._get_gamepad_filter_patterns(
+                    controller_name
+                )
+            else:
+                class_pattern, window_pattern = self._get_win32_filter_patterns(
+                    controller_name
+                )
             matched_window_infos: list[Dict[str, Any]] = []
             for window in windows:
                 window_info = {

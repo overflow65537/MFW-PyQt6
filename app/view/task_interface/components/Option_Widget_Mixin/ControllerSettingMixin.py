@@ -1,7 +1,7 @@
 from typing import Dict, Any
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout
 from PySide6.QtGui import QIntValidator
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import  QTimer
 from qfluentwidgets import (
     BodyLabel,
     ComboBox,
@@ -21,6 +21,7 @@ from app.view.task_interface.components.Option_Widget_Mixin.DeviceFinderWidget i
     DeviceFinderWidget,
 )
 from PySide6.QtWidgets import QWidget
+from maa.define import MaaWin32InputMethodEnum, MaaWin32ScreencapMethodEnum,MaaAdbInputMethodEnum,MaaAdbScreencapMethodEnum
 
 
 class ControllerSettingWidget(QWidget):
@@ -74,6 +75,26 @@ class ControllerSettingWidget(QWidget):
         "Maatouch": 4,
         "EmulatorExtras": 8,
     }
+    GAMEPAD_TYPE_OPTIONS: Dict[str, int] = {
+        "Xbox360": 0,
+        "DualShock4": 1,
+    }
+
+    def _resolve_gamepad_type_value(self, value: Any) -> int | None:
+        """解析 gamepad_type（兼容 int / 0|1 字符串 / Xbox360|DualShock4 字符串）"""
+        int_value = self._coerce_int(value)
+        if int_value is not None:
+            return int_value
+
+        if not isinstance(value, str):
+            return None
+
+        normalized = self._normalize_method_name(value)
+        if normalized in ("xbox360", "xbox"):
+            return 0
+        if normalized in ("dualshock4", "ds4"):
+            return 1
+        return None
 
     def _value_to_index(self, combo: ComboBox, value: Any) -> int:
         """将值转换为下拉框的索引，通过在下拉框中查找对应的 userData"""
@@ -90,6 +111,27 @@ class ControllerSettingWidget(QWidget):
             if item_int is not None and item_int == int_value:
                 return idx
         return 0  # 默认返回0如果值不存在
+
+    def _value_to_index_any(self, combo: ComboBox, value: Any) -> int:
+        """将值转换为下拉框索引：兼容 int 与 string（优先按 int 比较，其次按原值比较）"""
+        # 先走 int 兼容逻辑（支持 value="1" 但 itemData=1 的情况）
+        int_value = self._coerce_int(value)
+        for idx in range(combo.count()):
+            item_data = combo.itemData(idx)
+            item_int = self._coerce_int(item_data)
+            if int_value is not None and item_int is not None and item_int == int_value:
+                return idx
+
+        # 再走原值比较（用于 gamepad_type 这类字符串）
+        for idx in range(combo.count()):
+            item_data = combo.itemData(idx)
+            if item_data == value:
+                return idx
+            if isinstance(item_data, str) and isinstance(value, str):
+                if item_data.lower() == value.lower():
+                    return idx
+
+        return 0
 
     def _coerce_int(self, value: Any) -> int | None:
         """尝试将值转换为整数，失败则返回 None"""
@@ -262,6 +304,46 @@ class ControllerSettingWidget(QWidget):
 
         return win32_mapping
 
+    def _build_gamepad_default_mapping(
+        self, controllers: list[dict[str, Any]]
+    ) -> dict[str, dict[str, Any]]:
+        """构建 Gamepad 控制器的默认映射（主要用于窗口筛选 & gamepad_type 默认值）"""
+        gamepad_mapping: dict[str, dict[str, Any]] = {}
+        for controller in controllers:
+            if controller.get("type", "").lower() != "gamepad":
+                continue
+            controller_name = controller.get("name", "")
+            if not controller_name:
+                continue
+
+            gamepad_config = controller.get("gamepad")
+            if not isinstance(gamepad_config, dict):
+                gamepad_config = {}
+
+            normalized = {
+                str(key).lower(): value
+                for key, value in gamepad_config.items()
+                if isinstance(key, str)
+            }
+
+            mapping_entry: dict[str, Any] = {}
+            class_regex = normalized.get("class_regex")
+            window_regex = normalized.get("window_regex")
+            if class_regex:
+                mapping_entry["class_regex"] = str(class_regex)
+            if window_regex:
+                mapping_entry["window_regex"] = str(window_regex)
+
+            # 兼容 interface.json 里写 "Xbox360" / 0 的两种形式
+            gt_val = self._resolve_gamepad_type_value(normalized.get("gamepad_type"))
+            if gt_val is not None:
+                mapping_entry["defaults"] = {"gamepad_type": gt_val}
+
+            if mapping_entry:
+                gamepad_mapping[controller_name] = mapping_entry
+
+        return gamepad_mapping
+
     def _ensure_defaults(self, controller_cfg: dict, defaults: dict):
         """确保指定键存在于控制器配置里"""
         for key, value in defaults.items():
@@ -291,6 +373,16 @@ class ControllerSettingWidget(QWidget):
     ) -> tuple[str | None, str | None]:
         """获取 Win32 控制器的 class/window regex"""
         mapping_data = self.win32_default_mapping.get(controller_name, {})
+        return (
+            mapping_data.get("class_regex"),
+            mapping_data.get("window_regex"),
+        )
+
+    def _get_gamepad_regex_filters(
+        self, controller_name: str
+    ) -> tuple[str | None, str | None]:
+        """获取 Gamepad 控制器的 class/window regex"""
+        mapping_data = getattr(self, "gamepad_default_mapping", {}).get(controller_name, {})
         return (
             mapping_data.get("class_regex"),
             mapping_data.get("window_regex"),
@@ -336,6 +428,9 @@ class ControllerSettingWidget(QWidget):
             # Win32 控制器只在 Windows 上显示
             if ctrl_type == "win32" and sys.platform != "win32":
                 continue
+            # Gamepad 控制器只在 Windows 上显示
+            if ctrl_type == "gamepad" and sys.platform != "win32":
+                continue
             # ADB 控制器在所有平台都显示（不需要过滤）
             filtered_controllers.append(ctrl)
         
@@ -346,11 +441,15 @@ class ControllerSettingWidget(QWidget):
                 "icon": ctrl.get("icon", ""),
                 "description": ctrl.get("description", ""),
                 "playcover": ctrl.get("playcover", {}),  # 保存 playcover 配置
+                "gamepad": ctrl.get("gamepad", {}),  # 保存 gamepad 配置
             }
             for ctrl in filtered_controllers
         }
         self.win32_method_alias_map = self._build_win32_method_alias_map()
         self.win32_default_mapping = self._build_win32_default_mapping(
+            interface.get("controller", [])
+        )
+        self.gamepad_default_mapping = self._build_gamepad_default_mapping(
             interface.get("controller", [])
         )
         agent_interface_config = interface.get("agent", {})
@@ -394,10 +493,12 @@ class ControllerSettingWidget(QWidget):
             # 创建ADB、Win32和PlayCover子选项
             self._create_adb_children_option()
             self._create_win32_children_option()
+            self._create_gamepad_children_option()
             self._create_playcover_children_option()
             # 默认隐藏所有子选项
             self._toggle_win32_children_option(False)
             self._toggle_adb_children_option(False)
+            self._toggle_gamepad_children_option(False)
             self._toggle_playcover_children_option(False)
             # 设置初始值为当前配置中的控制器类型
             ctrl_combo: ComboBox = self.resource_setting_widgets["ctrl_combo"]
@@ -588,7 +689,9 @@ class ControllerSettingWidget(QWidget):
         combo = ComboBox()
 
         for display, value in options.items():
-            combo.addItem(f"{display} {value}", userData=value)
+            # 若 display 与 value（字符串形式）一致，则只显示 display，避免出现 "Xbox360 Xbox360" 之类的冗余文本
+            text = str(display) if str(display) == str(value) else f"{display} {value}"
+            combo.addItem(text, userData=value)
 
         self.parent_layout.addWidget(combo)
 
@@ -720,6 +823,46 @@ class ControllerSettingWidget(QWidget):
             self._on_child_option_changed,
         )
 
+    def _create_gamepad_children_option(self):
+        """创建Gamepad子选项（类似 Win32，但使用 gamepad_type 替代鼠标/键盘输入方式）"""
+        # HWND
+        self._create_resource_line_edit(
+            "HWND",
+            "gamepad_hwnd",
+            lambda text: self._on_child_option_changed("gamepad_hwnd", text),
+        )
+        # 程序路径
+        self._create_resource_line_edit(
+            self.tr("Program Path"),
+            "gamepad_program_path",
+            lambda text: self._on_child_option_changed("gamepad_program_path", text),
+            True,
+        )
+        # 程序参数
+        self._create_resource_line_edit(
+            self.tr("Program Params"),
+            "gamepad_program_params",
+            lambda text: self._on_child_option_changed("gamepad_program_params", text),
+        )
+        # 等待启动时间
+        self._create_resource_line_edit(
+            self.tr("Wait for Launch Time"),
+            "gamepad_wait_time",
+            lambda text: self._on_child_option_changed("gamepad_wait_time", text),
+            placeholder="0",
+        )
+        wait_time_edit = self.resource_setting_widgets.get("gamepad_wait_time")
+        if isinstance(wait_time_edit, LineEdit):
+            wait_time_edit.setValidator(QIntValidator(0, 2147483647, wait_time_edit))
+
+        # 手柄类型
+        self._create_resource_combobox(
+            self.tr("Gamepad Type"),
+            "gamepad_type",
+            self.GAMEPAD_TYPE_OPTIONS,
+            self._on_child_option_changed,
+        )
+
     def _create_playcover_children_option(self):
         """创建PlayCover子选项"""
         # Address
@@ -781,6 +924,17 @@ class ControllerSettingWidget(QWidget):
                     "win32_screencap_methods": 0,
                 },
             )
+        elif current_controller_type == "gamepad":
+            self.current_config[current_controller_name] = self.current_config.get(
+                current_controller_name,
+                {
+                    "hwnd": "",
+                    "program_path": "",
+                    "program_params": "",
+                    "wait_time": 30,  # 默认等待程序启动 30s
+                    "gamepad_type": 0,
+                },
+            )
         elif current_controller_type == "playcover":
             # 获取默认 UUID（从 interface 配置中）
             default_uuid = "maa.playcover"
@@ -805,7 +959,7 @@ class ControllerSettingWidget(QWidget):
             except (jsonc.JSONDecodeError, ValueError):
                 # If parsing fails, keep the string as-is or use an empty dict
                 self.current_config[current_controller_name][key] = value
-        elif key in ("adb_wait_time", "win32_wait_time"):
+        elif key in ("adb_wait_time", "win32_wait_time", "gamepad_wait_time"):
             # 必须存在一个整数（不能为负数），空值自动回填为 0
             text = "" if value is None else str(value).strip()
             if text == "":
@@ -831,6 +985,12 @@ class ControllerSettingWidget(QWidget):
 
             # 配置层仍然统一使用 wait_time 存储（避免 adb_wait_time/win32_wait_time 混入配置）
             self.current_config[current_controller_name]["wait_time"] = wait_time
+        elif key == "gamepad_hwnd":
+            self.current_config[current_controller_name]["hwnd"] = value
+        elif key == "gamepad_program_path":
+            self.current_config[current_controller_name]["program_path"] = value
+        elif key == "gamepad_program_params":
+            self.current_config[current_controller_name]["program_params"] = value
         elif key == "playcover_address":
             # 将 playcover_address 映射到 address
             self.current_config[current_controller_name]["address"] = value
@@ -995,6 +1155,25 @@ class ControllerSettingWidget(QWidget):
             }
             self._ensure_defaults(controller_cfg, win32_defaults)
             self._ensure_win32_input_defaults(controller_cfg, controller_name)
+        elif controller_type == "gamepad":
+            gamepad_defaults = {
+                "hwnd": "",
+                "program_path": "",
+                "program_params": "",
+                "wait_time": 30,  # 默认等待程序启动 30s
+                "gamepad_type": 0,
+            }
+            self._ensure_defaults(controller_cfg, gamepad_defaults)
+            # 兼容旧配置 / interface.json: "Xbox360"/"DualShock4" -> 0/1
+            resolved = self._resolve_gamepad_type_value(controller_cfg.get("gamepad_type"))
+            if resolved is None:
+                resolved = (
+                    getattr(self, "gamepad_default_mapping", {})
+                    .get(controller_name, {})
+                    .get("defaults", {})
+                    .get("gamepad_type", 0)
+                )
+            controller_cfg["gamepad_type"] = resolved
         elif controller_type == "playcover":
             # 清理掉旧的 playcover_uuid 字段（如果存在）
             if "playcover_uuid" in controller_cfg:
@@ -1022,7 +1201,7 @@ class ControllerSettingWidget(QWidget):
                 continue
             elif isinstance(widget, (LineEdit, PathLineEdit)):
                 # 特殊：UI 上的 adb_wait_time/win32_wait_time 映射到配置里的 wait_time
-                if name in ("adb_wait_time", "win32_wait_time"):
+                if name in ("adb_wait_time", "win32_wait_time", "gamepad_wait_time"):
                     value = self.current_config[controller_name].get("wait_time", 0)
                     try:
                         v = int(value)
@@ -1032,6 +1211,12 @@ class ControllerSettingWidget(QWidget):
                         v = 0
                     self.current_config[controller_name]["wait_time"] = v
                     widget.setText(str(v))
+                elif name == "gamepad_hwnd":
+                    widget.setText(str(self.current_config[controller_name].get("hwnd", "")))
+                elif name == "gamepad_program_path":
+                    widget.setText(str(self.current_config[controller_name].get("program_path", "")))
+                elif name == "gamepad_program_params":
+                    widget.setText(str(self.current_config[controller_name].get("program_params", "")))
                 elif name in self.current_config[controller_name]:
                     value = self.current_config[controller_name][name]
                     widget.setText(
@@ -1039,7 +1224,7 @@ class ControllerSettingWidget(QWidget):
                     )
             elif isinstance(widget, ComboBox) and name in self.current_config[controller_name]:
                 target = self.current_config[controller_name][name]
-                widget.setCurrentIndex(self._value_to_index(widget, target))
+                widget.setCurrentIndex(self._value_to_index_any(widget, target))
             elif name == "playcover_address" and controller_type == "playcover":
                 # 对于 playcover，将 address 的值填充到 playcover_address 输入框
                 if isinstance(widget, (LineEdit, PathLineEdit)):
@@ -1118,7 +1303,7 @@ class ControllerSettingWidget(QWidget):
                 message = self.tr(
                     "No ADB devices were found. Please check emulator or device connection."
                 )
-            elif controller_type.lower() == "win32":
+            elif controller_type.lower() in ("win32", "gamepad"):
                 message = self.tr("No desktop windows were found that match the filter.")
             else:
                 message = self.tr("No devices were found for current controller type.")
@@ -1247,6 +1432,17 @@ class ControllerSettingWidget(QWidget):
         self._toggle_children_visible(win32_widgets, visible)
         self._toggle_children_visible(win32_hide_widgets, visible)
 
+    def _toggle_gamepad_children_option(self, visible: bool):
+        """控制Gamepad子选项的隐藏和显示"""
+        gamepad_widgets = [
+            "gamepad_hwnd",
+            "gamepad_program_path",
+            "gamepad_program_params",
+            "gamepad_wait_time",
+            "gamepad_type",
+        ]
+        self._toggle_children_visible(gamepad_widgets, visible)
+
     def _toggle_playcover_children_option(self, visible: bool):
         """控制PlayCover子选项的隐藏和显示"""
         playcover_widgets = [
@@ -1309,9 +1505,13 @@ class ControllerSettingWidget(QWidget):
             search_option.setVisible(True)
             if "search_combo_label" in self.resource_setting_widgets:
                 self.resource_setting_widgets["search_combo_label"].setVisible(True)
-            search_option.change_controller_type(new_type)
-            if new_type == "win32":
-                class_regex, window_regex = self._get_win32_regex_filters(ctrl_info["name"])
+            # Gamepad 复用 Win32 的窗口查找逻辑，但它们仍是独立控制器（仅设备搜索复用）
+            search_option.change_controller_type("win32" if new_type == "gamepad" else new_type)
+            if new_type in ("win32", "gamepad"):
+                if new_type == "win32":
+                    class_regex, window_regex = self._get_win32_regex_filters(ctrl_info["name"])
+                else:
+                    class_regex, window_regex = self._get_gamepad_regex_filters(ctrl_info["name"])
                 search_option.set_win32_filters(class_regex, window_regex)
             else:
                 search_option.set_win32_filters(None, None)
@@ -1348,14 +1548,22 @@ class ControllerSettingWidget(QWidget):
         if new_type == "adb":
             self._toggle_adb_children_option(True)
             self._toggle_win32_children_option(False)
+            self._toggle_gamepad_children_option(False)
             self._toggle_playcover_children_option(False)
         elif new_type == "win32":
             self._toggle_adb_children_option(False)
             self._toggle_win32_children_option(True)
+            self._toggle_gamepad_children_option(False)
+            self._toggle_playcover_children_option(False)
+        elif new_type == "gamepad":
+            self._toggle_adb_children_option(False)
+            self._toggle_win32_children_option(False)
+            self._toggle_gamepad_children_option(True)
             self._toggle_playcover_children_option(False)
         elif new_type == "playcover":
             self._toggle_adb_children_option(False)
             self._toggle_win32_children_option(False)
+            self._toggle_gamepad_children_option(False)
             self._toggle_playcover_children_option(True)
 
     def _on_search_combo_changed(self, device_name):

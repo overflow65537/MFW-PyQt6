@@ -24,7 +24,12 @@ from maa.context import Context, ContextEventSink
 from maa.custom_action import CustomAction
 from maa.custom_recognition import CustomRecognition
 
-from maa.controller import AdbController, Win32Controller, PlayCoverController
+from maa.controller import (
+    AdbController,
+    Win32Controller,
+    PlayCoverController,
+    GamepadController,
+)
 from maa.tasker import Tasker
 from maa.agent_client import AgentClient
 from maa.resource import Resource
@@ -34,6 +39,7 @@ from maa.define import (
     MaaAdbInputMethodEnum,
     MaaWin32InputMethodEnum,
     MaaWin32ScreencapMethodEnum,
+    MaaGamepadTypeEnum,
 )
 from PySide6.QtCore import QObject, Signal
 
@@ -149,7 +155,9 @@ maa_tasker_sink = MaaTaskerEventSink()
 class MaaFW(QObject):
 
     resource: Resource | None
-    controller: AdbController | Win32Controller | PlayCoverController | None
+    controller: (
+        AdbController | Win32Controller | PlayCoverController | GamepadController | None
+    )
     tasker: Tasker | None
     agent: AgentClient | None
 
@@ -569,9 +577,27 @@ class MaaFW(QObject):
             return False
         return True
 
+    @asyncify
+    def connect_gamepad(
+        self,
+        hwnd: int,
+        gamepad_type: int = MaaGamepadTypeEnum.Xbox360,
+        screencap_method: int = MaaWin32ScreencapMethodEnum.DXGI_DesktopDup,
+    ) -> bool:
+        controller = GamepadController(hwnd, gamepad_type, screencap_method)
+        controller = self._init_controller(controller)
+        connected = controller.post_connection().wait().succeeded
+        if not connected:
+            print(f"Failed to connect {hwnd} {gamepad_type}")
+            return False
+        return True
+
     def _init_controller(
-        self, controller: AdbController | Win32Controller | PlayCoverController
-    ) -> AdbController | Win32Controller | PlayCoverController:
+        self,
+        controller: (
+            AdbController | Win32Controller | PlayCoverController | GamepadController
+        ),
+    ) -> AdbController | Win32Controller | PlayCoverController | GamepadController:
         if self.maa_controller_sink:
             controller.add_sink(self.maa_controller_sink)
         self.controller = controller
