@@ -200,6 +200,11 @@ class Config(QConfig):
     Notice_QYWX_status = ConfigItem("Notice", "QYWX_status", False)
     Notice_QYWX_key = ConfigItem("Notice", "QYWX_key", "")
 
+    Notice_Gotify_status = ConfigItem("Notice", "Gotify_status", False)
+    Notice_Gotify_url = ConfigItem("Notice", "Gotify_url", "")
+    Notice_Gotify_token = ConfigItem("Notice", "Gotify_token", "")
+    Notice_Gotify_priority = ConfigItem("Notice", "Gotify_priority", "0")
+
     when_start_up = ConfigItem("Notice", "when_start_up", False)
     # 通知时机配置，分别控制不同场景下的通知发送
     when_flow_started = ConfigItem("Notice", "when_flow_started", False)  # 任务流启动时
