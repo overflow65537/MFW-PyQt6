@@ -634,7 +634,12 @@ class ControllerSettingWidget(QWidget):
             self.tr("Wait for Emulator StartUp Time"),
             "wait_time",
             lambda text: self._on_child_option_changed("wait_time", text),
+            placeholder="0",
         )
+        # wait_time: 必须为非负整数（允许 0）
+        wait_time_edit = self.resource_setting_widgets.get("wait_time")
+        if isinstance(wait_time_edit, LineEdit):
+            wait_time_edit.setValidator(QIntValidator(0, 2147483647, wait_time_edit))
 
         # 截图方式
         self._create_resource_combobox(
@@ -685,7 +690,12 @@ class ControllerSettingWidget(QWidget):
             self.tr("Wait for Launch Time"),
             "wait_time",
             lambda text: self._on_child_option_changed("wait_time", text),
+            placeholder="0",
         )
+        # wait_time: 必须为非负整数（允许 0）
+        wait_time_edit = self.resource_setting_widgets.get("wait_time")
+        if isinstance(wait_time_edit, LineEdit):
+            wait_time_edit.setValidator(QIntValidator(0, 2147483647, wait_time_edit))
 
         # 鼠标输入方式
         self._create_resource_combobox(
@@ -751,7 +761,7 @@ class ControllerSettingWidget(QWidget):
                     "address": "",
                     "emulator_path": "",
                     "emulator_params": "",
-                    "wait_time": "30",  # 默认等待模拟器启动 30s
+                    "wait_time": 30,  # 默认等待模拟器启动 30s
                     "screencap_methods": 1,
                     "input_methods": 1,
                     "config": "{}",
@@ -765,7 +775,7 @@ class ControllerSettingWidget(QWidget):
                     "hwnd": "",
                     "program_path": "",
                     "program_params": "",
-                    "wait_time": "30",  # 默认等待程序启动 30s
+                    "wait_time": 30,  # 默认等待程序启动 30s
                     "mouse_input_methods": 0,
                     "keyboard_input_methods": 0,
                     "win32_screencap_methods": 0,
@@ -795,6 +805,31 @@ class ControllerSettingWidget(QWidget):
             except (jsonc.JSONDecodeError, ValueError):
                 # If parsing fails, keep the string as-is or use an empty dict
                 self.current_config[current_controller_name][key] = value
+        elif key == "wait_time":
+            # 必须存在一个整数（不能为负数），空值自动回填为 0
+            text = "" if value is None else str(value).strip()
+            if text == "":
+                wait_time = 0
+            else:
+                try:
+                    wait_time = int(text)
+                except ValueError:
+                    wait_time = 0
+            if wait_time < 0:
+                wait_time = 0
+
+            # 同步回输入框，避免出现空字符串/非法值
+            edit = self.resource_setting_widgets.get("wait_time")
+            if isinstance(edit, (LineEdit, PathLineEdit)):
+                canonical = str(wait_time)
+                if edit.text() != canonical:
+                    self._syncing = True
+                    try:
+                        edit.setText(canonical)
+                    finally:
+                        self._syncing = False
+
+            self.current_config[current_controller_name][key] = wait_time
         elif key == "playcover_address":
             # 将 playcover_address 映射到 address
             self.current_config[current_controller_name]["address"] = value
@@ -944,7 +979,7 @@ class ControllerSettingWidget(QWidget):
                 "address": "",
                 "emulator_path": "",
                 "emulator_params": "",
-                "wait_time": "30",  # 默认等待模拟器启动 30s
+                "wait_time": 30,  # 默认等待模拟器启动 30s
                 "screencap_methods": 0,
                 "input_methods": 0,
                 "config": "{}",
@@ -955,7 +990,7 @@ class ControllerSettingWidget(QWidget):
                 "hwnd": "",
                 "program_path": "",
                 "program_params": "",
-                "wait_time": "30",  # 默认等待程序启动 30s
+                "wait_time": 30,  # 默认等待程序启动 30s
             }
             self._ensure_defaults(controller_cfg, win32_defaults)
             self._ensure_win32_input_defaults(controller_cfg, controller_name)
@@ -988,9 +1023,20 @@ class ControllerSettingWidget(QWidget):
                 if isinstance(widget, (LineEdit, PathLineEdit)):
                     value = self.current_config[controller_name][name]
                     # Convert dict to JSON string
-                    widget.setText(
-                        jsonc.dumps(value) if isinstance(value, dict) else str(value)
-                    )
+                    if name == "wait_time":
+                        # 兼容旧配置/非法值：强制为非负整数（允许 0）
+                        try:
+                            v = int(value)
+                        except (TypeError, ValueError):
+                            v = 0
+                        if v < 0:
+                            v = 0
+                        self.current_config[controller_name][name] = v
+                        widget.setText(str(v))
+                    else:
+                        widget.setText(
+                            jsonc.dumps(value) if isinstance(value, dict) else str(value)
+                        )
                 elif isinstance(widget, ComboBox):
                     target = self.current_config[controller_name][name]
                     widget.setCurrentIndex(self._value_to_index(widget, target))
