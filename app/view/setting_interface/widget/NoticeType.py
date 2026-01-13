@@ -473,6 +473,10 @@ class GotifyNoticeType(BaseNoticeType):
         self.gotify_url_input = LineEdit(self)
         self.gotify_token_input = PasswordLineEdit(self)
         self.gotify_priority_input = LineEdit(self)
+        self.gotify_priority_input.setPlaceholderText("0-10")
+        # 使用 qfluentwidgets 的错误态能力进行手动验证
+        self.gotify_priority_input.textChanged.connect(self._validate_priority_silent)
+        self.gotify_priority_input.editingFinished.connect(self._validate_priority_loud)
         self.gotify_status_switch = SwitchButton(self)
 
         gotify_url_title.setText(self.tr("Gotify Server URL:"))
@@ -507,11 +511,36 @@ class GotifyNoticeType(BaseNoticeType):
         self.gotify_token_input.textChanged.connect(self.save_fields)
         self.gotify_priority_input.textChanged.connect(self.save_fields)
 
+    def _is_priority_valid(self, text: str) -> bool:
+        """判断优先级是否为 0-10 的整数。"""
+        t = text.strip()
+        if not t or not t.isdigit():
+            return False
+        value = int(t)
+        return 0 <= value <= 10
+
+    def _validate_priority(self, *, show_hint: bool) -> bool:
+        """手动验证优先级，并用 LineEdit.setError 展示错误态。"""
+        text = self.gotify_priority_input.text()
+        valid = self._is_priority_valid(text)
+        self.gotify_priority_input.setError(not valid)
+        return valid
+
+    def _validate_priority_silent(self):
+        """实时校验：只更新错误态，不弹提示。"""
+        self._validate_priority(show_hint=False)
+
+    def _validate_priority_loud(self):
+        """失焦校验：更新错误态并弹提示。"""
+        self._validate_priority(show_hint=True)
+
     def save_fields(self):
         """保存 Gotify 相关的输入框"""
         cfg.set(cfg.Notice_Gotify_url, self.gotify_url_input.text())
         cfg.set(cfg.Notice_Gotify_token, self.encrypt_key(self.gotify_token_input.text()))
-        cfg.set(cfg.Notice_Gotify_priority, self.gotify_priority_input.text())
+        # priority 只有校验通过才写入，避免非法值落盘后仍可“照样运行”
+        if self._validate_priority(show_hint=False):
+            cfg.set(cfg.Notice_Gotify_priority, self.gotify_priority_input.text().strip())
         cfg.set(cfg.Notice_Gotify_status, self.gotify_status_switch.isChecked())
 
 
