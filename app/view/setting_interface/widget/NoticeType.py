@@ -52,18 +52,16 @@ class BaseNoticeType(MessageBoxBase):
     def notice_send_finished(self):
         self.testButton.setEnabled(True)
 
-    def encrypt_key(self, obj):
-        """加密密钥"""
-        value = obj() if callable(obj) else obj
-        if value is None:
-            return ""
-
-        secret = str(value)
+    def encrypt_key(self, secret: str) -> str:
+        """加密密钥（返回可写入配置的 utf-8 字符串）。"""
+        secret = str(secret)
         if not secret:
             return ""
 
         encrypted = crypto_manager.encrypt_payload(secret)
-        return encrypted.decode("utf-8")
+        if isinstance(encrypted, (bytes, bytearray, memoryview)):
+            return bytes(encrypted).decode("utf-8")
+        return str(encrypted)
 
     def decode_key(self, key_name) -> str:
         """解密密钥"""
@@ -163,7 +161,7 @@ class DingTalkNoticeType(BaseNoticeType):
         cfg.set(cfg.Notice_DingTalk_url, self.dingtalk_url_input.text())
         cfg.set(
             cfg.Notice_DingTalk_secret,
-            self.encrypt_key(self.dingtalk_secret_input.text),
+            self.encrypt_key(self.dingtalk_secret_input.text()),
         )
         cfg.set(cfg.Notice_DingTalk_status, self.dingtalk_status_switch.isChecked())
 
@@ -214,7 +212,7 @@ class LarkNoticeType(BaseNoticeType):
     def save_fields(self):
         """保存飞书相关的输入框"""
         cfg.set(cfg.Notice_Lark_url, self.lark_url_input.text())
-        cfg.set(cfg.Notice_Lark_secret, self.encrypt_key(self.lark_secret_input.text))
+        cfg.set(cfg.Notice_Lark_secret, self.encrypt_key(self.lark_secret_input.text()))
         cfg.set(cfg.Notice_Lark_status, self.lark_status_switch.isChecked())
 
 
@@ -279,7 +277,7 @@ class QmsgNoticeType(BaseNoticeType):
     def save_fields(self):
         """保存 Qmsg 相关的输入框"""
         cfg.set(cfg.Notice_Qmsg_sever, self.sever_input.text())
-        cfg.set(cfg.Notice_Qmsg_key, self.encrypt_key(self.key_input.text))
+        cfg.set(cfg.Notice_Qmsg_key, self.encrypt_key(self.key_input.text()))
         cfg.set(cfg.Notice_Qmsg_user_qq, self.user_qq_input.text())
         cfg.set(cfg.Notice_Qmsg_robot_qq, self.robot_qq_input.text())
         cfg.set(cfg.Notice_Qmsg_status, self.qmsg_status_switch.isChecked())
@@ -364,7 +362,7 @@ class SMTPNoticeType(BaseNoticeType):
         cfg.set(cfg.Notice_SMTP_sever_port, self.server_port_input.text())
         cfg.set(cfg.Notice_SMTP_used_ssl, self.used_ssl.isChecked())
         cfg.set(cfg.Notice_SMTP_user_name, self.user_name_input.text())
-        cfg.set(cfg.Notice_SMTP_password, self.encrypt_key(self.password_input.text))
+        cfg.set(cfg.Notice_SMTP_password, self.encrypt_key(self.password_input.text()))
         cfg.set(cfg.Notice_SMTP_receive_mail, self.receive_mail_input.text())
         cfg.set(cfg.Notice_SMTP_status, self.smtp_status_switch.isChecked())
 
@@ -410,7 +408,7 @@ class WxPusherNoticeType(BaseNoticeType):
         """保存 WxPusher 相关的输入框"""
         cfg.set(
             cfg.Notice_WxPusher_SPT_token,
-            self.encrypt_key(self.wxpusher_spt_input.text),
+            self.encrypt_key(self.wxpusher_spt_input.text()),
         )
         cfg.set(cfg.Notice_WxPusher_status, self.wxpusher_status_switch.isChecked())
 
@@ -454,7 +452,7 @@ class QYWXNoticeType(BaseNoticeType):
 
     def save_fields(self):
         """保存 QYWX 相关的输入框"""
-        cfg.set(cfg.Notice_QYWX_key, self.encrypt_key(self.qywx_key_input.text))
+        cfg.set(cfg.Notice_QYWX_key, self.encrypt_key(self.qywx_key_input.text()))
         cfg.set(cfg.Notice_QYWX_status, self.qywx_status_switch.isChecked())
 
 
@@ -512,7 +510,7 @@ class GotifyNoticeType(BaseNoticeType):
     def save_fields(self):
         """保存 Gotify 相关的输入框"""
         cfg.set(cfg.Notice_Gotify_url, self.gotify_url_input.text())
-        cfg.set(cfg.Notice_Gotify_token, self.encrypt_key(self.gotify_token_input.text))
+        cfg.set(cfg.Notice_Gotify_token, self.encrypt_key(self.gotify_token_input.text()))
         cfg.set(cfg.Notice_Gotify_priority, self.gotify_priority_input.text())
         cfg.set(cfg.Notice_Gotify_status, self.gotify_status_switch.isChecked())
 
