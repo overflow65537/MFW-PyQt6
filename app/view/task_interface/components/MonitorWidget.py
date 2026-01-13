@@ -51,6 +51,13 @@ class MonitorWidget(QWidget):
         self._target_interval = 1.0 / 30
         self._low_power_mode = False  # 低功耗模式标志
         self._low_power_timer: Optional[QTimer] = None  # 低功耗模式使用的定时器
+
+        # 停止监控的幂等/防抖：避免多次 stop 导致并发停止流程引发崩溃
+        self._stopping_monitoring: bool = False
+        self._stop_debounce_ms: int = 150
+        self._stop_debounce_timer = QTimer(self)
+        self._stop_debounce_timer.setSingleShot(True)
+        self._stop_debounce_timer.timeout.connect(self._stop_monitoring_now)
         
         self.monitor_task = MonitorTask(
             task_service=self.service_coordinator.task_service,
@@ -159,6 +166,30 @@ class MonitorWidget(QWidget):
             self.service_coordinator.fs_signals.fs_start_button_status.connect(
                 self._on_task_status_changed
             )
+
+        # 监听任务流结束信号：无论何种结束方式，都要停止监控（比按钮状态更及时）
+        signalBus.task_flow_finished.connect(self._on_task_flow_finished)
+
+    def _on_task_flow_finished(self, payload: dict) -> None:
+        """任务流结束时的处理：停止监控（带防抖/幂等）"""
+        if self._monitoring_active or self._starting_monitoring:
+            logger.debug(f"[MonitorWidget] 收到 task_flow_finished: {payload}，请求停止监控")
+            self._request_stop_monitoring(reason="task_flow_finished")
+
+    def _request_stop_monitoring(self, *, reason: str = "") -> None:
+        """请求停止监控（防抖合并多次触发）"""
+        # 若既没在监控，也不处于启动流程，则无需处理
+        if not (self._monitoring_active or self._starting_monitoring):
+            return
+        # 如果已经在停止流程中，直接忽略（幂等）
+        if self._stopping_monitoring:
+            logger.debug(f"[MonitorWidget] stop 已在进行中，忽略重复请求: {reason}")
+            return
+
+        # 多次触发合并为一次（restart timer）
+        if self._stop_debounce_timer.isActive():
+            self._stop_debounce_timer.stop()
+        self._stop_debounce_timer.start(self._stop_debounce_ms)
 
     def _on_task_status_changed(self, status: dict):
         """处理任务状态变化"""
@@ -654,29 +685,14 @@ class MonitorWidget(QWidget):
 
     async def _handle_controller_disconnection(self) -> None:
         """处理控制器断开"""
-        if not self._monitoring_active:
+        # 既没在监控也没在启动流程时，无需处理
+        if not (self._monitoring_active or self._starting_monitoring):
             return
-        logger.warning("[MonitorWidget] 检测到控制器断开连接，停止监控")
+        logger.warning("[MonitorWidget] 检测到控制器断开连接，请求停止监控（防抖/幂等）")
+        # 统一走防抖/幂等停止流程，避免与 task_flow_finished / UI 停止并发触发导致崩溃
+        self._request_stop_monitoring(reason="controller_disconnected")
+        # 立刻让监控循环退出，避免在断开状态下继续反复触发断开处理
         self._monitoring_active = False
-        current_task = asyncio.current_task()
-        if current_task is not self._monitor_loop_task:
-            self._stop_monitor_loop()
-        try:
-            logger.debug("[MonitorWidget] 停止监控任务")
-            await self.monitor_task.maafw.stop_task()
-        except Exception as e:
-            logger.warning(f"[MonitorWidget] 停止监控任务时出错: {e}")
-            # 静默处理错误，不输出到日志组件
-            pass
-        try:
-            if self.monitor_task.maafw.controller:
-                logger.debug("[MonitorWidget] 清除监控任务控制器引用")
-                self.monitor_task.maafw.controller = None
-        except Exception as e:
-            logger.warning(f"[MonitorWidget] 清除控制器引用时出错: {e}")
-            # 静默处理错误，不输出到日志组件
-            pass
-        self._update_button_state()
 
     def _update_button_state(self):
         """更新按钮状态（已废弃，保留以保持兼容性）"""
@@ -836,7 +852,16 @@ class MonitorWidget(QWidget):
         QTimer.singleShot(0, lambda: asyncio.create_task(_start_sequence()))
 
     def _stop_monitoring(self) -> None:
-        """停止监控"""
+        """停止监控（防抖/幂等包装）"""
+        self._request_stop_monitoring(reason="manual_or_ui")
+
+    def _stop_monitoring_now(self) -> None:
+        """立即停止监控（内部实现，避免直接在外部多次调用）"""
+        if self._stopping_monitoring:
+            logger.debug("[MonitorWidget] 已在停止监控流程中，忽略重复调用")
+            return
+
+        self._stopping_monitoring = True
         logger.info("[MonitorWidget] 开始停止监控")
         # 设置停止标志，中断等待过程
         self._starting_monitoring = False
@@ -882,6 +907,9 @@ class MonitorWidget(QWidget):
                 signalBus.info_bar_requested.emit(
                     "error", self.tr("Failed to stop monitoring: ") + str(exc)
                 )
+            finally:
+                # 确保幂等标志最终被释放
+                self._stopping_monitoring = False
         
         QTimer.singleShot(0, lambda: asyncio.create_task(_stop_sequence()))
 

@@ -73,6 +73,8 @@ class TaskFlowRunner(QObject):
         self.need_stop = False
         self.monitor_need_stop = False
         self._is_running = False
+        # 防止同一次任务流退出时重复发射“结束”信号（幂等保护）
+        self._task_flow_finished_emitted: bool = False
         self._next_config_to_run: str | None = None
         self.adb_controller_raw: dict[str, Any] | None = None
         self.adb_activate_controller: str | None = None
@@ -170,6 +172,7 @@ class TaskFlowRunner(QObject):
         self._is_running = True
         self.need_stop = False
         self._manual_stop = False
+        self._task_flow_finished_emitted = False
         # 清空任务开始时间记录
         self._task_start_times.clear()
         # 跟踪任务流是否成功启动并执行了任务
@@ -548,6 +551,23 @@ class TaskFlowRunner(QObject):
 
             logger.critical(traceback.format_exc())
         finally:
+            # 任务流退出信号：放在 finally 的最前面，确保监控等 UI 可以立即响应停止，
+            # 不会被“完成后操作/清理”等耗时逻辑拖慢。
+            if not self._task_flow_finished_emitted:
+                self._task_flow_finished_emitted = True
+                try:
+                    signalBus.task_flow_finished.emit(
+                        {
+                            "manual_stop": bool(self._manual_stop),
+                            "need_stop": bool(self.need_stop),
+                            "single_task_mode": bool(is_single_task_mode),
+                            "tasks_started": bool(getattr(self, "_tasks_started", False)),
+                        }
+                    )
+                except Exception as exc:
+                    # UI 信号不应影响任务流清理流程
+                    logger.debug(f"发射 task_flow_finished 信号失败（忽略）: {exc}")
+
             # 先发送任务完成通知（在完成后操作之前，以便退出软件时可以等待通知发送完成）
             # 断开日志收集信号
             signalBus.log_output.disconnect(collect_log)

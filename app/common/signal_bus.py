@@ -79,5 +79,9 @@ class SignalBus(QObject):
     # 任务状态信号
     task_status_changed = Signal(str, str)  # (task_id, status) status: "running", "completed", "failed", "restart_success", "waiting"
 
+    # 任务流结束信号：无论正常结束/异常/手动停止/中止，都会在任务流退出时发射
+    # payload: dict（包含原因/标志位等，字段可扩展）
+    task_flow_finished = Signal(dict)
+
 
 signalBus = SignalBus()
