@@ -773,11 +773,17 @@ class TaskFlowRunner(QObject):
 
         # 首选：从“控制器子配置”读取（例如 controller_raw["Win32控制器"]["permission_required"]）
         permission_required = None
+        display_short_side = None
+        display_long_side = None
+        display_raw = None
         if isinstance(controller_name, str) and controller_name:
             try:
                 controller_cfg = controller_raw.get(controller_name)
                 if isinstance(controller_cfg, dict):
                     permission_required = controller_cfg.get("permission_required")
+                    display_short_side = controller_cfg.get("display_short_side")
+                    display_long_side = controller_cfg.get("display_long_side")
+                    display_raw = controller_cfg.get("display_raw")
             except Exception:
                 permission_required = None
 
@@ -786,14 +792,22 @@ class TaskFlowRunner(QObject):
         if permission_required is None:
             if isinstance(controller_name, str) and controller_name:
                 try:
-                    for ctrl in (self.task_service.interface or {}).get("controller", []):
+                    for ctrl in (self.task_service.interface or {}).get(
+                        "controller", []
+                    ):
                         if not isinstance(ctrl, dict):
                             continue
                         if ctrl.get("name") == controller_name:
                             permission_required = ctrl.get("permission_required")
+                            display_short_side = ctrl.get("display_short_side")
+                            display_long_side = ctrl.get("display_long_side")
+                            display_raw = ctrl.get("display_raw")
                             break
                 except Exception:
                     permission_required = None
+                    display_short_side = None
+                    display_long_side = None
+                    display_raw = None
 
         if permission_required is True and (not self._is_admin_runtime()):
             msg = self.tr("this Controller requires admin permission to run")
@@ -813,14 +827,29 @@ class TaskFlowRunner(QObject):
                 {"text": "STOP", "status": "enabled"}
             )
         if controller_type == "adb":
-            return await self._connect_adb_controller(controller_raw)
+            controller = await self._connect_adb_controller(controller_raw)
         elif controller_type == "win32":
-            return await self._connect_win32_controller(controller_raw)
+            controller = await self._connect_win32_controller(controller_raw)
         elif controller_type == "gamepad":
-            return await self._connect_gamepad_controller(controller_raw)
+            controller = await self._connect_gamepad_controller(controller_raw)
         elif controller_type == "playcover":
-            return await self._connect_playcover_controller(controller_raw)
-        raise ValueError("不支持的控制器类型")
+            controller = await self._connect_playcover_controller(controller_raw)
+        else:
+            raise ValueError("不支持的控制器类型")
+
+        if not controller or not self.maafw.controller:
+            return False
+
+        if display_short_side:
+            self.maafw.controller.set_screenshot_target_short_side(display_short_side)
+            logger.info(f"设置控制器分辨率: 短边 {display_short_side}")
+        elif display_long_side:
+            self.maafw.controller.set_screenshot_target_long_side(display_long_side)
+            logger.info(f"设置控制器分辨率: 长边 {display_long_side}")
+        elif display_raw:
+            self.maafw.controller.set_screenshot_use_raw_size(display_raw)
+            logger.info(f"设置控制器分辨率: 原始大小")
+        return True
 
     async def load_resources(self, resource_raw: Dict[str, Any]):
         """根据配置加载资源"""
