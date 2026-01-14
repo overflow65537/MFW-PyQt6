@@ -44,7 +44,18 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional
 
-from PySide6.QtCore import QEvent, QSize, QTimer, Qt, QUrl, QPoint, QRect, QRectF, Signal
+from PySide6.QtCore import (
+    QEvent,
+    QSize,
+    QTimer,
+    Qt,
+    QUrl,
+    QPoint,
+    QRect,
+    QRectF,
+    Signal,
+    QObject,
+)
 from PySide6.QtGui import (
     QAction,
     QIcon,
@@ -245,7 +256,9 @@ class MainWindow(MSFluentWindow):
         self._tutorial_index = 0
         self._tutorial_overlay: TutorialHighlightOverlay | None = None
         self._tray_icon: QSystemTrayIcon | None = None
-        self._startup_cleanup_scheduled = False  # 启动完成后清理旧图片/旧文件，仅执行一次
+        self._startup_cleanup_scheduled = (
+            False  # 启动完成后清理旧图片/旧文件，仅执行一次
+        )
 
         cfg.set(cfg.save_screenshot, False)
         cfg.set(cfg.show_advanced_startup_options, False)
@@ -416,7 +429,7 @@ class MainWindow(MSFluentWindow):
         - 避免用户点击“打包日志”时发生删除，造成“打包前文件被清理”的体验问题
         - 清理动作放到事件循环开始后，并在后台线程执行，尽量不阻塞 UI
         """
-        if getattr(self, "_startup_cleanup_scheduled", False):
+        if self._startup_cleanup_scheduled:
             return
         self._startup_cleanup_scheduled = True
 
@@ -675,76 +688,162 @@ class MainWindow(MSFluentWindow):
         if title_bar is None:
             return
 
+        # qfluentwidgets 的 TitleBar 在不同版本/不同实现里，布局属性命名可能不同；
+        # 这里做“尽量适配、缺失则降级”的处理，避免直接访问不存在的字段。
         h_layout = getattr(title_bar, "hBoxLayout", None)
-        btn_layout = getattr(title_bar, "buttonLayout", None)
-        v_layout = getattr(title_bar, "vBoxLayout", None)
-        if (
-            not isinstance(h_layout, QHBoxLayout)
-            or not isinstance(btn_layout, QHBoxLayout)
-            or not isinstance(v_layout, QVBoxLayout)
-        ):
+        if not isinstance(h_layout, QHBoxLayout):
+            maybe_layout = title_bar.layout() if hasattr(title_bar, "layout") else None
+            h_layout = maybe_layout if isinstance(maybe_layout, QHBoxLayout) else None
+        if not isinstance(h_layout, QHBoxLayout):
             return
 
+        btn_layout = getattr(title_bar, "buttonLayout", None)
+        v_layout = getattr(title_bar, "vBoxLayout", None)
+
         def _clear_layout(layout):
+            """移除 layout 内所有项（不销毁控件实例本身）。"""
             while layout.count():
                 item = layout.takeAt(0)
-                if item.layout():
-                    _clear_layout(item.layout())
+                if item is None:
+                    continue
+                child_layout = item.layout()
+                child_widget = item.widget()
+                if child_layout:
+                    _clear_layout(child_layout)
+                elif child_widget:
+                    # 从布局中摘出来，后续会重新 addWidget
+                    child_widget.setParent(title_bar)
+
+        # 获取系统按钮（不同版本可能缺少其中某个）
+        buttons = []
+        for name in ("closeBtn", "minBtn", "maxBtn"):
+            btn = getattr(title_bar, name, None)
+            if btn is not None:
+                buttons.append(btn)
+        if not buttons:
+            return
 
         # 调整按钮布局为 macOS 顺序：关闭、最小化、最大化
+        if not isinstance(btn_layout, QHBoxLayout):
+            btn_layout = QHBoxLayout()
         _clear_layout(btn_layout)
-        btn_layout.setContentsMargins(4, 6, 4, 6)
+        # macOS 风格：按钮组距离左侧与顶部/底部会留出一定空隙，不要贴边
+        btn_layout.setContentsMargins(6, 6, 6, 6)
         btn_layout.setSpacing(6)
-        btn_layout.setAlignment(
-            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
-        )
-        for btn in (title_bar.closeBtn, title_bar.minBtn, title_bar.maxBtn):
+        btn_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        # macOS 左侧红黄绿：关闭、最小化、最大化
+        # 如果 objectName 不可靠，就按 close/min/max 的属性名顺序兜底
+        ordered = []
+        for attr in ("closeBtn", "minBtn", "maxBtn"):
+            b = getattr(title_bar, attr, None)
+            if b is not None and b in buttons:
+                ordered.append(b)
+        if not ordered:
+            ordered = buttons
+        for btn in ordered:
             btn_layout.addWidget(btn, 0, Qt.AlignmentFlag.AlignVCenter)
 
-        # 预留一个与按钮区等宽的占位，确保标题区域真正居中
-        mirror_width = max(
-            btn_layout.sizeHint().width(),
-            title_bar.closeBtn.sizeHint().width()
-            + title_bar.minBtn.sizeHint().width()
-            + title_bar.maxBtn.sizeHint().width()
-            + btn_layout.spacing() * 2
-            + btn_layout.contentsMargins().left()
-            + btn_layout.contentsMargins().right(),
-        )
-        mirror_placeholder = QWidget(title_bar)
-        mirror_placeholder.setFixedWidth(mirror_width)
+        # 把关键对象挂到 title_bar 上，后续 resize/style/font 变化时可重新计算占位宽度
+        setattr(title_bar, "_macos_btn_layout", btn_layout)
+        setattr(title_bar, "_macos_ordered_buttons", ordered)
+
+        mirror_placeholder = getattr(title_bar, "_macos_mirror_placeholder", None)
+        if mirror_placeholder is None:
+            mirror_placeholder = QWidget(title_bar)
+            setattr(title_bar, "_macos_mirror_placeholder", mirror_placeholder)
         mirror_placeholder.setSizePolicy(
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred
         )
 
-        _clear_layout(v_layout)
-        v_layout.setContentsMargins(0, 0, 0, 0)
-        v_layout.setSpacing(0)
-        v_layout.addLayout(btn_layout)
-        v_layout.addStretch(1)
+        def _update_mirror_placeholder_width():
+            """让右侧占位宽度≈左侧按钮区宽度，从而保证 icon+标题真实居中。"""
+            bl = getattr(title_bar, "_macos_btn_layout", None)
+            ph = getattr(title_bar, "_macos_mirror_placeholder", None)
+            ordered_buttons = getattr(title_bar, "_macos_ordered_buttons", None) or []
+            if not isinstance(bl, QHBoxLayout) or ph is None:
+                return
 
-        center_layout = QHBoxLayout()
-        center_layout.setContentsMargins(0, 0, 0, 0)
-        center_layout.setSpacing(6)
-        center_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        center_layout.addWidget(title_bar.iconLabel, 0, Qt.AlignmentFlag.AlignVCenter)
-        title_bar.titleLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_bar.titleLabel.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
-        )
-        center_layout.addWidget(title_bar.titleLabel, 0, Qt.AlignmentFlag.AlignVCenter)
+            mirror_width = bl.sizeHint().width()
+            try:
+                mirror_width = max(
+                    mirror_width,
+                    sum(b.sizeHint().width() for b in ordered_buttons)
+                    + bl.spacing() * max(0, len(ordered_buttons) - 1)
+                    + bl.contentsMargins().left()
+                    + bl.contentsMargins().right(),
+                )
+            except Exception:
+                pass
 
-        center_widget = QWidget(title_bar)
-        center_widget.setLayout(center_layout)
-        center_widget.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
-        )
+            ph.setFixedWidth(max(0, int(mirror_width)))
+
+        # 先更新一次（并延迟到下一轮事件循环再更新一次，确保 sizeHint/layout 已稳定）
+        _update_mirror_placeholder_width()
+        QTimer.singleShot(0, _update_mirror_placeholder_width)
+
+        # 安装一次事件过滤器：窗口大小/DPI/样式/字体变化时保持居中
+        if getattr(title_bar, "_macos_mirror_updater", None) is None:
+            class _MacOSMirrorUpdater(QObject):
+                def eventFilter(self, obj, event):  # noqa: N802
+                    et = event.type()
+                    if et in (
+                        QEvent.Type.Resize,
+                        QEvent.Type.LayoutRequest,
+                        QEvent.Type.StyleChange,
+                        QEvent.Type.FontChange,
+                        QEvent.Type.ScreenChangeInternal,
+                    ):
+                        QTimer.singleShot(0, _update_mirror_placeholder_width)
+                    return False
+
+            updater = _MacOSMirrorUpdater(title_bar)
+            title_bar.installEventFilter(updater)
+            setattr(title_bar, "_macos_mirror_updater", updater)
+
+        # 中间标题区域：尽量使用 titleBar 自带的 iconLabel/titleLabel，缺失则降级
+        icon_label = getattr(title_bar, "iconLabel", None)
+        title_label = getattr(title_bar, "titleLabel", None)
+
+        center_widget = getattr(title_bar, "_macos_center_widget", None)
+        center_layout = getattr(title_bar, "_macos_center_layout", None)
+        if center_widget is None or center_layout is None:
+            center_layout = QHBoxLayout()
+            center_layout.setContentsMargins(0, 0, 0, 0)
+            center_layout.setSpacing(6)
+            center_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            center_widget = QWidget(title_bar)
+            center_widget.setLayout(center_layout)
+            center_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+            setattr(title_bar, "_macos_center_widget", center_widget)
+            setattr(title_bar, "_macos_center_layout", center_layout)
+        else:
+            _clear_layout(center_layout)
+
+        if icon_label is not None:
+            center_layout.addWidget(icon_label, 0, Qt.AlignmentFlag.AlignVCenter)
+        if title_label is not None:
+            title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            title_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+            center_layout.addWidget(title_label, 0, Qt.AlignmentFlag.AlignVCenter)
 
         _clear_layout(h_layout)
-        h_layout.setContentsMargins(10, 0, 12, 0)
+        # macOS 风格：标题栏内容整体左右留白更明显一些
+        h_layout.setContentsMargins(12, 0, 12, 0)
         h_layout.setSpacing(8)
         h_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-        h_layout.addLayout(v_layout, 0)
+
+        if isinstance(v_layout, QVBoxLayout):
+            _clear_layout(v_layout)
+            v_layout.setContentsMargins(0, 0, 0, 0)
+            v_layout.setSpacing(0)
+            v_layout.addLayout(btn_layout)
+            v_layout.addStretch(1)
+            h_layout.addLayout(v_layout, 0)
+        else:
+            # 老版本/自定义 TitleBar 可能没有 vBoxLayout：直接把按钮布局放到左侧
+            h_layout.addLayout(btn_layout, 0)
+
         h_layout.addStretch(1)
         h_layout.addWidget(center_widget, 0, Qt.AlignmentFlag.AlignCenter)
         h_layout.addStretch(1)
@@ -1036,7 +1135,7 @@ class MainWindow(MSFluentWindow):
                         self._write_locked_log(zf, file_path, arcname, errors)
                     else:
                         self._write_file_to_zip(zf, file_path, arcname, errors)
-                
+
                 # 保存日志组件中的图片到 live 文件夹
                 self._save_log_images_to_zip(zf, errors)
 
@@ -1132,18 +1231,18 @@ class MainWindow(MSFluentWindow):
             if not cfg.get(cfg.log_zip_include_images):
                 logger.debug("日志压缩包图片打包功能已关闭，跳过图片保存")
                 return
-            
+
             log_widget = getattr(
                 getattr(self, "TaskInterface", None), "log_output_widget", None
             )
             if not log_widget or not hasattr(log_widget, "collect_log_images"):
                 return
-            
+
             # 收集所有图片
             image_map = log_widget.collect_log_images()
             if not image_map:
                 return
-            
+
             # 获取所有日志条目的时间戳和任务名（用于文件名）
             log_items = getattr(log_widget, "_log_items", [])
             timestamps = []
@@ -1156,44 +1255,53 @@ class MainWindow(MSFluentWindow):
                 else:
                     timestamps.append("")
                     task_names.append("")
-            
+
             # 保存每张图片
             for img_hash, (image_bytes, indices) in image_map.items():
                 if not image_bytes or image_bytes.isEmpty():
                     continue
-                
+
                 # 生成文件名
                 min_idx = min(indices)
                 max_idx = max(indices)
-                
+
                 # 使用最小索引对应的时间戳和任务名
-                timestamp_str = timestamps[min_idx] if min_idx < len(timestamps) else datetime.now().strftime("%H%M%S")
+                timestamp_str = (
+                    timestamps[min_idx]
+                    if min_idx < len(timestamps)
+                    else datetime.now().strftime("%H%M%S")
+                )
                 # 将时间戳中的冒号替换为下划线（文件名安全）
                 timestamp_str = timestamp_str.replace(":", "_")
-                
+
                 # 获取任务名（如果多条日志共享，使用最小索引的任务名）
-                task_name = task_names[min_idx] if min_idx < len(task_names) else "Unknown"
+                task_name = (
+                    task_names[min_idx] if min_idx < len(task_names) else "Unknown"
+                )
                 # 清理任务名中的文件名不安全字符（替换为下划线）
                 import re
-                safe_task_name = re.sub(r'[<>:"/\\|?*]', '_', task_name).strip()
-                safe_task_name = safe_task_name.replace(' ', '_')  # 空格也替换为下划线
+
+                safe_task_name = re.sub(r'[<>:"/\\|?*]', "_", task_name).strip()
+                safe_task_name = safe_task_name.replace(" ", "_")  # 空格也替换为下划线
                 if not safe_task_name:
                     safe_task_name = "Unknown"
-                
+
                 if len(indices) == 1:
                     # 单条日志：序号+任务名+时间
                     filename = f"{min_idx:04d}_{safe_task_name}_{timestamp_str}.jpg"
                 else:
                     # 多条日志共享：最小序号+[最小序号-最大序号]+任务名+时间
                     filename = f"{min_idx:04d}_[{min_idx:04d}-{max_idx:04d}]_{safe_task_name}_{timestamp_str}.jpg"
-                
+
                 arcname = f"{Path('debug').name}/live/{filename}"
-                
+
                 # 写入压缩包
                 try:
                     raw_bytes = image_bytes.data()
                     zf.writestr(arcname, raw_bytes)
-                    logger.debug(f"已保存日志图片到压缩包: {arcname} (绑定 {len(indices)} 条日志)")
+                    logger.debug(
+                        f"已保存日志图片到压缩包: {arcname} (绑定 {len(indices)} 条日志)"
+                    )
                 except Exception as exc:
                     errors.append(f"{arcname} ({exc})")
                     logger.warning(f"保存日志图片失败：{arcname} ({exc})")
@@ -1377,11 +1485,16 @@ class MainWindow(MSFluentWindow):
 
         # 兼容旧版：仅比较 welcome（使用 MD5，不保存 welcome 原文）
         current_welcome_md5 = getattr(self, "_current_welcome_md5", "") or ""
-        if stored_welcome_md5 and current_welcome_md5 and stored_welcome_md5 != current_welcome_md5:
+        if (
+            stored_welcome_md5
+            and current_welcome_md5
+            and stored_welcome_md5 != current_welcome_md5
+        ):
             return True
 
         has_non_welcome_sections = any(
-            title != self.tr("Welcome") for title, _ in (self._pending_announcement_sections or [])
+            title != self.tr("Welcome")
+            for title, _ in (self._pending_announcement_sections or [])
         )
         return bool(has_non_welcome_sections)
 

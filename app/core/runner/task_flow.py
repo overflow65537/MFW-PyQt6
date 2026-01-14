@@ -11,7 +11,7 @@ import time as _time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict
-from PySide6.QtCore import QCoreApplication, QObject,  QTimer
+from PySide6.QtCore import QCoreApplication, QObject, QTimer
 from app.common.constants import (
     POST_ACTION,
     _CONTROLLER_,
@@ -603,7 +603,9 @@ class TaskFlowRunner(QObject):
                             log_text,
                         )
                     except Exception as exc:
-                        logger.warning("发送任务流完成通知失败（忽略并继续完成后操作）: %s", exc)
+                        logger.warning(
+                            "发送任务流完成通知失败（忽略并继续完成后操作）: %s", exc
+                        )
 
             # 判断是否需要执行完成后操作
             # - 默认：只有任务流未被 stop_task() 标记（need_stop=False）时才执行
@@ -1228,7 +1230,9 @@ class TaskFlowRunner(QObject):
             self._save_device_to_config(controller_raw, controller_name, found_device)
             controller_config = controller_raw[controller_name]
             _restore_raw_methods()
-            hwnd, screencap_method, mouse_method, keyboard_method = _collect_win32_params()
+            hwnd, screencap_method, mouse_method, keyboard_method = (
+                _collect_win32_params()
+            )
             logger.debug(
                 f"Win32 参数类型: hwnd={hwnd}, screencap_method={screencap_method}, mouse_method={mouse_method}, keyboard_method={keyboard_method}"
             )
@@ -1364,15 +1368,9 @@ class TaskFlowRunner(QObject):
             raw = gamepad_cfg.get("screencap")
             if isinstance(raw, int):
                 return raw
-            if isinstance(raw, str) and raw:
-                # 尝试从 MaaWin32ScreencapMethodEnum 里取同名成员（如 PrintWindow）
-                try:
-                    enum_val = getattr(MaaWin32ScreencapMethodEnum, raw)
-                    return int(getattr(enum_val, "value", enum_val))
-                except Exception:
-                    pass
-            # 兜底：与 maafw.connect_gamepad 默认保持一致
-            return int(getattr(MaaWin32ScreencapMethodEnum.DXGI_DesktopDup, "value", MaaWin32ScreencapMethodEnum.DXGI_DesktopDup))
+            if raw and isinstance(raw, str):
+                return int(MaaWin32ScreencapMethodEnum[raw].value)
+            return int(MaaWin32ScreencapMethodEnum.DXGI_DesktopDup.value)
 
         screencap_method = _resolve_gamepad_screencap_method()
 
@@ -1878,7 +1876,10 @@ class TaskFlowRunner(QObject):
                 old_title = self._strip_bracket_content(old_device_name)
                 if old_title:
                     for win in matched_window_infos:
-                        if self._strip_bracket_content(win.get("window_name") or "") == old_title:
+                        if (
+                            self._strip_bracket_content(win.get("window_name") or "")
+                            == old_title
+                        ):
                             return win
 
                 # 消歧失败时，保持行为确定性：返回第一个候选
@@ -2120,7 +2121,9 @@ class TaskFlowRunner(QObject):
         except Exception as exc:
             logger.debug("等待控制器关闭时出错（忽略）: %s", exc)
 
-    async def _wait_win32_window_closed(self, hwnd: int | str, timeout: float = 10.0) -> None:
+    async def _wait_win32_window_closed(
+        self, hwnd: int | str, timeout: float = 10.0
+    ) -> None:
         """等待 Win32 窗口关闭（短超时轮询）"""
         if not sys.platform.startswith("win"):
             return
@@ -2152,7 +2155,9 @@ class TaskFlowRunner(QObject):
                 return
             await asyncio.sleep(0.2)
 
-    async def _wait_adb_device_disconnected(self, address: str, timeout: float = 10.0) -> None:
+    async def _wait_adb_device_disconnected(
+        self, address: str, timeout: float = 10.0
+    ) -> None:
         """等待 ADB 设备断开（短超时轮询，尽力而为）"""
         normalized = (address or "").strip()
         if not normalized:

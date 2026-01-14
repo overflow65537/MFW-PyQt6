@@ -251,7 +251,11 @@ class ServiceCoordinator:
 
     def _get_bundle_path_from_main_config(self, bundle_name: str) -> str | None:
         """在 config_service 可用前，从 multi_config.json 中查找 bundle 的 path。"""
-        main_config_path = getattr(self, "_main_config_path", None)
+        try:
+            main_config_path = self._main_config_path
+        except AttributeError as exc:
+            logger.error("ServiceCoordinator 缺少 _main_config_path，无法从主配置解析 bundle 路径")
+            raise
         if not main_config_path or not main_config_path.exists():
             return None
 
@@ -482,7 +486,11 @@ class ServiceCoordinator:
         if not invalid_bundles:
             return
 
-        main_cfg = getattr(self.config_service, "_main_config", None)
+        try:
+            main_cfg = self.config_service._main_config
+        except AttributeError as exc:
+            logger.error("ConfigService 缺少 _main_config，无法清理无效 bundle 索引")
+            raise
         if not isinstance(main_cfg, dict):
             logger.warning("主配置结构缺失或损坏，跳过无效 bundle 清理")
             return
@@ -512,11 +520,18 @@ class ServiceCoordinator:
             return
 
         config = self.config_service.get_config(config_id)
-        if not config or not getattr(config, "bundle", None):
+        if not config:
+            return
+        try:
+            bundle_name = config.bundle
+        except AttributeError as exc:
+            logger.error(f"配置 {config_id} 缺少 bundle 字段，无法更新 interface 路径")
+            raise
+        if not bundle_name:
             return
 
         # 根据配置的 bundle 名称解析新的 interface 路径
-        new_interface_path = self._resolve_interface_path_from_bundle(config.bundle)
+        new_interface_path = self._resolve_interface_path_from_bundle(bundle_name)
 
         # 如果路径发生变化，需要重新加载 interface
         if new_interface_path and new_interface_path != self._interface_path:
@@ -632,7 +647,11 @@ class ServiceCoordinator:
 
     def delete_bundle(self, bundle_name: str) -> bool:
         """从主配置中移除指定 bundle 的索引"""
-        main_config = getattr(self.config_service, "_main_config", None)
+        try:
+            main_config = self.config_service._main_config
+        except AttributeError as exc:
+            logger.error("ConfigService 缺少 _main_config，无法删除 bundle")
+            raise
         if not isinstance(main_config, dict):
             logger.warning("主配置缺失，无法删除 bundle")
             return False

@@ -331,7 +331,7 @@ class ConfigService:
         """获取当前bundle"""
         # 使用当前配置中保存的 bundle 名称，在主配置中查找 bundle 详情
         current_config = self.get_current_config()
-        bundle_name = getattr(current_config, "bundle", "") or self.current_config_id
+        bundle_name = current_config.bundle
         return self.get_bundle(bundle_name)
 
     # ========== bundle 辅助方法 ==========
@@ -341,7 +341,7 @@ class ConfigService:
         if not config:
             return None
 
-        bundle_name = getattr(config, "bundle", "") or ""
+        bundle_name = config.bundle
         if not bundle_name:
             return None
 

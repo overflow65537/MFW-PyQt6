@@ -449,10 +449,6 @@ class MaaFW(QObject):
                 if resource.register_custom_action(custom_name, instance):
                     loaded_any = True
                     _record_success(custom_type, custom_name)
-                    if getattr(self, "need_register_report", False):
-                        custom_signal = getattr(signalBus, "custom_info", None)
-                        if custom_signal:
-                            custom_signal.emit({"type": "action", "name": custom_name})
                 else:
                     reason = f"自定义动作 {custom_name} 注册失败"
                     logger.warning(reason)
@@ -466,12 +462,6 @@ class MaaFW(QObject):
                 if resource.register_custom_recognition(custom_name, instance):
                     loaded_any = True
                     _record_success(custom_type, custom_name)
-                    if getattr(self, "need_register_report", False):
-                        custom_signal = getattr(signalBus, "custom_info", None)
-                        if custom_signal:
-                            custom_signal.emit(
-                                {"type": "recognition", "name": custom_name}
-                            )
                 else:
                     reason = f"自定义识别器 {custom_name} 注册失败"
                     logger.warning(reason)
@@ -491,16 +481,10 @@ class MaaFW(QObject):
 
         if actions_failed:
             for item in actions_failed:
-                log_method = getattr(
-                    logger, item.get("level", "warning"), logger.warning
-                )
-                log_method(f"自定义动作 {item['name']} 加载失败: {item['reason']}")
+                logger.warning(f"自定义动作 {item['name']} 加载失败: {item['reason']}")
         if recognitions_failed:
             for item in recognitions_failed:
-                log_method = getattr(
-                    logger, item.get("level", "warning"), logger.warning
-                )
-                log_method(f"自定义识别器 {item['name']} 加载失败: {item['reason']}")
+                logger.warning(f"自定义识别器 {item['name']} 加载失败: {item['reason']}")
 
         return loaded_any
 

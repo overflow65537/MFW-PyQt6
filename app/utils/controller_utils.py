@@ -4,6 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from maa.toolkit import AdbDevice
 
 import jsonc
 
@@ -233,7 +234,7 @@ class ControllerHelper:
 
     @staticmethod
     def resolve_emulator_index(
-        device: Any | None = None,
+        device: AdbDevice,
         adb_path: Optional[str] = None,
         address: str | None = None,
         device_name: Optional[str] = None,
@@ -245,24 +246,16 @@ class ControllerHelper:
         2. MuMu：使用 adb_path + address + name 推导
         3. 雷电：若提供 pid（或从 config 提取 pid），通过 list2 反查序号
         """
-        direct_index = None
         if device is not None:
-            direct_index = getattr(device, "index", None)
-            adb_path = adb_path or getattr(device, "adb_path", None)
-            address = address or getattr(device, "address", None)
-            device_name = device_name or getattr(device, "name", None)
+            adb_path = adb_path or str(device.adb_path)
+            address = address or device.address
+            device_name = device_name or device.name
             if ld_pid is None:
                 ld_pid = (
-                    (getattr(device, "config", {}) or {})
-                    .get("extras", {})
-                    .get("ld", {})
-                    .get("pid")
+                    (device.config or {}).get("extras", {}).get("ld", {}).get("pid")
                 )
 
-        if direct_index is not None:
-            return str(direct_index)
-
-        normalized_name = (device_name or "").lower()
+        normalized_name = (device_name).lower()
 
         # MuMu 序号
         if "mumu" in normalized_name:
@@ -342,10 +335,10 @@ class ControllerHelper:
     @staticmethod
     def close_win32_window(hwnd: int | str) -> bool:
         """通过窗口句柄 (hwnd) 关闭 Windows 窗口
-        
+
         Args:
             hwnd: 窗口句柄，可以是整数或字符串
-            
+
         Returns:
             bool: 是否成功发送关闭消息
         """
