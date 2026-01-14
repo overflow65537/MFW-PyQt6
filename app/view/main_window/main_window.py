@@ -2045,7 +2045,14 @@ class MainWindow(MSFluentWindow):
         else:
             title = base_title
 
-        if self.is_admin():
+        # 刷新运行时标记：是否为管理员权限（供其他界面快速读取）
+        try:
+            admin = bool(self.is_admin())
+            cfg.set(cfg.is_admin, admin)
+        except Exception:
+            admin = bool(self.is_admin())
+
+        if admin:
             title += " " + self.tr("admin")
         logger.info(f" 设置窗口标题：{title}")
         self.setWindowTitle(title)

@@ -110,6 +110,34 @@ class TaskFlowRunner(QObject):
         # 监听 MaaFW 回调信号，用于接收 abort 等特殊事件
         signalBus.callback.connect(self._handle_maafw_callback)
 
+        # 连接前置检查失败原因（用于在上层发送更明确的通知文案）
+        self._connect_error_reason: str | None = None
+
+    def _is_admin_runtime(self) -> bool:
+        """运行时检测是否具备管理员权限（优先用 cfg 标记，失败则在 Windows 上兜底检测）。"""
+        try:
+            is_admin = bool(cfg.get(cfg.is_admin))
+        except Exception:
+            is_admin = False
+
+        if is_admin:
+            return True
+
+        if sys.platform.startswith("win32"):
+            try:
+                import ctypes
+
+                is_admin = bool(ctypes.windll.shell32.IsUserAnAdmin())
+                try:
+                    cfg.set(cfg.is_admin, is_admin)
+                except Exception:
+                    pass
+                return is_admin
+            except Exception:
+                return False
+
+        return False
+
     def _handle_maafw_callback(self, payload: Dict[str, Any]):
         """处理来自 MaaFW 的通用回调信号（包括自定义的 abort 信号）。
 
@@ -318,6 +346,8 @@ class TaskFlowRunner(QObject):
 
             logger.info("开始连接设备...")
             signalBus.log_output.emit("INFO", self.tr("Starting to connect device..."))
+            # 清理上一次连接失败原因（若有）
+            self._connect_error_reason = None
             connected = await self.connect_device(controller_cfg.task_option)
             if not connected:
                 logger.error("设备连接失败")
@@ -325,7 +355,8 @@ class TaskFlowRunner(QObject):
                 send_notice(
                     NoticeTiming.WHEN_CONNECT_FAILED,
                     self.tr("Device Connection Failed"),
-                    self.tr("Failed to connect to the device."),
+                    self._connect_error_reason
+                    or self.tr("Failed to connect to the device."),
                 )
                 return
             signalBus.log_output.emit("INFO", self.tr("Device connected successfully"))
@@ -733,6 +764,49 @@ class TaskFlowRunner(QObject):
 
     async def connect_device(self, controller_raw: Dict[str, Any]):
         """连接 MaaFW 控制器"""
+        # 连接前置检查：若控制器需要管理员权限但当前不是管理员，则直接中止
+        self._connect_error_reason = None
+        try:
+            controller_name = controller_raw.get("controller_type")
+        except Exception:
+            controller_name = None
+
+        # 首选：从“控制器子配置”读取（例如 controller_raw["Win32控制器"]["permission_required"]）
+        permission_required = None
+        if isinstance(controller_name, str) and controller_name:
+            try:
+                controller_cfg = controller_raw.get(controller_name)
+                if isinstance(controller_cfg, dict):
+                    permission_required = controller_cfg.get("permission_required")
+            except Exception:
+                permission_required = None
+
+        # 兼容：如果配置里还没保存 permission_required（例如用户重启后未进入控制器设置界面）
+        # 则从 interface.json 中按 controller_type 反查
+        if permission_required is None:
+            if isinstance(controller_name, str) and controller_name:
+                try:
+                    for ctrl in (self.task_service.interface or {}).get("controller", []):
+                        if not isinstance(ctrl, dict):
+                            continue
+                        if ctrl.get("name") == controller_name:
+                            permission_required = ctrl.get("permission_required")
+                            break
+                except Exception:
+                    permission_required = None
+
+        if permission_required is True and (not self._is_admin_runtime()):
+            msg = self.tr("this Controller requires admin permission to run")
+            self._connect_error_reason = msg
+            logger.error(msg)
+            signalBus.log_output.emit("ERROR", msg)
+            # 立即停止任务流（而不是等待上层 finally）
+            try:
+                await self.stop_task()
+            except Exception:
+                pass
+            return False
+
         controller_type = self._get_controller_type(controller_raw)
         if self.fs_signal_bus:
             self.fs_signal_bus.fs_start_button_status.emit(

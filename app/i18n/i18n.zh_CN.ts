@@ -300,27 +300,27 @@
 <context>
     <name>BaseListToolBarWidget</name>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="59"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="60"/>
         <source>Select All</source>
         <translation>选择全部</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="66"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="67"/>
         <source>Deselect All</source>
         <translation>取消选择全部</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="73"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="74"/>
         <source>Add</source>
         <translation>添加</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="80"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="81"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="87"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="88"/>
         <source>Switch to Special Tasks</source>
         <translation>切换到特殊任务</translation>
     </message>
@@ -337,12 +337,12 @@
         <translation>测试</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="95"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="93"/>
         <source>decrypt notice key failed: {}，please fill in again and save.</source>
         <translation>解密通知密钥失败：{}，请重新填写并保存。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="101"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="99"/>
         <source>parse notice key error: {}，please save again.</source>
         <translation>解析通知密钥错误：{}，请重新保存。</translation>
     </message>
@@ -707,19 +707,19 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>ConfigListToolBarWidget</name>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="135"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="136"/>
         <source>Configurations</source>
         <translation>配置</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="180"/>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="230"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="181"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="234"/>
         <source>Task is running, configurations are locked.</source>
         <translation>任务正在运行，配置已锁定。</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="236"/>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="239"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="240"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="243"/>
         <source>Cannot delete the last configuration!</source>
         <translation>无法删除最后一项配置</translation>
     </message>
@@ -727,133 +727,150 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>ControllerSettingWidget</name>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="459"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="646"/>
         <source>Controller Type</source>
         <translation>控制器类型</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="477"/>
+        <source>this Controller requires admin permission to run</source>
+        <translation type="vanished">此控制器需要管理员权限运行</translation>
+    </message>
+    <message>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="647"/>
+        <source>this controller requires admin permission to run</source>
+        <translation>此控制器需要管理员权限运行</translation>
+    </message>
+    <message>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="703"/>
         <source>Search Device</source>
         <translation>搜索设备</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="491"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="717"/>
         <source>Agent Timeout</source>
         <translation>Agent 超时时间</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="495"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="721"/>
         <source>-1 means infinite</source>
         <translation>-1 代表永不超时</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="512"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="738"/>
         <source>Custom Module Path</source>
         <translation>custom模块路径</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="521"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="747"/>
         <source>GPU Acceleration</source>
         <translation>GPU选择</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="541"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="767"/>
         <source>Auto</source>
         <translation>自动</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="542"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="768"/>
         <source>CPU</source>
         <translation>CPU</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="608"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="836"/>
         <source>ADB Path</source>
         <translation>ADB 路径</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="615"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="843"/>
         <source>ADB Address</source>
         <translation>ADB连接地址</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="621"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="849"/>
         <source>Emulator Path</source>
         <translation>模拟器路径</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="628"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="856"/>
         <source>Emulator Params</source>
         <translation>模拟器参数</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="634"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="862"/>
         <source>Wait for Emulator StartUp Time</source>
         <translation>等待模拟器启动时间</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="641"/>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="707"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="874"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="945"/>
         <source>Screencap Method</source>
         <translation>截图模式</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="649"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="882"/>
         <source>Input Method</source>
         <translation>输入模式</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="657"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="890"/>
         <source>Special Config</source>
         <translation>特化配置</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="672"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="905"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="961"/>
         <source>Program Path</source>
         <translation>程序路径</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="679"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="912"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="968"/>
         <source>Program Params</source>
         <translation>程序参数</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="685"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="918"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="974"/>
         <source>Wait for Launch Time</source>
         <translation>等待程序启动时间</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="692"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="930"/>
         <source>Mouse Input Method</source>
         <translation>鼠标输入方式</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="699"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="937"/>
         <source>Keyboard Input Method</source>
         <translation>键盘输入方式</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="717"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="985"/>
+        <source>Gamepad Type</source>
+        <translation>手柄类型</translation>
+    </message>
+    <message>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="995"/>
         <source>Address</source>
         <translation>地址</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1007"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1392"/>
         <source>Unknown Device</source>
         <translation>未知设备</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1073"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1459"/>
         <source>No ADB devices were found. Please check emulator or device connection.</source>
         <translation>未找到ADB设备。请检查模拟器或设备连接。</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1076"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1463"/>
         <source>No desktop windows were found that match the filter.</source>
         <translation>未找到符合筛选条件的桌面窗口。</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1078"/>
+        <location filename="../view/task_interface/components/Option_Widget_Mixin/ControllerSettingMixin.py" line="1466"/>
         <source>No devices were found for current controller type.</source>
         <translation>未找到与当前控制器类型匹配的设备。</translation>
     </message>
@@ -869,17 +886,17 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>DingTalkNoticeType</name>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="135"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="133"/>
         <source>DingTalk Webhook URL:</source>
         <translation>钉钉 Webhook 地址：</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="136"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="134"/>
         <source>DingTalk Secret:</source>
         <translation>钉钉密钥：</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="137"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="135"/>
         <source>DingTalk Status:</source>
         <translation>钉钉状态:</translation>
     </message>
@@ -900,22 +917,22 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>GotifyNoticeType</name>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="480"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="482"/>
         <source>Gotify Server URL:</source>
         <translation>Gotify 服务URL</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="481"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="483"/>
         <source>Gotify App Token:</source>
         <translation>Gotify 服务APP Token</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="482"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="484"/>
         <source>Notification Priority (0-10):</source>
         <translation>通知优先级 (0-10)</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="483"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="485"/>
         <source>Gotify Status:</source>
         <translation>Gotify 通知状态:</translation>
     </message>
@@ -923,17 +940,17 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>LarkNoticeType</name>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="187"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="185"/>
         <source>Lark Webhook URL:</source>
         <translation>飞书 Webhook 地址：</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="188"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="186"/>
         <source>Lark App Key:</source>
         <translation>飞书应用密钥：</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="189"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="187"/>
         <source>Lark Status:</source>
         <translation>飞书状态:</translation>
     </message>
@@ -986,7 +1003,7 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../view/main_window/main_window.py" line="283"/>
+        <location filename="../view/main_window/main_window.py" line="297"/>
         <source>Task</source>
         <translation>任务</translation>
     </message>
@@ -995,204 +1012,204 @@ The following configurations using this bundle will also be deleted:
         <translation type="vanished">特殊任务</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="294"/>
+        <location filename="../view/main_window/main_window.py" line="308"/>
         <source>Monitor</source>
         <translation>监控</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="300"/>
+        <location filename="../view/main_window/main_window.py" line="314"/>
         <source>Schedule</source>
         <translation>计划任务</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="308"/>
+        <location filename="../view/main_window/main_window.py" line="322"/>
         <source>test_interface</source>
         <translation>测试界面</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="337"/>
-        <location filename="../view/main_window/main_window.py" line="579"/>
-        <location filename="../view/main_window/main_window.py" line="593"/>
+        <location filename="../view/main_window/main_window.py" line="351"/>
+        <location filename="../view/main_window/main_window.py" line="620"/>
+        <location filename="../view/main_window/main_window.py" line="634"/>
         <source>Bundle</source>
         <translation>资源包</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="351"/>
+        <location filename="../view/main_window/main_window.py" line="365"/>
         <source>Setting</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="436"/>
+        <location filename="../view/main_window/main_window.py" line="477"/>
         <source>Show</source>
         <translation>展示</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="437"/>
+        <location filename="../view/main_window/main_window.py" line="478"/>
         <source>Hide</source>
         <translation>隐藏</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="438"/>
+        <location filename="../view/main_window/main_window.py" line="479"/>
         <source>Quit</source>
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="869"/>
+        <location filename="../view/main_window/main_window.py" line="996"/>
         <source>Config load failed, automatically reset to default. Backup of corrupted config file completed. Error details:</source>
         <translation>配置加载失败，已自动重置为默认设置。已完成损坏配置文件的备份。错误详情：</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="873"/>
+        <location filename="../view/main_window/main_window.py" line="1000"/>
         <source>Config load failed, automatically reset to default. Backup of corrupted config file completed.</source>
         <translation>配置加载失败，已自动重置为默认设置。损坏的配置文件备份已完成。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="880"/>
+        <location filename="../view/main_window/main_window.py" line="1007"/>
         <source>Config load failed, automatically reset to default. Failed to backup corrupted config file. Error details:</source>
         <translation>配置加载失败，已自动重置为默认值。备份损坏的配置文件失败。错误详情：</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="884"/>
+        <location filename="../view/main_window/main_window.py" line="1011"/>
         <source>Config load failed, automatically reset to default. Failed to backup corrupted config file.</source>
         <translation>配置加载失败，已自动重置为默认值。备份损坏的配置文件失败。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="890"/>
+        <location filename="../view/main_window/main_window.py" line="1017"/>
         <source>Config load failed and error occurred while resetting config:</source>
         <translation>配置加载失败，重置配置时发生错误：</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="894"/>
+        <location filename="../view/main_window/main_window.py" line="1021"/>
         <source>Config load failed and error occurred while resetting config.</source>
         <translation>配置加载失败，重置配置时发生错误。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="956"/>
-        <location filename="../view/main_window/main_window.py" line="962"/>
+        <location filename="../view/main_window/main_window.py" line="1083"/>
+        <location filename="../view/main_window/main_window.py" line="1089"/>
         <source>hotkey disabled due to permission issue</source>
         <translation>由于权限问题，热键已禁用</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="977"/>
+        <location filename="../view/main_window/main_window.py" line="1104"/>
         <source>Log is being packaged, please wait...</source>
         <translation>日志正在打包,请稍候</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="992"/>
+        <location filename="../view/main_window/main_window.py" line="1119"/>
         <source>Debug directory not found, cannot package logs.</source>
         <translation>debug目录不存在,无法打包日志</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1026"/>
+        <location filename="../view/main_window/main_window.py" line="1150"/>
         <source>Log packaging failed:</source>
         <translation>日志打包失败</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1198"/>
+        <location filename="../view/main_window/main_window.py" line="1331"/>
         <source>, there are </source>
         <translation>, 还有</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1200"/>
+        <location filename="../view/main_window/main_window.py" line="1333"/>
         <source> files not added</source>
         <translation>文件未添加</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1204"/>
+        <location filename="../view/main_window/main_window.py" line="1337"/>
         <source>Log has been packaged, but some files failed to read:</source>
         <translation>日志打包完成,但是部分文件读取失败</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1211"/>
+        <location filename="../view/main_window/main_window.py" line="1344"/>
         <source>Log has been packaged:</source>
         <translation>日志打包完成</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1218"/>
+        <location filename="../view/main_window/main_window.py" line="1351"/>
         <source>Packing logs</source>
         <translation>打包日志</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1219"/>
+        <location filename="../view/main_window/main_window.py" line="1352"/>
         <source>Please wait...</source>
         <translation>请稍等...</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1259"/>
-        <location filename="../view/main_window/main_window.py" line="1415"/>
-        <location filename="../view/main_window/main_window.py" line="1817"/>
+        <location filename="../view/main_window/main_window.py" line="1392"/>
+        <location filename="../view/main_window/main_window.py" line="1553"/>
+        <location filename="../view/main_window/main_window.py" line="1955"/>
         <source>Announcement</source>
         <translation>公告</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1262"/>
+        <location filename="../view/main_window/main_window.py" line="1395"/>
         <source>There is no announcement at the moment.</source>
         <translation>暂时没有公告</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1359"/>
-        <location filename="../view/main_window/main_window.py" line="1368"/>
+        <location filename="../view/main_window/main_window.py" line="1496"/>
+        <location filename="../view/main_window/main_window.py" line="1506"/>
         <source>Welcome</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1465"/>
+        <location filename="../view/main_window/main_window.py" line="1603"/>
         <source>This is the configuration area. Each configuration maps to different task sets.</source>
         <translation>这是配置区域。每个配置对应不同的任务集。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1471"/>
+        <location filename="../view/main_window/main_window.py" line="1609"/>
         <source>This is the task area. Set the controller and resource configurations first; aside from those two, every task can be dragged to reorder before running.</source>
         <translation>这是任务区域。请先设置控制器和资源配置；除了这两项和结束后运行任务之外，每个任务都可以拖动以重新排序。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1477"/>
+        <location filename="../view/main_window/main_window.py" line="1615"/>
         <source>The monitor area displays live footage once tasks are running.</source>
         <translation>任务运行时，监控区域会显示实时画面。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1483"/>
+        <location filename="../view/main_window/main_window.py" line="1621"/>
         <source>When you encounter issues while running, click this button and send the resulting debug.zip to the developers.</source>
         <translation>运行过程中如果遇到问题，请点击此按钮并将生成的 debug.zip 文件发送给开发人员。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1489"/>
+        <location filename="../view/main_window/main_window.py" line="1627"/>
         <source>Click this button to switch to special tasks; only tasks marked as special will execute.</source>
         <translation>点击此按钮切换到特殊任务；只有标记为特殊的任务才会执行。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1798"/>
+        <location filename="../view/main_window/main_window.py" line="1936"/>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1834"/>
+        <location filename="../view/main_window/main_window.py" line="1972"/>
         <source>Item </source>
         <translation>元素</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1838"/>
+        <location filename="../view/main_window/main_window.py" line="1976"/>
         <source>Detail</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1849"/>
-        <location filename="../view/main_window/main_window.py" line="1852"/>
+        <location filename="../view/main_window/main_window.py" line="1987"/>
+        <location filename="../view/main_window/main_window.py" line="1990"/>
         <source>Info</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1850"/>
+        <location filename="../view/main_window/main_window.py" line="1988"/>
         <source>Warning</source>
         <translation>警报</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1851"/>
+        <location filename="../view/main_window/main_window.py" line="1989"/>
         <source>Error</source>
         <translation>错误</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1911"/>
+        <location filename="../view/main_window/main_window.py" line="2056"/>
         <source>admin</source>
         <translation>管理员</translation>
     </message>
@@ -1253,7 +1270,7 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>MonitorDialog</name>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="901"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="920"/>
         <source>Monitor</source>
         <translation>监控</translation>
     </message>
@@ -1356,17 +1373,17 @@ The following configurations using this bundle will also be deleted:
         <translation type="vanished">启动监控任务</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="697"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="704"/>
         <source>No screenshot available to save</source>
         <translation>无法保存屏幕截图</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="705"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="712"/>
         <source>Screenshot saved to </source>
         <translation>截图保存到: </translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="708"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="715"/>
         <source>Failed to save screenshot: </source>
         <translation>屏幕截图保存失败：</translation>
     </message>
@@ -1375,33 +1392,33 @@ The following configurations using this bundle will also be deleted:
         <translation type="vanished">设备连接失败，无法开始监控</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="770"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="777"/>
         <source>Controller not ready. Please ensure the device is connected.</source>
         <translation>
 控制器尚未就绪。请确保设备已连接。</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="797"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="804"/>
         <source>Failed to start monitoring loop</source>
         <translation>启动监控循环失败</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="805"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="812"/>
         <source>Monitoring started</source>
         <translation>监控开始</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="825"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="832"/>
         <source>Failed to start monitoring: </source>
         <translation>启动监控失败：</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="879"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="895"/>
         <source>Monitoring stopped</source>
         <translation>监控停止</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="883"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="899"/>
         <source>Failed to stop monitoring: </source>
         <translation>停止监控失败：</translation>
     </message>
@@ -1516,37 +1533,37 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>NoticeTimingDialog</name>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="527"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="554"/>
         <source>Notification Timing Settings</source>
         <translation>通知时机设置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="542"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="569"/>
         <source>Notify when task flow starts</source>
         <translation>任务流开始时发出通知</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="543"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="570"/>
         <source>Notify when device connects successfully</source>
         <translation>设备连接成功后发出通知</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="544"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="571"/>
         <source>Notify when device connection fails</source>
         <translation>设备连接失败后发出通知</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="545"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="572"/>
         <source>Notify when task completes successfully</source>
         <translation>任务成功完成后发出通知</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="546"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="573"/>
         <source>Notify when task fails</source>
         <translation>任务失败时发出通知</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="547"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="574"/>
         <source>Notify when task flow completes</source>
         <translation>任务流程完成后发出通知。</translation>
     </message>
@@ -1740,12 +1757,12 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>QYWXNoticeType</name>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="433"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="431"/>
         <source>QYWXbot Key:</source>
         <translation>企业微信机器人密钥:</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="434"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="432"/>
         <source>QYWXbot Status:</source>
         <translation>企业微信机器人推送状态:</translation>
     </message>
@@ -1753,27 +1770,27 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>QmsgNoticeType</name>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="242"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="240"/>
         <source>Server:</source>
         <translation>服务器：</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="243"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="241"/>
         <source>Key:</source>
         <translation>密钥：</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="244"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="242"/>
         <source>User QQ:</source>
         <translation>用户 QQ：</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="245"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="243"/>
         <source>Robot QQ:</source>
         <translation>机器人 QQ：</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="246"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="244"/>
         <source>Qmsg Status:</source>
         <translation>QQ机器人状态:</translation>
     </message>
@@ -1924,37 +1941,37 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>SMTPNoticeType</name>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="306"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="304"/>
         <source>Use SSL</source>
         <translation>使用SSL</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="312"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="310"/>
         <source>Server Address:</source>
         <translation>服务器地址：</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="313"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="311"/>
         <source>Server Port:</source>
         <translation>服务器端口：</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="314"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="312"/>
         <source>User Name:</source>
         <translation>用户名：</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="315"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="313"/>
         <source>Password:</source>
         <translation>密码：</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="316"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="314"/>
         <source>Receive Mail:</source>
         <translation>接收邮件：</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="317"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="315"/>
         <source>SMTP Status:</source>
         <translation>SMTP 状态:</translation>
     </message>
@@ -3224,23 +3241,23 @@ Please check for updates first, or visit the GitHub releases page.</source>
 <context>
     <name>TaskFlowRunner</name>
     <message>
-        <location filename="../core/runner/task_flow.py" line="142"/>
+        <location filename="../core/runner/task_flow.py" line="173"/>
         <source>Resource or controller not initialized</source>
         <translation>资源或者控制器初始化失败</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="144"/>
+        <location filename="../core/runner/task_flow.py" line="175"/>
         <source>Agent connection failed</source>
         <translation>MAA Agent服务连接失败</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="146"/>
+        <location filename="../core/runner/task_flow.py" line="177"/>
         <source>Tasker not initialized</source>
         <translation>任务初始化失败</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="148"/>
-        <location filename="../core/runner/task_flow.py" line="153"/>
+        <location filename="../core/runner/task_flow.py" line="179"/>
+        <location filename="../core/runner/task_flow.py" line="184"/>
         <source>Unknown MaaFW error code: {}</source>
         <translation>未知的 MaaFW 错误代码：{}</translation>
     </message>
@@ -3249,71 +3266,71 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">未知配置</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="236"/>
+        <location filename="../core/runner/task_flow.py" line="268"/>
         <source>Task Flow Started</source>
         <translation>任务流程已启动</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="237"/>
+        <location filename="../core/runner/task_flow.py" line="269"/>
         <source>Task flow has been started.</source>
         <translation>任务流程已启动。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="313"/>
+        <location filename="../core/runner/task_flow.py" line="348"/>
         <source>Starting to connect device...</source>
         <translation>开始连接设备</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="320"/>
+        <location filename="../core/runner/task_flow.py" line="357"/>
         <source>Device Connection Failed</source>
         <translation>设备连接失败</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="321"/>
+        <location filename="../core/runner/task_flow.py" line="359"/>
         <source>Failed to connect to the device.</source>
         <translation>连接设备失败。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="324"/>
+        <location filename="../core/runner/task_flow.py" line="362"/>
         <source>Device connected successfully</source>
         <translation>设备连接成功</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="329"/>
+        <location filename="../core/runner/task_flow.py" line="367"/>
         <source>Device Connected Successfully</source>
         <translation>设备连接成功</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="330"/>
+        <location filename="../core/runner/task_flow.py" line="368"/>
         <source>Device has been connected successfully.</source>
         <translation>设备已成功连接。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="368"/>
+        <location filename="../core/runner/task_flow.py" line="406"/>
         <source>Agent Service Start</source>
         <translation>Agent 服务启动</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="373"/>
+        <location filename="../core/runner/task_flow.py" line="411"/>
         <source>Starting to load custom components...</source>
         <translation>开始加载自定义模块</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="421"/>
+        <location filename="../core/runner/task_flow.py" line="459"/>
         <source>Custom components loading failed, the flow is terminated: </source>
         <translation>自定义组件加载失败，流程终止：</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="426"/>
-        <location filename="../core/runner/task_flow.py" line="775"/>
+        <location filename="../core/runner/task_flow.py" line="464"/>
+        <location filename="../core/runner/task_flow.py" line="874"/>
         <source>please try to reset resource in setting</source>
         <translation>请尝试在设置中重置资源</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="473"/>
-        <location filename="../core/runner/task_flow.py" line="494"/>
-        <location filename="../core/runner/task_flow.py" line="521"/>
-        <location filename="../core/runner/task_flow.py" line="843"/>
+        <location filename="../core/runner/task_flow.py" line="511"/>
+        <location filename="../core/runner/task_flow.py" line="532"/>
+        <location filename="../core/runner/task_flow.py" line="559"/>
+        <location filename="../core/runner/task_flow.py" line="945"/>
         <source>Task Failed</source>
         <translation>任务失败</translation>
     </message>
@@ -3322,37 +3339,37 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">任务“{}”已中止或失败。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="505"/>
+        <location filename="../core/runner/task_flow.py" line="543"/>
         <source>Task Completed</source>
         <translation>任务完成</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="507"/>
+        <location filename="../core/runner/task_flow.py" line="545"/>
         <source>Task &apos;{}&apos; has been completed successfully.</source>
         <translation>任务“{}”已成功完成。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="475"/>
+        <location filename="../core/runner/task_flow.py" line="513"/>
         <source>Task &apos;{}&apos; failed and the flow was terminated.</source>
         <translation>任务“{}”失败，流程已终止。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="495"/>
+        <location filename="../core/runner/task_flow.py" line="533"/>
         <source>Task &apos;{}&apos; was aborted.</source>
         <translation>任务“{}”已中止。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="522"/>
+        <location filename="../core/runner/task_flow.py" line="560"/>
         <source>Task &apos;{}&apos; failed with error: {}</source>
         <translation>任务“{}”失败，错误信息：{}</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="540"/>
+        <location filename="../core/runner/task_flow.py" line="578"/>
         <source>All tasks have been completed</source>
         <translation>所有任务都已完成</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="545"/>
+        <location filename="../core/runner/task_flow.py" line="583"/>
         <source>Task flow error: </source>
         <translation>任务流程错误：</translation>
     </message>
@@ -3389,72 +3406,72 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">任务结果总结：</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="578"/>
+        <location filename="../core/runner/task_flow.py" line="633"/>
         <source>Task Flow Completed</source>
         <translation>任务完成</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="700"/>
+        <location filename="../core/runner/task_flow.py" line="754"/>
         <source>INFO</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="701"/>
+        <location filename="../core/runner/task_flow.py" line="755"/>
         <source>WARNING</source>
         <translation>警报</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="702"/>
+        <location filename="../core/runner/task_flow.py" line="756"/>
         <source>ERROR</source>
         <translation>错误</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="703"/>
+        <location filename="../core/runner/task_flow.py" line="757"/>
         <source>CRITICAL</source>
         <translation>严重</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="974"/>
+        <location filename="../core/runner/task_flow.py" line="1076"/>
         <source>{} hours {} minutes</source>
         <translation>{} 小时 {} 分钟</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="976"/>
+        <location filename="../core/runner/task_flow.py" line="1078"/>
         <source>{} minutes</source>
         <translation>{} 分钟</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="979"/>
+        <location filename="../core/runner/task_flow.py" line="1081"/>
         <source>Task entry &apos;{}&apos; has been running for {}. This may indicate a problem. Please check the task status.</source>
         <translation>任务条目“{}”已运行{}分钟。这可能表明存在问题。请检查任务状态。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="992"/>
+        <location filename="../core/runner/task_flow.py" line="1094"/>
         <source>Task running time too long</source>
         <translation>任务运行时间过长</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1291"/>
+        <location filename="../core/runner/task_flow.py" line="1529"/>
         <source>PlayCover controller is only supported on macOS</source>
         <translation>PlayCover 控制器仅支持 macOS。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="769"/>
+        <location filename="../core/runner/task_flow.py" line="868"/>
         <source>Resource </source>
         <translation>资源 </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="771"/>
+        <location filename="../core/runner/task_flow.py" line="870"/>
         <source> not found in bundle: </source>
         <translation> 不存在于: </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="808"/>
+        <location filename="../core/runner/task_flow.py" line="910"/>
         <source>Task </source>
         <translation>任务 </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="810"/>
+        <location filename="../core/runner/task_flow.py" line="912"/>
         <source> follows speedrun limit, skipping this run: </source>
         <translation>遵循speedrun限制,跳过本运行: </translation>
     </message>
@@ -3463,18 +3480,18 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">speedrun规则错误</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="844"/>
+        <location filename="../core/runner/task_flow.py" line="946"/>
         <source>Task &apos;{}&apos; execution failed.</source>
         <translation>任务“{}”执行失败。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="867"/>
+        <location filename="../core/runner/task_flow.py" line="969"/>
         <source>Stopping task...</source>
         <translation>停止任务中...</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="885"/>
-        <location filename="../core/runner/task_flow.py" line="968"/>
+        <location filename="../core/runner/task_flow.py" line="987"/>
+        <location filename="../core/runner/task_flow.py" line="1070"/>
         <source>Unknown Task Entry</source>
         <translation>未知任务入口</translation>
     </message>
@@ -3507,112 +3524,135 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">任务 {} 超时,{}次重启后仍无法运行,终止任务流.</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1035"/>
+        <location filename="../core/runner/task_flow.py" line="1137"/>
         <source>Auto searching ADB devices...</source>
         <translation>自动检测ADB设备...</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1058"/>
+        <location filename="../core/runner/task_flow.py" line="1160"/>
         <source>ADB path is empty, please configure ADB path in settings</source>
         <translation>ADB路径为空，请在控制器中配置ADB路径</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1066"/>
+        <location filename="../core/runner/task_flow.py" line="1168"/>
         <source>ADB connection address is empty, please configure device connection in settings</source>
         <translation>ADB 连接地址为空，请在控制器中配置设备连接</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1105"/>
+        <location filename="../core/runner/task_flow.py" line="1207"/>
         <source>try to start emulator</source>
         <translation>尝试启动模拟器</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1114"/>
+        <location filename="../core/runner/task_flow.py" line="1216"/>
         <source>waiting for emulator start...</source>
         <translation>等待模拟器启动中...</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1127"/>
-        <location filename="../core/runner/task_flow.py" line="1225"/>
-        <location filename="../core/runner/task_flow.py" line="1234"/>
-        <location filename="../core/runner/task_flow.py" line="1257"/>
-        <location filename="../core/runner/task_flow.py" line="1284"/>
+        <location filename="../core/runner/task_flow.py" line="1229"/>
+        <location filename="../core/runner/task_flow.py" line="1329"/>
+        <location filename="../core/runner/task_flow.py" line="1338"/>
+        <location filename="../core/runner/task_flow.py" line="1361"/>
+        <location filename="../core/runner/task_flow.py" line="1388"/>
+        <location filename="../core/runner/task_flow.py" line="1473"/>
+        <location filename="../core/runner/task_flow.py" line="1482"/>
+        <location filename="../core/runner/task_flow.py" line="1503"/>
+        <location filename="../core/runner/task_flow.py" line="1522"/>
         <source>Device connection failed</source>
         <translation>设备连接失败</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1196"/>
+        <location filename="../core/runner/task_flow.py" line="1298"/>
         <source>Auto searching Win32 windows...</source>
         <translation>自动搜索Win32窗口...</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1211"/>
-        <location filename="../core/runner/task_flow.py" line="1271"/>
+        <location filename="../core/runner/task_flow.py" line="1315"/>
+        <location filename="../core/runner/task_flow.py" line="1375"/>
+        <location filename="../core/runner/task_flow.py" line="1463"/>
+        <location filename="../core/runner/task_flow.py" line="1512"/>
         <source>Window handle (hwnd) is empty, please configure window connection in settings</source>
         <translation>窗口句柄 (hwnd) 为空，请在控制器中配置窗口连接</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1238"/>
+        <location filename="../core/runner/task_flow.py" line="1342"/>
+        <location filename="../core/runner/task_flow.py" line="1485"/>
         <source>try to start program</source>
         <translation>尝试启动程序</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1134"/>
+        <location filename="../core/runner/task_flow.py" line="1236"/>
         <source>Win32 controller is only supported on Windows</source>
         <translation>Win32 控制器仅在 Windows 系统上受支持。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1246"/>
+        <location filename="../core/runner/task_flow.py" line="799"/>
+        <source>this Controller requires admin permission to run</source>
+        <translation>此控制器需要管理员权限运行</translation>
+    </message>
+    <message>
+        <location filename="../core/runner/task_flow.py" line="1350"/>
+        <location filename="../core/runner/task_flow.py" line="1493"/>
         <source>waiting for program start...</source>
         <translation>等待程序启动中...</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1329"/>
+        <location filename="../core/runner/task_flow.py" line="1395"/>
+        <source>Gamepad controller is only supported on Windows</source>
+        <translation>Gamepad 控制器仅在 Windows 系统上受支持。</translation>
+    </message>
+    <message>
+        <location filename="../core/runner/task_flow.py" line="1452"/>
+        <source>Auto searching desktop windows...</source>
+        <translation>自动搜索桌面窗口...</translation>
+    </message>
+    <message>
+        <location filename="../core/runner/task_flow.py" line="1567"/>
         <source>PlayCover UUID is empty, please configure UUID in settings</source>
         <translation>PlayCover UUID 为空，请在设置中配置 UUID。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1337"/>
+        <location filename="../core/runner/task_flow.py" line="1575"/>
         <source>PlayCover connection address is empty, please configure address in settings</source>
         <translation>PlayCover 连接地址为空，请在设置中配置地址。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1346"/>
+        <location filename="../core/runner/task_flow.py" line="1584"/>
         <source>Connecting to PlayCover: {address} (UUID: {uuid})</source>
         <translation>正在连接到 PlayCover：{address}（UUID：{uuid}）</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1355"/>
+        <location filename="../core/runner/task_flow.py" line="1593"/>
         <source>PlayCover connected successfully</source>
         <translation>PlayCover 已成功连接</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1359"/>
+        <location filename="../core/runner/task_flow.py" line="1597"/>
         <source>Failed to connect to PlayCover</source>
         <translation>连接 PlayCover 失败</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1539"/>
+        <location filename="../core/runner/task_flow.py" line="1790"/>
         <source> seconds</source>
         <translation> 秒</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1871"/>
+        <location filename="../core/runner/task_flow.py" line="2134"/>
         <source>Notifications are being sent, please wait up to {} seconds</source>
         <translation>通知正在发送中，请稍候，最多{}秒。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="2164"/>
+        <location filename="../core/runner/task_flow.py" line="2435"/>
         <source>This period&apos;s remaining execution count is 0</source>
         <translation>本周期剩余执行次数为0</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="2176"/>
+        <location filename="../core/runner/task_flow.py" line="2447"/>
         <source>Not enough time passed since last run. Minimum interval is </source>
         <translation>自上次运行以来的时间不够。最小间隔为 </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="2179"/>
+        <location filename="../core/runner/task_flow.py" line="2450"/>
         <source> hours.</source>
         <translation> 小时.</translation>
     </message>
@@ -3706,28 +3746,28 @@ Please check for updates first, or visit the GitHub releases page.</source>
 <context>
     <name>TaskListToolBarWidget</name>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="291"/>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="466"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="295"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="521"/>
         <source>Tasks</source>
         <translation>任务</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="361"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="365"/>
         <source>No available tasks to add.</source>
         <translation>无可用任务</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="439"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="494"/>
         <source>Switch to Normal Tasks</source>
         <translation>切换到普通任务</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="447"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="502"/>
         <source>Special Tasks</source>
         <translation>特殊任务</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="465"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="520"/>
         <source>Switch to Special Tasks</source>
         <translation>切换到特殊任务</translation>
     </message>
@@ -3736,7 +3776,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">切换</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="492"/>
+        <location filename="../view/task_interface/components/ListToolBarWidget.py" line="547"/>
         <source>Base tasks (Resource, Post-Task) cannot be deleted (ID: {id})</source>
         <translation>基础任务不能被删除</translation>
     </message>
@@ -3816,12 +3856,12 @@ Please check for updates first, or visit the GitHub releases page.</source>
 <context>
     <name>WxPusherNoticeType</name>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="387"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="385"/>
         <source>WxPusher Spt:</source>
         <translation>微信推送SPT:</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/widget/NoticeType.py" line="388"/>
+        <location filename="../view/setting_interface/widget/NoticeType.py" line="386"/>
         <source>WxPusher Status:</source>
         <translation>微信推送状态:</translation>
     </message>

@@ -1,7 +1,7 @@
 from typing import Dict, Any
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout
 from PySide6.QtGui import QIntValidator
-from PySide6.QtCore import  QTimer
+from PySide6.QtCore import QTimer
 from qfluentwidgets import (
     BodyLabel,
     ComboBox,
@@ -21,7 +21,12 @@ from app.view.task_interface.components.Option_Widget_Mixin.DeviceFinderWidget i
     DeviceFinderWidget,
 )
 from PySide6.QtWidgets import QWidget
-from maa.define import MaaWin32InputMethodEnum, MaaWin32ScreencapMethodEnum,MaaAdbInputMethodEnum,MaaAdbScreencapMethodEnum
+from maa.define import (
+    MaaWin32InputMethodEnum,
+    MaaWin32ScreencapMethodEnum,
+    MaaAdbInputMethodEnum,
+    MaaAdbScreencapMethodEnum,
+)
 
 
 class ControllerSettingWidget(QWidget):
@@ -139,6 +144,66 @@ class ControllerSettingWidget(QWidget):
             return int(value)
         except (TypeError, ValueError):
             return None
+
+    def _sync_controller_meta_fields(
+        self,
+        controller_name: str,
+        controller_info: dict[str, Any] | None,
+        *,
+        persist: bool,
+    ) -> dict[str, Any]:
+        """
+        将 interface 中控制器的元信息字段复制到“该控制器自己的子配置字典”中：
+        例如 config 里的 "Win32控制器": {...}
+
+        规则：
+        - 控制器里写了什么（同名键），配置里就记什么
+        - 如果为 None 或不存在就不记
+        - 仅在值发生变化时才触发保存，避免无意义刷新
+        """
+        if not controller_name:
+            return {}
+
+        info = controller_info or {}
+        controller_cfg = self.current_config.setdefault(controller_name, {})
+        if not isinstance(controller_cfg, dict):
+            controller_cfg = {}
+            self.current_config[controller_name] = controller_cfg
+
+        changed: dict[str, Any] = {}
+        for key in ("permission_required", "display_short_side", "display_long_side", "display_raw"):
+            if key not in info:
+                continue
+            value = info.get(key)
+            if value is None:
+                continue
+            if controller_cfg.get(key) != value:
+                controller_cfg[key] = value
+                changed[key] = value
+
+        if persist and changed:
+            # 仅提交当前控制器子配置，确保落盘到 configs/*.json 的对应控制器块中
+            self._auto_save_options({controller_name: controller_cfg})
+
+        return changed
+
+    def _persist_current_controller_meta_if_needed(self) -> None:
+        """初始化阶段补偿：将当前控制器的 meta 字段复制到子配置并落盘。"""
+        controller_name = self.current_controller_name
+        ctrl_info = self.current_controller_info
+        if not controller_name or not isinstance(ctrl_info, dict):
+            return
+
+        changed = self._sync_controller_meta_fields(
+            controller_name, ctrl_info, persist=False
+        )
+        if not changed:
+            return
+
+        payload: dict[str, Any] = {controller_name: self.current_config[controller_name]}
+        if "controller_type" in self.current_config:
+            payload["controller_type"] = self.current_config["controller_type"]
+        self._auto_save_options(payload)
 
     @staticmethod
     def _normalize_method_name(value: str) -> str:
@@ -382,7 +447,9 @@ class ControllerSettingWidget(QWidget):
         self, controller_name: str
     ) -> tuple[str | None, str | None]:
         """获取 Gamepad 控制器的 class/window regex"""
-        mapping_data = getattr(self, "gamepad_default_mapping", {}).get(controller_name, {})
+        mapping_data = getattr(self, "gamepad_default_mapping", {}).get(
+            controller_name, {}
+        )
         return (
             mapping_data.get("class_regex"),
             mapping_data.get("window_regex"),
@@ -433,13 +500,18 @@ class ControllerSettingWidget(QWidget):
                 continue
             # ADB 控制器在所有平台都显示（不需要过滤）
             filtered_controllers.append(ctrl)
-        
+
         self.controller_type_mapping = {
             ctrl.get("label", ctrl.get("name", "")): {
                 "name": ctrl.get("name", ""),
                 "type": ctrl.get("type", ""),
                 "icon": ctrl.get("icon", ""),
                 "description": ctrl.get("description", ""),
+                # 按 interface 原样保留：None/不存在表示“不需要保存/不参与判断”
+                "permission_required": ctrl.get("permission_required"),
+                "display_short_side": ctrl.get("display_short_side"),
+                "display_long_side": ctrl.get("display_long_side"),
+                "display_raw": ctrl.get("display_raw"),
                 "playcover": ctrl.get("playcover", {}),  # 保存 playcover 配置
                 "gamepad": ctrl.get("gamepad", {}),  # 保存 gamepad 配置
             }
@@ -547,7 +619,11 @@ class ControllerSettingWidget(QWidget):
                 description = self.current_controller_info.get("description", "")
                 self._set_description(description, has_options=True)
                 # 如果有描述，显示描述区域
-                if description and hasattr(self, "_toggle_description") and self._toggle_description:
+                if (
+                    description
+                    and hasattr(self, "_toggle_description")
+                    and self._toggle_description
+                ):
                     self._toggle_description(True)
 
             # 强制调用刷新函数，确保界面更新（即使索引没有变化）
@@ -555,10 +631,29 @@ class ControllerSettingWidget(QWidget):
         finally:
             self._syncing = False
 
+        # 初始化期间不会自动保存（_syncing=True 会短路 _auto_save_options），这里延迟补偿一次
+        try:
+            QTimer.singleShot(
+                0,
+                self._persist_current_controller_meta_if_needed,
+            )
+        except Exception:
+            # 兜底：若定时器不可用，直接尝试一次（此时 _syncing 已为 False）
+            self._persist_current_controller_meta_if_needed()
+
     def _create_controller_combobox(self):
         """创建控制器类型下拉框"""
         ctrl_label = BodyLabel(self.tr("Controller Type"))
-        self.parent_layout.addWidget(ctrl_label)
+        admin_hint = BodyLabel(self.tr("this controller requires admin permission to run"))
+        admin_hint.setStyleSheet("color: rgb(255, 0, 0); font-weight: bold;")
+        admin_hint.setVisible(False)
+        self.resource_setting_widgets["ctrl_admin_hint"] = admin_hint
+
+        title_layout = QHBoxLayout()
+        title_layout.addWidget(ctrl_label)
+        title_layout.addWidget(admin_hint)
+        title_layout.addStretch()
+        self.parent_layout.addLayout(title_layout)
 
         ctrl_combo = ComboBox()
         self.resource_setting_widgets["ctrl_combo"] = ctrl_combo
@@ -572,6 +667,36 @@ class ControllerSettingWidget(QWidget):
 
         self.parent_layout.addWidget(ctrl_combo)
         ctrl_combo.currentTextChanged.connect(self._on_controller_type_changed)
+
+    def _update_admin_permission_hint(
+        self, controller_info: dict[str, Any] | None
+    ) -> None:
+        """根据 interface.permission_required 与当前权限，更新红色提示文案"""
+        hint: BodyLabel | None = self.resource_setting_widgets.get("ctrl_admin_hint")
+        if hint is None:
+            return
+
+        required = bool((controller_info or {}).get("permission_required", False))
+        # 通过 cfg 读取运行时管理员标记（由主窗口在启动时刷新）
+        try:
+            is_admin = bool(cfg.get(cfg.is_admin))
+        except Exception:
+            is_admin = False
+
+        # 兜底：若主窗口尚未刷新 cfg.is_admin，尝试在此处实时检测（Windows）
+        if (not is_admin) and sys.platform.startswith("win32"):
+            try:
+                import ctypes
+
+                is_admin = bool(ctypes.windll.shell32.IsUserAnAdmin())
+                try:
+                    cfg.set(cfg.is_admin, is_admin)
+                except Exception:
+                    pass
+            except Exception:
+                is_admin = False
+
+        hint.setVisible(required and (not is_admin))
 
     def _create_search_option(self):
         """创建搜索设备下拉框"""
@@ -938,10 +1063,13 @@ class ControllerSettingWidget(QWidget):
         elif current_controller_type == "playcover":
             # 获取默认 UUID（从 interface 配置中）
             default_uuid = "maa.playcover"
-            if self.current_controller_info and "playcover" in self.current_controller_info:
+            if (
+                self.current_controller_info
+                and "playcover" in self.current_controller_info
+            ):
                 playcover_config = self.current_controller_info.get("playcover", {})
                 default_uuid = playcover_config.get("uuid", "maa.playcover")
-            
+
             self.current_config[current_controller_name] = self.current_config.get(
                 current_controller_name,
                 {
@@ -950,7 +1078,9 @@ class ControllerSettingWidget(QWidget):
                 },
             )
             # 确保 uuid 字段存在（如果配置中已有但为空，使用默认值）
-            if "uuid" not in self.current_config[current_controller_name] or not self.current_config[current_controller_name].get("uuid"):
+            if "uuid" not in self.current_config[
+                current_controller_name
+            ] or not self.current_config[current_controller_name].get("uuid"):
                 self.current_config[current_controller_name]["uuid"] = default_uuid
         # Parse JSON string back to dict for "config" key
         if key == "config":
@@ -996,12 +1126,12 @@ class ControllerSettingWidget(QWidget):
             self.current_config[current_controller_name]["address"] = value
         else:
             self.current_config[current_controller_name][key] = value
-        
+
         # 如果是 playcover 类型，清理掉旧的 playcover_uuid 字段
         if current_controller_type == "playcover":
             if "playcover_uuid" in self.current_config[current_controller_name]:
                 del self.current_config[current_controller_name]["playcover_uuid"]
-        
+
         # 仅提交当前控制器的配置，避免无关字段触发任务列表误刷新
         self._auto_save_options(
             {current_controller_name: self.current_config[current_controller_name]}
@@ -1009,17 +1139,20 @@ class ControllerSettingWidget(QWidget):
 
     def _normalize_config_for_json(self, config: Any) -> Any:
         """递归规范化配置数据，确保所有路径类型都被转换为字符串
-        
+
         Args:
             config: 需要规范化的配置数据
-            
+
         Returns:
             规范化后的配置数据
         """
         if isinstance(config, Path):
             return str(config)
         elif isinstance(config, dict):
-            return {key: self._normalize_config_for_json(value) for key, value in config.items()}
+            return {
+                key: self._normalize_config_for_json(value)
+                for key, value in config.items()
+            }
         elif isinstance(config, list):
             return [self._normalize_config_for_json(item) for item in config]
         else:
@@ -1067,13 +1200,17 @@ class ControllerSettingWidget(QWidget):
                     controller_name = controller_info["name"]
                     if controller_name in self.current_config:
                         # 规范化配置数据，确保所有路径类型都被转换为字符串
-                        controller_task_option[controller_name] = self._normalize_config_for_json(
-                            self.current_config[controller_name]
+                        controller_task_option[controller_name] = (
+                            self._normalize_config_for_json(
+                                self.current_config[controller_name]
+                            )
                         )
 
                 # 更新任务选项（只更新相关字段，保留其他字段）
                 # 规范化整个 controller_task_option，确保所有路径类型都被转换为字符串
-                controller_task_option = self._normalize_config_for_json(controller_task_option)
+                controller_task_option = self._normalize_config_for_json(
+                    controller_task_option
+                )
                 task.task_option.update(controller_task_option)
                 # 确保不包含 speedrun_config
                 if "_speedrun_config" in task.task_option:
@@ -1165,7 +1302,9 @@ class ControllerSettingWidget(QWidget):
             }
             self._ensure_defaults(controller_cfg, gamepad_defaults)
             # 兼容旧配置 / interface.json: "Xbox360"/"DualShock4" -> 0/1
-            resolved = self._resolve_gamepad_type_value(controller_cfg.get("gamepad_type"))
+            resolved = self._resolve_gamepad_type_value(
+                controller_cfg.get("gamepad_type")
+            )
             if resolved is None:
                 resolved = (
                     getattr(self, "gamepad_default_mapping", {})
@@ -1188,7 +1327,7 @@ class ControllerSettingWidget(QWidget):
             if controller_info and "playcover" in controller_info:
                 playcover_config = controller_info.get("playcover", {})
                 default_uuid = playcover_config.get("uuid", "maa.playcover")
-            
+
             playcover_defaults = {
                 "uuid": default_uuid,
                 "address": "",
@@ -1212,17 +1351,32 @@ class ControllerSettingWidget(QWidget):
                     self.current_config[controller_name]["wait_time"] = v
                     widget.setText(str(v))
                 elif name == "gamepad_hwnd":
-                    widget.setText(str(self.current_config[controller_name].get("hwnd", "")))
+                    widget.setText(
+                        str(self.current_config[controller_name].get("hwnd", ""))
+                    )
                 elif name == "gamepad_program_path":
-                    widget.setText(str(self.current_config[controller_name].get("program_path", "")))
+                    widget.setText(
+                        str(
+                            self.current_config[controller_name].get("program_path", "")
+                        )
+                    )
                 elif name == "gamepad_program_params":
-                    widget.setText(str(self.current_config[controller_name].get("program_params", "")))
+                    widget.setText(
+                        str(
+                            self.current_config[controller_name].get(
+                                "program_params", ""
+                            )
+                        )
+                    )
                 elif name in self.current_config[controller_name]:
                     value = self.current_config[controller_name][name]
                     widget.setText(
                         jsonc.dumps(value) if isinstance(value, dict) else str(value)
                     )
-            elif isinstance(widget, ComboBox) and name in self.current_config[controller_name]:
+            elif (
+                isinstance(widget, ComboBox)
+                and name in self.current_config[controller_name]
+            ):
                 target = self.current_config[controller_name][name]
                 widget.setCurrentIndex(self._value_to_index_any(widget, target))
             elif name == "playcover_address" and controller_type == "playcover":
@@ -1248,6 +1402,7 @@ class ControllerSettingWidget(QWidget):
                 # 先尝试断开旧连接（若未连接会抛 RuntimeError，忽略即可）
                 # 使用 warnings 来抑制 PySide6 的 RuntimeWarning
                 import warnings
+
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore", RuntimeWarning)
                     search_option.no_device_found.disconnect(self._on_no_device_found)
@@ -1257,18 +1412,18 @@ class ControllerSettingWidget(QWidget):
             except Exception:
                 # 捕获其他所有异常，确保不会影响后续连接
                 pass
-            
+
             # 连接信号
             try:
                 search_option.no_device_found.connect(self._on_no_device_found)
             except (AttributeError, RuntimeError) as e:
                 logger.warning(f"连接 no_device_found 信号失败: {e}")
-        
+
         # 确保 search_option 有效后再访问 combo_box
         if not search_option:
             logger.warning("search_option 为 None，无法设置设备名称")
             return
-        
+
         combo_box = search_option.combo_box
         combo_box.blockSignals(True)
         # 先尝试定位已有的设备项，避免重复添加
@@ -1304,7 +1459,9 @@ class ControllerSettingWidget(QWidget):
                     "No ADB devices were found. Please check emulator or device connection."
                 )
             elif controller_type.lower() in ("win32", "gamepad"):
-                message = self.tr("No desktop windows were found that match the filter.")
+                message = self.tr(
+                    "No desktop windows were found that match the filter."
+                )
             else:
                 message = self.tr("No devices were found for current controller type.")
 
@@ -1323,7 +1480,7 @@ class ControllerSettingWidget(QWidget):
                                 signalBus.info_bar_requested.emit(level, message)
                         except Exception as e:
                             logger.warning(f"延迟发送 InfoBar 提示失败: {e}")
-                    
+
                     # 延迟 300ms 发送，确保界面更新和动画完成后再显示 InfoBar
                     # 如果是在清理选项时触发的信号，这个延迟可以确保界面已经稳定
                     QTimer.singleShot(300, delayed_emit)
@@ -1463,10 +1620,18 @@ class ControllerSettingWidget(QWidget):
 
         # 更新当前配置
         self.current_config["controller_type"] = ctrl_info["name"]
-        
+
+        # interface.json 新增字段：permission_required / display_* 写入到“当前控制器子配置”
+        controller_name = ctrl_info["name"]
+        meta_changed = self._sync_controller_meta_fields(
+            controller_name, ctrl_info, persist=False
+        )
+
+        # interface.json 新增字段：permission_required（需要管理员权限时显示红字提示）
+        self._update_admin_permission_hint(ctrl_info)
+
         # 如果是 playcover 类型，确保 uuid 字段存在并保存
         if new_type == "playcover":
-            controller_name = ctrl_info["name"]
             if controller_name not in self.current_config:
                 self.current_config[controller_name] = {}
             # 获取默认 UUID（从 interface 配置中）
@@ -1475,7 +1640,9 @@ class ControllerSettingWidget(QWidget):
                 playcover_config = ctrl_info.get("playcover", {})
                 default_uuid = playcover_config.get("uuid", "maa.playcover")
             # 如果配置中没有 uuid 或为空，设置默认值
-            if "uuid" not in self.current_config[controller_name] or not self.current_config[controller_name].get("uuid"):
+            if "uuid" not in self.current_config[
+                controller_name
+            ] or not self.current_config[controller_name].get("uuid"):
                 self.current_config[controller_name]["uuid"] = default_uuid
             # 确保 address 字段存在
             if "address" not in self.current_config[controller_name]:
@@ -1484,13 +1651,15 @@ class ControllerSettingWidget(QWidget):
             if "playcover_uuid" in self.current_config[controller_name]:
                 del self.current_config[controller_name]["playcover_uuid"]
             # 保存 playcover 配置（包括 uuid 和 address）
-            self._auto_save_options({
-                "controller_type": ctrl_info["name"],
-                controller_name: self.current_config[controller_name]
-            })
+            self._auto_save_options(
+                {"controller_type": ctrl_info["name"], controller_name: self.current_config[controller_name]}
+            )
         else:
-            # 仅提交 controller_type 字段
-            self._auto_save_options({"controller_type": ctrl_info["name"]})
+            # 默认只提交 controller_type；若 meta 字段有变化则连同控制器子配置一起提交，确保落盘
+            payload: dict[str, Any] = {"controller_type": ctrl_info["name"]}
+            if meta_changed:
+                payload[controller_name] = self.current_config.get(controller_name, {})
+            self._auto_save_options(payload)
 
         # 更换搜索设备类型（playcover 不显示搜索设备）
         search_option: DeviceFinderWidget = self.resource_setting_widgets[
@@ -1506,12 +1675,18 @@ class ControllerSettingWidget(QWidget):
             if "search_combo_label" in self.resource_setting_widgets:
                 self.resource_setting_widgets["search_combo_label"].setVisible(True)
             # Gamepad 复用 Win32 的窗口查找逻辑，但它们仍是独立控制器（仅设备搜索复用）
-            search_option.change_controller_type("win32" if new_type == "gamepad" else new_type)
+            search_option.change_controller_type(
+                "win32" if new_type == "gamepad" else new_type
+            )
             if new_type in ("win32", "gamepad"):
                 if new_type == "win32":
-                    class_regex, window_regex = self._get_win32_regex_filters(ctrl_info["name"])
+                    class_regex, window_regex = self._get_win32_regex_filters(
+                        ctrl_info["name"]
+                    )
                 else:
-                    class_regex, window_regex = self._get_gamepad_regex_filters(ctrl_info["name"])
+                    class_regex, window_regex = self._get_gamepad_regex_filters(
+                        ctrl_info["name"]
+                    )
                 search_option.set_win32_filters(class_regex, window_regex)
             else:
                 search_option.set_win32_filters(None, None)
@@ -1634,14 +1809,17 @@ class ControllerSettingWidget(QWidget):
             if search_option and hasattr(search_option, "no_device_found"):
                 try:
                     import warnings
+
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore", RuntimeWarning)
-                        search_option.no_device_found.disconnect(self._on_no_device_found)
+                        search_option.no_device_found.disconnect(
+                            self._on_no_device_found
+                        )
                 except (RuntimeError, TypeError):
                     pass
                 except Exception:
                     pass
-        
+
         # 从布局中移除所有控件
         widgets_to_remove = list(self.resource_setting_widgets.values())
 
