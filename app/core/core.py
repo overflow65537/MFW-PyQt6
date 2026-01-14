@@ -811,6 +811,11 @@ class ServiceCoordinator:
 
         :param task_id: 指定只运行某个任务（可选）
         """
+        # 任务流执行前刷新一次 is_hidden，确保 runner 只需读取 is_checked/is_hidden
+        try:
+            self.task_service.refresh_hidden_flags()
+        except Exception:
+            pass
         return await self.task_runner.run_tasks_flow(task_id)
 
     async def stop_task_flow(self):

@@ -246,7 +246,7 @@ class TaskFlowRunner(QObject):
         self._is_single_task_mode = is_single_task_mode
         effective_start_task_id = None
         if not is_single_task_mode and start_task_id:
-            current_tasks = getattr(self.task_service, "current_tasks", [])
+            current_tasks = self.task_service.current_tasks
             for task in current_tasks:
                 if task.item_id == start_task_id:
                     effective_start_task_id = start_task_id
@@ -257,6 +257,9 @@ class TaskFlowRunner(QObject):
                 )
         else:
             effective_start_task_id = None
+
+        # 注意：is_hidden 由配置层（TaskService/Coordinator/UI）负责刷新；
+        # runner 仅消费 is_checked/is_hidden 来执行任务流
 
         # 初始化任务状态：仅在完整运行时将所有选中的任务设置为等待中
         # 单独运行时，只会在对应的任务处显示进行中/完成/失败，不显示等待图标
@@ -561,7 +564,7 @@ class TaskFlowRunner(QObject):
                             "manual_stop": bool(self._manual_stop),
                             "need_stop": bool(self.need_stop),
                             "single_task_mode": bool(is_single_task_mode),
-                            "tasks_started": bool(getattr(self, "_tasks_started", False)),
+                            "tasks_started": bool(self._tasks_started),
                         }
                     )
                 except Exception as exc:
@@ -679,8 +682,9 @@ class TaskFlowRunner(QObject):
             if not task:
                 logger.error(f"任务 ID '{task_id}' 不存在")
                 return tasks
-            if task.is_hidden:
-                logger.warning(f"任务 '{task.name}' 被隐藏，跳过执行")
+            # 执行层只关心“任务是否被禁用”，不展开禁用原因
+            if self._is_task_disabled(task):
+                logger.info(f"任务 '{task.name}' 被禁用，跳过执行")
                 return tasks
             if not task.is_checked:
                 logger.warning(f"任务 '{task.name}' 未被选中，跳过执行")
@@ -702,12 +706,8 @@ class TaskFlowRunner(QObject):
             if not task.is_checked or task.is_special:
                 continue
 
-            if task.is_hidden:
-                logger.info(f"任务 '{task.name}' 被隐藏，跳过执行")
-                continue
-
-            if not self._should_run_task_by_resource(task):
-                logger.info(f"任务 '{task.name}' 因资源过滤被跳过")
+            if self._is_task_disabled(task):
+                logger.info(f"任务 '{task.name}' 被禁用，跳过执行")
                 continue
 
             tasks.append(task)
@@ -812,8 +812,11 @@ class TaskFlowRunner(QObject):
         if not task:
             logger.error(f"任务 ID '{task_id}' 不存在")
             return
-        elif task.is_hidden:
-            logger.warning(f"任务 '{task.name}' 被隐藏，跳过执行")
+        # 执行层只关心“任务是否被禁用”，不展开禁用原因
+        # 注意：即使 UI 未刷新也没关系，因为 run_tasks_flow 开始时会刷新一次 is_hidden；
+        # 若未来有独立调用 run_task 的路径，可在此处补一次刷新。
+        elif self._is_task_disabled(task):
+            logger.info(f"任务 '{task.name}' 被禁用，跳过执行")
             return
         elif not task.is_checked:
             logger.warning(f"任务 '{task.name}' 未被选中，跳过执行")
@@ -1782,7 +1785,11 @@ class TaskFlowRunner(QObject):
             for device in devices:
                 # 优先使用设备自身的 pid，如果没有则使用配置中的 pid
                 device_ld_pid = (
-                    (getattr(device, "config", {}) or {})
+                    (
+                        (device.config or {})
+                        if hasattr(device, "config") and isinstance(device.config, dict)
+                        else {}
+                    )
                     .get("extras", {})
                     .get("ld", {})
                     .get("pid")
@@ -2102,7 +2109,7 @@ class TaskFlowRunner(QObject):
 
             if controller_type == "adb":
                 # 通过当前记录的 ADB address 尽力判断设备是否仍存在
-                adb_cfg = getattr(self, "adb_controller_config", None)
+                adb_cfg = self.adb_controller_config
                 if not isinstance(adb_cfg, dict):
                     return
                 address = (adb_cfg.get("address") or "").strip()
@@ -2155,7 +2162,11 @@ class TaskFlowRunner(QObject):
             try:
                 devices = Toolkit.find_adb_devices() or []
                 for dev in devices:
-                    if str(getattr(dev, "address", "")).strip() == addr:
+                    try:
+                        dev_addr = str(dev.address).strip()
+                    except Exception:
+                        dev_addr = ""
+                    if dev_addr == addr:
                         return True
                 return False
             except Exception:
@@ -2589,47 +2600,12 @@ class TaskFlowRunner(QObject):
 
         return {}
 
-    def _should_run_task_by_resource(self, task: TaskItem) -> bool:
-        """根据当前选择的资源判断任务是否应该执行
+    def _is_task_disabled(self, task: TaskItem) -> bool:
+        """统一的“任务是否被禁用”判断（执行层只关心结论，不关心原因）。
 
-        规则：
-        - 基础任务（资源、完成后操作）始终执行
-        - 如果任务没有 resource 字段或 resource 为空列表，表示所有资源都可用，执行
-        - 如果任务的 resource 列表包含当前资源，则执行
-        - 否则跳过
+        禁用来源可能包括：
+        - UI 侧标记的 is_hidden
+        - 配置层（TaskService）计算出的 resource/controller 约束
         """
-        # 基础任务始终执行
-        if task.is_base_task():
-            return True
-
-        try:
-            resource_cfg = self.task_service.get_task(_RESOURCE_)  # sourcery skip
-            if not resource_cfg:
-                return True  # 如果没有资源设置任务，执行所有任务
-
-            current_resource_name = resource_cfg.task_option.get("resource", "")
-            if not current_resource_name:
-                return True
-
-            # 获取 interface 中的任务定义
-            interface = self.task_service.interface
-            if not interface:
-                return True
-
-            # 查找任务定义中的 resource 字段
-            for task_def in interface.get("task", []):
-                if task_def.get("name") == task.name:
-                    task_resources = task_def.get("resource", [])
-                    # 如果任务没有 resource 字段，或者 resource 为空列表，表示所有资源都可用
-                    if not task_resources:
-                        return True
-                    # 如果任务的 resource 列表包含当前资源，则执行
-                    if current_resource_name in task_resources:
-                        return True
-                    return False
-
-            # 如果找不到任务定义，默认执行
-            return True
-        except Exception:
-            # 发生错误时，默认执行所有任务
-            return True
+        # 约定：任务流执行前由配置层（TaskService/Coordinator/UI）刷新过 is_hidden
+        return bool(task.is_hidden)

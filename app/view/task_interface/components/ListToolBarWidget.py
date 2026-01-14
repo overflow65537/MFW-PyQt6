@@ -28,6 +28,7 @@ from app.view.task_interface.components.AddTaskMessageBox import (
 from app.core.core import ServiceCoordinator
 from app.view.task_interface.components.ListItem import TaskListItem, ConfigListItem
 from app.common.signal_bus import signalBus
+from app.common.constants import _RESOURCE_, _CONTROLLER_, PRE_CONFIGURATION
 
 
 class BaseListToolBarWidget(QWidget):
@@ -175,7 +176,7 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
 
     def add_config(self):
         """添加配置项。"""
-        if getattr(self, "_locked", False):
+        if self._locked:
             signalBus.info_bar_requested.emit(
                 "warning", self.tr("Task is running, configurations are locked.")
             )
@@ -198,7 +199,10 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
                 bundles.append(bundle_info)
         except Exception:
             # 回退：尝试从 _main_config 读取（兼容旧数据/异常场景）
-            main_cfg = getattr(config_service, "_main_config", None)
+            try:
+                main_cfg = config_service._main_config  # type: ignore[attr-defined]
+            except Exception:
+                main_cfg = None
             if main_cfg:
                 bundle_source = main_cfg.get("bundle", [])
                 if isinstance(bundle_source, dict):
@@ -225,7 +229,7 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
 
     def remove_config(self):
         """移除配置项"""
-        if getattr(self, "_locked", False):
+        if self._locked:
             signalBus.info_bar_requested.emit(
                 "warning", self.tr("Task is running, configurations are locked.")
             )
@@ -311,7 +315,7 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             bool: 如果有特殊任务返回 True，否则返回 False
         """
         try:
-            interface = getattr(self.service_coordinator.task, "interface", {})
+            interface = self.service_coordinator.task.interface
             if not interface:
                 return False
 
@@ -353,8 +357,8 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             idx: 插入位置索引，默认为-2（倒数第二个位置）
         """
         # 打开添加任务对话框
-        task_map = getattr(self.service_coordinator.task, "default_option", {})
-        interface = getattr(self.service_coordinator.task, "interface", {})
+        task_map = self.service_coordinator.task.default_option
+        interface = self.service_coordinator.task.interface
         filtered_task_map = self._filter_task_map_by_mode(task_map, interface)
         if not filtered_task_map:
             signalBus.info_bar_requested.emit(
@@ -384,14 +388,39 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             if name:
                 task_special_map[name] = task_def.get("spt", False)
 
-        # 获取当前配置中的资源
+        # 获取当前配置中的资源/控制器类型
         current_resource_name = ""
+        current_controller_type = ""
         try:
-            pre_config_task = self.service_coordinator.task.get_task(
-                "Pre-Configuration"
-            )
-            if pre_config_task:
-                current_resource_name = pre_config_task.task_option.get("resource", "")
+            # 新版本：资源选项位于固定基础任务 `Resource`
+            resource_task = self.service_coordinator.task.get_task(_RESOURCE_)
+            if resource_task and isinstance(resource_task.task_option, dict):
+                current_resource_name = resource_task.task_option.get("resource", "")
+            # 向后兼容：旧版本可能把 resource 放在 `Pre-Configuration`
+            if not current_resource_name:
+                pre_config_task = self.service_coordinator.task.get_task(
+                    PRE_CONFIGURATION
+                )
+                if pre_config_task and isinstance(pre_config_task.task_option, dict):
+                    current_resource_name = pre_config_task.task_option.get(
+                        "resource", ""
+                    )
+
+            # 控制器类型优先从固定基础任务 `Controller` 读取
+            controller_task = self.service_coordinator.task.get_task(_CONTROLLER_)
+            if controller_task and isinstance(controller_task.task_option, dict):
+                current_controller_type = controller_task.task_option.get(
+                    "controller_type", ""
+                )
+            # 向后兼容：旧版本可能把 controller_type 放在 `Pre-Configuration`
+            if not current_controller_type:
+                pre_config_task = self.service_coordinator.task.get_task(
+                    PRE_CONFIGURATION
+                )
+                if pre_config_task and isinstance(pre_config_task.task_option, dict):
+                    current_controller_type = pre_config_task.task_option.get(
+                        "controller_type", ""
+                    )
         except Exception:
             pass
 
@@ -405,9 +434,35 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
                     return False
 
             # 根据资源过滤任务
-            if current_resource_name:
+            if current_resource_name or current_controller_type:
                 for task_def in interface.get("task", []):
-                    if task_def.get("name") == task_name:
+                    if task_def.get("name") != task_name:
+                        continue
+
+                    # --- controller 过滤（空=全显示） ---
+                    if current_controller_type:
+                        controllers = task_def.get("controller", None)
+                        if controllers not in (None, "", [], {}):
+                            allowed_ctrl: list[str] = []
+                            if isinstance(controllers, str):
+                                if controllers.strip():
+                                    allowed_ctrl = [controllers.strip()]
+                            elif isinstance(controllers, list):
+                                allowed_ctrl = [
+                                    str(x).strip()
+                                    for x in controllers
+                                    if x is not None and str(x).strip()
+                                ]
+                            # 非支持格式：默认全显示
+                            if allowed_ctrl:
+                                if (
+                                    str(current_controller_type).strip().lower()
+                                    not in {s.lower() for s in allowed_ctrl}
+                                ):
+                                    return False
+
+                    # --- resource 过滤（空=全显示） ---
+                    if current_resource_name:
                         task_resources = task_def.get("resource", [])
                         # 如果任务没有 resource 字段，或者 resource 为空列表，表示所有资源都可用
                         if not task_resources:
@@ -480,7 +535,7 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         widget = self.task_list.itemWidget(cur)
         if not widget or not isinstance(widget, TaskListItem):
             return
-        task_id = getattr(widget.task, "item_id", None)
+        task_id = widget.task.item_id if widget.task else None
         if not task_id:
             return
         elif widget.task.is_base_task():

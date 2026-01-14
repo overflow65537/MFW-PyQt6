@@ -186,22 +186,27 @@ class TaskDragListWidget(BaseListWidget):
         self.service_coordinator.select_task(item_id)
 
     def _should_include(self, task: TaskItem) -> bool:
-        """根据过滤模式判断任务是否应显示在当前列表。"""
-        if self._filter_mode == "special":
-            if not task.is_special:
-                return False
-        elif self._filter_mode == "normal":
-            if task.is_special:
-                return False
-        
-        # 根据资源过滤任务
-        should_show = self._should_show_by_resource(task)
+        """判断任务是否应显示在当前列表。
+
+        注意：`task.is_hidden` 是“能力禁用”标记（由配置层/列表层根据 resource/controller 计算）。
+        列表过滤模式（normal/special）只是 UI 展示策略，不应影响 is_hidden 的正确性。
+        """
+        # 先根据资源/控制器刷新一次 is_hidden（避免因 normal/special 过滤提前 return 而漏更新）
+        should_show_by_resource = self._should_show_by_resource(task)
+        should_show_by_controller = self._should_show_by_controller(task)
+        capability_show = should_show_by_resource and should_show_by_controller
         
         # 更新任务的 is_hidden 状态（仅标记，不改变选中状态）
-        task.is_hidden = not should_show
+        task.is_hidden = not capability_show
         
-        if not should_show:
+        if task.is_hidden:
             return False
+
+        # 再应用 UI 过滤模式（不改变 is_hidden）
+        if self._filter_mode == "special":
+            return bool(task.is_special)
+        if self._filter_mode == "normal":
+            return not bool(task.is_special)
         
         return True
     
@@ -228,7 +233,10 @@ class TaskDragListWidget(BaseListWidget):
                 return True  # 如果没有选择资源，显示所有任务
             
             # 获取 interface 中的任务定义
-            interface = getattr(self.service_coordinator.task, "interface", {})
+            try:
+                interface = self.service_coordinator.task.interface
+            except Exception:
+                interface = {}
             if not interface:
                 logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 没有 interface，显示所有任务")
                 return True
@@ -254,6 +262,66 @@ class TaskDragListWidget(BaseListWidget):
         except Exception as e:
             # 发生错误时，默认显示所有任务
             logger.warning(f"[_should_show_by_resource] 任务 {task.name}: 发生错误，默认显示: {e}")
+            return True
+
+    def _should_show_by_controller(self, task: TaskItem) -> bool:
+        """根据当前选择的控制器类型判断任务是否应该显示。
+
+        规则：
+        - 基础任务始终显示
+        - interface.task[*].controller 缺省/空：对所有控制器显示
+        - 否则仅当当前 controller_type 命中 controller 列表才显示
+        """
+        if task.is_base_task():
+            return True
+
+        try:
+            controller_task = self.service_coordinator.task.get_task(_CONTROLLER_)
+            current_controller = ""
+            if controller_task and isinstance(controller_task.task_option, dict):
+                current_controller = controller_task.task_option.get("controller_type", "") or ""
+            if not current_controller:
+                # 若尚未配置控制器，默认显示全部任务
+                return True
+            current_controller_norm = str(current_controller).strip().lower()
+
+            try:
+                interface = self.service_coordinator.task.interface
+            except Exception:
+                interface = {}
+            if not interface:
+                return True
+
+            for task_def in interface.get("task", []):
+                if task_def.get("name") != task.name:
+                    continue
+                controllers = task_def.get("controller", None)
+
+                # 缺省/空表示全部控制器可用
+                if controllers in (None, "", [], {}):
+                    return True
+
+                allowed: list[str] = []
+                if isinstance(controllers, str):
+                    if controllers.strip():
+                        allowed = [controllers.strip()]
+                elif isinstance(controllers, list):
+                    allowed = [
+                        str(x).strip()
+                        for x in controllers
+                        if x is not None and str(x).strip()
+                    ]
+                else:
+                    # 不支持的格式：兜底为“全部可用”
+                    return True
+
+                allowed_norm = {s.lower() for s in allowed if s}
+                return current_controller_norm in allowed_norm
+
+            # 找不到任务定义：默认显示
+            return True
+        except Exception as e:
+            logger.warning(f"[_should_show_by_controller] 任务 {task.name}: 发生错误，默认显示: {e}")
             return True
 
     def dragMoveEvent(self, event):
@@ -368,9 +436,8 @@ class TaskDragListWidget(BaseListWidget):
     
     def _on_resource_changed(self, options: dict) -> None:
         """当选项变化时，更新任务列表显示"""
-        # 检查是否是资源变化（通过检查 options 中是否有 resource 字段）
-        if "resource" in options:
-            # 资源变化时，刷新任务列表
+        # 资源或控制器变化时，刷新任务列表（会重新计算 is_hidden）
+        if "resource" in options or "controller_type" in options:
             self.update_list()
         else:
             # 其他选项变化时，更新所有 TaskListItem 的选项显示
@@ -451,7 +518,10 @@ class TaskDragListWidget(BaseListWidget):
 
     def _render_task_at_index(self, index: int, task: TaskItem):
         """将指定位置的骨架替换为实际的 `TaskListItem`"""
-        interface = getattr(self.service_coordinator.task, "interface", None)
+        try:
+            interface = self.service_coordinator.task.interface
+        except Exception:
+            interface = None
         if index < len(self._skeleton_items):
             list_item = self._skeleton_items[index]
         else:
@@ -510,7 +580,10 @@ class TaskDragListWidget(BaseListWidget):
             return
         
         # 获取 interface 配置
-        interface = getattr(self.service_coordinator.task, "interface", None)
+        try:
+            interface = self.service_coordinator.task.interface
+        except Exception:
+            interface = None
         # 如果已有同 id 的项，进行更新
         if existing_widget:
             existing_widget.task = task
@@ -544,7 +617,7 @@ class TaskDragListWidget(BaseListWidget):
             list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
         
         # 批量刷新时严格按传入顺序追加；单项新增时根据任务在完整列表中的位置插入
-        if getattr(self, "_bulk_updating", False):
+        if self._bulk_updating:
             self.addItem(list_item)
         else:
             # 获取完整任务列表，找到新任务在完整列表中的位置
@@ -827,8 +900,9 @@ class ConfigListWidget(BaseListWidget):
     _CONFIG_ITEM_HEIGHT = 44
 
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
-        super().__init__(service_coordinator, parent)
+        # 注意：Qt 可能在构造期间触发 eventFilter，因此必须在 super().__init__ 前初始化 _locked
         self._locked: bool = False
+        super().__init__(service_coordinator, parent)
         # 运行中需要屏蔽用户点击/键盘切换，但保留滚轮滚动查看
         self.installEventFilter(self)
         try:
@@ -864,24 +938,33 @@ class ConfigListWidget(BaseListWidget):
                     pass
 
     def eventFilter(self, obj, event):
-        if not getattr(self, "_locked", False):
+        if not self._locked:
             return super().eventFilter(obj, event)
 
         et = event.type()
 
         # 屏蔽“切换配置”的交互：仅拦截左键（保留右键菜单与滚轮）
         if et in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease):
-            btn = getattr(event, "button", lambda: None)()
+            try:
+                btn = event.button()
+            except Exception:
+                btn = None
             if btn in (Qt.MouseButton.LeftButton, Qt.MouseButton.MiddleButton):
                 return True
         if et == QEvent.Type.MouseButtonDblClick:
-            btn = getattr(event, "button", lambda: None)()
+            try:
+                btn = event.button()
+            except Exception:
+                btn = None
             if btn == Qt.MouseButton.LeftButton:
                 return True
 
         # 屏蔽键盘切换与删除类按键
         if et in (QEvent.Type.KeyPress, QEvent.Type.ShortcutOverride):
-            key = getattr(event, "key", lambda: None)()
+            try:
+                key = event.key()
+            except Exception:
+                key = None
             if key in (
                 Qt.Key.Key_Up,
                 Qt.Key.Key_Down,
@@ -900,7 +983,7 @@ class ConfigListWidget(BaseListWidget):
         return super().eventFilter(obj, event)
 
     def _on_item_selected_to_service(self, item_id: str):
-        if getattr(self, "_locked", False):
+        if self._locked:
             # 运行中允许右键等操作，但不允许切换当前激活配置
             return
         self.service_coordinator.select_config(item_id)
@@ -910,11 +993,13 @@ class ConfigListWidget(BaseListWidget):
         self.clear()
         config_summaries = self.service_coordinator.config.list_configs()
         for summary in config_summaries:
-            config_id = (
-                summary.get("item_id")
-                if isinstance(summary, dict)
-                else getattr(summary, "item_id", None)
-            )
+            if isinstance(summary, dict):
+                config_id = summary.get("item_id")
+            else:
+                try:
+                    config_id = summary.item_id
+                except Exception:
+                    config_id = None
             if config_id:
                 cfg = self.service_coordinator.config.get_config(config_id)
                 if cfg:

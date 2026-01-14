@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 from app.utils.logger import logger
 from app.core.service.Config_Service import ConfigService
 from app.core.Item import TaskItem, CoreSignalBus
+from app.common.constants import _RESOURCE_, _CONTROLLER_
 
 # 速通配置默认值
 DEFAULT_SPEEDRUN_CONFIG: Dict[str, Any] = {
@@ -45,6 +46,8 @@ class TaskService:
                 self.current_tasks = config.tasks
                 self.know_task = config.know_task
                 self.default_option = self.gen_default_option()
+                # 在配置加载时就计算一次“可运行/隐藏”标记，确保 runner 可直接使用
+                self.refresh_hidden_flags()
 
                 # 发出 TaskItem 列表，UI 层可以选择转换为 dict 显示
                 self.signal_bus.tasks_loaded.emit(self.current_tasks)
@@ -63,7 +66,7 @@ class TaskService:
         # 此时 self.current_tasks 仍是旧配置的任务列表；因此必须从“当前配置对象”取 tasks 判重。
         config = self.config_service.get_config(self.config_service.current_config_id)
         tasks_snapshot = (config.tasks if config else None) or (self.current_tasks or [])
-        existing_task_names = {t.name for t in tasks_snapshot if getattr(t, "name", None)}
+        existing_task_names = {t.name for t in tasks_snapshot if hasattr(t, "name") and t.name}
 
         # 现有 know_task 去重（保持原顺序）
         seen_known: set[str] = set()
@@ -131,10 +134,75 @@ class TaskService:
         # 重新生成默认选项
         self.default_option = self.gen_default_option()
 
+        # interface 变化可能影响任务可见性/可运行性，刷新一次隐藏标记
+        self.refresh_hidden_flags()
+
         # 检查是否有新任务
         self._check_know_task()
 
         logger.info("interface 数据重新加载完成")
+
+    def refresh_hidden_flags(self) -> None:
+        """根据当前 Resource/Controller 选项以及 interface 约束刷新每个任务的 is_hidden。
+
+        设计目标：任务配置层给出“可运行配置”，runner 只需要读取 is_checked/is_hidden。
+        """
+        try:
+            # 当前资源与控制器类型（为空则视为“不过滤”）
+            resource_name = ""
+            controller_type = ""
+
+            res_task = self.get_task(_RESOURCE_)
+            if res_task and isinstance(res_task.task_option, dict):
+                resource_name = str(res_task.task_option.get("resource", "") or "").strip()
+
+            ctrl_task = self.get_task(_CONTROLLER_)
+            if ctrl_task and isinstance(ctrl_task.task_option, dict):
+                controller_type = str(ctrl_task.task_option.get("controller_type", "") or "").strip()
+
+            interface_tasks = self.interface.get("task", []) if isinstance(self.interface, dict) else []
+            # name -> def 快速索引
+            task_def_map: dict[str, dict] = {}
+            if isinstance(interface_tasks, list):
+                for td in interface_tasks:
+                    if isinstance(td, dict) and isinstance(td.get("name"), str) and td.get("name"):
+                        task_def_map[td["name"]] = td
+
+            def _allowed_by_list(value: Any, current: str) -> bool:
+                """controller/resource 字段的通用判断：缺省/空 => 允许；否则必须命中。"""
+                if not current:
+                    return True
+                if value in (None, "", [], {}):
+                    return True
+                allowed: list[str] = []
+                if isinstance(value, str):
+                    if value.strip():
+                        allowed = [value.strip()]
+                elif isinstance(value, list):
+                    allowed = [str(x).strip() for x in value if x is not None and str(x).strip()]
+                else:
+                    # 非支持格式：兜底为允许，避免误伤
+                    return True
+                allowed_norm = {s.lower() for s in allowed if s}
+                return current.strip().lower() in allowed_norm
+
+            for t in self.current_tasks or []:
+                if not isinstance(t, TaskItem):
+                    continue
+                if t.is_base_task():
+                    t.is_hidden = False
+                    continue
+                td = task_def_map.get(t.name)
+                if not td:
+                    # interface 未定义该任务：默认不隐藏（兼容旧配置）
+                    t.is_hidden = False
+                    continue
+
+                ok_resource = _allowed_by_list(td.get("resource", None), resource_name)
+                ok_controller = _allowed_by_list(td.get("controller", None), controller_type)
+                t.is_hidden = not (ok_resource and ok_controller)
+        except Exception as exc:
+            logger.warning(f"刷新任务隐藏标记失败，将保持现状: {exc}")
 
     def _get_interface_speedrun(self, task_name: str) -> Dict[str, Any]:
         """从 interface 中获取任务的 speedrun 配置"""

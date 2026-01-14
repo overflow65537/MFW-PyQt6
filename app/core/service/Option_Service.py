@@ -69,6 +69,12 @@ class OptionService:
 
         # 发出选项更新信号，通知UI层更新显示
         if success:
+            # 若更新了资源/控制器类型，则刷新所有任务的 is_hidden（供 runner 直接使用）
+            if "resource" in option_data or "controller_type" in option_data:
+                try:
+                    self.task_service.refresh_hidden_flags()
+                except Exception:
+                    pass
             self.signal_bus.option_updated.emit(option_data)
 
         return success
