@@ -245,6 +245,7 @@ class MainWindow(MSFluentWindow):
         self._tutorial_index = 0
         self._tutorial_overlay: TutorialHighlightOverlay | None = None
         self._tray_icon: QSystemTrayIcon | None = None
+        self._startup_cleanup_scheduled = False  # 启动完成后清理旧图片/旧文件，仅执行一次
 
         cfg.set(cfg.save_screenshot, False)
         cfg.set(cfg.show_advanced_startup_options, False)
@@ -403,9 +404,36 @@ class MainWindow(MSFluentWindow):
             logger.warning(f"运行多资源适配启动钩子失败: {exc}")
 
         logger.info(" 主界面初始化完成。")
+        self._schedule_startup_cleanup_old_debug_files()
 
     def _is_windows_platform(self) -> bool:
         return sys.platform.startswith("win32")
+
+    def _schedule_startup_cleanup_old_debug_files(self) -> None:
+        """把 debug 目录旧图片/旧文件清理从“打包日志前”转移到“启动完成后”执行。
+
+        目的：
+        - 避免用户点击“打包日志”时发生删除，造成“打包前文件被清理”的体验问题
+        - 清理动作放到事件循环开始后，并在后台线程执行，尽量不阻塞 UI
+        """
+        if getattr(self, "_startup_cleanup_scheduled", False):
+            return
+        self._startup_cleanup_scheduled = True
+
+        def _kickoff():
+            debug_dir = Path.cwd() / "debug"
+
+            def _run():
+                try:
+                    if debug_dir.exists() and debug_dir.is_dir():
+                        self._cleanup_old_files(debug_dir)
+                except Exception as exc:
+                    logger.warning("启动后清理 debug 旧文件失败：%s", exc)
+
+            threading.Thread(target=_run, daemon=True).start()
+
+        # 等主界面初始化完成并进入事件循环后再执行
+        QTimer.singleShot(0, self, _kickoff)
 
     def _is_minimize_to_tray_enabled(self) -> bool:
         if not self._is_windows_platform():
@@ -994,9 +1022,6 @@ class MainWindow(MSFluentWindow):
             self._log_zip_running = False
             signalBus.log_zip_finished.emit()
             return
-
-        # 在打包前清理旧文件
-        self._cleanup_old_files(debug_dir)
 
         zip_path = self._build_log_zip_path()
         errors: list[str] = []
