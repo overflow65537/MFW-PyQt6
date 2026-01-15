@@ -840,12 +840,15 @@ class TaskFlowRunner(QObject):
         if not controller or not self.maafw.controller:
             return False
 
-        if display_short_side:
-            self.maafw.controller.set_screenshot_target_short_side(display_short_side)
-            logger.info(f"设置控制器分辨率: 短边 {display_short_side}")
-        elif display_long_side:
-            self.maafw.controller.set_screenshot_target_long_side(display_long_side)
-            logger.info(f"设置控制器分辨率: 长边 {display_long_side}")
+        if display_short_side or display_long_side:
+            if display_short_side:
+                self.maafw.controller.set_screenshot_target_short_side(
+                    display_short_side
+                )
+                logger.info(f"设置控制器分辨率: 短边 {display_short_side}")
+            if display_long_side:
+                self.maafw.controller.set_screenshot_target_long_side(display_long_side)
+                logger.info(f"设置控制器分辨率: 长边 {display_long_side}")
         elif display_raw:
             self.maafw.controller.set_screenshot_use_raw_size(display_raw)
             logger.info(f"设置控制器分辨率: 原始大小")

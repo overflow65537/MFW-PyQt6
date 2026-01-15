@@ -63,7 +63,12 @@ def get_pipeline_override_from_task_option(
         # 非 Resource 任务，按原来的逻辑处理所有选项
         for option_name, option_value in task_options.items():
             # 跳过内部字段和 resource_options 字段本身
-            if option_name.startswith("_") or option_name == "resource_options":
+            # 兼容：基础 Resource 任务会在根级保存 "resource"（资源选择），它不是可映射到 option 的 UI 选项
+            if (
+                option_name.startswith("_")
+                or option_name == "resource_options"
+                or option_name == "resource"
+            ):
                 continue
             # 处理选项（包括递归处理子选项）
             _process_option_recursive(
@@ -221,11 +226,24 @@ def _get_select_pipeline_override(
 ) -> Dict[str, Any]:
     """获取 select 类型选项的 pipeline_override"""
     cases = option_config.get("cases", [])
+    # 1) 优先精确匹配（保持行为不变）
     for case in cases:
         if case.get("name") == case_name:
             return case.get("pipeline_override", {})
 
-    logger.debug(f"未找到 case: {case_name}")
+    # 2) 兼容 Yes/No 这类历史配置写法：转成 interface 常用的 yes/no
+    normalized = (case_name or "").strip()
+    if normalized.lower() in ("yes", "no"):
+        normalized = normalized.lower()
+
+    # 3) 再做一次不区分大小写的匹配（用于 Yes/No vs yes/no 等）
+    for case in cases:
+        case_def_name = str(case.get("name", ""))
+        if case_def_name.lower() == normalized.lower():
+            return case.get("pipeline_override", {})
+
+    available = [str(c.get("name", "")) for c in cases]
+    logger.debug(f"未找到 case: {case_name}（可用: {available}）")
     return {}
 
 
