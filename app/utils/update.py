@@ -1476,6 +1476,17 @@ class Update(BaseUpdate):
             self.current_res_id,
             "***" if self.mirror_cdk else "无",
         )
+        # 记录本次检查的关键开关状态，便于排查“为何走 GitHub / Mirror / 强制下载模式”
+        try:
+            force_github_flag = cfg.get(cfg.force_github)
+        except Exception:
+            force_github_flag = None
+        logger.debug(
+            "  [检查更新] 开关状态: force_full_download=%s, force_github=%s",
+            self.force_full_download,
+            force_github_flag,
+        )
+
         self.download_url = None
         self.version_name = None
         self.release_note = ""
@@ -1559,6 +1570,17 @@ class Update(BaseUpdate):
             else:
                 logger.info("  [检查更新] Mirror 未提供版本号，回退 GitHub 检查")
         else:
+            # 进入该分支的两种典型情况：
+            # 1) force_full_download=True：来自“重置资源”等场景
+            # 2) current_res_id 为空：当前资源未配置 MirrorChyan ID
+            if self.force_full_download:
+                logger.info(
+                    "  [检查更新] 因 force_full_download=True，使用强制下载模式，跳过 Mirror 源"
+                )
+            elif not self.current_res_id:
+                logger.info(
+                    "  [检查更新] 因未配置 MirrorChyan 资源ID，直接跳过 Mirror 源"
+                )
             logger.info(
                 "  [检查更新] 强制下载模式：跳过 Mirror 源，直接使用 GitHub 最新版本"
             )
@@ -1727,7 +1749,7 @@ class Update(BaseUpdate):
         # 保证运行环境（os_type / arch / current_version 等）已初始化（UI 模式）
         self._init_run_context(ui_mode=True)
 
-        logger.info("  [检查更新] 开始检查...")
+        logger.info("  [检查更新-UI] 开始检查 UI 更新...")
         from app.common.__version__ import __version__
 
         mirror_id = "MFW-PyQt6"
@@ -1740,9 +1762,20 @@ class Update(BaseUpdate):
         self.current_version = fixed_version
 
         logger.debug(
-            "  [检查更新] 资源ID: %s, CDK: %s",
+            "  [检查更新-UI] 资源ID: %s, CDK: %s",
             mirror_id,
             "***" if self.mirror_cdk else "无",
+        )
+
+        # 记录 UI 更新检查的关键开关状态
+        try:
+            force_github_flag = cfg.get(cfg.force_github)
+        except Exception:
+            force_github_flag = None
+        logger.debug(
+            "  [检查更新-UI] 开关状态: force_full_download=%s, force_github=%s",
+            self.force_full_download,
+            force_github_flag,
         )
 
         # 尝试 Mirror 源（强制下载模式跳过）
