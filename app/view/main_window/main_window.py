@@ -225,7 +225,14 @@ ENABLE_TEST_INTERFACE_PAGE = cfg.get(cfg.enable_test_interface_page)
 
 class MainWindow(MSFluentWindow):
 
-    _LOCKED_LOG_NAMES = {"maa.log", "clash.log", "maa.log.bak"}
+    # 可能被占用的日志文件名（需要特殊读取方式）
+    _LOCKED_LOG_NAMES = {
+        "maa.log",
+        "maafw.log",
+        "clash.log",
+        "maa.log.bak",
+        "maafw.log.bak",
+    }
     _THEME_LISTENER_TIMEOUT_MS = (
         2000  # 2 seconds timeout for theme listener thread termination
     )
@@ -1200,10 +1207,55 @@ class MainWindow(MSFluentWindow):
         arcname: str,
         errors: list[str],
     ) -> None:
-        """直接读取被占用的日志文件内容后写入压缩包。"""
+        """读取可能被占用的日志文件并写入压缩包。
+
+        对 maa/maafw 日志（含 .bak）做大小判断：
+        - 小于约 100MB：完整保存
+        - 大于约 100MB：仅保留末尾约 100MB 的内容，并尽量按行对齐（从下一行开始截取）
+        其他被占用日志（如 clash.log）仍然完整读取。
+        """
+        # 针对 maa/maafw 日志做“只保留末尾 100MB”的特殊处理
+        SPECIAL_TAIL_LOGS = {
+            "maa.log",
+            "maafw.log",
+            "maa.log.bak",
+            "maafw.log.bak",
+        }
+        MAX_TAIL_BYTES = 100 * 1024 * 1024  # 约 100MB
+
         try:
-            data = file_path.read_bytes()
-            zip_file.writestr(arcname, data)
+            if file_path.name in SPECIAL_TAIL_LOGS:
+                try:
+                    file_size = file_path.stat().st_size
+                except OSError:
+                    # 获取大小失败时，回退为完整读取
+                    data = file_path.read_bytes()
+                    zip_file.writestr(arcname, data)
+                    return
+
+                # 小于等于 100MB：直接完整保存
+                if file_size <= MAX_TAIL_BYTES:
+                    data = file_path.read_bytes()
+                    zip_file.writestr(arcname, data)
+                    return
+
+                # 大于 100MB：只保留末尾约 100MB，并按行对齐
+                with file_path.open("rb") as f:
+                    # 从文件末尾回退 MAX_TAIL_BYTES
+                    start_pos = max(0, file_size - MAX_TAIL_BYTES)
+                    f.seek(start_pos)
+                    tail = f.read(MAX_TAIL_BYTES)
+
+                # 为了“按行数保存”，从第一个换行符之后开始，避免半行
+                newline_index = tail.find(b"\n")
+                if newline_index != -1:
+                    tail = tail[newline_index + 1 :]
+
+                zip_file.writestr(arcname, tail)
+            else:
+                # 其他被占用日志（如 clash.log）仍然尝试完整读取
+                data = file_path.read_bytes()
+                zip_file.writestr(arcname, data)
         except Exception as exc:
             errors.append(f"{arcname} ({exc})")
             logger.warning(" 读取占用日志失败：%s (%s)", file_path, exc)
