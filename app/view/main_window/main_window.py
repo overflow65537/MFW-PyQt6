@@ -244,6 +244,11 @@ class MainWindow(MSFluentWindow):
         switch_config_id: str | None = None,
         force_enable_test: bool = False,
     ):
+        # 在 super().__init__() 之前初始化背景相关属性，避免 resizeEvent 触发时属性不存在
+        self._background_label = None
+        self._background_pixmap_original = None
+        self._background_opacity_effect = None
+        
         super().__init__()
         self._loop = loop
         self._cli_auto_run = bool(auto_run)
@@ -292,9 +297,6 @@ class MainWindow(MSFluentWindow):
         except Exception as exc:
             logger.debug("绑定最小化到托盘开关变更信号失败（已忽略）: %s", exc)
 
-        self._background_label: QLabel | None = None
-        self._background_pixmap_original: QPixmap | None = None
-        self._background_opacity_effect: QGraphicsOpacityEffect | None = None
         self._init_announcement()
 
         # 初始化窗口
