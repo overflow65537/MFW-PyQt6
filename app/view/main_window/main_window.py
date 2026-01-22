@@ -244,10 +244,11 @@ class MainWindow(MSFluentWindow):
         switch_config_id: str | None = None,
         force_enable_test: bool = False,
     ):
-        # 在 super().__init__() 之前初始化背景相关属性，避免 resizeEvent 触发时属性不存在
+        # 在 super().__init__() 之前初始化可能被 resizeEvent 访问的属性，避免属性不存在错误
         self._background_label = None
         self._background_pixmap_original = None
         self._background_opacity_effect = None
+        self._tutorial_overlay = None
         
         super().__init__()
         self._loop = loop
@@ -266,7 +267,7 @@ class MainWindow(MSFluentWindow):
         self._bundle_update_in_progress = False  # bundle 更新是否正在进行
         self._tutorial_steps: list[TutorialStep] = []
         self._tutorial_index = 0
-        self._tutorial_overlay: TutorialHighlightOverlay | None = None
+        # _tutorial_overlay 已在 super().__init__() 之前初始化
         self._tray_icon: QSystemTrayIcon | None = None
         self._startup_cleanup_scheduled = (
             False  # 启动完成后清理旧图片/旧文件，仅执行一次
@@ -2117,7 +2118,7 @@ class MainWindow(MSFluentWindow):
         if hasattr(self, "splashScreen"):
             self.splashScreen.resize(self.size())
         self._update_background_geometry()
-        if self._tutorial_overlay:
+        if hasattr(self, "_tutorial_overlay") and self._tutorial_overlay:
             self._tutorial_overlay.resize(self.size())
 
     def _save_window_geometry_if_needed(self):
