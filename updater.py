@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import hashlib
 from dataclasses import dataclass
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
@@ -25,6 +26,86 @@ def _collect_direct_run_args(argv: list[str]) -> list[str]:
 
 
 DIRECT_RUN_EXTRA_ARGS = _collect_direct_run_args(sys.argv)
+
+
+class _SingleInstanceLock:
+    """跨平台进程互斥（同一二进制/脚本只允许一个主进程运行）。
+
+    - Windows: msvcrt.locking(非阻塞)
+    - macOS/Linux: fcntl.flock(非阻塞)
+
+    只要当前进程不退出且文件句柄不关闭，锁就会一直持有；进程崩溃时 OS 会自动释放锁。
+    """
+
+    def __init__(self, lock_key: str):
+        self.lock_key = str(lock_key)
+        self._fp = None
+        self.lock_path = None
+
+    @staticmethod
+    def _make_lock_path(lock_key: str) -> str:
+        # 只做"同一二进制互斥"：用可执行文件绝对路径做 key，避免不同安装目录互相影响。
+        h = hashlib.sha256(lock_key.encode("utf-8")).hexdigest()[:16]
+        filename = f"mfw_single_instance_{h}.lock"
+        return os.path.join(tempfile.gettempdir(), filename)
+
+    def acquire(self) -> bool:
+        if self._fp is not None:
+            return True
+
+        self.lock_path = self._make_lock_path(self.lock_key)
+        os.makedirs(os.path.dirname(self.lock_path), exist_ok=True)
+
+        # a+：文件不存在时创建；不截断
+        self._fp = open(self.lock_path, "a+", encoding="utf-8")
+        self._fp.seek(0)
+
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                # 确保文件至少 1 字节，否则某些环境下锁定长度可能有坑
+                self._fp.seek(0, os.SEEK_END)
+                if self._fp.tell() == 0:
+                    self._fp.write("0")
+                    self._fp.flush()
+                self._fp.seek(0)
+                msvcrt.locking(self._fp.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(self._fp.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except Exception:
+            try:
+                self._fp.close()
+            except Exception:
+                pass
+            self._fp = None
+            return False
+
+    def release(self) -> None:
+        if self._fp is None:
+            return
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                self._fp.seek(0)
+                msvcrt.locking(self._fp.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(self._fp.fileno(), fcntl.LOCK_UN)
+        finally:
+            try:
+                self._fp.close()
+            finally:
+                self._fp = None
+
+
+# 单实例锁实例
+_single_instance_lock: _SingleInstanceLock | None = None
 
 
 @dataclass
@@ -119,38 +200,43 @@ def wait_for_parent_exit(*, parent_pid: int | None, parent_create_time: float | 
         time.sleep(float(RUNTIME_OPTS.wait_poll_interval))
 
 
-def is_mfw_running():
-    import psutil
+def _get_mfw_instance_key() -> str:
+    """获取 MFW 主程序的实例键（用于单实例检测）
+    
+    更新器工作目录和主进程工作目录相同，直接使用主程序可执行文件路径。
+    """
+    # 优先使用传入的主程序路径
+    mfw_exe = RUNTIME_OPTS.mfw_exe_path
+    if mfw_exe:
+        return os.path.abspath(mfw_exe)
+    
+    # 由于工作目录相同，直接使用当前目录下的主程序路径
+    if sys.platform.startswith("win32"):
+        default_exe = os.path.join(os.getcwd(), "MFW.exe")
+    else:
+        default_exe = os.path.join(os.getcwd(), "MFW")
+    
+    # 使用绝对路径作为实例键（与 main.py 保持一致）
+    return os.path.abspath(default_exe)
 
-    exe_target = _norm_path(RUNTIME_OPTS.mfw_exe_path) if RUNTIME_OPTS.mfw_exe_path else None
-    name_target = "MFW.exe" if sys.platform.startswith("win32") else "MFW"
 
-    try:
-        # 优先用 exe 路径判断（更可靠），失败再回退到 name
-        if exe_target:
-            for proc in psutil.process_iter(["pid", "name"]):
-                try:
-                    if _norm_path(proc.exe()) == exe_target:
-                        return True
-                except (psutil.AccessDenied, psutil.NoSuchProcess):
-                    continue
-                except Exception:
-                    continue
-
-        for proc in psutil.process_iter(["name"]):
-            try:
-                if proc.info.get("name") == name_target:
-                    return True
-            except (psutil.AccessDenied, psutil.NoSuchProcess):
-                continue
-        return False
-    except psutil.Error:
-        return False
+def is_mfw_running() -> bool:
+    """
+    使用单实例锁检测 MFW 是否在运行。
+    如果锁被占用，说明 MFW 正在运行。
+    """
+    global _single_instance_lock
+    if _single_instance_lock is None:
+        instance_key = _get_mfw_instance_key()
+        _single_instance_lock = _SingleInstanceLock(instance_key)
+    # 尝试获取锁，如果失败说明 MFW 正在运行
+    return not _single_instance_lock.acquire()
 
 
 def ensure_mfw_not_running():
     """
     确保MFW不在运行，如果正在运行则等待或退出
+    使用单实例锁检测，替换原有的进程检测方式
     返回True表示可以继续，False表示应该退出
     """
     # 先等待“触发更新的那个主程序实例”完全退出
@@ -161,23 +247,25 @@ def ensure_mfw_not_running():
         )
     except Exception as exc:
         update_logger.error("[步骤0] 等待主程序退出失败: %s", exc)
-        # 继续走原有的按进程名/路径检查逻辑，尽量自愈
+        # 继续走单实例锁检查逻辑，尽量自愈
 
     max_checks = max(3, int(RUNTIME_OPTS.shutdown_timeout // 5))
     check_count = 0
-    update_logger.info(f"[步骤1] 检查MFW进程状态（最多检查{max_checks}次）...")
+    update_logger.info(f"[步骤1] 检查MFW进程状态（使用单实例锁检测，最多检查{max_checks}次）...")
+    print(f"[步骤1] 检查MFW进程状态（最多检查{max_checks}次）...")
 
     while check_count < max_checks:
         if not is_mfw_running():
             update_logger.info(f"[步骤1] MFW进程未运行，可以继续更新")
+            print("[步骤1] MFW进程未运行，可以继续更新")
             return True
         check_count += 1
         update_logger.warning(
             f"[步骤1] MFW仍在运行（第{check_count}/{max_checks}次检查），5秒后重新检查..."
         )
-        print("MFW仍在运行，5秒后重新检查...")
+        print(f"[步骤1] MFW仍在运行（第{check_count}/{max_checks}次检查），5秒后重新检查...")
         for sec in range(5, 0, -1):
-            print(f"{sec}秒后重新检查...")
+            print(f"  {sec}秒后重新检查...")
             time.sleep(1)
 
     # 如果MFW仍在运行，记录错误并退出
@@ -320,22 +408,47 @@ def extract_zip_file_with_validation(update_file_path):
     try:
         with zipfile.ZipFile(update_file_path, "r") as archive:
             file_list = archive.namelist()
-            print(f"找到 {len(file_list)} 个文件需要解压")
-            for file_info in file_list:
+            total_files = len(file_list)
+            print(f"[解压] 找到 {total_files} 个文件需要解压")
+            update_logger.info(f"[解压] 找到 {total_files} 个文件需要解压")
+            
+            extracted_count = 0
+            for idx, file_info in enumerate(file_list, 1):
                 try:
+                    print(f"[解压] [{idx}/{total_files}] 正在解压: {file_info}")
                     archive.extract(file_info, extract_dir)
                     extracted_path = extract_dir / file_info
                     if not extracted_path.exists():
                         raise Exception(f"文件解压后不存在: {file_info}")
                     if sys.platform != "win32" and file_info in {"MFW", "MFWUpdater"}:
                         os.chmod(extracted_path, 0o755)
-                    print(f"✓ 已解压: {file_info}")
+                    extracted_count += 1
+                    print(f"[解压] ✓ 已解压 ({extracted_count}/{total_files}): {file_info}")
                 except Exception as exc:
-                    raise Exception(f"提取 {file_info} 失败: {exc}") from exc
+                    error_msg = f"提取 {file_info} 失败: {exc}"
+                    print(f"[解压] ✗ 错误: {error_msg}")
+                    print(f"[解压] 等待5秒后继续...")
+                    for sec in range(5, 0, -1):
+                        print(f"  {sec}秒后继续...")
+                        time.sleep(1)
+                    # 继续处理下一个文件
+                    continue
+            
+            print(f"[解压] 解压完成，共成功解压 {extracted_count}/{total_files} 个文件")
+            update_logger.info(f"[解压] 解压完成，共成功解压 {extracted_count}/{total_files} 个文件")
+        
+        print("[解压] 开始复制文件到目标目录...")
         _copy_temp_to_root(extract_dir, verbose=True)
+        print("[解压] 文件复制完成")
         return True
     except Exception as exc:
-        update_logger.error(f"解压过程出错: {exc}")
+        error_msg = f"解压过程出错: {exc}"
+        print(f"[解压] ✗ 严重错误: {error_msg}")
+        print(f"[解压] 等待5秒后继续...")
+        for sec in range(5, 0, -1):
+            print(f"  {sec}秒后继续...")
+            time.sleep(1)
+        update_logger.error(error_msg)
         cleanup_update_artifacts(update_file_path)
         start_mfw_process()
         return False
@@ -650,10 +763,41 @@ def _extract_zip_to_temp(zip_path: Path):
     temp_dir = Path(tempfile.mkdtemp(prefix="mfw_full_extract_"))
     try:
         with zipfile.ZipFile(zip_path, "r", metadata_encoding="utf-8") as archive:
-            archive.extractall(temp_dir)
+            file_list = archive.namelist()
+            total_files = len(file_list)
+            print(f"[解压] 找到 {total_files} 个文件需要解压到临时目录")
+            update_logger.info(f"[解压] 找到 {total_files} 个文件需要解压到临时目录")
+            
+            extracted_count = 0
+            for idx, file_info in enumerate(file_list, 1):
+                try:
+                    print(f"[解压] [{idx}/{total_files}] 正在解压: {file_info}")
+                    archive.extract(file_info, temp_dir)
+                    extracted_count += 1
+                    if extracted_count % 50 == 0 or extracted_count == total_files:
+                        print(f"[解压] 已解压 {extracted_count}/{total_files} 个文件...")
+                except Exception as exc:
+                    error_msg = f"解压文件 {file_info} 失败: {exc}"
+                    print(f"[解压] ✗ 错误: {error_msg}")
+                    update_logger.error(f"[解压] {error_msg}")
+                    print(f"[解压] 等待5秒后继续...")
+                    for sec in range(5, 0, -1):
+                        print(f"  {sec}秒后继续...")
+                        time.sleep(1)
+                    # 继续处理下一个文件
+                    continue
+            
+            print(f"[解压] 解压完成，共成功解压 {extracted_count}/{total_files} 个文件")
+            update_logger.info(f"[解压] 解压完成，共成功解压 {extracted_count}/{total_files} 个文件")
         return temp_dir
     except Exception as exc:
-        update_logger.error(f"解压更新包到临时目录失败: {exc}")
+        error_msg = f"解压更新包到临时目录失败: {exc}"
+        print(f"[解压] ✗ 严重错误: {error_msg}")
+        update_logger.error(error_msg)
+        print(f"[解压] 等待5秒后继续...")
+        for sec in range(5, 0, -1):
+            print(f"  {sec}秒后继续...")
+            time.sleep(1)
         shutil.rmtree(temp_dir, ignore_errors=True)
         return None
 
@@ -849,24 +993,54 @@ def extract_interface_folder(zip_path):
             interface_dir = os.path.dirname(interface_member)
             prefix = f"{interface_dir.rstrip('/')}/" if interface_dir else ""
 
-            for member in zf.namelist():
-                if prefix and not member.startswith(prefix):
+            members_to_extract = [m for m in zf.namelist() if (not prefix or m.startswith(prefix)) and (m[len(prefix):] if prefix else m).strip()]
+            total_files = len(members_to_extract)
+            print(f"[解压] 找到 {total_files} 个文件需要解压 interface 文件夹")
+            update_logger.info(f"[解压] 找到 {total_files} 个文件需要解压 interface 文件夹")
+            
+            extracted_count = 0
+            for idx, member in enumerate(members_to_extract, 1):
+                try:
+                    if prefix and not member.startswith(prefix):
+                        continue
+                    relative_path = member[len(prefix) :] if prefix else member
+                    if not relative_path:
+                        continue
+                    print(f"[解压] [{idx}/{total_files}] 正在解压: {relative_path}")
+                    target_path = os.path.join(repo_root, relative_path)
+                    if member.endswith("/"):
+                        os.makedirs(target_path, exist_ok=True)
+                        continue
+                    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                    with zf.open(member) as source, open(target_path, "wb") as target:
+                        shutil.copyfileobj(source, target)
+                    if sys.platform != "win32" and relative_path in {"MFW", "MFWUpdater"}:
+                        os.chmod(target_path, 0o755)
+                    extracted_count += 1
+                    if extracted_count % 10 == 0 or extracted_count == total_files:
+                        print(f"[解压] 已解压 {extracted_count}/{total_files} 个文件...")
+                except Exception as exc:
+                    error_msg = f"解压文件 {member} 失败: {exc}"
+                    print(f"[解压] ✗ 错误: {error_msg}")
+                    update_logger.error(f"[解压] {error_msg}")
+                    print(f"[解压] 等待5秒后继续...")
+                    for sec in range(5, 0, -1):
+                        print(f"  {sec}秒后继续...")
+                        time.sleep(1)
+                    # 继续处理下一个文件
                     continue
-                relative_path = member[len(prefix) :] if prefix else member
-                if not relative_path:
-                    continue
-                target_path = os.path.join(repo_root, relative_path)
-                if member.endswith("/"):
-                    os.makedirs(target_path, exist_ok=True)
-                    continue
-                os.makedirs(os.path.dirname(target_path), exist_ok=True)
-                with zf.open(member) as source, open(target_path, "wb") as target:
-                    shutil.copyfileobj(source, target)
-                if sys.platform != "win32" and relative_path in {"MFW", "MFWUpdater"}:
-                    os.chmod(target_path, 0o755)
+            
+            print(f"[解压] interface 文件夹解压完成，共成功解压 {extracted_count}/{total_files} 个文件")
+            update_logger.info(f"[解压] interface 文件夹解压完成，共成功解压 {extracted_count}/{total_files} 个文件")
         return True
     except Exception as exc:
-        update_logger.error(f"解压 interface 文件夹失败: {exc}")
+        error_msg = f"解压 interface 文件夹失败: {exc}"
+        print(f"[解压] ✗ 严重错误: {error_msg}")
+        update_logger.error(error_msg)
+        print(f"[解压] 等待5秒后继续...")
+        for sec in range(5, 0, -1):
+            print(f"  {sec}秒后继续...")
+            time.sleep(1)
         return False
 
 
@@ -1020,8 +1194,11 @@ def _extract_zip_to_hotfix_dir(zip_path: str, extract_to: str) -> str | None:
 
             # 解压文件
             update_logger.info("[步骤3] 开始解压文件...")
+            print("[解压] 开始解压文件...")
             extracted_count = 0
-            for member in members:
+            total_to_extract = len([m for m in members if (not interface_dir_parts or tuple(Path(m.replace("\\", "/")).parts[:len(interface_dir_parts) if interface_dir_parts else 0]) == interface_dir_parts) and m.strip()])
+            
+            for idx, member in enumerate(members, 1):
                 member_path = Path(member.replace("\\", "/"))
                 member_parts = tuple(p for p in member_path.parts if p and p != ".")
 
@@ -1037,29 +1214,44 @@ def _extract_zip_to_hotfix_dir(zip_path: str, extract_to: str) -> str | None:
                 if not relative_parts:
                     continue
 
-                target_path = extract_to_path.joinpath(*relative_parts)
-                if member.endswith("/"):
-                    target_path.mkdir(parents=True, exist_ok=True)
-                else:
-                    target_path.parent.mkdir(parents=True, exist_ok=True)
-                    with archive.open(member) as source, open(
-                        target_path, "wb"
-                    ) as target:
-                        shutil.copyfileobj(source, target)
-                    extracted_count += 1
-                    if extracted_count % 100 == 0:
-                        update_logger.debug(
-                            f"[步骤3] 已解压 {extracted_count} 个文件..."
-                        )
+                try:
+                    target_path = extract_to_path.joinpath(*relative_parts)
+                    if member.endswith("/"):
+                        target_path.mkdir(parents=True, exist_ok=True)
+                    else:
+                        print(f"[解压] [{extracted_count + 1}/{total_to_extract}] 正在解压: {member}")
+                        target_path.parent.mkdir(parents=True, exist_ok=True)
+                        with archive.open(member) as source, open(
+                            target_path, "wb"
+                        ) as target:
+                            shutil.copyfileobj(source, target)
+                        extracted_count += 1
+                        if extracted_count % 10 == 0 or extracted_count == total_to_extract:
+                            print(f"[解压] 已解压 {extracted_count}/{total_to_extract} 个文件...")
+                except Exception as exc:
+                    error_msg = f"解压文件 {member} 失败: {exc}"
+                    print(f"[解压] ✗ 错误: {error_msg}")
+                    update_logger.error(f"[步骤3] {error_msg}")
+                    print(f"[解压] 等待5秒后继续...")
+                    for sec in range(5, 0, -1):
+                        print(f"  {sec}秒后继续...")
+                        time.sleep(1)
+                    # 继续处理下一个文件
+                    continue
 
             update_logger.info(f"[步骤3] 文件解压完成，共解压 {extracted_count} 个文件")
+            print(f"[解压] 文件解压完成，共解压 {extracted_count} 个文件")
 
             # 返回解压后的根目录
             return str(extract_to_path)
     except Exception as exc:
-        update_logger.exception(
-            f"[步骤3] 解压文件失败 {zip_path} -> {extract_to}: {exc}"
-        )
+        error_msg = f"解压文件失败 {zip_path} -> {extract_to}: {exc}"
+        print(f"[解压] ✗ 严重错误: {error_msg}")
+        update_logger.exception(f"[步骤3] {error_msg}")
+        print(f"[解压] 等待5秒后继续...")
+        for sec in range(5, 0, -1):
+            print(f"  {sec}秒后继续...")
+            time.sleep(1)
         return None
 
 
