@@ -1028,6 +1028,8 @@ class Update(BaseUpdate):
             return
 
         self._is_running = True
+        # 从配置中获取 mirror_cdk
+        self.mirror_cdk = self.Mirror_ckd()
         try:
             # 每次运行前按当前配置初始化上下文（包括 interface / 频道 / 版本 等）
             self._init_run_context()
