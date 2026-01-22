@@ -901,7 +901,7 @@ class MainWindow(MSFluentWindow):
 
     def _apply_background_from_config(self):
         """根据配置加载背景图与透明度。"""
-        if self._background_label is None:
+        if not hasattr(self, "_background_label") or self._background_label is None:
             return
         opacity_value = cfg.get(cfg.background_image_opacity)
         self._apply_background_opacity(opacity_value)
@@ -909,7 +909,7 @@ class MainWindow(MSFluentWindow):
 
     def _apply_background_opacity(self, value: int | float | None):
         """更新背景透明度，传入百分比。"""
-        if self._background_opacity_effect is None:
+        if not hasattr(self, "_background_opacity_effect") or self._background_opacity_effect is None:
             return
         if value is None:
             opacity = 100.0
@@ -923,7 +923,7 @@ class MainWindow(MSFluentWindow):
 
     def _load_background_pixmap(self, path: str | None):
         """加载并应用背景图，若路径为空或无效则隐藏背景。"""
-        if self._background_label is None:
+        if not hasattr(self, "_background_label") or self._background_label is None:
             return
 
         path = str(path or "").strip()
@@ -953,11 +953,11 @@ class MainWindow(MSFluentWindow):
 
     def _update_background_pixmap(self):
         """缩放并填充背景图。"""
-        if self._background_label is None:
+        if not hasattr(self, "_background_label") or self._background_label is None:
             return
 
         self._background_label.setGeometry(self.rect())
-        if not self._background_pixmap_original:
+        if not hasattr(self, "_background_pixmap_original") or not self._background_pixmap_original:
             self._background_label.clear()
             return
 
@@ -971,10 +971,10 @@ class MainWindow(MSFluentWindow):
 
     def _update_background_geometry(self):
         """在窗口尺寸变化时同步背景尺寸。"""
-        if self._background_label is None:
+        if not hasattr(self, "_background_label") or self._background_label is None:
             return
         self._background_label.setGeometry(self.rect())
-        if self._background_pixmap_original:
+        if hasattr(self, "_background_pixmap_original") and self._background_pixmap_original:
             self._update_background_pixmap()
 
     def _on_background_image_changed(self, path: str):
