@@ -1,5 +1,16 @@
+"""
+服务协调器 - 核心模块
+
+重构目标：
+1. 全局单实例模式
+2. 多运行器支持（每个配置独立运行器，支持并行运行）
+3. 按需创建运行器（懒加载）
+4. 属性访问模式，移除信号传递数据
+"""
+
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, TYPE_CHECKING
+from datetime import datetime
 import time
 import shutil
 
@@ -18,14 +29,91 @@ from app.core.service.Schedule_Service import ScheduleService
 from app.core.service.Task_Service import TaskService
 from app.core.service.Option_Service import OptionService
 from app.core.service.interface_manager import get_interface_manager, InterfaceManager
-from app.core.runner.task_flow import TaskFlowRunner
 from app.core.log_processor import CallbackLogProcessor
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
 
+if TYPE_CHECKING:
+    from app.core.runner.task_flow import TaskFlowRunner
 
+
+# ==================== 全局单实例管理 ====================
+_instance: Optional['ServiceCoordinator'] = None
+
+
+def get_service_coordinator() -> 'ServiceCoordinator':
+    """获取全局单实例服务协调器
+    
+    Returns:
+        ServiceCoordinator: 全局服务协调器实例
+        
+    Raises:
+        RuntimeError: 如果服务协调器尚未初始化
+    """
+    global _instance
+    if _instance is None:
+        raise RuntimeError("ServiceCoordinator not initialized. Call init_service_coordinator first.")
+    return _instance
+
+
+def init_service_coordinator(
+    main_config_path: Path,
+    configs_dir: Path | None = None,
+    interface_path: Path | str | None = None,
+) -> 'ServiceCoordinator':
+    """初始化全局单实例服务协调器
+    
+    Args:
+        main_config_path: 主配置文件路径
+        configs_dir: 配置目录路径（可选）
+        interface_path: interface 文件路径（可选）
+        
+    Returns:
+        ServiceCoordinator: 初始化后的服务协调器实例
+        
+    Raises:
+        RuntimeError: 如果服务协调器已初始化
+    """
+    global _instance
+    if _instance is not None:
+        raise RuntimeError("ServiceCoordinator already initialized")
+    _instance = ServiceCoordinator(main_config_path, configs_dir, interface_path)
+    return _instance
+
+
+def reset_service_coordinator() -> None:
+    """重置全局单实例（仅用于测试或热重载）"""
+    global _instance
+    _instance = None
+
+
+# ==================== 运行器状态 ====================
+class RunnerState:
+    """运行器状态管理"""
+    def __init__(self):
+        self.is_running: bool = False
+        self.created_at: datetime = datetime.now()
+        self.last_used: datetime = datetime.now()
+    
+    def mark_running(self):
+        self.is_running = True
+        self.last_used = datetime.now()
+    
+    def mark_stopped(self):
+        self.is_running = False
+        self.last_used = datetime.now()
+
+
+# ==================== 服务协调器 ====================
 class ServiceCoordinator:
-    """服务协调器，整合配置、任务和选项服务"""
+    """服务协调器，整合配置、任务和选项服务
+    
+    重构后的核心特性：
+    1. 全局单实例模式
+    2. 多运行器支持（每个配置独立运行器）
+    3. 按需创建运行器（懒加载）
+    4. 属性访问模式
+    """
 
     def __init__(
         self,
@@ -33,15 +121,15 @@ class ServiceCoordinator:
         configs_dir: Path | None = None,
         interface_path: Path | str | None = None,
     ):
-        # 初始化信号总线
+        # 初始化信号总线（仅用于通知，不传递数据）
         self.signal_bus = CoreSignalBus()
         self.fs_signal_bus = FromeServiceCoordinator()
         
-        # 存储待显示的错误信息（用于在 UI 初始化完成后显示）
+        # 存储待显示的错误信息
         self._pending_error_message: tuple[str, str] | None = None
         self._main_config_path = main_config_path
 
-        # 根据传入参数或主配置中的 bundle.path 解析 interface 路径
+        # 解析 interface 路径
         self._interface_path = self._resolve_interface_path(
             main_config_path, interface_path
         )
@@ -50,28 +138,26 @@ class ServiceCoordinator:
         if configs_dir is None:
             configs_dir = main_config_path.parent / "configs"
 
-        # 先基于解析出的 interface 初始化管理器与数据，再交给仓库与服务使用
+        # 初始化 interface 管理器
         self.interface_manager: InterfaceManager = get_interface_manager(
             interface_path=self._interface_path
         )
         self._interface: Dict = self.interface_manager.get_interface()
 
-        # 初始化存储库和服务
+        # 初始化存储库
         self.config_repo = JsonConfigRepository(
             main_config_path, configs_dir, interface=self._interface
         )
         
-        # 尝试初始化 ConfigService 和 TaskService，如果配置加载失败则重置配置
+        # 初始化服务
         try:
             self.config_service = ConfigService(self.config_repo, self.signal_bus)
             self.task_service = TaskService(
                 self.config_service, self.signal_bus, self._interface
             )
         except (IndexError, ValueError, jsonc.JSONDecodeError, FileNotFoundError, Exception) as e:
-            # 配置加载错误，尝试重置配置
             logger.error(f"配置加载失败: {e}")
             if self._handle_config_load_error(main_config_path, configs_dir, e):
-                # 重置成功后重新初始化
                 try:
                     self.config_service = ConfigService(self.config_repo, self.signal_bus)
                     self.task_service = TaskService(
@@ -81,651 +167,248 @@ class ServiceCoordinator:
                     logger.error(f"重置配置后重新初始化失败: {retry_error}")
                     raise
             else:
-                # 重置失败，抛出原始错误
                 raise
         
         self.option_service = OptionService(self.task_service, self.signal_bus)
         self.config_service.register_on_change(self._on_config_changed)
 
-        # 运行器
+        # ==================== 多运行器支持 ====================
+        # 运行器字典（懒加载，按需创建）
+        # 设计：每个配置都有独立的运行器，支持多个配置同时运行
+        self._runners: Dict[str, 'TaskFlowRunner'] = {}
+        self._runner_states: Dict[str, RunnerState] = {}
 
-        self.task_runner = TaskFlowRunner(
-            task_service=self.task_service,
-            config_service=self.config_service,
-            fs_signal_bus=self.fs_signal_bus,
-        )
+        # 调度服务
         schedule_store = main_config_path.parent / "schedules.json"
         self.schedule_service = ScheduleService(self, schedule_store)
 
-        # 初始化日志处理器（将 callback 信号转换为 log_output 信号）
+        # 日志处理器
         self.log_processor = CallbackLogProcessor()
 
         # 连接信号
         self._connect_signals()
 
-        # 在主要内容初始化完毕后，清理无效的 bundle 索引（不删除配置）
+        # 清理无效的 bundle 索引
         self._cleanup_invalid_bundles()
 
-    def _resolve_interface_path(
-        self, main_config_path: Path, interface_path: Path | str | None
-    ) -> Path | None:
-        """根据传入路径或“当前激活配置”的 bundle.path 决定 interface 配置文件位置。
-
-        优先级：
-        1. 调用方显式传入的 interface_path
-        2. multi_config.json 中 curr_config_id 对应配置文件里的 bundle.path
-        3. multi_config.json 中第一个 bundle 的 path 下的 interface.jsonc/interface.json（兼容旧逻辑）
-        4. 返回 None，交由 InterfaceManager 自行在 CWD 下探测
-        """
-        # 1. 显式传入时直接使用
-        if interface_path:
-            return Path(interface_path)
-
-        # 2. 从主配置和“当前激活配置”解析 bundle.path
-        try:
-            if not main_config_path.exists():
-                return None
-
-            with open(main_config_path, "r", encoding="utf-8") as f:
-                main_cfg: Dict[str, Any] = jsonc.load(f)
-
-            # 2.1 优先使用当前激活配置（curr_config_id）对应配置里的 bundle
-            curr_config_id = main_cfg.get("curr_config_id")
-            if curr_config_id:
-                configs_dir = main_config_path.parent / "configs"
-                curr_config_path = configs_dir / f"{curr_config_id}.json"
-                if curr_config_path.exists():
-                    try:
-                        with open(curr_config_path, "r", encoding="utf-8") as cf:
-                            curr_cfg: Dict[str, Any] = jsonc.load(cf)
-                        raw_bundle = curr_cfg.get("bundle")
-                        bundle_name = self._normalize_bundle_name(raw_bundle)
-                        candidate = self._resolve_interface_path_from_bundle(
-                            bundle_name
-                        )
-                        if candidate:
-                            logger.info(
-                                f"从当前激活配置 {curr_config_id} 解析到 interface 路径: {candidate}"
-                            )
-                            return candidate
-                    except Exception as e:
-                        logger.warning(
-                            f"从当前配置 {curr_config_id} 解析 interface 路径失败: {e}"
-                        )
-
-            # 2.2 兜底：使用 multi_config.json 里的第一个 bundle（兼容旧行为）
-            bundle = main_cfg.get("bundle")
-            if isinstance(bundle, dict) and bundle:
-                first_bundle_name = next(iter(bundle.keys()))
-                bundle_info = bundle.get(first_bundle_name, {})
-                bundle_path_str = bundle_info.get("path")
-                if bundle_path_str:
-                    base_dir = Path(bundle_path_str)
-                    if not base_dir.is_absolute():
-                        base_dir = Path.cwd() / base_dir
-
-                    # 优先使用 interface.jsonc，其次 interface.json
-                    candidate = base_dir / "interface.jsonc"
-                    if not candidate.exists():
-                        candidate = base_dir / "interface.json"
-
-                    if not candidate.exists():
-                        logger.warning(
-                            f"在 bundle 路径 {base_dir} 下未找到 interface.jsonc/interface.json"
-                        )
-                        return None
-
-                    logger.info(f"从主配置解析到 interface 路径: {candidate}")
-                    return candidate
-
-            return None
-        except Exception as e:
-            logger.warning(f"从主配置解析 interface 路径失败: {e}")
-            return None
-
-    def _normalize_bundle_name(self, raw_bundle: Any) -> str | None:
-        """从配置中的 bundle 字段推断 bundle 名称。
-
-        兼容多种旧格式：
-        - 新格式："MPA"
-        - 旧格式1：{"MPA": {"name": "MPA", "path": "..."}}
-        - 旧格式2：{"path": "..."} 或 {"name": "MPA", "path": "..."}
-        """
-        if isinstance(raw_bundle, str):
-            return raw_bundle or None
-        if isinstance(raw_bundle, dict):
-            if not raw_bundle:
-                return None
-            first_key = next(iter(raw_bundle.keys()))
-            first_val = raw_bundle[first_key]
-            if isinstance(first_val, dict) and "path" in first_val:
-                return first_key
-            return str(raw_bundle.get("name") or first_key)
-        return None
-
-    def _resolve_interface_path_from_bundle(
-        self, bundle_name: str | None
-    ) -> Path | None:
-        """根据 bundle 名称解析 interface 路径。"""
-        if not bundle_name:
-            return None
-
-        try:
-            bundle_info = None
-            if hasattr(self, "config_service") and self.config_service:
-                bundle_info = self.config_service.get_bundle(bundle_name)
-            else:
-                bundle_path_str = self._get_bundle_path_from_main_config(
-                    bundle_name
-                )
-                if not bundle_path_str:
-                    logger.warning(
-                        f"未在主配置中找到 bundle: {bundle_name}"
-                    )
-                    return None
-                bundle_info = {"path": bundle_path_str}
-        except FileNotFoundError:
-            logger.warning(f"未在主配置中找到 bundle: {bundle_name}")
-            return None
-
-        bundle_path_str = str(bundle_info.get("path", ""))
-        if not bundle_path_str:
-            return None
-
-        base_dir = Path(bundle_path_str)
-        if not base_dir.is_absolute():
-            base_dir = Path.cwd() / base_dir
-
-        # 优先使用 interface.jsonc，其次 interface.json
-        candidate = base_dir / "interface.jsonc"
-        if not candidate.exists():
-            candidate = base_dir / "interface.json"
-
-        if not candidate.exists():
-            logger.warning(
-                f"在 bundle 路径 {base_dir} 下未找到 interface.jsonc/interface.json"
-            )
-            return None
-
-        return candidate
-
-    def _get_bundle_path_from_main_config(self, bundle_name: str) -> str | None:
-        """在 config_service 可用前，从 multi_config.json 中查找 bundle 的 path。"""
-        try:
-            main_config_path = self._main_config_path
-        except AttributeError as exc:
-            logger.error("ServiceCoordinator 缺少 _main_config_path，无法从主配置解析 bundle 路径")
-            raise
-        if not main_config_path or not main_config_path.exists():
-            return None
-
-        try:
-            with open(main_config_path, "r", encoding="utf-8") as mf:
-                main_cfg: Dict[str, Any] = jsonc.load(mf)
-        except Exception:
-            return None
-
-        bundle_dict = main_cfg.get("bundle") or {}
-        if not isinstance(bundle_dict, dict):
-            return None
-
-        bundle_info = bundle_dict.get(bundle_name)
-        if isinstance(bundle_info, dict):
-            return bundle_info.get("path")
-
-        return None
-
-    def _handle_config_load_error(
-        self, main_config_path: Path, configs_dir: Path, error: Exception
-    ) -> bool:
-        """处理配置加载错误：备份损坏的配置文件并用默认配置覆盖
+    # ==================== 运行器管理（多运行器支持） ====================
+    
+    def get_runner(self, config_id: str | None = None) -> 'TaskFlowRunner':
+        """获取指定配置的运行器（懒加载，按需创建）
         
         Args:
-            main_config_path: 主配置文件路径
-            configs_dir: 配置目录路径
-            error: 发生的错误
+            config_id: 配置ID，如果为 None 则使用当前配置
             
         Returns:
-            bool: 是否成功重置配置
+            TaskFlowRunner: 配置对应的运行器
         """
-        try:
-            logger.warning(f"检测到配置加载错误，开始重置配置: {error}")
-            
-            # 获取当前配置ID和bundle信息（如果存在）
-            current_config_id = None
-            bundle_name = None
-            config_name = "Default Config"
-            
-            # 优先尝试从 config_service 获取当前配置ID（如果已初始化）
-            try:
-                if hasattr(self, 'config_service') and self.config_service:
-                    current_config_id = self.config_service.current_config_id
-            except Exception:
-                pass
-            
-            # 如果无法从 config_service 获取，尝试从主配置文件中读取
-            if not current_config_id:
-                try:
-                    if main_config_path.exists():
-                        with open(main_config_path, "r", encoding="utf-8") as f:
-                            main_config_data = jsonc.load(f)
-                            current_config_id = main_config_data.get("curr_config_id")
-                            
-                            # 尝试获取bundle信息
-                            if not bundle_name:
-                                bundle_dict = main_config_data.get("bundle", {}) or {}
-                                if bundle_dict:
-                                    bundle_name = next(iter(bundle_dict.keys()), None)
-                except Exception:
-                    pass
-            
-            # 尝试从损坏的配置文件中读取名称和bundle（如果可能）
-            if current_config_id:
-                config_file = configs_dir / f"{current_config_id}.json"
-                if config_file.exists():
-                    try:
-                        with open(config_file, "r", encoding="utf-8") as cf:
-                            # 尝试读取，即使可能失败
-                            try:
-                                broken_config_data = jsonc.load(cf)
-                                config_name = broken_config_data.get("name", "Default Config")
-                                if not bundle_name:
-                                    bundle_name = broken_config_data.get("bundle")
-                            except:
-                                # 如果读取失败，使用默认值
-                                pass
-                    except:
-                        pass
-            
-            # 如果没有获取到bundle，使用interface中的默认值
-            if not bundle_name:
-                bundle_name = self._interface.get("name", "Default Bundle")
-            
-            # 备份损坏的配置文件
-            timestamp = int(time.time())
-            backup_success = False
-            broken_config_file = None
-            
-            if current_config_id:
-                config_file = configs_dir / f"{current_config_id}.json"
-                if config_file.exists():
-                    try:
-                        backup_path = config_file.with_suffix(
-                            f".broken.{timestamp}.json"
-                        )
-                        shutil.copy2(config_file, backup_path)
-                        logger.info(f"已备份损坏的子配置文件到: {backup_path}")
-                        broken_config_file = config_file
-                        backup_success = True
-                    except Exception as e:
-                        logger.error(f"备份子配置文件失败: {e}")
-            
-            # 如果找不到损坏的配置文件，无法修复
-            if not broken_config_file or not broken_config_file.exists():
-                logger.error("无法找到损坏的配置文件，无法修复")
-                error_message = f"Config load failed. Unable to locate corrupted config file for recovery. Error details: {str(error)}"
-                self._pending_error_message = ("error", error_message)
-                return False
-            
-            # 确保 current_config_id 不为 None（如果为 None，从文件名中提取）
-            if not current_config_id:
-                # 从 broken_config_file 的文件名中提取 config_id
-                config_id_from_file = broken_config_file.stem
-                if config_id_from_file.startswith("c_"):
-                    current_config_id = config_id_from_file
-                else:
-                    # 如果无法从文件名提取，生成新的 ID
-                    current_config_id = ConfigItem.generate_id()
-                    logger.warning(f"无法获取配置ID，生成新的ID: {current_config_id}")
-            else:
-                # 确保 current_config_id 是字符串类型
-                current_config_id = str(current_config_id)
-            
-            # 确保 bundle_name 不为 None
-            if not bundle_name:
-                bundle_name = self._interface.get("name", "Default Bundle")
-            bundle_name = str(bundle_name)
-            
-            # 创建默认配置项（使用相同的config_id和bundle）
-            init_controller = self._interface.get("controller", [{}])[0].get("name", "")
-            init_resource = self._interface.get("resource", [{}])[0].get("name", "")
-            
-            from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
-            
-            default_tasks = [
-                TaskItem(
-                    name="Controller",
-                    item_id=_CONTROLLER_,
-                    is_checked=True,
-                    task_option={
-                        "controller_type": init_controller,
-                    },
-                    is_special=False,
-                ),
-                TaskItem(
-                    name="Resource",
-                    item_id=_RESOURCE_,
-                    is_checked=True,
-                    task_option={
-                        "resource": init_resource,
-                    },
-                    is_special=False,
-                ),
-                TaskItem(
-                    name="Post-Action",
-                    item_id=POST_ACTION,
-                    is_checked=True,
-                    task_option={},
-                    is_special=False,
-                ),
-            ]
-            
-            default_config_item = ConfigItem(
-                name=config_name,
-                item_id=current_config_id,
-                tasks=default_tasks,
-                know_task=[],
-                bundle=bundle_name,
-            )
-            
-            # 将默认配置写入到损坏的配置文件中（覆盖）
-            try:
-                config_data = default_config_item.to_dict()
-                with open(broken_config_file, "w", encoding="utf-8") as f:
-                    jsonc.dump(config_data, f, indent=4, ensure_ascii=False)
-                logger.info(f"已用默认配置覆盖损坏的配置文件: {broken_config_file}")
-            except Exception as e:
-                logger.error(f"覆盖损坏的配置文件失败: {e}")
-                return False
-            
-            # 重新初始化配置仓库和服务
-            self.config_repo = JsonConfigRepository(
-                main_config_path, configs_dir, interface=self._interface
-            )
-            
-            # 存储错误信息，等待 UI 初始化完成后显示
-            # 使用英文作为基础消息，在 UI 层使用 tr 进行翻译
-            if backup_success:
-                error_message = f"Config load failed, automatically reset to default. Backup of corrupted config file completed. Error details: {str(error)}"
-            else:
-                error_message = f"Config load failed, automatically reset to default. Failed to backup corrupted config file. Error details: {str(error)}"
-            self._pending_error_message = ("error", error_message)
-            logger.info("Stored error message, waiting for UI initialization to complete")
-            
-            return True
-            
-        except Exception as e:
-            logger.error(f"Exception occurred while handling config load error: {e}")
-            error_message = f"Config load failed and error occurred while resetting config: {str(e)}"
-            self._pending_error_message = ("error", error_message)
-            return False
+        if config_id is None:
+            config_id = self.current_config_id
+        
+        if not config_id:
+            raise ValueError("No config_id specified and no current config")
+        
+        # 如果运行器不存在，现场创建
+        if config_id not in self._runners:
+            return self.create_runner_for_config(config_id)
+        
+        # 更新最后使用时间
+        if config_id in self._runner_states:
+            self._runner_states[config_id].last_used = datetime.now()
+        
+        return self._runners[config_id]
 
-    def _cleanup_invalid_bundles(self) -> None:
-        """检查 bundle.path 对应的 interface.json 是否存在，不存在则仅删除主配置中的 bundle 索引。
-
-        注意：不会删除引用这些 bundle 的配置，交由后续逻辑按需处理。
-        """
-        try:
-            bundle_names = self.config_service.list_bundles()
-        except Exception as exc:
-            logger.warning(f"读取 bundle 列表失败，跳过清理: {exc}")
-            return
-
-        if not bundle_names:
-            return
-
-        invalid_bundles: list[str] = []
-        for name in bundle_names:
-            iface_path = self._resolve_interface_path_from_bundle(name)
-            if iface_path is None:
-                logger.warning(
-                    f"Bundle '{name}' 的 interface.json/interface.jsonc 未找到，将从主配置中移除索引"
-                )
-                invalid_bundles.append(name)
-
-        if not invalid_bundles:
-            return
-
-        try:
-            main_cfg = self.config_service._main_config
-        except AttributeError as exc:
-            logger.error("ConfigService 缺少 _main_config，无法清理无效 bundle 索引")
-            raise
-        if not isinstance(main_cfg, dict):
-            logger.warning("主配置结构缺失或损坏，跳过无效 bundle 清理")
-            return
-
-        bundle_dict = main_cfg.get("bundle") or {}
-        if not isinstance(bundle_dict, dict):
-            bundle_dict = {}
-
-        for name in invalid_bundles:
-            if name in bundle_dict:
-                logger.info(f"从主配置中移除无效 bundle 索引: {name}")
-                bundle_dict.pop(name, None)
-
-        main_cfg["bundle"] = bundle_dict
-        try:
-            self.config_service.save_main_config()
-        except Exception as exc:
-            logger.warning(f"保存主配置时出错（清理无效 bundle 索引后）: {exc}")
-
-    def _update_interface_path_for_config(self, config_id: str):
-        """根据配置的 bundle 更新 interface 路径（如果需要）。
-
+    def create_runner_for_config(self, config_id: str) -> 'TaskFlowRunner':
+        """为指定配置创建运行器（现场创建，可传给前端）
+        
         Args:
             config_id: 配置ID
+            
+        Returns:
+            TaskFlowRunner: 新创建的运行器
         """
-        if not config_id:
-            return
-
+        # 如果已存在，直接返回
+        if config_id in self._runners:
+            return self._runners[config_id]
+        
+        # 验证配置存在
         config = self.config_service.get_config(config_id)
         if not config:
-            return
-        try:
-            bundle_name = config.bundle
-        except AttributeError as exc:
-            logger.error(f"配置 {config_id} 缺少 bundle 字段，无法更新 interface 路径")
-            raise
-        if not bundle_name:
-            return
+            raise ValueError(f"配置 {config_id} 不存在")
+        
+        # 延迟导入避免循环依赖
+        from app.core.runner.task_flow import TaskFlowRunner
+        
+        # 创建运行器
+        runner = TaskFlowRunner(
+            task_service=self.task_service,
+            config_service=self.config_service,
+            fs_signal_bus=self.fs_signal_bus,
+            config_id=config_id,  # 传入配置ID
+            service_coordinator=self,  # 传入服务协调器
+        )
+        
+        # 缓存运行器
+        self._runners[config_id] = runner
+        self._runner_states[config_id] = RunnerState()
+        
+        logger.debug(f"为配置 {config_id} 创建运行器")
+        return runner
 
-        # 根据配置的 bundle 名称解析新的 interface 路径
-        new_interface_path = self._resolve_interface_path_from_bundle(bundle_name)
-
-        # 如果路径发生变化，需要重新加载 interface
-        if new_interface_path and new_interface_path != self._interface_path:
-            logger.info(
-                f"检测到配置 {config_id} 的 bundle 路径变化，"
-                f"从 {self._interface_path} 切换到 {new_interface_path}"
-            )
-            self._reload_interface(new_interface_path)
-
-    def _reload_interface(self, interface_path: Path | str | None):
-        """重新加载 interface 并更新相关服务。
-
+    def delete_runner(self, config_id: str) -> bool:
+        """删除指定配置的运行器
+        
         Args:
-            interface_path: 新的 interface 文件路径
-        """
-        # 更新保存的路径
-        self._interface_path = interface_path
-
-        # 重新加载 interface
-        self.interface_manager.reload(interface_path=self._interface_path)
-        self._interface = self.interface_manager.get_interface()
-
-        # 更新相关服务的 interface 数据
-        self.config_repo.interface = self._interface
-        self.task_service.reload_interface(self._interface)
-
-    def _connect_signals(self):
-        """连接所有信号"""
-        # UI请求保存配置
-        self.signal_bus.need_save.connect(self._on_need_save)
-        # 热更新完成后重新初始化
-        signalBus.fs_reinit_requested.connect(self.reinit)
-
-    def _on_config_changed(self, config_id: str):
-        """配置变化后刷新内部服务状态"""
-        if not config_id:
-            return
-
-        # 检查并更新 interface 路径（如果配置的 bundle 发生变化）
-        self._update_interface_path_for_config(config_id)
-
-        self.task_service.on_config_changed(config_id)
-        self.option_service.clear_selection()
-
-    # region 配置相关方法
-    def update_bundle_path(
-        self, bundle_name: str, new_path: str, bundle_display_name: str | None = None
-    ) -> bool:
-        """
-        更新 multi_config.json 中指定 bundle 的路径。
-
-        Args:
-            bundle_name: bundle 的名称（作为字典的 key）
-            new_path: 新的路径（相对路径或绝对路径）
-            bundle_display_name: bundle 的显示名称（可选，如果提供会更新 name 字段）
-
+            config_id: 配置ID
+            
         Returns:
-            是否更新成功
+            bool: 是否删除成功
         """
-        main_config_path = self.config_repo.main_config_path
-        if not main_config_path.exists():
-            logger.error(f"主配置文件不存在: {main_config_path}")
-            return False
-
-        try:
-            # 读取当前配置
-            with open(main_config_path, "r", encoding="utf-8") as f:
-                config_data: Dict[str, Any] = jsonc.load(f)
-
-            # 确保 bundle 字段存在且为字典
-            if "bundle" not in config_data:
-                config_data["bundle"] = {}
-            if not isinstance(config_data["bundle"], dict):
-                config_data["bundle"] = {}
-
-            # 更新或创建 bundle 信息
-            if bundle_name not in config_data["bundle"]:
-                config_data["bundle"][bundle_name] = {}
-
-            bundle_info = config_data["bundle"][bundle_name]
-            if not isinstance(bundle_info, dict):
-                bundle_info = {}
-
-            # 更新路径
-            bundle_info["path"] = new_path
-            # 如果提供了显示名称，也更新 name 字段
-            if bundle_display_name is not None:
-                bundle_info["name"] = bundle_display_name
-            # 如果 name 字段不存在，使用 bundle_name 作为默认值
-            elif "name" not in bundle_info:
-                bundle_info["name"] = bundle_name
-
-            config_data["bundle"][bundle_name] = bundle_info
-
-            # 保存回文件
-            with open(main_config_path, "w", encoding="utf-8") as f:
-                jsonc.dump(config_data, f, indent=4, ensure_ascii=False)
-
-            logger.info(
-                f"已更新 bundle '{bundle_name}' 的路径为: {new_path} "
-                f"(显示名称: {bundle_info.get('name', bundle_name)})"
-            )
-
-            # 如果当前激活配置使用的是这个 bundle，可能需要重新解析 interface 路径
-            # 这里可以选择性地触发重新加载，但为了安全，先不自动触发
-            # 调用方可以根据需要手动调用相关刷新方法
-
+        if config_id in self._runners:
+            runner = self._runners.pop(config_id)
+            if hasattr(runner, 'cleanup'):
+                try:
+                    runner.cleanup()
+                except Exception as e:
+                    logger.warning(f"清理运行器失败: {e}")
+            self._runner_states.pop(config_id, None)
             return True
-
-        except Exception as e:
-            logger.error(f"更新 bundle 路径失败: {e}")
-            return False
-
-    def delete_bundle(self, bundle_name: str) -> bool:
-        """从主配置中移除指定 bundle 的索引"""
-        try:
-            main_config = self.config_service._main_config
-        except AttributeError as exc:
-            logger.error("ConfigService 缺少 _main_config，无法删除 bundle")
-            raise
-        if not isinstance(main_config, dict):
-            logger.warning("主配置缺失，无法删除 bundle")
-            return False
-
-        bundle_dict = main_config.get("bundle")
-        if not isinstance(bundle_dict, dict):
-            bundle_dict = {}
-
-        if bundle_name not in bundle_dict:
-            logger.info(f"Bundle '{bundle_name}' 不存在于主配置，跳过删除")
-            return True
-
-        bundle_dict.pop(bundle_name, None)
-        main_config["bundle"] = bundle_dict
-        success = self.config_service.save_main_config()
-        if success:
-            logger.info(f"已从主配置中移除 bundle: {bundle_name}")
-            return True
-
-        logger.error(f"保存主配置失败，bundle '{bundle_name}' 未被删除")
         return False
 
+    def is_running(self, config_id: str | None = None) -> bool:
+        """检查配置是否正在运行
+        
+        Args:
+            config_id: 配置ID，如果为 None 则使用当前配置
+        """
+        if config_id is None:
+            config_id = self.current_config_id
+        
+        if config_id in self._runner_states:
+            return self._runner_states[config_id].is_running
+        return False
+
+    def get_running_configs(self) -> List[str]:
+        """获取所有正在运行的配置ID列表"""
+        return [
+            config_id for config_id, state in self._runner_states.items()
+            if state.is_running
+        ]
+
+    # ==================== 属性访问接口 ====================
+    
+    @property
+    def current_config_id(self) -> str:
+        """获取当前激活配置ID"""
+        return self.config_service.current_config_id
+
+    @current_config_id.setter
+    def current_config_id(self, value: str) -> None:
+        """设置当前激活配置ID（自动保存）"""
+        self.config_service.current_config_id = value
+
+    @property
+    def current_config(self) -> ConfigItem | None:
+        """获取当前激活配置对象（只读）"""
+        config_id = self.current_config_id
+        if not config_id:
+            return None
+        return self.config_service.get_config(config_id)
+
+    @property
+    def current_tasks(self) -> List[TaskItem]:
+        """获取当前配置的任务列表（只读）"""
+        return self.task_service.get_tasks()
+
+    @property
+    def current_task_id(self) -> str | None:
+        """获取当前选中的任务ID"""
+        return self.option_service.current_task_id
+
+    @current_task_id.setter
+    def current_task_id(self, value: str) -> None:
+        """设置当前选中的任务ID"""
+        self.option_service.select_task(value)
+
+    @property
+    def current_options(self) -> Dict[str, Any]:
+        """获取当前任务的选项（只读）"""
+        return self.option_service.get_options()
+
+    # ==================== 配置管理 ====================
+    
+    def get_config(self, config_id: str) -> ConfigItem | None:
+        """获取指定配置"""
+        return self.config_service.get_config(config_id)
+
+    def list_configs(self) -> List[Dict[str, Any]]:
+        """列出所有配置的概要信息"""
+        return self.config_service.list_configs()
+
     def add_config(self, config_item: ConfigItem) -> str:
-        """添加配置，传入 ConfigItem 对象，返回新配置ID"""
+        """添加配置，返回新配置ID"""
         new_id = self.config_service.create_config(config_item)
         if new_id:
-            # Select the new config
             self.config_service.current_config_id = new_id
-
-            # Initialize the new config with tasks from interface
             self.task_service.init_new_config()
-
-            # Notify UI incrementally
-            self.fs_signal_bus.fs_config_added.emit(
-                self.config_service.get_config(new_id)
-            )
+            self.fs_signal_bus.fs_config_added.emit(new_id)
         return new_id
 
     def delete_config(self, config_id: str) -> bool:
-        """删除配置，传入 config id"""
+        """删除配置"""
+        # 如果该配置有运行器，先删除
+        self.delete_runner(config_id)
+        
         ok = self.config_service.delete_config(config_id)
         if ok:
-            # notify UI incremental removal
             self.fs_signal_bus.fs_config_removed.emit(config_id)
         return ok
 
     def select_config(self, config_id: str) -> bool:
-        """选择配置，传入 config id"""
-        # 验证配置存在
+        """选择配置"""
         if not self.config_service.get_config(config_id):
             return False
-
-        # 使用 ConfigService setter，回调将同步任务和选项
         self.config_service.current_config_id = config_id
         return self.config_service.current_config_id == config_id
 
-    # endregion
+    def save_config(self, config_id: str) -> bool:
+        """保存指定配置"""
+        config = self.config_service.get_config(config_id)
+        if config:
+            return self.config_service.save_config(config_id, config)
+        return False
 
-    # region 任务相关方法
+    # ==================== 任务管理 ====================
+    
+    def get_tasks(self, config_id: str | None = None) -> List[TaskItem]:
+        """获取指定配置的任务列表"""
+        if config_id is None:
+            return self.task_service.get_tasks()
+        config = self.config_service.get_config(config_id)
+        return config.tasks if config else []
 
-    def modify_task(self, task: TaskItem, idx: int = -2) -> bool:
-        """修改或添加任务：传入 TaskItem，如果列表中没有对应 id 的任务，根据idx参数插入到指定位置，否则更新对应任务
+    def get_task(self, task_id: str, config_id: str | None = None) -> TaskItem | None:
+        """获取指定任务"""
+        if config_id is None:
+            return self.task_service.get_task(task_id)
+        config = self.config_service.get_config(config_id)
+        return config.get_task(task_id) if config else None
+
+    def modify_task(self, task: TaskItem, idx: int = -2, save: bool = True) -> bool:
+        """修改或添加任务
         
         Args:
             task: 任务对象
-            idx: 插入位置索引，默认为-2（倒数第二个位置）
+            idx: 插入位置索引
+            save: 是否立即保存
         """
         ok = self.task_service.update_task(task, idx)
         if ok:
-            self.fs_signal_bus.fs_task_modified.emit(task)
+            self.fs_signal_bus.fs_task_modified.emit(task.item_id)
         return ok
 
     def update_task_checked(self, task_id: str, is_checked: bool) -> bool:
-        """更新任务选中状态并处理特殊任务互斥"""
+        """更新任务选中状态"""
         tasks = self.task_service.get_tasks()
         target_task = None
         for t in tasks:
@@ -747,33 +430,25 @@ class ServiceCoordinator:
         ok = self.task_service.update_tasks(changed_tasks)
         if ok:
             for task in changed_tasks:
-                # UI 通知：保持与旧行为兼容
-                self.signal_bus.task_updated.emit(task)
-                self.fs_signal_bus.fs_task_modified.emit(task)
-
+                self.signal_bus.task_updated.emit(task.item_id)
+                self.fs_signal_bus.fs_task_modified.emit(task.item_id)
         return ok
 
     def modify_tasks(self, tasks: List[TaskItem]) -> bool:
-        """批量修改/新增任务，减少多次磁盘写入。成功后发出 fs_task_updated（逐项或 tasks_loaded 已由 service 发出）。"""
+        """批量修改任务"""
         if not tasks:
             return True
-
         ok = self.task_service.update_tasks(tasks)
         if ok:
-            # 兼容：对于希望逐项更新的监听者，仍发出逐项 task_updated 信号
-            try:
-                for t in tasks:
-                    self.fs_signal_bus.fs_task_modified.emit(t)
-            except Exception:
-                pass
+            for t in tasks:
+                self.fs_signal_bus.fs_task_modified.emit(t.item_id)
         return ok
 
     def delete_task(self, task_id: str) -> bool:
-        """删除任务，传入 task id，基础任务不可删除（通过特殊 id 区分）"""
+        """删除任务"""
         config = self.config_service.get_current_config()
         if not config:
             return False
-        # 基础任务 id 以 r_ f_ 开头（资源和完成后操作）
         base_prefix = ("r_", "f_")
         for t in config.tasks:
             if t.item_id == task_id and t.item_id.startswith(base_prefix):
@@ -784,79 +459,143 @@ class ServiceCoordinator:
         return ok
 
     def select_task(self, task_id: str) -> bool:
-        """选中任务，传入 task id，并自动检查已知任务"""
+        """选中任务"""
         selected = self.option_service.select_task(task_id)
         self.task_service._check_know_task()
         return selected
 
     def reorder_tasks(self, new_order: List[str]) -> bool:
-        """任务顺序更改，new_order 为 task_id 列表（新顺序）"""
+        """重排任务顺序"""
         return self.task_service.reorder_tasks(new_order)
 
-    # endregion
-    def _on_need_save(self):
-        """当UI请求保存时保存所有配置"""
-        self.config_service.save_main_config()
-        self.signal_bus.config_saved.emit(True)
+    # ==================== 选项管理 ====================
+    
+    def get_options(self, config_id: str | None = None, task_id: str | None = None) -> Dict[str, Any]:
+        """获取指定任务的选项"""
+        if config_id is None and task_id is None:
+            return self.option_service.get_options()
+        
+        task = self.get_task(task_id, config_id) if task_id else None
+        return task.task_option if task else {}
 
-    def reinit(self):
-        """重新初始化服务协调器，用于热更新完成后刷新资源"""
-        logger.info("开始重新初始化服务协调器...")
-        try:
-            # 重新加载主配置
-            self.config_repo.load_main_config()
+    def update_option(self, option_key: str, option_value: Any, save: bool = True) -> bool:
+        """更新当前任务的选项"""
+        return self.option_service.update_option(option_key, option_value)
 
-            # 刷新 interface 数据
-            self.interface_manager.reload(self._interface_path)
-            self._interface = self.interface_manager.get_interface()
-            self.config_repo.interface = self._interface
+    def update_options(self, options: Dict[str, Any], save: bool = True) -> bool:
+        """批量更新当前任务的选项"""
+        return self.option_service.update_options(options)
 
-            # 重新初始化任务服务（刷新 interface 数据）
-            self.task_service.reload_interface(self._interface)
+    def get_form_structure(self, task_id: str | None = None) -> Dict[str, Any] | None:
+        """获取任务的表单结构"""
+        if task_id is None:
+            return self.option_service.get_form_structure()
+        task = self.task_service.get_task(task_id)
+        if task:
+            return self.option_service.get_form_structure_by_task_name(
+                task.name, self.task_service.interface
+            )
+        return None
 
-            # 通知 UI 配置已更新
-            current_config_id = self.config_service.current_config_id
-            if current_config_id:
-                self.signal_bus.config_changed.emit(current_config_id)
-
-            logger.info("服务协调器重新初始化完成")
-        except Exception as e:
-            logger.error(f"重新初始化服务协调器失败: {e}")
+    # ==================== 任务流执行（多运行器） ====================
+    
+    def create_task_flow(self, config_id: str | None = None) -> List[TaskItem]:
+        """创建任务流，返回任务对象列表"""
+        if config_id is None:
+            config_id = self.current_config_id
+        
+        config = self.config_service.get_config(config_id)
+        if not config:
+            return []
+        
+        # 刷新隐藏标记
+        self.task_service.refresh_hidden_flags()
+        
+        # 过滤出已选中且未隐藏的任务
+        flow_tasks = [
+            task for task in config.tasks
+            if task.is_checked and not task.is_hidden
+        ]
+        
+        return flow_tasks
 
     async def run_tasks_flow(
-        self, task_id: str | None = None
+        self, 
+        config_id: str | None = None, 
+        task_id: str | None = None,
+        start_task_id: str | None = None,
     ):
-        """运行任务流的对外封装。
-
-        :param task_id: 指定只运行某个任务（可选）
+        """运行指定配置的任务流（支持多开）
+        
+        Args:
+            config_id: 配置ID，如果为 None 则使用当前配置
+            task_id: 指定只运行某个任务（可选）
+            start_task_id: 从某个任务开始执行（可选）
         """
-        # 任务流执行前刷新一次 is_hidden，确保 runner 只需读取 is_checked/is_hidden
+        if config_id is None:
+            config_id = self.current_config_id
+        
+        if not config_id:
+            raise ValueError("No config specified")
+        
+        # 获取运行器（自动创建如果不存在）
+        runner = self.get_runner(config_id)
+        state = self._runner_states[config_id]
+        
+        # 检查是否已经在运行
+        if state.is_running:
+            raise RuntimeError(f"配置 {config_id} 的任务流正在运行中")
+        
+        # 刷新隐藏标记
         try:
             self.task_service.refresh_hidden_flags()
         except Exception:
             pass
-        return await self.task_runner.run_tasks_flow(task_id)
+        
+        # 标记为运行中
+        state.mark_running()
+        
+        try:
+            return await runner.run_tasks_flow(task_id, start_task_id=start_task_id)
+        finally:
+            state.mark_stopped()
 
-    async def stop_task_flow(self):
-        """停止当前任务流（UI/外部调用，视为手动停止）。"""
-        return await self.task_runner.stop_task(manual=True)
+    async def stop_task_flow(self, config_id: str | None = None):
+        """停止指定配置的任务流"""
+        if config_id is None:
+            config_id = self.current_config_id
+        
+        if config_id in self._runners:
+            runner = self._runners[config_id]
+            return await runner.stop_task(manual=True)
 
-    async def stop_task(self, *, manual: bool = False):
-        """停止当前任务流（供内部/调度等模块调用，可指定是否视为手动停止）。"""
-        return await self.task_runner.stop_task(manual=manual)
+    async def stop_task(self, config_id: str | None = None, *, manual: bool = False):
+        """停止任务流"""
+        if config_id is None:
+            config_id = self.current_config_id
+        
+        if config_id in self._runners:
+            runner = self._runners[config_id]
+            return await runner.stop_task(manual=manual)
+
+    # ==================== 兼容性属性（保持向后兼容） ====================
+    
+    @property
+    def run_manager(self) -> 'TaskFlowRunner':
+        """获取当前配置的运行器（向后兼容）"""
+        return self.get_runner()
 
     @property
-    def run_manager(self) -> TaskFlowRunner:
-        return self.task_runner
+    def task_runner(self) -> 'TaskFlowRunner':
+        """获取当前配置的运行器（向后兼容）"""
+        return self.get_runner()
 
-    # 提供获取服务的属性，以便UI层访问
     @property
     def interface_obj(self) -> InterfaceManager:
         return self.interface_manager
 
     @property
     def interface(self) -> Dict[str, Any]:
-        """返回当前加载的 interface 字典"""
         return self._interface
 
     @property
@@ -878,15 +617,451 @@ class ServiceCoordinator:
     @property
     def signals(self) -> CoreSignalBus:
         return self.signal_bus
+
+    # ==================== Bundle 管理 ====================
     
+    def update_bundle_path(
+        self, bundle_name: str, new_path: str, bundle_display_name: str | None = None
+    ) -> bool:
+        """更新 bundle 路径"""
+        main_config_path = self.config_repo.main_config_path
+        if not main_config_path.exists():
+            logger.error(f"主配置文件不存在: {main_config_path}")
+            return False
+
+        try:
+            with open(main_config_path, "r", encoding="utf-8") as f:
+                config_data: Dict[str, Any] = jsonc.load(f)
+
+            if "bundle" not in config_data:
+                config_data["bundle"] = {}
+            if not isinstance(config_data["bundle"], dict):
+                config_data["bundle"] = {}
+
+            if bundle_name not in config_data["bundle"]:
+                config_data["bundle"][bundle_name] = {}
+
+            bundle_info = config_data["bundle"][bundle_name]
+            if not isinstance(bundle_info, dict):
+                bundle_info = {}
+
+            bundle_info["path"] = new_path
+            if bundle_display_name is not None:
+                bundle_info["name"] = bundle_display_name
+            elif "name" not in bundle_info:
+                bundle_info["name"] = bundle_name
+
+            config_data["bundle"][bundle_name] = bundle_info
+
+            with open(main_config_path, "w", encoding="utf-8") as f:
+                jsonc.dump(config_data, f, indent=4, ensure_ascii=False)
+
+            logger.info(f"已更新 bundle '{bundle_name}' 的路径为: {new_path}")
+            return True
+
+        except Exception as e:
+            logger.error(f"更新 bundle 路径失败: {e}")
+            return False
+
+    def delete_bundle(self, bundle_name: str) -> bool:
+        """删除 bundle"""
+        try:
+            main_config = self.config_service._main_config
+        except AttributeError:
+            logger.error("ConfigService 缺少 _main_config")
+            return False
+
+        if not isinstance(main_config, dict):
+            return False
+
+        bundle_dict = main_config.get("bundle")
+        if not isinstance(bundle_dict, dict):
+            return True
+
+        if bundle_name not in bundle_dict:
+            return True
+
+        bundle_dict.pop(bundle_name, None)
+        main_config["bundle"] = bundle_dict
+        success = self.config_service.save_main_config()
+        if success:
+            logger.info(f"已从主配置中移除 bundle: {bundle_name}")
+        return success
+
+    # ==================== 内部方法 ====================
+    
+    def _connect_signals(self):
+        """连接信号"""
+        self.signal_bus.need_save.connect(self._on_need_save)
+        signalBus.fs_reinit_requested.connect(self.reinit)
+
+    def _on_config_changed(self, config_id: str):
+        """配置变化回调"""
+        if not config_id:
+            return
+        self._update_interface_path_for_config(config_id)
+        self.task_service.on_config_changed(config_id)
+        self.option_service.clear_selection()
+
+    def _on_need_save(self):
+        """保存请求回调"""
+        self.config_service.save_main_config()
+        self.signal_bus.config_saved.emit(True)
+
+    def reinit(self):
+        """重新初始化"""
+        logger.info("开始重新初始化服务协调器...")
+        try:
+            self.config_repo.load_main_config()
+            self.interface_manager.reload(self._interface_path)
+            self._interface = self.interface_manager.get_interface()
+            self.config_repo.interface = self._interface
+            self.task_service.reload_interface(self._interface)
+
+            current_config_id = self.config_service.current_config_id
+            if current_config_id:
+                self.signal_bus.config_changed.emit(current_config_id)
+
+            logger.info("服务协调器重新初始化完成")
+        except Exception as e:
+            logger.error(f"重新初始化服务协调器失败: {e}")
+
     def get_pending_error_message(self) -> tuple[str, str] | None:
-        """获取并清除待显示的错误信息
-        
-        Returns:
-            tuple[str, str] | None: (level, message) 或 None
-        """
+        """获取并清除待显示的错误信息"""
         if self._pending_error_message:
             msg = self._pending_error_message
             self._pending_error_message = None
             return msg
         return None
+
+    # ==================== Interface 路径解析 ====================
+    
+    def _resolve_interface_path(
+        self, main_config_path: Path, interface_path: Path | str | None
+    ) -> Path | None:
+        """解析 interface 路径"""
+        if interface_path:
+            return Path(interface_path)
+
+        try:
+            if not main_config_path.exists():
+                return None
+
+            with open(main_config_path, "r", encoding="utf-8") as f:
+                main_cfg: Dict[str, Any] = jsonc.load(f)
+
+            curr_config_id = main_cfg.get("curr_config_id")
+            if curr_config_id:
+                configs_dir = main_config_path.parent / "configs"
+                curr_config_path = configs_dir / f"{curr_config_id}.json"
+                if curr_config_path.exists():
+                    try:
+                        with open(curr_config_path, "r", encoding="utf-8") as cf:
+                            curr_cfg: Dict[str, Any] = jsonc.load(cf)
+                        raw_bundle = curr_cfg.get("bundle")
+                        bundle_name = self._normalize_bundle_name(raw_bundle)
+                        candidate = self._resolve_interface_path_from_bundle(bundle_name)
+                        if candidate:
+                            return candidate
+                    except Exception as e:
+                        logger.warning(f"解析 interface 路径失败: {e}")
+
+            bundle = main_cfg.get("bundle")
+            if isinstance(bundle, dict) and bundle:
+                first_bundle_name = next(iter(bundle.keys()))
+                bundle_info = bundle.get(first_bundle_name, {})
+                bundle_path_str = bundle_info.get("path")
+                if bundle_path_str:
+                    base_dir = Path(bundle_path_str)
+                    if not base_dir.is_absolute():
+                        base_dir = Path.cwd() / base_dir
+
+                    candidate = base_dir / "interface.jsonc"
+                    if not candidate.exists():
+                        candidate = base_dir / "interface.json"
+
+                    if candidate.exists():
+                        return candidate
+
+            return None
+        except Exception as e:
+            logger.warning(f"解析 interface 路径失败: {e}")
+            return None
+
+    def _normalize_bundle_name(self, raw_bundle: Any) -> str | None:
+        """标准化 bundle 名称"""
+        if isinstance(raw_bundle, str):
+            return raw_bundle or None
+        if isinstance(raw_bundle, dict):
+            if not raw_bundle:
+                return None
+            first_key = next(iter(raw_bundle.keys()))
+            first_val = raw_bundle[first_key]
+            if isinstance(first_val, dict) and "path" in first_val:
+                return first_key
+            return str(raw_bundle.get("name") or first_key)
+        return None
+
+    def _resolve_interface_path_from_bundle(self, bundle_name: str | None) -> Path | None:
+        """从 bundle 解析 interface 路径"""
+        if not bundle_name:
+            return None
+
+        try:
+            bundle_info = None
+            if hasattr(self, "config_service") and self.config_service:
+                bundle_info = self.config_service.get_bundle(bundle_name)
+            else:
+                bundle_path_str = self._get_bundle_path_from_main_config(bundle_name)
+                if not bundle_path_str:
+                    return None
+                bundle_info = {"path": bundle_path_str}
+        except FileNotFoundError:
+            return None
+
+        bundle_path_str = str(bundle_info.get("path", ""))
+        if not bundle_path_str:
+            return None
+
+        base_dir = Path(bundle_path_str)
+        if not base_dir.is_absolute():
+            base_dir = Path.cwd() / base_dir
+
+        candidate = base_dir / "interface.jsonc"
+        if not candidate.exists():
+            candidate = base_dir / "interface.json"
+
+        if candidate.exists():
+            return candidate
+        return None
+
+    def _get_bundle_path_from_main_config(self, bundle_name: str) -> str | None:
+        """从主配置获取 bundle 路径"""
+        try:
+            main_config_path = self._main_config_path
+        except AttributeError:
+            return None
+
+        if not main_config_path or not main_config_path.exists():
+            return None
+
+        try:
+            with open(main_config_path, "r", encoding="utf-8") as mf:
+                main_cfg: Dict[str, Any] = jsonc.load(mf)
+        except Exception:
+            return None
+
+        bundle_dict = main_cfg.get("bundle") or {}
+        if not isinstance(bundle_dict, dict):
+            return None
+
+        bundle_info = bundle_dict.get(bundle_name)
+        if isinstance(bundle_info, dict):
+            return bundle_info.get("path")
+
+        return None
+
+    def _update_interface_path_for_config(self, config_id: str):
+        """根据配置更新 interface 路径"""
+        if not config_id:
+            return
+
+        config = self.config_service.get_config(config_id)
+        if not config:
+            return
+
+        bundle_name = config.bundle
+        if not bundle_name:
+            return
+
+        new_interface_path = self._resolve_interface_path_from_bundle(bundle_name)
+
+        if new_interface_path and new_interface_path != self._interface_path:
+            logger.info(f"切换 interface 路径: {self._interface_path} -> {new_interface_path}")
+            self._reload_interface(new_interface_path)
+
+    def _reload_interface(self, interface_path: Path | str | None):
+        """重新加载 interface"""
+        self._interface_path = interface_path
+        self.interface_manager.reload(interface_path=self._interface_path)
+        self._interface = self.interface_manager.get_interface()
+        self.config_repo.interface = self._interface
+        self.task_service.reload_interface(self._interface)
+
+    def _cleanup_invalid_bundles(self) -> None:
+        """清理无效的 bundle"""
+        try:
+            bundle_names = self.config_service.list_bundles()
+        except Exception:
+            return
+
+        if not bundle_names:
+            return
+
+        invalid_bundles: list[str] = []
+        for name in bundle_names:
+            iface_path = self._resolve_interface_path_from_bundle(name)
+            if iface_path is None:
+                invalid_bundles.append(name)
+
+        if not invalid_bundles:
+            return
+
+        try:
+            main_cfg = self.config_service._main_config
+        except AttributeError:
+            return
+
+        if not isinstance(main_cfg, dict):
+            return
+
+        bundle_dict = main_cfg.get("bundle") or {}
+        if not isinstance(bundle_dict, dict):
+            bundle_dict = {}
+
+        for name in invalid_bundles:
+            if name in bundle_dict:
+                logger.info(f"移除无效 bundle: {name}")
+                bundle_dict.pop(name, None)
+
+        main_cfg["bundle"] = bundle_dict
+        try:
+            self.config_service.save_main_config()
+        except Exception:
+            pass
+
+    def _handle_config_load_error(
+        self, main_config_path: Path, configs_dir: Path, error: Exception
+    ) -> bool:
+        """处理配置加载错误"""
+        try:
+            logger.warning(f"检测到配置加载错误，开始重置: {error}")
+            
+            current_config_id = None
+            bundle_name = None
+            config_name = "Default Config"
+            
+            try:
+                if hasattr(self, 'config_service') and self.config_service:
+                    current_config_id = self.config_service.current_config_id
+            except Exception:
+                pass
+            
+            if not current_config_id:
+                try:
+                    if main_config_path.exists():
+                        with open(main_config_path, "r", encoding="utf-8") as f:
+                            main_config_data = jsonc.load(f)
+                            current_config_id = main_config_data.get("curr_config_id")
+                            if not bundle_name:
+                                bundle_dict = main_config_data.get("bundle", {}) or {}
+                                if bundle_dict:
+                                    bundle_name = next(iter(bundle_dict.keys()), None)
+                except Exception:
+                    pass
+            
+            if current_config_id:
+                config_file = configs_dir / f"{current_config_id}.json"
+                if config_file.exists():
+                    try:
+                        with open(config_file, "r", encoding="utf-8") as cf:
+                            try:
+                                broken_config_data = jsonc.load(cf)
+                                config_name = broken_config_data.get("name", "Default Config")
+                                if not bundle_name:
+                                    bundle_name = broken_config_data.get("bundle")
+                            except:
+                                pass
+                    except:
+                        pass
+            
+            if not bundle_name:
+                bundle_name = self._interface.get("name", "Default Bundle")
+            
+            timestamp = int(time.time())
+            backup_success = False
+            broken_config_file = None
+            
+            if current_config_id:
+                config_file = configs_dir / f"{current_config_id}.json"
+                if config_file.exists():
+                    try:
+                        backup_path = config_file.with_suffix(f".broken.{timestamp}.json")
+                        shutil.copy2(config_file, backup_path)
+                        broken_config_file = config_file
+                        backup_success = True
+                    except Exception:
+                        pass
+            
+            if not broken_config_file or not broken_config_file.exists():
+                self._pending_error_message = ("error", f"Config load failed: {str(error)}")
+                return False
+            
+            if not current_config_id:
+                config_id_from_file = broken_config_file.stem
+                if config_id_from_file.startswith("c_"):
+                    current_config_id = config_id_from_file
+                else:
+                    current_config_id = ConfigItem.generate_id()
+            
+            if not bundle_name:
+                bundle_name = self._interface.get("name", "Default Bundle")
+            
+            from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
+            
+            init_controller = self._interface.get("controller", [{}])[0].get("name", "")
+            init_resource = self._interface.get("resource", [{}])[0].get("name", "")
+            
+            default_tasks = [
+                TaskItem(
+                    name="Controller",
+                    item_id=_CONTROLLER_,
+                    is_checked=True,
+                    task_option={"controller_type": init_controller},
+                    is_special=False,
+                ),
+                TaskItem(
+                    name="Resource",
+                    item_id=_RESOURCE_,
+                    is_checked=True,
+                    task_option={"resource": init_resource},
+                    is_special=False,
+                ),
+                TaskItem(
+                    name="Post-Action",
+                    item_id=POST_ACTION,
+                    is_checked=True,
+                    task_option={},
+                    is_special=False,
+                ),
+            ]
+            
+            default_config_item = ConfigItem(
+                name=config_name,
+                item_id=current_config_id,
+                tasks=default_tasks,
+                know_task=[],
+                bundle=bundle_name,
+            )
+            
+            try:
+                config_data = default_config_item.to_dict()
+                with open(broken_config_file, "w", encoding="utf-8") as f:
+                    jsonc.dump(config_data, f, indent=4, ensure_ascii=False)
+            except Exception:
+                return False
+            
+            self.config_repo = JsonConfigRepository(
+                main_config_path, configs_dir, interface=self._interface
+            )
+            
+            if backup_success:
+                self._pending_error_message = ("error", f"Config reset. Backup created. Error: {str(error)}")
+            else:
+                self._pending_error_message = ("error", f"Config reset. Error: {str(error)}")
+            
+            return True
+            
+        except Exception as e:
+            self._pending_error_message = ("error", f"Config error handling failed: {str(e)}")
+            return False

@@ -870,7 +870,7 @@ class TaskListItem(BaseListItem):
     def _run_single_task(self):
         if not self.service_coordinator:
             return
-        asyncio.create_task(self.service_coordinator.run_tasks_flow(self.task.item_id))
+        asyncio.create_task(self.service_coordinator.run_tasks_flow(task_id=self.task.item_id))
 
     def _run_from_task(self):
         if not self.service_coordinator or self.task.is_base_task():

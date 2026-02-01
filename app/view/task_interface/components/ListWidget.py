@@ -560,8 +560,20 @@ class TaskDragListWidget(BaseListWidget):
             pending_status = self._pending_task_statuses.pop(task.item_id)
             task_widget.update_status(pending_status)
 
-    def modify_task(self, task: TaskItem):
-        """添加或更新任务项到列表（如果存在同 id 的任务则更新，否则新增）。"""
+    def modify_task(self, task_id_or_task):
+        """添加或更新任务项到列表（如果存在同 id 的任务则更新，否则新增）。
+        
+        Args:
+            task_id_or_task: 任务ID（str）或 TaskItem 对象（向后兼容）
+        """
+        # 支持接收 task_id 或 TaskItem 对象
+        if isinstance(task_id_or_task, str):
+            task = self.service_coordinator.get_task(task_id_or_task)
+            if not task:
+                return
+        else:
+            task = task_id_or_task
+        
         # 先尝试查找是否已有同 id 的项
         existing_widget = self._task_widgets.get(task.item_id)
         
@@ -1036,8 +1048,20 @@ class ConfigListWidget(BaseListWidget):
         self._select_config_by_id(config_id, emit_signal=False)
         signalBus.title_changed.emit()
 
-    def add_config(self, config: ConfigItem):
-        """添加配置项到列表"""
+    def add_config(self, config_id_or_config):
+        """添加配置项到列表
+        
+        Args:
+            config_id_or_config: 配置ID（str）或 ConfigItem 对象（向后兼容）
+        """
+        # 支持接收 config_id 或 ConfigItem 对象
+        if isinstance(config_id_or_config, str):
+            config = self.service_coordinator.get_config(config_id_or_config)
+            if not config:
+                return
+        else:
+            config = config_id_or_config
+        
         self._add_config_to_list(config)
         # 新增时尝试选中它，保持UI当前配置与服务一致
         self._select_config_by_id(config.item_id)

@@ -36,6 +36,8 @@ from app.view.task_interface.components.LogItemWidget import LogItemWidget, LogI
 class LogoutputWidget(QWidget):
     """
     日志输出组件
+    
+    多开模式：每个配置有独立的日志历史，切换配置时显示对应的日志
     """
 
     def __init__(
@@ -61,6 +63,11 @@ class LogoutputWidget(QWidget):
         self._level_color: dict[str, str] = {}
         self._log_items: list[LogItemWidget] = []
         self._tail_spacer_item: QSpacerItem | None = None
+        
+        # 多开模式：每个配置独立的日志存储
+        self._current_config_id: str = ""
+        self._config_log_data: dict[str, list[LogItemData]] = {}  # config_id -> [LogItemData]
+        self._config_image_cache: dict[str, tuple[QByteArray | None, any]] = {}  # config_id -> (last_bytes, last_gray)
         self._init_log_output()
         self._add_tail_spacer()
         self._apply_theme_colors()
@@ -236,7 +243,7 @@ class LogoutputWidget(QWidget):
         self.generate_log_zip_button.clicked.connect(signalBus.request_log_zip)
 
     def clear_log(self):
-        """清空日志内容，清除缓存图像并重置序号"""
+        """清空当前配置的日志内容"""
         self._remove_tail_spacer()
         while self.log_list_layout.count():
             item = self.log_list_layout.takeAt(0)
@@ -245,12 +252,86 @@ class LogoutputWidget(QWidget):
                 w.deleteLater()
         self._log_items.clear()
         
-        # 清除缓存图像，避免跨 session 复用旧图
+        # 清除当前配置的日志数据
+        if self._current_config_id:
+            self._config_log_data[self._current_config_id] = []
+            self._config_image_cache[self._current_config_id] = (None, None)
+        
+        # 清除缓存图像
         self._last_image_bytes = None
         self._last_image_small_gray = None
-        logger.info("[日志清除] 已清除所有日志条目和缓存图像，序号已重置")
+        logger.info(f"[日志清除] 已清除配置 {self._current_config_id} 的日志")
         
         self._add_tail_spacer()
+
+    def switch_config(self, config_id: str):
+        """切换到指定配置的日志视图
+        
+        多开模式：保存当前配置日志，加载目标配置日志
+        """
+        if config_id == self._current_config_id:
+            return
+        
+        logger.debug(f"[日志切换] {self._current_config_id} -> {config_id}")
+        
+        # 保存当前配置的日志数据（从 widget 提取 LogItemData）
+        if self._current_config_id:
+            current_data = []
+            for item_widget in self._log_items:
+                data = getattr(item_widget, "_data", None)
+                if data:
+                    current_data.append(data)
+            self._config_log_data[self._current_config_id] = current_data
+            # 保存图片缓存
+            self._config_image_cache[self._current_config_id] = (
+                self._last_image_bytes,
+                self._last_image_small_gray
+            )
+        
+        # 清空当前显示（不清除存储）
+        self._remove_tail_spacer()
+        while self.log_list_layout.count():
+            item = self.log_list_layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.deleteLater()
+        self._log_items.clear()
+        
+        # 切换到新配置
+        self._current_config_id = config_id
+        
+        # 恢复目标配置的图片缓存
+        if config_id in self._config_image_cache:
+            self._last_image_bytes, self._last_image_small_gray = self._config_image_cache[config_id]
+        else:
+            self._last_image_bytes = None
+            self._last_image_small_gray = None
+        
+        # 加载目标配置的日志
+        if config_id in self._config_log_data:
+            for data in self._config_log_data[config_id]:
+                self._restore_log_item(data)
+        
+        self._add_tail_spacer()
+        self._refresh_log_colors()
+        self._scroll_to_bottom()
+        
+        logger.debug(f"[日志切换] 已加载配置 {config_id} 的 {len(self._log_items)} 条日志")
+
+    def _restore_log_item(self, data: LogItemData):
+        """从 LogItemData 恢复日志条目（不触发图片捕获）"""
+        item = LogItemWidget(
+            data,
+            thumb_box=self._thumb_box,
+            placeholder_icon=self._placeholder_icon,
+            parent=self.log_container,
+        )
+        self._log_items.append(item)
+        self.log_list_layout.addWidget(item, 0)
+
+    def set_current_config(self, config_id: str):
+        """设置当前配置（初始化时使用）"""
+        self._current_config_id = config_id
 
     def _on_log_output(self, level: str, text: str):
         """处理日志输出信号"""
@@ -345,12 +426,23 @@ class LogoutputWidget(QWidget):
         self._log_items.append(item)
         self.log_list_layout.addWidget(item, 0)
 
+        # 多开模式：同时保存到配置的日志数据存储
+        if self._current_config_id:
+            if self._current_config_id not in self._config_log_data:
+                self._config_log_data[self._current_config_id] = []
+            self._config_log_data[self._current_config_id].append(data)
+
         # 上限淘汰：删除最旧条目（使用配置中的最大图片数量限制）
         max_images = cfg.get(cfg.log_max_images) if hasattr(cfg, 'log_max_images') else self._max_log_entries
         if len(self._log_items) > max_images:
             oldest = self._log_items.pop(0)
             self.log_list_layout.removeWidget(oldest)
             oldest.deleteLater()
+            # 同时删除存储中最旧的数据
+            if self._current_config_id and self._current_config_id in self._config_log_data:
+                stored = self._config_log_data[self._current_config_id]
+                if len(stored) > max_images:
+                    self._config_log_data[self._current_config_id] = stored[-max_images:]
 
         self._add_tail_spacer()
         self._refresh_log_colors()

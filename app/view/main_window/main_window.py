@@ -104,7 +104,7 @@ from app.common.config import cfg
 from app.common.signal_bus import signalBus
 from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.utils.logger import logger
-from app.core.core import ServiceCoordinator
+from app.core.core import ServiceCoordinator, init_service_coordinator, get_service_coordinator
 from app.widget.notice_message import NoticeMessageBox, DelayedCloseNoticeMessageBox
 
 
@@ -279,9 +279,9 @@ class MainWindow(MSFluentWindow):
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)
 
-        # 初始化配置管理器
+        # 初始化配置管理器（使用全局单实例）
         multi_config_path = Path.cwd() / "config" / "multi_config.json"
-        self.service_coordinator = ServiceCoordinator(multi_config_path)
+        self.service_coordinator = init_service_coordinator(multi_config_path)
         self._apply_cli_switch_config()
 
         self._announcement_pending_show = False

@@ -50,7 +50,7 @@ class TaskService:
                 self.refresh_hidden_flags()
 
                 # 发出 TaskItem 列表，UI 层可以选择转换为 dict 显示
-                self.signal_bus.tasks_loaded.emit(self.current_tasks)
+                self.signal_bus.tasks_loaded.emit()
                 self._check_know_task()
 
     def _check_know_task(self) -> bool:
@@ -500,7 +500,7 @@ class TaskService:
         if self.config_service.update_config(config_id, config):
             # 更新本地任务列表并发出对象列表
             self.current_tasks = config.tasks
-            self.signal_bus.tasks_loaded.emit(self.current_tasks)
+            self.signal_bus.tasks_loaded.emit()
             return True
         return False
 
@@ -589,7 +589,7 @@ class TaskService:
             # 更新本地任务列表并发送整体 loaded 信号（UI 会进行 diff）
             self.current_tasks = config.tasks
             # 优先发送 tasks_loaded 以便视图基于完整列表做最小更新
-            self.signal_bus.tasks_loaded.emit(self.current_tasks)
+            self.signal_bus.tasks_loaded.emit()
         return ok
 
     def delete_task(self, task_id: str) -> bool:
@@ -622,7 +622,7 @@ class TaskService:
         if self.config_service.update_config(config_id, config):
             # 更新本地任务列表
             self.current_tasks = config.tasks
-            self.signal_bus.tasks_loaded.emit(self.current_tasks)
+            self.signal_bus.tasks_loaded.emit()
             return True
 
         return False

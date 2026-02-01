@@ -39,19 +39,33 @@ from app.utils.controller_utils import ControllerHelper
 
 from app.core.Item import FromeServiceCoordinator, TaskItem
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.core.core import ServiceCoordinator
+
 
 class TaskFlowRunner(QObject):
-    """负责执行任务流的运行时组件"""
+    """负责执行任务流的运行时组件
+    
+    重构后：支持多运行器架构，每个运行器绑定到一个配置
+    """
 
     def __init__(
         self,
         task_service: TaskService,
         config_service: ConfigService,
         fs_signal_bus: FromeServiceCoordinator | None = None,
+        config_id: str | None = None,  # 新增：运行器绑定的配置ID
+        service_coordinator: 'ServiceCoordinator | None' = None,  # 新增：服务协调器引用
     ):
         super().__init__()
         self.task_service = task_service
         self.config_service = config_service
+        
+        # 新增：运行器绑定的配置ID（支持多运行器）
+        self._config_id = config_id
+        self._coordinator = service_coordinator
+        
         # 提供给主窗口退出清理使用：停止外部通知线程
         # 注意：send_thread 定义于 app.utils.notice，为全局单例
         self.send_thread = send_thread
@@ -112,6 +126,63 @@ class TaskFlowRunner(QObject):
 
         # 连接前置检查失败原因（用于在上层发送更明确的通知文案）
         self._connect_error_reason: str | None = None
+
+    # ==================== 多运行器支持 ====================
+    
+    @property
+    def config_id(self) -> str | None:
+        """获取运行器绑定的配置ID"""
+        return self._config_id
+    
+    @property
+    def coordinator(self) -> 'ServiceCoordinator | None':
+        """获取服务协调器引用"""
+        return self._coordinator
+    
+    def get_tasks(self) -> list[TaskItem]:
+        """获取配置的任务列表
+        
+        如果绑定了配置ID，优先从该配置获取任务；否则使用当前配置
+        """
+        if self._config_id and self._coordinator:
+            return self._coordinator.get_tasks(self._config_id)
+        return self.task_service.get_tasks()
+    
+    def get_task_option(self, task_id: str) -> Dict[str, Any]:
+        """获取任务选项
+        
+        如果绑定了配置ID，优先从该配置获取；否则使用当前配置
+        """
+        if self._config_id and self._coordinator:
+            task = self._coordinator.get_task(task_id, self._config_id)
+            return task.task_option if task else {}
+        task = self.task_service.get_task(task_id)
+        return task.task_option if task else {}
+    
+    def cleanup(self):
+        """清理运行器资源"""
+        try:
+            # 停止超时定时器
+            if self._timeout_timer.isActive():
+                self._timeout_timer.stop()
+            
+            # 断开信号连接
+            try:
+                signalBus.callback.disconnect(self._handle_maafw_callback)
+            except Exception:
+                pass
+            
+            # 清理 MaaFW 资源
+            if hasattr(self, 'maafw'):
+                try:
+                    self.maafw.custom_info.disconnect(self._handle_maafw_custom_info)
+                    self.maafw.agent_info.disconnect(self._handle_agent_info)
+                except Exception:
+                    pass
+            
+            logger.debug(f"运行器 {self._config_id} 资源已清理")
+        except Exception as e:
+            logger.warning(f"清理运行器资源时出错: {e}")
 
     def _is_admin_runtime(self) -> bool:
         """运行时检测是否具备管理员权限（优先用 cfg 标记，失败则在 Windows 上兜底检测）。"""
@@ -338,7 +409,7 @@ class TaskFlowRunner(QObject):
         try:
             if self.fs_signal_bus:
                 self.fs_signal_bus.fs_start_button_status.emit(
-                    {"text": "STOP", "status": "disabled"}
+                    {"text": "STOP", "status": "disabled", "config_id": self._config_id or ""}
                 )
             controller_cfg = self.task_service.get_task(_CONTROLLER_)
             if not controller_cfg:
@@ -824,7 +895,7 @@ class TaskFlowRunner(QObject):
         controller_type = self._get_controller_type(controller_raw)
         if self.fs_signal_bus:
             self.fs_signal_bus.fs_start_button_status.emit(
-                {"text": "STOP", "status": "enabled"}
+                {"text": "STOP", "status": "enabled", "config_id": self._config_id or ""}
             )
         if controller_type == "adb":
             controller = await self._connect_adb_controller(controller_raw)
@@ -1000,12 +1071,12 @@ class TaskFlowRunner(QObject):
         if self.fs_signal_bus:
             signalBus.log_output.emit("INFO", self.tr("Stopping task..."))
             self.fs_signal_bus.fs_start_button_status.emit(
-                {"text": "STOP", "status": "disabled"}
+                {"text": "STOP", "status": "disabled", "config_id": self._config_id or ""}
             )
         await self.maafw.stop_task()
         if self.fs_signal_bus:
             self.fs_signal_bus.fs_start_button_status.emit(
-                {"text": "START", "status": "enabled"}
+                {"text": "START", "status": "enabled", "config_id": self._config_id or ""}
             )
         self._is_running = False
         logger.info("任务流停止")

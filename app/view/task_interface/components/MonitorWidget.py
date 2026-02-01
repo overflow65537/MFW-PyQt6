@@ -35,7 +35,10 @@ from app.common.config import cfg
 
 
 class MonitorWidget(QWidget):
-    """简化的监控组件，用于嵌入到日志输出组件中"""
+    """简化的监控组件，用于嵌入到日志输出组件中
+    
+    多开模式：支持切换目标运行器，监控不同配置的画面
+    """
 
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
         super().__init__(parent=parent)
@@ -49,6 +52,10 @@ class MonitorWidget(QWidget):
         self._target_interval = 1.0 / 30
         self._low_power_mode = False  # 低功耗模式标志
         self._low_power_timer: Optional[QTimer] = None  # 低功耗模式使用的定时器
+        
+        # 多开模式：当前目标运行器（如果设置，则使用该运行器的控制器）
+        self._target_runner: Optional[Any] = None
+        self._target_config_id: Optional[str] = None
 
         # 停止监控的幂等/防抖：避免多次 stop 导致并发停止流程引发崩溃
         self._stopping_monitoring: bool = False
@@ -323,9 +330,51 @@ class MonitorWidget(QWidget):
         # 刷新预览图像
         self._refresh_preview_image()
 
+    def set_target_runner(self, runner, config_id: str = None):
+        """设置目标运行器（多开模式）
+        
+        Args:
+            runner: 目标运行器
+            config_id: 配置ID
+        """
+        self._target_runner = runner
+        self._target_config_id = config_id
+        logger.debug(f"[MonitorWidget] 切换监控目标: config_id={config_id}")
+
+    def set_target_config(self, config_id: str):
+        """设置目标配置（自动获取对应的运行器）
+        
+        Args:
+            config_id: 配置ID
+        """
+        try:
+            if self.service_coordinator.is_running(config_id):
+                runner = self.service_coordinator.get_runner(config_id)
+                self.set_target_runner(runner, config_id)
+            else:
+                self._target_runner = None
+                self._target_config_id = config_id
+                # 配置未运行，清空监控画面
+                self._clear_preview()
+                logger.debug(f"[MonitorWidget] 配置 {config_id} 未运行，已清空画面")
+        except Exception as e:
+            logger.warning(f"[MonitorWidget] 设置目标配置失败: {e}")
+            self._target_runner = None
+            self._clear_preview()
+            self._target_config_id = config_id
+
     def _get_controller(self):
-        """获取控制器：优先使用任务流的控制器，如果没有则使用监控任务的控制器"""
-        # 优先使用任务流的控制器（如果任务流已连接）
+        """获取控制器
+        
+        多开模式：优先使用目标运行器的控制器，然后是当前配置的运行器
+        """
+        # 优先使用目标运行器（多开模式）
+        if self._target_runner and hasattr(self._target_runner, 'maafw'):
+            controller = getattr(self._target_runner.maafw, 'controller', None)
+            if controller is not None:
+                return controller
+        
+        # 回退：使用当前配置的运行器
         if hasattr(self.service_coordinator, 'run_manager'):
             task_flow = self.service_coordinator.run_manager
             if task_flow and hasattr(task_flow, 'maafw'):
@@ -506,8 +555,19 @@ class MonitorWidget(QWidget):
         return self._target_interval
 
     def _is_controller_connected(self) -> bool:
-        """检查控制器是否连接：优先检查任务流的控制器"""
-        # 优先检查任务流的控制器
+        """检查控制器是否连接
+        
+        多开模式：优先检查目标运行器的控制器
+        """
+        # 优先检查目标运行器（多开模式）
+        if self._target_runner and hasattr(self._target_runner, 'maafw'):
+            controller = getattr(self._target_runner.maafw, 'controller', None)
+            if controller is not None:
+                connected = getattr(controller, "connected", None)
+                if connected is not False:
+                    return True
+        
+        # 回退：检查当前配置的运行器
         if hasattr(self.service_coordinator, 'run_manager'):
             task_flow = self.service_coordinator.run_manager
             if task_flow and hasattr(task_flow, 'maafw'):
@@ -525,7 +585,20 @@ class MonitorWidget(QWidget):
         return connected is not False
     
     def _check_task_flow_controller_ready(self) -> bool:
-        """检查任务流的控制器是否就绪（存在且connected为true）"""
+        """检查任务流的控制器是否就绪
+        
+        多开模式：优先检查目标运行器
+        """
+        # 优先检查目标运行器（多开模式）
+        if self._target_runner and hasattr(self._target_runner, 'maafw'):
+            maafw = self._target_runner.maafw
+            controller = getattr(maafw, 'controller', None)
+            if controller is not None:
+                connected = getattr(controller, 'connected', None)
+                if connected is True:
+                    return True
+        
+        # 回退：检查当前配置的运行器
         if not hasattr(self.service_coordinator, 'run_manager'):
             return False
         
