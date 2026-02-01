@@ -116,6 +116,9 @@ class TaskInterface(UI_TaskInterface, QWidget):
         if monitor_widget is None:
             return
         
+        if hasattr(monitor_widget, 'clear_preview'):
+            monitor_widget.clear_preview()
+
         if is_running:
             # 配置正在运行，切换监控到该配置的运行器
             try:

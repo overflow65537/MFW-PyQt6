@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 import asyncio
 from datetime import datetime
 from pathlib import Path
@@ -74,6 +74,21 @@ class MonitorWidget(QWidget):
         # 预览区默认不显示任何占位图：无图像时保持透明，让父级背景透出
         self._load_placeholder_image()
         self._init_loading_overlay()
+
+        # 监听配置切换，立即清空预览并在运行时切换目标运行器
+        try:
+            self.service_coordinator.signal_bus.config_changed.connect(
+                self._on_config_changed
+            )
+        except Exception:
+            pass
+        
+        # 初始化目标配置为当前配置
+        try:
+            self._target_config_id = self.service_coordinator.current_config_id
+            logger.debug(f"[MonitorWidget] 初始目标配置: {self._target_config_id}")
+        except Exception:
+            pass
 
     def _setup_ui(self) -> None:
         """设置UI（标题和按钮由外部管理，这里只包含预览区域）"""
@@ -184,8 +199,51 @@ class MonitorWidget(QWidget):
         # 监听任务流结束信号：无论何种结束方式，都要停止监控（比按钮状态更及时）
         signalBus.task_flow_finished.connect(self._on_task_flow_finished)
 
+    def _on_config_changed(self, config_id: str):
+        """配置切换时清空预览，并根据目标配置状态启动/停止监控
+        
+        多开模式：监控跟随当前选中的配置
+        """
+        logger.debug(f"[MonitorWidget] 配置切换: {self._target_config_id} -> {config_id}")
+        
+        # 先清空预览
+        self.clear_preview()
+        
+        # 更新目标配置
+        self._target_config_id = config_id
+        self._target_runner = None
+        
+        try:
+            if self.service_coordinator.is_running(config_id):
+                # 新配置正在运行，绑定运行器并启动监控
+                runner = self.service_coordinator.get_runner(config_id)
+                self.set_target_runner(runner, config_id)
+                
+                # 如果监控未激活，启动监控
+                if not self._monitoring_active and not self._starting_monitoring:
+                    logger.debug(f"[MonitorWidget] 配置 {config_id} 正在运行，启动监控")
+                    self._start_monitoring()
+            else:
+                # 新配置未运行，停止监控
+                if self._monitoring_active or self._starting_monitoring:
+                    logger.debug(f"[MonitorWidget] 配置 {config_id} 未运行，停止监控")
+                    self._stop_monitoring()
+        except Exception as e:
+            logger.debug(f"[MonitorWidget] 配置 {config_id} 切换处理失败: {e}")
+
     def _on_task_flow_finished(self, payload: dict) -> None:
-        """任务流结束时的处理：停止监控（带防抖/幂等）"""
+        """任务流结束时的处理：停止监控（带防抖/幂等）
+        
+        多开模式：只响应当前目标配置的结束信号
+        """
+        # 获取结束的配置ID
+        finished_config_id = payload.get("config_id", "")
+        
+        # 只处理当前目标配置的结束信号
+        if self._target_config_id and finished_config_id != self._target_config_id:
+            logger.debug(f"[MonitorWidget] 忽略非目标配置的结束信号: {finished_config_id} != {self._target_config_id}")
+            return
+        
         if self._monitoring_active or self._starting_monitoring:
             logger.debug(f"[MonitorWidget] 收到 task_flow_finished: {payload}，请求停止监控")
             self._request_stop_monitoring(reason="task_flow_finished")
@@ -206,13 +264,33 @@ class MonitorWidget(QWidget):
         self._stop_debounce_timer.start(self._stop_debounce_ms)
 
     def _on_task_status_changed(self, status: dict):
-        """处理任务状态变化"""
+        """处理任务状态变化
+        
+        多开模式：只响应当前目标配置的状态变化
+        """
+        # 获取状态对应的配置ID
+        status_config_id = status.get("config_id", "")
+        
+        # 只处理当前目标配置的状态变化
+        if self._target_config_id and status_config_id != self._target_config_id:
+            logger.debug(f"[MonitorWidget] 忽略非目标配置的状态变化: {status_config_id} != {self._target_config_id}")
+            return
+        
         is_running = status.get("text") == "STOP"
         if is_running and not self._monitoring_active and not self._starting_monitoring:
-            # 任务开始，自动开始监控
+            # 目标配置开始运行，自动开始监控
+            logger.debug(f"[MonitorWidget] 目标配置 {status_config_id} 开始运行，启动监控")
+            # 确保绑定了正确的运行器
+            try:
+                if status_config_id:
+                    runner = self.service_coordinator.get_runner(status_config_id)
+                    self.set_target_runner(runner, status_config_id)
+            except Exception:
+                pass
             self._start_monitoring()
         elif not is_running and self._monitoring_active:
-            # 任务停止，自动停止监控
+            # 目标配置停止运行，自动停止监控
+            logger.debug(f"[MonitorWidget] 目标配置 {status_config_id} 停止运行，停止监控")
             self._stop_monitoring()
 
     def _load_placeholder_image(self) -> None:
@@ -330,7 +408,7 @@ class MonitorWidget(QWidget):
         # 刷新预览图像
         self._refresh_preview_image()
 
-    def set_target_runner(self, runner, config_id: str = None):
+    def set_target_runner(self, runner, config_id: str | None = None):
         """设置目标运行器（多开模式）
         
         Args:
@@ -361,8 +439,10 @@ class MonitorWidget(QWidget):
             logger.warning(f"[MonitorWidget] 设置目标配置失败: {e}")
             self._target_runner = None
             self._clear_preview()
-            self._target_config_id = config_id
 
+    def clear_preview(self) -> None:
+        """对外接口：在切换配置时清空预览"""
+        self._clear_preview()
     def _get_controller(self):
         """获取控制器
         
@@ -374,6 +454,13 @@ class MonitorWidget(QWidget):
             if controller is not None:
                 return controller
         
+        # 如果当前目标配置未运行，则不要再回退到默认的 run_manager（避免旧画面残留）
+        if (
+            self._target_config_id
+            and not self.service_coordinator.is_running(self._target_config_id)
+        ):
+            return None
+
         # 回退：使用当前配置的运行器
         if hasattr(self.service_coordinator, 'run_manager'):
             task_flow = self.service_coordinator.run_manager
