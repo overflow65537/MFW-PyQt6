@@ -402,6 +402,34 @@ class ServiceCoordinator:
             self.fs_signal_bus.fs_task_modified.emit(task.item_id)
         return ok
 
+    def update_task_for_config(self, config_id: str, task: TaskItem) -> bool:
+        """更新指定配置的任务（多开模式专用）
+        
+        Args:
+            config_id: 配置ID
+            task: 任务对象
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        if not config_id:
+            return False
+        
+        config = self.config_service.get_config(config_id)
+        if not config:
+            return False
+        
+        # 在配置中查找并更新任务
+        for i, t in enumerate(config.tasks):
+            if t.item_id == task.item_id:
+                config.tasks[i] = task
+                # 保存配置
+                return self.config_service.update_config(config_id, config)
+        
+        # 如果任务不存在，添加到配置中
+        config.tasks.append(task)
+        return self.config_service.update_config(config_id, config)
+
     def update_task_checked(self, task_id: str, is_checked: bool) -> bool:
         """更新任务选中状态"""
         tasks = self.task_service.get_tasks()

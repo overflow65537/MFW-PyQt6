@@ -142,7 +142,7 @@ class TestInterface(QWidget):
         signalBus.info_bar_requested.emit("info", "已发起强制运行")
         asyncio.create_task(self.service_coordinator.schedule_service._force_start(entry))
 
-    def _on_log_output(self, level: str, message: str) -> None:
+    def _on_log_output(self, level: str, message: str, config_id: str = "") -> None:
         text = f"[{level}] {message}"
         self._log_buffer.append(text)
         self._log_view.setPlainText("\n".join(self._log_buffer))

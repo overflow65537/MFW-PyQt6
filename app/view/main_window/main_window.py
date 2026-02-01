@@ -94,6 +94,7 @@ from qfluentwidgets import FluentIcon as FIF
 
 from app.view.task_interface.task_interface_logic import TaskInterface
 from app.view.monitor_interface import MonitorInterface
+from app.view.multi_run_interface import MultiRunInterface
 from app.view.schedule_interface.schedule_interface import ScheduleInterface
 from app.view.setting_interface.setting_interface import (
     SettingInterface,
@@ -317,6 +318,16 @@ class MainWindow(MSFluentWindow):
             FIF.PROJECTOR,
             self.tr("Monitor"),
         )
+        # 多开管理界面（根据配置决定是否添加到导航栏）
+        self.MultiRunInterface = MultiRunInterface(self.service_coordinator)
+        self._multi_run_interface_added_to_nav = False
+        if cfg.get(cfg.enable_multi_run):
+            self.addSubInterface(
+                self.MultiRunInterface,
+                FIF.SHARE,
+                self.tr("Multi-Run"),
+            )
+            self._multi_run_interface_added_to_nav = True
         self.ScheduleInterface = ScheduleInterface(self.service_coordinator)
         self.addSubInterface(
             self.ScheduleInterface,
@@ -1051,10 +1062,65 @@ class MainWindow(MSFluentWindow):
         signalBus.multi_resource_adaptation_enabled.connect(
             self._on_multi_resource_adaptation_enabled
         )
+        # 监听多开模式设置变化
+        try:
+            cfg.enable_multi_run.valueChanged.connect(self._on_enable_multi_run_changed)
+        except Exception as exc:
+            logger.debug(f"绑定多开模式开关变更信号失败（已忽略）: {exc}")
 
     def _on_multi_resource_adaptation_enabled(self) -> None:
         """响应设置页开启多资源适配的信号，将 BundleInterface 添加到导航栏。"""
         self._add_bundle_interface_to_navigation()
+
+    def _on_enable_multi_run_changed(self, enabled: bool) -> None:
+        """响应多开模式设置变化。"""
+        logger.info(f"多开模式设置变化: {enabled}")
+        if enabled:
+            self._add_multi_run_interface_to_navigation()
+        else:
+            self._remove_multi_run_interface_from_navigation()
+
+    def _add_multi_run_interface_to_navigation(self) -> None:
+        """将 MultiRunInterface 添加到导航栏。"""
+        if self._multi_run_interface_added_to_nav:
+            return
+        try:
+            # 首先确保 MultiRunInterface 被添加到 stackedWidget
+            if self.stackedWidget.indexOf(self.MultiRunInterface) == -1:
+                self.stackedWidget.addWidget(self.MultiRunInterface)
+            
+            # 添加到导航栏（在 Monitor 和 Schedule 之间）
+            self.navigationInterface.insertItem(
+                2,  # 在 Monitor (索引1) 之后
+                "multi_run_interface",
+                FIF.SHARE,
+                self.tr("Multi-Run"),
+                onClick=lambda: self.stackedWidget.setCurrentWidget(self.MultiRunInterface),
+                selectable=True,
+            )
+            self._multi_run_interface_added_to_nav = True
+            logger.info("✓ MultiRunInterface 已添加到导航栏")
+        except Exception as exc:
+            logger.error(f"添加 MultiRunInterface 到导航栏失败: {exc}", exc_info=True)
+
+    def _remove_multi_run_interface_from_navigation(self) -> None:
+        """从导航栏移除 MultiRunInterface。"""
+        if not self._multi_run_interface_added_to_nav:
+            return
+        try:
+            # 尝试查找并隐藏导航项
+            nav_items = getattr(self.navigationInterface, "items", {})
+            if isinstance(nav_items, dict):
+                item = nav_items.get("multi_run_interface")
+                if item:
+                    if hasattr(item, "setVisible"):
+                        item.setVisible(False)
+                    elif hasattr(item, "hide"):
+                        item.hide()
+            self._multi_run_interface_added_to_nav = False
+            logger.info("✓ MultiRunInterface 已从导航栏移除")
+        except Exception as exc:
+            logger.debug(f"从导航栏移除 MultiRunInterface 时出错: {exc}")
 
     def _apply_cli_switch_config(self) -> None:
         """处理 CLI 请求的配置切换，在 UI 初始化前执行。"""

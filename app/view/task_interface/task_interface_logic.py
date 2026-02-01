@@ -70,9 +70,9 @@ class TaskInterface(UI_TaskInterface, QWidget):
         """配置切换时的处理
         
         多开模式：切换配置后更新按钮状态、日志和监控显示
+        注意：任务列表的状态（checkbox禁用、任务运行标志）由 TaskDragListWidget 自动管理
         """
         logger.debug(f"配置切换: {self._current_config_id} -> {config_id}")
-        old_config_id = self._current_config_id
         self._current_config_id = config_id
         
         # 更新开始按钮状态
@@ -82,14 +82,39 @@ class TaskInterface(UI_TaskInterface, QWidget):
         is_running = self.service_coordinator.is_running(config_id)
         self.start_bar.set_config_running(config_id, is_running)
         
-        # 更新任务列表的编辑状态
-        self._set_task_list_editable(not is_running)
+        # 更新工具栏的可编辑状态（拖动、添加/删除按钮等）
+        self._set_toolbar_editable(not is_running)
         
         # 多开模式：切换日志显示
         self._switch_log_for_config(config_id)
         
         # 多开模式：切换监控显示
         self._switch_monitor_for_config(config_id, is_running)
+    
+    def _set_toolbar_editable(self, enabled: bool):
+        """设置任务列表工具栏的可编辑状态
+        
+        Args:
+            enabled: True 表示启用，False 表示禁用
+        """
+        if not hasattr(self, 'task_info') or not self.task_info:
+            return
+        
+        task_list = getattr(self.task_info, 'task_list', None)
+        if task_list:
+            # 禁用/启用拖动功能
+            task_list.setDragEnabled(enabled)
+            task_list.setAcceptDrops(enabled)
+        
+        # 禁用/启用工具栏按钮
+        if hasattr(self.task_info, 'add_button'):
+            self.task_info.add_button.setEnabled(enabled)
+        if hasattr(self.task_info, 'delete_button'):
+            self.task_info.delete_button.setEnabled(enabled)
+        if hasattr(self.task_info, 'select_all_button'):
+            self.task_info.select_all_button.setEnabled(enabled)
+        if hasattr(self.task_info, 'deselect_all_button'):
+            self.task_info.deselect_all_button.setEnabled(enabled)
 
     def _switch_log_for_config(self, config_id: str):
         """切换日志显示为指定配置
@@ -238,6 +263,8 @@ class TaskInterface(UI_TaskInterface, QWidget):
         
         Args:
             enabled: True 表示启用编辑功能，False 表示禁用
+        
+        注意：checkbox 的禁用状态由 TaskDragListWidget 自动管理
         """
         if not hasattr(self, 'task_info') or not self.task_info:
             return

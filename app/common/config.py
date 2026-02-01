@@ -161,10 +161,10 @@ class Config(QConfig):
         _update_channel_validator,
     )
 
-    # ===== 任务设置 =====
-    low_power_monitoring_mode = ConfigItem(
-        "Task", "low_power_monitoring_mode", True, BoolValidator()
-    )  # 低功耗监控模式：使用缓存的图像而不是专用监控线程
+    # ===== 多开设置 =====
+    enable_multi_run = ConfigItem(
+        "MultiRun", "enable_multi_run", False, BoolValidator()
+    )  # 是否开启多开模式，默认关闭
 
     # ===== 日志设置 =====
     log_zip_include_images = ConfigItem(

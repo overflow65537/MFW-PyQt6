@@ -146,7 +146,8 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
     def _on_start_button_status_changed(self, status: dict):
         """根据任务流状态锁定/解锁配置列表。
         
-        多开模式：只锁定添加/删除按钮，不锁定配置切换。
+        多开模式开启时：只锁定添加/删除按钮，不锁定配置切换。
+        多开模式关闭时：锁定配置切换和添加/删除按钮。
         """
         is_running = status.get("text") == "STOP"
         self.set_locked(is_running)
@@ -154,28 +155,33 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
     def set_locked(self, locked: bool):
         """锁定后禁止新增/删除配置。
         
-        多开模式：配置切换始终允许，只锁定添加/删除操作。
+        多开模式开启时：配置切换始终允许，只锁定添加/删除操作。
+        多开模式关闭时：锁定配置切换和添加/删除按钮。
         """
+        from app.common.config import cfg
+        
         locked = bool(locked)
         if self._locked == locked:
             return
         self._locked = locked
 
-        # 只锁定添加/删除按钮，不锁定配置切换
+        # 锁定添加/删除按钮
         self.add_button.setEnabled(not locked)
         self.delete_button.setEnabled(not locked)
 
-        # 多开模式：不再锁定配置列表的切换功能
-        # 旧逻辑：锁定配置切换
-        # if (
-        #     hasattr(self, "task_list")
-        #     and self.task_list
-        #     and hasattr(self.task_list, "set_locked")
-        # ):
-        #     try:
-        #         self.task_list.set_locked(locked)
-        #     except Exception:
-        #         pass
+        # 根据多开模式决定是否锁定配置切换
+        enable_multi_run = cfg.get(cfg.enable_multi_run)
+        if not enable_multi_run:
+            # 多开模式关闭时，锁定配置切换
+            if (
+                hasattr(self, "task_list")
+                and self.task_list
+                and hasattr(self.task_list, "set_locked")
+            ):
+                try:
+                    self.task_list.set_locked(locked)
+                except Exception:
+                    pass
 
     def _init_task_list(self):
         """初始化配置列表"""

@@ -1235,7 +1235,11 @@ class ConfigListItem(BaseListItem):
 
         # 添加标签
         self.name_label = self._create_name_label()
-        layout.addWidget(self.name_label)
+        layout.addWidget(self.name_label, stretch=1)
+        
+        # 添加运行状态标志（在设置按钮之前）
+        self.status_widget = self._create_status_widget()
+        layout.addWidget(self.status_widget)
 
         # 创建设置按钮但不添加到布局（隐藏）
         self.setting_button = self._create_setting_button()
@@ -1335,6 +1339,51 @@ class ConfigListItem(BaseListItem):
         """
         # 使用基类方法，icon_path 已经是绝对路径
         super()._load_icon_to_label(icon_label, icon_path, base_path=base_path)
+
+    def _create_status_widget(self):
+        """创建运行状态标志组件"""
+        widget = QWidget(self)
+        widget.setFixedSize(24, 24)
+        widget.hide()  # 默认隐藏
+        # 创建布局用于放置状态图标或进度条
+        status_layout = QHBoxLayout(widget)
+        status_layout.setContentsMargins(0, 0, 0, 0)
+        status_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._status_progress = None
+        self._is_running = False
+        self._status_layout = status_layout
+        return widget
+
+    def update_running_status(self, is_running: bool):
+        """更新配置运行状态显示
+        
+        Args:
+            is_running: 是否正在运行
+        """
+        if self._is_running == is_running:
+            return
+        
+        self._is_running = is_running
+        
+        # 清除之前的状态组件
+        if self._status_progress:
+            self._status_layout.removeWidget(self._status_progress)
+            if isinstance(self._status_progress, IndeterminateProgressRing):
+                self._status_progress.stop()
+            self._status_progress.deleteLater()
+            self._status_progress = None
+        
+        if is_running:
+            # 显示加载动画
+            self._status_progress = IndeterminateProgressRing(self.status_widget)
+            self._status_progress.setFixedSize(20, 20)
+            self._status_progress.setStrokeWidth(2)
+            self._status_layout.addWidget(self._status_progress)
+            self._status_progress.start()
+            self.status_widget.show()
+        else:
+            # 隐藏状态组件
+            self.status_widget.hide()
 
     def contextMenuEvent(self, event):
         """右键菜单：复制配置 ID、更改配置名"""

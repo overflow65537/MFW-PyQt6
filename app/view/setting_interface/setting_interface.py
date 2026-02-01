@@ -331,7 +331,6 @@ class SettingInterface(QWidget):
         self.scroll_area.setWidget(self.scroll_content)
 
         self.initialize_start_settings()
-        self.initialize_task_settings()
         self.initialize_notice_settings()
         self.initialize_personalization_settings()
         self.initialize_hotkey_settings()
@@ -1233,26 +1232,6 @@ class SettingInterface(QWidget):
 
         self.add_setting_group(self.noticeGroup)
 
-    def initialize_task_settings(self):
-        """Task settings"""
-        self.taskGroup = SettingCardGroup(
-            self.tr("Task Settings"), self.Setting_scroll_widget
-        )
-
-        # 低功耗监控模式
-        self.low_power_monitoring_mode_card = SwitchSettingCard(
-            FIF.POWER_BUTTON,
-            self.tr("Low Power Monitoring Mode"),
-            self.tr(
-                "Use cached images instead of dedicated monitoring thread, refresh rate: 24 FPS"
-            ),
-            configItem=cfg.low_power_monitoring_mode,
-            parent=self.taskGroup,
-        )
-
-        self.taskGroup.addSettingCard(self.low_power_monitoring_mode_card)
-        self.add_setting_group(self.taskGroup)
-
     def initialize_update_settings(self):
         """插入更新设置卡片组（跟原先的 UpdateSettingsSection 等价）。"""
         self.updateGroup = SettingCardGroup(
@@ -1349,6 +1328,18 @@ class SettingInterface(QWidget):
         self.compatibility_group = SettingCardGroup(
             self.tr("Experimental / Compatibility"), self.Setting_scroll_widget
         )
+        
+        # 多开模式开关（在多资源适配上方）
+        self.enable_multi_run_card = SwitchSettingCard(
+            FIF.SHARE,
+            self.tr("Multi-Run Mode"),
+            self.tr(
+                "Allow running multiple configurations simultaneously. When enabled, you can switch configs during task execution."
+            ),
+            cfg.enable_multi_run,
+            self.compatibility_group,
+        )
+        
         self.multi_resource_adaptation_card = SwitchSettingCard(
             FIF.SETTING,
             self.tr("Multi-resource adaptation"),
@@ -1400,6 +1391,7 @@ class SettingInterface(QWidget):
             on_value_changed=self._on_log_max_images_changed,
         )
 
+        self.compatibility_group.addSettingCard(self.enable_multi_run_card)
         self.compatibility_group.addSettingCard(self.multi_resource_adaptation_card)
         self.compatibility_group.addSettingCard(self.save_screenshot_card)
         self.compatibility_group.addSettingCard(self.log_zip_include_images_card)

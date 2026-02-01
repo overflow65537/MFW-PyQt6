@@ -333,9 +333,35 @@ class LogoutputWidget(QWidget):
         """设置当前配置（初始化时使用）"""
         self._current_config_id = config_id
 
-    def _on_log_output(self, level: str, text: str):
-        """处理日志输出信号"""
-        self.add_structured_log(level, text)
+    def _on_log_output(self, level: str, text: str, config_id: str = ""):
+        """处理日志输出信号：按 config_id 隔离，仅当前配置或全局日志才刷新界面"""
+        config_id = config_id or ""
+        if config_id == "" or config_id == self._current_config_id:
+            self.add_structured_log(level, text)
+        else:
+            self._append_minimal_log_to_config(config_id, level, text)
+
+    def _append_minimal_log_to_config(self, config_id: str, level: str, text: str):
+        """将日志仅写入指定配置的存储（不刷新 UI），用于非当前配置的后台日志"""
+        upper = (level or "INFO").upper()
+        if upper not in self._level_color:
+            upper = "INFO"
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        formatted_text, has_rich_content = self._format_colored_text(str(text))
+        data = LogItemData(
+            level=upper,
+            task_name="",
+            message=formatted_text,
+            has_rich_content=has_rich_content,
+            timestamp=timestamp,
+            image_bytes=None,
+        )
+        if config_id not in self._config_log_data:
+            self._config_log_data[config_id] = []
+        self._config_log_data[config_id].append(data)
+        max_entries = cfg.get(cfg.log_max_images) if hasattr(cfg, "log_max_images") else self._max_log_entries
+        if len(self._config_log_data[config_id]) > max_entries:
+            self._config_log_data[config_id] = self._config_log_data[config_id][-max_entries:]
 
     def add_structured_log(self, level: str, text: str):
         # 规范化级别

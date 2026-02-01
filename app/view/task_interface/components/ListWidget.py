@@ -421,6 +421,11 @@ class TaskDragListWidget(BaseListWidget):
 
     def _on_config_changed(self, config_id: str) -> None:
         """Reload tasks when user switches configuration."""
+        # 保存目标配置ID以便后续使用
+        self._pending_config_id = config_id
+        # 预加载目标配置的任务状态
+        self._preload_task_states_for_config(config_id)
+        
         if self._fade_out.state() == QPropertyAnimation.State.Running:
             self._pending_refresh = True
             return
@@ -433,6 +438,28 @@ class TaskDragListWidget(BaseListWidget):
         # 特殊任务列表：保持原样，不做任何修改
         if self._filter_mode != "special":
             QTimer.singleShot(10, self.clearSelection)
+    
+    def _preload_task_states_for_config(self, config_id: str) -> None:
+        """预加载配置的任务运行状态到待处理列表
+        
+        Args:
+            config_id: 配置ID
+        """
+        try:
+            if not self.service_coordinator.is_running(config_id):
+                # 配置未运行，清空待处理状态
+                self._pending_task_statuses.clear()
+                return
+            
+            runner = self.service_coordinator.get_runner(config_id)
+            if runner and hasattr(runner, 'task_results'):
+                # 加载所有任务状态
+                task_results = runner.task_results
+                for task_id, status in task_results.items():
+                    if status:  # 只保存非空状态
+                        self._pending_task_statuses[task_id] = status
+        except Exception as e:
+            logger.debug(f"预加载任务状态失败: {e}")
     
     def _on_resource_changed(self, options: dict) -> None:
         """当选项变化时，更新任务列表显示"""
@@ -465,6 +492,30 @@ class TaskDragListWidget(BaseListWidget):
 
     def _on_fade_in_finished(self) -> None:
         self._hide_loading_overlay()
+        # 配置切换完成后，根据配置运行状态设置可编辑状态
+        config_id = getattr(self, '_pending_config_id', None)
+        if config_id:
+            is_running = self.service_coordinator.is_running(config_id)
+            self._set_items_editable(not is_running)
+            self._pending_config_id = None
+    
+    def _set_items_editable(self, enabled: bool) -> None:
+        """设置列表项的可编辑状态（checkbox）
+        
+        Args:
+            enabled: True 表示启用编辑功能，False 表示禁用
+        """
+        for i in range(self.count()):
+            item = self.item(i)
+            if not item:
+                continue
+            widget = self.itemWidget(item)
+            if not widget:
+                continue
+            # 禁用/启用 checkbox（基础任务始终保持禁用）
+            if hasattr(widget, 'checkbox') and hasattr(widget, 'task'):
+                if not widget.task.is_base_task():
+                    widget.checkbox.setEnabled(enabled)
 
     def update_list(self):
         """刷新任务列表UI（先显示骨架占位，再逐项渲染）"""
@@ -931,7 +982,37 @@ class ConfigListWidget(BaseListWidget):
         self.service_coordinator.signal_bus.config_changed.connect(
             self._on_config_changed
         )
+        
+        # 监听任务流状态变化信号，更新配置运行状态显示
+        self.service_coordinator.fs_signal_bus.fs_start_button_status.connect(
+            self._on_config_running_status_changed
+        )
+        # 监听任务流结束信号
+        signalBus.task_flow_finished.connect(self._on_task_flow_finished)
+        
         self.update_list()
+
+    def _on_config_running_status_changed(self, status: dict):
+        """更新配置运行状态显示"""
+        config_id = status.get("config_id", "")
+        is_running = status.get("text") == "STOP"
+        self._update_config_running_status(config_id, is_running)
+
+    def _on_task_flow_finished(self, payload: dict):
+        """任务流结束时更新配置状态"""
+        config_id = payload.get("config_id", "")
+        self._update_config_running_status(config_id, False)
+
+    def _update_config_running_status(self, config_id: str, is_running: bool):
+        """更新指定配置的运行状态显示"""
+        if not config_id:
+            return
+        for i in range(self.count()):
+            item = self.item(i)
+            widget = self.itemWidget(item)
+            if isinstance(widget, ConfigListItem) and widget.item.item_id == config_id:
+                widget.update_running_status(is_running)
+                break
 
     def set_locked(self, locked: bool):
         """锁定后禁止用户通过点击/键盘切换配置，同时禁用配置项右键编辑入口。"""
