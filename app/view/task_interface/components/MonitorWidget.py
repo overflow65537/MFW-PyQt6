@@ -35,9 +35,10 @@ from app.common.config import cfg
 
 
 class MonitorWidget(QWidget):
-    """简化的监控组件，用于嵌入到日志输出组件中
+    """监控组件：从当前目标 config_id 对应的运行器获取截图并显示。
     
-    多开模式：支持切换目标运行器，监控不同配置的画面
+    多开模式：截图源仅来自 _target_config_id 对应配置的运行器（该 runner 的 controller）；
+    切换配置时 _on_config_changed 会更新 _target_config_id 与 _target_runner，画面随之切换。
     """
 
     def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
@@ -302,11 +303,13 @@ class MonitorWidget(QWidget):
         self._clear_preview()
 
     def _clear_preview(self) -> None:
-        """清空预览画面：无图像时保持透明，让父级背景透出。"""
+        """清空预览画面：无图像时保持透明，让父级背景透出。切换配置后调用以清除 TaskInterface 中监控页面的图片。"""
         self._preview_pixmap = None
         self._current_pil_image = None
         if hasattr(self, "preview_label"):
             self.preview_label.clear()
+            self.preview_label.update()
+        self.update()
 
     def _refresh_preview_image(self) -> None:
         """刷新预览图像（根据图片尺寸缩放到预览标签）"""
@@ -443,35 +446,34 @@ class MonitorWidget(QWidget):
     def clear_preview(self) -> None:
         """对外接口：在切换配置时清空预览"""
         self._clear_preview()
+
     def _get_controller(self):
-        """获取控制器
+        """从当前目标 config_id 对应的运行器获取控制器，用于截图显示。
         
-        多开模式：优先使用目标运行器的控制器，然后是当前配置的运行器
+        仅使用 _target_config_id 对应配置的运行器，不回退到其他配置；
+        切换配置时 _target_config_id / _target_runner 会随之切换，画面即切换。
         """
-        # 优先使用目标运行器（多开模式）
+        if not self._target_config_id:
+            return None
+        # 优先使用已绑定的目标运行器（与 _target_config_id 对应）
         if self._target_runner and hasattr(self._target_runner, 'maafw'):
             controller = getattr(self._target_runner.maafw, 'controller', None)
             if controller is not None:
                 return controller
-        
-        # 如果当前目标配置未运行，则不要再回退到默认的 run_manager（避免旧画面残留）
-        if (
-            self._target_config_id
-            and not self.service_coordinator.is_running(self._target_config_id)
-        ):
+        # 目标配置未运行则不显示其他配置的画面
+        if not self.service_coordinator.is_running(self._target_config_id):
             return None
-
-        # 回退：使用当前配置的运行器
-        if hasattr(self.service_coordinator, 'run_manager'):
-            task_flow = self.service_coordinator.run_manager
-            if task_flow and hasattr(task_flow, 'maafw'):
-                controller = getattr(task_flow.maafw, 'controller', None)
+        # 按 config_id 从配置池取运行器，保证截图源始终来自该 config_id
+        try:
+            runner = self.service_coordinator.get_runner(self._target_config_id)
+            if runner and hasattr(runner, 'maafw'):
+                controller = getattr(runner.maafw, 'controller', None)
                 if controller is not None:
+                    self._target_runner = runner
                     return controller
-        
-        # 回退到监控任务的控制器
-        controller = getattr(self.monitor_task.maafw, 'controller', None)
-        return controller
+        except Exception:
+            pass
+        return None
     
     def _capture_frame(self) -> Image.Image:
         """捕获一帧"""
@@ -642,65 +644,20 @@ class MonitorWidget(QWidget):
         return self._target_interval
 
     def _is_controller_connected(self) -> bool:
-        """检查控制器是否连接
-        
-        多开模式：优先检查目标运行器的控制器
-        """
-        # 优先检查目标运行器（多开模式）
-        if self._target_runner and hasattr(self._target_runner, 'maafw'):
-            controller = getattr(self._target_runner.maafw, 'controller', None)
-            if controller is not None:
-                connected = getattr(controller, "connected", None)
-                if connected is not False:
-                    return True
-        
-        # 回退：检查当前配置的运行器
-        if hasattr(self.service_coordinator, 'run_manager'):
-            task_flow = self.service_coordinator.run_manager
-            if task_flow and hasattr(task_flow, 'maafw'):
-                controller = getattr(task_flow.maafw, 'controller', None)
-                if controller is not None:
-                    connected = getattr(controller, "connected", None)
-                    if connected is not False:
-                        return True
-        
-        # 回退到监控任务的控制器
-        controller = getattr(self.monitor_task.maafw, "controller", None)
+        """检查当前目标 config_id 对应运行器的控制器是否连接。仅看该配置，不回退到其他配置。"""
+        controller = self._get_controller()
         if controller is None:
             return False
         connected = getattr(controller, "connected", None)
         return connected is not False
-    
+
     def _check_task_flow_controller_ready(self) -> bool:
-        """检查任务流的控制器是否就绪
-        
-        多开模式：优先检查目标运行器
-        """
-        # 优先检查目标运行器（多开模式）
-        if self._target_runner and hasattr(self._target_runner, 'maafw'):
-            maafw = self._target_runner.maafw
-            controller = getattr(maafw, 'controller', None)
-            if controller is not None:
-                connected = getattr(controller, 'connected', None)
-                if connected is True:
-                    return True
-        
-        # 回退：检查当前配置的运行器
-        if not hasattr(self.service_coordinator, 'run_manager'):
-            return False
-        
-        task_flow = self.service_coordinator.run_manager
-        if not task_flow or not hasattr(task_flow, 'maafw'):
-            return False
-        
-        maafw = task_flow.maafw
-        controller = getattr(maafw, 'controller', None)
+        """检查当前目标 config_id 对应运行器的控制器是否就绪。仅看该配置。"""
+        controller = self._get_controller()
         if controller is None:
             return False
-        
         connected = getattr(controller, 'connected', None)
-        is_ready = connected is True
-        return is_ready
+        return connected is True
     
     async def _get_required_wait_time(self) -> float:
         """从配置中获取需要的等待时间（如果配置了启动模拟器或程序）"""

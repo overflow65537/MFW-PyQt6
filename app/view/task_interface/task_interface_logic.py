@@ -103,12 +103,7 @@ class TaskInterface(UI_TaskInterface, QWidget):
             self.log_output_widget.switch_config(config_id)
 
     def _switch_monitor_for_config(self, config_id: str, is_running: bool):
-        """切换监控显示为指定配置
-        
-        多开模式：
-        - 如果配置正在运行，切换到该配置的运行器
-        - 如果配置未运行，停止监控并清空画面
-        """
+        """切换监控显示为指定配置。切换配置后先清除 TaskInterface 中监控页面的图片，再按目标配置绑定运行器或清空。"""
         if not hasattr(self, 'log_output_widget'):
             return
         
@@ -116,6 +111,7 @@ class TaskInterface(UI_TaskInterface, QWidget):
         if monitor_widget is None:
             return
         
+        # 切换配置后先清除监控画面，再切换目标
         if hasattr(monitor_widget, 'clear_preview'):
             monitor_widget.clear_preview()
 
@@ -135,14 +131,16 @@ class TaskInterface(UI_TaskInterface, QWidget):
                 logger.debug(f"监控已设置目标配置 {config_id}（未运行）")
 
     def _on_start_button_clicked(self):
-        """处理开始按钮点击事件"""
-        # 启动任务流（使用当前配置）
-        asyncio.create_task(self.service_coordinator.run_tasks_flow())
+        """处理开始按钮点击事件（由前端传入当前配置）"""
+        config_id = self._current_config_id
+        if config_id:
+            asyncio.create_task(self.service_coordinator.run_tasks_flow(config_id=config_id))
 
     def _on_stop_button_clicked(self):
-        """处理停止按钮点击事件"""
-        # 停止任务流（使用当前配置）
-        asyncio.create_task(self.service_coordinator.stop_task_flow())
+        """处理停止按钮点击事件（由前端传入当前配置）"""
+        config_id = self._current_config_id
+        if config_id:
+            asyncio.create_task(self.service_coordinator.stop_task_flow(config_id=config_id))
 
     def _on_run_button_clicked(self):
         """处理启动/停止按钮点击事件

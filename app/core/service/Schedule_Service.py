@@ -528,7 +528,7 @@ class ScheduleService(QObject):
                 self.service_coordinator.config.current_config_id,
             )
         try:
-            await self.service_coordinator.run_tasks_flow()
+            await self.service_coordinator.run_tasks_flow(config_id=entry.config_id)
         except Exception as exc:
             logger.exception("计划任务执行失败: %s", exc)
             self._log_info(f"计划任务：{entry.name} 执行失败 {exc}")

@@ -1,15 +1,14 @@
 """
 服务协调器 - 核心模块
 
-重构目标：
-1. 全局单实例模式
-2. 多运行器支持（每个配置独立运行器，支持并行运行）
-3. 按需创建运行器（懒加载）
-4. 属性访问模式，移除信号传递数据
+工作流程：
+1. 启动后遍历所有配置，创建配置对象到存储池（ConfigEntry：任务列表来自 ConfigItem，任务流对象 Runner，监控目标即 Runner）
+2. current_config_id 仅给前端标记「上次退出前使用的配置」；核心内部运行不读取，由前端在 run/stop 时传入 config_id
 """
 
 from pathlib import Path
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
+from dataclasses import dataclass
 from datetime import datetime
 import time
 import shutil
@@ -104,6 +103,15 @@ class RunnerState:
         self.last_used = datetime.now()
 
 
+# ==================== 配置池条目 ====================
+@dataclass
+class ConfigEntry:
+    """单个配置在核心中的条目：含任务流对象与运行状态，任务列表与配置数据由 ConfigService 按 config_id 提供；监控目标即本条目中的 runner。"""
+    config_id: str
+    runner: 'TaskFlowRunner'
+    state: RunnerState
+
+
 # ==================== 服务协调器 ====================
 class ServiceCoordinator:
     """服务协调器，整合配置、任务和选项服务
@@ -172,11 +180,9 @@ class ServiceCoordinator:
         self.option_service = OptionService(self.task_service, self.signal_bus)
         self.config_service.register_on_change(self._on_config_changed)
 
-        # ==================== 多运行器支持 ====================
-        # 运行器字典（懒加载，按需创建）
-        # 设计：每个配置都有独立的运行器，支持多个配置同时运行
-        self._runners: Dict[str, 'TaskFlowRunner'] = {}
-        self._runner_states: Dict[str, RunnerState] = {}
+        # ==================== 配置池（多开） ====================
+        # 每个 config_id 对应一个 ConfigEntry（任务流 + 状态）；任务列表来自 config_service.get_config(config_id).tasks；监控目标即 entry.runner
+        self._config_pool: Dict[str, ConfigEntry] = {}
 
         # 调度服务
         schedule_store = main_config_path.parent / "schedules.json"
@@ -191,120 +197,99 @@ class ServiceCoordinator:
         # 清理无效的 bundle 索引
         self._cleanup_invalid_bundles()
 
+        # 应用启动时为所有已加载的配置预建运行器（监控目标）
+        self._ensure_runners_for_all_configs()
+
+    def _ensure_runners_for_all_configs(self) -> None:
+        """启动时遍历所有配置，创建配置对象到存储池（含任务流与监控目标）"""
+        try:
+            configs = self.config_service.list_configs()
+            for summary in configs:
+                config_id = summary.get("item_id") if isinstance(summary, dict) else None
+                if not config_id:
+                    continue
+                if config_id not in self._config_pool:
+                    try:
+                        self.create_runner_for_config(config_id)
+                        logger.debug(f"启动时加入配置池: {config_id}")
+                    except Exception as e:
+                        logger.warning(f"加入配置池失败 {config_id}: {e}")
+        except Exception as e:
+            logger.warning(f"配置池初始化异常: {e}")
+
     # ==================== 运行器管理（多运行器支持） ====================
     
     def get_runner(self, config_id: str | None = None) -> 'TaskFlowRunner':
-        """获取指定配置的运行器（懒加载，按需创建）
+        """获取指定配置的运行器（池中无则按需创建；仅用于前端按 config_id 取运行器/监控目标）
         
         Args:
-            config_id: 配置ID，如果为 None 则使用当前配置
-            
-        Returns:
-            TaskFlowRunner: 配置对应的运行器
+            config_id: 配置ID；为 None 时使用 current_config_id（仅用于兼容前端「当前选中」场景）
         """
         if config_id is None:
             config_id = self.current_config_id
-        
         if not config_id:
             raise ValueError("No config_id specified and no current config")
-        
-        # 如果运行器不存在，现场创建
-        if config_id not in self._runners:
+        if config_id not in self._config_pool:
             return self.create_runner_for_config(config_id)
-        
-        # 更新最后使用时间
-        if config_id in self._runner_states:
-            self._runner_states[config_id].last_used = datetime.now()
-        
-        return self._runners[config_id]
+        entry = self._config_pool[config_id]
+        entry.state.last_used = datetime.now()
+        return entry.runner
 
     def create_runner_for_config(self, config_id: str) -> 'TaskFlowRunner':
-        """为指定配置创建运行器（现场创建，可传给前端）
-        
-        Args:
-            config_id: 配置ID
-            
-        Returns:
-            TaskFlowRunner: 新创建的运行器
-        """
-        # 如果已存在，直接返回
-        if config_id in self._runners:
-            return self._runners[config_id]
-        
-        # 验证配置存在
+        """为指定配置创建运行器并加入配置池（任务流 + 监控目标）"""
+        if config_id in self._config_pool:
+            return self._config_pool[config_id].runner
         config = self.config_service.get_config(config_id)
         if not config:
             raise ValueError(f"配置 {config_id} 不存在")
-        
-        # 延迟导入避免循环依赖
         from app.core.runner.task_flow import TaskFlowRunner
-        
-        # 创建运行器
         runner = TaskFlowRunner(
             task_service=self.task_service,
             config_service=self.config_service,
             fs_signal_bus=self.fs_signal_bus,
-            config_id=config_id,  # 传入配置ID
-            service_coordinator=self,  # 传入服务协调器
+            config_id=config_id,
+            service_coordinator=self,
         )
-        
-        # 缓存运行器
-        self._runners[config_id] = runner
-        self._runner_states[config_id] = RunnerState()
-        
-        logger.debug(f"为配置 {config_id} 创建运行器")
+        state = RunnerState()
+        self._config_pool[config_id] = ConfigEntry(config_id=config_id, runner=runner, state=state)
+        logger.debug(f"配置池已加入: {config_id}")
         return runner
 
     def delete_runner(self, config_id: str) -> bool:
-        """删除指定配置的运行器
-        
-        Args:
-            config_id: 配置ID
-            
-        Returns:
-            bool: 是否删除成功
-        """
-        if config_id in self._runners:
-            runner = self._runners.pop(config_id)
-            if hasattr(runner, 'cleanup'):
-                try:
-                    runner.cleanup()
-                except Exception as e:
-                    logger.warning(f"清理运行器失败: {e}")
-            self._runner_states.pop(config_id, None)
-            return True
-        return False
+        """从配置池移除指定配置的运行器"""
+        if config_id not in self._config_pool:
+            return False
+        entry = self._config_pool.pop(config_id)
+        if hasattr(entry.runner, 'cleanup'):
+            try:
+                entry.runner.cleanup()
+            except Exception as e:
+                logger.warning(f"清理运行器失败: {e}")
+        return True
 
-    def is_running(self, config_id: str | None = None) -> bool:
-        """检查配置是否正在运行
-        
-        Args:
-            config_id: 配置ID，如果为 None 则使用当前配置
-        """
-        if config_id is None:
-            config_id = self.current_config_id
-        
-        if config_id in self._runner_states:
-            return self._runner_states[config_id].is_running
-        return False
+    def is_running(self, config_id: str) -> bool:
+        """检查指定配置是否正在运行（需传入 config_id，核心不读 current_config_id）"""
+        if config_id not in self._config_pool:
+            return False
+        return self._config_pool[config_id].state.is_running
 
     def get_running_configs(self) -> List[str]:
         """获取所有正在运行的配置ID列表"""
         return [
-            config_id for config_id, state in self._runner_states.items()
-            if state.is_running
+            cid for cid, entry in self._config_pool.items()
+            if entry.state.is_running
         ]
 
     # ==================== 属性访问接口 ====================
     
     @property
     def current_config_id(self) -> str:
-        """获取当前激活配置ID"""
+        """当前配置ID：仅给前端标记「上次退出前使用的配置」；核心内部 run/stop 不读取，由前端传入 config_id。"""
         return self.config_service.current_config_id
 
     @current_config_id.setter
     def current_config_id(self, value: str) -> None:
-        """设置当前激活配置ID（自动保存）"""
+        """设置当前配置ID（前端切换配置时写入，会落盘）"""
         self.config_service.current_config_id = value
 
     @property
@@ -346,11 +331,21 @@ class ServiceCoordinator:
         return self.config_service.list_configs()
 
     def add_config(self, config_item: ConfigItem) -> str:
-        """添加配置，返回新配置ID"""
+        """添加配置，返回新配置ID。
+        
+        多开模式：配置创建时同步创建该配置的任务流运行器，
+        监控界面切换配置时直接绑定对应运行器即可。
+        """
         new_id = self.config_service.create_config(config_item)
         if new_id:
             self.config_service.current_config_id = new_id
             self.task_service.init_new_config()
+            # 配置创建时同步创建该配置的运行器（任务流 + 监控目标）
+            try:
+                self.create_runner_for_config(new_id)
+                logger.debug(f"配置 {new_id} 已同步创建运行器")
+            except Exception as e:
+                logger.warning(f"配置创建时创建运行器失败: {e}")
             self.fs_signal_bus.fs_config_added.emit(new_id)
         return new_id
 
@@ -499,84 +494,57 @@ class ServiceCoordinator:
 
     # ==================== 任务流执行（多运行器） ====================
     
-    def create_task_flow(self, config_id: str | None = None) -> List[TaskItem]:
-        """创建任务流，返回任务对象列表"""
-        if config_id is None:
-            config_id = self.current_config_id
-        
+    def create_task_flow(self, config_id: str) -> List[TaskItem]:
+        """创建指定配置的任务流列表（需传入 config_id）"""
         config = self.config_service.get_config(config_id)
         if not config:
             return []
-        
-        # 刷新隐藏标记
-        self.task_service.refresh_hidden_flags()
-        
-        # 过滤出已选中且未隐藏的任务
-        flow_tasks = [
-            task for task in config.tasks
-            if task.is_checked and not task.is_hidden
-        ]
-        
-        return flow_tasks
-
-    async def run_tasks_flow(
-        self, 
-        config_id: str | None = None, 
-        task_id: str | None = None,
-        start_task_id: str | None = None,
-    ):
-        """运行指定配置的任务流（支持多开）
-        
-        Args:
-            config_id: 配置ID，如果为 None 则使用当前配置
-            task_id: 指定只运行某个任务（可选）
-            start_task_id: 从某个任务开始执行（可选）
-        """
-        if config_id is None:
-            config_id = self.current_config_id
-        
-        if not config_id:
-            raise ValueError("No config specified")
-        
-        # 获取运行器（自动创建如果不存在）
-        runner = self.get_runner(config_id)
-        state = self._runner_states[config_id]
-        
-        # 检查是否已经在运行
-        if state.is_running:
-            raise RuntimeError(f"配置 {config_id} 的任务流正在运行中")
-        
-        # 刷新隐藏标记
         try:
             self.task_service.refresh_hidden_flags()
         except Exception:
             pass
-        
-        # 标记为运行中
-        state.mark_running()
-        
+        return [
+            task for task in config.tasks
+            if task.is_checked and not task.is_hidden
+        ]
+
+    async def run_tasks_flow(
+        self,
+        config_id: str | None = None,
+        task_id: str | None = None,
+        start_task_id: str | None = None,
+    ):
+        """运行指定配置的任务流（多开）。核心不读 current_config_id，必须由前端传入 config_id。"""
+        if config_id is None or not config_id:
+            raise ValueError("config_id is required for run_tasks_flow (provided by frontend)")
+        if config_id not in self._config_pool:
+            self.create_runner_for_config(config_id)
+        entry = self._config_pool[config_id]
+        if entry.state.is_running:
+            raise RuntimeError(f"配置 {config_id} 的任务流正在运行中")
         try:
-            return await runner.run_tasks_flow(task_id, start_task_id=start_task_id)
+            self.task_service.refresh_hidden_flags()
+        except Exception:
+            pass
+        entry.state.mark_running()
+        try:
+            return await entry.runner.run_tasks_flow(task_id, start_task_id=start_task_id)
         finally:
-            state.mark_stopped()
+            entry.state.mark_stopped()
 
     async def stop_task_flow(self, config_id: str | None = None):
-        """停止指定配置的任务流"""
-        if config_id is None:
-            config_id = self.current_config_id
-        
-        if config_id in self._runners:
-            runner = self._runners[config_id]
-            return await runner.stop_task(manual=True)
+        """停止指定配置的任务流。必须由前端传入 config_id。"""
+        if config_id is None or not config_id:
+            raise ValueError("config_id is required for stop_task_flow (provided by frontend)")
+        if config_id in self._config_pool:
+            return await self._config_pool[config_id].runner.stop_task(manual=True)
 
     async def stop_task(self, config_id: str | None = None, *, manual: bool = False):
-        """停止任务流"""
-        if config_id is None:
-            config_id = self.current_config_id
-        
-        if config_id in self._runners:
-            runner = self._runners[config_id]
-            return await runner.stop_task(manual=manual)
+        """停止指定配置的任务流。必须由前端传入 config_id。"""
+        if config_id is None or not config_id:
+            raise ValueError("config_id is required for stop_task (provided by frontend)")
+        if config_id in self._config_pool:
+            return await self._config_pool[config_id].runner.stop_task(manual=manual)
 
     # ==================== 兼容性属性（保持向后兼容） ====================
     

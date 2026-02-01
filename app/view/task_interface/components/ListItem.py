@@ -870,16 +870,26 @@ class TaskListItem(BaseListItem):
     def _run_single_task(self):
         if not self.service_coordinator:
             return
-        asyncio.create_task(self.service_coordinator.run_tasks_flow(task_id=self.task.item_id))
+        config_id = self.service_coordinator.current_config_id
+        if config_id:
+            asyncio.create_task(
+                self.service_coordinator.run_tasks_flow(
+                    config_id=config_id,
+                    task_id=self.task.item_id
+                )
+            )
 
     def _run_from_task(self):
         if not self.service_coordinator or self.task.is_base_task():
             return
-        asyncio.create_task(
-            self.service_coordinator.run_manager.run_tasks_flow(
-                start_task_id=self.task.item_id
+        config_id = self.service_coordinator.current_config_id
+        if config_id:
+            asyncio.create_task(
+                self.service_coordinator.run_tasks_flow(
+                    config_id=config_id,
+                    start_task_id=self.task.item_id
+                )
             )
-        )
 
     def _insert_task(self):
         """插入任务：在当前任务下方插入新任务"""

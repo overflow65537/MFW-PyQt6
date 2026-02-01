@@ -408,8 +408,8 @@ class MainWindow(MSFluentWindow):
             event_loop = None
         self._hotkey_manager = GlobalHotkeyManager(event_loop)
         self._hotkey_manager.setup(
-            start_factory=lambda: self.service_coordinator.run_tasks_flow(),
-            stop_factory=lambda: self.service_coordinator.stop_task_flow(),
+            start_factory=lambda: self.service_coordinator.run_tasks_flow(config_id=self.service_coordinator.current_config_id),
+            stop_factory=lambda: self.service_coordinator.stop_task_flow(config_id=self.service_coordinator.current_config_id),
         )
         signalBus.hotkey_shortcuts_changed.connect(self._reload_global_hotkeys)
 
@@ -1785,7 +1785,9 @@ class MainWindow(MSFluentWindow):
 
         async def _start_flow():
             try:
-                await self.service_coordinator.run_tasks_flow()
+                config_id = self.service_coordinator.current_config_id
+                if config_id:
+                    await self.service_coordinator.run_tasks_flow(config_id=config_id)
             except Exception as exc:
                 logger.error("启动后自动运行失败: %s", exc)
 
