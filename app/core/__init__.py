@@ -4,6 +4,8 @@ from app.core.core import (
     init_service_coordinator,
     get_service_coordinator,
     reset_service_coordinator,
+    ConfigInstance,
+    ConfigInstanceManager,
 )
 from app.core.Item import (
     ConfigItem,
@@ -17,6 +19,8 @@ __all__ = [
     "init_service_coordinator",
     "get_service_coordinator",
     "reset_service_coordinator",
+    "ConfigInstance",
+    "ConfigInstanceManager",
     "ConfigItem",
     "TaskItem",
     "CoreSignalBus",

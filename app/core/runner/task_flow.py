@@ -148,16 +148,79 @@ class TaskFlowRunner(QObject):
             return self._coordinator.get_tasks(self._config_id)
         return self.task_service.get_tasks()
     
+    def get_task(self, task_id: str) -> TaskItem | None:
+        """获取指定任务
+        
+        如果绑定了配置ID，优先从该配置获取；否则使用当前配置
+        """
+        if self._config_id and self._coordinator:
+            return self._coordinator.get_task(task_id, self._config_id)
+        return self.task_service.get_task(task_id)
+    
     def get_task_option(self, task_id: str) -> Dict[str, Any]:
         """获取任务选项
         
         如果绑定了配置ID，优先从该配置获取；否则使用当前配置
         """
-        if self._config_id and self._coordinator:
-            task = self._coordinator.get_task(task_id, self._config_id)
-            return task.task_option if task else {}
-        task = self.task_service.get_task(task_id)
+        task = self.get_task(task_id)
         return task.task_option if task else {}
+    
+    def get_task_execution_info(self, task_id: str) -> Dict[str, Any] | None:
+        """获取任务的执行信息（entry 和 pipeline_override）
+        
+        使用绑定配置的任务来获取执行信息，而不是全局当前配置
+        """
+        task = self.get_task(task_id)
+        if not task:
+            logger.warning(f"任务 {task_id} 不存在（配置: {self._config_id}）")
+            return None
+        
+        interface = self.task_service.interface
+        if not interface:
+            logger.error("Interface 未加载")
+            return None
+        
+        # 从 interface 中查找任务的 entry
+        entry = None
+        task_pipeline_override = {}
+        
+        for interface_task in interface.get("task", []):
+            if interface_task.get("name") == task.name:
+                entry = interface_task.get("entry", "")
+                task_pipeline_override = interface_task.get("pipeline_override", {})
+                break
+        
+        if not entry:
+            logger.warning(f"任务 '{task.name}' 在 interface 中未找到 entry")
+            return None
+        
+        from app.core.utils.pipeline_helper import (
+            get_pipeline_override_from_task_option,
+        )
+        
+        option_pipeline_override = get_pipeline_override_from_task_option(
+            interface, task.task_option, task.item_id
+        )
+        
+        # 深度合并：任务级 pipeline_override + 选项级 pipeline_override
+        merged_override = {}
+        
+        def deep_merge(base: dict, override: dict) -> dict:
+            """递归合并字典"""
+            result = base.copy()
+            for key, value in override.items():
+                if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                    result[key] = deep_merge(result[key], value)
+                else:
+                    result[key] = value
+            return result
+        
+        merged_override = deep_merge(task_pipeline_override, option_pipeline_override)
+        
+        return {
+            "entry": entry,
+            "pipeline_override": merged_override,
+        }
     
     def cleanup(self):
         """清理运行器资源"""
@@ -345,7 +408,7 @@ class TaskFlowRunner(QObject):
         self._is_single_task_mode = is_single_task_mode
         effective_start_task_id = None
         if not is_single_task_mode and start_task_id:
-            current_tasks = self.task_service.current_tasks
+            current_tasks = self.get_tasks()  # 使用绑定配置的任务
             for task in current_tasks:
                 if task.item_id == start_task_id:
                     effective_start_task_id = start_task_id
@@ -366,7 +429,7 @@ class TaskFlowRunner(QObject):
         def set_waiting_status():
             # 只在完整运行模式（非单任务模式）时设置等待状态
             if not is_single_task_mode:
-                all_tasks = self.task_service.get_tasks()
+                all_tasks = self.get_tasks()  # 使用绑定配置的任务
                 start_reached = effective_start_task_id is None
                 for task in all_tasks:
                     if effective_start_task_id and not start_reached:
@@ -411,7 +474,7 @@ class TaskFlowRunner(QObject):
                 self.fs_signal_bus.fs_start_button_status.emit(
                     {"text": "STOP", "status": "disabled", "config_id": self._config_id or ""}
                 )
-            controller_cfg = self.task_service.get_task(_CONTROLLER_)
+            controller_cfg = self.get_task(_CONTROLLER_)
             if not controller_cfg:
                 raise ValueError("未找到基础预配置任务")
 
@@ -449,7 +512,7 @@ class TaskFlowRunner(QObject):
             )
 
             logger.info("开始加载资源...")
-            resource_cfg = self.task_service.get_task(_RESOURCE_)
+            resource_cfg = self.get_task(_RESOURCE_)
             if not resource_cfg:
                 raise ValueError("未找到资源设置任务")
             if not await self.load_resources(resource_cfg.task_option):
@@ -714,7 +777,7 @@ class TaskFlowRunner(QObject):
             # - 若完成后操作配置启用 always_run：即使流程因“非手动停止”的失败而触发 stop_task()，也会执行完成后操作
             always_run_post_action = False
             try:
-                post_task = self.task_service.get_task(POST_ACTION)
+                post_task = self.get_task(POST_ACTION)
                 post_cfg = (
                     post_task.task_option.get("post_action") if post_task else None
                 )
@@ -755,7 +818,7 @@ class TaskFlowRunner(QObject):
             self._is_running = False
 
             # 清除所有任务状态
-            all_tasks = self.task_service.get_tasks()
+            all_tasks = self.get_tasks()  # 使用绑定配置的任务
             for task in all_tasks:
                 if not task.is_base_task():
                     signalBus.task_status_changed.emit(task.item_id, "")
@@ -782,7 +845,7 @@ class TaskFlowRunner(QObject):
         if is_single_task_mode:
             if not task_id:
                 return tasks
-            task = self.task_service.get_task(task_id)
+            task = self.get_task(task_id)
             if not task:
                 logger.error(f"任务 ID '{task_id}' 不存在")
                 return tasks
@@ -797,7 +860,7 @@ class TaskFlowRunner(QObject):
             return tasks
 
         start_reached = effective_start_task_id is None
-        for task in self.task_service.current_tasks:
+        for task in self.get_tasks():  # 使用绑定配置的任务
             if effective_start_task_id and not start_reached:
                 if task.item_id == effective_start_task_id:
                     start_reached = True
@@ -979,7 +1042,7 @@ class TaskFlowRunner(QObject):
                 return False
 
             logger.debug(f"加载资源: {resource}")
-            res_cfg = self.task_service.get_task(_RESOURCE_)
+            res_cfg = self.get_task(_RESOURCE_)
             gpu_idx = res_cfg.task_option.get("gpu", -1) if res_cfg else -1
             await self.maafw.load_resource(resource, gpu_idx)
             logger.debug(f"资源加载完成: {resource}")
@@ -987,7 +1050,7 @@ class TaskFlowRunner(QObject):
 
     async def run_task(self, task_id: str, skip_speedrun: bool = False):
         """执行指定任务"""
-        task = self.task_service.get_task(task_id)
+        task = self.get_task(task_id)
         if not task:
             logger.error(f"任务 ID '{task_id}' 不存在")
             return
@@ -1017,7 +1080,7 @@ class TaskFlowRunner(QObject):
                 )
                 return "skipped"
 
-        raw_info = self.task_service.get_task_execution_info(task_id)
+        raw_info = self.get_task_execution_info(task_id)
         logger.info(f"任务 '{task.name}' 的执行信息: {raw_info}")
         if raw_info is None:
             logger.error(f"无法获取任务 '{task.name}' 的执行信息")
@@ -2091,7 +2154,7 @@ class TaskFlowRunner(QObject):
             controller_raw[controller_name].update(device_info)
 
             # 获取预配置任务并更新
-            if controller_cfg := self.task_service.get_task(_CONTROLLER_):
+            if controller_cfg := self.get_task(_CONTROLLER_):
                 controller_cfg.task_option.update(controller_raw)
                 self.task_service.update_task(controller_cfg)
                 logger.info(f"设备配置已保存: {device_info.get('device_name', '')}")
@@ -2108,7 +2171,7 @@ class TaskFlowRunner(QObject):
         - 切换配置：只要求前两者完成，不等待外部通知（因为不关软件）
         - 关机/退出软件：在执行前等待外部通知发送完成（避免通知丢失）
         """
-        post_task = self.task_service.get_task(POST_ACTION)
+        post_task = self.get_task(POST_ACTION)
         if not post_task:
             return
 
@@ -2259,7 +2322,7 @@ class TaskFlowRunner(QObject):
 
         # 再尽力等待真正关闭（仅对可检测的场景做等待；失败/超时不影响后续动作）
         try:
-            controller_cfg = self.task_service.get_task(_CONTROLLER_)
+            controller_cfg = self.get_task(_CONTROLLER_)
             if not controller_cfg or not isinstance(controller_cfg.task_option, dict):
                 return
             controller_raw = controller_cfg.task_option
@@ -2371,7 +2434,7 @@ class TaskFlowRunner(QObject):
 
     def _close_controller(self) -> None:
         """关闭控制器 - 根据当前运行的控制器类型执行不同的关闭操作"""
-        controller_cfg = self.task_service.get_task(_CONTROLLER_)
+        controller_cfg = self.get_task(_CONTROLLER_)
         if not controller_cfg:
             logger.warning("未找到控制器配置，无法关闭控制器")
             return

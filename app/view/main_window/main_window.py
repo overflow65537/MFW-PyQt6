@@ -94,6 +94,7 @@ from qfluentwidgets import FluentIcon as FIF
 
 from app.view.task_interface.task_interface_logic import TaskInterface
 from app.view.monitor_interface import MonitorInterface
+from app.view.multi_run_interface import MultiRunInterface
 from app.view.schedule_interface.schedule_interface import ScheduleInterface
 from app.view.setting_interface.setting_interface import (
     SettingInterface,
@@ -316,6 +317,12 @@ class MainWindow(MSFluentWindow):
             self.MonitorInterface,
             FIF.PROJECTOR,
             self.tr("Monitor"),
+        )
+        self.MultiRunInterface = MultiRunInterface(self.service_coordinator)
+        self.addSubInterface(
+            self.MultiRunInterface,
+            FIF.IOT,
+            self.tr("Multi-Run"),
         )
         self.ScheduleInterface = ScheduleInterface(self.service_coordinator)
         self.addSubInterface(

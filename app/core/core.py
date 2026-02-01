@@ -104,6 +104,291 @@ class RunnerState:
         self.last_used = datetime.now()
 
 
+# ==================== 配置实例 ====================
+class ConfigInstance:
+    """单个配置的实例
+    
+    提供对特定配置的所有操作：
+    - item: 配置数据（ConfigItem）
+    - tasks: 任务列表
+    - runner: 运行器（懒加载）
+    - is_running: 运行状态
+    """
+    
+    def __init__(self, config_id: str, coordinator: 'ServiceCoordinator'):
+        self._config_id = config_id
+        self._coordinator = coordinator
+    
+    @property
+    def id(self) -> str:
+        """配置ID"""
+        return self._config_id
+    
+    @property
+    def item(self) -> ConfigItem | None:
+        """配置数据"""
+        return self._coordinator.config_service.get_config(self._config_id)
+    
+    @property
+    def tasks(self) -> List[TaskItem]:
+        """任务列表"""
+        config = self.item
+        return config.tasks if config else []
+    
+    def get_task(self, task_id: str) -> TaskItem | None:
+        """获取指定任务"""
+        config = self.item
+        return config.get_task(task_id) if config else None
+    
+    @property
+    def runner(self) -> 'TaskFlowRunner':
+        """运行器（懒加载）"""
+        return self._coordinator.get_runner(self._config_id)
+    
+    @property
+    def is_running(self) -> bool:
+        """是否正在运行"""
+        return self._coordinator.is_running(self._config_id)
+    
+    @property
+    def runner_state(self) -> RunnerState | None:
+        """运行器状态"""
+        return self._coordinator._runner_states.get(self._config_id)
+    
+    def start(self, task_id: str | None = None):
+        """启动任务流"""
+        import asyncio
+        asyncio.create_task(
+            self._coordinator.run_tasks_flow(config_id=self._config_id, task_id=task_id)
+        )
+    
+    def stop(self):
+        """停止任务流"""
+        import asyncio
+        asyncio.create_task(
+            self._coordinator.stop_task_flow(config_id=self._config_id)
+        )
+    
+    def save(self) -> bool:
+        """保存配置"""
+        return self._coordinator.save_config(self._config_id)
+    
+    def delete(self) -> bool:
+        """删除配置"""
+        return self._coordinator.delete_config(self._config_id)
+    
+    def __repr__(self):
+        config = self.item
+        name = config.name if config else "Unknown"
+        return f"<ConfigInstance id={self._config_id} name={name} running={self.is_running}>"
+
+
+class ConfigInstanceManager:
+    """配置实例管理器
+    
+    支持字典式访问：config["配置id"]
+    支持当前配置属性：config.current
+    
+    用法：
+        coordinator.config["c_xxx"]  # 获取特定配置实例
+        coordinator.config.current   # 获取当前配置实例
+        coordinator.config.current = "c_xxx"  # 设置当前配置
+        "c_xxx" in coordinator.config  # 检查配置是否存在
+        for cfg in coordinator.config:  # 遍历所有配置
+    """
+    
+    def __init__(self, coordinator: 'ServiceCoordinator'):
+        self._coordinator = coordinator
+        self._instances: Dict[str, ConfigInstance] = {}
+        self._init_instances()
+    
+    def _init_instances(self):
+        """初始化所有配置实例"""
+        for config_info in self._coordinator.config_service.list_configs():
+            # list_configs 返回 {"item_id": ..., "name": ...}
+            config_id = config_info.get("item_id") or config_info.get("config_id") or config_info.get("id")
+            if config_id:
+                self._instances[config_id] = ConfigInstance(config_id, self._coordinator)
+        logger.debug(f"已初始化 {len(self._instances)} 个配置实例")
+    
+    def refresh(self):
+        """刷新配置实例（添加新配置、移除已删除的配置）"""
+        current_ids = set(self._instances.keys())
+        actual_ids = set()
+        
+        for config_info in self._coordinator.config_service.list_configs():
+            # list_configs 返回 {"item_id": ..., "name": ...}
+            config_id = config_info.get("item_id") or config_info.get("config_id") or config_info.get("id")
+            if config_id:
+                actual_ids.add(config_id)
+                if config_id not in self._instances:
+                    self._instances[config_id] = ConfigInstance(config_id, self._coordinator)
+        
+        # 移除已删除的配置
+        for config_id in current_ids - actual_ids:
+            del self._instances[config_id]
+    
+    def __getitem__(self, config_id: str) -> ConfigInstance:
+        """获取配置实例"""
+        if config_id not in self._instances:
+            # 尝试刷新
+            self.refresh()
+            if config_id not in self._instances:
+                raise KeyError(f"配置 {config_id} 不存在")
+        return self._instances[config_id]
+    
+    def __contains__(self, config_id: str) -> bool:
+        """检查配置是否存在"""
+        return config_id in self._instances
+    
+    def __iter__(self):
+        """遍历所有配置实例"""
+        return iter(self._instances.values())
+    
+    def __len__(self):
+        """配置数量"""
+        return len(self._instances)
+    
+    def keys(self):
+        """所有配置ID"""
+        return self._instances.keys()
+    
+    def values(self):
+        """所有配置实例"""
+        return self._instances.values()
+    
+    def items(self):
+        """配置ID和实例的键值对"""
+        return self._instances.items()
+    
+    def get(self, config_id: str, default=None) -> ConfigInstance | None:
+        """获取配置实例（不存在返回默认值）"""
+        return self._instances.get(config_id, default)
+    
+    @property
+    def current(self) -> ConfigInstance | None:
+        """当前配置实例"""
+        current_id = self._coordinator.current_config_id
+        if not current_id:
+            return None
+        return self.get(current_id)
+    
+    @current.setter
+    def current(self, config_id: str):
+        """设置当前配置"""
+        if config_id not in self._instances:
+            raise KeyError(f"配置 {config_id} 不存在")
+        self._coordinator.current_config_id = config_id
+    
+    @property
+    def current_id(self) -> str:
+        """当前配置ID"""
+        return self._coordinator.current_config_id
+
+    @current_id.setter
+    def current_id(self, value: str):
+        """设置当前配置ID"""
+        self.current = value
+    
+    # 别名：保持向后兼容
+    @property
+    def current_config_id(self) -> str:
+        """当前配置ID（current_id 的别名）"""
+        return self.current_id
+    
+    @current_config_id.setter
+    def current_config_id(self, value: str):
+        """设置当前配置ID"""
+        self.current_id = value
+    
+    def add(self, config_item: ConfigItem) -> ConfigInstance:
+        """添加新配置，返回配置实例"""
+        new_id = self._coordinator.add_config(config_item)
+        if new_id:
+            self._instances[new_id] = ConfigInstance(new_id, self._coordinator)
+            return self._instances[new_id]
+        raise ValueError("添加配置失败")
+    
+    def remove(self, config_id: str) -> bool:
+        """删除配置"""
+        ok = self._coordinator.delete_config(config_id)
+        if ok and config_id in self._instances:
+            del self._instances[config_id]
+        return ok
+    
+    def running(self) -> List[ConfigInstance]:
+        """获取所有正在运行的配置实例"""
+        return [inst for inst in self._instances.values() if inst.is_running]
+    
+    # ==================== 便捷运行方法 ====================
+    
+    def run(self, config_id: str, task_id: str | None = None) -> ConfigInstance:
+        """运行指定配置
+        
+        Args:
+            config_id: 配置ID
+            task_id: 指定任务ID（可选，默认运行所有选中任务）
+            
+        Returns:
+            ConfigInstance: 启动的配置实例
+            
+        用法:
+            coordinator.config.run("c_xxx")  # 运行配置
+            coordinator.config.run("c_xxx", "task_123")  # 运行配置中的指定任务
+        """
+        instance = self[config_id]
+        instance.start(task_id)
+        return instance
+    
+    def stop(self, config_id: str) -> ConfigInstance:
+        """停止指定配置
+        
+        Args:
+            config_id: 配置ID
+            
+        Returns:
+            ConfigInstance: 停止的配置实例
+        """
+        instance = self[config_id]
+        instance.stop()
+        return instance
+    
+    def stop_all(self):
+        """停止所有运行中的配置"""
+        for instance in self.running():
+            instance.stop()
+    
+    # ==================== 向后兼容的代理方法 ====================
+    # 这些方法代理到底层 ConfigService，保持旧代码兼容
+    
+    def list_configs(self) -> List[Dict[str, Any]]:
+        """列出所有配置（代理到 ConfigService）"""
+        return self._coordinator.config_service.list_configs()
+    
+    def get_config(self, config_id: str) -> ConfigItem | None:
+        """获取配置（代理到 ConfigService）"""
+        return self._coordinator.config_service.get_config(config_id)
+    
+    def save_config(self, config_id: str, config: ConfigItem | None = None) -> bool:
+        """保存配置（代理到 ConfigService）"""
+        if config is None:
+            config = self.get_config(config_id)
+        if config:
+            return self._coordinator.config_service.save_config(config_id, config)
+        return False
+    
+    def list_bundles(self) -> List[str]:
+        """列出所有 bundles（代理到 ConfigService）"""
+        return self._coordinator.config_service.list_bundles()
+    
+    def get_bundle(self, bundle_name: str) -> Dict[str, Any]:
+        """获取 bundle 信息（代理到 ConfigService）"""
+        return self._coordinator.config_service.get_bundle(bundle_name)
+    
+    def __repr__(self):
+        return f"<ConfigInstanceManager count={len(self)} current={self.current_id}>"
+
+
 # ==================== 服务协调器 ====================
 class ServiceCoordinator:
     """服务协调器，整合配置、任务和选项服务
@@ -190,6 +475,10 @@ class ServiceCoordinator:
 
         # 清理无效的 bundle 索引
         self._cleanup_invalid_bundles()
+        
+        # ==================== 配置实例管理器 ====================
+        # 启动时创建所有配置的实例，支持 config["配置id"] 访问
+        self.config = ConfigInstanceManager(self)
 
     # ==================== 运行器管理（多运行器支持） ====================
     
@@ -598,9 +887,8 @@ class ServiceCoordinator:
     def interface(self) -> Dict[str, Any]:
         return self._interface
 
-    @property
-    def config(self) -> ConfigService:
-        return self.config_service
+    # 注意：config 属性已重构为 ConfigInstanceManager（见 __init__）
+    # 如需访问底层 ConfigService，请使用 config_service 属性
 
     @property
     def task(self) -> TaskService:
