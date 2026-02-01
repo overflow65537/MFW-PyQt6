@@ -37,14 +37,23 @@ from app.common.config import cfg
 class MonitorWidget(QWidget):
     """监控组件：从当前目标 config_id 对应的运行器获取截图并显示。
     
-    多开模式：截图源仅来自 _target_config_id 对应配置的运行器（该 runner 的 controller）；
-    切换配置时 _on_config_changed 会更新 _target_config_id 与 _target_runner，画面随之切换。
+    流程：UI 启动任务流 → 任务流运行后通过 fs_start_button_status 表示运行中 → 本组件据此开启监控；
+    任务流结束通过 task_flow_finished 通知 → 本组件停止监控。不能手动停止（由任务流控制）。
+    多开模式：截图源仅来自 _target_config_id 对应配置的运行器。
     """
 
-    def __init__(self, service_coordinator: ServiceCoordinator, parent=None):
+    def __init__(
+        self,
+        service_coordinator: ServiceCoordinator,
+        parent=None,
+        *,
+        controlled_by_task_flow: bool = True,
+    ):
         super().__init__(parent=parent)
         self.setObjectName("MonitorWidget")
         self.service_coordinator = service_coordinator
+        # True：仅由任务流控制启停，禁用手动启停（任务界面嵌入时默认 True）
+        self._controlled_by_task_flow = controlled_by_task_flow
         self._preview_pixmap: Optional[QPixmap] = None
         self._current_pil_image: Optional[Image.Image] = None
         self._monitoring_active = False
@@ -190,24 +199,22 @@ class MonitorWidget(QWidget):
             self._loading_indicator.stop()
 
     def _connect_signals(self):
-        """连接信号"""
-        # 监听任务开始/停止信号
+        """连接信号。监控由任务流控制：UI 启动任务流后，根据任务流状态（fs_start_button_status）启停监控；任务流结束（task_flow_finished）时停止监控。"""
+        # 任务流状态变化：运行中则开监控，停止则关监控
         if hasattr(self.service_coordinator, 'fs_signals'):
             self.service_coordinator.fs_signals.fs_start_button_status.connect(
                 self._on_task_status_changed
             )
-
-        # 监听任务流结束信号：无论何种结束方式，都要停止监控（比按钮状态更及时）
         signalBus.task_flow_finished.connect(self._on_task_flow_finished)
 
     def _on_config_changed(self, config_id: str):
-        """配置切换时清空预览，并根据目标配置状态启动/停止监控
+        """配置切换时触发：先清空预览（clear_preview），再根据目标配置状态启动/停止监控。
         
-        多开模式：监控跟随当前选中的配置
+        多开模式：监控跟随当前选中的配置。
         """
         logger.debug(f"[MonitorWidget] 配置切换: {self._target_config_id} -> {config_id}")
         
-        # 先清空预览
+        # 切换配置时触发 clear_preview，清除当前展示的图片
         self.clear_preview()
         
         # 更新目标配置
@@ -231,6 +238,23 @@ class MonitorWidget(QWidget):
                     self._stop_monitoring()
         except Exception as e:
             logger.debug(f"[MonitorWidget] 配置 {config_id} 切换处理失败: {e}")
+
+    def _on_task_status_changed(self, status: dict) -> None:
+        """任务流状态变化：仅响应当前目标配置；运行中则开监控，停止则关监控。"""
+        status_config_id = status.get("config_id", "")
+        if self._target_config_id and status_config_id != self._target_config_id:
+            return
+        is_running = status.get("text") == "STOP"
+        if is_running and not self._monitoring_active and not self._starting_monitoring:
+            try:
+                if status_config_id:
+                    runner = self.service_coordinator.get_runner(status_config_id)
+                    self.set_target_runner(runner, status_config_id)
+            except Exception:
+                pass
+            self._start_monitoring()
+        elif not is_running and (self._monitoring_active or self._starting_monitoring):
+            self._request_stop_monitoring(reason="task_flow_stopped")
 
     def _on_task_flow_finished(self, payload: dict) -> None:
         """任务流结束时的处理：停止监控（带防抖/幂等）
@@ -264,36 +288,6 @@ class MonitorWidget(QWidget):
             self._stop_debounce_timer.stop()
         self._stop_debounce_timer.start(self._stop_debounce_ms)
 
-    def _on_task_status_changed(self, status: dict):
-        """处理任务状态变化
-        
-        多开模式：只响应当前目标配置的状态变化
-        """
-        # 获取状态对应的配置ID
-        status_config_id = status.get("config_id", "")
-        
-        # 只处理当前目标配置的状态变化
-        if self._target_config_id and status_config_id != self._target_config_id:
-            logger.debug(f"[MonitorWidget] 忽略非目标配置的状态变化: {status_config_id} != {self._target_config_id}")
-            return
-        
-        is_running = status.get("text") == "STOP"
-        if is_running and not self._monitoring_active and not self._starting_monitoring:
-            # 目标配置开始运行，自动开始监控
-            logger.debug(f"[MonitorWidget] 目标配置 {status_config_id} 开始运行，启动监控")
-            # 确保绑定了正确的运行器
-            try:
-                if status_config_id:
-                    runner = self.service_coordinator.get_runner(status_config_id)
-                    self.set_target_runner(runner, status_config_id)
-            except Exception:
-                pass
-            self._start_monitoring()
-        elif not is_running and self._monitoring_active:
-            # 目标配置停止运行，自动停止监控
-            logger.debug(f"[MonitorWidget] 目标配置 {status_config_id} 停止运行，停止监控")
-            self._stop_monitoring()
-
     def _load_placeholder_image(self) -> None:
         """无图像时的占位行为：保持透明，不强制显示灰色占位图。"""
         # 仍保留默认图像尺寸信息（用于后续缩放逻辑/方向判断）
@@ -303,11 +297,12 @@ class MonitorWidget(QWidget):
         self._clear_preview()
 
     def _clear_preview(self) -> None:
-        """清空预览画面：无图像时保持透明，让父级背景透出。切换配置后调用以清除 TaskInterface 中监控页面的图片。"""
+        """清空当前展示的图片：清空内部缓存并移除 preview_label 上的 pixmap，使监控页面不再显示任何图像。"""
         self._preview_pixmap = None
         self._current_pil_image = None
         if hasattr(self, "preview_label"):
             self.preview_label.clear()
+            self.preview_label.setPixmap(QPixmap())  # 显式设为空 pixmap，确保画面被清空
             self.preview_label.update()
         self.update()
 
@@ -444,7 +439,7 @@ class MonitorWidget(QWidget):
             self._clear_preview()
 
     def clear_preview(self) -> None:
-        """对外接口：在切换配置时清空预览"""
+        """清除当前展示的图片。切换配置时会触发此方法，清空监控组件上显示的图像。"""
         self._clear_preview()
 
     def _get_controller(self):
@@ -832,11 +827,12 @@ class MonitorWidget(QWidget):
             signalBus.info_bar_requested.emit("error", self.tr("Failed to save screenshot: ") + str(exc))
 
     def _on_monitor_control_clicked(self) -> None:
-        """处理开始/停止监控按钮点击"""
+        """处理开始/停止监控按钮点击。当由任务流控制时禁用手动启停，仅任务流停止时监控才会停止。"""
+        if self._controlled_by_task_flow:
+            return
         if self._monitoring_active:
             self._stop_monitoring()
         elif self._starting_monitoring:
-            # 如果正在启动过程中，停止启动
             self._starting_monitoring = False
             self._update_button_state()
         else:
