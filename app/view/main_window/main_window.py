@@ -319,15 +319,11 @@ class MainWindow(MSFluentWindow):
             self.tr("Monitor"),
         )
         # 多开管理界面（根据配置决定是否添加到导航栏）
+        # 注意：先创建界面但不添加到导航栏，后续通过 _add_multi_run_interface_to_navigation 统一处理
         self.MultiRunInterface = MultiRunInterface(self.service_coordinator)
         self._multi_run_interface_added_to_nav = False
-        if cfg.get(cfg.enable_multi_run):
-            self.addSubInterface(
-                self.MultiRunInterface,
-                FIF.SHARE,
-                self.tr("Multi-Run"),
-            )
-            self._multi_run_interface_added_to_nav = True
+        # 初始化时根据配置添加到导航栏（延迟到 initNavigation 完成后）
+        
         self.ScheduleInterface = ScheduleInterface(self.service_coordinator)
         self.addSubInterface(
             self.ScheduleInterface,
@@ -394,6 +390,10 @@ class MainWindow(MSFluentWindow):
             logger.info("✓ Announcement 已添加到导航栏")
         else:
             logger.info("多资源适配已开启，Announcement 不会显示在导航栏")
+
+        # 根据配置决定是否显示多开管理界面
+        if cfg.get(cfg.enable_multi_run):
+            self._add_multi_run_interface_to_navigation()
 
         # 添加导航项
         self.splashScreen.finish()
@@ -1089,7 +1089,21 @@ class MainWindow(MSFluentWindow):
             if self.stackedWidget.indexOf(self.MultiRunInterface) == -1:
                 self.stackedWidget.addWidget(self.MultiRunInterface)
             
-            # 添加到导航栏（在 Monitor 和 Schedule 之间）
+            # 检查导航项是否已存在（可能被隐藏了）
+            nav_items = getattr(self.navigationInterface, "items", {})
+            if isinstance(nav_items, dict):
+                existing_item = nav_items.get("multi_run_interface")
+                if existing_item:
+                    # 导航项已存在，只需显示它
+                    if hasattr(existing_item, "setVisible"):
+                        existing_item.setVisible(True)
+                    elif hasattr(existing_item, "show"):
+                        existing_item.show()
+                    self._multi_run_interface_added_to_nav = True
+                    logger.info("✓ MultiRunInterface 已显示在导航栏")
+                    return
+            
+            # 导航项不存在，创建新的
             self.navigationInterface.insertItem(
                 2,  # 在 Monitor (索引1) 之后
                 "multi_run_interface",
@@ -1108,6 +1122,10 @@ class MainWindow(MSFluentWindow):
         if not self._multi_run_interface_added_to_nav:
             return
         try:
+            # 如果当前显示的是 MultiRunInterface，先切换到其他界面
+            if self.stackedWidget.currentWidget() is self.MultiRunInterface:
+                self.switchTo(self.MonitorInterface)
+            
             # 尝试查找并隐藏导航项
             nav_items = getattr(self.navigationInterface, "items", {})
             if isinstance(nav_items, dict):
