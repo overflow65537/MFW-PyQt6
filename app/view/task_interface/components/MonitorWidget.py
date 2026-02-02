@@ -514,7 +514,6 @@ class MonitorWidget(QWidget):
     async def _monitor_loop(self) -> None:
         """监控循环"""
         loop = asyncio.get_running_loop()
-        frame_count = 0
         logger.info("[MonitorWidget] 监控循环已开始运行")
         try:
             while self._monitoring_active:
@@ -529,10 +528,6 @@ class MonitorWidget(QWidget):
                     logger.warning(f"[MonitorWidget] 捕获帧失败: {e}")
                     pil_image = None
                 if pil_image:
-                    frame_count += 1
-                    # 每30帧输出一次日志（约每秒一次）
-                    if frame_count % 30 == 0:
-                        logger.debug(f"[MonitorWidget] 监控循环运行中，已捕获 {frame_count} 帧")
                     self._apply_preview_from_pil(pil_image)
                 else:
                     # 没有有效图像时，显示背景（透明，透出父级背景）
@@ -541,10 +536,10 @@ class MonitorWidget(QWidget):
                 wait = max(0, self._get_target_interval() - elapsed)
                 await asyncio.sleep(wait)
         except asyncio.CancelledError:
-            logger.info(f"[MonitorWidget] 监控循环被取消，共捕获 {frame_count} 帧")
+            logger.info(f"[MonitorWidget] 监控循环被取消")
             pass
         finally:
-            logger.info(f"[MonitorWidget] 监控循环结束，共捕获 {frame_count} 帧")
+            logger.info(f"[MonitorWidget] 监控循环结束")
             self._monitor_loop_task = None
             restore_asyncify_logging()
             restore_qasync_logging()

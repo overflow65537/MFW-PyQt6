@@ -492,30 +492,28 @@ class TaskDragListWidget(BaseListWidget):
 
     def _on_fade_in_finished(self) -> None:
         self._hide_loading_overlay()
-        # 配置切换完成后，根据配置运行状态设置可编辑状态
-        config_id = getattr(self, '_pending_config_id', None)
-        if config_id:
-            is_running = self.service_coordinator.is_running(config_id)
-            self._set_items_editable(not is_running)
-            self._pending_config_id = None
+        # 注意：不在这里清除 _pending_config_id
+        # 因为任务渲染可能还在进行中（每个任务5ms，可能比fade_in动画100ms更长）
+        # _pending_config_id 会在 _on_all_tasks_rendered 中被使用，之后自然失效
     
     def _set_items_editable(self, enabled: bool) -> None:
-        """设置列表项的可编辑状态（checkbox）
+        """设置列表项的可编辑状态（checkbox 和删除按钮）
         
         Args:
             enabled: True 表示启用编辑功能，False 表示禁用
         """
-        for i in range(self.count()):
-            item = self.item(i)
-            if not item:
-                continue
-            widget = self.itemWidget(item)
+        # 遍历 _task_widgets 而不是 self.count()，因为可能有骨架占位
+        for task_id, widget in self._task_widgets.items():
             if not widget:
                 continue
             # 禁用/启用 checkbox（基础任务始终保持禁用）
             if hasattr(widget, 'checkbox') and hasattr(widget, 'task'):
                 if not widget.task.is_base_task():
                     widget.checkbox.setEnabled(enabled)
+            # 禁用/启用删除按钮（基础任务始终保持禁用）
+            if hasattr(widget, 'setting_button') and hasattr(widget, 'task'):
+                if not widget.task.is_base_task():
+                    widget.setting_button.setEnabled(enabled)
 
     def update_list(self):
         """刷新任务列表UI（先显示骨架占位，再逐项渲染）"""
@@ -560,12 +558,26 @@ class TaskDragListWidget(BaseListWidget):
         if self._render_index >= len(self._pending_tasks):
             self._loading_tasks = False
             self._pending_tasks = []
+            # 所有任务渲染完成后，触发状态恢复
+            self._on_all_tasks_rendered()
             return
 
         task = self._pending_tasks[self._render_index]
         self._render_task_at_index(self._render_index, task)
         self._render_index += 1
         QTimer.singleShot(5, self._render_pending_task)
+    
+    def _on_all_tasks_rendered(self):
+        """所有任务渲染完成后的回调
+        
+        在配置切换场景下，设置所有任务的可编辑状态
+        """
+        config_id = getattr(self, '_pending_config_id', None)
+        if config_id:
+            is_running = self.service_coordinator.is_running(config_id)
+            self._set_items_editable(not is_running)
+            # 清除 _pending_config_id，状态恢复已完成
+            self._pending_config_id = None
 
     def _render_task_at_index(self, index: int, task: TaskItem):
         """将指定位置的骨架替换为实际的 `TaskListItem`"""
@@ -610,6 +622,16 @@ class TaskDragListWidget(BaseListWidget):
         if task.item_id in self._pending_task_statuses:
             pending_status = self._pending_task_statuses.pop(task.item_id)
             task_widget.update_status(pending_status)
+        
+        # 如果配置正在运行，立即禁用 checkbox 和删除按钮
+        config_id = getattr(self, '_pending_config_id', None)
+        if config_id and not task.is_base_task():
+            is_running = self.service_coordinator.is_running(config_id)
+            if is_running:
+                if hasattr(task_widget, 'checkbox'):
+                    task_widget.checkbox.setEnabled(False)
+                if hasattr(task_widget, 'setting_button'):
+                    task_widget.setting_button.setEnabled(False)
 
     def modify_task(self, task_id_or_task):
         """添加或更新任务项到列表（如果存在同 id 的任务则更新，否则新增）。
