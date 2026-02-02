@@ -1101,6 +1101,9 @@ class ConfigListWidget(BaseListWidget):
         if self._locked:
             # 运行中允许右键等操作，但不允许切换当前激活配置
             return
+        # 如果选择的已经是当前配置，不需要再次切换
+        if item_id == self.service_coordinator.current_config_id:
+            return
         self.service_coordinator.select_config(item_id)
 
     def update_list(self):
@@ -1166,8 +1169,8 @@ class ConfigListWidget(BaseListWidget):
             config = config_id_or_config
         
         self._add_config_to_list(config)
-        # 新增时尝试选中它，保持UI当前配置与服务一致
-        self._select_config_by_id(config.item_id)
+        # 新增时选中它，但不发出信号（core.add_config 已经发出了 config_changed 信号）
+        self._select_config_by_id(config.item_id, emit_signal=False)
 
     def remove_config(self, config_id: str):
         """移除配置项"""

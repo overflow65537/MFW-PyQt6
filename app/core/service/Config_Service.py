@@ -175,6 +175,11 @@ class ConfigService:
         if self._main_config is None:
             return False
 
+        # 如果设置的是相同的配置ID，跳过（避免重复触发信号）
+        current = self._main_config.get("curr_config_id", "")
+        if value == current:
+            return True
+
         # 验证配置ID是否存在
         if value and value not in self._main_config.get("config_list", []):
             print(f"配置ID {value} 不存在")

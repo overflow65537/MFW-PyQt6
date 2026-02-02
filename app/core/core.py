@@ -338,15 +338,25 @@ class ServiceCoordinator:
         """
         new_id = self.config_service.create_config(config_item)
         if new_id:
-            self.config_service.current_config_id = new_id
+            # 直接设置内部状态，避免触发回调导致 _check_know_task 被调用两次
+            # （init_new_config 会调用 _check_know_task，不需要回调再调用一次）
+            self.config_service._main_config["curr_config_id"] = new_id
+            self.config_service.save_main_config()
+            
+            # 初始化新配置的任务（会调用 _check_know_task）
             self.task_service.init_new_config()
+            
             # 配置创建时同步创建该配置的运行器（任务流 + 监控目标）
             try:
                 self.create_runner_for_config(new_id)
                 logger.debug(f"配置 {new_id} 已同步创建运行器")
             except Exception as e:
                 logger.warning(f"配置创建时创建运行器失败: {e}")
+            
+            # 发出配置添加信号，UI会响应并选中新配置
             self.fs_signal_bus.fs_config_added.emit(new_id)
+            # 发出配置切换信号，通知其他组件
+            self.signal_bus.config_changed.emit(new_id)
         return new_id
 
     def delete_config(self, config_id: str) -> bool:
