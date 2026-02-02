@@ -19,7 +19,6 @@ from PySide6.QtCore import QTimer
 
 from app.core.Item import (
     CoreSignalBus,
-    FromeServiceCoordinator,
     ConfigItem,
     TaskItem,
 )
@@ -27,6 +26,7 @@ from app.core.service.Config_Service import ConfigService, JsonConfigRepository
 from app.core.service.Schedule_Service import ScheduleService
 from app.core.service.Task_Service import TaskService
 from app.core.service.Option_Service import OptionService
+from app.core.service.Bundle_Service import BundleService
 from app.core.service.interface_manager import get_interface_manager, InterfaceManager
 from app.core.log_processor import CallbackLogProcessor
 from app.utils.logger import logger
@@ -129,9 +129,10 @@ class ServiceCoordinator:
         configs_dir: Path | None = None,
         interface_path: Path | str | None = None,
     ):
-        # 初始化信号总线（仅用于通知，不传递数据）
+        # 初始化统一的信号总线（合并了 CoreSignalBus 和 FromeServiceCoordinator）
         self.signal_bus = CoreSignalBus()
-        self.fs_signal_bus = FromeServiceCoordinator()
+        # fs_signal_bus 现在指向同一个信号总线（向后兼容）
+        self.fs_signal_bus = self.signal_bus
         
         # 存储待显示的错误信息
         self._pending_error_message: tuple[str, str] | None = None
@@ -179,6 +180,13 @@ class ServiceCoordinator:
         
         self.option_service = OptionService(self.task_service, self.signal_bus)
         self.config_service.register_on_change(self._on_config_changed)
+
+        # Bundle 服务（从 ServiceCoordinator 分离）
+        self.bundle_service = BundleService(
+            main_config_path=main_config_path,
+            get_main_config=lambda: self.config_service._main_config,
+            save_main_config=self.config_service.save_main_config,
+        )
 
         # ==================== 配置池（多开） ====================
         # 每个 config_id 对应一个 ConfigEntry（任务流 + 状态）；任务列表来自 config_service.get_config(config_id).tasks；监控目标即 entry.runner
@@ -338,10 +346,9 @@ class ServiceCoordinator:
         """
         new_id = self.config_service.create_config(config_item)
         if new_id:
-            # 直接设置内部状态，避免触发回调导致 _check_know_task 被调用两次
+            # 静默设置当前配置ID，避免触发回调导致 _check_know_task 被调用两次
             # （init_new_config 会调用 _check_know_task，不需要回调再调用一次）
-            self.config_service._main_config["curr_config_id"] = new_id
-            self.config_service.save_main_config()
+            self.config_service.set_current_config_id_silent(new_id)
             
             # 初始化新配置的任务（会调用 _check_know_task）
             self.task_service.init_new_config()
@@ -617,82 +624,30 @@ class ServiceCoordinator:
         return self.option_service
 
     @property
-    def fs_signals(self) -> FromeServiceCoordinator:
-        return self.fs_signal_bus
+    def fs_signals(self) -> CoreSignalBus:
+        """获取信号总线（已弃用，请使用 signals 属性）
+        
+        为保持向后兼容，此属性现在返回统一的信号总线。
+        fs_ 开头的信号仍然可用。
+        """
+        return self.signal_bus
 
     @property
     def signals(self) -> CoreSignalBus:
+        """获取统一信号总线"""
         return self.signal_bus
 
-    # ==================== Bundle 管理 ====================
+    # ==================== Bundle 管理（委托给 BundleService） ====================
     
     def update_bundle_path(
         self, bundle_name: str, new_path: str, bundle_display_name: str | None = None
     ) -> bool:
-        """更新 bundle 路径"""
-        main_config_path = self.config_repo.main_config_path
-        if not main_config_path.exists():
-            logger.error(f"主配置文件不存在: {main_config_path}")
-            return False
-
-        try:
-            with open(main_config_path, "r", encoding="utf-8") as f:
-                config_data: Dict[str, Any] = jsonc.load(f)
-
-            if "bundle" not in config_data:
-                config_data["bundle"] = {}
-            if not isinstance(config_data["bundle"], dict):
-                config_data["bundle"] = {}
-
-            if bundle_name not in config_data["bundle"]:
-                config_data["bundle"][bundle_name] = {}
-
-            bundle_info = config_data["bundle"][bundle_name]
-            if not isinstance(bundle_info, dict):
-                bundle_info = {}
-
-            bundle_info["path"] = new_path
-            if bundle_display_name is not None:
-                bundle_info["name"] = bundle_display_name
-            elif "name" not in bundle_info:
-                bundle_info["name"] = bundle_name
-
-            config_data["bundle"][bundle_name] = bundle_info
-
-            with open(main_config_path, "w", encoding="utf-8") as f:
-                jsonc.dump(config_data, f, indent=4, ensure_ascii=False)
-
-            logger.info(f"已更新 bundle '{bundle_name}' 的路径为: {new_path}")
-            return True
-
-        except Exception as e:
-            logger.error(f"更新 bundle 路径失败: {e}")
-            return False
+        """更新 bundle 路径（委托给 BundleService）"""
+        return self.bundle_service.update_bundle_path(bundle_name, new_path, bundle_display_name)
 
     def delete_bundle(self, bundle_name: str) -> bool:
-        """删除 bundle"""
-        try:
-            main_config = self.config_service._main_config
-        except AttributeError:
-            logger.error("ConfigService 缺少 _main_config")
-            return False
-
-        if not isinstance(main_config, dict):
-            return False
-
-        bundle_dict = main_config.get("bundle")
-        if not isinstance(bundle_dict, dict):
-            return True
-
-        if bundle_name not in bundle_dict:
-            return True
-
-        bundle_dict.pop(bundle_name, None)
-        main_config["bundle"] = bundle_dict
-        success = self.config_service.save_main_config()
-        if success:
-            logger.info(f"已从主配置中移除 bundle: {bundle_name}")
-        return success
+        """删除 bundle（委托给 BundleService）"""
+        return self.bundle_service.delete_bundle(bundle_name)
 
     # ==================== 内部方法 ====================
     
@@ -895,46 +850,8 @@ class ServiceCoordinator:
         self.task_service.reload_interface(self._interface)
 
     def _cleanup_invalid_bundles(self) -> None:
-        """清理无效的 bundle"""
-        try:
-            bundle_names = self.config_service.list_bundles()
-        except Exception:
-            return
-
-        if not bundle_names:
-            return
-
-        invalid_bundles: list[str] = []
-        for name in bundle_names:
-            iface_path = self._resolve_interface_path_from_bundle(name)
-            if iface_path is None:
-                invalid_bundles.append(name)
-
-        if not invalid_bundles:
-            return
-
-        try:
-            main_cfg = self.config_service._main_config
-        except AttributeError:
-            return
-
-        if not isinstance(main_cfg, dict):
-            return
-
-        bundle_dict = main_cfg.get("bundle") or {}
-        if not isinstance(bundle_dict, dict):
-            bundle_dict = {}
-
-        for name in invalid_bundles:
-            if name in bundle_dict:
-                logger.info(f"移除无效 bundle: {name}")
-                bundle_dict.pop(name, None)
-
-        main_cfg["bundle"] = bundle_dict
-        try:
-            self.config_service.save_main_config()
-        except Exception:
-            pass
+        """清理无效的 bundle（委托给 BundleService）"""
+        self.bundle_service.cleanup_invalid_bundles(self._resolve_interface_path_from_bundle)
 
     def _handle_config_load_error(
         self, main_config_path: Path, configs_dir: Path, error: Exception

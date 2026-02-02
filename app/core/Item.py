@@ -11,6 +11,10 @@ class CoreSignalBus(QObject):
     
     重构后：信号仅用于通知UI刷新，不再传递数据。
     前端通过属性访问获取数据。
+    
+    信号命名约定：
+    - 原 CoreSignalBus 信号：无前缀
+    - 原 FromeServiceCoordinator 信号：带 fs_ 前缀（保持向后兼容）
     """
 
     # 配置相关信号 - 仅通知，不传递数据
@@ -29,18 +33,18 @@ class CoreSignalBus(QObject):
     # UI 操作信号
     need_save = Signal()
 
-
-class FromeServiceCoordinator(QObject):
-    """
-    从服务协调器发送的信号,用来通知UI层进行更新
-    重构后：信号仅用于通知，不传递完整数据对象
-    """
-
+    # ==================== 原 FromeServiceCoordinator 信号（已合并） ====================
+    # 从服务协调器发送的信号，用于通知UI层进行更新
     fs_task_modified = Signal(str)  # 任务ID，通知任务已修改
     fs_task_removed = Signal(str)  # 任务ID，通知任务已移除
     fs_config_added = Signal(str)  # 配置ID，通知配置已添加
     fs_config_removed = Signal(str)  # 配置ID，通知配置已移除
     fs_start_button_status = Signal(dict)  # 控制开始按钮状态
+
+
+# 向后兼容别名：FromeServiceCoordinator 现在是 CoreSignalBus 的别名
+# 新代码应该直接使用 CoreSignalBus
+FromeServiceCoordinator = CoreSignalBus
 
 
 # ==================== 数据模型 (Pydantic) ====================

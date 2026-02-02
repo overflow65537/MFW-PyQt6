@@ -37,7 +37,7 @@ from app.core.runner.maafw import (
 )
 from app.utils.controller_utils import ControllerHelper
 
-from app.core.Item import FromeServiceCoordinator, TaskItem
+from app.core.Item import CoreSignalBus, TaskItem
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -54,7 +54,7 @@ class TaskFlowRunner(QObject):
         self,
         task_service: TaskService,
         config_service: ConfigService,
-        fs_signal_bus: FromeServiceCoordinator | None = None,
+        fs_signal_bus: CoreSignalBus | None = None,
         config_id: str | None = None,  # 新增：运行器绑定的配置ID
         service_coordinator: 'ServiceCoordinator | None' = None,  # 新增：服务协调器引用
     ):
@@ -466,6 +466,8 @@ class TaskFlowRunner(QObject):
                         and not task.is_hidden
                     ):
                         # 完整运行时，设置当前起始任务及之后的选中任务为等待中
+                        # 同时记录到 _task_results，以便配置切换时恢复状态
+                        self._task_results[task.item_id] = "waiting"
                         signalBus.task_status_changed.emit(task.item_id, "waiting")
 
         # 延迟 200ms 发送，确保任务列表已经渲染完成
@@ -643,7 +645,8 @@ class TaskFlowRunner(QObject):
                 self._current_task_ok = True
                 # 记录当前正在执行的任务，用于超时处理
                 self._current_running_task_id = task.item_id
-                # 发送任务运行中状态
+                # 发送任务运行中状态，同时记录到 _task_results
+                self._task_results[task.item_id] = "running"
                 signalBus.task_status_changed.emit(task.item_id, "running")
                 try:
                     task_result = await self.run_task(
@@ -709,7 +712,8 @@ class TaskFlowRunner(QObject):
 
                 except Exception as exc:
                     logger.error(f"任务执行失败: {task.name}, 错误: {str(exc)}")
-                    # 发送任务失败状态
+                    # 记录任务结果并发送任务失败状态
+                    self._task_results[task.item_id] = "failed"
                     signalBus.task_status_changed.emit(task.item_id, "failed")
                     # 发送任务失败通知
                     if not self._manual_stop:
@@ -843,7 +847,8 @@ class TaskFlowRunner(QObject):
 
             self._is_running = False
 
-            # 清除所有任务状态
+            # 清除所有任务状态（同时清空 _task_results）
+            self._task_results.clear()
             all_tasks = self.get_tasks()
             for task in all_tasks:
                 if not task.is_base_task():

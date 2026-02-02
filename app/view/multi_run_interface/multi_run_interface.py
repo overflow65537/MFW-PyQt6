@@ -330,11 +330,17 @@ class ConfigMonitorCard(QWidget):
                 self._apply_preview_from_array(cached_image)
             else:
                 # 如果没有缓存图像，尝试截图
-                raw_frame = controller.post_screencap().wait().get()
-                if raw_frame is not None:
-                    self._apply_preview_from_array(raw_frame)
+                try:
+                    raw_frame = controller.post_screencap().wait().get()
+                    if raw_frame is not None:
+                        self._apply_preview_from_array(raw_frame)
+                except Exception:
+                    # 截图失败是常见情况（设备未连接等），静默忽略
+                    pass
         except Exception as e:
-            logger.debug(f"[ConfigMonitorCard] 配置 {self.config_id} 刷新预览失败: {e}")
+            # 只在非常见错误时记录日志
+            if "cached image" not in str(e).lower():
+                logger.debug(f"[ConfigMonitorCard] 配置 {self.config_id} 刷新预览失败: {e}")
     
     def _apply_preview_from_array(self, image_array):
         """从 numpy 数组应用预览"""
