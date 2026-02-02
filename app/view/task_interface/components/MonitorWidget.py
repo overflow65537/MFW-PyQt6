@@ -34,7 +34,7 @@ from app.common.signal_bus import signalBus
 
 class MonitorWidget(QWidget):
     """监控组件：从当前目标 config_id 对应的运行器获取截图并显示。
-    
+
     流程：UI 启动任务流 → 任务流运行后通过 fs_start_button_status 表示运行中 → 本组件据此开启监控；
     任务流结束通过 task_flow_finished 通知 → 本组件停止监控。不能手动停止（由任务流控制）。
     多开模式：截图源仅来自 _target_config_id 对应配置的运行器。
@@ -58,7 +58,7 @@ class MonitorWidget(QWidget):
         self._monitor_loop_task: Optional[asyncio.Task] = None
         self._starting_monitoring = False  # 防止重复启动
         self._target_interval = 1.0 / 30
-        
+
         # 多开模式：当前目标运行器（如果设置，则使用该运行器的控制器）
         self._target_runner: Optional[Any] = None
         self._target_config_id: Optional[str] = None
@@ -69,12 +69,12 @@ class MonitorWidget(QWidget):
         self._stop_debounce_timer = QTimer(self)
         self._stop_debounce_timer.setSingleShot(True)
         self._stop_debounce_timer.timeout.connect(self._stop_monitoring_now)
-        
+
         self.monitor_task = MonitorTask(
             task_service=self.service_coordinator.task_service,
             config_service=self.service_coordinator.config_service,
         )
-        
+
         self._setup_ui()
         self._connect_signals()
         # 预览区默认不显示任何占位图：无图像时保持透明，让父级背景透出
@@ -88,7 +88,7 @@ class MonitorWidget(QWidget):
             )
         except Exception:
             pass
-        
+
         # 初始化目标配置为当前配置
         try:
             self._target_config_id = self.service_coordinator.current_config_id
@@ -105,17 +105,19 @@ class MonitorWidget(QWidget):
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
-        
+
         # 预览区域（使用透明容器包裹，避免不透明背景遮挡父级）
         # 默认横向：16:9比例，宽度344px，高度 = 344 * 9 / 16 = 194px
         # 纵向：9:16比例，宽度194px，高度 = 194 * 16 / 9 = 344px
         self._monitor_width = 344
         self._monitor_height = 194
         self._is_landscape = True  # 默认横向
-        
+
         # 外层容器用普通 QWidget，避免 SimpleCardWidget 这类卡片控件在 paintEvent 里强制绘制底色
         self.preview_card = QWidget(self)
-        self.preview_card.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.preview_card.setAttribute(
+            Qt.WidgetAttribute.WA_TranslucentBackground, True
+        )
         self.preview_card.setAutoFillBackground(False)
         self.preview_card.setStyleSheet("background-color: transparent;")
         # 设置初始尺寸（16:9比例）：宽度344px，高度194px
@@ -123,15 +125,17 @@ class MonitorWidget(QWidget):
         # 设置大小策略为固定，不影响其他组件
         card_policy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.preview_card.setSizePolicy(card_policy)
-        
+
         card_layout = QVBoxLayout(self.preview_card)
         card_layout.setContentsMargins(0, 0, 0, 0)
         card_layout.setSpacing(0)
-        
+
         self.preview_label = PixmapLabel(self.preview_card)
         self.preview_label.setObjectName("monitorPreviewLabel")
         self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.preview_label.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.preview_label.setAttribute(
+            Qt.WidgetAttribute.WA_TranslucentBackground, True
+        )
         self.preview_label.setAutoFillBackground(False)
         # 设置初始尺寸（16:9比例）：宽度344px，高度194px
         self.preview_label.setFixedSize(self._monitor_width, self._monitor_height)
@@ -150,11 +154,11 @@ class MonitorWidget(QWidget):
             }
             """
         )
-        
+
         card_layout.addWidget(self.preview_label)
         # 不使用拉伸因子，使用固定尺寸
         self.main_layout.addWidget(self.preview_card, 0)
-        
+
         # 设置整个组件为固定大小
         self.setFixedSize(self._monitor_width, self._monitor_height)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
@@ -182,22 +186,24 @@ class MonitorWidget(QWidget):
 
     def _show_loading_overlay(self) -> None:
         """显示加载图标"""
-        if hasattr(self, '_loading_overlay'):
+        if hasattr(self, "_loading_overlay"):
             preview_size = self.preview_label.size()
-            self._loading_overlay.setGeometry(0, 0, preview_size.width(), preview_size.height())
+            self._loading_overlay.setGeometry(
+                0, 0, preview_size.width(), preview_size.height()
+            )
             self._loading_overlay.show()
             self._loading_indicator.start()
 
     def _hide_loading_overlay(self) -> None:
         """隐藏加载图标"""
-        if hasattr(self, '_loading_overlay'):
+        if hasattr(self, "_loading_overlay"):
             self._loading_overlay.hide()
             self._loading_indicator.stop()
 
     def _connect_signals(self):
         """连接信号。监控由任务流控制：UI 启动任务流后，根据任务流状态（fs_start_button_status）启停监控；任务流结束（task_flow_finished）时停止监控。"""
         # 任务流状态变化：运行中则开监控，停止则关监控
-        if hasattr(self.service_coordinator, 'fs_signals'):
+        if hasattr(self.service_coordinator, "fs_signals"):
             self.service_coordinator.fs_signals.fs_start_button_status.connect(
                 self._on_task_status_changed
             )
@@ -205,24 +211,26 @@ class MonitorWidget(QWidget):
 
     def _on_config_changed(self, config_id: str):
         """配置切换时触发：先清空预览（clear_preview），再根据目标配置状态启动/停止监控。
-        
+
         多开模式：监控跟随当前选中的配置。
         """
-        logger.debug(f"[MonitorWidget] 配置切换: {self._target_config_id} -> {config_id}")
-        
+        logger.debug(
+            f"[MonitorWidget] 配置切换: {self._target_config_id} -> {config_id}"
+        )
+
         # 切换配置时触发 clear_preview，清除当前展示的图片
         self.clear_preview()
-        
+
         # 更新目标配置
         self._target_config_id = config_id
         self._target_runner = None
-        
+
         try:
             if self.service_coordinator.is_running(config_id):
                 # 新配置正在运行，绑定运行器并启动监控
                 runner = self.service_coordinator.get_runner(config_id)
                 self.set_target_runner(runner, config_id)
-                
+
                 # 如果监控未激活，启动监控
                 if not self._monitoring_active and not self._starting_monitoring:
                     logger.debug(f"[MonitorWidget] 配置 {config_id} 正在运行，启动监控")
@@ -254,19 +262,23 @@ class MonitorWidget(QWidget):
 
     def _on_task_flow_finished(self, payload: dict) -> None:
         """任务流结束时的处理：停止监控（带防抖/幂等）
-        
+
         多开模式：只响应当前目标配置的结束信号
         """
         # 获取结束的配置ID
         finished_config_id = payload.get("config_id", "")
-        
+
         # 只处理当前目标配置的结束信号
         if self._target_config_id and finished_config_id != self._target_config_id:
-            logger.debug(f"[MonitorWidget] 忽略非目标配置的结束信号: {finished_config_id} != {self._target_config_id}")
+            logger.debug(
+                f"[MonitorWidget] 忽略非目标配置的结束信号: {finished_config_id} != {self._target_config_id}"
+            )
             return
-        
+
         if self._monitoring_active or self._starting_monitoring:
-            logger.debug(f"[MonitorWidget] 收到 task_flow_finished: {payload}，请求停止监控")
+            logger.debug(
+                f"[MonitorWidget] 收到 task_flow_finished: {payload}，请求停止监控"
+            )
             self._request_stop_monitoring(reason="task_flow_finished")
 
     def _request_stop_monitoring(self, *, reason: str = "") -> None:
@@ -308,12 +320,12 @@ class MonitorWidget(QWidget):
             # 无图像时保持透明（不显示灰色占位图）
             self._clear_preview()
             return
-        
+
         # 使用当前的目标尺寸，而不是从标签获取（可能标签还没正确初始化）
-        target_width = getattr(self, '_monitor_width', 344)
-        target_height = getattr(self, '_monitor_height', 194)
+        target_width = getattr(self, "_monitor_width", 344)
+        target_height = getattr(self, "_monitor_height", 194)
         target_size = QSize(target_width, target_height)
-        
+
         # 保持宽高比缩放，留出边距以显示背景
         # 使用 SmoothTransformation 保证缩放质量
         scaled = self._preview_pixmap.scaled(
@@ -321,16 +333,16 @@ class MonitorWidget(QWidget):
             Qt.AspectRatioMode.KeepAspectRatio,  # 保持宽高比，留出边距显示背景
             Qt.TransformationMode.SmoothTransformation,
         )
-        
+
         self.preview_label.setPixmap(scaled)
 
     def _update_component_size(self, image_width: int, image_height: int) -> None:
         """根据图片尺寸更新组件大小"""
         # 判断是横向还是纵向
         is_landscape = image_width >= image_height
-        
+
         # 如果方向没有变化，不需要更新
-        if hasattr(self, '_is_landscape') and self._is_landscape == is_landscape:
+        if hasattr(self, "_is_landscape") and self._is_landscape == is_landscape:
             # 检查尺寸是否匹配
             if is_landscape:
                 if self._monitor_width == 344 and self._monitor_height == 194:
@@ -338,10 +350,10 @@ class MonitorWidget(QWidget):
             else:
                 if self._monitor_width == 194 and self._monitor_height == 344:
                     return
-        
+
         # 更新方向标志
         self._is_landscape = is_landscape
-        
+
         # 根据方向设置预览尺寸
         if is_landscape:
             # 横向：1280x720 -> 344x194 (16:9)
@@ -351,28 +363,30 @@ class MonitorWidget(QWidget):
             # 纵向：720x1280 -> 194x344 (9:16)
             self._monitor_width = 194
             self._monitor_height = 344
-        
+
         # 更新组件尺寸
         self.preview_card.setFixedSize(self._monitor_width, self._monitor_height)
         self.preview_label.setFixedSize(self._monitor_width, self._monitor_height)
         self.setFixedSize(self._monitor_width, self._monitor_height)
-        
+
         # 更新加载覆盖层位置
-        if hasattr(self, '_loading_overlay') and self._loading_overlay.isVisible():
-            self._loading_overlay.setGeometry(0, 0, self._monitor_width, self._monitor_height)
+        if hasattr(self, "_loading_overlay") and self._loading_overlay.isVisible():
+            self._loading_overlay.setGeometry(
+                0, 0, self._monitor_width, self._monitor_height
+            )
 
     def _apply_preview_from_pil(self, pil_image: Image.Image) -> None:
         """从 PIL 图像应用预览（支持 1280x720 和 720x1280 两种尺寸）"""
         # 获取图片实际尺寸
         image_width, image_height = pil_image.size
-        
+
         # 更新组件大小以适应图片方向
         self._update_component_size(image_width, image_height)
-        
+
         # 保存原始图片尺寸
         self._monitor_image_width = image_width
         self._monitor_image_height = image_height
-        
+
         # 保持原始图片尺寸，不进行缩放（除非尺寸不匹配）
         # 如果图片尺寸不是预期的两种之一，则缩放到最接近的尺寸
         if (image_width, image_height) not in [(1280, 720), (720, 1280)]:
@@ -383,19 +397,19 @@ class MonitorWidget(QWidget):
             else:
                 # 纵向，缩放到 720x1280
                 target_size = (720, 1280)
-            
+
             pil_image = pil_image.resize(target_size, Image.Resampling.LANCZOS)
             self._monitor_image_width, self._monitor_image_height = target_size
-        
+
         rgb_image = pil_image.convert("RGB")
         bytes_per_line = self._monitor_image_width * 3
         buffer = rgb_image.tobytes("raw", "RGB")
         qimage = QImage(
-            buffer, 
-            self._monitor_image_width, 
-            self._monitor_image_height, 
-            bytes_per_line, 
-            QImage.Format.Format_RGB888
+            buffer,
+            self._monitor_image_width,
+            self._monitor_image_height,
+            bytes_per_line,
+            QImage.Format.Format_RGB888,
         )
         self._preview_pixmap = QPixmap.fromImage(qimage)
         self._current_pil_image = rgb_image.copy()
@@ -404,7 +418,7 @@ class MonitorWidget(QWidget):
 
     def set_target_runner(self, runner, config_id: str | None = None):
         """设置目标运行器（多开模式）
-        
+
         Args:
             runner: 目标运行器
             config_id: 配置ID
@@ -415,7 +429,7 @@ class MonitorWidget(QWidget):
 
     def set_target_config(self, config_id: str):
         """设置目标配置（自动获取对应的运行器）
-        
+
         Args:
             config_id: 配置ID
         """
@@ -440,15 +454,15 @@ class MonitorWidget(QWidget):
 
     def _get_controller(self):
         """从当前目标 config_id 对应的运行器获取控制器，用于截图显示。
-        
+
         仅使用 _target_config_id 对应配置的运行器，不回退到其他配置；
         切换配置时 _target_config_id / _target_runner 会随之切换，画面即切换。
         """
         if not self._target_config_id:
             return None
         # 优先使用已绑定的目标运行器（与 _target_config_id 对应）
-        if self._target_runner and hasattr(self._target_runner, 'maafw'):
-            controller = getattr(self._target_runner.maafw, 'controller', None)
+        if self._target_runner and hasattr(self._target_runner, "maafw"):
+            controller = getattr(self._target_runner.maafw, "controller", None)
             if controller is not None:
                 return controller
         # 目标配置未运行则不显示其他配置的画面
@@ -457,15 +471,15 @@ class MonitorWidget(QWidget):
         # 按 config_id 从配置池取运行器，保证截图源始终来自该 config_id
         try:
             runner = self.service_coordinator.get_runner(self._target_config_id)
-            if runner and hasattr(runner, 'maafw'):
-                controller = getattr(runner.maafw, 'controller', None)
+            if runner and hasattr(runner, "maafw"):
+                controller = getattr(runner.maafw, "controller", None)
                 if controller is not None:
                     self._target_runner = runner
                     return controller
         except Exception:
             pass
         return None
-    
+
     def _capture_frame(self) -> Image.Image:
         """捕获一帧"""
         controller = self._get_controller()
@@ -475,7 +489,7 @@ class MonitorWidget(QWidget):
         if raw_frame is None:
             raise ValueError("采集返回空帧")
         return Image.fromarray(raw_frame[..., ::-1])
-    
+
     def _start_monitor_loop(self) -> None:
         """启动监控循环"""
         if self._monitor_loop_task and not self._monitor_loop_task.done():
@@ -498,7 +512,7 @@ class MonitorWidget(QWidget):
             restore_asyncify_logging()
             restore_qasync_logging()
             raise
-    
+
     def _stop_monitor_loop(self) -> None:
         """停止监控循环"""
         logger.debug("[MonitorWidget] 停止监控循环")
@@ -510,7 +524,7 @@ class MonitorWidget(QWidget):
             task.cancel()
         restore_asyncify_logging()
         restore_qasync_logging()
-    
+
     async def _monitor_loop(self) -> None:
         """监控循环"""
         loop = asyncio.get_running_loop()
@@ -561,27 +575,29 @@ class MonitorWidget(QWidget):
         controller = self._get_controller()
         if controller is None:
             return False
-        connected = getattr(controller, 'connected', None)
+        connected = getattr(controller, "connected", None)
         return connected is True
-    
+
     async def _get_required_wait_time(self) -> float:
         """从配置中获取需要的等待时间（如果配置了启动模拟器或程序）"""
         from app.common.constants import _CONTROLLER_
-        
+
         try:
             # 获取控制器配置
-            controller_cfg = self.service_coordinator.task_service.get_task(_CONTROLLER_)
+            controller_cfg = self.service_coordinator.task_service.get_task(
+                _CONTROLLER_
+            )
             if not controller_cfg:
                 return 0.0
-            
+
             controller_raw = controller_cfg.task_option
             if not isinstance(controller_raw, dict):
                 return 0.0
-            
+
             # 获取控制器类型和名称
             controller_type = self._get_controller_type_from_config(controller_raw)
             controller_name = self._get_controller_name_from_config(controller_raw)
-            
+
             # 获取控制器配置
             if controller_name in controller_raw:
                 controller_config = controller_raw[controller_name]
@@ -589,7 +605,7 @@ class MonitorWidget(QWidget):
                 controller_config = controller_raw[controller_type]
             else:
                 controller_config = {}
-            
+
             # 根据控制器类型检查等待时间
             if controller_type == "adb":
                 # ADB 控制器：检查是否有模拟器路径和等待时间
@@ -601,30 +617,32 @@ class MonitorWidget(QWidget):
                 if controller_config.get("program_path", ""):
                     wait_time = int(controller_config.get("wait_time", 0))
                     return float(wait_time)
-            
+
             return 0.0
         except Exception:
             # 如果获取配置失败，返回0（不等待）
             return 0.0
-    
+
     async def _get_controller_wait_time(self) -> float:
         """从配置中获取控制器的wait_time（不管是否有模拟器路径）"""
         from app.common.constants import _CONTROLLER_
-        
+
         try:
             # 获取控制器配置
-            controller_cfg = self.service_coordinator.task_service.get_task(_CONTROLLER_)
+            controller_cfg = self.service_coordinator.task_service.get_task(
+                _CONTROLLER_
+            )
             if not controller_cfg:
                 return 30.0  # 默认30秒
-            
+
             controller_raw = controller_cfg.task_option
             if not isinstance(controller_raw, dict):
                 return 30.0  # 默认30秒
-            
+
             # 获取控制器类型和名称
             controller_type = self._get_controller_type_from_config(controller_raw)
             controller_name = self._get_controller_name_from_config(controller_raw)
-            
+
             # 获取控制器配置
             if controller_name in controller_raw:
                 controller_config = controller_raw[controller_name]
@@ -632,13 +650,17 @@ class MonitorWidget(QWidget):
                 controller_config = controller_raw[controller_type]
             else:
                 controller_config = {}
-            
+
             # 根据控制器类型获取等待时间
             if controller_type == "adb":
                 # ADB 控制器：获取wait_time（可能是字符串或数字）
                 wait_time_str = controller_config.get("wait_time", "30")
                 try:
-                    wait_time = float(wait_time_str) if isinstance(wait_time_str, str) else float(wait_time_str)
+                    wait_time = (
+                        float(wait_time_str)
+                        if isinstance(wait_time_str, str)
+                        else float(wait_time_str)
+                    )
                     return wait_time
                 except (ValueError, TypeError):
                     return 30.0  # 默认30秒
@@ -646,7 +668,11 @@ class MonitorWidget(QWidget):
                 # Win32 控制器：获取wait_time
                 wait_time_str = controller_config.get("wait_time", "30")
                 try:
-                    wait_time = float(wait_time_str) if isinstance(wait_time_str, str) else float(wait_time_str)
+                    wait_time = (
+                        float(wait_time_str)
+                        if isinstance(wait_time_str, str)
+                        else float(wait_time_str)
+                    )
                     return wait_time
                 except (ValueError, TypeError):
                     return 30.0  # 默认30秒
@@ -654,16 +680,20 @@ class MonitorWidget(QWidget):
                 # PlayCover 控制器：目前不需要等待时间，但为了代码一致性，支持配置wait_time
                 wait_time_str = controller_config.get("wait_time", "30")
                 try:
-                    wait_time = float(wait_time_str) if isinstance(wait_time_str, str) else float(wait_time_str)
+                    wait_time = (
+                        float(wait_time_str)
+                        if isinstance(wait_time_str, str)
+                        else float(wait_time_str)
+                    )
                     return wait_time
                 except (ValueError, TypeError):
                     return 30.0  # 默认30秒
-            
+
             return 30.0  # 默认30秒
         except Exception:
             # 如果获取配置失败，返回默认30秒
             return 30.0
-    
+
     def _get_controller_type_from_config(self, controller_raw: dict) -> str:
         """从配置中获取控制器类型"""
         try:
@@ -674,16 +704,18 @@ class MonitorWidget(QWidget):
                 controller_name = controller_config.get("value", "")
             else:
                 controller_name = ""
-            
+
             controller_name = controller_name.lower()
-            for controller in self.service_coordinator.task_service.interface.get("controller", []):
+            for controller in self.service_coordinator.task_service.interface.get(
+                "controller", []
+            ):
                 if controller.get("name", "").lower() == controller_name:
                     return controller.get("type", "").lower()
-            
+
             return ""
         except Exception:
             return ""
-    
+
     def _get_controller_name_from_config(self, controller_raw: dict) -> str:
         """从配置中获取控制器名称"""
         try:
@@ -701,7 +733,9 @@ class MonitorWidget(QWidget):
         # 既没在监控也没在启动流程时，无需处理
         if not (self._monitoring_active or self._starting_monitoring):
             return
-        logger.warning("[MonitorWidget] 检测到控制器断开连接，请求停止监控（防抖/幂等）")
+        logger.warning(
+            "[MonitorWidget] 检测到控制器断开连接，请求停止监控（防抖/幂等）"
+        )
         # 统一走防抖/幂等停止流程，避免与 task_flow_finished / UI 停止并发触发导致崩溃
         self._request_stop_monitoring(reason="controller_disconnected")
         # 立刻让监控循环退出，避免在断开状态下继续反复触发断开处理
@@ -716,14 +750,18 @@ class MonitorWidget(QWidget):
         super().resizeEvent(event)
         self._refresh_preview_image()
         # 更新加载图标覆盖层的位置
-        if hasattr(self, '_loading_overlay') and self._loading_overlay.isVisible():
+        if hasattr(self, "_loading_overlay") and self._loading_overlay.isVisible():
             preview_size = self.preview_label.size()
-            self._loading_overlay.setGeometry(0, 0, preview_size.width(), preview_size.height())
+            self._loading_overlay.setGeometry(
+                0, 0, preview_size.width(), preview_size.height()
+            )
 
     def _on_save_screenshot(self) -> None:
         """保存截图"""
         if not self._current_pil_image:
-            signalBus.info_bar_requested.emit("warning", self.tr("No screenshot available to save"))
+            signalBus.info_bar_requested.emit(
+                "warning", self.tr("No screenshot available to save")
+            )
             return
         save_dir = Path("debug") / "save_screen"
         save_dir.mkdir(parents=True, exist_ok=True)
@@ -734,7 +772,9 @@ class MonitorWidget(QWidget):
             message = self.tr("Screenshot saved to ") + str(save_path)
             signalBus.info_bar_requested.emit("success", message)
         except Exception as exc:
-            signalBus.info_bar_requested.emit("error", self.tr("Failed to save screenshot: ") + str(exc))
+            signalBus.info_bar_requested.emit(
+                "error", self.tr("Failed to save screenshot: ") + str(exc)
+            )
 
     def _on_monitor_control_clicked(self) -> None:
         """处理开始/停止监控按钮点击。当由任务流控制时禁用手动启停，仅任务流停止时监控才会停止。"""
@@ -754,13 +794,13 @@ class MonitorWidget(QWidget):
         if self._monitoring_active or self._starting_monitoring:
             logger.debug("[MonitorWidget] 监控已在运行或正在启动，跳过")
             return
-        
+
         logger.info("[MonitorWidget] 开始启动监控流程")
         self._starting_monitoring = True
-        
+
         # 先显示占位图
         self._load_placeholder_image()
-        
+
         async def _start_sequence():
             try:
                 # 检查任务流的控制器是否就绪
@@ -768,48 +808,57 @@ class MonitorWidget(QWidget):
                     logger.info("[MonitorWidget] 任务流控制器未就绪，开始等待连接...")
                     # 显示加载图标
                     self._show_loading_overlay()
-                    
+
                     # 从配置中获取wait_time，并加1秒作为备用时间
                     config_wait_time = await self._get_controller_wait_time()
                     max_wait_time = config_wait_time + 1.0  # 配置的等待时间 + 1秒备用
                     check_interval = 0.1  # 每100ms检查一次
                     waited_time = 0.0
-                    
+
                     while waited_time < max_wait_time:
                         if not self._starting_monitoring:
                             # 用户点击了停止按钮
                             logger.info("[MonitorWidget] 用户取消了监控启动")
                             self._hide_loading_overlay()
                             return
-                        
+
                         # 检查控制器是否就绪
                         if self._check_task_flow_controller_ready():
                             # 控制器就绪，隐藏加载图标并继续
-                            logger.info(f"[MonitorWidget] 控制器已就绪，等待时间: {waited_time:.1f}秒")
+                            logger.info(
+                                f"[MonitorWidget] 控制器已就绪，等待时间: {waited_time:.1f}秒"
+                            )
                             self._hide_loading_overlay()
                             break
-                        
+
                         await asyncio.sleep(check_interval)
                         waited_time += check_interval
-                    
+
                     # 再次检查是否就绪
                     if not self._check_task_flow_controller_ready():
-                        logger.warning(f"[MonitorWidget] 等待超时，控制器仍未就绪 (等待了 {waited_time:.1f}秒)")
-                        if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
+                        logger.warning(
+                            f"[MonitorWidget] 等待超时，控制器仍未就绪 (等待了 {waited_time:.1f}秒)"
+                        )
+                        if (
+                            self._starting_monitoring
+                        ):  # 只有在未被停止的情况下才显示错误
                             signalBus.info_bar_requested.emit(
-                                "error", self.tr("Controller not ready. Please ensure the device is connected.")
+                                "error",
+                                self.tr(
+                                    "Controller not ready. Please ensure the device is connected."
+                                ),
                             )
                         self._hide_loading_overlay()
                         self._starting_monitoring = False
                         self._update_button_state()
                         return
-                
+
                 # 启动异步监控循环
                 self._start_monitor_loop()
-                
+
                 # 等待一小段时间确保循环已启动
                 await asyncio.sleep(0.1)
-                
+
                 # 检查监控是否真的启动了
                 if not self._monitoring_active:
                     logger.error("[MonitorWidget] 监控循环启动失败")
@@ -821,10 +870,12 @@ class MonitorWidget(QWidget):
                     self._update_button_state()
                     return
                 logger.info("[MonitorWidget] 监控循环已启动")
-                
+
                 self._update_button_state()
-                signalBus.info_bar_requested.emit("success", self.tr("Monitoring started"))
-                
+                signalBus.info_bar_requested.emit(
+                    "success", self.tr("Monitoring started")
+                )
+
                 # 尝试捕获第一帧
                 try:
                     if not self._is_controller_connected():
@@ -869,16 +920,16 @@ class MonitorWidget(QWidget):
         logger.info("[MonitorWidget] 开始停止监控")
         # 设置停止标志，中断等待过程
         self._starting_monitoring = False
-        
+
         async def _stop_sequence():
             try:
                 # 隐藏加载图标
                 self._hide_loading_overlay()
-                
+
                 # 停止监控循环
                 logger.info("[MonitorWidget] 停止监控循环")
                 self._stop_monitor_loop()
-                
+
                 try:
                     logger.debug("[MonitorWidget] 停止监控任务")
                     await self.monitor_task.maafw.stop_task()
@@ -886,7 +937,7 @@ class MonitorWidget(QWidget):
                     logger.warning(f"[MonitorWidget] 停止监控任务时出错: {e}")
                     # 静默处理错误，不输出到日志组件
                     pass
-                
+
                 try:
                     if self.monitor_task.maafw.controller:
                         logger.debug("[MonitorWidget] 清除监控任务控制器引用")
@@ -895,13 +946,15 @@ class MonitorWidget(QWidget):
                     logger.warning(f"[MonitorWidget] 清除控制器引用时出错: {e}")
                     # 静默处理错误，不输出到日志组件
                     pass
-                
+
                 # 停止监控后显示占位图
                 self._load_placeholder_image()
-                
+
                 self._update_button_state()
                 logger.info("[MonitorWidget] 监控已停止")
-                signalBus.info_bar_requested.emit("success", self.tr("Monitoring stopped"))
+                signalBus.info_bar_requested.emit(
+                    "success", self.tr("Monitoring stopped")
+                )
             except Exception as exc:
                 logger.error(f"[MonitorWidget] 停止监控流程失败: {exc}", exc_info=True)
                 signalBus.info_bar_requested.emit(
@@ -910,7 +963,7 @@ class MonitorWidget(QWidget):
             finally:
                 # 确保幂等标志最终被释放
                 self._stopping_monitoring = False
-        
+
         QTimer.singleShot(0, lambda: asyncio.create_task(_stop_sequence()))
 
     def _on_open_monitor_dialog(self) -> None:
@@ -918,43 +971,49 @@ class MonitorWidget(QWidget):
         from app.view.monitor_interface.monitor_interface import MonitorInterface
         from qfluentwidgets import MessageBoxBase
         from PySide6.QtWidgets import QApplication
-        
+
         # 保存当前监控状态
         was_monitoring = self._monitoring_active
-        
+
         class MonitorDialog(MessageBoxBase):
             """监控对话框"""
-            def __init__(self, service_coordinator: ServiceCoordinator, was_monitoring: bool, parent=None):
+
+            def __init__(
+                self,
+                service_coordinator: ServiceCoordinator,
+                was_monitoring: bool,
+                parent=None,
+            ):
                 super().__init__(parent)
                 self.setWindowTitle(self.tr("Monitor"))
                 self.setMinimumSize(800, 600)
-                
+
                 # 获取屏幕大小，设置合理的初始窗口大小
                 screen = QApplication.primaryScreen()
                 if screen:
                     screen_size = screen.availableGeometry()
                     # 初始大小为屏幕的 70%
                     self.resize(
-                        int(screen_size.width() * 0.7),
-                        int(screen_size.height() * 0.7)
+                        int(screen_size.width() * 0.7), int(screen_size.height() * 0.7)
                     )
-                
+
                 # 创建监控界面
                 self.monitor_interface = MonitorInterface(service_coordinator, self)
-                
+
                 # 设置布局
                 layout = QVBoxLayout(self.widget)
                 layout.setContentsMargins(0, 0, 0, 0)
                 layout.addWidget(self.monitor_interface)
-                
+
                 # 如果之前正在监控，同步状态到对话框中的监控界面
                 if was_monitoring:
                     # 延迟启动监控，确保对话框已显示
-                    QTimer.singleShot(100, lambda: self.monitor_interface._start_monitoring())
-        
+                    QTimer.singleShot(
+                        100, lambda: self.monitor_interface._start_monitoring()
+                    )
+
         dialog = MonitorDialog(self.service_coordinator, was_monitoring, self)
         dialog.exec()
-
 
     def _schedule_controller_disconnection(self) -> None:
         """安排控制器断开处理"""
@@ -966,4 +1025,3 @@ class MonitorWidget(QWidget):
             loop = None
         if loop and loop.is_running():
             loop.create_task(self._handle_controller_disconnection())
-
