@@ -241,5 +241,6 @@ class BundleService:
         main_config["bundle"] = bundle_dict
         try:
             self._save_main_config()
-        except Exception:
-            pass
+        except Exception as exc:
+            # Best-effort save: log the error but do not interrupt the caller.
+            logger.exception("保存主配置文件失败: %s", exc)
