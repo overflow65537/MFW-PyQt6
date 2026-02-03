@@ -28,9 +28,9 @@ from enum import Enum, auto
 from typing import Optional, Callable, List, Tuple
 from dataclasses import dataclass, field
 
-from PySide6.QtWidgets import QApplication, QVBoxLayout, QHBoxLayout
+from PySide6.QtWidgets import QApplication, QVBoxLayout, QHBoxLayout, QWidget
 from PySide6.QtCore import Qt, QCoreApplication, QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QDesktopServices, QScreen
 from qfluentwidgets import (
     MessageBoxBase,
     SubtitleLabel,
@@ -228,8 +228,17 @@ def show_vcredist_missing_dialog(parent=None) -> None:
     )
 
     _ensure_app_exists()
-    dialog = StartupDialog(config, parent)
-    dialog.exec()
+    dummy_parent = None
+    if parent is None:
+        dummy_parent = _create_dummy_parent()
+        parent = dummy_parent
+    try:
+        dialog = StartupDialog(config, parent)
+        dialog.exec()
+    finally:
+        if dummy_parent is not None:
+            dummy_parent.close()
+            dummy_parent.deleteLater()
 
 
 def show_instance_running_dialog(parent=None) -> None:
@@ -252,8 +261,17 @@ def show_instance_running_dialog(parent=None) -> None:
     )
 
     _ensure_app_exists()
-    dialog = StartupDialog(config, parent)
-    dialog.exec()
+    dummy_parent = None
+    if parent is None:
+        dummy_parent = _create_dummy_parent()
+        parent = dummy_parent
+    try:
+        dialog = StartupDialog(config, parent)
+        dialog.exec()
+    finally:
+        if dummy_parent is not None:
+            dummy_parent.close()
+            dummy_parent.deleteLater()
 
 
 def show_uncaught_exception_dialog(
@@ -290,8 +308,17 @@ def show_uncaught_exception_dialog(
     )
 
     _ensure_app_exists()
-    dialog = StartupDialog(config, parent)
-    dialog.exec()
+    dummy_parent = None
+    if parent is None:
+        dummy_parent = _create_dummy_parent()
+        parent = dummy_parent
+    try:
+        dialog = StartupDialog(config, parent)
+        dialog.exec()
+    finally:
+        if dummy_parent is not None:
+            dummy_parent.close()
+            dummy_parent.deleteLater()
 
 
 def show_custom_dialog(
@@ -338,9 +365,19 @@ def show_custom_dialog(
     )
 
     _ensure_app_exists()
-    dialog = StartupDialog(config, parent)
-    dialog.exec()
-    return dialog.clicked_button
+    dummy_parent = None
+    if parent is None:
+        dummy_parent = _create_dummy_parent()
+        parent = dummy_parent
+    try:
+        dialog = StartupDialog(config, parent)
+        dialog.exec()
+        result = dialog.clicked_button
+    finally:
+        if dummy_parent is not None:
+            dummy_parent.close()
+            dummy_parent.deleteLater()
+    return result
 
 
 # ============ 辅助函数 ============
@@ -352,6 +389,28 @@ def _ensure_app_exists() -> QApplication:
     if app is None or not isinstance(app, QApplication):
         app = QApplication([sys.argv[0]])
     return app
+
+
+def _create_dummy_parent() -> QWidget:
+    """创建一个用于弹窗的临时父窗口
+    
+    MessageBoxBase 需要一个有效的父窗口来计算位置和尺寸。
+    当没有主窗口时，创建一个透明的临时窗口作为父窗口。
+    """
+    parent = QWidget()
+    parent.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
+    parent.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+    
+    # 获取屏幕尺寸并设置窗口大小和位置
+    app = QApplication.instance()
+    if app and isinstance(app, QApplication):
+        screen = app.primaryScreen()
+        if screen:
+            geometry = screen.availableGeometry()
+            parent.setGeometry(geometry)
+    
+    parent.show()
+    return parent
 
 
 def _copy_to_clipboard(text: str) -> None:

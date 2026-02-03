@@ -215,7 +215,6 @@ if __name__ == "__main__":
         # 显示异常弹窗
         try:
             from app.utils.startup_dialog import show_uncaught_exception_dialog
-
             show_uncaught_exception_dialog(exc_type, exc_value, exc_traceback)
         except Exception as dialog_err:
             # 弹窗失败时仅记录日志，避免递归
