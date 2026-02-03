@@ -484,7 +484,9 @@ class ScheduleService(QObject):
         if self.service_coordinator.run_manager.is_running or (
             self._current_task and not self._current_task.done()
         ):
-            await self.service_coordinator.stop_task()
+            # 停止当前配置的任务
+            current_config_id = self.service_coordinator.config.current_config_id
+            await self.service_coordinator.stop_task(config_id=current_config_id)
             try:
                 if self._current_task:
                     await self._current_task
