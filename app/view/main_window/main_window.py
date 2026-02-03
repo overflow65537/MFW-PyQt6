@@ -105,7 +105,7 @@ from app.common.config import cfg
 from app.common.signal_bus import signalBus
 from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.utils.logger import logger
-from app.core.core import ServiceCoordinator, init_service_coordinator, get_service_coordinator
+from app.core.core import init_service_coordinator
 from app.widget.notice_message import NoticeMessageBox, DelayedCloseNoticeMessageBox
 
 
