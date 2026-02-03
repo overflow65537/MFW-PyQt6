@@ -8,7 +8,7 @@
 """
 
 import asyncio
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 
 from PySide6.QtCore import Qt, QTimer, QSize
 from PySide6.QtGui import QImage, QPixmap
