@@ -17,8 +17,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QGridLayout,
-    QScrollArea,
-    QSizePolicy,
     QFrame,
 )
 
