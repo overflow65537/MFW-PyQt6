@@ -87,14 +87,20 @@ class MonitorWidget(QWidget):
                 self._on_config_changed
             )
         except Exception:
-            pass
+            logger.exception(
+                "[MonitorWidget] Failed to connect config_changed signal; "
+                "monitor will not respond to configuration changes."
+            )
 
         # 初始化目标配置为当前配置
         try:
             self._target_config_id = self.service_coordinator.current_config_id
             logger.debug(f"[MonitorWidget] 初始目标配置: {self._target_config_id}")
         except Exception:
-            pass
+            logger.exception(
+                "[MonitorWidget] Failed to read initial current_config_id; "
+                "monitor will start without a target configuration."
+            )
 
     def _setup_ui(self) -> None:
         """设置UI（标题和按钮由外部管理，这里只包含预览区域）"""
