@@ -888,7 +888,6 @@ class MonitorWidget(QWidget):
                 except Exception as e:
                     logger.warning(f"[MonitorWidget] 捕获第一帧失败: {e}")
                     # 静默处理错误，不输出到日志组件
-                    pass
             except Exception as exc:
                 logger.error(f"[MonitorWidget] 启动监控流程失败: {exc}", exc_info=True)
                 if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
