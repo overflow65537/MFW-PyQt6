@@ -254,8 +254,8 @@ class TaskFlowRunner(QObject):
             # 断开信号连接
             try:
                 signalBus.callback.disconnect(self._handle_maafw_callback)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"断开回调信号时出错（已忽略）: {e}")
             
             # 清理 MaaFW 资源
             if hasattr(self, 'maafw'):
