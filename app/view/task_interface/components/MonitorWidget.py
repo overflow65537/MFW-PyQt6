@@ -482,8 +482,8 @@ class MonitorWidget(QWidget):
                 if controller is not None:
                     self._target_runner = runner
                     return controller
-        except Exception:
-            pass
+        except Exception as e:
+            logger.exception("[MonitorWidget] 获取目标配置运行器的控制器时发生异常", exc_info=e)
         return None
 
     def _capture_frame(self) -> Image.Image:
