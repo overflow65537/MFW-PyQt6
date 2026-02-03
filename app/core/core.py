@@ -570,7 +570,7 @@ class ServiceCoordinator:
         try:
             self.task_service.refresh_hidden_flags()
         except Exception:
-            pass
+            logger.warning("刷新任务隐藏状态失败")
         entry.state.mark_running()
         try:
             return await entry.runner.run_tasks_flow(task_id, start_task_id=start_task_id)

@@ -263,7 +263,7 @@ class TaskFlowRunner(QObject):
                     self.maafw.custom_info.disconnect(self._handle_maafw_custom_info)
                     self.maafw.agent_info.disconnect(self._handle_agent_info)
                 except Exception:
-                    pass
+                    logger.debug("断开 MaaFW 信号连接失败（忽略）")
             
             logger.debug(f"运行器 {self._config_id} 资源已清理")
         except Exception as e:
