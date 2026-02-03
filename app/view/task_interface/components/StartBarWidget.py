@@ -1,4 +1,4 @@
-from PySide6.QtCore import QPoint, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget, QHBoxLayout
 from qfluentwidgets import (
     BodyLabel,
