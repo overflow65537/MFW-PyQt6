@@ -36,10 +36,37 @@ if getattr(sys, "frozen", False):
     os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
 else:
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-import maa
-from maa.context import Context
-from maa.custom_action import CustomAction
-from maa.custom_recognition import CustomRecognition
+
+
+# 尝试导入 maa 库，检测是否缺少 VC++ Redistributable
+try:
+    import maa
+    from maa.context import Context
+    from maa.custom_action import CustomAction
+    from maa.custom_recognition import CustomRecognition
+except (ImportError, OSError) as e:
+    error_msg = str(e).lower()
+    # 检测是否是 DLL 加载失败或 VC++ 相关错误
+    if any(
+        keyword in error_msg
+        for keyword in [
+            "dll",
+            "vcruntime",
+            "msvcp",
+            "api-ms-win",
+            "找不到指定的模块",
+            "specified module could not be found",
+            "failed to load",
+            "cannot load",
+        ]
+    ):
+        from app.utils.startup_dialog import show_vcredist_missing_dialog
+
+        show_vcredist_missing_dialog()
+    else:
+        # 其他导入错误，正常抛出
+        raise
+
 from app.utils.logger import logger
 from qasync import QEventLoop, asyncio
 
@@ -47,7 +74,7 @@ from qasync import QEventLoop, asyncio
 import app.utils.qasync_patch
 from qfluentwidgets import ConfigItem, FluentTranslator
 from PySide6.QtCore import Qt, QTranslator
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication
 
 
 from app.common.__version__ import __version__
@@ -134,21 +161,20 @@ class _SingleInstanceLock:
 
 
 if __name__ == "__main__":
-    _instance_key = os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__)
+    _instance_key = os.path.abspath(
+        sys.executable if getattr(sys, "frozen", False) else __file__
+    )
     _single_instance = _SingleInstanceLock(_instance_key)
     if not _single_instance.acquire():
         try:
-            # 用 Qt 弹窗提示（GUI 打包时用户看不到 console）
-            _tmp_app = QApplication.instance() or QApplication([sys.argv[0]])
-            QMessageBox.warning(
-                None,
-                "提示",
-                "程序已经在运行中。\n\n请先关闭已打开的窗口，或在任务管理器中结束进程后再启动。",
-            )
+            # 使用通用弹窗提示
+            from app.utils.startup_dialog import show_instance_running_dialog
+
+            show_instance_running_dialog()
         except Exception:
             # 兜底：控制台环境
             print("程序已经在运行中，请先关闭已打开的实例后再启动。", file=sys.stderr)
-        sys.exit(0)
+            sys.exit(0)
 
     atexit.register(_single_instance.release)
 
@@ -186,6 +212,14 @@ if __name__ == "__main__":
         logger.exception(
             "未捕获的全局异常:", exc_info=(exc_type, exc_value, exc_traceback)
         )
+        # 显示异常弹窗
+        try:
+            from app.utils.startup_dialog import show_uncaught_exception_dialog
+
+            show_uncaught_exception_dialog(exc_type, exc_value, exc_traceback)
+        except Exception as dialog_err:
+            # 弹窗失败时仅记录日志，避免递归
+            logger.error(f"显示异常弹窗失败: {dialog_err}")
 
     sys.excepthook = global_except_hook
 
