@@ -99,13 +99,17 @@ class TestInterface(QWidget):
         logger.info("测试页面：切换配置 %s -> %s", current, target_id)
 
     def _test_run_tasks(self) -> None:
-        if self.service_coordinator.run_manager.is_running:
+        config_id = self.service_coordinator.current_config_id
+        if not config_id:
+            signalBus.info_bar_requested.emit("warning", "未选中配置，无法运行")
+            return
+        if self.service_coordinator.is_running(config_id):
             signalBus.info_bar_requested.emit(
                 "warning", "任务流正在运行，无法重复启动"
             )
             return
         signalBus.info_bar_requested.emit("info", "已触发任务流测试")
-        asyncio.create_task(self.service_coordinator.run_tasks_flow())
+        asyncio.create_task(self.service_coordinator.run_tasks_flow(config_id=config_id))
 
     def _test_force_start(self) -> None:
         configs = self.service_coordinator.config.list_configs()
@@ -138,7 +142,7 @@ class TestInterface(QWidget):
         signalBus.info_bar_requested.emit("info", "已发起强制运行")
         asyncio.create_task(self.service_coordinator.schedule_service._force_start(entry))
 
-    def _on_log_output(self, level: str, message: str) -> None:
+    def _on_log_output(self, level: str, message: str, config_id: str = "") -> None:
         text = f"[{level}] {message}"
         self._log_buffer.append(text)
         self._log_view.setPlainText("\n".join(self._log_buffer))

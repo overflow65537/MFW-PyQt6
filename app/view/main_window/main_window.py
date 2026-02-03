@@ -94,6 +94,7 @@ from qfluentwidgets import FluentIcon as FIF
 
 from app.view.task_interface.task_interface_logic import TaskInterface
 from app.view.monitor_interface import MonitorInterface
+from app.view.multi_run_interface import MultiRunInterface
 from app.view.schedule_interface.schedule_interface import ScheduleInterface
 from app.view.setting_interface.setting_interface import (
     SettingInterface,
@@ -104,7 +105,7 @@ from app.common.config import cfg
 from app.common.signal_bus import signalBus
 from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.utils.logger import logger
-from app.core.core import ServiceCoordinator
+from app.core.core import init_service_coordinator
 from app.widget.notice_message import NoticeMessageBox, DelayedCloseNoticeMessageBox
 
 
@@ -279,9 +280,9 @@ class MainWindow(MSFluentWindow):
         # 使用自定义的主题监听器
         self.themeListener = CustomSystemThemeListener(self)
 
-        # 初始化配置管理器
+        # 初始化配置管理器（使用全局单实例）
         multi_config_path = Path.cwd() / "config" / "multi_config.json"
-        self.service_coordinator = ServiceCoordinator(multi_config_path)
+        self.service_coordinator = init_service_coordinator(multi_config_path)
         self._apply_cli_switch_config()
 
         self._announcement_pending_show = False
@@ -317,6 +318,12 @@ class MainWindow(MSFluentWindow):
             FIF.PROJECTOR,
             self.tr("Monitor"),
         )
+        # 多开管理界面（根据配置决定是否添加到导航栏）
+        # 注意：先创建界面但不添加到导航栏，后续通过 _add_multi_run_interface_to_navigation 统一处理
+        self.MultiRunInterface = MultiRunInterface(self.service_coordinator)
+        self._multi_run_interface_added_to_nav = False
+        # 初始化时根据配置添加到导航栏（延迟到 initNavigation 完成后）
+        
         self.ScheduleInterface = ScheduleInterface(self.service_coordinator)
         self.addSubInterface(
             self.ScheduleInterface,
@@ -384,6 +391,10 @@ class MainWindow(MSFluentWindow):
         else:
             logger.info("多资源适配已开启，Announcement 不会显示在导航栏")
 
+        # 根据配置决定是否显示多开管理界面
+        if cfg.get(cfg.enable_multi_run):
+            self._add_multi_run_interface_to_navigation()
+
         # 添加导航项
         self.splashScreen.finish()
         self._maybe_show_pending_announcement()
@@ -408,8 +419,8 @@ class MainWindow(MSFluentWindow):
             event_loop = None
         self._hotkey_manager = GlobalHotkeyManager(event_loop)
         self._hotkey_manager.setup(
-            start_factory=lambda: self.service_coordinator.run_tasks_flow(),
-            stop_factory=lambda: self.service_coordinator.stop_task_flow(),
+            start_factory=lambda: self.service_coordinator.run_tasks_flow(config_id=self.service_coordinator.current_config_id),
+            stop_factory=lambda: self.service_coordinator.stop_task_flow(config_id=self.service_coordinator.current_config_id),
         )
         signalBus.hotkey_shortcuts_changed.connect(self._reload_global_hotkeys)
 
@@ -1051,10 +1062,83 @@ class MainWindow(MSFluentWindow):
         signalBus.multi_resource_adaptation_enabled.connect(
             self._on_multi_resource_adaptation_enabled
         )
+        # 监听多开模式设置变化
+        try:
+            cfg.enable_multi_run.valueChanged.connect(self._on_enable_multi_run_changed)
+        except Exception as exc:
+            logger.debug(f"绑定多开模式开关变更信号失败（已忽略）: {exc}")
 
     def _on_multi_resource_adaptation_enabled(self) -> None:
         """响应设置页开启多资源适配的信号，将 BundleInterface 添加到导航栏。"""
         self._add_bundle_interface_to_navigation()
+
+    def _on_enable_multi_run_changed(self, enabled: bool) -> None:
+        """响应多开模式设置变化。"""
+        logger.info(f"多开模式设置变化: {enabled}")
+        if enabled:
+            self._add_multi_run_interface_to_navigation()
+        else:
+            self._remove_multi_run_interface_from_navigation()
+
+    def _add_multi_run_interface_to_navigation(self) -> None:
+        """将 MultiRunInterface 添加到导航栏。"""
+        if self._multi_run_interface_added_to_nav:
+            return
+        try:
+            # 首先确保 MultiRunInterface 被添加到 stackedWidget
+            if self.stackedWidget.indexOf(self.MultiRunInterface) == -1:
+                self.stackedWidget.addWidget(self.MultiRunInterface)
+            
+            # 检查导航项是否已存在（可能被隐藏了）
+            nav_items = getattr(self.navigationInterface, "items", {})
+            if isinstance(nav_items, dict):
+                existing_item = nav_items.get("multi_run_interface")
+                if existing_item:
+                    # 导航项已存在，只需显示它
+                    if hasattr(existing_item, "setVisible"):
+                        existing_item.setVisible(True)
+                    elif hasattr(existing_item, "show"):
+                        existing_item.show()
+                    self._multi_run_interface_added_to_nav = True
+                    logger.info("✓ MultiRunInterface 已显示在导航栏")
+                    return
+            
+            # 导航项不存在，创建新的
+            self.navigationInterface.insertItem(
+                2,  # 在 Monitor (索引1) 之后
+                "multi_run_interface",
+                FIF.SHARE,
+                self.tr("Multi-Run"),
+                onClick=lambda: self.stackedWidget.setCurrentWidget(self.MultiRunInterface),
+                selectable=True,
+            )
+            self._multi_run_interface_added_to_nav = True
+            logger.info("✓ MultiRunInterface 已添加到导航栏")
+        except Exception as exc:
+            logger.error(f"添加 MultiRunInterface 到导航栏失败: {exc}", exc_info=True)
+
+    def _remove_multi_run_interface_from_navigation(self) -> None:
+        """从导航栏移除 MultiRunInterface。"""
+        if not self._multi_run_interface_added_to_nav:
+            return
+        try:
+            # 如果当前显示的是 MultiRunInterface，先切换到其他界面
+            if self.stackedWidget.currentWidget() is self.MultiRunInterface:
+                self.switchTo(self.MonitorInterface)
+            
+            # 尝试查找并隐藏导航项
+            nav_items = getattr(self.navigationInterface, "items", {})
+            if isinstance(nav_items, dict):
+                item = nav_items.get("multi_run_interface")
+                if item:
+                    if hasattr(item, "setVisible"):
+                        item.setVisible(False)
+                    elif hasattr(item, "hide"):
+                        item.hide()
+            self._multi_run_interface_added_to_nav = False
+            logger.info("✓ MultiRunInterface 已从导航栏移除")
+        except Exception as exc:
+            logger.debug(f"从导航栏移除 MultiRunInterface 时出错: {exc}")
 
     def _apply_cli_switch_config(self) -> None:
         """处理 CLI 请求的配置切换，在 UI 初始化前执行。"""
@@ -1785,7 +1869,9 @@ class MainWindow(MSFluentWindow):
 
         async def _start_flow():
             try:
-                await self.service_coordinator.run_tasks_flow()
+                config_id = self.service_coordinator.current_config_id
+                if config_id:
+                    await self.service_coordinator.run_tasks_flow(config_id=config_id)
             except Exception as exc:
                 logger.error("启动后自动运行失败: %s", exc)
 

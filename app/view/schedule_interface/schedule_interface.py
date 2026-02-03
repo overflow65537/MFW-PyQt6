@@ -620,4 +620,4 @@ class ScheduleInterface(QWidget):
     def _info_with_log(self, level: str, message: str) -> None:
         normalized_level = (level or "info").lower()
         signalBus.info_bar_requested.emit(normalized_level, message)
-        signalBus.log_output.emit(normalized_level.upper(), message)
+        signalBus.log_output.emit(normalized_level.upper(), message, "")

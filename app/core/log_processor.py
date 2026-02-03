@@ -34,7 +34,7 @@ class CallbackLogProcessor(QObject):
             latency_ms = int(signal.get("details", 0) * 1000)
             level = self._latency_level(latency_ms)
             message = self.tr("screenshot test success, time: ") + f"{latency_ms}ms"
-            signalBus.log_output.emit(level, message)
+            signalBus.log_output.emit(level, message, "")
             return
 
         # 处理资源加载信号
@@ -56,24 +56,24 @@ class CallbackLogProcessor(QObject):
             if details:
                 # 使用全局 i18n 服务，根据原始 label 翻译为当前语言文本
                 details = get_i18n_service().translate_label(details)
-                signalBus.log_output.emit("INFO", details)
+                signalBus.log_output.emit("INFO", details, "")
 
     def _handle_resource_signal(self, status: int):
         """处理资源加载信号 - 只输出失败"""
         # status: 1=Starting, 2=Succeeded, 3=Failed
         if status == 3:
             message = self.tr("Resource Loading Failed")
-            signalBus.log_output.emit("ERROR", message)
+            signalBus.log_output.emit("ERROR", message, "")
 
     def _handle_controller_signal(self, status: int):
         """处理控制器/模拟器连接信号 - 只输出开始和失败"""
         # status: 1=Starting, 2=Succeeded, 3=Failed
         if status == 1:
             message = self.tr("Controller Started Connect")
-            signalBus.log_output.emit("INFO", message)
+            signalBus.log_output.emit("INFO", message, "")
         elif status == 3:
             message = self.tr("Controller Connect Failed")
-            signalBus.log_output.emit("ERROR", message)
+            signalBus.log_output.emit("ERROR", message, "")
 
     def _handle_task_signal(self, status: int, task: str):
         """处理任务执行信号 - 只输出开始和失败"""
@@ -84,10 +84,10 @@ class CallbackLogProcessor(QObject):
             return
         elif status == 1:
             message = self.tr("Task started execution: ") + task_text
-            signalBus.log_output.emit("INFO", message)
+            signalBus.log_output.emit("INFO", message, "")
         elif status == 3:
             message = self.tr("Task execution failed: ") + task_text
-            signalBus.log_output.emit("ERROR", message)
+            signalBus.log_output.emit("ERROR", message, "")
 
     def _latency_level(self, latency_ms: int) -> str:
         """根据延迟时间确定日志级别"""

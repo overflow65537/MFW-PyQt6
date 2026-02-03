@@ -39,7 +39,7 @@ class SignalBus(QObject):
     callback = Signal(dict)
 
     # 输出到日志组件
-    log_output = Signal(str, str)  # (level,text)
+    log_output = Signal(str, str, str)  # (level, text, config_id)，config_id 为空表示全局/系统日志
     background_image_changed = Signal(str)
     background_opacity_changed = Signal(int)
 

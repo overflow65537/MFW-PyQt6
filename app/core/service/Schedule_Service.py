@@ -484,7 +484,9 @@ class ScheduleService(QObject):
         if self.service_coordinator.run_manager.is_running or (
             self._current_task and not self._current_task.done()
         ):
-            await self.service_coordinator.stop_task()
+            # 停止当前配置的任务
+            current_config_id = self.service_coordinator.config.current_config_id
+            await self.service_coordinator.stop_task(config_id=current_config_id)
             try:
                 if self._current_task:
                     await self._current_task
@@ -528,7 +530,7 @@ class ScheduleService(QObject):
                 self.service_coordinator.config.current_config_id,
             )
         try:
-            await self.service_coordinator.run_tasks_flow()
+            await self.service_coordinator.run_tasks_flow(config_id=entry.config_id)
         except Exception as exc:
             logger.exception("计划任务执行失败: %s", exc)
             self._log_info(f"计划任务：{entry.name} 执行失败 {exc}")

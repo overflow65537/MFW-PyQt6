@@ -421,6 +421,11 @@ class TaskDragListWidget(BaseListWidget):
 
     def _on_config_changed(self, config_id: str) -> None:
         """Reload tasks when user switches configuration."""
+        # 保存目标配置ID以便后续使用
+        self._pending_config_id = config_id
+        # 预加载目标配置的任务状态
+        self._preload_task_states_for_config(config_id)
+        
         if self._fade_out.state() == QPropertyAnimation.State.Running:
             self._pending_refresh = True
             return
@@ -433,6 +438,28 @@ class TaskDragListWidget(BaseListWidget):
         # 特殊任务列表：保持原样，不做任何修改
         if self._filter_mode != "special":
             QTimer.singleShot(10, self.clearSelection)
+    
+    def _preload_task_states_for_config(self, config_id: str) -> None:
+        """预加载配置的任务运行状态到待处理列表
+        
+        Args:
+            config_id: 配置ID
+        """
+        try:
+            if not self.service_coordinator.is_running(config_id):
+                # 配置未运行，清空待处理状态
+                self._pending_task_statuses.clear()
+                return
+            
+            runner = self.service_coordinator.get_runner(config_id)
+            if runner and hasattr(runner, 'task_results'):
+                # 加载所有任务状态
+                task_results = runner.task_results
+                for task_id, status in task_results.items():
+                    if status:  # 只保存非空状态
+                        self._pending_task_statuses[task_id] = status
+        except Exception as e:
+            logger.debug(f"预加载任务状态失败: {e}")
     
     def _on_resource_changed(self, options: dict) -> None:
         """当选项变化时，更新任务列表显示"""
@@ -465,6 +492,28 @@ class TaskDragListWidget(BaseListWidget):
 
     def _on_fade_in_finished(self) -> None:
         self._hide_loading_overlay()
+        # 注意：不在这里清除 _pending_config_id
+        # 因为任务渲染可能还在进行中（每个任务5ms，可能比fade_in动画100ms更长）
+        # _pending_config_id 会在 _on_all_tasks_rendered 中被使用，之后自然失效
+    
+    def _set_items_editable(self, enabled: bool) -> None:
+        """设置列表项的可编辑状态（checkbox 和删除按钮）
+        
+        Args:
+            enabled: True 表示启用编辑功能，False 表示禁用
+        """
+        # 遍历 _task_widgets 而不是 self.count()，因为可能有骨架占位
+        for task_id, widget in self._task_widgets.items():
+            if not widget:
+                continue
+            # 禁用/启用 checkbox（基础任务始终保持禁用）
+            if hasattr(widget, 'checkbox') and hasattr(widget, 'task'):
+                if not widget.task.is_base_task():
+                    widget.checkbox.setEnabled(enabled)
+            # 禁用/启用删除按钮（基础任务始终保持禁用）
+            if hasattr(widget, 'setting_button') and hasattr(widget, 'task'):
+                if not widget.task.is_base_task():
+                    widget.setting_button.setEnabled(enabled)
 
     def update_list(self):
         """刷新任务列表UI（先显示骨架占位，再逐项渲染）"""
@@ -509,12 +558,26 @@ class TaskDragListWidget(BaseListWidget):
         if self._render_index >= len(self._pending_tasks):
             self._loading_tasks = False
             self._pending_tasks = []
+            # 所有任务渲染完成后，触发状态恢复
+            self._on_all_tasks_rendered()
             return
 
         task = self._pending_tasks[self._render_index]
         self._render_task_at_index(self._render_index, task)
         self._render_index += 1
         QTimer.singleShot(5, self._render_pending_task)
+    
+    def _on_all_tasks_rendered(self):
+        """所有任务渲染完成后的回调
+        
+        在配置切换场景下，设置所有任务的可编辑状态
+        """
+        config_id = getattr(self, '_pending_config_id', None)
+        if config_id:
+            is_running = self.service_coordinator.is_running(config_id)
+            self._set_items_editable(not is_running)
+            # 清除 _pending_config_id，状态恢复已完成
+            self._pending_config_id = None
 
     def _render_task_at_index(self, index: int, task: TaskItem):
         """将指定位置的骨架替换为实际的 `TaskListItem`"""
@@ -559,9 +622,31 @@ class TaskDragListWidget(BaseListWidget):
         if task.item_id in self._pending_task_statuses:
             pending_status = self._pending_task_statuses.pop(task.item_id)
             task_widget.update_status(pending_status)
+        
+        # 如果配置正在运行，立即禁用 checkbox 和删除按钮
+        config_id = getattr(self, '_pending_config_id', None)
+        if config_id and not task.is_base_task():
+            is_running = self.service_coordinator.is_running(config_id)
+            if is_running:
+                if hasattr(task_widget, 'checkbox'):
+                    task_widget.checkbox.setEnabled(False)
+                if hasattr(task_widget, 'setting_button'):
+                    task_widget.setting_button.setEnabled(False)
 
-    def modify_task(self, task: TaskItem):
-        """添加或更新任务项到列表（如果存在同 id 的任务则更新，否则新增）。"""
+    def modify_task(self, task_id_or_task):
+        """添加或更新任务项到列表（如果存在同 id 的任务则更新，否则新增）。
+        
+        Args:
+            task_id_or_task: 任务ID（str）或 TaskItem 对象（向后兼容）
+        """
+        # 支持接收 task_id 或 TaskItem 对象
+        if isinstance(task_id_or_task, str):
+            task = self.service_coordinator.get_task(task_id_or_task)
+            if not task:
+                return
+        else:
+            task = task_id_or_task
+        
         # 先尝试查找是否已有同 id 的项
         existing_widget = self._task_widgets.get(task.item_id)
         
@@ -919,7 +1004,37 @@ class ConfigListWidget(BaseListWidget):
         self.service_coordinator.signal_bus.config_changed.connect(
             self._on_config_changed
         )
+        
+        # 监听任务流状态变化信号，更新配置运行状态显示
+        self.service_coordinator.fs_signal_bus.fs_start_button_status.connect(
+            self._on_config_running_status_changed
+        )
+        # 监听任务流结束信号
+        signalBus.task_flow_finished.connect(self._on_task_flow_finished)
+        
         self.update_list()
+
+    def _on_config_running_status_changed(self, status: dict):
+        """更新配置运行状态显示"""
+        config_id = status.get("config_id", "")
+        is_running = status.get("text") == "STOP"
+        self._update_config_running_status(config_id, is_running)
+
+    def _on_task_flow_finished(self, payload: dict):
+        """任务流结束时更新配置状态"""
+        config_id = payload.get("config_id", "")
+        self._update_config_running_status(config_id, False)
+
+    def _update_config_running_status(self, config_id: str, is_running: bool):
+        """更新指定配置的运行状态显示"""
+        if not config_id:
+            return
+        for i in range(self.count()):
+            item = self.item(i)
+            widget = self.itemWidget(item)
+            if isinstance(widget, ConfigListItem) and widget.item.item_id == config_id:
+                widget.update_running_status(is_running)
+                break
 
     def set_locked(self, locked: bool):
         """锁定后禁止用户通过点击/键盘切换配置，同时禁用配置项右键编辑入口。"""
@@ -986,6 +1101,9 @@ class ConfigListWidget(BaseListWidget):
         if self._locked:
             # 运行中允许右键等操作，但不允许切换当前激活配置
             return
+        # 如果选择的已经是当前配置，不需要再次切换
+        if item_id == self.service_coordinator.current_config_id:
+            return
         self.service_coordinator.select_config(item_id)
 
     def update_list(self):
@@ -1036,11 +1154,23 @@ class ConfigListWidget(BaseListWidget):
         self._select_config_by_id(config_id, emit_signal=False)
         signalBus.title_changed.emit()
 
-    def add_config(self, config: ConfigItem):
-        """添加配置项到列表"""
+    def add_config(self, config_id_or_config):
+        """添加配置项到列表
+        
+        Args:
+            config_id_or_config: 配置ID（str）或 ConfigItem 对象（向后兼容）
+        """
+        # 支持接收 config_id 或 ConfigItem 对象
+        if isinstance(config_id_or_config, str):
+            config = self.service_coordinator.get_config(config_id_or_config)
+            if not config:
+                return
+        else:
+            config = config_id_or_config
+        
         self._add_config_to_list(config)
-        # 新增时尝试选中它，保持UI当前配置与服务一致
-        self._select_config_by_id(config.item_id)
+        # 新增时选中它，但不发出信号（core.add_config 已经发出了 config_changed 信号）
+        self._select_config_by_id(config.item_id, emit_signal=False)
 
     def remove_config(self, config_id: str):
         """移除配置项"""

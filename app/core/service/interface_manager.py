@@ -67,6 +67,125 @@ class InterfaceManager:
         logger.debug(f"尝试加载: {interface_path_json}")
         return interface_path_json
 
+    def _process_imports(self):
+        """
+        处理 import 字段，加载并合并外部配置文件
+
+        import 字段是一个列表，包含其他 JSON/JSONC 文件的路径。
+        合并规则：
+        - task: 列表类型，追加合并
+        - option: 字典类型，update 合并
+        - 其他列表字段: 追加合并
+        - 其他字典字段: update 合并
+        - 其他类型: 覆盖（导入文件优先级较低，不覆盖已有值）
+        """
+        import_list = self._original_interface.get("import")
+        if not import_list:
+            return
+
+        if not isinstance(import_list, list):
+            logger.warning("import 字段应为列表类型，跳过导入处理")
+            return
+
+        for import_path in import_list:
+            if not isinstance(import_path, str):
+                logger.warning(f"import 列表中的路径应为字符串: {import_path}")
+                continue
+
+            self._import_single_file(import_path)
+
+        # 处理完成后移除 import 字段（避免后续处理时再次触发）
+        self._original_interface.pop("import", None)
+        logger.debug(f"已处理 {len(import_list)} 个导入文件")
+
+    def _import_single_file(self, import_path: str):
+        """
+        导入单个配置文件并合并到 _original_interface
+
+        Args:
+            import_path: 导入文件的路径（相对于 interface 目录或绝对路径）
+        """
+        # 解析路径
+        path = Path(import_path.strip())
+        if not path.is_absolute():
+            path = (self._interface_dir / path).resolve()
+
+        if not path.exists():
+            logger.warning(f"导入文件不存在: {path}")
+            return
+
+        if not path.is_file():
+            logger.warning(f"导入路径不是文件: {path}")
+            return
+
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                imported_data = jsonc.load(f)
+            logger.debug(f"成功加载导入文件: {path}")
+        except jsonc.JSONDecodeError as e:
+            logger.error(f"导入文件格式错误 {path}: {e}")
+            return
+        except Exception as e:
+            logger.error(f"读取导入文件失败 {path}: {e}")
+            return
+
+        if not isinstance(imported_data, dict):
+            logger.warning(f"导入文件内容应为字典类型: {path}")
+            return
+
+        # 合并导入的数据
+        self._merge_imported_data(imported_data)
+
+    def _merge_imported_data(self, imported_data: Dict[str, Any]):
+        """
+        将导入的数据合并到 _original_interface
+
+        严格合并规则：
+        - task: 列表追加（不会有冲突）
+        - option: 字典合并，同名键记录日志并使用导入文件的值覆盖
+        - 其他字段: 忽略，不合并
+
+        Args:
+            imported_data: 导入的配置数据
+        """
+        # 只处理 task 和 option 字段
+
+        # 合并 task（列表追加）
+        if "task" in imported_data:
+            imported_tasks = imported_data["task"]
+            if isinstance(imported_tasks, list):
+                if "task" not in self._original_interface:
+                    self._original_interface["task"] = []
+                elif not isinstance(self._original_interface["task"], list):
+                    logger.warning("原 interface 的 task 字段不是列表，跳过合并")
+                    imported_tasks = []
+
+                if imported_tasks:
+                    self._original_interface["task"].extend(deepcopy(imported_tasks))
+                    logger.debug(f"合并 task 列表: +{len(imported_tasks)} 项")
+            else:
+                logger.warning("导入文件的 task 字段不是列表，跳过")
+
+        # 合并 option（字典合并，同名键覆盖并记录日志）
+        if "option" in imported_data:
+            imported_options = imported_data["option"]
+            if isinstance(imported_options, dict):
+                if "option" not in self._original_interface:
+                    self._original_interface["option"] = {}
+                elif not isinstance(self._original_interface["option"], dict):
+                    logger.warning("原 interface 的 option 字段不是字典，跳过合并")
+                    imported_options = {}
+
+                for key, value in imported_options.items():
+                    if key in self._original_interface["option"]:
+                        logger.warning(f"option 键冲突: '{key}'，使用导入文件的值覆盖")
+                    self._original_interface["option"][key] = deepcopy(value)
+
+                if imported_options:
+                    logger.debug(f"合并 option 字典: {len(imported_options)} 项")
+            else:
+                logger.warning("导入文件的 option 字段不是字典，跳过")
+
     def _detect_language_from_config(self) -> str:
         """根据全局配置推断语言代码"""
         language_map = {
@@ -137,6 +256,9 @@ class InterfaceManager:
             self._original_interface = {}
             return
 
+        # 处理 import 字段，合并外部配置文件
+        self._process_imports()
+
         # 检查 agent 嵌入式配置并尝试转换
         self.apply_agent_customization()
 
@@ -195,19 +317,15 @@ class InterfaceManager:
             # 递归翻译字典中的每个值
             for key, value in data.items():
                 # 特殊处理 label, icon, description, title, welcome, contact 等需要翻译的字段
-                if (
-                    key
-                    in (
-                        "label",
-                        "icon",
-                        "description",
-                        "license",
-                        "title",
-                        "welcome",
-                        "contact",
-                    )
-                    and isinstance(value, str)
-                ):
+                if key in (
+                    "label",
+                    "icon",
+                    "description",
+                    "license",
+                    "title",
+                    "welcome",
+                    "contact",
+                ) and isinstance(value, str):
                     data[key] = self._i18n_service.translate_text(value)
                 else:
                     data[key] = self._translate_dict(value)
@@ -327,7 +445,12 @@ class InterfaceManager:
             logger.warning("找不到 agent.child_args 指向的启动脚本，跳过嵌入式转换")
             return
 
-        project_name = str(self._original_interface.get("name") or self._interface_dir.name).strip() or "custom"
+        project_name = (
+            str(
+                self._original_interface.get("name") or self._interface_dir.name
+            ).strip()
+            or "custom"
+        )
         custom_dir = self._interface_dir / f"{project_name}_custom"
 
         try:
@@ -347,7 +470,9 @@ class InterfaceManager:
         if self._interface_path:
             try:
                 with open(self._interface_path, "w", encoding="utf-8") as f:
-                    jsonc.dump(self._original_interface, f, indent=4, ensure_ascii=False)
+                    jsonc.dump(
+                        self._original_interface, f, indent=4, ensure_ascii=False
+                    )
                 logger.debug(f"已将 custom 字段保存到: {self._interface_path}")
             except Exception as exc:
                 logger.exception(f"保存 interface 文件失败: {exc}")
