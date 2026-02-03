@@ -1520,7 +1520,7 @@ class AddBundleDialog(MessageBoxBase):
             self,
             self.tr("Choose Interface File"),
             "./",
-            self.tr("All Files (*.*)"),
+            "Interface Files (interface.json interface.jsonc);;JSON Files (*.json *.jsonc);;All Files (*)",
         )
         if not file_path:
             return
