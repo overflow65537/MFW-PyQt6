@@ -913,8 +913,8 @@ class ServiceCoordinator:
                         shutil.copy2(config_file, backup_path)
                         broken_config_file = config_file
                         backup_success = True
-                    except Exception:
-                        pass
+                    except Exception as backup_error:
+                        logger.exception("Failed to backup broken config file %s: %s", config_file, backup_error)
             
             if not broken_config_file or not broken_config_file.exists():
                 self._pending_error_message = ("error", f"Config load failed: {str(error)}")
