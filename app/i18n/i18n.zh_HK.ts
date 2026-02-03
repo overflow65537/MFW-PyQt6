@@ -6,42 +6,44 @@
     <message>
         <location filename="../core/service/Schedule_Service.py" line="104"/>
         <source>Single at {time}</source>
-        <translation>單次運行</translation>
+        <translation>缺少運行時庫</translation>
     </message>
     <message>
         <location filename="../core/service/Schedule_Service.py" line="109"/>
         <source>Daily every {n} day(s) at {time}</source>
-        <translation>每天每隔{n}天在{time}</translation>
+        <translation>System</translation>
     </message>
     <message>
         <location filename="../core/service/Schedule_Service.py" line="119"/>
         <source>Weekly every {n} week(s) at {time}</source>
-        <translation>每週每隔{n}週在{time}</translation>
+        <translation>OK</translation>
     </message>
     <message>
         <location filename="../core/service/Schedule_Service.py" line="128"/>
         <source>Every month</source>
-        <translation>每月</translation>
+        <translation>繼續</translation>
     </message>
     <message>
         <location filename="../core/service/Schedule_Service.py" line="139"/>
         <source>Last</source>
-        <translation>最後一週</translation>
+        <translation>複製錯誤訊息</translation>
     </message>
     <message>
         <location filename="../core/service/Schedule_Service.py" line="144"/>
         <source>Monthly ({month}) on the {ordinal} {weekday} at {time}</source>
-        <translation>每月（{month}）在{ordinal} {weekday} 的 {time}</translation>
+        <translation>MAA框架庫載入失敗。
+
+Microsoft Visual C++ 可再發行執行階段程式庫</translation>
     </message>
     <message>
         <location filename="../core/service/Schedule_Service.py" line="148"/>
         <source>Monthly ({month}) on day {day} at {time}</source>
-        <translation>每月（{month}）{day}日{time}</translation>
+        <translation>退出</translation>
     </message>
     <message>
         <location filename="../core/service/Schedule_Service.py" line="151"/>
         <source>Custom</source>
-        <translation>自定義</translation>
+        <translation>All Files (*.*)</translation>
     </message>
 </context>
 <context>
@@ -50,12 +52,14 @@
         <location filename="../view/bundle_interface/bundle_interface.py" line="1462"/>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1466"/>
         <source>Add Resource Bundle</source>
-        <translation>新增資源包</translation>
+        <translation>開啟下載頁面</translation>
     </message>
     <message>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1472"/>
         <source>Bundle Name:</source>
-        <translation>資源包名稱：</translation>
+        <translation>程式正在運行。
+
+請關閉目前視窗或在任務管理器中結束該進程，然後再重新啟動。</translation>
     </message>
     <message>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1474"/>
@@ -94,7 +98,7 @@
     <message>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1523"/>
         <source>All Files (*.*)</source>
-        <translation></translation>
+        <translation>程式已在運行</translation>
     </message>
     <message>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1538"/>
@@ -164,11 +168,13 @@
     </message>
     <message>
         <source>Bundle Already Exists</source>
-        <translation type="vanished">該捆綁包已存在</translation>
+        <translation type="vanished">程式遇到未處理的異常。
+
+錯誤類型：{exc_type}</translation>
     </message>
     <message>
         <source>Bundle directory &apos;{}&apos; already exists. Do you want to replace it?</source>
-        <translation type="vanished">捆綁目錄“{}”已存在。是否要替換它？</translation>
+        <translation type="vanished">重啟後完成</translation>
     </message>
     <message>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1760"/>
@@ -197,7 +203,7 @@
     <message>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1902"/>
         <source>An unexpected error occurred: {}</source>
-        <translation>發生意外錯誤：{}</translation>
+        <translation>程式錯誤</translation>
     </message>
 </context>
 <context>
@@ -731,21 +737,21 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>ConfigMonitorCard</name>
     <message>
-        <location filename="../view/multi_run_interface/multi_run_interface.py" line="153"/>
+        <location filename="../view/multi_run_interface/multi_run_interface.py" line="151"/>
         <source>Not Running</source>
         <translation>未運行</translation>
     </message>
     <message>
-        <location filename="../view/multi_run_interface/multi_run_interface.py" line="160"/>
-        <location filename="../view/multi_run_interface/multi_run_interface.py" line="194"/>
-        <location filename="../view/multi_run_interface/multi_run_interface.py" line="222"/>
-        <location filename="../view/multi_run_interface/multi_run_interface.py" line="237"/>
+        <location filename="../view/multi_run_interface/multi_run_interface.py" line="158"/>
+        <location filename="../view/multi_run_interface/multi_run_interface.py" line="192"/>
+        <location filename="../view/multi_run_interface/multi_run_interface.py" line="220"/>
+        <location filename="../view/multi_run_interface/multi_run_interface.py" line="235"/>
         <source>Start</source>
         <translation>開始</translation>
     </message>
     <message>
-        <location filename="../view/multi_run_interface/multi_run_interface.py" line="191"/>
-        <location filename="../view/multi_run_interface/multi_run_interface.py" line="234"/>
+        <location filename="../view/multi_run_interface/multi_run_interface.py" line="189"/>
+        <location filename="../view/multi_run_interface/multi_run_interface.py" line="232"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
@@ -1301,7 +1307,7 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>MonitorDialog</name>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="988"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="993"/>
         <source>Monitor</source>
         <translation>監控</translation>
     </message>
@@ -1404,17 +1410,17 @@ The following configurations using this bundle will also be deleted:
         <translation type="vanished">啟動監控任務</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="763"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="769"/>
         <source>No screenshot available to save</source>
         <translation>無法儲存螢幕截圖</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="772"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="778"/>
         <source>Screenshot saved to </source>
         <translation>截圖保存到 </translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="776"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="782"/>
         <source>Failed to save screenshot: </source>
         <translation>螢幕截圖保存失敗：</translation>
     </message>
@@ -1423,32 +1429,32 @@ The following configurations using this bundle will also be deleted:
         <translation type="vanished">設備連線失敗，無法開始監控</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="848"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="854"/>
         <source>Controller not ready. Please ensure the device is connected.</source>
         <translation>控制器尚未就緒。請確保設備已連線。</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="867"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="873"/>
         <source>Failed to start monitoring loop</source>
         <translation>啟動監控循環失敗</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="876"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="882"/>
         <source>Monitoring started</source>
         <translation>監控開始</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="896"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="901"/>
         <source>Failed to start monitoring: </source>
         <translation>啟動監控失敗：</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="956"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="961"/>
         <source>Monitoring stopped</source>
         <translation>監控停止</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/MonitorWidget.py" line="961"/>
+        <location filename="../view/task_interface/components/MonitorWidget.py" line="966"/>
         <source>Failed to stop monitoring: </source>
         <translation>停止監控失敗：</translation>
     </message>
@@ -1501,12 +1507,12 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>MultiRunInterface</name>
     <message>
-        <location filename="../view/multi_run_interface/multi_run_interface.py" line="425"/>
+        <location filename="../view/multi_run_interface/multi_run_interface.py" line="423"/>
         <source>Multi-Run Management</source>
         <translation>同步運行管理</translation>
     </message>
     <message>
-        <location filename="../view/multi_run_interface/multi_run_interface.py" line="431"/>
+        <location filename="../view/multi_run_interface/multi_run_interface.py" line="429"/>
         <source>Manage and monitor multiple configurations simultaneously</source>
         <translation>同時管理和監控多個配置</translation>
     </message>
@@ -3292,6 +3298,92 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <location filename="../view/task_interface/components/StartBarWidget.py" line="75"/>
         <source>Stop</source>
         <translation>停止</translation>
+    </message>
+</context>
+<context>
+    <name>StartupDialogManager</name>
+    <message>
+        <location filename="../utils/startup_dialog.py" line="333"/>
+        <source>Missing Runtime Library</source>
+        <translation>缺少運行時庫</translation>
+    </message>
+    <message>
+        <location filename="../utils/startup_dialog.py" line="335"/>
+        <source>Failed to load MAA framework library.
+
+Microsoft Visual C++ Redistributable runtime library is missing.
+
+Current system: {platform}
+
+Please download and install Visual C++ Redistributable, then restart the program.</source>
+        <translation>MAA框架庫載入失敗。
+
+缺少Microsoft Visual C++ Redistributable運行時庫。
+
+目前系統：{platform}
+
+請下載並安裝Visual C++ Redistributable，然後重新啟動程式。</translation>
+    </message>
+    <message>
+        <location filename="../utils/startup_dialog.py" line="342"/>
+        <source>Open Download Page</source>
+        <translation>開啟下載頁面</translation>
+    </message>
+    <message>
+        <location filename="../utils/startup_dialog.py" line="347"/>
+        <source>Exit</source>
+        <translation>退出</translation>
+    </message>
+    <message>
+        <location filename="../utils/startup_dialog.py" line="366"/>
+        <source>Program Already Running</source>
+        <translation>程式已在運行</translation>
+    </message>
+    <message>
+        <location filename="../utils/startup_dialog.py" line="368"/>
+        <source>The program is already running.
+
+Please close the existing window or terminate the process in Task Manager before starting again.</source>
+        <translation>程式正在運行。
+
+請關閉目前視窗或在任務管理器中結束該進程，然後再重新啟動。</translation>
+    </message>
+    <message>
+        <location filename="../utils/startup_dialog.py" line="373"/>
+        <location filename="../utils/startup_dialog.py" line="455"/>
+        <source>OK</source>
+        <translation>OK</translation>
+    </message>
+    <message>
+        <location filename="../utils/startup_dialog.py" line="398"/>
+        <source>Program Error</source>
+        <translation>程式錯誤</translation>
+    </message>
+    <message>
+        <location filename="../utils/startup_dialog.py" line="400"/>
+        <source>The program encountered an unhandled exception.
+
+Error type: {exc_type}
+Error message: {exc_value}
+
+Below is the detailed stack trace. You can copy it and report to the developer:</source>
+        <translation>程式遇到未處理的異常。
+
+錯誤類型：{exc_type}
+
+錯誤訊息：{exc_value}
+
+以下是詳細的堆疊追蹤資訊。您可以複製此資訊並報告給開發人員：</translation>
+    </message>
+    <message>
+        <location filename="../utils/startup_dialog.py" line="408"/>
+        <source>Copy Error Info</source>
+        <translation>複製錯誤訊息</translation>
+    </message>
+    <message>
+        <location filename="../utils/startup_dialog.py" line="413"/>
+        <source>Continue</source>
+        <translation>繼續</translation>
     </message>
 </context>
 <context>

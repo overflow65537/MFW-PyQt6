@@ -38,35 +38,6 @@ else:
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
-# 尝试导入 maa 库，检测是否缺少 VC++ Redistributable
-try:
-    import maa
-    from maa.context import Context
-    from maa.custom_action import CustomAction
-    from maa.custom_recognition import CustomRecognition
-except (ImportError, OSError) as e:
-    error_msg = str(e).lower()
-    # 检测是否是 DLL 加载失败或 VC++ 相关错误
-    if any(
-        keyword in error_msg
-        for keyword in [
-            "dll",
-            "vcruntime",
-            "msvcp",
-            "api-ms-win",
-            "找不到指定的模块",
-            "specified module could not be found",
-            "failed to load",
-            "cannot load",
-        ]
-    ):
-        from app.utils.startup_dialog import show_vcredist_missing_dialog
-
-        show_vcredist_missing_dialog()
-    else:
-        # 其他导入错误，正常抛出
-        raise
-
 from app.utils.logger import logger
 from qasync import QEventLoop, asyncio
 
@@ -215,6 +186,7 @@ if __name__ == "__main__":
         # 显示异常弹窗
         try:
             from app.utils.startup_dialog import show_uncaught_exception_dialog
+
             show_uncaught_exception_dialog(exc_type, exc_value, exc_traceback)
         except Exception as dialog_err:
             # 弹窗失败时仅记录日志，避免递归
@@ -256,6 +228,35 @@ if __name__ == "__main__":
         logger.info("加载英文翻译")
     app.installTranslator(translator)
     app.installTranslator(galleryTranslator)
+
+    # 尝试导入 maa 库，检测是否缺少 VC++ Redistributable
+    try:
+        import maa
+        from maa.context import Context
+        from maa.custom_action import CustomAction
+        from maa.custom_recognition import CustomRecognition
+    except (ImportError, OSError) as e:
+        error_msg = str(e).lower()
+        # 检测是否是 DLL 加载失败或 VC++ 相关错误
+        if any(
+            keyword in error_msg
+            for keyword in [
+                "dll",
+                "vcruntime",
+                "msvcp",
+                "api-ms-win",
+                "找不到指定的模块",
+                "specified module could not be found",
+                "failed to load",
+                "cannot load",
+            ]
+        ):
+            from app.utils.startup_dialog import show_vcredist_missing_dialog
+
+            show_vcredist_missing_dialog()
+        else:
+            # 其他导入错误，正常抛出
+            raise
 
     # 异步事件循环初始化
     loop = QEventLoop(app)
