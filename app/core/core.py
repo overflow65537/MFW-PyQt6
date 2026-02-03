@@ -546,8 +546,8 @@ class ServiceCoordinator:
             return []
         try:
             self.task_service.refresh_hidden_flags()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("刷新任务隐藏状态失败（create_task_flow）: %s", exc)
         return [
             task for task in config.tasks
             if task.is_checked and not task.is_hidden
