@@ -57,9 +57,7 @@ Microsoft Visual C++ 可再發行執行階段程式庫</translation>
     <message>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1472"/>
         <source>Bundle Name:</source>
-        <translation>程式正在運行。
-
-請關閉目前視窗或在任務管理器中結束該進程，然後再重新啟動。</translation>
+        <translation>資源包名稱</translation>
     </message>
     <message>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1474"/>
@@ -96,9 +94,8 @@ Microsoft Visual C++ 可再發行執行階段程式庫</translation>
         <translation type="vanished">介面檔案（interface.json）；所有檔案（*）</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1523"/>
         <source>All Files (*.*)</source>
-        <translation>程式已在運行</translation>
+        <translation type="vanished">程式已在運行</translation>
     </message>
     <message>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1538"/>
@@ -3303,12 +3300,12 @@ Please check for updates first, or visit the GitHub releases page.</source>
 <context>
     <name>StartupDialogManager</name>
     <message>
-        <location filename="../utils/startup_dialog.py" line="333"/>
+        <location filename="../utils/startup_dialog.py" line="268"/>
         <source>Missing Runtime Library</source>
         <translation>缺少運行時庫</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="335"/>
+        <location filename="../utils/startup_dialog.py" line="270"/>
         <source>Failed to load MAA framework library.
 
 Microsoft Visual C++ Redistributable runtime library is missing.
@@ -3325,22 +3322,22 @@ Please download and install Visual C++ Redistributable, then restart the program
 請下載並安裝Visual C++ Redistributable，然後重新啟動程式。</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="342"/>
+        <location filename="../utils/startup_dialog.py" line="277"/>
         <source>Open Download Page</source>
         <translation>開啟下載頁面</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="347"/>
+        <location filename="../utils/startup_dialog.py" line="282"/>
         <source>Exit</source>
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="366"/>
+        <location filename="../utils/startup_dialog.py" line="301"/>
         <source>Program Already Running</source>
         <translation>程式已在運行</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="368"/>
+        <location filename="../utils/startup_dialog.py" line="303"/>
         <source>The program is already running.
 
 Please close the existing window or terminate the process in Task Manager before starting again.</source>
@@ -3349,18 +3346,18 @@ Please close the existing window or terminate the process in Task Manager before
 請關閉目前視窗或在任務管理器中結束該進程，然後再重新啟動。</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="373"/>
-        <location filename="../utils/startup_dialog.py" line="455"/>
+        <location filename="../utils/startup_dialog.py" line="308"/>
+        <location filename="../utils/startup_dialog.py" line="390"/>
         <source>OK</source>
         <translation>OK</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="398"/>
+        <location filename="../utils/startup_dialog.py" line="333"/>
         <source>Program Error</source>
         <translation>程式錯誤</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="400"/>
+        <location filename="../utils/startup_dialog.py" line="335"/>
         <source>The program encountered an unhandled exception.
 
 Error type: {exc_type}
@@ -3376,12 +3373,12 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
 以下是詳細的堆疊追蹤資訊。您可以複製此資訊並報告給開發人員：</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="408"/>
+        <location filename="../utils/startup_dialog.py" line="343"/>
         <source>Copy Error Info</source>
         <translation>複製錯誤訊息</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="413"/>
+        <location filename="../utils/startup_dialog.py" line="348"/>
         <source>Continue</source>
         <translation>繼續</translation>
     </message>

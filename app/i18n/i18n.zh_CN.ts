@@ -57,9 +57,7 @@ Microsoft Visual C++ 可再发行程序包</translation>
     <message>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1472"/>
         <source>Bundle Name:</source>
-        <translation>程序正在运行。
-
-请关闭当前窗口或在任务管理器中结束该进程，然后再重新启动。</translation>
+        <translation>资源包名字</translation>
     </message>
     <message>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1474"/>
@@ -96,9 +94,8 @@ Microsoft Visual C++ 可再发行程序包</translation>
         <translation type="vanished">接口文件（interface.json）；所有文件（*）</translation>
     </message>
     <message>
-        <location filename="../view/bundle_interface/bundle_interface.py" line="1523"/>
         <source>All Files (*.*)</source>
-        <translation>程序正在运行</translation>
+        <translation type="vanished">程序正在运行</translation>
     </message>
     <message>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1538"/>
@@ -124,8 +121,7 @@ Microsoft Visual C++ 可再发行程序包</translation>
     <message>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1635"/>
         <source>Failed to read interface.json: {}</source>
-        <translation>
-读取 interface.json 失败：{}</translation>
+        <translation>读取 interface.json 失败：{}</translation>
     </message>
     <message>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1641"/>
@@ -185,8 +181,7 @@ Microsoft Visual C++ 可再发行程序包</translation>
     <message>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1788"/>
         <source>Failed to create bundle directory: {}</source>
-        <translation>
-创建资源包目录失败：{}</translation>
+        <translation>创建资源包目录失败：{}</translation>
     </message>
     <message>
         <source>Failed to copy bundle to target directory: {}</source>
@@ -205,7 +200,7 @@ Microsoft Visual C++ 可再发行程序包</translation>
     <message>
         <location filename="../view/bundle_interface/bundle_interface.py" line="1902"/>
         <source>An unexpected error occurred: {}</source>
-        <translation>程序错误</translation>
+        <translation type="unfinished">程序错误: {}</translation>
     </message>
 </context>
 <context>
@@ -3307,12 +3302,12 @@ Please check for updates first, or visit the GitHub releases page.</source>
 <context>
     <name>StartupDialogManager</name>
     <message>
-        <location filename="../utils/startup_dialog.py" line="333"/>
+        <location filename="../utils/startup_dialog.py" line="268"/>
         <source>Missing Runtime Library</source>
         <translation>缺少运行时库</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="335"/>
+        <location filename="../utils/startup_dialog.py" line="270"/>
         <source>Failed to load MAA framework library.
 
 Microsoft Visual C++ Redistributable runtime library is missing.
@@ -3329,22 +3324,22 @@ Please download and install Visual C++ Redistributable, then restart the program
 请下载并安装Visual C++ Redistributable，然后重启程序。</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="342"/>
+        <location filename="../utils/startup_dialog.py" line="277"/>
         <source>Open Download Page</source>
         <translation>打开下载页面</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="347"/>
+        <location filename="../utils/startup_dialog.py" line="282"/>
         <source>Exit</source>
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="366"/>
+        <location filename="../utils/startup_dialog.py" line="301"/>
         <source>Program Already Running</source>
         <translation>程序已在运行</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="368"/>
+        <location filename="../utils/startup_dialog.py" line="303"/>
         <source>The program is already running.
 
 Please close the existing window or terminate the process in Task Manager before starting again.</source>
@@ -3353,18 +3348,18 @@ Please close the existing window or terminate the process in Task Manager before
 请关闭当前窗口或在任务管理器中结束该进程，然后再重新启动。</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="373"/>
-        <location filename="../utils/startup_dialog.py" line="455"/>
+        <location filename="../utils/startup_dialog.py" line="308"/>
+        <location filename="../utils/startup_dialog.py" line="390"/>
         <source>OK</source>
         <translation>OK</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="398"/>
+        <location filename="../utils/startup_dialog.py" line="333"/>
         <source>Program Error</source>
         <translation>程序错误</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="400"/>
+        <location filename="../utils/startup_dialog.py" line="335"/>
         <source>The program encountered an unhandled exception.
 
 Error type: {exc_type}
@@ -3380,12 +3375,12 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
 以下是详细的堆栈跟踪信息。您可以复制此信息并报告给开发人员：</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="408"/>
+        <location filename="../utils/startup_dialog.py" line="343"/>
         <source>Copy Error Info</source>
         <translation>复制错误信息</translation>
     </message>
     <message>
-        <location filename="../utils/startup_dialog.py" line="413"/>
+        <location filename="../utils/startup_dialog.py" line="348"/>
         <source>Continue</source>
         <translation>继续</translation>
     </message>
