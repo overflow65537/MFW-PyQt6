@@ -485,9 +485,8 @@ class TaskFlowRunner(QObject):
         signalBus.log_output.connect(collect_log)
         # 多开模式：使用绑定的 config_id 而不是当前选中的配置
         effective_config_id = self._config_id or self.config_service.current_config_id
-        logger.info(f"[Runner] 任务流启动，绑定配置ID: {self._config_id}, 有效配置ID: {effective_config_id}")
+        logger.debug(f"[Runner] 任务流启动，绑定配置ID: {self._config_id}, 有效配置ID: {effective_config_id}")
         current_config = self.config_service.get_config(effective_config_id)
-        logger.info(f"[Runner] 获取到配置: {current_config.name if current_config else 'None'}")
         if not current_config:
             # 保持 bundle_path 的安全默认值
             self.bundle_path = "./"
@@ -504,7 +503,6 @@ class TaskFlowRunner(QObject):
             if not controller_cfg:
                 raise ValueError("未找到基础预配置任务")
 
-            logger.info("开始连接设备...")
             signalBus.log_output.emit("INFO", self.tr("Starting to connect device..."), self._config_id or "")
             # 清理上一次连接失败原因（若有）
             self._connect_error_reason = None
@@ -520,7 +518,6 @@ class TaskFlowRunner(QObject):
                 )
                 return
             signalBus.log_output.emit("INFO", self.tr("Device connected successfully"), self._config_id or "")
-            logger.info("设备连接成功")
             # 发送连接成功通知
             send_notice(
                 NoticeTiming.WHEN_CONNECT_SUCCESS,
@@ -528,23 +525,19 @@ class TaskFlowRunner(QObject):
                 self.tr("Device has been connected successfully."),
             )
 
-            logger.info("开始截图测试...")
             start_time = _time.time()
             await self.maafw.screencap_test()
             end_time = _time.time()
-            logger.info(f"截图测试成功，耗时: {end_time - start_time}毫秒")
             signalBus.callback.emit(
                 {"name": "speed_test", "details": end_time - start_time}
             )
 
-            logger.info("开始加载资源...")
             resource_cfg = self.get_task(_RESOURCE_)
             if not resource_cfg:
                 raise ValueError("未找到资源设置任务")
             if not await self.load_resources(resource_cfg.task_option):
-                logger.error("资源加载失败，流程终止")
+                logger.error("资源加载失败")
                 return
-            logger.info("资源加载成功")
 
             # 将资源选项转换为 pipeline_override 作为默认 override
             from app.core.utils.pipeline_helper import (
@@ -554,19 +547,14 @@ class TaskFlowRunner(QObject):
             self._default_pipeline_override = get_pipeline_override_from_task_option(
                 self.task_service.interface, resource_cfg.task_option, _RESOURCE_
             )
-            logger.info(
-                f"资源选项已转换为默认 pipeline_override: {self._default_pipeline_override}"
-            )
 
             if self.task_service.interface.get("agent", None):
-                logger.info("传入agent配置...")
                 self.maafw.agent_data_raw = self.task_service.interface.get(
                     "agent", None
                 )
                 signalBus.log_output.emit("INFO", self.tr("Agent Service Start"), self._config_id or "")
 
             if self.task_service.interface.get("custom", None) and self.maafw.resource:
-                logger.info("开始加载自定义组件...")
                 signalBus.log_output.emit(
                     "INFO", self.tr("Starting to load custom components..."), self._config_id or ""
                 )
@@ -634,9 +622,7 @@ class TaskFlowRunner(QObject):
             if not tasks_to_run:
                 return
             if is_single_task_mode:
-                logger.info(f"开始执行任务: {task_id}")
-            else:
-                logger.info("开始执行任务序列...")
+                logger.debug(f"开始执行单个任务: {task_id}")
             self._tasks_started = True
             for task in tasks_to_run:
                 if not task:
@@ -708,8 +694,6 @@ class TaskFlowRunner(QObject):
                             ).format(task.name),
                         )
 
-                    logger.info(f"任务执行完成: {task.name}")
-
                 except Exception as exc:
                     logger.error(f"任务执行失败: {task.name}, 错误: {str(exc)}")
                     # 记录任务结果并发送任务失败状态
@@ -729,10 +713,7 @@ class TaskFlowRunner(QObject):
                 self._current_running_task_id = None
 
                 if self.need_stop:
-                    if self._manual_stop:
-                        logger.info("收到手动停止请求，流程终止")
-                    else:
-                        logger.info("收到停止请求，流程终止")
+                    logger.debug("收到停止请求，流程终止")
                     break
 
             # 只有在任务流正常完成（非手动停止）时才输出"所有任务都已完成"
@@ -825,11 +806,6 @@ class TaskFlowRunner(QObject):
             try:
                 if should_run_post_action:
                     await self._handle_post_action()
-                else:
-                    if not self._tasks_started:
-                        logger.info("跳过完成后操作：任务流未成功启动")
-                    else:
-                        logger.info("跳过完成后操作：手动停止或单任务执行或流程终止")
             except Exception as exc:
                 logger.error(f"完成后操作执行失败: {exc}")
 
@@ -882,10 +858,8 @@ class TaskFlowRunner(QObject):
                 return tasks
             # 执行层只关心“任务是否被禁用”，不展开禁用原因
             if self._is_task_disabled(task):
-                logger.info(f"任务 '{task.name}' 被禁用，跳过执行")
                 return tasks
             if not task.is_checked:
-                logger.warning(f"任务 '{task.name}' 未被选中，跳过执行")
                 return tasks
             tasks.append(task)
             return tasks
@@ -905,7 +879,6 @@ class TaskFlowRunner(QObject):
                 continue
 
             if self._is_task_disabled(task):
-                logger.info(f"任务 '{task.name}' 被禁用，跳过执行")
                 continue
 
             tasks.append(task)
@@ -1010,13 +983,13 @@ class TaskFlowRunner(QObject):
                 self.maafw.controller.set_screenshot_target_short_side(
                     display_short_side
                 )
-                logger.info(f"设置控制器分辨率: 短边 {display_short_side}")
+                logger.debug(f"设置控制器分辨率: 短边 {display_short_side}")
             if display_long_side:
                 self.maafw.controller.set_screenshot_target_long_side(display_long_side)
-                logger.info(f"设置控制器分辨率: 长边 {display_long_side}")
+                logger.debug(f"设置控制器分辨率: 长边 {display_long_side}")
         elif display_raw:
             self.maafw.controller.set_screenshot_use_raw_size(display_raw)
-            logger.info(f"设置控制器分辨率: 原始大小")
+            logger.debug("设置控制器分辨率: 原始大小")
         return True
 
     async def load_resources(self, resource_raw: Dict[str, Any]):
@@ -1090,19 +1063,14 @@ class TaskFlowRunner(QObject):
         # 注意：即使 UI 未刷新也没关系，因为 run_tasks_flow 开始时会刷新一次 is_hidden；
         # 若未来有独立调用 run_task 的路径，可在此处补一次刷新。
         elif self._is_task_disabled(task):
-            logger.info(f"任务 '{task.name}' 被禁用，跳过执行")
             return
         elif not task.is_checked:
-            logger.warning(f"任务 '{task.name}' 未被选中，跳过执行")
             return
         speedrun_cfg = self._resolve_speedrun_config(task)
         # 仅依据任务自身的速通开关，不再依赖全局 speedrun_mode；单任务执行可跳过校验
         if (not skip_speedrun) and speedrun_cfg and speedrun_cfg.get("enabled", False):
             allowed, reason = self._evaluate_speedrun(task, speedrun_cfg)
             if not allowed:
-                logger.info(
-                    f"任务 '{task.name}' 遵循 speedrun 限制，跳过本次运行: {reason}"
-                )
                 signalBus.log_output.emit(
                     "INFO",
                     self.tr("Task ")
@@ -1114,7 +1082,6 @@ class TaskFlowRunner(QObject):
                 return "skipped"
 
         raw_info = self.get_task_execution_info(task_id)
-        logger.info(f"任务 '{task.name}' 的执行信息: {raw_info}")
         if raw_info is None:
             logger.error(f"无法获取任务 '{task.name}' 的执行信息")
             return
@@ -1332,13 +1299,11 @@ class TaskFlowRunner(QObject):
         raw_input_method = int(controller_config.get("input_methods", -1))
         raw_screen_method = int(controller_config.get("screencap_methods", -1))
 
-        logger.info("每次连接前自动搜索 ADB 设备...")
         signalBus.log_output.emit("INFO", self.tr("Auto searching ADB devices..."), self._config_id or "")
         found_device = await self._auto_find_adb_device(
             controller_raw, controller_type, controller_config
         )
         if found_device:
-            logger.info("检测到与配置匹配的 ADB 设备，更新连接参数")
             self._save_device_to_config(controller_raw, controller_name, found_device)
             controller_config = controller_raw[controller_name]
             self.adb_controller_config = controller_config
@@ -1347,8 +1312,6 @@ class TaskFlowRunner(QObject):
                 controller_config["input_methods"] = raw_input_method
             if raw_screen_method != -1:
                 controller_config["screencap_methods"] = raw_screen_method
-        else:
-            logger.debug("未匹配到与配置一致的 ADB 设备，继续使用当前配置")
 
         adb_path = controller_config.get("adb_path", "")
         address = controller_config.get("address", "")
@@ -1358,7 +1321,7 @@ class TaskFlowRunner(QObject):
             error_msg = self.tr(
                 "ADB path is empty, please configure ADB path in settings"
             )
-            logger.error("ADB 路径为空")
+            logger.error("未配置 ADB 路径")
             signalBus.log_output.emit("ERROR", error_msg, self._config_id or "")
             return False
 
@@ -1366,7 +1329,7 @@ class TaskFlowRunner(QObject):
             error_msg = self.tr(
                 "ADB connection address is empty, please configure device connection in settings"
             )
-            logger.error("ADB 连接地址为空")
+            logger.error("未配置 ADB 连接地址")
             signalBus.log_output.emit("ERROR", error_msg, self._config_id or "")
             return False
         # 使用之前保存的原始值（已在重新搜索前读取）
@@ -1381,17 +1344,6 @@ class TaskFlowRunner(QObject):
         input_method = normalize_input_method(raw_input_method)
         screen_method = normalize_input_method(raw_screen_method)
         config = controller_config.get("config", {})
-        logger.debug(
-            (
-                f"ADB 参数类型: adb_path={type(adb_path)}, address={type(address)}, "
-                f"screen_method={screen_method}({type(screen_method)}), "
-                f"input_method={input_method}({type(input_method)})"
-            )
-        )
-        logger.debug(
-            f"ADB 参数值: adb_path={adb_path}, address={address}, screen_method={screen_method}, input_method={input_method}"
-        )
-        logger.debug(f"ADB 参数配置: config={config}")
 
         if await self.maafw.connect_adb(
             adb_path,
@@ -1402,7 +1354,6 @@ class TaskFlowRunner(QObject):
         ):
             return True
         elif controller_config.get("emulator_path", ""):
-            logger.info("尝试启动模拟器")
             signalBus.log_output.emit("INFO", self.tr("try to start emulator"), self._config_id or "")
             emu_path = controller_config.get("emulator_path", "")
             emu_params = controller_config.get("emulator_params", "")
@@ -1493,27 +1444,22 @@ class TaskFlowRunner(QObject):
             )
             return hwnd_value, screencap, mouse, keyboard
 
-        logger.info("每次连接前自动搜索 Win32 窗口...")
         signalBus.log_output.emit("INFO", self.tr("Auto searching Win32 windows..."), self._config_id or "")
         found_device = await self._auto_find_win32_window(
             controller_raw, controller_type, controller_name, controller_config
         )
         if found_device:
-            logger.info("检测到与配置匹配的 Win32 窗口，更新连接参数")
             self._save_device_to_config(controller_raw, controller_name, found_device)
             controller_config = controller_raw[controller_name]
             _restore_raw_methods()
             hwnd, screencap_method, mouse_method, keyboard_method = (
                 _collect_win32_params()
             )
-            logger.debug(
-                f"Win32 参数类型: hwnd={hwnd}, screencap_method={screencap_method}, mouse_method={mouse_method}, keyboard_method={keyboard_method}"
-            )
             if not hwnd:
                 error_msg = self.tr(
                     "Window handle (hwnd) is empty, please configure window connection in settings"
                 )
-                logger.error("Win32 窗口句柄为空")
+                logger.error("未配置 Win32 窗口句柄")
                 signalBus.log_output.emit("ERROR", error_msg, self._config_id or "")
                 return False
 
@@ -1528,18 +1474,15 @@ class TaskFlowRunner(QObject):
                 signalBus.log_output.emit("ERROR", self.tr("Device connection failed"), self._config_id or "")
             return bool(connect_success)
 
-        logger.debug("未匹配到与配置一致的 Win32 窗口")
-
         # 需求：首次未搜索到窗口时，才检查是否配置了启动程序路径
         program_path = (controller_config.get("program_path") or "").strip()
         if not program_path:
-            logger.error("Win32 控制器未匹配窗口且未配置启动程序")
+            logger.error("未配置 Win32 启动程序")
             signalBus.log_output.emit("ERROR", self.tr("Device connection failed"), self._config_id or "")
             return False
 
         # 启动程序+参数并等待指定时间
         signalBus.log_output.emit("INFO", self.tr("try to start program"), self._config_id or "")
-        logger.info("尝试启动程序")
         program_params = controller_config.get("program_params", "")
         wait_program_start = int(controller_config.get("wait_time", 0))
         self.process = self._start_process(program_path, program_params)
@@ -1556,19 +1499,15 @@ class TaskFlowRunner(QObject):
             controller_raw, controller_type, controller_name, controller_config
         )
         if not found_after_launch:
-            logger.error("启动程序后未找到与配置匹配的 Win32 窗口")
+            logger.error("启动程序后未找到 Win32 窗口")
             signalBus.log_output.emit("ERROR", self.tr("Device connection failed"), self._config_id or "")
             return False
 
-        logger.info("检测到启动后的 Win32 窗口，更新连接参数")
         self._save_device_to_config(controller_raw, controller_name, found_after_launch)
         controller_config = controller_raw[controller_name]
         _restore_raw_methods()
 
         hwnd, screencap_method, mouse_method, keyboard_method = _collect_win32_params()
-        logger.debug(
-            f"Win32 参数类型: hwnd={hwnd}, screencap_method={screencap_method}, mouse_method={mouse_method}, keyboard_method={keyboard_method}"
-        )
         if not hwnd:
             error_msg = self.tr(
                 "Window handle (hwnd) is empty, please configure window connection in settings"
@@ -1647,13 +1586,11 @@ class TaskFlowRunner(QObject):
 
         screencap_method = _resolve_gamepad_screencap_method()
 
-        logger.info("每次连接前自动搜索 Gamepad 窗口...")
         signalBus.log_output.emit("INFO", self.tr("Auto searching desktop windows..."), self._config_id or "")
         found_device = await self._auto_find_win32_window(
             controller_raw, controller_type, controller_name, controller_config
         )
         if found_device:
-            logger.info("检测到与配置匹配的窗口，更新连接参数")
             self._save_device_to_config(controller_raw, controller_name, found_device)
             controller_config = controller_raw[controller_name]
             hwnd, gamepad_type = _collect_gamepad_params()
@@ -1661,7 +1598,7 @@ class TaskFlowRunner(QObject):
                 error_msg = self.tr(
                     "Window handle (hwnd) is empty, please configure window connection in settings"
                 )
-                logger.error("Gamepad 窗口句柄为空")
+                logger.error("未配置 Gamepad 窗口句柄")
                 signalBus.log_output.emit("ERROR", error_msg, self._config_id or "")
                 return False
 
@@ -1672,17 +1609,14 @@ class TaskFlowRunner(QObject):
                 signalBus.log_output.emit("ERROR", self.tr("Device connection failed"), self._config_id or "")
             return bool(connect_success)
 
-        logger.debug("未匹配到与配置一致的窗口")
-
         # 若未搜索到窗口时，才检查是否配置了启动程序路径
         program_path = (controller_config.get("program_path") or "").strip()
         if not program_path:
-            logger.error("Gamepad 控制器未匹配窗口且未配置启动程序")
+            logger.error("未配置 Gamepad 启动程序")
             signalBus.log_output.emit("ERROR", self.tr("Device connection failed"), self._config_id or "")
             return False
 
         signalBus.log_output.emit("INFO", self.tr("try to start program"), self._config_id or "")
-        logger.info("尝试启动程序")
         program_params = controller_config.get("program_params", "")
         wait_program_start = int(controller_config.get("wait_time", 0))
         self.process = self._start_process(program_path, program_params)
@@ -1698,11 +1632,10 @@ class TaskFlowRunner(QObject):
             controller_raw, controller_type, controller_name, controller_config
         )
         if not found_after_launch:
-            logger.error("启动程序后未找到与配置匹配的窗口")
+            logger.error("启动程序后未找到 Gamepad 窗口")
             signalBus.log_output.emit("ERROR", self.tr("Device connection failed"), self._config_id or "")
             return False
 
-        logger.info("检测到启动后的窗口，更新连接参数")
         self._save_device_to_config(controller_raw, controller_name, found_after_launch)
         controller_config = controller_raw[controller_name]
         hwnd, gamepad_type = _collect_gamepad_params()
@@ -2191,7 +2124,7 @@ class TaskFlowRunner(QObject):
             if controller_cfg := self.get_task(_CONTROLLER_):
                 controller_cfg.task_option.update(controller_raw)
                 self.update_task(controller_cfg)
-                logger.info(f"设备配置已保存: {device_info.get('device_name', '')}")
+                logger.debug(f"设备配置已保存: {device_info.get('device_name', '')}")
 
         except Exception as e:
             logger.error(f"保存设备配置时出错: {e}")
@@ -2215,16 +2148,16 @@ class TaskFlowRunner(QObject):
 
         # 1) 无动作：直接返回（不会与其他选项同时存在）
         if post_config.get("none"):
-            logger.info("完成后操作: 无动作")
+            logger.debug("完成后操作: 无动作")
             return
 
         # 2) 第一阶段：关闭控制器 / 运行其他程序（必须先完成）
         if post_config.get("close_controller"):
-            logger.info("完成后操作: 关闭控制器")
+            logger.debug("完成后操作: 关闭控制器")
             await self._close_controller_and_wait()
 
         if post_config.get("run_program"):
-            logger.info("完成后操作: 运行其他程序")
+            logger.debug("完成后操作: 运行其他程序")
             await self._run_program_from_post_action(
                 post_config.get("program_path", ""),
                 post_config.get("program_args", ""),
@@ -2244,12 +2177,12 @@ class TaskFlowRunner(QObject):
 
         # 4) 第三阶段：退出/关机（需要等待外部通知发送完成）
         if post_config.get("close_software"):
-            logger.info("完成后操作: 退出软件")
+            logger.debug("完成后操作: 退出软件")
             await self._close_software()
             return  # 退出软件后不再执行后续操作
 
         if post_config.get("shutdown"):
-            logger.info("完成后操作: 关机")
+            logger.debug("完成后操作: 关机")
             await self._shutdown_system_after_notice()
 
     async def _run_program_from_post_action(
@@ -2270,10 +2203,10 @@ class TaskFlowRunner(QObject):
             logger.error(f"启动完成后程序失败: {exc}")
             return
 
-        logger.info(f"完成后程序已启动: {executable}")
+        logger.debug(f"完成后程序已启动: {executable}")
         try:
             return_code = await asyncio.to_thread(process.wait)
-            logger.info(f"完成后程序已退出，返回码: {return_code}")
+            logger.debug(f"完成后程序已退出，返回码: {return_code}")
         except Exception as exc:
             logger.error(f"等待完成后程序退出时失败: {exc}")
 
@@ -2303,7 +2236,7 @@ class TaskFlowRunner(QObject):
 
         config_service.current_config_id = config_id
         if config_service.current_config_id == config_id:
-            logger.info(f"已切换至完成后指定配置: {config_id}")
+            logger.debug(f"已切换至完成后指定配置: {config_id}")
             signalBus.log_clear_requested.emit()
             self._next_config_to_run = config_id
         else:
@@ -2316,9 +2249,9 @@ class TaskFlowRunner(QObject):
             logger.warning("完成后关闭软件: 无法获取 QCoreApplication 实例")
             return
 
-        logger.info("完成后关闭软件: 等待通知发送完成")
+        logger.debug("完成后关闭软件: 等待通知发送完成")
         await self._wait_for_notice_delivery()
-        logger.info("完成后关闭软件: 退出应用")
+        logger.debug("完成后关闭软件: 退出应用")
         app.quit()
 
     async def _wait_for_notice_delivery(self, timeout: float = 10.0) -> None:
@@ -2344,9 +2277,9 @@ class TaskFlowRunner(QObject):
 
     async def _shutdown_system_after_notice(self) -> None:
         """关机前等待外部通知发送完成（避免通知丢失）"""
-        logger.info("完成后关机: 等待通知发送完成")
+        logger.debug("完成后关机: 等待通知发送完成")
         await self._wait_for_notice_delivery()
-        logger.info("完成后关机: 执行关机命令")
+        logger.debug("完成后关机: 执行关机命令")
         self._shutdown_system()
 
     async def _close_controller_and_wait(self, timeout: float = 10.0) -> None:
@@ -2418,7 +2351,7 @@ class TaskFlowRunner(QObject):
         while True:
             exists = await asyncio.to_thread(_is_window, hwnd_value)
             if not exists:
-                logger.info("完成后关闭控制器: Win32 窗口已关闭 (hwnd=%s)", hwnd_value)
+                logger.debug("完成后关闭控制器: Win32 窗口已关闭 (hwnd=%s)", hwnd_value)
                 return
             if _time.time() - start >= timeout:
                 logger.warning(
@@ -2455,7 +2388,7 @@ class TaskFlowRunner(QObject):
         while True:
             exists = await asyncio.to_thread(_still_exists, normalized)
             if not exists:
-                logger.info("完成后关闭控制器: ADB 设备已断开 (%s)", normalized)
+                logger.debug("完成后关闭控制器: ADB 设备已断开 (%s)", normalized)
                 return
             if _time.time() - start >= timeout:
                 logger.warning(
@@ -2533,7 +2466,7 @@ class TaskFlowRunner(QObject):
             ControllerHelper.close_win32_window(hwnd_raw)
         elif controller_type == "playcover":
             # 关闭 PlayCover 控制器：什么都不做
-            logger.info("PlayCover 控制器无需关闭操作")
+            logger.debug("PlayCover 控制器无需关闭操作")
         else:
             logger.warning(f"未知的控制器类型: {controller_type}")
 
@@ -2557,7 +2490,7 @@ class TaskFlowRunner(QObject):
                 subprocess.run(["sudo", "shutdown", "-h", "now"], check=False)
             else:
                 subprocess.run(["shutdown", "-h", "now"], check=False)
-            logger.info("完成后执行关机命令")
+            logger.debug("完成后执行关机命令")
         except Exception as exc:
             logger.error(f"执行关机命令失败: {exc}")
 

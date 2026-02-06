@@ -1,10 +1,99 @@
 """Pipeline Override 辅助工具
 
 提供从任务选项中提取 pipeline_override 的功能。
+
+架构说明：
+- ChildKeyParser: 基类，处理新格式的 child_key（直接使用 child_name 作为 key）
+- LegacyChildKeyParser: 继承类，兼容旧格式（{父选项名}_child_{触发case名}_{子选项名}_{索引}）
+
+未来移除旧格式支持时，只需将 _child_key_parser 替换为 ChildKeyParser() 即可。
 """
 
 from typing import Dict, Any, Optional
 from app.utils.logger import logger
+
+
+# ==================== 子选项 Key 解析器 ====================
+
+class ChildKeyParser:
+    """子选项 key 解析器基类（新格式）
+    
+    新格式：child_key 就是选项名称本身（如 "输入A级角色名"）
+    """
+    
+    def extract_option_name(self, child_key: str) -> str | None:
+        """从子选项 key 中提取选项名称
+        
+        Args:
+            child_key: 子选项 key
+            
+        Returns:
+            str: 选项名称，解析失败返回 None
+        """
+        if not child_key:
+            return None
+        return child_key
+
+
+class LegacyChildKeyParser(ChildKeyParser):
+    """子选项 key 解析器（旧格式兼容）
+    
+    兼容两种格式：
+    1. 新格式：直接返回 key（继承自父类）
+    2. 旧格式：解析 {父选项名}_child_{触发case名}_{子选项名}_{索引}
+    """
+    
+    def extract_option_name(self, child_key: str) -> str | None:
+        """从子选项 key 中提取选项名称
+        
+        Args:
+            child_key: 子选项 key
+            
+        Returns:
+            str: 选项名称，解析失败返回 None
+        """
+        if not child_key:
+            return None
+            
+        # 新格式：不包含 "_child_"，使用父类逻辑
+        if "_child_" not in child_key:
+            return super().extract_option_name(child_key)
+        
+        # 旧格式: {父选项名}_child_{触发case名}_{子选项名}_{索引}
+        parts = child_key.split("_child_")
+        if len(parts) != 2:
+            logger.warning(f"无法解析子选项 key: {child_key}")
+            return None
+
+        # 后半部分格式: {触发case名}_{子选项名}_{索引}
+        suffix = parts[1]
+
+        # 找到最后一个 _ 分隔的索引
+        last_underscore = suffix.rfind("_")
+        if last_underscore == -1:
+            logger.warning(f"无法解析子选项 key: {child_key}")
+            return None
+
+        # 去掉索引后的部分: {触发case名}_{子选项名}
+        name_part = suffix[:last_underscore]
+
+        # 找到第一个 _ 分隔触发case名和子选项名
+        first_underscore = name_part.find("_")
+        if first_underscore == -1:
+            logger.warning(f"无法解析子选项 key: {child_key}")
+            return None
+
+        # 提取子选项名
+        option_name = name_part[first_underscore + 1:]
+        return option_name
+
+
+# 全局解析器实例（使用兼容模式）
+# 未来移除旧格式支持时，替换为: _child_key_parser = ChildKeyParser()
+_child_key_parser = LegacyChildKeyParser()
+
+
+# ==================== 公共 API ====================
 
 
 def get_pipeline_override_from_task_option(
@@ -159,40 +248,16 @@ def _extract_option_value_and_children(
 
 def _extract_child_option_name(child_key: str) -> str | None:
     """从子选项 key 中提取实际的选项名称
-
+    
+    使用全局解析器实例，支持新旧格式兼容。
+    
     Args:
-        child_key: 子选项 key，格式如: "低阶柜台_child_Yes_金兔子(低阶柜台)_0"
+        child_key: 子选项 key
 
     Returns:
-        str: 实际的选项名称，如 "金兔子(低阶柜台)"，如果解析失败返回 None
+        str: 实际的选项名称，如果解析失败返回 None
     """
-    # 格式: {父选项名}_child_{触发case名}_{子选项名}_{索引}
-    parts = child_key.split("_child_")
-    if len(parts) != 2:
-        logger.warning(f"无法解析子选项 key: {child_key}")
-        return None
-
-    # 后半部分格式: {触发case名}_{子选项名}_{索引}
-    suffix = parts[1]
-
-    # 找到最后一个 _ 分隔的索引
-    last_underscore = suffix.rfind("_")
-    if last_underscore == -1:
-        logger.warning(f"无法解析子选项 key: {child_key}")
-        return None
-
-    # 去掉索引后的部分: {触发case名}_{子选项名}
-    name_part = suffix[:last_underscore]
-
-    # 找到第一个 _ 分隔触发case名和子选项名
-    first_underscore = name_part.find("_")
-    if first_underscore == -1:
-        logger.warning(f"无法解析子选项 key: {child_key}")
-        return None
-
-    # 提取子选项名
-    option_name = name_part[first_underscore + 1 :]
-    return option_name
+    return _child_key_parser.extract_option_name(child_key)
 
 
 def _get_option_pipeline_override(

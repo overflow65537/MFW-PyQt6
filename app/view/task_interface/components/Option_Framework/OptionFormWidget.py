@@ -2,10 +2,16 @@
 选项表单组件
 从 form_structure 生成选项表单，包含多个选项项组件
 """
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, TYPE_CHECKING
 from PySide6.QtWidgets import QWidget, QVBoxLayout
 from app.utils.logger import logger
-from app.view.task_interface.components.Option_Framework.OptionItemWidget import OptionItemWidget
+from app.view.task_interface.components.Option_Framework.items import (
+    OptionItemBase,
+    OptionItemRegistry,
+)
+
+if TYPE_CHECKING:
+    from app.view.task_interface.components.Option_Framework.items import OptionItemBase
 
 
 class OptionFormWidget(QWidget):
@@ -21,7 +27,7 @@ class OptionFormWidget(QWidget):
         :param parent: 父组件
         """
         super().__init__(parent)
-        self.option_items: Dict[str, OptionItemWidget] = {}  # 选项项组件字典
+        self.option_items: Dict[str, "OptionItemBase"] = {}  # 选项项组件字典
         self.form_structure: Dict[str, Any] = {}  # 表单结构
         
         self._init_ui()
@@ -56,8 +62,8 @@ class OptionFormWidget(QWidget):
                 option_config["type"] = "combobox"
                 logger.debug(f"选项 {key} 缺失 type，默认作为 combobox 处理")
 
-            # 创建选项项组件
-            option_item = OptionItemWidget(key, option_config, self)
+            # 使用注册器创建选项项组件
+            option_item = OptionItemRegistry.create(key, option_config, self)
             
             # 预创建子选项（如果存在）
             if "children" in option_config:
@@ -214,7 +220,7 @@ class OptionFormWidget(QWidget):
                 if option_item.current_value is not None:
                     option_item._update_children_visibility(option_item.current_value, skip_animation=True)
     
-    def _apply_single_child_config(self, option_item: OptionItemWidget, option_value: str, child_config: Any):
+    def _apply_single_child_config(self, option_item: "OptionItemBase", option_value: str, child_config: Any):
         """
         应用单个子选项的配置
         
@@ -252,8 +258,8 @@ class OptionFormWidget(QWidget):
                 else:
                     # 如果字典不包含 value 字段，可能是输入框的值（inputs 类型）
                     # 需要根据子选项的类型来判断
-                    if child_widget.config_type == "lineedit":
-                        # lineedit 类型（特别是 inputs 类型）可以接收字典
+                    if child_widget.config_type in ["lineedit", "input", "inputs"]:
+                        # input/inputs 类型可以接收字典
                         child_widget.set_value(child_config)
                     else:
                         # 其他类型（如 combobox）不应该接收字典
@@ -262,9 +268,12 @@ class OptionFormWidget(QWidget):
                 # 非字典值直接传递
                 child_widget.set_value(child_config)
     
-    def _apply_children_config(self, option_item: OptionItemWidget, children_config: Dict[str, Any]):
+    def _apply_children_config(self, option_item: "OptionItemBase", children_config: Dict[str, Any]):
         """
-        应用子选项配置，兼容 children 中以 option_value 或 child_key 为键的情况。
+        应用子选项配置，兼容多种配置格式：
+        1. config_key 是 option_value（如 "自行输入角色名"）
+        2. config_key 是旧格式的内部 key（如 "选择A级角色_child_自行输入角色名_输入A级角色名_0"）
+        3. config_key 是 child_name（如 "输入A级角色名"）
         会跳过标记为 hidden 的子选项。
         """
         if not children_config:
@@ -278,10 +287,22 @@ class OptionFormWidget(QWidget):
                 logger.debug(f"跳过隐藏的子选项: option_key={option_item.key}, config_key={config_key}")
                 continue
             
-            option_value = config_key if config_key in child_definitions else None
-
+            option_value = None
+            child_widget = None
+            
+            # 尝试方式1：config_key 是 option_value
+            if config_key in child_definitions:
+                option_value = config_key
+            
+            # 尝试方式2：config_key 是旧格式的内部 key
             if not option_value:
                 option_value = option_item.get_option_value_for_child_key(config_key)
+            
+            # 尝试方式3：config_key 是 child_name
+            if not option_value:
+                result = option_item.find_child_by_name(config_key)
+                if result:
+                    option_value, child_widget = result
 
             if option_value and child_cfg:
                 # 如果 child_cfg 是字典且包含 hidden 字段（但 hidden=False），移除 hidden 字段后应用

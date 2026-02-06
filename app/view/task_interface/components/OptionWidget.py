@@ -289,27 +289,26 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self.option_stack.addWidget(speedrun_page)
         self.option_stack.setCurrentIndex(0)
 
-        # 底部分段切换（不再使用下拉框）
-        self.segmented_switcher = SegmentedWidget(self)
-        self.segmented_switcher.addItem(routeKey="options", text=self.tr("Options"))
-        self.segmented_switcher.addItem(routeKey="speedrun", text=self.tr("Speedrun"))
-        self.segmented_switcher.currentItemChanged.connect(self._on_segmented_changed)
-        self.option_area_layout.addWidget(
-            self.segmented_switcher, alignment=Qt.AlignmentFlag.AlignBottom
-        )
-        self.segmented_switcher.setCurrentItem("options")
-        # 初始化时隐藏，待任务加载后按需显示
-        self.segmented_switcher.setVisible(False)
-
         # 将容器widget设置到滚动区域
         self.option_area_widget.setWidget(option_container)
         # 初始化过渡动画器
         self._option_animator = OptionTransitionAnimator(option_container)
 
-        # 创建一个垂直布局给卡片,然后将滚动区域添加到这个布局中
+        # 底部分段切换（固定在卡片底部，不随滚动）
+        self.segmented_switcher = SegmentedWidget(self)
+        self.segmented_switcher.addItem(routeKey="options", text=self.tr("Options"))
+        self.segmented_switcher.addItem(routeKey="speedrun", text=self.tr("Speedrun"))
+        self.segmented_switcher.currentItemChanged.connect(self._on_segmented_changed)
+        self.segmented_switcher.setCurrentItem("options")
+        # 初始化时隐藏，待任务加载后按需显示
+        self.segmented_switcher.setVisible(False)
+
+        # 创建一个垂直布局给卡片,然后将滚动区域和切换栏添加到这个布局中
         card_layout = QVBoxLayout()
-        card_layout.addWidget(self.option_area_widget)
-        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.addWidget(self.option_area_widget, 1)  # 滚动区域占满剩余空间
+        card_layout.addWidget(self.segmented_switcher, 0, Qt.AlignmentFlag.AlignBottom)  # 切换栏固定在底部
+        card_layout.setContentsMargins(10, 0, 10, 10)
+        card_layout.setSpacing(5)
         self.option_area_card.setLayout(card_layout)
 
         # ==================== 描述区域 ==================== #

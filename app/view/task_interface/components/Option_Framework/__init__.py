@@ -5,6 +5,25 @@
 from .OptionItemWidget import OptionItemWidget
 from .OptionFormWidget import OptionFormWidget
 from .SpeedrunConfigWidget import SpeedrunConfigWidget
+from .items import (
+    OptionItemBase,
+    OptionItemRegistry,
+    TooltipComboBox,
+    ComboBoxOptionItem,
+    SwitchOptionItem,
+    InputOptionItem,
+    InputsOptionItem,
+)
 
-__all__ = ["OptionItemWidget", "OptionFormWidget", "SpeedrunConfigWidget"]
-
+__all__ = [
+    "OptionItemWidget",
+    "OptionFormWidget",
+    "SpeedrunConfigWidget",
+    "OptionItemBase",
+    "OptionItemRegistry",
+    "TooltipComboBox",
+    "ComboBoxOptionItem",
+    "SwitchOptionItem",
+    "InputOptionItem",
+    "InputsOptionItem",
+]

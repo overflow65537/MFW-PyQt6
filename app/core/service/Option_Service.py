@@ -59,12 +59,13 @@ class OptionService:
 
         # 更新任务中的选项并持久化
         task.task_option.update(option_data)
-        
+
         # 基础任务不应该包含 speedrun_config
         from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
+
         if task.is_base_task() and "_speedrun_config" in task.task_option:
             del task.task_option["_speedrun_config"]
-        
+
         success = self.task_service.update_task(task)
 
         # 发出选项更新信号，通知UI层更新显示
@@ -232,7 +233,47 @@ class OptionService:
             if children:
                 field_config["children"] = children
 
-        elif option_type == "select" or "cases" in option_def:
+        elif option_type == "input":
+            inputs_source = option_def.get("inputs", [])
+            inputs = [dict(item) for item in inputs_source]
+            has_main_label = bool(option_def.get("label"))
+
+            # 区分 input 和 inputs 类型：
+            # - 有主 label → type = "inputs"（选项组，显示主标签+子输入框列表）
+            # - 没有主 label → type = "input"（每个都是独立的单输入框）
+            if has_main_label:
+                # 有主 label，作为 inputs 选项组
+                field_config["type"] = "inputs"
+                field_config["inputs"] = inputs
+                field_config["single_input"] = False
+            else:
+                # 没有主 label，每个都作为独立的 input
+                field_config["type"] = "input"
+                field_config["inputs"] = inputs
+                field_config["single_input"] = len(inputs) == 1
+                if len(inputs) > 1:
+                    field_config["independent_inputs"] = True  # 标记为独立输入模式
+
+            # 传递verify字段到表单结构中
+            if "verify" in option_def:
+                field_config["verify"] = option_def["verify"]
+            # 如果有默认值，使用第一个input的默认值
+            if inputs and "default" in inputs[0]:
+                field_config["default"] = inputs[0]["default"]
+            # 处理 option 级别的 pattern_msg
+            option_pattern_msg = option_def.get("pattern_msg")
+            if option_pattern_msg:
+                field_config["pattern_msg"] = option_pattern_msg
+
+            # 为每个input项传递verify字段
+            for input_item in field_config["inputs"]:
+                # 如果input项没有自己的verify字段，使用父级的verify字段
+                if "verify" not in input_item and "verify" in option_def:
+                    input_item["verify"] = option_def["verify"]
+                # 如果input项没有自己的 pattern_msg，则继承父级 pattern_msg
+                if "pattern_msg" not in input_item and option_pattern_msg:
+                    input_item["pattern_msg"] = option_pattern_msg
+        else:
             # 默认类型为combobox
             field_config["type"] = "combobox"
             options = []
@@ -281,43 +322,6 @@ class OptionService:
             if children:
                 field_config["children"] = children
 
-        # 对于input类型的选项，处理多个输入框
-        elif option_type == "input" and "inputs" in option_def:
-            # 对于input类型，我们将其视为一个组合类型
-            # 每个input项将作为一个独立的lineedit字段
-            # 但为了简化实现，这里创建一个lineedit作为主字段，实际使用时需要特殊处理
-            field_config["type"] = "lineedit"
-            inputs_source = option_def.get("inputs", [])
-            inputs = [dict(item) for item in inputs_source]
-            # 保存inputs数组，供后续处理
-            field_config["inputs"] = inputs
-            # 如果只有一个输入项，则启用单输入渲染模式（UI 层会简化展示）
-            field_config["single_input"] = len(inputs) == 1
-
-            # 传递verify字段到表单结构中
-            if "verify" in option_def:
-                field_config["verify"] = option_def["verify"]
-            # 如果有默认值，使用第一个input的默认值
-            if inputs and "default" in inputs[0]:
-                field_config["default"] = inputs[0]["default"]
-            # 处理 option 级别的 pattern_msg
-            option_pattern_msg = option_def.get("pattern_msg")
-            if option_pattern_msg:
-                field_config["pattern_msg"] = option_pattern_msg
-
-            # 为每个input项传递verify字段
-            for input_item in field_config["inputs"]:
-                # 如果input项没有自己的verify字段，使用父级的verify字段
-                if "verify" not in input_item and "verify" in option_def:
-                    input_item["verify"] = option_def["verify"]
-                # 如果input项没有自己的 pattern_msg，则继承父级 pattern_msg
-                if "pattern_msg" not in input_item and option_pattern_msg:
-                    input_item["pattern_msg"] = option_pattern_msg
-
-        # 默认类型
-        else:
-            field_config["type"] = "combobox"  # 默认为下拉选择框
-
         return field_config
 
     def get_form_structure_by_task_name(
@@ -352,7 +356,7 @@ class OptionService:
                     form_structure["description"] = task_description
                 # 获取顶层的option定义
                 all_options = interface.get("option", {})
-
+    
                 # 遍历任务需要的每个选项
                 for option_name in task_option_names:
                     if option_name in all_options:

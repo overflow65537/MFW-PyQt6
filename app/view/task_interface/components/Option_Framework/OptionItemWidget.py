@@ -713,6 +713,25 @@ class OptionItemWidget(QWidget):
                 return option_value
         return None
     
+    def find_child_by_name(self, child_name: str) -> Optional[Tuple[str, 'OptionItemWidget']]:
+        """根据 child_name 查找子选项
+
+        兼容新配置格式：config_key 是 child_name 而非 child_key
+        
+        Args:
+            child_name: 子选项的名称（如 "输入A级角色名"）
+            
+        Returns:
+            Optional[Tuple[str, OptionItemWidget]]: (option_value, child_widget) 元组，
+            未找到时返回 None
+        """
+        for (option_value, name), child_key in self._child_name_map.items():
+            if name == child_name:
+                child_widget = self.child_options.get(child_key)
+                if child_widget:
+                    return (option_value, child_widget)
+        return None
+    
     def _unwrap_lineedit_value(self, value: Any) -> Any:
         """如果是字典格式（包含 value 字段），提取真正的输入值。"""
         if isinstance(value, dict) and "value" in value:
@@ -881,6 +900,9 @@ class OptionItemWidget(QWidget):
                                     child_name = first_child.get("name", "")
                             break
                     
+                    # 使用 child_name 作为配置键，如果没有 name 则回退到 child_key
+                    config_key = child_name if child_name else child_key
+                    
                     # 检查子选项是否被隐藏（当前选中值不等于此子选项的键值时，该子选项被隐藏）
                     is_active_child = child_key in active_child_keys
                     is_hidden = not (is_active_child and child_widget.isVisible())
@@ -889,12 +911,12 @@ class OptionItemWidget(QWidget):
                     if child_widget.config_type == "lineedit" and "children" not in child_option:
                         # lineedit 类型保持简单值，但如果被隐藏需要转换为字典格式
                         if is_hidden:
-                            children_config[child_key] = {
+                            children_config[config_key] = {
                                 "value": child_option.get("value", ""),
                                 "hidden": True,
                             }
                         else:
-                            children_config[child_key] = child_option.get("value", "")
+                            children_config[config_key] = child_option.get("value", "")
                     else:
                         # 将子选项的 name 添加到配置中（用于从接口文件中获取具体选项）
                         if child_name:
@@ -902,7 +924,7 @@ class OptionItemWidget(QWidget):
                         # 添加隐藏属性（用于 runner 跳过已隐藏的配置）
                         if is_hidden:
                             child_option["hidden"] = True
-                        children_config[child_key] = child_option
+                        children_config[config_key] = child_option
         
         # 如果有子选项配置，添加到结果中
         if children_config:
