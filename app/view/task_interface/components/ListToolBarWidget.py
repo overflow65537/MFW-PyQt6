@@ -25,6 +25,7 @@ from app.view.task_interface.components.AddTaskMessageBox import (
     AddConfigDialog,
     AddTaskDialog,
 )
+from app.view.task_interface.components.AddTaskFlowDialog import AddTaskFlowDialog
 from app.core.core import ServiceCoordinator
 from app.view.task_interface.components.ListItem import TaskListItem, ConfigListItem
 from app.common.signal_bus import signalBus
@@ -379,7 +380,7 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         Args:
             idx: 插入位置索引，默认为-2（倒数第二个位置）
         """
-        # 打开添加任务对话框
+        # 打开添加任务对话框（使用新的流式布局对话框）
         task_map = self.service_coordinator.task.default_option
         interface = self.service_coordinator.task.interface
         filtered_task_map = self._filter_task_map_by_mode(task_map, interface)
@@ -388,7 +389,7 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
                 "warning", self.tr("No available tasks to add.")
             )
             return
-        dlg = AddTaskDialog(
+        dlg = AddTaskFlowDialog(
             task_map=filtered_task_map, interface=interface, parent=self.window()
         )
         if dlg.exec():

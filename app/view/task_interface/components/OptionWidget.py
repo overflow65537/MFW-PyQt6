@@ -30,10 +30,13 @@ from app.view.task_interface.components.Option_Widget_Mixin.ResourceSettingMixin
 from app.view.task_interface.components.Option_Widget_Mixin.ControllerSettingMixin import (
     ControllerSettingWidget,
 )
+from app.view.task_interface.components.Option_Widget_Mixin.SpecialTaskSettingMixin import (
+    SpecialTaskSettingMixin,
+)
 from ....core.core import ServiceCoordinator
 
 
-class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
+class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin, SpecialTaskSettingMixin):
     current_config: Dict[str, Any]
     parent_layout: QVBoxLayout
 
@@ -65,6 +68,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 初始化 Resource 和 PostAction Mixin（它们现在是 OptionWidget 的一部分）
         self._init_resource_settings()
         self._init_post_action_settings()
+        self._init_special_task_settings()
         
         # 共享控制器相关属性到 Resource Mixin（ResourceSettingMixin 需要）
         self.controller_type_mapping = self.controller_setting_widget.controller_type_mapping
@@ -840,6 +844,11 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             is_resource = form_type == "resource"
             is_controller = form_type == "controller"
             is_post_action = form_type == "post_action"
+            
+            # 检查是否为特殊任务（等待/启动程序/通知）
+            task_id = getattr(self.service_coordinator.option, "current_task_id", None)
+            current_task = self.service_coordinator.task.get_task(task_id) if task_id else None
+            is_special_type_task = current_task.is_special_task() if current_task else False
 
             if is_resource:
                 # 资源任务 - 只显示资源下拉框
@@ -864,6 +873,13 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
                 description = form_structure.get("description", "")
                 self.set_description(description, has_options=True)
 
+            elif is_special_type_task:
+                # 特殊任务（等待/启动程序/通知）- 使用动画过渡
+                self._option_animator.play(
+                    lambda task=current_task: self._apply_special_task_settings_with_animation(task)
+                )
+                self.set_description("", has_options=True)
+
             else:
                 # 正常的表单更新逻辑（update_form_from_structure会处理公告）
                 self.update_form_from_structure(form_structure, self.current_config)
@@ -877,7 +893,8 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         task_service = self.service_coordinator.task
         task_id = getattr(option_service, "current_task_id", None)
         task = task_service.get_task(task_id) if task_id else None
-        is_special_task = getattr(task, "is_special", False) if task else False
+        # 检查是否为 interface.json 中的特殊任务（is_special）或用户特殊任务（is_special_task()）
+        is_special_task_any = (getattr(task, "is_special", False) or task.is_special_task()) if task else False
 
         speedrun_visible = (
             not (
@@ -885,7 +902,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
                 and form_structure.get("type")
                 in ["resource", "controller", "post_action"]
             )
-            and not is_special_task
+            and not is_special_task_any
         )
 
         if not speedrun_visible:
@@ -1031,6 +1048,30 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self._update_options_enabled()
         
         logger.info("完成后操作设置表单已创建")
+
+    def _apply_special_task_settings_with_animation(self, task):
+        """在动画回调中应用特殊任务设置（等待/启动程序/通知）
+        
+        Args:
+            task: TaskItem 特殊任务项
+        """
+        self._clear_options()
+        # 确保选项区域可见
+        self.option_area_card.show()
+
+        if task and task.is_special_task():
+            # 从任务中获取配置并设置到 current_config
+            if isinstance(task.task_option, dict):
+                self.current_config.clear()
+                self.current_config.update(task.task_option)
+
+            # 创建特殊任务设置界面
+            self._create_special_task_settings(task.special_type)
+            
+        # 更新选项的启用/禁用状态
+        self._update_options_enabled()
+        
+        logger.info(f"特殊任务设置表单已创建: {task.special_type if task else 'unknown'}")
 
     def _set_layout_visibility(self, layout, visible):
         """

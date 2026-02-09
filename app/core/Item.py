@@ -2,7 +2,7 @@ import uuid
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 from PySide6.QtCore import QObject, Signal
-from app.common.constants import POST_ACTION, _CONTROLLER_, _RESOURCE_
+from app.common.constants import POST_ACTION, _CONTROLLER_, _RESOURCE_, SPECIAL_TASK_TYPES
 
 
 # ==================== 信号总线 ====================
@@ -55,7 +55,8 @@ class TaskItem(BaseModel):
     item_id: str = Field(default="")
     is_checked: bool = False
     task_option: Dict[str, Any] = Field(default_factory=dict)
-    is_special: bool = False  # 标记是否为特殊任务
+    is_special: bool = False  # 标记是否为特殊任务（来自 interface.json 的 spt 字段）
+    special_type: str = Field(default="")  # 特殊任务类型（等待/启动程序/通知）
     is_hidden: bool = False  # 运行时字段，不序列化到 JSON
 
     model_config = {
@@ -73,8 +74,9 @@ class TaskItem(BaseModel):
         # 生成 item_id（如果缺失）
         item_id = values.get('item_id', '')
         is_special = values.get('is_special', False)
+        special_type = values.get('special_type', '')
         if not item_id:
-            values['item_id'] = cls.generate_id(is_special)
+            values['item_id'] = cls.generate_id(is_special, special_type)
         
         # 获取 task_option
         task_option = values.get('task_option', {})
@@ -106,24 +108,43 @@ class TaskItem(BaseModel):
         return values
 
     def is_base_task(self) -> bool:
-        """判断是否为基础任务"""
+        """判断是否为基础任务（控制器/资源/完成后操作）"""
         return self.item_id in (_CONTROLLER_, _RESOURCE_, POST_ACTION)
+    
+    def is_special_task(self) -> bool:
+        """判断是否为用户可自由操作的特殊任务（等待/启动程序/通知）"""
+        return self.special_type in SPECIAL_TASK_TYPES
 
     @staticmethod
-    def generate_id(is_special: bool = False) -> str:
-        """生成任务ID"""
-        prefix = "s_" if is_special else "t_"
+    def generate_id(is_special: bool = False, special_type: str = "") -> str:
+        """生成任务ID
+        
+        Args:
+            is_special: 是否为 interface.json 中的特殊任务
+            special_type: 特殊任务类型（等待/启动程序/通知）
+        """
+        if special_type:
+            # 特殊任务使用 sp_ 前缀
+            prefix = "sp_"
+        elif is_special:
+            prefix = "s_"
+        else:
+            prefix = "t_"
         return f"{prefix}{uuid.uuid4().hex}"
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典（不包含 is_hidden）"""
-        return {
+        result = {
             "name": self.name,
             "item_id": self.item_id,
             "is_checked": self.is_checked,
             "task_option": self.task_option,
             "is_special": self.is_special,
         }
+        # 只有当 special_type 有值时才序列化
+        if self.special_type:
+            result["special_type"] = self.special_type
+        return result
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TaskItem":

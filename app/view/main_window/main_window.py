@@ -95,7 +95,6 @@ from qfluentwidgets import FluentIcon as FIF
 from app.view.task_interface.task_interface_logic import TaskInterface
 from app.view.monitor_interface import MonitorInterface
 from app.view.multi_run_interface import MultiRunInterface
-from app.view.schedule_interface.schedule_interface import ScheduleInterface
 from app.view.setting_interface.setting_interface import (
     SettingInterface,
 )
@@ -324,12 +323,6 @@ class MainWindow(MSFluentWindow):
         self._multi_run_interface_added_to_nav = False
         # 初始化时根据配置添加到导航栏（延迟到 initNavigation 完成后）
         
-        self.ScheduleInterface = ScheduleInterface(self.service_coordinator)
-        self.addSubInterface(
-            self.ScheduleInterface,
-            FIF.CALENDAR,
-            self.tr("Schedule"),
-        )
         enable_test_page = self._cli_force_enable_test or ENABLE_TEST_INTERFACE_PAGE
         if enable_test_page:
             self.TestInterface = TestInterface(self.service_coordinator)

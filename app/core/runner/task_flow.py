@@ -16,13 +16,16 @@ from app.common.constants import (
     POST_ACTION,
     _CONTROLLER_,
     _RESOURCE_,
+    SPECIAL_TASK_WAIT,
+    SPECIAL_TASK_RUN_PROGRAM,
+    SPECIAL_TASK_NOTIFY,
 )
 from app.common.signal_bus import signalBus
 from app.common.config import cfg
 
 from maa.toolkit import Toolkit
 from maa.define import MaaWin32ScreencapMethodEnum
-from app.utils.notice import NoticeTiming, send_notice, send_thread
+from app.utils.notice import NoticeTiming, send_notice, send_thread, send_all_enabled_channels
 
 from app.utils.logger import logger
 from app.core.service.Config_Service import ConfigService
@@ -1072,6 +1075,11 @@ class TaskFlowRunner(QObject):
             return
         elif not task.is_checked:
             return
+
+        # 检查是否是特殊任务，如果是则执行特殊任务逻辑
+        if task.is_special_task():
+            return await self._run_special_task(task)
+
         speedrun_cfg = self._resolve_speedrun_config(task)
         # 仅依据任务自身的速通开关，不再依赖全局 speedrun_mode；单任务执行可跳过校验
         if (not skip_speedrun) and speedrun_cfg and speedrun_cfg.get("enabled", False):
@@ -1123,6 +1131,268 @@ class TaskFlowRunner(QObject):
         # 仅在任务未被 abort 且正常完成时记录速通耗时
         if self._current_task_ok:
             self._record_speedrun_runtime(task)
+
+    async def _run_special_task(self, task: TaskItem):
+        """执行特殊任务（等待/启动程序/发送通知）
+
+        Args:
+            task: 特殊任务项
+
+        Returns:
+            None: 正常完成
+            False: 执行失败
+        """
+        special_type = task.special_type
+        task_option = task.task_option or {}
+
+        signalBus.log_output.emit(
+            "INFO",
+            self.tr("Executing special task: ") + task.name,
+            self._config_id or "",
+        )
+
+        try:
+            if special_type == SPECIAL_TASK_WAIT:
+                return await self._execute_wait_task(task, task_option)
+            elif special_type == SPECIAL_TASK_RUN_PROGRAM:
+                return await self._execute_run_program_task(task, task_option)
+            elif special_type == SPECIAL_TASK_NOTIFY:
+                return await self._execute_notify_task(task, task_option)
+            else:
+                logger.error(f"未知的特殊任务类型: {special_type}")
+                return False
+        except Exception as exc:
+            logger.error(f"特殊任务执行失败: {task.name}, 错误: {exc}")
+            return False
+
+    async def _execute_wait_task(self, task: TaskItem, task_option: dict):
+        """执行等待任务
+
+        Args:
+            task: 任务项
+            task_option: 任务选项，包含:
+                - wait_mode: "fixed" 或 "scheduled"
+                - wait_seconds: 固定等待秒数（wait_mode="fixed" 时使用）
+                - scheduled_time: 定时时间 "HH:MM" 格式（wait_mode="scheduled" 时使用）
+        """
+        wait_mode = task_option.get("wait_mode", "fixed")
+
+        if wait_mode == "scheduled":
+            # 定时模式：等待到指定时间
+            scheduled_time = task_option.get("scheduled_time", "00:00")
+            try:
+                hour, minute = map(int, scheduled_time.split(":"))
+            except (ValueError, AttributeError):
+                logger.error(f"无效的定时时间格式: {scheduled_time}")
+                return False
+
+            now = datetime.now()
+            target_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+            # 如果目标时间已过，则等到明天的该时间
+            if target_time <= now:
+                target_time += timedelta(days=1)
+
+            wait_seconds = (target_time - now).total_seconds()
+            signalBus.log_output.emit(
+                "INFO",
+                self.tr("Waiting until ") + target_time.strftime("%Y-%m-%d %H:%M:%S"),
+                self._config_id or "",
+            )
+        else:
+            # 固定时间模式
+            wait_seconds = task_option.get("wait_seconds", 0)
+            if wait_seconds <= 0:
+                signalBus.log_output.emit(
+                    "INFO",
+                    self.tr("Wait time is 0, skipping wait task"),
+                    self._config_id or "",
+                )
+                return
+
+            signalBus.log_output.emit(
+                "INFO",
+                self.tr("Waiting for ") + str(wait_seconds) + self.tr(" seconds..."),
+                self._config_id or "",
+            )
+
+        # 分段等待，每秒检查一次是否需要停止
+        elapsed = 0
+        while elapsed < wait_seconds:
+            if self.need_stop:
+                signalBus.log_output.emit(
+                    "INFO",
+                    self.tr("Wait task interrupted"),
+                    self._config_id or "",
+                )
+                return
+            await asyncio.sleep(1)
+            elapsed += 1
+
+        signalBus.log_output.emit(
+            "INFO",
+            self.tr("Wait task completed"),
+            self._config_id or "",
+        )
+
+    async def _execute_run_program_task(self, task: TaskItem, task_option: dict):
+        """执行启动程序任务
+
+        Args:
+            task: 任务项
+            task_option: 任务选项，包含:
+                - program_path: 程序路径
+                - program_args: 程序参数（可选）
+                - wait_for_exit: 是否等待程序退出（可选，默认 False）
+        """
+        program_path = task_option.get("program_path", "")
+        program_args = task_option.get("program_args", "")
+        wait_for_exit = task_option.get("wait_for_exit", False)
+
+        if not program_path:
+            logger.error("程序路径为空")
+            signalBus.log_output.emit(
+                "ERROR",
+                self.tr("Program path is empty"),
+                self._config_id or "",
+            )
+            return False
+
+        # 检查程序是否存在
+        if not Path(program_path).exists():
+            logger.error(f"程序不存在: {program_path}")
+            signalBus.log_output.emit(
+                "ERROR",
+                self.tr("Program not found: ") + program_path,
+                self._config_id or "",
+            )
+            return False
+
+        signalBus.log_output.emit(
+            "INFO",
+            self.tr("Starting program: ") + program_path,
+            self._config_id or "",
+        )
+
+        try:
+            # 构建命令
+            if program_args:
+                if platform.system() == "Windows":
+                    # Windows 下使用列表形式
+                    cmd = [program_path] + shlex.split(program_args, posix=False)
+                else:
+                    cmd = [program_path] + shlex.split(program_args)
+            else:
+                cmd = [program_path]
+
+            if wait_for_exit:
+                # 等待程序退出（在后台线程运行以避免阻塞）
+                process = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+
+                # 等待进程完成，同时检查停止信号
+                while True:
+                    if self.need_stop:
+                        process.terminate()
+                        signalBus.log_output.emit(
+                            "INFO",
+                            self.tr("Program execution interrupted"),
+                            self._config_id or "",
+                        )
+                        return
+
+                    try:
+                        # 短暂等待进程
+                        await asyncio.wait_for(process.wait(), timeout=1.0)
+                        break
+                    except asyncio.TimeoutError:
+                        continue
+
+                signalBus.log_output.emit(
+                    "INFO",
+                    self.tr("Program exited with code: ") + str(process.returncode),
+                    self._config_id or "",
+                )
+            else:
+                # 不等待，直接启动
+                if platform.system() == "Windows":
+                    # Windows 使用 CREATE_NEW_PROCESS_GROUP 标志
+                    subprocess.Popen(
+                        cmd,
+                        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
+                        close_fds=True,
+                    )
+                else:
+                    subprocess.Popen(
+                        cmd,
+                        start_new_session=True,
+                        close_fds=True,
+                    )
+
+                signalBus.log_output.emit(
+                    "INFO",
+                    self.tr("Program started successfully"),
+                    self._config_id or "",
+                )
+
+        except FileNotFoundError:
+            logger.error(f"无法启动程序: {program_path}")
+            signalBus.log_output.emit(
+                "ERROR",
+                self.tr("Failed to start program: ") + program_path,
+                self._config_id or "",
+            )
+            return False
+        except Exception as exc:
+            logger.error(f"启动程序失败: {exc}")
+            signalBus.log_output.emit(
+                "ERROR",
+                self.tr("Failed to start program: ") + str(exc),
+                self._config_id or "",
+            )
+            return False
+
+    async def _execute_notify_task(self, task: TaskItem, task_option: dict):
+        """执行发送通知任务
+
+        Args:
+            task: 任务项
+            task_option: 任务选项，包含:
+                - title: 通知标题
+                - content: 通知内容
+        """
+        notify_title = task_option.get("title", "")
+        notify_content = task_option.get("content", "")
+
+        if not notify_title and not notify_content:
+            signalBus.log_output.emit(
+                "INFO",
+                self.tr("Notification title and content are both empty, skipping"),
+                self._config_id or "",
+            )
+            return
+
+        # 使用默认标题
+        if not notify_title:
+            notify_title = self.tr("MFW Notification")
+
+        signalBus.log_output.emit(
+            "INFO",
+            self.tr("Sending notification: ") + notify_title,
+            self._config_id or "",
+        )
+
+        # 发送到所有启用的通知渠道
+        send_all_enabled_channels(notify_title, notify_content)
+
+        signalBus.log_output.emit(
+            "INFO",
+            self.tr("Notification sent"),
+            self._config_id or "",
+        )
 
     async def stop_task(self, *, manual: bool = False):
         """停止当前正在运行的任务
