@@ -171,10 +171,6 @@ jobs:
           ## 安装 Rust 工具链并指定 ARM64 目标
           #curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable-aarch64-pc-windows-msvc
           #$env:PATH += ";$HOME\.cargo\bin"
-          
-          # 安装其他依赖
-          python -m pip install pyinstaller
-          python -m pip install -r ./requirements.txt
         shell: pwsh
 
       - name: Install dependencies (macos)
