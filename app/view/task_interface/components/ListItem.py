@@ -2,6 +2,8 @@ import asyncio
 import re
 from pathlib import Path
 
+import shiboken6
+
 from PySide6.QtWidgets import (
     QWidget,
     QHBoxLayout,
@@ -524,8 +526,12 @@ class TaskListItem(BaseListItem):
         """事件过滤器，用于监听选项标签的大小变化"""
         if obj == self.option_label and event.type() == event.Type.Resize:
             # 当选项标签大小改变时，重新计算是否需要滚动（不重置滚动位置）
+            label = self.option_label
             QTimer.singleShot(
-                50, lambda: self.option_label.refresh_scroll(reset_offset=False)
+                50,
+                lambda: label.refresh_scroll(reset_offset=False)
+                if shiboken6.isValid(label)
+                else None,
             )
         return super().eventFilter(obj, event)
 
