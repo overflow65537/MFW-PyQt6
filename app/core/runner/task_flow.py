@@ -678,13 +678,7 @@ class TaskFlowRunner(QObject):
                     self._config_switch_delay,
                 )
                 await asyncio.sleep(self._config_switch_delay)
-                # 多运行器架构：通过 coordinator 启动目标配置的任务流
-                if self._coordinator:
-                    asyncio.create_task(self._coordinator.run_tasks_flow(next_config))
-                else:
-                    # 兼容旧逻辑（单运行器模式）
-                    logger.warning("无法通过 coordinator 启动配置 %s，尝试直接运行", next_config)
-                    asyncio.create_task(self.run_tasks_flow())
+                asyncio.create_task(self.run_tasks_flow())
 
     def _collect_tasks_to_run(
         self,
