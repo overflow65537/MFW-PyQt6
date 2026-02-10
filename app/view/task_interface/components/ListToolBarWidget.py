@@ -144,44 +144,29 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
             pass
 
     def _on_start_button_status_changed(self, status: dict):
-        """根据任务流状态锁定/解锁配置列表。
-        
-        多开模式开启时：只锁定添加/删除按钮，不锁定配置切换。
-        多开模式关闭时：锁定配置切换和添加/删除按钮。
-        """
+        """根据任务流状态锁定/解锁配置列表。"""
         is_running = status.get("text") == "STOP"
         self.set_locked(is_running)
 
     def set_locked(self, locked: bool):
-        """锁定后禁止新增/删除配置。
-        
-        多开模式开启时：配置切换始终允许，只锁定添加/删除操作。
-        多开模式关闭时：锁定配置切换和添加/删除按钮。
-        """
-        from app.common.config import cfg
-        
+        """锁定后禁止新增/删除配置，并通知列表组件拦截点击切换。"""
         locked = bool(locked)
         if self._locked == locked:
             return
         self._locked = locked
 
-        # 锁定添加/删除按钮
         self.add_button.setEnabled(not locked)
         self.delete_button.setEnabled(not locked)
 
-        # 根据多开模式决定是否锁定配置切换
-        enable_multi_run = cfg.get(cfg.enable_multi_run)
-        if not enable_multi_run:
-            # 多开模式关闭时，锁定配置切换
-            if (
-                hasattr(self, "task_list")
-                and self.task_list
-                and hasattr(self.task_list, "set_locked")
-            ):
-                try:
-                    self.task_list.set_locked(locked)
-                except Exception:
-                    pass
+        if (
+            hasattr(self, "task_list")
+            and self.task_list
+            and hasattr(self.task_list, "set_locked")
+        ):
+            try:
+                self.task_list.set_locked(locked)
+            except Exception:
+                pass
 
     def _init_task_list(self):
         """初始化配置列表"""
@@ -191,11 +176,9 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
 
     def add_config(self):
         """添加配置项。"""
-        # 多开模式：检查是否有任何配置正在运行
-        running_configs = self.service_coordinator.get_running_configs()
-        if running_configs:
+        if self._locked:
             signalBus.info_bar_requested.emit(
-                "warning", self.tr("Cannot add configuration while tasks are running.")
+                "warning", self.tr("Task is running, configurations are locked.")
             )
             return
         # 通过对话框创建新配置
@@ -246,17 +229,11 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
 
     def remove_config(self):
         """移除配置项"""
-        # 多开模式：检查当前配置是否正在运行
-        cur = self.task_list.currentItem()
-        if cur:
-            widget = self.task_list.itemWidget(cur)
-            if isinstance(widget, ConfigListItem):
-                config_id = widget.item.item_id
-                if self.service_coordinator.is_running(config_id):
-                    signalBus.info_bar_requested.emit(
-                        "warning", self.tr("Cannot delete a running configuration.")
-                    )
-                    return
+        if self._locked:
+            signalBus.info_bar_requested.emit(
+                "warning", self.tr("Task is running, configurations are locked.")
+            )
+            return
         config_list = self.service_coordinator.config.list_configs()
         if len(config_list) <= 1:
             signalBus.info_bar_requested.emit(

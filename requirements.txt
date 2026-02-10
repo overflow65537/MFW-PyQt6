@@ -13,4 +13,3 @@ chardet
 pyperclip
 pillow
 json-with-comments
-pydantic>=2.0

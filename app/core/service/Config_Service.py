@@ -114,27 +114,13 @@ class JsonConfigRepository:
 
 
 class ConfigService:
-    """配置服务实现
-    
-    包含配置缓存层，避免频繁读取磁盘文件。
-    缓存策略：
-    - get_config 读取时缓存
-    - save_config/update_config 时更新缓存
-    - delete_config 时清除缓存
-    - 提供 invalidate_cache 方法手动清除
-    """
+    """配置服务实现"""
 
     def __init__(self, config_repo: JsonConfigRepository, signal_bus: CoreSignalBus):
         self.repo = config_repo
         self.signal_bus = signal_bus
         self._main_config: Optional[Dict[str, Any]] = None
         self._config_changed_callback: Optional[Callable[[str], None]] = None
-        
-        # ==================== 配置缓存层 ====================
-        # config_id -> ConfigItem 的缓存
-        self._config_cache: Dict[str, ConfigItem] = {}
-        # 当前配置ID的本地缓存（避免频繁访问 _main_config）
-        self._current_config_id_cache: str = ""
 
         # 加载主配置
         self.load_main_config()
@@ -154,9 +140,8 @@ class ConfigService:
             )
 
             self._main_config["config_list"].append(default_config_item.item_id)
-            # 初始化时静默设置，避免在服务尚未完全初始化时触发信号
-            new_id = self.create_config(default_config_item)
-            self.set_current_config_id_silent(new_id)
+            self._main_config["curr_config_id"] = default_config_item.item_id
+            self.current_config_id = self.create_config(default_config_item)
 
     def register_on_change(self, callback: Callable[[str], None]) -> None:
         """注册配置变更回调，供服务协调器触发内部同步。"""
@@ -166,23 +151,10 @@ class ConfigService:
         """加载主配置"""
         try:
             self._main_config = self.repo.load_main_config()
-            # 同步更新 current_config_id 缓存
-            self._current_config_id_cache = self._main_config.get("curr_config_id", "") if self._main_config else ""
             return True
         except Exception as e:
             print(f"加载主配置失败: {e}")
             return False
-
-    def invalidate_cache(self, config_id: Optional[str] = None) -> None:
-        """使缓存失效
-        
-        Args:
-            config_id: 指定要清除的配置ID，为 None 时清除所有缓存
-        """
-        if config_id is None:
-            self._config_cache.clear()
-        elif config_id in self._config_cache:
-            del self._config_cache[config_id]
 
     def save_main_config(self) -> bool:
         """保存主配置"""
@@ -194,11 +166,7 @@ class ConfigService:
 
     @property
     def current_config_id(self) -> str:
-        """获取当前配置ID（使用缓存）"""
-        # 优先使用缓存
-        if self._current_config_id_cache:
-            return self._current_config_id_cache
-        # 回退到主配置
+        """获取当前配置ID"""
         return self._main_config.get("curr_config_id", "") if self._main_config else ""
 
     @current_config_id.setter
@@ -207,17 +175,12 @@ class ConfigService:
         if self._main_config is None:
             return False
 
-        # 如果设置的是相同的配置ID，跳过（避免重复触发信号）
-        if value == self._current_config_id_cache:
-            return True
-
         # 验证配置ID是否存在
         if value and value not in self._main_config.get("config_list", []):
             print(f"配置ID {value} 不存在")
             return False
 
         self._main_config["curr_config_id"] = value
-        self._current_config_id_cache = value  # 同步缓存
 
         # 保存主配置并发出信号
         if self.save_main_config():
@@ -231,32 +194,8 @@ class ConfigService:
 
         return False
 
-    def set_current_config_id_silent(self, value: str, save: bool = True) -> bool:
-        """静默设置当前配置ID（不触发信号和回调）
-        
-        用于内部操作（如添加配置时）避免重复触发信号。
-        
-        Args:
-            value: 新的配置ID
-            save: 是否保存到磁盘
-        """
-        if self._main_config is None:
-            return False
-        
-        self._main_config["curr_config_id"] = value
-        self._current_config_id_cache = value
-        
-        if save:
-            return self.save_main_config()
-        return True
-
     def get_config(self, config_id: str) -> Optional[ConfigItem]:
-        """获取指定配置（带缓存）"""
-        # 优先从缓存获取
-        if config_id in self._config_cache:
-            return self._config_cache[config_id]
-        
-        # 缓存未命中，从文件加载
+        """获取指定配置"""
         config_data = self.repo.load_config(config_id)
         if not config_data:
             return None
@@ -265,9 +204,6 @@ class ConfigService:
         
         # 向后兼容：检查并转换旧的 Pre-Configuration 任务
         self._migrate_pre_configuration_task(config)
-        
-        # 存入缓存
-        self._config_cache[config_id] = config
         
         return config
 
@@ -289,9 +225,6 @@ class ConfigService:
         if config_id not in self._main_config.get("config_list", []):
             self._main_config["config_list"].append(config_id)
             self.save_main_config()
-
-        # 更新缓存
-        self._config_cache[config_id] = config_data
 
         # config_data 应为 ConfigItem，直接转换为 dict 保存
         return self.repo.save_config(config_id, config_data.to_dict())
@@ -347,10 +280,6 @@ class ConfigService:
         """删除配置（禁止删除最后一个配置）"""
         if self._main_config is None:
             return False
-
-        # 从缓存中移除
-        if config_id in self._config_cache:
-            del self._config_cache[config_id]
 
         # 从主配置列表中移除
         if config_id in self._main_config.get("config_list", []):
