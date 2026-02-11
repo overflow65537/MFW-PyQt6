@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 import re
 from pathlib import Path
 from typing import Union
@@ -39,6 +40,9 @@ _LI_PATTERN = re.compile(r'<li(\s[^>]*)?>', re.IGNORECASE)
 
 _MAX_IMAGE_WIDTH = 500
 _REMOTE_IMAGE_CACHE_DIR = Path.cwd() / "resource" / "announcement" / "_cache"
+
+# 缓存一次探测到的可用 Markdown 扩展，避免重复 import
+_AVAILABLE_MD_EXTENSIONS: list[str] | None = None
 
 
 class _RemoteImageDownloadTask(QRunnable):
@@ -218,11 +222,45 @@ def _add_list_styles(html: str) -> str:
     return html
 
 
+def _detect_markdown_extensions() -> list[str]:
+    """
+    探测当前环境中可用的官方 Markdown 扩展，只返回实际存在的模块。
+    这样可以避免因为缺失某些扩展（例如 fenced_code）而导致导入报错。
+    """
+    global _AVAILABLE_MD_EXTENSIONS
+    if _AVAILABLE_MD_EXTENSIONS is not None:
+        return _AVAILABLE_MD_EXTENSIONS
+
+    candidates = [
+        "markdown.extensions.tables",
+        "markdown.extensions.sane_lists",
+    ]
+
+    available: list[str] = []
+    for ext in candidates:
+        try:
+            importlib.import_module(ext)
+        except Exception:
+            continue
+        else:
+            available.append(ext)
+
+    if not available:
+        logger.warning(
+            "Markdown: 未检测到可用的可选扩展，使用核心功能渲染。"
+        )
+
+    _AVAILABLE_MD_EXTENSIONS = available
+    return _AVAILABLE_MD_EXTENSIONS
+
+
 def render_markdown(
     content: str | None, base_path: Path | None = None
 ) -> str:
     """
-    将 Markdown/HTML 内容渲染成 HTML，并为 <img> 自动添加点击链接，为表格添加样式。
+    将 Markdown/HTML 内容渲染成 HTML，并为 <img> 自动添加点击链接，为表格和列表添加样式。
+
+    仅使用当前环境中实际存在的官方扩展，避免因为缺失扩展导致导入错误。
     """
     if not content:
         return ""
@@ -230,28 +268,33 @@ def render_markdown(
     processed = content.replace("\r\n", "\n")
     stripped = processed.strip()
 
-    if stripped.startswith("<") and stripped.endswith(">"):
-        html = processed.replace("\n", "<br>") if "\n" in processed else processed
-    else:
-        # 使用 python-markdown 自带的 extra 扩展，它包含表格等增强功能
-        # 需要使用完整模块路径以兼容当前 markdown 版本
-        html = markdown.markdown(
-            processed,
-            extensions=[
-                "markdown.extensions.extra",
-                "markdown.extensions.sane_lists",
-            ],
+    try:
+        if stripped.startswith("<") and stripped.endswith(">"):
+            html = (
+                processed.replace("\n", "<br>") if "\n" in processed else processed
+            )
+        else:
+            # 使用 python-markdown 渲染 Markdown，仅启用当前环境中可用的官方扩展
+            extensions = _detect_markdown_extensions()
+            if extensions:
+                html = markdown.markdown(processed, extensions=extensions)
+            else:
+                html = markdown.markdown(processed)
+
+        # 为表格添加样式
+        html = _add_table_styles(html)
+        # 为列表添加样式
+        html = _add_list_styles(html)
+        # 为图片添加点击链接并处理相对路径
+        html = _IMG_PATTERN.sub(
+            _create_image_wrapper(base_path, remote_image_cache), html
         )
-    # 为表格添加样式
-    html = _add_table_styles(html)
-    # 为列表添加样式
-    html = _add_list_styles(html)
-    # 为图片添加点击链接并处理相对路径
-    html = _IMG_PATTERN.sub(
-        _create_image_wrapper(base_path, remote_image_cache), html
-    )
-    
-    return html
+
+        return html
+    except Exception as exc:
+        # 防御性处理：Markdown 渲染出错时不影响主流程，记录错误并回退到原始文本
+        logger.error("Markdown 渲染失败，将返回原始文本: %s", exc, exc_info=True)
+        return content or ""
 
 
 def _create_image_wrapper(
