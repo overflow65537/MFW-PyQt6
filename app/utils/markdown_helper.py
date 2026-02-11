@@ -233,10 +233,14 @@ def render_markdown(
     if stripped.startswith("<") and stripped.endswith(">"):
         html = processed.replace("\n", "<br>") if "\n" in processed else processed
     else:
-        # 使用 extra 扩展，它包含了表格支持（tables是extra的子扩展）
+        # 使用 python-markdown 自带的 extra 扩展，它包含表格等增强功能
+        # 需要使用完整模块路径以兼容当前 markdown 版本
         html = markdown.markdown(
             processed,
-            extensions=["extra", "sane_lists"],
+            extensions=[
+                "markdown.extensions.extra",
+                "markdown.extensions.sane_lists",
+            ],
         )
     # 为表格添加样式
     html = _add_table_styles(html)
