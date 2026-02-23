@@ -793,10 +793,12 @@ class TaskFlowRunner(QObject):
             controller_name = controller_cfg.task_option.get("controller_type", "")
         else:
             raise ValueError("未找到控制器配置")
-        controller_override = ""
+        attach_resource_path: list = []
         for controller in self.task_service.interface.get("controller", []):
             if controller["name"] == controller_name:
-                controller_override = controller.get("resource", "")
+                raw_attach = controller.get("attach_resource_path")
+                if isinstance(raw_attach, list):
+                    attach_resource_path = [p for p in raw_attach if isinstance(p, str) and (p or "").strip()]
                 break
         if not resource_target:
             logger.warning("未找到资源目标，尝试直接从配置中获取资源路径")
@@ -848,9 +850,23 @@ class TaskFlowRunner(QObject):
             gpu_idx = res_cfg.task_option.get("gpu", -1) if res_cfg else -1
             await self.maafw.load_resource(resource, gpu_idx)
             logger.debug(f"资源加载完成: {resource}")
-        if controller_override:
-            logger.debug(f"加载控制器资源: {controller_override}")
-            await self.maafw.load_resource(controller_override, gpu_idx)
+        # v2.2.0：控制器 attach_resource_path，在 resource.path 加载完成后额外加载
+        bundle_path_str = self.bundle_path or "./"
+        bundle_base = Path(bundle_path_str)
+        if not bundle_base.is_absolute():
+            bundle_base = (Path.cwd() / bundle_base).resolve()
+        for path_item in attach_resource_path:
+            if self.need_stop:
+                return False
+            raw = str(path_item).replace("{PROJECT_DIR}", "").strip().lstrip("\\/")
+            if not raw:
+                continue
+            resource = (bundle_base / raw).resolve()
+            if not resource.exists():
+                logger.warning(f"控制器附加资源不存在，已跳过: {resource}")
+                continue
+            logger.debug(f"加载控制器附加资源: {resource}")
+            await self.maafw.load_resource(resource, gpu_idx)
         return True
 
     async def run_task(self, task_id: str, skip_speedrun: bool = False):
