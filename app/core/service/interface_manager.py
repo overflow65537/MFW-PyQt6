@@ -137,6 +137,9 @@ class InterfaceManager:
             self._original_interface = {}
             return
 
+        # 解析 import 字段：加载并合并其他 PI 文件中的 task 和 option
+        self._resolve_imports()
+
         # 检查 agent 嵌入式配置并尝试转换
         self.apply_agent_customization()
 
@@ -261,6 +264,70 @@ class InterfaceManager:
                 return f.read()
         except (OSError, UnicodeDecodeError):
             return value
+
+    def _deep_merge_option(self, base: Dict[str, Any], override: Dict[str, Any]) -> None:
+        """
+        将 override 深度合并到 base（仅合并 option 结构：同键为 dict 则递归，否则 override 覆盖）。
+        """
+        for key, ov_val in override.items():
+            if key not in base:
+                base[key] = deepcopy(ov_val)
+            elif isinstance(base[key], dict) and isinstance(ov_val, dict):
+                self._deep_merge_option(base[key], ov_val)
+            else:
+                base[key] = deepcopy(ov_val)
+
+    def _resolve_imports(self) -> None:
+        """
+        解析 interface 的 import 字段：
+        按顺序加载每个路径对应的 PI 文件，仅合并其中的 task 和 option 到当前配置。
+        路径为相对于 interface 同目录的相对路径。
+        """
+        import_paths = self._original_interface.get("import")
+        if not isinstance(import_paths, list):
+            return
+        to_remove = []
+        for i, item in enumerate(import_paths):
+            if not isinstance(item, str):
+                to_remove.append(i)
+        for i in reversed(to_remove):
+            import_paths.pop(i)
+        if not import_paths:
+            return
+
+        for rel_path in import_paths:
+            path_str = (rel_path or "").strip()
+            if not path_str:
+                continue
+            target = Path(path_str)
+            if not target.is_absolute():
+                target = (self._interface_dir / target).resolve()
+            if not target.exists() or not target.is_file():
+                logger.warning(f"import 文件不存在或不是文件，已跳过: {target}")
+                continue
+            try:
+                with open(target, "r", encoding="utf-8") as f:
+                    imported = jsonc.load(f)
+            except (OSError, UnicodeDecodeError, jsonc.JSONDecodeError) as e:
+                logger.warning(f"加载 import 文件失败 {target}: {e}")
+                continue
+
+            # 仅合并 task 和 option
+            if isinstance(imported.get("task"), list):
+                base_tasks = self._original_interface.setdefault("task", [])
+                if not isinstance(base_tasks, list):
+                    base_tasks = []
+                    self._original_interface["task"] = base_tasks
+                base_tasks.extend(imported["task"])
+            if isinstance(imported.get("option"), dict):
+                base_option = self._original_interface.setdefault("option", {})
+                if not isinstance(base_option, dict):
+                    base_option = {}
+                    self._original_interface["option"] = base_option
+                self._deep_merge_option(base_option, imported["option"])
+
+        # 合并完成后移除 import 字段，避免下游误用
+        self._original_interface.pop("import", None)
 
     def _auto_fill_label(self, data: Any):
         """
@@ -407,6 +474,8 @@ class InterfaceManager:
             self._interface_dir = path.parent
             with open(path, "r", encoding="utf-8") as f:
                 self._original_interface = jsonc.load(f)
+
+            self._resolve_imports()
 
             # 选择语言（逻辑与 initialize 尽量保持一致）
             if language is not None:
