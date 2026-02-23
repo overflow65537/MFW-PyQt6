@@ -76,6 +76,14 @@ class OptionService:
                     self.task_service.refresh_hidden_flags()
                 except Exception:
                     pass
+            # 控制器类型变化时，重新计算当前任务的 form_structure（按 interface.option[*].controller 过滤），并通知 UI 刷新选项表单
+            if "controller_type" in option_data and task and not task.is_base_task():
+                interface = getattr(self.task_service, "interface", None)
+                if interface:
+                    self.form_structure = self.get_form_structure_by_task_name(
+                        task.name, interface
+                    ) or {}
+                    self.signal_bus.options_loaded.emit()
             self.signal_bus.option_updated.emit(option_data)
 
         return success
@@ -324,6 +332,38 @@ class OptionService:
 
         return field_config
 
+    def _is_option_visible_for_controller(
+        self, option_def: Dict[str, Any], current_controller: str
+    ) -> bool:
+        """
+        根据 interface.option[*].controller 判断当前控制器下是否应显示该选项。
+
+        规则（与任务列表 controller 过滤一致）：
+        - 缺省/空：对所有控制器显示
+        - 字符串：仅当当前 controller 与该字符串匹配时显示
+        - 列表：仅当当前 controller 在列表中时显示（不区分大小写）
+        """
+        controllers = option_def.get("controller", None)
+        if controllers in (None, "", [], {}):
+            return True
+        current_norm = (current_controller or "").strip().lower()
+        if not current_norm:
+            return True
+        allowed: list = []
+        if isinstance(controllers, str):
+            if controllers.strip():
+                allowed = [controllers.strip()]
+        elif isinstance(controllers, list):
+            allowed = [
+                str(x).strip()
+                for x in controllers
+                if x is not None and str(x).strip()
+            ]
+        else:
+            return True
+        allowed_norm = {s.lower() for s in allowed if s}
+        return current_norm in allowed_norm
+
     def get_form_structure_by_task_name(
         self, task_name: str, interface: dict
     ) -> Optional[Dict[str, Dict[str, Any]]]:
@@ -356,16 +396,31 @@ class OptionService:
                     form_structure["description"] = task_description
                 # 获取顶层的option定义
                 all_options = interface.get("option", {})
-    
+
+                # 当前选中的控制器类型（用于按 interface.option[*].controller 过滤）
+                current_controller = ""
+                from app.common.constants import _CONTROLLER_
+
+                controller_task = self.task_service.get_task(_CONTROLLER_)
+                if controller_task and isinstance(controller_task.task_option, dict):
+                    current_controller = (
+                        controller_task.task_option.get("controller_type") or ""
+                    )
+
                 # 遍历任务需要的每个选项
                 for option_name in task_option_names:
-                    if option_name in all_options:
-                        option_def = all_options[option_name]
-                        # 使用process_option_def方法递归处理选项定义，传入option_name作为键名
-                        field_config = self.process_option_def(
-                            option_def, all_options, option_name
-                        )
-                        form_structure[option_name] = field_config
+                    if option_name not in all_options:
+                        continue
+                    option_def = all_options[option_name]
+                    if not self._is_option_visible_for_controller(
+                        option_def, current_controller
+                    ):
+                        continue
+                    # 使用process_option_def方法递归处理选项定义，传入option_name作为键名
+                    field_config = self.process_option_def(
+                        option_def, all_options, option_name
+                    )
+                    form_structure[option_name] = field_config
                 break
 
         return form_structure if form_structure else None
