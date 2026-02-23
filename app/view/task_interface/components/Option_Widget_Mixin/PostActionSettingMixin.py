@@ -345,6 +345,7 @@ class PostActionSettingMixin:
         path_label = BodyLabel(self.tr("Program path"))
         self.option_page_layout.addWidget(path_label)
 
+        # PathLineEdit 未传 file_filter 时使用内置跨平台默认（Windows: .exe+全部，macOS/Linux: 全部）
         path_input = PathLineEdit()
         path_input.setPlaceholderText(self.tr("Select executable path"))
         path_input.textChanged.connect(

@@ -781,12 +781,13 @@ class ControllerSettingWidget(QWidget):
         change_callback,
         path_lineedit: bool = False,
         placeholder: str = "",
+        file_filter: str | None = None,
     ):
-        """创建LineEdit组件的通用方法"""
+        """创建LineEdit组件的通用方法。path_lineedit=True 时使用 PathLineEdit；file_filter 为 None 时采用控件内置跨平台默认。"""
         label = BodyLabel(label_text)
         self.parent_layout.addWidget(label)
         if path_lineedit:
-            edit = PathLineEdit()
+            edit = PathLineEdit(file_filter=file_filter)
         else:
             edit = LineEdit()
         if placeholder:

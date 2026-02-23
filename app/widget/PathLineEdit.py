@@ -1,7 +1,16 @@
 """带浏览按钮的路径输入控件"""
+import sys
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QFileDialog
-from qfluentwidgets import LineEdit, ToolButton,FluentIcon as FIF
+from qfluentwidgets import LineEdit, ToolButton, FluentIcon as FIF
+
+
+def _default_file_filter() -> str:
+    """跨平台默认文件过滤：Windows 下可选 .exe，macOS/Linux 下用 All Files (*) 以支持无扩展名可执行文件。"""
+    if sys.platform == "win32":
+        return "Executable (*.exe);;All Files (*.*)"
+    return "All Files (*)"
 
 
 class PathLineEdit(QWidget):
@@ -10,18 +19,18 @@ class PathLineEdit(QWidget):
     功能:
     - 包含一个输入框和一个浏览按钮
     - 点击浏览按钮打开文件选择对话框
-    - 支持自定义文件过滤器
+    - 支持自定义文件过滤器；未传入时按平台使用默认过滤器（Windows: .exe+全部，macOS/Linux: 全部）
     """
 
-    def __init__(self, parent=None, file_filter: str = "All Files (*.*)"):
+    def __init__(self, parent=None, file_filter: str | None = None):
         """初始化路径输入控件
         
         Args:
             parent: 父控件
-            file_filter: 文件过滤器,例如 "Executable Files (*.exe);;All Files (*.*)"
+            file_filter: 文件过滤器，如 "Executable (*.exe);;All Files (*.*)"；为 None 时使用跨平台默认值
         """
         super().__init__(parent)
-        self.file_filter = file_filter
+        self.file_filter = file_filter if file_filter is not None else _default_file_filter()
         self._init_ui()
 
     def _init_ui(self):
