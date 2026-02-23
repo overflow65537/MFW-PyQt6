@@ -22,6 +22,7 @@ MFW-ChainFlow Assistant 外部通知单元
 作者:weinibuliu，overflow65537,FDrag0n
 """
 
+import html
 import re
 import time
 import hmac
@@ -33,6 +34,8 @@ from enum import IntEnum
 
 import requests
 import smtplib
+from email.mime.image import MIMEImage
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from queue import Queue
 from PySide6.QtCore import QThread
@@ -199,10 +202,27 @@ class Lark:
 
 
 class SMTP:
-    def msg(self, msg_dict: dict) -> MIMEText:
+    def msg(self, msg_dict: dict) -> MIMEText | MIMEMultipart:
         sendtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
         msg_text = f"{sendtime}: " + msg_dict["text"]
-        msg = MIMEText(msg_text, "plain", "utf-8")
+        # 根据配置选择纯文本或 HTML（设置-外部通知-发送格式）
+        send_format = msg_dict.get("format", "plain")
+        if send_format == "html":
+            body = "<pre>" + html.escape(msg_text) + "</pre>"
+            text_part = MIMEText(body, "html", "utf-8")
+        else:
+            text_part = MIMEText(msg_text, "plain", "utf-8")
+
+        image_bytes = msg_dict.get("image_bytes")
+        if image_bytes:
+            msg = MIMEMultipart()
+            msg.attach(text_part)
+            img = MIMEImage(image_bytes, _subtype="png")
+            img.add_header("Content-Disposition", "attachment", filename="screenshot.png")
+            msg.attach(img)
+        else:
+            msg = text_part
+
         msg["Subject"] = msg_dict["title"]
         msg["From"] = cfg.get(cfg.Notice_SMTP_user_name)
         msg["To"] = cfg.get(cfg.Notice_SMTP_receive_mail)
@@ -691,20 +711,31 @@ def should_send_notice(event: NoticeTiming) -> bool:
     return cfg.get(config_item)
 
 
-def broadcast_enabled_notices(title: str, text: str) -> None:
-    msg = {"title": title, "text": text}
+def broadcast_enabled_notices(
+    title: str, text: str, image_bytes: bytes | None = None
+) -> None:
+    # 发送格式由设置-外部通知-发送格式决定，供 SMTP 等渠道使用
+    send_format = cfg.get(cfg.notice_send_format) or "plain"
+    msg = {"title": title, "text": text, "format": send_format}
+    if image_bytes:
+        msg["image_bytes"] = image_bytes
     for channel, status_cfg in NOTICE_CHANNEL_STATUS.items():
         if cfg.get(status_cfg):
             send_thread.add_task(channel, msg, True)
             logger.debug(f"{channel}发送通知")
 
 
-def send_notice(event: NoticeTiming, title: str, text: str) -> None:
+def send_notice(
+    event: NoticeTiming,
+    title: str,
+    text: str,
+    image_bytes: bytes | None = None,
+) -> None:
     if not should_send_notice(event):
         logger.debug("跳过通知 %s (%s)，未启用对应的发送时机", event.name, int(event))
         return
     logger.debug(f"发送通知 {event.name} ({int(event)}): {title} - {text}")
-    broadcast_enabled_notices(title, text)
+    broadcast_enabled_notices(title, text, image_bytes)
 
 
 def send_all_enabled_channels(title: str, text: str) -> None:

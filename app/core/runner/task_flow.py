@@ -1,5 +1,6 @@
 import asyncio
 import calendar
+import io
 import os
 import platform
 import re
@@ -38,6 +39,22 @@ from app.core.runner.maafw import (
 from app.utils.controller_utils import ControllerHelper
 
 from app.core.Item import FromeServiceCoordinator, TaskItem
+
+
+def _ndarray_to_png_bytes(ndarray) -> bytes | None:
+    """将 BGR 格式的 numpy 截图转为 PNG 字节（用于随通知发送）。"""
+    try:
+        from PIL import Image
+        # 控制器返回的通常是 BGR，转为 RGB
+        if hasattr(ndarray, "shape") and len(ndarray.shape) >= 3 and ndarray.shape[2] >= 3:
+            pil = Image.fromarray(ndarray[..., ::-1])
+        else:
+            pil = Image.fromarray(ndarray)
+        buf = io.BytesIO()
+        pil.save(buf, format="PNG")
+        return buf.getvalue()
+    except Exception:
+        return None
 
 
 class TaskFlowRunner(QObject):
@@ -184,6 +201,20 @@ class TaskFlowRunner(QObject):
                 "WARNING", self.tr("Unknown MaaFW error code: {}").format(error_code)
             )
 
+    async def _get_notice_screenshot_bytes(self) -> bytes | None:
+        """若设置中开启「随通知发送截图」且控制器可用，则截屏并返回 PNG 字节，否则返回 None。"""
+        if not cfg.get(cfg.notice_send_screenshot):
+            return None
+        if not getattr(self, "maafw", None) or not getattr(self.maafw, "controller", None):
+            return None
+        try:
+            img = await self.maafw.screencap_test()
+            if img is not None:
+                return _ndarray_to_png_bytes(img)
+        except Exception:
+            pass
+        return None
+
     async def run_tasks_flow(
         self,
         task_id: str | None = None,
@@ -308,10 +339,12 @@ class TaskFlowRunner(QObject):
             signalBus.log_output.emit("INFO", self.tr("Device connected successfully"))
             logger.info("设备连接成功")
             # 发送连接成功通知
+            image_bytes = await self._get_notice_screenshot_bytes()
             send_notice(
                 NoticeTiming.WHEN_CONNECT_SUCCESS,
                 self.tr("Device Connected Successfully"),
                 self.tr("Device has been connected successfully."),
+                image_bytes=image_bytes,
             )
 
             start_time = _time.time()
@@ -444,12 +477,14 @@ class TaskFlowRunner(QObject):
                         signalBus.task_status_changed.emit(task.item_id, "failed")
                         # 发送任务失败通知
                         if not self._manual_stop:
+                            image_bytes = await self._get_notice_screenshot_bytes()
                             send_notice(
                                 NoticeTiming.WHEN_TASK_FAILED,
                                 self.tr("Task Failed"),
                                 self.tr(
                                     "Task '{}' failed and the flow was terminated."
                                 ).format(task.name),
+                                image_bytes=image_bytes,
                             )
                         await self.stop_task()
                         break
@@ -465,10 +500,12 @@ class TaskFlowRunner(QObject):
                         signalBus.task_status_changed.emit(task.item_id, "failed")
                         # 发送任务失败通知
                         if not self._manual_stop:
+                            image_bytes = await self._get_notice_screenshot_bytes()
                             send_notice(
                                 NoticeTiming.WHEN_TASK_FAILED,
                                 self.tr("Task Failed"),
                                 self.tr("Task '{}' was aborted.").format(task.name),
+                                image_bytes=image_bytes,
                             )
                     else:
                         # 记录任务结果
@@ -476,12 +513,14 @@ class TaskFlowRunner(QObject):
                         self._task_results[task.item_id] = status
                         signalBus.task_status_changed.emit(task.item_id, status)
                         # 发送任务成功通知
+                        image_bytes = await self._get_notice_screenshot_bytes()
                         send_notice(
                             NoticeTiming.WHEN_TASK_SUCCESS,
                             self.tr("Task Completed"),
                             self.tr(
                                 "Task '{}' has been completed successfully."
                             ).format(task.name),
+                            image_bytes=image_bytes,
                         )
 
                 except Exception as exc:
@@ -490,12 +529,14 @@ class TaskFlowRunner(QObject):
                     signalBus.task_status_changed.emit(task.item_id, "failed")
                     # 发送任务失败通知
                     if not self._manual_stop:
+                        image_bytes = await self._get_notice_screenshot_bytes()
                         send_notice(
                             NoticeTiming.WHEN_TASK_FAILED,
                             self.tr("Task Failed"),
                             self.tr("Task '{}' failed with error: {}").format(
                                 task.name, str(exc)
                             ),
+                            image_bytes=image_bytes,
                         )
 
                 # 清除当前执行任务记录
@@ -561,10 +602,12 @@ class TaskFlowRunner(QObject):
                 if log_text and not is_single_task_mode:
                     # 注意：外部通知不应阻断后续完成后操作（关闭控制器/关机/退出等）
                     try:
+                        image_bytes = await self._get_notice_screenshot_bytes()
                         send_notice(
                             NoticeTiming.WHEN_POST_TASK,
                             self.tr("Task Flow Completed"),
                             log_text,
+                            image_bytes=image_bytes,
                         )
                     except Exception as exc:
                         logger.warning(
@@ -922,10 +965,12 @@ class TaskFlowRunner(QObject):
             logger.error(f"任务 '{task.name}' 执行失败")
             # 发送任务失败通知
             if not self._manual_stop:
+                image_bytes = await self._get_notice_screenshot_bytes()
                 send_notice(
                     NoticeTiming.WHEN_TASK_FAILED,
                     self.tr("Task Failed"),
                     self.tr("Task '{}' execution failed.").format(task.name),
+                    image_bytes=image_bytes,
                 )
             self._stop_task_timeout()
             return
@@ -1071,6 +1116,7 @@ class TaskFlowRunner(QObject):
 
             # 发送外部通知（类型为"任务超时"），内容为任务总结中的日志
             notice_content = log_content if log_content else timeout_message
+            # 超时回调为同步，不在此处截屏；可后续改为异步调度
             send_notice(
                 NoticeTiming.WHEN_TASK_TIMEOUT,
                 self.tr("Task running time too long"),

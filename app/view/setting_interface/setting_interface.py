@@ -1221,6 +1221,27 @@ class SettingInterface(QWidget):
         self.noticeGroup.addSettingCard(self.QYWX_noticeTypeCard)
         self.noticeGroup.addSettingCard(self.gotify_noticeTypeCard)
 
+        # 发送格式：纯文本 / HTML（影响如 SMTP 等支持 HTML 的渠道）
+        self.notice_format_card = ComboBoxSettingCard(
+            cfg.notice_send_format,
+            FIF.EDIT,
+            self.tr("Send Format"),
+            self.tr("Plain text or HTML for external notifications (e.g. email body)"),
+            texts=[self.tr("Plain text"), self.tr("HTML")],
+            parent=self.noticeGroup,
+        )
+        self.noticeGroup.addSettingCard(self.notice_format_card)
+
+        # 是否随通知发送截图
+        self.notice_send_screenshot_card = SwitchSettingCard(
+            FIF.PHOTO,
+            self.tr("Attach screenshot to notice"),
+            self.tr("When enabled, a screenshot is captured and sent with notifications (e.g. as email attachment) if controller is available"),
+            cfg.notice_send_screenshot,
+            parent=self.noticeGroup,
+        )
+        self.noticeGroup.addSettingCard(self.notice_send_screenshot_card)
+
         # 添加通知时机设置按钮
         self.notice_timing_card = PrimaryPushSettingCard(
             text=self.tr("Configure"),

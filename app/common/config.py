@@ -223,6 +223,14 @@ class Config(QConfig):
     when_post_task = ConfigItem("Notice", "when_post_task", True)  # 任务流完成时
     when_task_timeout = ConfigItem("Notice", "when_task_timeout", True)  # 任务超时
     when_task_finished = ConfigItem("Notice", "when_task_finished", False)  # 保留兼容性
+    # 外部通知发送格式：plain=纯文本，html=HTML（如邮件正文）
+    notice_send_format = OptionsConfigItem(
+        "Notice", "notice_send_format", "plain", OptionsValidator(["plain", "html"])
+    )
+    # 是否随通知发送截图（任务流发送通知时若控制器可用则附带当前截图）
+    notice_send_screenshot = ConfigItem(
+        "Notice", "notice_send_screenshot", False, BoolValidator()
+    )
 
     # ===== 主窗口 =====
     micaEnabled = ConfigItem("MainWindow", "MicaEnabled", isWin11(), BoolValidator())
