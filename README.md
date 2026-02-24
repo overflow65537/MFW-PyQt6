@@ -70,7 +70,7 @@ MFW-ChainFlow Assistant 旨在为 MaaFramework 用户提供开箱即用的可视
 
 ## 热更新
 
-当资源仓库中包含的 `update_flag.txt` 文件内容和本地的 `update_flag.txt` 内容一致的时候，会启动热更新模式，速度更快并且无需重启。
+当资源仓库中包含的 `update_flag.txt` 文件内容和本地的 `update_flag.txt` 内容不一致的时候，会启动热更新模式，速度更快并且无需重启。
 
 ## 动态加载自定义动作/识别器
 
