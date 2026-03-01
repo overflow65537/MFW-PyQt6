@@ -320,49 +320,17 @@ class TaskFlowRunner(QObject):
             controller_cfg = self.task_service.get_task(_CONTROLLER_)
             if not controller_cfg:
                 raise ValueError("未找到基础预配置任务")
-
-            logger.info("开始连接设备...")
-            signalBus.log_output.emit("INFO", self.tr("Starting to connect device..."))
-            # 清理上一次连接失败原因（若有）
-            self._connect_error_reason = None
-            connected = await self.connect_device(controller_cfg.task_option)
-            if not connected:
-                logger.error("设备连接失败")
-                # 发送连接失败通知
-                send_notice(
-                    NoticeTiming.WHEN_CONNECT_FAILED,
-                    self.tr("Device Connection Failed"),
-                    self._connect_error_reason
-                    or self.tr("Failed to connect to the device."),
-                )
-                return
-            signalBus.log_output.emit("INFO", self.tr("Device connected successfully"))
-            logger.info("设备连接成功")
-            # 发送连接成功通知
-            image_bytes = await self._get_notice_screenshot_bytes()
-            send_notice(
-                NoticeTiming.WHEN_CONNECT_SUCCESS,
-                self.tr("Device Connected Successfully"),
-                self.tr("Device has been connected successfully."),
-                image_bytes=image_bytes,
-            )
-
-            start_time = _time.time()
-            await self.maafw.screencap_test()
-            end_time = _time.time()
-            signalBus.callback.emit(
-                {"name": "speed_test", "details": end_time - start_time}
-            )
-
-            logger.info("开始加载资源...")
             resource_cfg = self.task_service.get_task(_RESOURCE_)
-            controller_cfg = self.task_service.get_task(_CONTROLLER_)
-
             if not resource_cfg:
                 raise ValueError("未找到资源设置任务")
+
+            # 先加载资源，再连接控制器
+            logger.info("开始加载资源...")
+            signalBus.log_output.emit("INFO", self.tr("Starting to load resources..."))
             if not await self.load_resources(resource_cfg.task_option):
                 logger.error("资源加载失败")
                 return
+            logger.info("资源加载完成")
 
             # 将资源选项转换为 pipeline_override 作为默认 override
             from app.core.utils.pipeline_helper import (
@@ -438,6 +406,42 @@ class TaskFlowRunner(QObject):
                     )
                     await self.stop_task()
                     return
+            # 资源加载完成后连接控制器
+            logger.info("开始连接设备...")
+            signalBus.log_output.emit("INFO", self.tr("Starting to connect device..."))
+            self._connect_error_reason = None
+            resource_target = (
+                resource_cfg.task_option.get("resource")
+                if resource_cfg and isinstance(getattr(resource_cfg, "task_option", None), dict)
+                else None
+            )
+            connected = await self.connect_device(
+                controller_cfg.task_option, resource_target=resource_target
+            )
+            if not connected:
+                logger.error("设备连接失败")
+                send_notice(
+                    NoticeTiming.WHEN_CONNECT_FAILED,
+                    self.tr("Device Connection Failed"),
+                    self._connect_error_reason
+                    or self.tr("Failed to connect to the device."),
+                )
+                return
+            signalBus.log_output.emit("INFO", self.tr("Device connected successfully"))
+            logger.info("设备连接成功")
+            image_bytes = await self._get_notice_screenshot_bytes()
+            send_notice(
+                NoticeTiming.WHEN_CONNECT_SUCCESS,
+                self.tr("Device Connected Successfully"),
+                self.tr("Device has been connected successfully."),
+                image_bytes=image_bytes,
+            )
+            start_time = _time.time()
+            await self.maafw.screencap_test()
+            end_time = _time.time()
+            signalBus.callback.emit(
+                {"name": "speed_test", "details": end_time - start_time}
+            )
             tasks_to_run = self._collect_tasks_to_run(
                 task_id=task_id,
                 effective_start_task_id=effective_start_task_id,
@@ -730,7 +734,11 @@ class TaskFlowRunner(QObject):
     def is_running(self) -> bool:
         return self._is_running
 
-    async def connect_device(self, controller_raw: Dict[str, Any]):
+    async def connect_device(
+        self,
+        controller_raw: Dict[str, Any],
+        resource_target: str | None = None,
+    ):
         """连接 MaaFW 控制器"""
         # 连接前置检查：若控制器需要管理员权限但当前不是管理员，则直接中止
         self._connect_error_reason = None
@@ -738,6 +746,26 @@ class TaskFlowRunner(QObject):
             controller_name = controller_raw.get("controller_type")
         except Exception:
             controller_name = None
+
+        # interface 中控制器可带 option，作为默认项与 task_option 合并（task 覆盖 interface）
+        # option 可含 resource/controller 列表：仅当当前 resource/controller 在列表中时才应用（为空则全部显示）
+        if isinstance(controller_name, str) and controller_name:
+            for ctrl in (self.task_service.interface or {}).get("controller", []):
+                if not isinstance(ctrl, dict) or ctrl.get("name") != controller_name:
+                    continue
+                opt = ctrl.get("option")
+                if not isinstance(opt, dict):
+                    break
+                allow_res = opt.get("resource")
+                allow_ctrl = opt.get("controller")
+                if isinstance(allow_res, list) and len(allow_res) and resource_target not in allow_res:
+                    break
+                if isinstance(allow_ctrl, list) and len(allow_ctrl) and controller_name not in allow_ctrl:
+                    break
+                # 合并时排除 option 的 resource/controller 标记字段，不写入实际配置
+                opt_effective = {k: v for k, v in opt.items() if k not in ("resource", "controller")}
+                controller_raw = {**opt_effective, **controller_raw}
+                break
 
         # 首选：从“控制器子配置”读取（例如 controller_raw["Win32控制器"]["permission_required"]）
         permission_required = None

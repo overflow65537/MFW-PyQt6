@@ -680,6 +680,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 清除资源选项（如果存在）
         if hasattr(self, "_clear_resource_options"):
             self._clear_resource_options()
+        # 清除全局选项（如果存在）
+        if hasattr(self, "_clear_global_options"):
+            self._clear_global_options()
 
         # 使用新框架清空选项
         self.option_form_widget._clear_options()

@@ -2,6 +2,7 @@
 选项表单组件
 从 form_structure 生成选项表单，包含多个选项项组件
 """
+import warnings
 from typing import Dict, Any, Optional, TYPE_CHECKING
 from PySide6.QtWidgets import QWidget, QVBoxLayout
 from app.utils.logger import logger
@@ -84,10 +85,17 @@ class OptionFormWidget(QWidget):
         """清空所有选项项"""
         # 先断开所有信号连接，防止在清理过程中触发不必要的信号
         for option_item in list(self.option_items.values()):
+            if option_item is None:
+                continue
+            signal = getattr(option_item, "option_changed", None)
+            if signal is None:
+                continue
             try:
-                option_item.option_changed.disconnect()
-            except:
-                pass  # 如果没有连接，忽略错误
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    signal.disconnect()
+            except Exception:
+                pass  # 如果没有连接或接收端已失效，忽略
         
         # 收集所有需要删除的控件
         widgets_to_delete = []

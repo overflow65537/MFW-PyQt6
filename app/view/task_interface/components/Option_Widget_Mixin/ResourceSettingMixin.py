@@ -35,6 +35,11 @@ class ResourceSettingMixin:
         # 资源选项表单组件
         if not hasattr(self, "resource_option_form_widget"):
             self.resource_option_form_widget: Optional[OptionFormWidget] = None
+        # 全局选项（interface.global_option）
+        if not hasattr(self, "global_option_label"):
+            self.global_option_label = None
+        if not hasattr(self, "global_option_form_widget"):
+            self.global_option_form_widget: Optional[OptionFormWidget] = None
         # 构建资源映射表
         self._rebuild_resource_mapping()
 
@@ -99,6 +104,8 @@ class ResourceSettingMixin:
         
         # 根据当前资源渲染资源选项（如果有）
         self._update_resource_options()
+        # 渲染全局选项（如果有 interface.global_option）
+        self._update_global_options()
 
     def _create_resource_option(self):
         """创建资源选择下拉框"""
@@ -374,7 +381,109 @@ class ResourceSettingMixin:
                 form_structure[option_name] = field_config
         
         return form_structure if form_structure else None
-    
+
+    def _build_global_option_form_structure(self) -> Optional[Dict[str, Any]]:
+        """从 interface.global_option 构建全局选项的表单结构。与 task/resource/controller 同级，无则返回 None。"""
+        interface = self.service_coordinator.interface
+        global_option_def = interface.get("global_option")
+        if not global_option_def:
+            return None
+        all_options = interface.get("option", {})
+        if not all_options:
+            return None
+        option_service = self.service_coordinator.option_service
+        form_structure = {}
+        if isinstance(global_option_def, list):
+            for option_name in global_option_def:
+                if option_name in all_options:
+                    option_def = all_options[option_name]
+                    field_config = option_service.process_option_def(
+                        option_def, all_options, option_name
+                    )
+                    form_structure[option_name] = field_config
+        elif isinstance(global_option_def, dict):
+            for option_name, option_def in global_option_def.items():
+                if option_name == "description":
+                    continue
+                field_config = option_service.process_option_def(
+                    option_def, all_options, option_name
+                )
+                form_structure[option_name] = field_config
+        return form_structure if form_structure else None
+
+    def _update_global_options(self):
+        """根据 interface.global_option 更新全局选项区域：有则显示「全局选项」标题与表单，无则不显示。"""
+        form_structure = self._build_global_option_form_structure()
+        if not form_structure:
+            self._clear_global_options()
+            return
+        from app.common.constants import _RESOURCE_
+        option_service = self.service_coordinator.option_service
+        resource_task = option_service.task_service.get_task(_RESOURCE_)
+        option_config = (resource_task.task_option.get("global_options", {}) if resource_task else {}) or {}
+        if self.global_option_label is None:
+            self.global_option_label = BodyLabel(self.tr("全局选项"))
+            self.option_page_layout.addWidget(self.global_option_label)
+        if self.global_option_form_widget is None:
+            self.global_option_form_widget = OptionFormWidget()
+            self.option_page_layout.addWidget(self.global_option_form_widget)
+        self.global_option_form_widget.build_from_structure(form_structure, option_config)
+        self._connect_global_option_signals()
+
+    def _clear_global_options(self):
+        """移除全局选项标题与表单。"""
+        if self.global_option_label is not None:
+            label = self.global_option_label
+            self.global_option_label = None
+            if label.parent():
+                self.option_page_layout.removeWidget(label)
+            label.deleteLater()
+        if self.global_option_form_widget is not None:
+            widget = self.global_option_form_widget
+            self.global_option_form_widget = None
+            if hasattr(widget, "option_items"):
+                for option_item in widget.option_items.values():
+                    try:
+                        option_item.option_changed.disconnect()
+                    except Exception:
+                        pass
+            widget._clear_options()
+            if widget.parent():
+                self.option_page_layout.removeWidget(widget)
+            widget.deleteLater()
+
+    def _connect_global_option_signals(self):
+        """连接全局选项变化信号。"""
+        if self.global_option_form_widget is None:
+            return
+        for option_item in self.global_option_form_widget.option_items.values():
+            option_item.option_changed.connect(self._on_global_option_changed)
+            self._connect_global_option_child_signals(option_item)
+
+    def _connect_global_option_child_signals(self, option_item):
+        """递归连接全局选项子项信号。"""
+        for child_widget in option_item.child_options.values():
+            child_widget.option_changed.connect(self._on_global_option_changed)
+            self._connect_global_option_child_signals(child_widget)
+
+    def _on_global_option_changed(self, key: str, value: Any):
+        """全局选项变化时写入 Resource 任务的 task_option.global_options。"""
+        from app.common.constants import _RESOURCE_
+        option_service = self.service_coordinator.option_service
+        resource_task = option_service.task_service.get_task(_RESOURCE_)
+        if not resource_task:
+            return
+        if self.global_option_form_widget is None:
+            return
+        all_options = self.global_option_form_widget.get_options()
+        if not isinstance(resource_task.task_option, dict):
+            resource_task.task_option = {}
+        resource_task.task_option["global_options"] = dict(all_options)
+        option_service.task_service.update_task(resource_task)
+        if option_service.current_task_id == _RESOURCE_:
+            option_service.current_options.update(all_options)
+            option_service.signal_bus.option_updated.emit(all_options)
+
     def _update_resource_options_hidden_state(self, current_resource_option_names: list):
         """更新资源选项的 hidden 状态（当资源切换时调用）
         
