@@ -56,7 +56,11 @@ class CallbackLogProcessor(QObject):
             if details:
                 # 使用全局 i18n 服务，根据原始 label 翻译为当前语言文本
                 details = get_i18n_service().translate_label(details)
-                signalBus.log_output.emit("INFO", details)
+                # 获取 display 渠道列表，默认为 ["log"]
+                display_channels = signal.get("display", ["log"])
+                if isinstance(display_channels, str):
+                    display_channels = [display_channels]
+                self._dispatch_display(details, display_channels)
 
     def _handle_resource_signal(self, status: int):
         """处理资源加载信号 - 只输出失败"""
@@ -88,6 +92,29 @@ class CallbackLogProcessor(QObject):
         elif status == 3:
             message = self.tr("Task execution failed: ") + task_text
             signalBus.log_output.emit("ERROR", message)
+
+    def _dispatch_display(self, message: str, channels: list):
+        """
+        根据 display 渠道列表分发消息
+
+        :param message: 已翻译/替换占位符后的消息文本
+        :param channels: display 渠道列表，如 ["log", "toast"]
+        """
+        for channel in channels:
+            channel = channel.strip().lower() if isinstance(channel, str) else ""
+            if channel == "log":
+                signalBus.log_output.emit("INFO", message)
+            elif channel == "toast":
+                signalBus.focus_toast.emit(message)
+            elif channel == "notification":
+                signalBus.focus_notification.emit(message)
+            elif channel == "dialog":
+                signalBus.focus_dialog.emit(message)
+            elif channel == "modal":
+                signalBus.focus_modal.emit(message)
+            else:
+                # 未知渠道，默认走日志
+                signalBus.log_output.emit("INFO", message)
 
     def _latency_level(self, latency_ms: int) -> str:
         """根据延迟时间确定日志级别"""

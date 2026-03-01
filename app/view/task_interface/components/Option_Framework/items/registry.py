@@ -148,6 +148,7 @@ def register_default_types():
     from .switch import SwitchOptionItem
     from .input import InputOptionItem
     from .inputs import InputsOptionItem
+    from .checkbox import CheckBoxOptionItem
 
     OptionItemRegistry.register("combobox", ComboBoxOptionItem)
     OptionItemRegistry.register("select", ComboBoxOptionItem)  # select 是 combobox 的别名
@@ -155,8 +156,9 @@ def register_default_types():
     OptionItemRegistry.register("input", InputOptionItem)
     OptionItemRegistry.register("inputs", InputsOptionItem)
     OptionItemRegistry.register("lineedit", InputOptionItem)  # lineedit 向后兼容
+    OptionItemRegistry.register("checkbox", CheckBoxOptionItem)
 
-    logger.debug("已注册默认选项类型: combobox, select, switch, input, inputs, lineedit")
+    logger.debug("\u5df2\u6ce8\u518c\u9ed8\u8ba4\u9009\u9879\u7c7b\u578b: combobox, select, switch, input, inputs, lineedit, checkbox")
 
 
 # 模块加载时自动注册默认类型

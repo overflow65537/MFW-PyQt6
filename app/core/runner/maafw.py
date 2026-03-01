@@ -68,16 +68,41 @@ from app.common.signal_bus import signalBus
 
 class MaaContextSink(ContextEventSink):
     def on_raw_notification(self, context: Context, msg: str, details: dict):
-        if detial := (details.get("focus") or {}).get(msg, ""):
-            detial = detial.replace("{name}", details.get("name", ""))
-            detial = detial.replace("{task_id}", str(details.get("task_id", "")))
-            detial = detial.replace("{list}", details.get("list", ""))
-            signalBus.callback.emit({"name": "context", "details": detial})
-            if msg == "Node.Recognition.Succeeded":
-                if details.get("Abort", False):
-                    signalBus.callback.emit({"name": "abort"})
-                if details.get("Notice", False):
-                    pass
+        focus_entry = (details.get("focus") or {}).get(msg)
+        if not focus_entry:
+            return
+
+        # 兼容两种格式：
+        # 旧格式 (str): "focus": { "Node.Action.Starting": "{name} 开始执行" }
+        # 新格式 (dict): "focus": { "Node.Action.Starting": { "content": "{name} 开始执行", "display": "toast" } }
+        if isinstance(focus_entry, str):
+            content = focus_entry
+            display = ["log"]
+        elif isinstance(focus_entry, dict):
+            content = focus_entry.get("content", "")
+            raw_display = focus_entry.get("display", "log")
+            if isinstance(raw_display, list):
+                display = raw_display
+            else:
+                display = [raw_display]
+        else:
+            return
+
+        if not content:
+            return
+
+        # 替换占位符
+        content = content.replace("{name}", details.get("name", ""))
+        content = content.replace("{task_id}", str(details.get("task_id", "")))
+        content = content.replace("{list}", details.get("list", ""))
+
+        signalBus.callback.emit({"name": "context", "details": content, "display": display})
+
+        if msg == "Node.Recognition.Succeeded":
+            if details.get("Abort", False):
+                signalBus.callback.emit({"name": "abort"})
+            if details.get("Notice", False):
+                pass
 
     def on_node_next_list(
         self,

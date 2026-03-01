@@ -340,52 +340,105 @@ class TaskService:
 
             cases = option_template.get("cases", [])
             if cases:
-                selected_case = _select_default_case(option_template)
-                if not selected_case:
-                    return {}
-                selected_case_name = selected_case.get("name", "")
-                option_result: dict[str, Any] = {"value": selected_case_name}
+                option_type = (option_template.get("type") or "select").lower()
 
-                children: dict[str, Any] = {}
-                for case in cases:
-                    case_name = case.get("name", "")
-                    option_values = case.get("option")
-                    if not option_values:
-                        continue
+                if option_type == "checkbox":
+                    # checkbox 类型：default_case 是列表，value 也是列表
+                    default_case_names = option_template.get("default_case", [])
+                    if isinstance(default_case_names, str):
+                        default_case_names = [default_case_names]
+                    # 如果没有指定 default_case，默认不选中任何项
+                    selected_case_names_set = set(default_case_names)
+                    option_result: dict[str, Any] = {"value": list(default_case_names)}
 
-                    if isinstance(option_values, str):
-                        child_keys = [option_values]
-                    elif isinstance(option_values, list):
-                        child_keys = [
-                            value for value in option_values if isinstance(value, str)
-                        ]
-                    else:
-                        continue
-
-                    for index, child_option_key in enumerate(child_keys):
-                        child_template = interface_options.get(child_option_key)
-                        if not child_template:
+                    children: dict[str, Any] = {}
+                    for case in cases:
+                        case_name = case.get("name", "")
+                        option_values = case.get("option")
+                        if not option_values:
                             continue
 
-                        child_default = _gen_option_defaults_recursive(
-                            child_option_key, child_template
-                        )
-                        child_entry = _normalize_child_payload(child_default)
-
-                        if case_name != selected_case_name:
-                            child_entry["hidden"] = True
+                        if isinstance(option_values, str):
+                            child_keys = [option_values]
+                        elif isinstance(option_values, list):
+                            child_keys = [
+                                value for value in option_values if isinstance(value, str)
+                            ]
                         else:
-                            child_entry.pop("hidden", None)
+                            continue
 
-                        child_key = (
-                            f"{option_key}_child_{case_name}_{child_option_key}_{index}"
-                        )
-                        children[child_key] = child_entry
+                        for index, child_option_key in enumerate(child_keys):
+                            child_template = interface_options.get(child_option_key)
+                            if not child_template:
+                                continue
 
-                if children:
-                    option_result["children"] = children
+                            child_default = _gen_option_defaults_recursive(
+                                child_option_key, child_template
+                            )
+                            child_entry = _normalize_child_payload(child_default)
 
-                return option_result
+                            if case_name not in selected_case_names_set:
+                                child_entry["hidden"] = True
+                            else:
+                                child_entry.pop("hidden", None)
+
+                            child_key = (
+                                f"{option_key}_child_{case_name}_{child_option_key}_{index}"
+                            )
+                            children[child_key] = child_entry
+
+                    if children:
+                        option_result["children"] = children
+
+                    return option_result
+                else:
+                    # select / switch 类型
+                    selected_case = _select_default_case(option_template)
+                    if not selected_case:
+                        return {}
+                    selected_case_name = selected_case.get("name", "")
+                    option_result: dict[str, Any] = {"value": selected_case_name}
+
+                    children: dict[str, Any] = {}
+                    for case in cases:
+                        case_name = case.get("name", "")
+                        option_values = case.get("option")
+                        if not option_values:
+                            continue
+
+                        if isinstance(option_values, str):
+                            child_keys = [option_values]
+                        elif isinstance(option_values, list):
+                            child_keys = [
+                                value for value in option_values if isinstance(value, str)
+                            ]
+                        else:
+                            continue
+
+                        for index, child_option_key in enumerate(child_keys):
+                            child_template = interface_options.get(child_option_key)
+                            if not child_template:
+                                continue
+
+                            child_default = _gen_option_defaults_recursive(
+                                child_option_key, child_template
+                            )
+                            child_entry = _normalize_child_payload(child_default)
+
+                            if case_name != selected_case_name:
+                                child_entry["hidden"] = True
+                            else:
+                                child_entry.pop("hidden", None)
+
+                            child_key = (
+                                f"{option_key}_child_{case_name}_{child_option_key}_{index}"
+                            )
+                            children[child_key] = child_entry
+
+                    if children:
+                        option_result["children"] = children
+
+                    return option_result
 
             return {}
 

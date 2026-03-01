@@ -189,7 +189,7 @@ class OptionFormWidget(QWidget):
         """
         # 第一步：先隐藏所有子选项容器
         for option_item in self.option_items.values():
-            if option_item.config_type in ["combobox", "switch"]:
+            if option_item.config_type in ["combobox", "switch", "checkbox"]:
                 for child_widget in option_item.child_options.values():
                     child_widget.setVisible(False)
                 option_item.children_wrapper.setVisible(False)
@@ -227,6 +227,10 @@ class OptionFormWidget(QWidget):
                 # 由于 set_value 已经处理了可见性，这里主要是为了处理边缘情况
                 if option_item.current_value is not None:
                     option_item._update_children_visibility(option_item.current_value, skip_animation=True)
+            elif option_item.config_type == "checkbox":
+                # checkbox 类型使用自己的子选项更新逻辑
+                if option_item.current_value is not None:
+                    option_item._update_children_for_checkbox(skip_animation=True)
     
     def _apply_single_child_config(self, option_item: "OptionItemBase", option_value: str, child_config: Any):
         """

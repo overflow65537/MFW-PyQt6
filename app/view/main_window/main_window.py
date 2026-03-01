@@ -1047,6 +1047,11 @@ class MainWindow(MSFluentWindow):
             self._on_check_auto_run_after_update_cancel
         )
         signalBus.all_updates_completed.connect(self._on_all_updates_completed)
+        # focus display 渠道信号
+        signalBus.focus_toast.connect(self._on_focus_toast)
+        signalBus.focus_notification.connect(self._on_focus_notification)
+        signalBus.focus_dialog.connect(self._on_focus_dialog)
+        signalBus.focus_modal.connect(self._on_focus_modal)
         # 多资源适配启用后，将 BundleInterface 添加到导航栏
         signalBus.multi_resource_adaptation_enabled.connect(
             self._on_multi_resource_adaptation_enabled
@@ -2068,6 +2073,47 @@ class MainWindow(MSFluentWindow):
             return 1500
         duration = len(message) * 150
         return max(1500, duration)
+
+    def _on_focus_toast(self, message: str):
+        """处理 focus toast 渠道：应用内轻提示，短暂浮现后自动消失"""
+        InfoBar.info(
+            title="",
+            content=message,
+            orient=Qt.Orientation.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=self._calculate_info_bar_duration(message),
+            parent=self,
+        )
+
+    def _on_focus_notification(self, message: str):
+        """处理 focus notification 渠道：推送到 OS 通知中心"""
+        if self._ensure_tray_icon() and self._tray_icon is not None:
+            self._tray_icon.showMessage(
+                self.windowTitle() or "MFW",
+                message,
+                QSystemTrayIcon.MessageIcon.Information,
+                5000,
+            )
+        else:
+            # 降级为 toast
+            self._on_focus_toast(message)
+
+    def _on_focus_dialog(self, message: str):
+        """处理 focus dialog 渠道：非阻塞式对话框，任务在后台继续执行"""
+        from qfluentwidgets import MessageBox
+
+        dialog = MessageBox(self.tr("Info"), message, self)
+        dialog.cancelButton.hide()
+        dialog.show()
+
+    def _on_focus_modal(self, message: str):
+        """处理 focus modal 渠道：阻塞式弹窗，任务暂停等待用户确认"""
+        from qfluentwidgets import MessageBox
+
+        dialog = MessageBox(self.tr("Confirm"), message, self)
+        dialog.cancelButton.hide()
+        dialog.exec()
 
     def is_admin(self):
         """判断是否为管理员权限"""

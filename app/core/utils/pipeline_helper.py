@@ -9,7 +9,7 @@
 未来移除旧格式支持时，只需将 _child_key_parser 替换为 ChildKeyParser() 即可。
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 from app.utils.logger import logger
 
 
@@ -276,6 +276,11 @@ def _get_option_pipeline_override(
             logger.error(f"Select/Switch 选项值必须是字符串，实际类型: {type(option_value)}")
             return {}
         return _get_select_pipeline_override(option_config, option_value)
+    elif option_type == "checkbox":
+        if not isinstance(option_value, list):
+            logger.error(f"Checkbox 选项值必须是列表，实际类型: {type(option_value)}")
+            return {}
+        return _get_checkbox_pipeline_override(option_config, option_value)
     elif option_type == "input":
         if not isinstance(option_value, dict):
             logger.error(f"Input 选项值必须是字典，实际类型: {type(option_value)}")
@@ -310,6 +315,35 @@ def _get_select_pipeline_override(
     available = [str(c.get("name", "")) for c in cases]
     logger.debug(f"未找到 case: {case_name}（可用: {available}）")
     return {}
+
+
+def _get_checkbox_pipeline_override(
+    option_config: Dict[str, Any], selected_names: List[str]
+) -> Dict[str, Any]:
+    """获取 checkbox 类型选项的 pipeline_override
+
+    多个被选中 case 的 pipeline_override 按照 cases 数组中的定义顺序
+    依次深度合并，与用户勾选的先后顺序无关。
+
+    Args:
+        option_config: 选项配置
+        selected_names: 用户选中的 case name 列表
+
+    Returns:
+        合并后的 pipeline_override
+    """
+    cases = option_config.get("cases", [])
+    selected_set = set(selected_names)
+    merged: Dict[str, Any] = {}
+
+    for case in cases:
+        case_name = case.get("name", "")
+        if case_name in selected_set:
+            override = case.get("pipeline_override", {})
+            if override:
+                _deep_merge_dict(merged, override)
+
+    return merged
 
 
 def _get_input_pipeline_override(

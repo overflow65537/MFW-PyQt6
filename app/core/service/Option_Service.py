@@ -282,8 +282,8 @@ class OptionService:
                 if "pattern_msg" not in input_item and option_pattern_msg:
                     input_item["pattern_msg"] = option_pattern_msg
         else:
-            # 默认类型为combobox
-            field_config["type"] = "combobox"
+            # 默认类型为combobox；checkbox 类型也走同样的逻辑
+            field_config["type"] = option_type if option_type == "checkbox" else "combobox"
             options = []
             children = {}
 
@@ -329,6 +329,9 @@ class OptionService:
             # 如果有子选项，添加children属性
             if children:
                 field_config["children"] = children
+            # 传递 default_case（checkbox 使用列表，select 使用字符串）
+            if "default_case" in option_def:
+                field_config["default_case"] = option_def["default_case"]
 
         return field_config
 

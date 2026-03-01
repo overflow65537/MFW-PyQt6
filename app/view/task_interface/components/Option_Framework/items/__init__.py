@@ -7,6 +7,7 @@ from .combobox import ComboBoxOptionItem
 from .switch import SwitchOptionItem
 from .input import InputOptionItem
 from .inputs import InputsOptionItem
+from .checkbox import CheckBoxOptionItem
 from .registry import OptionItemRegistry
 
 __all__ = [
@@ -16,5 +17,6 @@ __all__ = [
     "SwitchOptionItem",
     "InputOptionItem",
     "InputsOptionItem",
+    "CheckBoxOptionItem",
     "OptionItemRegistry",
 ]
