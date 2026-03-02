@@ -24,40 +24,38 @@ from app.view.task_interface.components.Option_Framework.animations import Heigh
 
 
 class TooltipComboBox(ComboBox):
-    """继承自 ComboBox 的 tooltip 支持"""
+    """继承自 ComboBox，支持下拉菜单选项的描述文本显示"""
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent=parent)
-        self._item_tooltips: List[Optional[str]] = []
+        self._item_descriptions: List[Optional[str]] = []
 
     def addItem(
         self,
         text: str,
         icon: Any = None,
         userData: Any = None,
-        tooltip: Optional[str] = None,
+        description: Optional[str] = None,
     ):
         super().addItem(text, icon, userData)
-        self._item_tooltips.append(tooltip)
+        self._item_descriptions.append(description)
 
     def removeItem(self, index: int):
         super().removeItem(index)
-        if 0 <= index < len(self._item_tooltips):
-            self._item_tooltips.pop(index)
+        if 0 <= index < len(self._item_descriptions):
+            self._item_descriptions.pop(index)
 
     def clear(self):
         super().clear()
-        self._item_tooltips.clear()
+        self._item_descriptions.clear()
 
-    def _showComboMenu(self):
-        super()._showComboMenu()
-        menu = getattr(self, "dropMenu", None)
-        if not menu:
-            return
+    def _createComboMenu(self):
+        """创建使用描述委托的下拉菜单"""
+        from app.view.task_interface.components.Option_Framework.items.base import (
+            _DescriptionComboBoxMenu,
+        )
 
-        for action, tooltip in zip(menu.actions(), self._item_tooltips):
-            if tooltip:
-                action.setToolTip(tooltip)
+        return _DescriptionComboBoxMenu(self._item_descriptions, parent=self)
 
 
 class OptionItemWidget(QWidget):
@@ -288,17 +286,16 @@ class OptionItemWidget(QWidget):
                 label = str(option)
                 name = label
 
-            display_label = f"{label} ?" if option_description else label
             icon_to_use = self._resolve_icon(option_icon)
             self.control_widget.addItem(
-                display_label,
+                label,
                 icon_to_use,
                 None,
                 option_description,
             )
 
-            self._option_map[display_label] = name
-            self._reverse_option_map[name] = display_label
+            self._option_map[label] = name
+            self._reverse_option_map[name] = label
         
         self.main_option_layout.addWidget(self.control_widget)
         

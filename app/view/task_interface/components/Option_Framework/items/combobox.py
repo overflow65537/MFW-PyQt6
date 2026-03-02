@@ -53,17 +53,16 @@ class ComboBoxOptionItem(OptionItemBase):
                 label = str(option)
                 name = label
 
-            display_label = f"{label} ?" if option_description else label
             icon_to_use = self._resolve_icon(option_icon)
             self.control_widget.addItem(
-                display_label,
+                label,
                 icon_to_use,
                 None,
                 option_description,
             )
 
-            self._option_map[display_label] = name
-            self._reverse_option_map[name] = display_label
+            self._option_map[label] = name
+            self._reverse_option_map[name] = label
 
         self.main_option_layout.addWidget(self.control_widget)
 
