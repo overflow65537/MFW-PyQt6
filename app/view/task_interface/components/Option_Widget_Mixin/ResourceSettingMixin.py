@@ -451,7 +451,7 @@ class ResourceSettingMixin:
         resource_task = option_service.task_service.get_task(_RESOURCE_)
         option_config = (resource_task.task_option.get("global_options", {}) if resource_task else {}) or {}
         if self.global_option_label is None:
-            self.global_option_label = BodyLabel(self.tr("全局选项"))
+            self.global_option_label = BodyLabel(self.tr("Global Option"))
             self.option_page_layout.addWidget(self.global_option_label)
         if self.global_option_form_widget is None:
             self.global_option_form_widget = OptionFormWidget()
