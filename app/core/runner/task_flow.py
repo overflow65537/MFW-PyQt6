@@ -332,14 +332,26 @@ class TaskFlowRunner(QObject):
                 return
             logger.info("资源加载完成")
 
-            # 将资源选项转换为 pipeline_override 作为默认 override
+            # 构建默认 pipeline_override
+            # 合并优先级（从低到高）：global_option < resource.option < controller.option
+            # 任务级 override 在 run_task 中合并（最高优先级）
             from app.core.utils.pipeline_helper import (
                 get_pipeline_override_from_task_option,
+                get_controller_option_pipeline_override,
+                _deep_merge_dict,
             )
 
+            # 1. global_option + resource.option（已在函数内按优先级合并）
             self._default_pipeline_override = get_pipeline_override_from_task_option(
                 self.task_service.interface, resource_cfg.task_option, _RESOURCE_
             )
+
+            # 2. controller.option（优先级高于 resource.option 和 global_option）
+            controller_override = get_controller_option_pipeline_override(
+                self.task_service.interface, controller_cfg.task_option
+            )
+            if controller_override:
+                _deep_merge_dict(self._default_pipeline_override, controller_override)
 
             if self.task_service.interface.get("agent", None):
                 self.maafw.agent_data_raw = self.task_service.interface.get(
@@ -976,10 +988,13 @@ class TaskFlowRunner(QObject):
         entry = raw_info.get("entry", "") or ""
         task_pipeline_override = raw_info.get("pipeline_override", {})
 
-        # 合并默认 override（来自 Resource 任务）和任务自身的 override
-        # 先应用默认 override，再应用任务 override（任务 override 优先级更高）
-        pipeline_override = self._default_pipeline_override.copy()
-        pipeline_override.update(task_pipeline_override)
+        # 合并默认 override（global + resource + controller）和任务自身的 override
+        # 任务 override 优先级最高，使用深度合并以正确处理嵌套字典
+        import copy
+        from app.core.utils.pipeline_helper import _deep_merge_dict
+
+        pipeline_override = copy.deepcopy(self._default_pipeline_override)
+        _deep_merge_dict(pipeline_override, task_pipeline_override)
 
         if not self.maafw.resource:
             logger.error("资源未初始化，无法执行任务")

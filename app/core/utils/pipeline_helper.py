@@ -96,6 +96,65 @@ _child_key_parser = LegacyChildKeyParser()
 # ==================== 公共 API ====================
 
 
+def get_controller_option_pipeline_override(
+    interface: Dict[str, Any], controller_task_option: Dict[str, Any]
+) -> Dict[str, Any]:
+    """从控制器选项中提取 pipeline_override
+
+    根据当前控制器类型，查找 interface.json 中对应控制器定义的 option 列表，
+    然后从 controller_task_option["controller_options"] 中提取对应选项的 pipeline_override。
+
+    注意：当前 interface.json 中的控制器定义尚无 option 字段，此函数为预留接口，
+    待未来控制器定义添加 option 字段后自动生效。
+
+    Args:
+        interface: interface.json 配置
+        controller_task_option: Controller 任务的 task_option
+
+    Returns:
+        Dict: 控制器选项的 pipeline_override
+    """
+    if not interface or not controller_task_option:
+        return {}
+
+    controller_type = controller_task_option.get("controller_type")
+    if not controller_type:
+        return {}
+
+    # 在 interface.controller 中找到当前控制器定义
+    controllers = interface.get("controller", [])
+    controller_def = None
+    for ctrl in controllers:
+        if ctrl.get("name") == controller_type:
+            controller_def = ctrl
+            break
+
+    if not controller_def:
+        return {}
+
+    # 检查控制器定义是否声明了可用选项
+    controller_option_names = controller_def.get("option", [])
+    if not controller_option_names:
+        return {}
+
+    # 从 controller_task_option 中获取控制器选项值
+    controller_options = controller_task_option.get("controller_options", {})
+    if not controller_options:
+        return {}
+
+    options = interface.get("option", {})
+    merged_override: Dict[str, Any] = {}
+
+    for option_name, option_value in controller_options.items():
+        # 只处理控制器定义中声明的选项
+        if option_name in controller_option_names:
+            _process_option_recursive(
+                options, option_name, option_value, merged_override
+            )
+
+    return merged_override
+
+
 def get_pipeline_override_from_task_option(
     interface: Dict[str, Any], task_options: Dict[str, Any], task_id: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -138,16 +197,26 @@ def get_pipeline_override_from_task_option(
     merged_override = {}
     options = interface.get("option", {})
 
-    # 如果是 Resource 任务，从 resource_options 字段中提取选项
+    # 如果是 Resource 任务，按优先级顺序处理各层选项
+    # 合并优先级（从低到高）：global_options < resource_options
+    # controller_options 由 get_controller_option_pipeline_override 单独处理
     from app.common.constants import _RESOURCE_
-    if task_id == _RESOURCE_ and "resource_options" in task_options:
-        # 只处理 resource_options 字段中的选项
-        resource_options = task_options["resource_options"]
-        for option_name, option_value in resource_options.items():
-            # 处理选项（包括递归处理子选项）
-            _process_option_recursive(
-                options, option_name, option_value, merged_override
-            )
+    if task_id == _RESOURCE_:
+        # 1. 先处理 global_options（最低优先级）
+        if "global_options" in task_options:
+            global_options = task_options["global_options"]
+            for option_name, option_value in global_options.items():
+                _process_option_recursive(
+                    options, option_name, option_value, merged_override
+                )
+
+        # 2. 再处理 resource_options（优先级高于 global_options）
+        if "resource_options" in task_options:
+            resource_options = task_options["resource_options"]
+            for option_name, option_value in resource_options.items():
+                _process_option_recursive(
+                    options, option_name, option_value, merged_override
+                )
     else:
         # 非 Resource 任务，按原来的逻辑处理所有选项
         for option_name, option_value in task_options.items():
