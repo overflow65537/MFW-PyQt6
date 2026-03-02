@@ -674,8 +674,25 @@ class ServiceCoordinator:
         logger.error(f"保存主配置失败，bundle '{bundle_name}' 未被删除")
         return False
 
-    def add_config(self, config_item: ConfigItem) -> str:
-        """添加配置，传入 ConfigItem 对象，返回新配置ID"""
+    def get_presets(self) -> List[Dict[str, Any]]:
+        """获取 interface 中定义的所有预设配置列表。
+
+        Returns:
+            预设列表，每个元素是一个预设字典（含 name, label, description, icon, task 等字段）。
+            如果没有预设则返回空列表。
+        """
+        presets = self._interface.get("preset", [])
+        if not isinstance(presets, list):
+            return []
+        return presets
+
+    def add_config(self, config_item: ConfigItem, preset_name: str | None = None) -> str:
+        """添加配置，传入 ConfigItem 对象，返回新配置ID
+
+        Args:
+            config_item: 配置项对象
+            preset_name: 可选的预设名称。如果指定，则在初始化任务后应用预设的勾选状态和选项值。
+        """
         new_id = self.config_service.create_config(config_item)
         if new_id:
             # Select the new config
@@ -684,11 +701,32 @@ class ServiceCoordinator:
             # Initialize the new config with tasks from interface
             self.task_service.init_new_config()
 
+            # Apply preset if specified
+            if preset_name:
+                preset = self._find_preset(preset_name)
+                if preset:
+                    self.task_service.apply_preset(preset)
+
             # Notify UI incrementally
             self.fs_signal_bus.fs_config_added.emit(
                 self.config_service.get_config(new_id)
             )
         return new_id
+
+    def _find_preset(self, preset_name: str) -> Dict[str, Any] | None:
+        """根据预设名称查找预设配置。
+
+        Args:
+            preset_name: 预设的 name 字段值
+
+        Returns:
+            匹配的预设字典，未找到返回 None
+        """
+        presets = self.get_presets()
+        for preset in presets:
+            if isinstance(preset, dict) and preset.get("name") == preset_name:
+                return preset
+        return None
 
     def delete_config(self, config_id: str) -> bool:
         """删除配置，传入 config id"""

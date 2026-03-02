@@ -110,10 +110,23 @@ class AddConfigDialog(BaseAddDialog):
         self.resource_layout.addWidget(self.resource_label)
         self.resource_layout.addLayout(self.resource_row_layout)
 
+        # 预设配置下拉框
+        self.preset_layout = QVBoxLayout()
+        self.preset_label = BodyLabel(self.tr("Preset:"), self)
+        self.preset_combo = ComboBox(self)
+        self._presets: list[dict] = []
+        self._selected_preset_name: str | None = None
+        self._load_presets()
+
+        self.preset_layout.addWidget(self.preset_label)
+        self.preset_layout.addWidget(self.preset_combo)
+
         # 将布局添加到对话框
         self.viewLayout.addLayout(self.name_layout)
         self.viewLayout.addSpacing(10)
         self.viewLayout.addLayout(self.resource_layout)
+        self.viewLayout.addSpacing(10)
+        self.viewLayout.addLayout(self.preset_layout)
 
         # 存储数据的变量
         self.config_name = ""
@@ -134,10 +147,40 @@ class AddConfigDialog(BaseAddDialog):
                 if index >= 0:
                     self.resource_combo.setCurrentIndex(index)
 
+    def _load_presets(self):
+        """从 interface 中加载预设配置到下拉框"""
+        self.preset_combo.clear()
+        self._presets = []
+        self._selected_preset_name = None
+
+        # 默认选项：不使用预设
+        default_label = self.tr("Default (all tasks)")
+        self.preset_combo.addItem(default_label)
+
+        # 从 service_coordinator 获取预设列表
+        if self._service_coordinator:
+            presets = self._service_coordinator.get_presets()
+            if isinstance(presets, list):
+                self._presets = presets
+                for preset in presets:
+                    if not isinstance(preset, dict):
+                        continue
+                    # 显示 label（如果有），否则使用 name
+                    display_name = preset.get("label") or preset.get("name", "")
+                    if display_name:
+                        self.preset_combo.addItem(display_name)
+
     def on_confirm(self):
         """确认添加配置"""
         self.config_name = self.name_edit.text().strip()
         self.resource_name = self.resource_combo.currentText()
+
+        # 获取选中的预设
+        preset_index = self.preset_combo.currentIndex()
+        if preset_index > 0 and preset_index - 1 < len(self._presets):
+            self._selected_preset_name = self._presets[preset_index - 1].get("name")
+        else:
+            self._selected_preset_name = None
 
         # 验证输入
         if not self.config_name:
@@ -255,6 +298,10 @@ class AddConfigDialog(BaseAddDialog):
     def get_config_item(self):
         """获取创建的配置项对象"""
         return self.item
+
+    def get_selected_preset_name(self) -> str | None:
+        """获取选中的预设名称，如果未选择预设则返回 None"""
+        return self._selected_preset_name
 
 
 class AddTaskDialog(BaseAddDialog):

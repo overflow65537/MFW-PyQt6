@@ -124,6 +124,204 @@ class TaskService:
         self.know_task = []
         self._check_know_task()
 
+    def apply_preset(self, preset: Dict[str, Any]) -> bool:
+        """在 init_new_config 之后应用预设配置。
+
+        预设会修改已添加任务的勾选状态和选项值，但不会从 know_task 中移除任务。
+        所有 interface 中的任务仍然保留在 know_task 中。
+
+        Args:
+            preset: 预设配置字典，包含 name, task 等字段。
+                preset["task"] 是一个列表，每个元素包含:
+                - name: 对应 interface task 的 name
+                - enabled: 可选，是否勾选（默认 True）
+                - option: 可选，该任务各配置项的预设值
+
+        Returns:
+            是否成功应用预设
+        """
+        if not preset or not isinstance(preset, dict):
+            return False
+
+        preset_tasks = preset.get("task", [])
+        if not isinstance(preset_tasks, list):
+            return False
+
+        config_id = self.config_service.current_config_id
+        if not config_id:
+            return False
+        config = self.config_service.get_config(config_id)
+        if not config:
+            return False
+
+        # 构建预设任务名 -> 预设任务配置 的映射
+        preset_task_map: Dict[str, Dict[str, Any]] = {}
+        for pt in preset_tasks:
+            if isinstance(pt, dict) and isinstance(pt.get("name"), str):
+                preset_task_map[pt["name"]] = pt
+
+        interface_options = self.interface.get("option", {}) if self.interface else {}
+
+        # 遍历当前配置的所有任务，应用预设
+        changed_tasks: List[TaskItem] = []
+        for task in config.tasks:
+            if task.is_base_task():
+                continue
+
+            if task.name in preset_task_map:
+                pt = preset_task_map[task.name]
+                # 应用勾选状态
+                task.is_checked = pt.get("enabled", True)
+                # 应用选项值
+                preset_option = pt.get("option")
+                if isinstance(preset_option, dict) and isinstance(task.task_option, dict):
+                    self._apply_preset_option(task, preset_option, interface_options)
+                changed_tasks.append(task)
+            else:
+                # 特殊任务（spt: true）无论是否在预设中都保持原状态，不取消勾选
+                if task.is_special:
+                    continue
+                # 不在预设中的普通任务，默认不勾选
+                if task.is_checked:
+                    task.is_checked = False
+                    changed_tasks.append(task)
+
+        # 批量更新
+        if changed_tasks:
+            self.update_tasks(changed_tasks)
+
+        return True
+
+    def _apply_preset_option(
+        self,
+        task: TaskItem,
+        preset_option: Dict[str, Any],
+        interface_options: Dict[str, Any],
+    ) -> None:
+        """将预设的选项值应用到任务的 task_option 中。
+
+        preset_option 的格式:
+            键: 对应 interface option 中的键名
+            值: 取决于 option.type:
+                - select/switch: string (case.name)
+                - checkbox: string[] (case.name 数组)
+                - input: record<string, string> (输入字段 name → 值)
+
+        Args:
+            task: 要修改的任务
+            preset_option: 预设的选项值
+            interface_options: interface 中定义的所有选项模板
+        """
+        if not isinstance(task.task_option, dict):
+            task.task_option = {}
+
+        for option_key, preset_value in preset_option.items():
+            if option_key not in task.task_option:
+                # 该选项在当前任务中不存在，跳过
+                continue
+
+            option_template = interface_options.get(option_key, {})
+            option_type = (option_template.get("type") or "select").lower()
+
+            current_option = task.task_option[option_key]
+            if not isinstance(current_option, dict):
+                current_option = {}
+                task.task_option[option_key] = current_option
+
+            if option_type == "checkbox":
+                # checkbox 类型：preset_value 应为 string[]（case.name 数组）
+                if isinstance(preset_value, list):
+                    current_option["value"] = list(preset_value)
+                    # 更新 children 的 hidden 状态
+                    self._update_children_visibility_checkbox(
+                        current_option, preset_value, option_key, option_template, interface_options
+                    )
+            elif option_type in ("select", "switch"):
+                # select/switch 类型：preset_value 应为 string（case.name）
+                if isinstance(preset_value, str):
+                    current_option["value"] = preset_value
+                    # 更新 children 的 hidden 状态
+                    self._update_children_visibility_select(
+                        current_option, preset_value, option_key, option_template, interface_options
+                    )
+            elif option_type == "input":
+                # input 类型：preset_value 应为 record<string, string>
+                if isinstance(preset_value, dict):
+                    if not isinstance(current_option.get("value"), dict):
+                        current_option["value"] = {}
+                    current_option["value"].update(preset_value)
+
+    def _update_children_visibility_select(
+        self,
+        option_data: Dict[str, Any],
+        selected_case_name: str,
+        option_key: str,
+        option_template: Dict[str, Any],
+        interface_options: Dict[str, Any],
+    ) -> None:
+        """更新 select/switch 类型选项的子选项可见性。"""
+        children = option_data.get("children")
+        if not isinstance(children, dict):
+            return
+
+        cases = option_template.get("cases", [])
+        for case in cases:
+            case_name = case.get("name", "")
+            option_values = case.get("option")
+            if not option_values:
+                continue
+
+            if isinstance(option_values, str):
+                child_keys = [option_values]
+            elif isinstance(option_values, list):
+                child_keys = [v for v in option_values if isinstance(v, str)]
+            else:
+                continue
+
+            for index, child_option_key in enumerate(child_keys):
+                child_key = f"{option_key}_child_{case_name}_{child_option_key}_{index}"
+                if child_key in children:
+                    if case_name == selected_case_name:
+                        children[child_key].pop("hidden", None)
+                    else:
+                        children[child_key]["hidden"] = True
+
+    def _update_children_visibility_checkbox(
+        self,
+        option_data: Dict[str, Any],
+        selected_case_names: List[str],
+        option_key: str,
+        option_template: Dict[str, Any],
+        interface_options: Dict[str, Any],
+    ) -> None:
+        """更新 checkbox 类型选项的子选项可见性。"""
+        children = option_data.get("children")
+        if not isinstance(children, dict):
+            return
+
+        selected_set = set(selected_case_names)
+        cases = option_template.get("cases", [])
+        for case in cases:
+            case_name = case.get("name", "")
+            option_values = case.get("option")
+            if not option_values:
+                continue
+
+            if isinstance(option_values, str):
+                child_keys = [option_values]
+            elif isinstance(option_values, list):
+                child_keys = [v for v in option_values if isinstance(v, str)]
+            else:
+                continue
+
+            for index, child_option_key in enumerate(child_keys):
+                child_key = f"{option_key}_child_{case_name}_{child_option_key}_{index}"
+                if child_key in children:
+                    if case_name in selected_set:
+                        children[child_key].pop("hidden", None)
+                    else:
+                        children[child_key]["hidden"] = True
+
     def reload_interface(self, interface: Dict[str, Any]):
         """刷新 interface 数据，用于热更新后同步"""
         logger.info("重新加载 interface 数据...")

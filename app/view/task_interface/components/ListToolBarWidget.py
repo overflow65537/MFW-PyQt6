@@ -225,7 +225,8 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
         if dlg.exec():
             cfg = dlg.get_config_item()
             if cfg:
-                self.service_coordinator.add_config(cfg)
+                preset_name = dlg.get_selected_preset_name()
+                self.service_coordinator.add_config(cfg, preset_name=preset_name)
 
     def remove_config(self):
         """移除配置项"""

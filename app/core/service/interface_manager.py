@@ -312,7 +312,7 @@ class InterfaceManager:
                 logger.warning(f"加载 import 文件失败 {target}: {e}")
                 continue
 
-            # 仅合并 task 和 option
+            # 仅合并 task、option 和 preset
             if isinstance(imported.get("task"), list):
                 base_tasks = self._original_interface.setdefault("task", [])
                 if not isinstance(base_tasks, list):
@@ -325,6 +325,12 @@ class InterfaceManager:
                     base_option = {}
                     self._original_interface["option"] = base_option
                 self._deep_merge_option(base_option, imported["option"])
+            if isinstance(imported.get("preset"), list):
+                base_preset = self._original_interface.setdefault("preset", [])
+                if not isinstance(base_preset, list):
+                    base_preset = []
+                    self._original_interface["preset"] = base_preset
+                base_preset.extend(imported["preset"])
 
         # 合并完成后移除 import 字段，避免下游误用
         self._original_interface.pop("import", None)
