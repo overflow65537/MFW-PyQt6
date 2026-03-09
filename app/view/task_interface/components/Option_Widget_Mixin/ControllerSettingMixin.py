@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Type
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout
 from PySide6.QtGui import QIntValidator
 from PySide6.QtCore import QTimer
@@ -29,6 +29,37 @@ from maa.define import (
 )
 
 
+def _build_method_options_from_enum(
+    enum_cls: Type[Any],
+    *,
+    include_null: bool,
+    include_default: bool,
+) -> Dict[str, int]:
+    """
+    从 maa.define 枚举自动构建下拉框选项字典。
+
+    约定：
+    - `null`、`default` 采用兼容旧配置的展示键名；
+    - 仅当枚举真实存在 `Default` 成员时才生成 `default`；
+    - 其余成员按枚举定义顺序自动加入，避免硬编码维护。
+    """
+    members = getattr(enum_cls, "__members__", {})
+    options: Dict[str, int] = {}
+
+    if include_null and "Null" in members:
+        options["null"] = int(members["Null"].value)
+
+    if include_default and "Default" in members:
+        options["default"] = int(members["Default"].value)
+
+    for name, member in members.items():
+        if name in {"Null", "All", "Default"}:
+            continue
+        options[name] = int(member.value)
+
+    return options
+
+
 class ControllerSettingWidget(QWidget):
     """
     控制器设置组件 - 固定UI实现
@@ -42,44 +73,28 @@ class ControllerSettingWidget(QWidget):
     _set_description: Any = None
 
     # 映射表定义
-    WIN32_INPUT_METHOD_ALIAS_VALUES: Dict[str, int] = {
-        "null": 0,
-        "default": -1,
-        "Seize": 1,
-        "SendMessage": 1 << 1,
-        "PostMessage": 1 << 2,
-        "LegacyEvent": 1 << 3,
-        "PostThreadMessage": 1 << 4,
-        "SendMessageWithCursorPos": 1 << 5,
-        "PostMessageWithCursorPos": 1 << 6,
-    }
-    WIN32_SCREENCAP_METHOD_ALIAS_VALUES: Dict[str, int] = {
-        "null": 0,
-        "default": -1,
-        "GDI": 1,
-        "FramePool": 1 << 1,
-        "DXGI_DesktopDup": 1 << 2,
-        "DXGI_DesktopDup_Window": 1 << 3,
-        "PrintWindow": 1 << 4,
-        "ScreenDC": 1 << 5,
-    }
-    ADB_SCREENCAP_OPTIONS: Dict[str, int] = {
-        "default": -1,
-        "EncodeToFileAndPull": 1,
-        "Encode": 2,
-        "RawWithGzip": 4,
-        "RawByNetcat": 8,
-        "MinicapDirect": 16,
-        "MinicapStream": 32,
-        "EmulatorExtras": 64,
-    }
-    ADB_INPUT_OPTIONS: Dict[str, int] = {
-        "default": -1,
-        "AdbShell": 1,
-        "MinitouchAndAdbKey": 2,
-        "Maatouch": 4,
-        "EmulatorExtras": 8,
-    }
+    WIN32_INPUT_METHOD_ALIAS_VALUES: Dict[str, int] = _build_method_options_from_enum(
+        MaaWin32InputMethodEnum,
+        include_null=True,
+        include_default=False,
+    )
+    WIN32_SCREENCAP_METHOD_ALIAS_VALUES: Dict[
+        str, int
+    ] = _build_method_options_from_enum(
+        MaaWin32ScreencapMethodEnum,
+        include_null=True,
+        include_default=False,
+    )
+    ADB_SCREENCAP_OPTIONS: Dict[str, int] = _build_method_options_from_enum(
+        MaaAdbScreencapMethodEnum,
+        include_null=False,
+        include_default=True,
+    )
+    ADB_INPUT_OPTIONS: Dict[str, int] = _build_method_options_from_enum(
+        MaaAdbInputMethodEnum,
+        include_null=False,
+        include_default=True,
+    )
     GAMEPAD_TYPE_OPTIONS: Dict[str, int] = {
         "Xbox360": 0,
         "DualShock4": 1,
@@ -243,12 +258,21 @@ class ControllerSettingWidget(QWidget):
         if method_type is None or not isinstance(value, str):
             return None
 
-        alias_map = self.win32_method_alias_map.get(method_type.lower())
-        if not alias_map:
-            return None
-
         normalized_value = self._normalize_method_name(value)
         if not normalized_value:
+            return None
+
+        # 兼容旧 interface/config 的 "default" 写法：
+        # Win32 枚举本身没有 Default 成员，这里对齐当前连接层默认行为。
+        if normalized_value == "default":
+            mt = method_type.lower()
+            if mt in {"mouse", "keyboard", "input"}:
+                return int(MaaWin32InputMethodEnum.Seize.value)
+            if mt == "screencap":
+                return int(MaaWin32ScreencapMethodEnum.DXGI_DesktopDup.value)
+
+        alias_map = self.win32_method_alias_map.get(method_type.lower())
+        if not alias_map:
             return None
 
         # 直接查找标准化后的键名

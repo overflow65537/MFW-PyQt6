@@ -22,7 +22,12 @@ from app.common.signal_bus import signalBus
 from app.common.config import cfg
 
 from maa.toolkit import Toolkit
-from maa.define import MaaWin32ScreencapMethodEnum
+from maa.define import (
+    MaaWin32ScreencapMethodEnum,
+    MaaWin32InputMethodEnum,
+    MaaAdbInputMethodEnum,
+    MaaAdbScreencapMethodEnum,
+)
 from app.utils.notice import NoticeTiming, send_notice, send_thread
 
 from app.utils.logger import logger
@@ -45,8 +50,13 @@ def _ndarray_to_png_bytes(ndarray) -> bytes | None:
     """将 BGR 格式的 numpy 截图转为 PNG 字节（用于随通知发送）。"""
     try:
         from PIL import Image
+
         # 控制器返回的通常是 BGR，转为 RGB
-        if hasattr(ndarray, "shape") and len(ndarray.shape) >= 3 and ndarray.shape[2] >= 3:
+        if (
+            hasattr(ndarray, "shape")
+            and len(ndarray.shape) >= 3
+            and ndarray.shape[2] >= 3
+        ):
             pil = Image.fromarray(ndarray[..., ::-1])
         else:
             pil = Image.fromarray(ndarray)
@@ -205,7 +215,9 @@ class TaskFlowRunner(QObject):
         """若设置中开启「随通知发送截图」且控制器可用，则截屏并返回 PNG 字节，否则返回 None。"""
         if not cfg.get(cfg.notice_send_screenshot):
             return None
-        if not getattr(self, "maafw", None) or not getattr(self.maafw, "controller", None):
+        if not getattr(self, "maafw", None) or not getattr(
+            self.maafw, "controller", None
+        ):
             return None
         try:
             img = await self.maafw.screencap_test()
@@ -424,7 +436,8 @@ class TaskFlowRunner(QObject):
             self._connect_error_reason = None
             resource_target = (
                 resource_cfg.task_option.get("resource")
-                if resource_cfg and isinstance(getattr(resource_cfg, "task_option", None), dict)
+                if resource_cfg
+                and isinstance(getattr(resource_cfg, "task_option", None), dict)
                 else None
             )
             connected = await self.connect_device(
@@ -770,12 +783,22 @@ class TaskFlowRunner(QObject):
                     break
                 allow_res = opt.get("resource")
                 allow_ctrl = opt.get("controller")
-                if isinstance(allow_res, list) and len(allow_res) and resource_target not in allow_res:
+                if (
+                    isinstance(allow_res, list)
+                    and len(allow_res)
+                    and resource_target not in allow_res
+                ):
                     break
-                if isinstance(allow_ctrl, list) and len(allow_ctrl) and controller_name not in allow_ctrl:
+                if (
+                    isinstance(allow_ctrl, list)
+                    and len(allow_ctrl)
+                    and controller_name not in allow_ctrl
+                ):
                     break
                 # 合并时排除 option 的 resource/controller 标记字段，不写入实际配置
-                opt_effective = {k: v for k, v in opt.items() if k not in ("resource", "controller")}
+                opt_effective = {
+                    k: v for k, v in opt.items() if k not in ("resource", "controller")
+                }
                 controller_raw = {**opt_effective, **controller_raw}
                 break
 
@@ -881,7 +904,11 @@ class TaskFlowRunner(QObject):
             if controller["name"] == controller_name:
                 raw_attach = controller.get("attach_resource_path")
                 if isinstance(raw_attach, list):
-                    attach_resource_path = [p for p in raw_attach if isinstance(p, str) and (p or "").strip()]
+                    attach_resource_path = [
+                        p
+                        for p in raw_attach
+                        if isinstance(p, str) and (p or "").strip()
+                    ]
                 break
         if not resource_target:
             logger.warning("未找到资源目标，尝试直接从配置中获取资源路径")
@@ -1201,8 +1228,19 @@ class TaskFlowRunner(QObject):
         self.adb_controller_config = controller_config
 
         # 提前读取并保存原始的 input_methods 和 screencap_methods
-        raw_input_method = int(controller_config.get("input_methods", -1))
-        raw_screen_method = int(controller_config.get("screencap_methods", -1))
+        # 仅当原配置里显式存在时才在设备发现后恢复，避免覆盖设备探测结果。
+        has_raw_input_method = "input_methods" in controller_config
+        has_raw_screen_method = "screencap_methods" in controller_config
+        raw_input_method = int(
+            controller_config.get(
+                "input_methods", int(MaaAdbInputMethodEnum.Default.value)
+            )
+        )
+        raw_screen_method = int(
+            controller_config.get(
+                "screencap_methods", int(MaaAdbScreencapMethodEnum.Default.value)
+            )
+        )
 
         logger.info("每次连接前自动搜索 ADB 设备...")
         signalBus.log_output.emit("INFO", self.tr("Auto searching ADB devices..."))
@@ -1214,9 +1252,9 @@ class TaskFlowRunner(QObject):
             controller_config = controller_raw[controller_name]
             self.adb_controller_config = controller_config
             # 恢复原始的 input_methods 和 screencap_methods
-            if raw_input_method != -1:
+            if has_raw_input_method:
                 controller_config["input_methods"] = raw_input_method
-            if raw_screen_method != -1:
+            if has_raw_screen_method:
                 controller_config["screencap_methods"] = raw_screen_method
 
         adb_path = controller_config.get("adb_path", "")
@@ -1349,6 +1387,20 @@ class TaskFlowRunner(QObject):
                 if raw_keyboard_method is not None
                 else controller_config.get("keyboard_input_methods", 1)
             )
+
+            def _safe_int(value: Any) -> int | None:
+                try:
+                    return int(value)
+                except (TypeError, ValueError):
+                    return None
+
+            # 兼容旧配置里将 -1 作为 Win32 "default" 的写法。
+            if _safe_int(screencap) == -1:
+                screencap = int(MaaWin32ScreencapMethodEnum.DXGI_DesktopDup.value)
+            if _safe_int(mouse) == -1:
+                mouse = int(MaaWin32InputMethodEnum.Seize.value)
+            if _safe_int(keyboard) == -1:
+                keyboard = int(MaaWin32InputMethodEnum.Seize.value)
             return hwnd_value, screencap, mouse, keyboard
 
         logger.info("每次连接前自动搜索 Win32 窗口...")
