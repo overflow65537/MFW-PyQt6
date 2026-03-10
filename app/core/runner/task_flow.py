@@ -767,10 +767,46 @@ class TaskFlowRunner(QObject):
         """连接 MaaFW 控制器"""
         # 连接前置检查：若控制器需要管理员权限但当前不是管理员，则直接中止
         self._connect_error_reason = None
+        controller_name = ""
         try:
-            controller_name = controller_raw.get("controller_type")
+            controller_type_raw = controller_raw.get("controller_type")
+            if isinstance(controller_type_raw, str):
+                controller_name = controller_type_raw.strip()
+            elif isinstance(controller_type_raw, dict):
+                controller_name = str(
+                    controller_type_raw.get("value", "") or ""
+                ).strip()
         except Exception:
-            controller_name = None
+            controller_name = ""
+
+        if not controller_name:
+            msg = self.tr(
+                "Controller name is empty, please configure controller in settings"
+            )
+            self._connect_error_reason = msg
+            logger.error("控制器名称为空，无法连接设备")
+            signalBus.log_output.emit("ERROR", msg)
+            try:
+                await self.stop_task()
+            except Exception:
+                pass
+            return False
+
+        interface_controller = self._get_interface_controller_entry(controller_name)
+        if not interface_controller:
+            msg = self.tr(
+                "Controller '{}' not found, please reset controller in settings"
+            ).format(controller_name)
+            self._connect_error_reason = msg
+            logger.error(f"未找到控制器名称: {controller_name}")
+            signalBus.log_output.emit("ERROR", msg)
+            try:
+                await self.stop_task()
+            except Exception:
+                pass
+            return False
+
+        controller_name = interface_controller.get("name", controller_name)
 
         # interface 中控制器可带 option，作为默认项与 task_option 合并（task 覆盖 interface）
         # option 可含 resource/controller 列表：仅当当前 resource/controller 在列表中时才应用（为空则全部显示）
@@ -852,7 +888,20 @@ class TaskFlowRunner(QObject):
                 pass
             return False
 
-        controller_type = self._get_controller_type(controller_raw)
+        try:
+            controller_type = self._get_controller_type(controller_raw)
+        except (TypeError, ValueError) as exc:
+            msg = self.tr(
+                "Controller configuration is invalid, please reset controller in settings"
+            )
+            self._connect_error_reason = msg
+            logger.error(f"控制器配置无效: {exc}")
+            signalBus.log_output.emit("ERROR", msg)
+            try:
+                await self.stop_task()
+            except Exception:
+                pass
+            return False
         if self.fs_signal_bus:
             self.fs_signal_bus.fs_start_button_status.emit(
                 {"text": "STOP", "status": "enabled"}
@@ -896,23 +945,49 @@ class TaskFlowRunner(QObject):
         controller_cfg = self.task_service.get_task(_CONTROLLER_)
         gpu_idx = -1
         if controller_cfg:
-            controller_name = controller_cfg.task_option.get("controller_type", "")
+            controller_type_raw = controller_cfg.task_option.get("controller_type", "")
+            if isinstance(controller_type_raw, str):
+                controller_name = controller_type_raw.strip()
+            elif isinstance(controller_type_raw, dict):
+                controller_name = str(
+                    controller_type_raw.get("value", "") or ""
+                ).strip()
+            else:
+                controller_name = ""
         else:
-            raise ValueError("未找到控制器配置")
+            msg = self.tr(
+                "Controller config not found, please configure controller first"
+            )
+            logger.error("未找到控制器配置")
+            signalBus.log_output.emit("ERROR", msg)
+            await self.stop_task()
+            return False
+
+        controller_entry = self._get_interface_controller_entry(controller_name)
+        if not controller_entry:
+            msg = self.tr(
+                "Controller '{}' not found, please reset controller in settings"
+            ).format(controller_name or "unknown")
+            logger.error(f"未找到控制器名称: {controller_name}")
+            signalBus.log_output.emit("ERROR", msg)
+            await self.stop_task()
+            return False
+
         attach_resource_path: list = []
-        for controller in self.task_service.interface.get("controller", []):
-            if controller["name"] == controller_name:
-                raw_attach = controller.get("attach_resource_path")
-                if isinstance(raw_attach, list):
-                    attach_resource_path = [
-                        p
-                        for p in raw_attach
-                        if isinstance(p, str) and (p or "").strip()
-                    ]
-                break
+        raw_attach = controller_entry.get("attach_resource_path")
+        if isinstance(raw_attach, list):
+            attach_resource_path = [
+                p for p in raw_attach if isinstance(p, str) and (p or "").strip()
+            ]
+
         if not resource_target:
-            logger.warning("未找到资源目标，尝试直接从配置中获取资源路径")
-            raise ValueError("未找到资源目标")
+            msg = self.tr(
+                "Resource target is empty, please configure resource in settings"
+            )
+            logger.error("未找到资源目标")
+            signalBus.log_output.emit("ERROR", msg)
+            await self.stop_task()
+            return False
 
         for resource in self.task_service.interface.get("resource", []):
             if resource["name"] == resource_target:
@@ -920,8 +995,18 @@ class TaskFlowRunner(QObject):
                 resource_path = resource["path"]
                 break
 
-        if not resource_path or self.need_stop:
+        if self.need_stop:
+            return False
+
+        if not resource_path:
+            msg = self.tr(
+                "Resource '{}' not found, please reset resource in settings"
+            ).format(resource_target)
             logger.error(f"未找到目标资源: {resource_target}")
+            signalBus.log_output.emit("ERROR", msg)
+            signalBus.log_output.emit(
+                "ERROR", self.tr("please try to reset resource in setting")
+            )
             await self.stop_task()
             return False
 
