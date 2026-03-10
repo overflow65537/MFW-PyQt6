@@ -244,6 +244,7 @@ jobs:
           prerelease: ${{ needs.meta.outputs.is_prerelease }}
 
       - name: Trigger MirrorChyanUploading
+        if: github.repository_owner == 'overflow65537'
         run: |
           gh workflow run --repo $GITHUB_REPOSITORY mirrorchyan
           gh workflow run --repo $GITHUB_REPOSITORY mirrorchyan_release_note
