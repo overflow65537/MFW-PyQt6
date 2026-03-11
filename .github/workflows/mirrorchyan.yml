@@ -5,6 +5,7 @@ on:
 
 jobs:
   mirrorchyan:
+    if: github.repository_owner == 'overflow65537'
     runs-on: macos-latest
 
     steps:
