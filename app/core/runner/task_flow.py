@@ -1381,6 +1381,8 @@ class TaskFlowRunner(QObject):
             input_method,
             config,
         ):
+            # 连接成功后额外等待 5 秒，防止程序初始化未完成
+            await asyncio.sleep(5)
             return True
         elif controller_config.get("emulator_path", ""):
             logger.info("尝试启动模拟器")
@@ -1400,6 +1402,8 @@ class TaskFlowRunner(QObject):
                     ),
                 )
                 if poll_ok:
+                    # 轮询连接成功后额外等待 5 秒，防止程序初始化未完成
+                    await asyncio.sleep(5)
                     return True
                 if self.need_stop:
                     return False
@@ -1407,6 +1411,8 @@ class TaskFlowRunner(QObject):
                 if await self.maafw.connect_adb(
                     adb_path, address, screen_method, input_method, config,
                 ):
+                    # 启动模拟器后首次直接连接成功时，额外等待 5 秒
+                    await asyncio.sleep(5)
                     return True
         signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
         return False
