@@ -192,7 +192,9 @@ def launch_updater_process(*extra_args: str) -> None:
     if sys.platform.startswith("win32"):
         updater_executable = Path("./MFWUpdater1.exe")
         resolved_executable = updater_executable.resolve(strict=False)
-        args = ["-update"] + parent_args + ["--shutdown-timeout", "180"] + extra_arg_list
+        args = (
+            ["-update"] + parent_args + ["--shutdown-timeout", "180"] + extra_arg_list
+        )
         command_line = subprocess.list2cmdline([str(resolved_executable)] + args)
         if _is_running_with_admin_privileges():
             logger.info(
@@ -205,7 +207,9 @@ def launch_updater_process(*extra_args: str) -> None:
     elif sys.platform.startswith(("darwin", "linux")):
         updater_executable = Path("./MFWUpdater1")
         resolved_executable = updater_executable.resolve(strict=False)
-        args = ["-update"] + parent_args + ["--shutdown-timeout", "180"] + extra_arg_list
+        args = (
+            ["-update"] + parent_args + ["--shutdown-timeout", "180"] + extra_arg_list
+        )
         command_line = subprocess.list2cmdline([str(resolved_executable)] + args)
         logger.info("启动更新程序: %s", command_line)
         cmd = [str(resolved_executable)] + args
@@ -1236,7 +1240,9 @@ class SettingInterface(QWidget):
         self.notice_send_screenshot_card = SwitchSettingCard(
             FIF.PHOTO,
             self.tr("Attach screenshot to notice"),
-            self.tr("When enabled, a screenshot is captured and sent with notifications (e.g. as email attachment) if controller is available"),
+            self.tr(
+                "When enabled, a screenshot is captured and sent with notifications (e.g. as email attachment) if controller is available"
+            ),
             cfg.notice_send_screenshot,
             parent=self.noticeGroup,
         )
@@ -1399,7 +1405,9 @@ class SettingInterface(QWidget):
         )
 
         # 初始化时计算描述（按每张图片200KB计算）
-        initial_count = cfg.get(cfg.log_max_images) if hasattr(cfg, 'log_max_images') else 25
+        initial_count = (
+            cfg.get(cfg.log_max_images) if hasattr(cfg, "log_max_images") else 25
+        )
         image_size_kb = 200  # 每张图片200KB
         total_memory_kb = initial_count * image_size_kb
         if total_memory_kb < 1024:
@@ -1407,8 +1415,10 @@ class SettingInterface(QWidget):
         else:
             total_memory_mb = total_memory_kb / 1024
             memory_str = f"{total_memory_mb:.2f} MB"
-        initial_content = self.tr("Set cache image count, current cache usage: {}").format(memory_str)
-        
+        initial_content = self.tr(
+            "Set cache image count, current cache usage: {}"
+        ).format(memory_str)
+
         self.log_max_images_card = SliderSettingCard(
             FIF.PHOTO,
             self.tr("Max log images"),
@@ -2196,21 +2206,23 @@ class SettingInterface(QWidget):
         # 按每张图片200KB计算
         image_size_kb = 200  # 每张图片200KB
         total_memory_kb = value * image_size_kb
-        
+
         # 格式化内存大小显示
         if total_memory_kb < 1024:
             memory_str = f"{total_memory_kb:.0f} KB"
         else:
             total_memory_mb = total_memory_kb / 1024
             memory_str = f"{total_memory_mb:.2f} MB"
-        
+
         # 更新描述文本
-        content = self.tr("Set cache image count, current cache usage: {}").format(memory_str)
-        
-        if hasattr(self, 'log_max_images_card'):
-            if hasattr(self.log_max_images_card, 'setContent'):
+        content = self.tr("Set cache image count, current cache usage: {}").format(
+            memory_str
+        )
+
+        if hasattr(self, "log_max_images_card"):
+            if hasattr(self.log_max_images_card, "setContent"):
                 self.log_max_images_card.setContent(content)
-            elif hasattr(self.log_max_images_card, 'contentLabel'):
+            elif hasattr(self.log_max_images_card, "contentLabel"):
                 self.log_max_images_card.contentLabel.setText(content)
 
     def _update_notice_card_status(self, notice_type: str):
@@ -2717,6 +2729,7 @@ class SettingInterface(QWidget):
         self._bind_stop_button(self.tr("Stop update"), enable=False)
         self._lock_update_button_temporarily()
         logger.info("触发资源重置，强制全量下载最新资源包（跳过 update_flag/hotfix）")
+        signalBus.info_bar_requested.emit("info", self.tr("Starting Reset Resource"))
 
         # 创建强制全量下载的更新器实例
         interface = self._service_coordinator.task.interface or {}

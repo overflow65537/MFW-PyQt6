@@ -2319,230 +2319,230 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>SettingInterface</name>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="409"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="413"/>
         <source>ChainFlow Assistant</source>
         <translation>链程助手</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="468"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="557"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1573"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1622"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="472"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="561"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1583"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1632"/>
         <source>License</source>
         <translation>许可证</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="471"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="475"/>
         <source>GitHub URL</source>
         <translation>GitHub链接</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="473"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="673"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1280"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="477"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="677"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1286"/>
         <source>Update</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="475"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="479"/>
         <source>Open update log</source>
         <translation>打开更新日志</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="534"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="538"/>
         <source>Description: </source>
         <translation>描述</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="620"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="624"/>
         <source>No update log</source>
         <translation>没有更新日志</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="621"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="625"/>
         <source>No update log found locally.
 
 Please check for updates first, or visit the GitHub releases page.</source>
         <translation>本地没有更新日志</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="629"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="633"/>
         <source>Update Log</source>
         <translation>更新日志</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="687"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="691"/>
         <source>Update Now</source>
         <translation>立即更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="782"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="786"/>
         <source>Custom Startup</source>
         <translation>自定义启动</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="786"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="790"/>
         <source>run after startup</source>
         <translation>启动后直接运行</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="787"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="791"/>
         <source>Launch the task immediately after starting the GUI program</source>
         <translation>启动 GUI 程序后立即运行任务</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="793"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="797"/>
         <source>Start minimized</source>
         <translation>最小化启动</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="794"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="798"/>
         <source>Automatically minimize the window right after launch</source>
         <translation>启动后会自动最小化</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="800"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="804"/>
         <source>Minimize to tray (Windows)</source>
         <translation>最小化到托盘（Windows）</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="802"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="806"/>
         <source>When enabled, minimizing the window will hide it to the system tray</source>
         <translation>开启后，最小化窗口将直接隐藏到系统托盘</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="818"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="822"/>
         <source>Personalization</source>
         <translation>个性化设置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="823"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="827"/>
         <source>Mica Effect</source>
         <translation>云母效果</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="824"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="828"/>
         <source>Apply semi transparent to windows and surfaces</source>
         <translation>对窗口和表面应用半透明效果</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="831"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="835"/>
         <source>Application Theme</source>
         <translation>应用主题</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="832"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="836"/>
         <source>Change the appearance of your application</source>
         <translation>更改应用的外观</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="833"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="837"/>
         <source>Light</source>
         <translation>亮色</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="833"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="837"/>
         <source>Dark</source>
         <translation>暗色</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="833"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="854"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="837"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="858"/>
         <source>Use system setting</source>
         <translation>使用系统设置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="839"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="843"/>
         <source>Theme Color</source>
         <translation>主题颜色</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="840"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="844"/>
         <source>Change the theme color of your application</source>
         <translation>更改应用的主题颜色</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="846"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="850"/>
         <source>Interface Zoom</source>
         <translation>界面缩放</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="847"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="851"/>
         <source>Change the size of widgets and fonts</source>
         <translation>更改小部件和字体的大小</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="861"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="865"/>
         <source>Language</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="862"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="866"/>
         <source>Set your preferred language for UI</source>
         <translation>设置您喜欢的用户界面语言</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="869"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="873"/>
         <source>Restore window position</source>
         <translation>恢复上一次窗口位置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="871"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="875"/>
         <source>When enabled, the application reopens at the last recorded size and position</source>
         <translation>当开启后,程序会记住上一次关闭的大小和位置,在下一次开启时恢复</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="878"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="882"/>
         <source>Advanced Settings</source>
         <translation>高级设置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="879"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="883"/>
         <source>Enable to show more options in Pre-configuration</source>
         <translation>打开高级设置可以在启动前配置中展示更多选项</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="887"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="891"/>
         <source>Background Image</source>
         <translation>背景图片</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="889"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="893"/>
         <source>Select an image as application background</source>
         <translation>选择一张图片作为背景图片</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="895"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="899"/>
         <source>Choose an image file (png/jpg/webp/bmp)</source>
         <translation>选择图片文件 (png/jpg/webp/bmp)</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="906"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="910"/>
         <source>Browse image file</source>
         <translation>打开图片选择器</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="924"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="928"/>
         <source>Clear background image</source>
         <translation>清除背景图片</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="934"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="938"/>
         <source>Background Opacity</source>
         <translation>背景图片透明度</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="935"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="939"/>
         <source>Adjust transparency of the background image</source>
         <translation>调整背景图像的透明度</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="959"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="963"/>
         <source>Global Shortcuts</source>
         <translation>全局快捷键</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="967"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="971"/>
         <source>Start task shortcut</source>
         <translation>启动任务快捷键</translation>
     </message>
@@ -2551,7 +2551,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">默认为Ctrl+`,可以在其他窗口中使用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="975"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="979"/>
         <source>Ctrl+</source>
         <translation>Ctrl+</translation>
     </message>
@@ -2560,7 +2560,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">格式:修饰键+对应键;比如 Ctrl+`</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="990"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="994"/>
         <source>Stop task shortcut</source>
         <translation>停止任务快捷键</translation>
     </message>
@@ -2569,7 +2569,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">默认为Alt+`,可以在其他窗口中使用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="996"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1000"/>
         <source>Alt+</source>
         <translation>Alt+</translation>
     </message>
@@ -2578,232 +2578,232 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">格式:修饰键+对应键;比如 Alt+`</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="970"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="974"/>
         <source>Default Ctrl+F1, can also trigger when focus is not on the main window</source>
         <translation>默认快捷键是 Ctrl+F1，即使焦点不在主窗口上也可以触发。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="978"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="982"/>
         <source>Format: Modifier+[Key], e.g. Ctrl+F1</source>
         <translation>格式：修饰键+[按键]，例如 Ctrl+F1</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="992"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="996"/>
         <source>Default Alt+F1, used to interrupt tasks in advance</source>
         <translation>默认快捷键 Alt+F1，用于提前中断任务。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="999"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1003"/>
         <source>Format: Modifier+[Key], e.g. Alt+F1</source>
         <translation>格式：修饰键+[按键]，例如 Alt+F1</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1037"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1040"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1048"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1051"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1041"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1044"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1052"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1055"/>
         <source>Permission denied, shortcuts disabled</source>
         <translation>权限不足，快捷方式已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1067"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1071"/>
         <source>Key cannot be empty</source>
         <translation>快捷键不能为空</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1076"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1080"/>
         <source>Key format is invalid, restored to previous configuration.</source>
         <translation>快捷键格式化失败,恢复原本的配置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1085"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1089"/>
         <source>Ctrl</source>
         <translation>Ctrl</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1085"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1089"/>
         <source>Alt</source>
         <translation>Alt</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1088"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1092"/>
         <source>Start task</source>
         <translation>开始任务</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1090"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1094"/>
         <source>Stop task</source>
         <translation>停止任务</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1094"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1098"/>
         <source>Shortcut must start with %1+, used for %2.</source>
         <translation>快捷键必须开头必须是%1+, 但你使用的 %2.</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1143"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1147"/>
         <source>Notice</source>
         <translation>通知</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1146"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2220"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1150"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2232"/>
         <source>DingTalk Notification Enabled</source>
         <translation>钉钉通知已启用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1148"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2222"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1152"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2234"/>
         <source>DingTalk Notification Disabled</source>
         <translation>钉钉通知已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1151"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1162"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1173"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1185"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1197"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1210"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1155"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1166"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1177"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1189"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1201"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1214"/>
         <source>Modify</source>
         <translation>更改</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1153"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1157"/>
         <source>DingTalk</source>
         <translation>钉钉</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1158"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2226"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1162"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2238"/>
         <source>Lark Notification Enabled</source>
         <translation>飞书通知已启用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1160"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2228"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1164"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2240"/>
         <source>Lark Notification Disabled</source>
         <translation>飞书通知已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1164"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1168"/>
         <source>Lark</source>
         <translation>飞书</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1169"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2232"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1173"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2244"/>
         <source>SMTP Notification Enabled</source>
         <translation>SMTP通知已启用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1171"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2234"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1175"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2246"/>
         <source>SMTP Notification Disabled</source>
         <translation>SMTP通知已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1175"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1179"/>
         <source>SMTP</source>
         <translation>SMTP</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1180"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2238"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1184"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2250"/>
         <source>WxPusher Notification Enabled</source>
         <translation>微信通知已启用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1182"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2240"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1186"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2252"/>
         <source>WxPusher Notification Disabled</source>
         <translation>微信通知已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1187"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1191"/>
         <source>WxPusher</source>
         <translation>微信</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1192"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2244"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1196"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2256"/>
         <source>QYWX Notification Enabled</source>
         <translation>企业微信通知已启用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1194"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2246"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1198"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2258"/>
         <source>QYWX Notification Disabled</source>
         <translation>企业微信通知已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1199"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1203"/>
         <source>QYWX</source>
         <translation>企业微信机器人</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1205"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2250"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1209"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2262"/>
         <source>Gotify Notification Enabled</source>
         <translation>gotify通知已启用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1207"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2252"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1211"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2264"/>
         <source>Gotify Notification Disabled</source>
         <translation>gotify通知已禁用</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1212"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1216"/>
         <source>Gotify</source>
         <translation>Gotify</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1228"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1232"/>
         <source>Send Format</source>
         <translation>发送编码</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1229"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1233"/>
         <source>Plain text or HTML for external notifications (e.g. email body)</source>
         <translation>外部通知（例如电子邮件正文）可以使用纯文本或 HTML 格式。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1230"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1234"/>
         <source>Plain text</source>
         <translation>纯文本</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1230"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1234"/>
         <source>HTML</source>
         <translation>HTML</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1238"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1242"/>
         <source>Attach screenshot to notice</source>
         <translation>通知附上屏幕截图</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1239"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1244"/>
         <source>When enabled, a screenshot is captured and sent with notifications (e.g. as email attachment) if controller is available</source>
         <translation>启用此功能后，如果控制器可用，则会捕获屏幕截图并随通知一起发送（例如，作为电子邮件附件）。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1247"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1253"/>
         <source>Configure</source>
         <translation>配置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1249"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1255"/>
         <source>Notification Timing</source>
         <translation>通知时机</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1250"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1256"/>
         <source>Configure when to send notifications</source>
         <translation>配置何时发送通知</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1260"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1266"/>
         <source>Task Settings</source>
         <translation>任务设置</translation>
     </message>
@@ -2864,300 +2864,305 @@ Please check for updates first, or visit the GitHub releases page.</source>
         <translation type="vanished">任务开始时自动启动监控</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1266"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1272"/>
         <source>Low Power Monitoring Mode</source>
         <translation>低功耗监控模式</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1268"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1274"/>
         <source>Use cached images instead of dedicated monitoring thread, refresh rate: 24 FPS</source>
         <translation>使用缓存图像而非专用监控线程，刷新率：24 FPS</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1285"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1291"/>
         <source>mirrorchyan CDK</source>
         <translation>Mirror酱CDK</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1286"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1462"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1292"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1472"/>
         <source>Enter mirrorchyan CDK for stable update path</source>
         <translation>输入Mirror酱CDK以获取稳定的更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1288"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1294"/>
         <source>About Mirror</source>
         <translation>关于Mirror酱</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1294"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1300"/>
         <source>Automatically update after startup</source>
         <translation>启动后自动更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1295"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1301"/>
         <source>Automatically download and apply updates once available</source>
         <translation>自动进行更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1304"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1310"/>
         <source>select update channel for resource</source>
         <translation>选择更新渠道</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1305"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1311"/>
         <source>select the update channel for the resource</source>
         <translation>为资源选择一个更新渠道</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1312"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1318"/>
         <source>Force use GitHub</source>
         <translation>强制使用GitHub</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1313"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1319"/>
         <source>Force use GitHub for resource update</source>
         <translation>强制使用GitHub更新资源</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1319"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1325"/>
         <source>Reset</source>
         <translation>重置</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1321"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1327"/>
         <source>Reset resource</source>
         <translation>重置资源</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1322"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1328"/>
         <source>Redownload resource package without version/tag check</source>
         <translation>重置资源包</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1328"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1334"/>
         <source>GitHub API Key</source>
         <translation>GitHub API Key</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1330"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1336"/>
         <source>Personal access tokens increase GitHub API rate limits for update checks.</source>
         <translation>个人访问令牌可提高 GitHub API 更新检查的速率限制。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1337"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1343"/>
         <source>Optional token for authenticated GitHub requests</source>
         <translation>用于已验证 GitHub 请求的可选令牌</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1346"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1352"/>
         <source>Use Proxy</source>
         <translation>使用代理</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1348"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1354"/>
         <source>After filling in the proxy settings, all traffic except that to the Mirror will be proxied.</source>
         <translation>填入代理后,会自动进行除mirror酱外所有浏览的代理</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1371"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1377"/>
         <source>Experimental / Compatibility</source>
         <translation>实验性功能</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1375"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1381"/>
         <source>Multi-resource adaptation</source>
         <translation>多资源适应</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1377"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1383"/>
         <source>Experimental. Enable loading multiple resource bundles; may impact stability.</source>
         <translation>实验性功能。启用加载多个资源包；可能会影响稳定性。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1385"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1391"/>
         <source>Save screenshot</source>
         <translation>保存截图</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1386"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1392"/>
         <source>Save a screenshot when experimental features run</source>
         <translation>保存运行时的截图</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1393"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1399"/>
         <source>Include images in log zip</source>
         <translation>日志压缩包中包含图片</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1395"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1401"/>
         <source>Include log images when generating log zip package. The number of images included equals the number displayed in the log interface.</source>
         <translation>生成日志压缩包时，请包含日志镜像文件。包含的镜像文件数量与日志界面中显示的数量一致。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1410"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2208"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1419"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2218"/>
         <source>Set cache image count, current cache usage: {}</source>
         <translation>设置缓存图片数量，当前缓存使用情况：{}</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1414"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1424"/>
         <source>Max log images</source>
         <translation>最大日志图像数</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1468"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1478"/>
         <source>Resource does not support Mirrorchyan, right-click about mirror to unlock input</source>
         <translation>资源不支持Mirror酱,右键关于Mirror以解锁输入</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1491"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1501"/>
         <source>decrypt Mirror CDK failed, please fill in again and save.</source>
         <translation>解密Mirror CDK 失败，请重新填写并保存。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1522"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1532"/>
         <source>Failed to save Mirror CDK: {}</source>
         <translation>保存镜像 CDK 失败：{}</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1555"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1610"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1565"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1620"/>
         <source>Current version: </source>
         <translation>当前版本</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1558"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1568"/>
         <source>Latest version: </source>
         <translation>最新版本</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1561"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1571"/>
         <source>UI version: </source>
         <translation>UI 版本</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1564"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="1613"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1574"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1623"/>
         <source>MaaFW version: </source>
         <translation>MaaFW 版本</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1581"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1591"/>
         <source>MFW-ChainFlow Assistant</source>
         <translation>链程助手</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1594"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1604"/>
         <source>MFW-ChainFlow Assistant provides a visual orchestrator for MaaFramework users, covering configuration management, scheduling, notifications and custom extensions.</source>
         <translation>MFW-ChainFlow Assistant 为 MaaFramework 用户提供了一个可视化编排器，涵盖配置管理、调度、通知和自定义扩展。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1709"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1719"/>
         <source>Select background image</source>
         <translation>选择背景图片</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1711"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1721"/>
         <source>Images (*.png *.jpg *.jpeg *.bmp *.webp)</source>
         <translation>图片 (*.png *.jpg *.jpeg *.bmp *.webp)</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="1728"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="1738"/>
         <source>UI update feature is not implemented yet.</source>
         <translation>UI更新功能尚未实现。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2085"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2095"/>
         <source>Enable multi-resource adaptation?</source>
         <translation>启用多资源自适应?</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2089"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2099"/>
         <source>After enabling the multi-configuration feature, the resource directories will be reconfigured. This operation is irreversible; please proceed with caution.</source>
         <translation>启用多重配置功能后，资源目录将被重新配置。此操作不可逆，请谨慎操作。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2102"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2112"/>
         <source>Enable</source>
         <translation>开启</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2104"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2833"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2114"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2846"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2141"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2151"/>
         <source>Image file does not exist</source>
         <translation>图片不存在</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2307"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2319"/>
         <source>Configuration takes effect after restart</source>
         <translation>配置保存,重启后生效</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2471"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2483"/>
         <source>Update failed too many times, local update package has been cleared.</source>
         <translation>多次更新失败,本地更新包已移除</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2547"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2590"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2673"/>
-        <location filename="../view/setting_interface/setting_interface.py" line="2717"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2559"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2602"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2685"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2729"/>
         <source>Stop update</source>
         <translation>停止更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2611"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2623"/>
         <source>New version available: </source>
         <translation>最新版本: </translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2705"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2717"/>
         <source>Update is already running</source>
         <translation>更新正在运行</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2711"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2723"/>
         <source>Service is not ready, cannot reset resource</source>
         <translation>服务未准备完成,无法重置资源</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2815"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2732"/>
+        <source>Starting Reset Resource</source>
+        <translation>重置资源中</translation>
+    </message>
+    <message>
+        <location filename="../view/setting_interface/setting_interface.py" line="2828"/>
         <source>Update package not found, please try updating again.</source>
         <translation>未找到更新包，请重试更新。</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2832"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2845"/>
         <source>Update now</source>
         <translation>立刻更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2836"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2849"/>
         <source>Restart required to update</source>
         <translation>需要重启来完成更新</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2838"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2851"/>
         <source>Update package detected</source>
         <translation>更新包删除</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2841"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2854"/>
         <source>Hot update is unavailable. A restart update is required. Proceed?</source>
         <translation>热更不可用,需要重启来进行更新,是否继续?</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2844"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2857"/>
         <source>Found a downloaded update package. Do you want to launch the updater now?</source>
         <translation>找到本地更新包,是否希望进行更新?</translation>
     </message>
     <message>
-        <location filename="../view/setting_interface/setting_interface.py" line="2867"/>
+        <location filename="../view/setting_interface/setting_interface.py" line="2880"/>
         <source>Auto updating in %1 s</source>
         <translation>自动更新与 %1 秒</translation>
     </message>
