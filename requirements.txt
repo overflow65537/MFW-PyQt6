@@ -2,7 +2,7 @@ numpy
 qasync
 asyncify
 requests
-MaaFw == v5.9.0-alpha.7
+MaaFw == v5.8.1
 psutil
 PySide6-Fluent-Widgets
 keyboard
