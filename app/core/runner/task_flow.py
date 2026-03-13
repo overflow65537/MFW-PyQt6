@@ -1390,22 +1390,24 @@ class TaskFlowRunner(QObject):
             wait_emu_start = int(controller_config.get("wait_time", 0))
 
             self.process = self._start_process(emu_path, emu_params)
-            # 异步等待
+            # 启动后轮询连接，连接成功则提前退出等待
             if wait_emu_start > 0:
-                countdown_ok = await self._countdown_wait(
-                    wait_emu_start, self.tr("waiting for emulator start...")
+                poll_ok = await self._poll_connect(
+                    wait_emu_start,
+                    self.tr("waiting for emulator start..."),
+                    lambda: self.maafw.connect_adb(
+                        adb_path, address, screen_method, input_method, config,
+                    ),
                 )
-                if not countdown_ok:
+                if poll_ok:
+                    return True
+                if self.need_stop:
                     return False
-            if await self.maafw.connect_adb(
-                adb_path,
-                address,
-                screen_method,
-                input_method,
-                config,
-            ):
-                print("connect adb success")
-                return True
+            else:
+                if await self.maafw.connect_adb(
+                    adb_path, address, screen_method, input_method, config,
+                ):
+                    return True
         signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
         return False
 
@@ -1526,51 +1528,49 @@ class TaskFlowRunner(QObject):
             signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
             return False
 
-        # 启动程序+参数并等待指定时间
+        # 启动程序+参数，轮询搜索窗口并连接
         signalBus.log_output.emit("INFO", self.tr("try to start program"))
         logger.info("尝试启动程序")
         program_params = controller_config.get("program_params", "")
         wait_program_start = int(controller_config.get("wait_time", 0))
         self.process = self._start_process(program_path, program_params)
+
+        async def _try_find_and_connect_win32():
+            nonlocal controller_config
+            found = await self._auto_find_win32_window(
+                controller_raw, controller_type, controller_name, controller_config
+            )
+            if not found:
+                return False
+            self._save_device_to_config(controller_raw, controller_name, found)
+            controller_config = controller_raw[controller_name]
+            _restore_raw_methods()
+            hwnd, screencap_method, mouse_method, keyboard_method = (
+                _collect_win32_params()
+            )
+            if not hwnd:
+                return False
+            return await self.maafw.connect_win32hwnd(
+                hwnd, screencap_method, mouse_method, keyboard_method
+            )
+
         if wait_program_start > 0:
-            countdown_ok = await self._countdown_wait(
+            poll_ok = await self._poll_connect(
                 wait_program_start,
                 self.tr("waiting for program start..."),
+                _try_find_and_connect_win32,
             )
-            if not countdown_ok:
+            if poll_ok:
+                return True
+            if self.need_stop:
                 return False
+        else:
+            if await _try_find_and_connect_win32():
+                return True
 
-        # 时间到了再次搜索并尝试连接
-        found_after_launch = await self._auto_find_win32_window(
-            controller_raw, controller_type, controller_name, controller_config
-        )
-        if not found_after_launch:
-            logger.error("启动程序后未找到与配置匹配的 Win32 窗口")
-            signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
-            return False
-
-        self._save_device_to_config(controller_raw, controller_name, found_after_launch)
-        controller_config = controller_raw[controller_name]
-        _restore_raw_methods()
-
-        hwnd, screencap_method, mouse_method, keyboard_method = _collect_win32_params()
-        if not hwnd:
-            error_msg = self.tr(
-                "Window handle (hwnd) is empty, please configure window connection in settings"
-            )
-            logger.error("Win32 窗口句柄为空")
-            signalBus.log_output.emit("ERROR", error_msg)
-            return False
-
-        connect_success = await self.maafw.connect_win32hwnd(
-            hwnd,
-            screencap_method,
-            mouse_method,
-            keyboard_method,
-        )
-        if not connect_success:
-            signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
-        return bool(connect_success)
+        logger.error("启动程序后未找到与配置匹配的 Win32 窗口")
+        signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+        return False
 
     async def _connect_gamepad_controller(self, controller_raw: Dict[str, Any]):
         """连接 Gamepad 控制器（复用 Win32 的窗口查找能力，但连接逻辑独立）"""
@@ -1950,6 +1950,64 @@ class TaskFlowRunner(QObject):
 
         logger.debug(f"准备启动子进程: {command}")
         return subprocess.Popen(command)
+
+    async def _poll_connect(
+        self,
+        wait_seconds: int,
+        message: str,
+        connect_coro_fn,
+        retry_interval: int = 3,
+    ) -> bool:
+        """启动程序后按原倒计时规则等待，同时周期性尝试连接，连接成功则提前返回 True。
+
+        :param connect_coro_fn: 无参可调用对象，返回 awaitable，结果为 True 表示连接成功
+        :param retry_interval: 每次连接失败后等待的秒数
+        """
+        if wait_seconds <= 0:
+            return False
+
+        thresholds = [60, 30, 15, 10, 5, 4, 3, 2, 1]
+        log_points = {wait_seconds}
+        for point in thresholds:
+            if wait_seconds >= point:
+                log_points.add(point)
+
+        since_last_try = retry_interval  # 首次立即尝试
+
+        for remaining in range(wait_seconds, 0, -1):
+            if remaining in log_points:
+                signalBus.log_output.emit(
+                    "INFO",
+                    message + str(remaining) + self.tr(" seconds"),
+                )
+            if self.need_stop:
+                return False
+
+            since_last_try += 1
+            if since_last_try >= retry_interval:
+                since_last_try = 0
+                try:
+                    if await connect_coro_fn():
+                        signalBus.log_output.emit(
+                            "INFO", self.tr("Device connected successfully")
+                        )
+                        return True
+                except Exception:
+                    pass
+
+            await asyncio.sleep(1)
+
+        # 最后再尝试一次
+        try:
+            if await connect_coro_fn():
+                signalBus.log_output.emit(
+                    "INFO", self.tr("Device connected successfully")
+                )
+                return True
+        except Exception:
+            pass
+
+        return False
 
     async def _countdown_wait(self, wait_seconds: int, message: str) -> bool:
         """按指定阈值输出倒计时日志，返回 False 表示提前停止"""
