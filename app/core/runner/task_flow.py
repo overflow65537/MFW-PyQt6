@@ -336,6 +336,19 @@ class TaskFlowRunner(QObject):
             if not resource_cfg:
                 raise ValueError("未找到资源设置任务")
 
+            invalid_reason = self._validate_base_controller_and_resource()
+            if invalid_reason is not None:
+                self._reset_base_controller_and_resource_to_default()
+                signalBus.log_output.emit(
+                    "ERROR",
+                    self.tr(
+                        "Controller or resource in current config does not exist in interface. They have been reset to default. Please check and run again."
+                    ),
+                )
+                signalBus.log_output.emit("ERROR", invalid_reason)
+                await self.stop_task()
+                return
+
             # 先加载资源，再连接控制器
             logger.info("开始加载资源...")
             signalBus.log_output.emit("INFO", self.tr("Starting to load resources..."))
@@ -754,6 +767,145 @@ class TaskFlowRunner(QObject):
             "CRITICAL": self.tr("CRITICAL"),
         }
         return level_map.get(level_upper, level)
+
+    def _validate_base_controller_and_resource(self) -> str | None:
+        """校验当前配置中的控制器/资源是否存在于 interface。"""
+        interface = self.task_service.interface or {}
+        controller_names = {
+            str(item.get("name", "")).strip()
+            for item in interface.get("controller", [])
+            if isinstance(item, dict)
+        }
+        resource_defs = {
+            str(item.get("name", "")).strip(): item
+            for item in interface.get("resource", [])
+            if isinstance(item, dict) and str(item.get("name", "")).strip()
+        }
+
+        controller_task = self.task_service.get_task(_CONTROLLER_)
+        resource_task = self.task_service.get_task(_RESOURCE_)
+        if not controller_task or not resource_task:
+            return self.tr("Base controller/resource task is missing.")
+
+        controller_name = ""
+        controller_type_raw = (controller_task.task_option or {}).get("controller_type")
+        if isinstance(controller_type_raw, str):
+            controller_name = controller_type_raw.strip()
+        elif isinstance(controller_type_raw, dict):
+            controller_name = str(controller_type_raw.get("value", "") or "").strip()
+
+        resource_name = str((resource_task.task_option or {}).get("resource", "") or "").strip()
+
+        if controller_name not in controller_names:
+            return self.tr("Current controller does not exist in interface: {}" ).format(
+                controller_name or self.tr("(empty)")
+            )
+
+        if resource_name not in resource_defs:
+            return self.tr("Current resource does not exist in interface: {}" ).format(
+                resource_name or self.tr("(empty)")
+            )
+
+        resource_def = resource_defs.get(resource_name) or {}
+        if not self._is_allowed_by_name_list(
+            resource_def.get("controller"),
+            controller_name,
+        ):
+            return self.tr(
+                "Current resource is not enabled for current controller: {} -> {}"
+            ).format(
+                controller_name or self.tr("(empty)"),
+                resource_name or self.tr("(empty)"),
+            )
+
+        return None
+
+    def _reset_base_controller_and_resource_to_default(self) -> None:
+        """将基础控制器/资源重置到 interface 的首项（资源需满足控制器约束）。"""
+        interface = self.task_service.interface or {}
+        default_controller = ""
+        default_resource = ""
+
+        controllers = interface.get("controller", [])
+        if isinstance(controllers, list):
+            for item in controllers:
+                if isinstance(item, dict):
+                    name = str(item.get("name", "") or "").strip()
+                    if name:
+                        default_controller = name
+                        break
+
+        resources = interface.get("resource", [])
+        if isinstance(resources, list):
+            for item in resources:
+                if isinstance(item, dict):
+                    name = str(item.get("name", "") or "").strip()
+                    if not name:
+                        continue
+                    # 资源可选控制器列表存在时，必须包含当前默认控制器
+                    if self._is_allowed_by_name_list(
+                        item.get("controller"),
+                        default_controller,
+                    ):
+                        default_resource = name
+                        break
+
+        # 若没有找到满足控制器约束的资源，则回退为第一个资源（兜底）
+        if not default_resource and isinstance(resources, list):
+            for item in resources:
+                if isinstance(item, dict):
+                    name = str(item.get("name", "") or "").strip()
+                    if name:
+                        default_resource = name
+                        break
+
+        controller_task = self.task_service.get_task(_CONTROLLER_)
+        if controller_task and isinstance(controller_task.task_option, dict):
+            controller_task.task_option["controller_type"] = default_controller
+            self.task_service.update_task(controller_task)
+
+        resource_task = self.task_service.get_task(_RESOURCE_)
+        if resource_task and isinstance(resource_task.task_option, dict):
+            resource_task.task_option["resource"] = default_resource
+            self.task_service.update_task(resource_task)
+
+        try:
+            self.task_service.refresh_hidden_flags()
+        except Exception:
+            pass
+
+        logger.warning(
+            "检测到无效控制器/资源配置，已重置为默认。controller=%s, resource=%s",
+            default_controller,
+            default_resource,
+        )
+
+    def _is_allowed_by_name_list(self, value: Any, current: str) -> bool:
+        """通用列表约束判断：空约束=允许，否则 current 必须命中。"""
+        current_norm = str(current or "").strip().lower()
+        if value in (None, "", [], {}):
+            return True
+
+        allowed: list[str] = []
+        if isinstance(value, str):
+            if value.strip():
+                allowed = [value.strip()]
+        elif isinstance(value, list):
+            allowed = [
+                str(x).strip()
+                for x in value
+                if x is not None and str(x).strip()
+            ]
+        else:
+            # 非支持格式不拦截，避免误伤旧配置
+            return True
+
+        if not allowed:
+            return True
+        if not current_norm:
+            return False
+
+        return current_norm in {name.lower() for name in allowed}
 
     @property
     def is_running(self) -> bool:
