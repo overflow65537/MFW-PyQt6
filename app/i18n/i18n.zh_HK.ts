@@ -983,19 +983,139 @@ The following configurations using this bundle will also be deleted:
     </message>
 </context>
 <context>
+    <name>LogZipDialog</name>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="80"/>
+        <source>Select the content to include in the log package.</source>
+        <translation>選擇要包含在日誌包中的內容。</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="84"/>
+        <source>Package logs</source>
+        <translation>打包日誌</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="87"/>
+        <source>Choose the log files and image folders to include. Image items can be filtered by time range.</source>
+        <translation>選擇要包含的日誌檔案和圖像資料夾。影像項目可以按時間範圍篩選。</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="120"/>
+        <source>Start packaging</source>
+        <translation>開始包裝</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="121"/>
+        <location filename="../view/main_window/log_zip_dialog.py" line="305"/>
+        <location filename="../view/main_window/log_zip_dialog.py" line="321"/>
+        <source>Close</source>
+        <translation>退出</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="133"/>
+        <source>Logs</source>
+        <translation>日誌</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="136"/>
+        <source>maa.log (including .bak)</source>
+        <translation>maa.log（包括 .bak）</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="138"/>
+        <source>gui.log</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="140"/>
+        <source>custom.log</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="142"/>
+        <source>other files</source>
+        <translation>其他文件</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="157"/>
+        <source>Images</source>
+        <translation>圖片</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="159"/>
+        <source>Default is all image categories with time range set to all.</source>
+        <translation>預設為所有影像類別，時間範圍設定為全部。</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="167"/>
+        <source>on_error folder</source>
+        <translation>on_error 文件夾</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="170"/>
+        <source>vision folder</source>
+        <translation>vision 文件夾</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="173"/>
+        <source>other images</source>
+        <translation>其他圖片</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="201"/>
+        <source>all</source>
+        <translation>全部</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="202"/>
+        <source>today</source>
+        <translation>今天</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="203"/>
+        <source>within 2 days</source>
+        <translation>2天內</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="204"/>
+        <source>within 3 days</source>
+        <translation>3天內</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="236"/>
+        <source>Selected total size:</source>
+        <translation>選擇總大小</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="305"/>
+        <source>Cancel packaging</source>
+        <translation>取消打包</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="327"/>
+        <source>Cancelling log packaging, please wait...</source>
+        <translation>正在取消日誌打包，請稍候…</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/log_zip_dialog.py" line="334"/>
+        <source>Select at least one log or image category.</source>
+        <translation>至少選擇一個日誌或圖像類別。</translation>
+    </message>
+</context>
+<context>
     <name>LogoutputWidget</name>
     <message>
-        <location filename="../view/task_interface/components/LogoutputWidget.py" line="80"/>
+        <location filename="../view/task_interface/components/LogoutputWidget.py" line="93"/>
         <source>Monitor</source>
         <translation>監控</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/LogoutputWidget.py" line="322"/>
-        <location filename="../view/task_interface/components/LogoutputWidget.py" line="671"/>
-        <location filename="../view/task_interface/components/LogoutputWidget.py" line="676"/>
-        <location filename="../view/task_interface/components/LogoutputWidget.py" line="681"/>
-        <location filename="../view/task_interface/components/LogoutputWidget.py" line="683"/>
-        <location filename="../view/task_interface/components/LogoutputWidget.py" line="684"/>
+        <location filename="../view/task_interface/components/LogoutputWidget.py" line="421"/>
+        <location filename="../view/task_interface/components/LogoutputWidget.py" line="770"/>
+        <location filename="../view/task_interface/components/LogoutputWidget.py" line="775"/>
+        <location filename="../view/task_interface/components/LogoutputWidget.py" line="780"/>
+        <location filename="../view/task_interface/components/LogoutputWidget.py" line="782"/>
+        <location filename="../view/task_interface/components/LogoutputWidget.py" line="783"/>
         <source>System</source>
         <translation></translation>
     </message>
@@ -1004,7 +1124,7 @@ The following configurations using this bundle will also be deleted:
         <translation type="vanished">啟動監控任務</translation>
     </message>
     <message>
-        <location filename="../view/task_interface/components/LogoutputWidget.py" line="226"/>
+        <location filename="../view/task_interface/components/LogoutputWidget.py" line="239"/>
         <source>generate log zip</source>
         <translation>生成日志壓縮包</translation>
     </message>
@@ -1012,7 +1132,7 @@ The following configurations using this bundle will also be deleted:
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../view/main_window/main_window.py" line="307"/>
+        <location filename="../view/main_window/main_window.py" line="331"/>
         <source>Task</source>
         <translation>任務</translation>
     </message>
@@ -1021,210 +1141,244 @@ The following configurations using this bundle will also be deleted:
         <translation type="vanished">特殊任務</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="318"/>
+        <location filename="../view/main_window/main_window.py" line="342"/>
         <source>Monitor</source>
         <translation>監控</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="324"/>
+        <location filename="../view/main_window/main_window.py" line="348"/>
         <source>Schedule</source>
         <translation>計划任務</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="332"/>
+        <location filename="../view/main_window/main_window.py" line="356"/>
         <source>test_interface</source>
         <translation>車是</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="361"/>
-        <location filename="../view/main_window/main_window.py" line="630"/>
-        <location filename="../view/main_window/main_window.py" line="644"/>
+        <location filename="../view/main_window/main_window.py" line="385"/>
+        <location filename="../view/main_window/main_window.py" line="654"/>
+        <location filename="../view/main_window/main_window.py" line="668"/>
         <source>Bundle</source>
         <translation>資源包</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="375"/>
+        <location filename="../view/main_window/main_window.py" line="399"/>
         <source>Setting</source>
         <translation>設置</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="487"/>
+        <location filename="../view/main_window/main_window.py" line="511"/>
         <source>Show</source>
         <translation>展示</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="488"/>
+        <location filename="../view/main_window/main_window.py" line="512"/>
         <source>Hide</source>
         <translation>隱藏</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="489"/>
+        <location filename="../view/main_window/main_window.py" line="513"/>
         <source>Quit</source>
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1006"/>
+        <location filename="../view/main_window/main_window.py" line="1030"/>
         <source>Config load failed, automatically reset to default. Backup of corrupted config file completed. Error details:</source>
         <translation>配置載入失敗，已自動重設為預設設定。已完成損壞設定檔的備份。錯誤詳情：</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1010"/>
+        <location filename="../view/main_window/main_window.py" line="1034"/>
         <source>Config load failed, automatically reset to default. Backup of corrupted config file completed.</source>
         <translation>配置載入失敗，已自動重設為預設設定。損壞的設定檔備份已完成。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1017"/>
+        <location filename="../view/main_window/main_window.py" line="1041"/>
         <source>Config load failed, automatically reset to default. Failed to backup corrupted config file. Error details:</source>
         <translation>配置載入失敗，已自動重設為預設值。備份損壞的設定檔失敗。錯誤詳情：</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1021"/>
+        <location filename="../view/main_window/main_window.py" line="1045"/>
         <source>Config load failed, automatically reset to default. Failed to backup corrupted config file.</source>
         <translation>配置載入失敗，已自動重設為預設值。備份損壞的設定檔失敗。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1027"/>
+        <location filename="../view/main_window/main_window.py" line="1051"/>
         <source>Config load failed and error occurred while resetting config:</source>
         <translation>配置載入失敗，重置配置時發生錯誤：</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1031"/>
+        <location filename="../view/main_window/main_window.py" line="1055"/>
         <source>Config load failed and error occurred while resetting config.</source>
         <translation>配置載入失敗，重置配置時發生錯誤。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1098"/>
-        <location filename="../view/main_window/main_window.py" line="1104"/>
+        <location filename="../view/main_window/main_window.py" line="1122"/>
+        <location filename="../view/main_window/main_window.py" line="1128"/>
         <source>hotkey disabled due to permission issue</source>
         <translation>由於權限問題，熱鍵已停用</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1119"/>
+        <location filename="../view/main_window/main_window.py" line="1147"/>
         <source>Log is being packaged, please wait...</source>
         <translation>日志正在打包,請稍候...</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1134"/>
+        <location filename="../view/main_window/main_window.py" line="1168"/>
+        <location filename="../view/main_window/main_window.py" line="1218"/>
+        <source>Preparing files...</source>
+        <translation>準備文件…</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/main_window.py" line="1190"/>
+        <location filename="../view/main_window/main_window.py" line="1194"/>
         <source>Debug directory not found, cannot package logs.</source>
         <translation>debug目錄不存在,無法完成打包</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1165"/>
+        <location filename="../view/main_window/main_window.py" line="1209"/>
+        <location filename="../view/main_window/main_window.py" line="1214"/>
+        <source>No matching files were found for the selected options.</source>
+        <translation>沒有找到與所選選項相符的檔案。</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/main_window.py" line="1227"/>
+        <location filename="../view/main_window/main_window.py" line="1242"/>
+        <source>Packing:</source>
+        <translation>包裝：</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/main_window.py" line="1260"/>
+        <location filename="../view/main_window/main_window.py" line="1261"/>
+        <source>Log packaging cancelled.</source>
+        <translation>日誌打包取消。</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/main_window.py" line="1265"/>
+        <location filename="../view/main_window/main_window.py" line="1269"/>
         <source>Log packaging failed:</source>
         <translation>日誌打包失敗</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1391"/>
+        <location filename="../view/main_window/main_window.py" line="1789"/>
         <source>, there are </source>
         <translation>還有</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1393"/>
+        <location filename="../view/main_window/main_window.py" line="1791"/>
         <source> files not added</source>
         <translation>個文件未被添加</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1397"/>
+        <location filename="../view/main_window/main_window.py" line="1795"/>
         <source>Log has been packaged, but some files failed to read:</source>
         <translation>日誌打包完成,但有些文件無法讀取</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1404"/>
+        <location filename="../view/main_window/main_window.py" line="1802"/>
         <source>Log has been packaged:</source>
         <translation>日誌打包完成</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1411"/>
+        <location filename="../view/main_window/main_window.py" line="1807"/>
+        <source>Packaging completed, but some files were skipped.</source>
+        <translation>打包完成，但部分文件被遺漏。</translation>
+    </message>
+    <message>
+        <location filename="../view/main_window/main_window.py" line="1808"/>
+        <source>Packaging completed:</source>
+        <translation>包裝完成：</translation>
+    </message>
+    <message>
         <source>Packing logs</source>
-        <translation>打包日志</translation>
+        <translation type="vanished">打包日志</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1412"/>
         <source>Please wait...</source>
-        <translation>請稍等...</translation>
+        <translation type="vanished">請稍等...</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1452"/>
-        <location filename="../view/main_window/main_window.py" line="1613"/>
-        <location filename="../view/main_window/main_window.py" line="2015"/>
+        <location filename="../view/main_window/main_window.py" line="1855"/>
+        <location filename="../view/main_window/main_window.py" line="2016"/>
+        <location filename="../view/main_window/main_window.py" line="2418"/>
         <source>Announcement</source>
         <translation>公告</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1455"/>
+        <location filename="../view/main_window/main_window.py" line="1858"/>
         <source>There is no announcement at the moment.</source>
         <translation>展示沒有公告</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1556"/>
-        <location filename="../view/main_window/main_window.py" line="1566"/>
+        <location filename="../view/main_window/main_window.py" line="1959"/>
+        <location filename="../view/main_window/main_window.py" line="1969"/>
         <source>Welcome</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1663"/>
+        <location filename="../view/main_window/main_window.py" line="2066"/>
         <source>This is the configuration area. Each configuration maps to different task sets.</source>
         <translation>這是配置區域。每個配置對應不同的任務集。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1669"/>
+        <location filename="../view/main_window/main_window.py" line="2072"/>
         <source>This is the task area. Set the controller and resource configurations first; aside from those two, every task can be dragged to reorder before running.</source>
         <translation>這是任務區域。請先設定控制器和資源配置；除了這兩項之外，每個任務都可以拖曳以重新排序，然後再執行。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1675"/>
+        <location filename="../view/main_window/main_window.py" line="2078"/>
         <source>The monitor area displays live footage once tasks are running.</source>
         <translation>任務運行時，監控區域會顯示即時畫面。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1681"/>
+        <location filename="../view/main_window/main_window.py" line="2084"/>
         <source>When you encounter issues while running, click this button and send the resulting debug.zip to the developers.</source>
         <translation>運行過程中如果遇到問題，請點選此按鈕並將產生的 debug.zip 檔案傳送給開發人員。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1687"/>
+        <location filename="../view/main_window/main_window.py" line="2090"/>
         <source>Click this button to switch to special tasks; only tasks marked as special will execute.</source>
         <translation>點擊此按鈕切換到特殊任務；只有標記為特殊的任務才會執行。</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="1996"/>
+        <location filename="../view/main_window/main_window.py" line="2399"/>
         <source>Close</source>
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="2032"/>
+        <location filename="../view/main_window/main_window.py" line="2435"/>
         <source>Item </source>
         <translation>元素</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="2036"/>
+        <location filename="../view/main_window/main_window.py" line="2439"/>
         <source>Detail</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="2047"/>
-        <location filename="../view/main_window/main_window.py" line="2050"/>
-        <location filename="../view/main_window/main_window.py" line="2106"/>
+        <location filename="../view/main_window/main_window.py" line="2450"/>
+        <location filename="../view/main_window/main_window.py" line="2453"/>
+        <location filename="../view/main_window/main_window.py" line="2509"/>
         <source>Info</source>
         <translation>信息</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="2048"/>
+        <location filename="../view/main_window/main_window.py" line="2451"/>
         <source>Warning</source>
         <translation>警告</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="2049"/>
+        <location filename="../view/main_window/main_window.py" line="2452"/>
         <source>Error</source>
         <translation>錯誤</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="2114"/>
+        <location filename="../view/main_window/main_window.py" line="2517"/>
         <source>Confirm</source>
         <translation>確認</translation>
     </message>
     <message>
-        <location filename="../view/main_window/main_window.py" line="2157"/>
+        <location filename="../view/main_window/main_window.py" line="2560"/>
         <source>admin</source>
         <translation>管理員</translation>
     </message>
@@ -3432,6 +3586,8 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
     </message>
     <message>
         <location filename="../core/runner/task_flow.py" line="455"/>
+        <location filename="../core/runner/task_flow.py" line="1998"/>
+        <location filename="../core/runner/task_flow.py" line="2010"/>
         <source>Device connected successfully</source>
         <translation>設備連接成功</translation>
     </message>
@@ -3588,7 +3744,7 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
         <translation>任務運行時間過長</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1709"/>
+        <location filename="../core/runner/task_flow.py" line="1715"/>
         <source>PlayCover controller is only supported on macOS</source>
         <translation>PlayCover 控制器僅支援 macOS。</translation>
     </message>
@@ -3676,49 +3832,47 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
         <translation>ADB 連線位址為空，請在設定中設定設備連線。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1387"/>
+        <location filename="../core/runner/task_flow.py" line="1389"/>
         <source>try to start emulator</source>
         <translation>嘗試啟動模擬器</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1396"/>
+        <location filename="../core/runner/task_flow.py" line="1399"/>
         <source>waiting for emulator start...</source>
         <translation>等待模擬器啟動中</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1409"/>
-        <location filename="../core/runner/task_flow.py" line="1519"/>
-        <location filename="../core/runner/task_flow.py" line="1526"/>
-        <location filename="../core/runner/task_flow.py" line="1549"/>
-        <location filename="../core/runner/task_flow.py" line="1572"/>
-        <location filename="../core/runner/task_flow.py" line="1656"/>
-        <location filename="../core/runner/task_flow.py" line="1663"/>
-        <location filename="../core/runner/task_flow.py" line="1684"/>
-        <location filename="../core/runner/task_flow.py" line="1702"/>
+        <location filename="../core/runner/task_flow.py" line="1417"/>
+        <location filename="../core/runner/task_flow.py" line="1527"/>
+        <location filename="../core/runner/task_flow.py" line="1534"/>
+        <location filename="../core/runner/task_flow.py" line="1578"/>
+        <location filename="../core/runner/task_flow.py" line="1662"/>
+        <location filename="../core/runner/task_flow.py" line="1669"/>
+        <location filename="../core/runner/task_flow.py" line="1690"/>
+        <location filename="../core/runner/task_flow.py" line="1708"/>
         <source>Device connection failed</source>
         <translation>設備連接失敗</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1492"/>
+        <location filename="../core/runner/task_flow.py" line="1500"/>
         <source>Auto searching Win32 windows...</source>
         <translation>自動搜索win32中</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1505"/>
-        <location filename="../core/runner/task_flow.py" line="1559"/>
-        <location filename="../core/runner/task_flow.py" line="1646"/>
-        <location filename="../core/runner/task_flow.py" line="1692"/>
+        <location filename="../core/runner/task_flow.py" line="1513"/>
+        <location filename="../core/runner/task_flow.py" line="1652"/>
+        <location filename="../core/runner/task_flow.py" line="1698"/>
         <source>Window handle (hwnd) is empty, please configure window connection in settings</source>
         <translation>視窗句柄 (hwnd) 為空，請在設定中設定視窗連線。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1530"/>
-        <location filename="../core/runner/task_flow.py" line="1666"/>
+        <location filename="../core/runner/task_flow.py" line="1538"/>
+        <location filename="../core/runner/task_flow.py" line="1672"/>
         <source>try to start program</source>
         <translation>嘗試啟動程序</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1416"/>
+        <location filename="../core/runner/task_flow.py" line="1424"/>
         <source>Win32 controller is only supported on Windows</source>
         <translation>Win32 控制器僅在 Windows 系統上支援。</translation>
     </message>
@@ -3764,68 +3918,69 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
         <translation>未找到資源“{}”，請在設定中重設資源。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1538"/>
-        <location filename="../core/runner/task_flow.py" line="1674"/>
+        <location filename="../core/runner/task_flow.py" line="1566"/>
+        <location filename="../core/runner/task_flow.py" line="1680"/>
         <source>waiting for program start...</source>
         <translation>等待程序啟動</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1579"/>
+        <location filename="../core/runner/task_flow.py" line="1585"/>
         <source>Gamepad controller is only supported on Windows</source>
         <translation>Gamepad 控制器僅支援 Windows 系統。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1636"/>
+        <location filename="../core/runner/task_flow.py" line="1642"/>
         <source>Auto searching desktop windows...</source>
         <translation>自動搜尋桌面視窗...</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1747"/>
+        <location filename="../core/runner/task_flow.py" line="1753"/>
         <source>PlayCover UUID is empty, please configure UUID in settings</source>
         <translation>PlayCover UUID 為空，請在設定中設定 UUID。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1755"/>
+        <location filename="../core/runner/task_flow.py" line="1761"/>
         <source>PlayCover connection address is empty, please configure address in settings</source>
         <translation>PlayCover 連線位址為空，請在設定中設定位址。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1764"/>
+        <location filename="../core/runner/task_flow.py" line="1770"/>
         <source>Connecting to PlayCover: {address} (UUID: {uuid})</source>
         <translation>正在連接到 PlayCover：{address}（UUID：{uuid}）</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1773"/>
+        <location filename="../core/runner/task_flow.py" line="1779"/>
         <source>PlayCover connected successfully</source>
         <translation>PlayCover 已成功連接</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1777"/>
+        <location filename="../core/runner/task_flow.py" line="1783"/>
         <source>Failed to connect to PlayCover</source>
         <translation>連線 PlayCover 失敗</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="1970"/>
+        <location filename="../core/runner/task_flow.py" line="1987"/>
+        <location filename="../core/runner/task_flow.py" line="2034"/>
         <source> seconds</source>
         <translation> 秒</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="2314"/>
+        <location filename="../core/runner/task_flow.py" line="2378"/>
         <source>Notifications are being sent, please wait up to {} seconds</source>
         <translation>通知正在發送中，請稍候，最多{}秒。</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="2615"/>
+        <location filename="../core/runner/task_flow.py" line="2679"/>
         <source>This period&apos;s remaining execution count is 0</source>
         <translation>本週期剩餘執行次數為 0</translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="2627"/>
+        <location filename="../core/runner/task_flow.py" line="2691"/>
         <source>Not enough time passed since last run. Minimum interval is </source>
         <translation>上次運轉至今時間不足。最小間隔為 </translation>
     </message>
     <message>
-        <location filename="../core/runner/task_flow.py" line="2630"/>
+        <location filename="../core/runner/task_flow.py" line="2694"/>
         <source> hours.</source>
         <translation>時</translation>
     </message>

@@ -1,12 +1,15 @@
 from datetime import datetime
 from html import escape
+import math
 import re
+import time
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QSize, QTimer, QByteArray, QBuffer, QIODevice
-from PySide6.QtGui import QFont, QPalette, QImage, QIcon
+from PySide6.QtCore import Qt, QSize, QTimer, QByteArray, QBuffer, QIODevice, QEvent
+from PySide6.QtGui import QFont, QPalette, QImage, QIcon, QColor
 from PySide6.QtWidgets import (
     QFrame,
+    QGraphicsDropShadowEffect,
     QHBoxLayout,
     QSizePolicy,
     QSpacerItem,
@@ -61,6 +64,16 @@ class LogoutputWidget(QWidget):
         self._level_color: dict[str, str] = {}
         self._log_items: list[LogItemWidget] = []
         self._tail_spacer_item: QSpacerItem | None = None
+        self._error_flash_timer = QTimer(self)
+        self._error_flash_timer.setInterval(40)
+        self._error_flash_timer.timeout.connect(self._update_log_zip_attention_effect)
+        self._error_flash_effect: QGraphicsDropShadowEffect | None = None
+        self._error_flash_active = False
+        self._error_flash_stop_requested = False
+        self._error_flash_started_at = 0.0
+        self._error_flash_previous_phase = 0.0
+        self._error_flash_cycle_seconds = 1.8
+        self._user_event_filter_installed = False
         self._init_log_output()
         self._add_tail_spacer()
         self._apply_theme_colors()
@@ -226,6 +239,7 @@ class LogoutputWidget(QWidget):
         self.generate_log_zip_button = PushButton(self.tr("generate log zip"), self)
         self.generate_log_zip_button.setIcon(FIF.FEEDBACK)
         self.generate_log_zip_button.setIconSize(QSize(18, 18))
+        self._init_log_zip_attention_effect()
 
         # 日志输出区域标题栏总体布局
         self.log_output_title_layout = QHBoxLayout()
@@ -254,7 +268,92 @@ class LogoutputWidget(QWidget):
 
     def _on_log_output(self, level: str, text: str):
         """处理日志输出信号"""
+        if (level or "").upper() == "ERROR":
+            self._start_log_zip_attention_effect()
         self.add_structured_log(level, text)
+
+    def _init_log_zip_attention_effect(self) -> None:
+        effect = QGraphicsDropShadowEffect(self.generate_log_zip_button)
+        effect.setBlurRadius(32)
+        effect.setOffset(0, 0)
+        effect.setColor(QColor(255, 48, 48, 0))
+        effect.setEnabled(False)
+        self.generate_log_zip_button.setGraphicsEffect(effect)
+        self._error_flash_effect = effect
+
+    def _start_log_zip_attention_effect(self) -> None:
+        if self._error_flash_active:
+            return
+        self._error_flash_active = True
+        self._error_flash_stop_requested = False
+        self._error_flash_started_at = time.perf_counter()
+        self._error_flash_previous_phase = 0.0
+        if self._error_flash_effect is not None:
+            self._error_flash_effect.setBlurRadius(32)
+            self._error_flash_effect.setEnabled(True)
+        self._install_user_event_filter()
+        self._error_flash_timer.start()
+
+    def _request_stop_log_zip_attention_effect(self) -> None:
+        if not self._error_flash_active:
+            return
+        self._error_flash_stop_requested = True
+
+    def _finish_log_zip_attention_effect(self) -> None:
+        self._error_flash_timer.stop()
+        self._error_flash_active = False
+        self._error_flash_stop_requested = False
+        self._error_flash_previous_phase = 0.0
+        if self._error_flash_effect is not None:
+            self._error_flash_effect.setColor(QColor(255, 48, 48, 0))
+            self._error_flash_effect.setBlurRadius(32)
+            self._error_flash_effect.setEnabled(False)
+        self._remove_user_event_filter()
+
+    def _update_log_zip_attention_effect(self) -> None:
+        if not self._error_flash_active or self._error_flash_effect is None:
+            self._finish_log_zip_attention_effect()
+            return
+
+        elapsed = max(0.0, time.perf_counter() - self._error_flash_started_at)
+        phase = (elapsed % self._error_flash_cycle_seconds) / self._error_flash_cycle_seconds
+        intensity = 0.5 - 0.5 * math.cos(phase * 2 * math.pi)
+
+        color = QColor(255, 36, 36)
+        color.setAlpha(int(55 + 190 * intensity))
+        self._error_flash_effect.setColor(color)
+
+        if self._error_flash_stop_requested and phase < self._error_flash_previous_phase:
+            self._finish_log_zip_attention_effect()
+            return
+
+        self._error_flash_previous_phase = phase
+
+    def _install_user_event_filter(self) -> None:
+        app = QApplication.instance()
+        if app is None or self._user_event_filter_installed:
+            return
+        app.installEventFilter(self)
+        self._user_event_filter_installed = True
+
+    def _remove_user_event_filter(self) -> None:
+        app = QApplication.instance()
+        if app is None or not self._user_event_filter_installed:
+            return
+        app.removeEventFilter(self)
+        self._user_event_filter_installed = False
+
+    def eventFilter(self, obj, event):
+        if self._error_flash_active and event is not None:
+            if event.type() in {
+                QEvent.Type.MouseButtonPress,
+                QEvent.Type.MouseButtonDblClick,
+                QEvent.Type.Wheel,
+                QEvent.Type.KeyPress,
+                QEvent.Type.TouchBegin,
+            }:
+                self._request_stop_log_zip_attention_effect()
+        return super().eventFilter(obj, event)
 
     def add_structured_log(self, level: str, text: str):
         # 规范化级别

@@ -106,6 +106,26 @@ from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
 from app.widget.notice_message import NoticeMessageBox, DelayedCloseNoticeMessageBox
+from app.view.main_window.log_zip_dialog import LogZipDialog, LogZipOptions
+from app.view.main_window.log_zip_dialog import LogZipDialog, LogZipOptions, LogZipPreview
+
+
+class LogZipCancelled(Exception):
+    """日志打包被用户取消。"""
+
+
+@dataclass(slots=True)
+class LogZipFileEntry:
+    path: Path
+    arcname: str
+    locked: bool = False
+    category: str = ""
+
+
+@dataclass(slots=True)
+class LogZipLiveEntry:
+    arcname: str
+    image_bytes: bytes
 
 
 class TutorialHighlightOverlay(QWidget):
@@ -230,9 +250,11 @@ class MainWindow(MSFluentWindow):
         "maa.log",
         "maafw.log",
         "clash.log",
+        "maa.bak.log",
         "maa.log.bak",
         "maafw.log.bak",
     }
+    _IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".webp", ".gif"}
     _THEME_LISTENER_TIMEOUT_MS = (
         2000  # 2 seconds timeout for theme listener thread termination
     )
@@ -289,6 +311,8 @@ class MainWindow(MSFluentWindow):
         self._announcement_enabled = not bool(cfg.get(cfg.multi_resource_adaptation))
         self._log_zip_running = False
         self._log_zip_infobar: InfoBar | None = None
+        self._log_zip_cancel_event: threading.Event | None = None
+        self._log_zip_dialog: LogZipDialog | None = None
 
         # 监听“最小化到托盘”开关变化：关闭时立刻清理托盘图标，避免残留
         try:
@@ -1113,60 +1137,416 @@ class MainWindow(MSFluentWindow):
             self._hotkey_manager.reload()
 
     def _on_request_log_zip(self):
-        """处理日志打包请求，避免重复执行。"""
+        """打开日志打包对话框，并在确认后启动后台打包。"""
         if self._log_zip_running:
+            dialog = self._log_zip_dialog
+            if dialog is not None:
+                dialog.raise_()
+                dialog.activateWindow()
             signalBus.info_bar_requested.emit(
                 "warning", self.tr("Log is being packaged, please wait...")
             )
             return
 
+        dialog = LogZipDialog(self, preview_provider=self._build_log_zip_preview)
+        dialog.startRequested.connect(self._start_log_zip_from_dialog)
+        dialog.cancelRequested.connect(self._cancel_log_zip)
+        self._log_zip_dialog = dialog
+        dialog.exec()
+        if self._log_zip_dialog is dialog:
+            self._log_zip_dialog = None
+
+    def _start_log_zip_from_dialog(self, options: LogZipOptions) -> None:
+        """根据用户在对话框中的选择启动日志打包。"""
+        if self._log_zip_running:
+            return
+
+        self._log_zip_running = True
+        self._log_zip_cancel_event = threading.Event()
+        if self._log_zip_dialog is not None:
+            self._log_zip_dialog.set_running(True)
+            self._log_zip_dialog.update_progress(0, 1, self.tr("Preparing files..."))
         self._log_zip_running = True
         signalBus.log_zip_started.emit()
-        self._show_log_zip_progress_infobar()
-        threading.Thread(target=self._generate_log_zip, daemon=True).start()
+        threading.Thread(
+            target=self._generate_log_zip,
+            args=(options,),
+            daemon=True,
+        ).start()
 
-    def _generate_log_zip(self):
-        """将 debug 目录打包为 zip，并兼容被占用的日志文件。"""
+    def _cancel_log_zip(self) -> None:
+        """请求取消当前日志打包。"""
+        cancel_event = self._log_zip_cancel_event
+        if cancel_event is not None:
+            cancel_event.set()
+        if self._log_zip_dialog is not None:
+            self._log_zip_dialog.mark_cancelling()
+
+    def _generate_log_zip(self, options: LogZipOptions):
+        """根据用户选择打包 debug 目录内容，并支持取消。"""
         debug_dir = Path.cwd() / "debug"
         if not debug_dir.exists() or not debug_dir.is_dir():
-            self._close_log_zip_progress()
+            self._set_log_zip_dialog_finished(
+                self.tr("Debug directory not found, cannot package logs."),
+                error=True,
+            )
             signalBus.info_bar_requested.emit(
                 "error", self.tr("Debug directory not found, cannot package logs.")
             )
             self._log_zip_running = False
+            self._log_zip_cancel_event = None
             signalBus.log_zip_finished.emit()
             return
 
         zip_path = self._build_log_zip_path()
         errors: list[str] = []
+        cancel_event = self._log_zip_cancel_event or threading.Event()
         try:
+            file_entries, live_entries = self._collect_log_zip_entries(debug_dir, options)
+            total_items = len(file_entries) + len(live_entries)
+            if total_items <= 0:
+                self._set_log_zip_dialog_finished(
+                    self.tr("No matching files were found for the selected options."),
+                    error=True,
+                )
+                signalBus.info_bar_requested.emit(
+                    "warning",
+                    self.tr("No matching files were found for the selected options."),
+                )
+                return
+
+            self._update_log_zip_dialog_progress(0, total_items, self.tr("Preparing files..."))
+            processed = 0
             with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-                # 先打包常规日志文件
-                for file_path in debug_dir.rglob("*"):
-                    if file_path.is_dir():
-                        continue
-                    arcname = f"{debug_dir.name}/{file_path.relative_to(debug_dir).as_posix()}"
-                    if file_path.name in self._LOCKED_LOG_NAMES:
-                        self._write_locked_log(zf, file_path, arcname, errors)
+                for entry in file_entries:
+                    if cancel_event.is_set():
+                        raise LogZipCancelled()
+                    self._update_log_zip_dialog_progress(
+                        processed,
+                        total_items,
+                        self.tr("Packing:") + f" {entry.path.name}",
+                    )
+                    if entry.locked:
+                        self._write_locked_log(zf, entry.path, entry.arcname, errors, cancel_event)
                     else:
-                        self._write_file_to_zip(zf, file_path, arcname, errors)
+                        self._write_file_to_zip(zf, entry.path, entry.arcname, errors, cancel_event)
+                    processed += 1
+                    self._update_log_zip_dialog_progress(processed, total_items)
 
-                # 保存日志组件中的图片到 live 文件夹
-                self._save_log_images_to_zip(zf, errors)
+                for entry in live_entries:
+                    if cancel_event.is_set():
+                        raise LogZipCancelled()
+                    self._update_log_zip_dialog_progress(
+                        processed,
+                        total_items,
+                        self.tr("Packing:") + f" {Path(entry.arcname).name}",
+                    )
+                    zf.writestr(entry.arcname, entry.image_bytes)
+                    processed += 1
+                    self._update_log_zip_dialog_progress(processed, total_items)
 
-            self._close_log_zip_progress()
+            message = self._build_log_zip_result_message(zip_path, errors)
+            self._set_log_zip_dialog_finished(message, error=False)
             self._notify_log_zip_result(zip_path, errors)
             self._open_debug_dir(debug_dir)
             logger.info(" 日志压缩包生成完成：%s", zip_path)
+        except LogZipCancelled:
+            logger.info("日志打包已取消")
+            try:
+                if zip_path.exists():
+                    zip_path.unlink()
+            except Exception as exc:
+                logger.warning("取消后删除未完成压缩包失败：%s", exc)
+            self._set_log_zip_dialog_finished(self.tr("Log packaging cancelled."), error=False)
+            signalBus.info_bar_requested.emit("warning", self.tr("Log packaging cancelled."))
         except Exception as exc:
             logger.exception("生成日志压缩包失败")
-            self._close_log_zip_progress()
+            self._set_log_zip_dialog_finished(
+                self.tr("Log packaging failed:") + str(exc),
+                error=True,
+            )
             signalBus.info_bar_requested.emit(
                 "error", self.tr("Log packaging failed:") + str(exc)
             )
         finally:
             self._log_zip_running = False
+            self._log_zip_cancel_event = None
             signalBus.log_zip_finished.emit()
+
+    def _collect_log_zip_entries(
+        self,
+        debug_dir: Path,
+        options: LogZipOptions,
+    ) -> tuple[list[LogZipFileEntry], list[LogZipLiveEntry]]:
+        """按用户选择生成待打包文件列表。"""
+        seen: set[Path] = set()
+        file_entries: list[LogZipFileEntry] = []
+
+        def _add_file(path: Path, category: str) -> None:
+            resolved = path.resolve()
+            if resolved in seen or not path.is_file():
+                return
+            seen.add(resolved)
+            rel_path = path.relative_to(debug_dir).as_posix()
+            file_entries.append(
+                LogZipFileEntry(
+                    path=path,
+                    arcname=f"{debug_dir.name}/{rel_path}",
+                    locked=path.name in self._LOCKED_LOG_NAMES,
+                    category=category,
+                )
+            )
+
+        for path in sorted(debug_dir.iterdir(), key=lambda item: item.name.lower()):
+            if not path.is_file():
+                continue
+            if options.include_maa_logs and self._is_maa_log_file(path.name):
+                _add_file(path, "maa_logs")
+            if options.include_gui_logs and self._is_gui_log_file(path.name):
+                _add_file(path, "gui_logs")
+            if options.include_custom_logs and self._is_custom_log_file(path.name):
+                _add_file(path, "custom_logs")
+
+        if options.include_other_files:
+            self._collect_other_files(debug_dir, seen, file_entries)
+
+        if options.include_on_error_images:
+            self._collect_image_files(
+                debug_dir / "on_error",
+                debug_dir,
+                options.on_error_days,
+                seen,
+                file_entries,
+                "on_error_images",
+            )
+
+        if options.include_vision_images:
+            self._collect_image_files(
+                debug_dir / "vision",
+                debug_dir,
+                options.vision_days,
+                seen,
+                file_entries,
+                "vision_images",
+            )
+
+        if options.include_other_images:
+            self._collect_other_image_files(
+                debug_dir,
+                options.other_images_days,
+                seen,
+                file_entries,
+                "other_images",
+            )
+
+        live_entries = self._collect_live_images_for_zip(options) if options.include_other_images else []
+        return file_entries, live_entries
+
+    def _collect_image_files(
+        self,
+        folder: Path,
+        debug_dir: Path,
+        days: int | None,
+        seen: set[Path],
+        output: list[LogZipFileEntry],
+        category: str,
+    ) -> None:
+        if not folder.exists() or not folder.is_dir():
+            return
+        cutoff = self._build_image_cutoff(days)
+        for path in sorted(folder.rglob("*"), key=lambda item: str(item).lower()):
+            if not path.is_file() or path.suffix.lower() not in self._IMAGE_SUFFIXES:
+                continue
+            if cutoff is not None and datetime.fromtimestamp(path.stat().st_mtime) < cutoff:
+                continue
+            resolved = path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            output.append(
+                LogZipFileEntry(
+                    path=path,
+                    arcname=f"{debug_dir.name}/{path.relative_to(debug_dir).as_posix()}",
+                    locked=False,
+                    category=category,
+                )
+            )
+
+    def _collect_other_image_files(
+        self,
+        debug_dir: Path,
+        days: int | None,
+        seen: set[Path],
+        output: list[LogZipFileEntry],
+        category: str,
+    ) -> None:
+        cutoff = self._build_image_cutoff(days)
+        excluded_roots = {"on_error", "vision"}
+        for path in sorted(debug_dir.rglob("*"), key=lambda item: str(item).lower()):
+            if not path.is_file() or path.suffix.lower() not in self._IMAGE_SUFFIXES:
+                continue
+            parts = path.relative_to(debug_dir).parts
+            if parts and parts[0] in excluded_roots:
+                continue
+            if cutoff is not None and datetime.fromtimestamp(path.stat().st_mtime) < cutoff:
+                continue
+            resolved = path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            output.append(
+                LogZipFileEntry(
+                    path=path,
+                    arcname=f"{debug_dir.name}/{path.relative_to(debug_dir).as_posix()}",
+                    locked=False,
+                    category=category,
+                )
+            )
+
+    def _collect_other_files(
+        self,
+        debug_dir: Path,
+        seen: set[Path],
+        output: list[LogZipFileEntry],
+    ) -> None:
+        for path in sorted(debug_dir.rglob("*"), key=lambda item: str(item).lower()):
+            if not path.is_file():
+                continue
+            if path.name.lower() == "debug.zip":
+                continue
+            if path.suffix.lower() in self._IMAGE_SUFFIXES:
+                continue
+            resolved = path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            output.append(
+                LogZipFileEntry(
+                    path=path,
+                    arcname=f"{debug_dir.name}/{path.relative_to(debug_dir).as_posix()}",
+                    locked=path.name in self._LOCKED_LOG_NAMES,
+                    category="other_files",
+                )
+            )
+
+    def _collect_live_images_for_zip(self, options: LogZipOptions) -> list[LogZipLiveEntry]:
+        """收集日志面板中的实时图片，归入“其他图片”。"""
+        try:
+            log_widget = getattr(
+                getattr(self, "TaskInterface", None), "log_output_widget", None
+            )
+            if not log_widget or not hasattr(log_widget, "collect_log_images"):
+                return []
+
+            image_map = log_widget.collect_log_images()
+            if not image_map:
+                return []
+
+            log_items = getattr(log_widget, "_log_items", [])
+            timestamps = []
+            task_names = []
+            for item in log_items:
+                data = getattr(item, "_data", None)
+                if data is None:
+                    timestamps.append(datetime.now().strftime("%H_%M_%S"))
+                    task_names.append("Unknown")
+                    continue
+                timestamps.append((data.timestamp or datetime.now().strftime("%H:%M:%S")).replace(":", "_"))
+                task_names.append(self._sanitize_archive_name(data.task_name or "Unknown"))
+
+            entries: list[LogZipLiveEntry] = []
+            for _, (image_bytes, indices) in image_map.items():
+                if not image_bytes or image_bytes.isEmpty() or not indices:
+                    continue
+                min_idx = min(indices)
+                max_idx = max(indices)
+                timestamp_str = timestamps[min_idx] if min_idx < len(timestamps) else datetime.now().strftime("%H_%M_%S")
+                task_name = task_names[min_idx] if min_idx < len(task_names) else "Unknown"
+                if len(indices) == 1:
+                    filename = f"{min_idx:04d}_{task_name}_{timestamp_str}.png"
+                else:
+                    filename = f"{min_idx:04d}_[{min_idx:04d}-{max_idx:04d}]_{task_name}_{timestamp_str}.png"
+                entries.append(
+                    LogZipLiveEntry(
+                        arcname=f"debug/live/{filename}",
+                        image_bytes=image_bytes.data(),
+                    )
+                )
+            return entries
+        except Exception as exc:
+            logger.exception("收集实时图片失败")
+            return []
+
+    def _build_image_cutoff(self, days: int | None) -> datetime | None:
+        if days is None:
+            return None
+        now = datetime.now()
+        if days <= 1:
+            return datetime(now.year, now.month, now.day)
+        return now - timedelta(days=days)
+
+    def _is_maa_log_file(self, name: str) -> bool:
+        lowered = name.lower()
+        return lowered in {
+            "maa.log",
+            "maa.log.bak",
+            "maa.bak.log",
+            "maafw.log",
+            "maafw.log.bak",
+        }
+
+    def _is_gui_log_file(self, name: str) -> bool:
+        lowered = name.lower()
+        return lowered == "gui.log" or lowered.startswith("gui.log.")
+
+    def _is_custom_log_file(self, name: str) -> bool:
+        lowered = name.lower()
+        return lowered == "custom.log" or lowered.startswith("custom_")
+
+    def _build_log_zip_preview(self, options: LogZipOptions) -> LogZipPreview:
+        debug_dir = Path.cwd() / "debug"
+        if not debug_dir.exists() or not debug_dir.is_dir():
+            return LogZipPreview()
+
+        file_entries, live_entries = self._collect_log_zip_entries(debug_dir, options)
+        preview = LogZipPreview()
+
+        for entry in file_entries:
+            try:
+                size = entry.path.stat().st_size
+            except OSError:
+                size = 0
+            if entry.category == "maa_logs":
+                preview.maa_logs_size += size
+            elif entry.category == "gui_logs":
+                preview.gui_logs_size += size
+            elif entry.category == "custom_logs":
+                preview.custom_logs_size += size
+            elif entry.category == "other_files":
+                preview.other_files_size += size
+            elif entry.category == "on_error_images":
+                preview.on_error_images_size += size
+            elif entry.category == "vision_images":
+                preview.vision_images_size += size
+            elif entry.category == "other_images":
+                preview.other_images_size += size
+
+        preview.other_images_size += sum(len(entry.image_bytes) for entry in live_entries)
+        preview.total_size = (
+            preview.maa_logs_size
+            + preview.gui_logs_size
+            + preview.custom_logs_size
+            + preview.other_files_size
+            + preview.on_error_images_size
+            + preview.vision_images_size
+            + preview.other_images_size
+        )
+        return preview
+
+    def _sanitize_archive_name(self, text: str) -> str:
+        safe = "".join("_" if ch in '<>:"/\\|?*' else ch for ch in text.strip())
+        safe = safe.replace(" ", "_")
+        return safe or "Unknown"
 
     def _cleanup_old_files(self, debug_dir: Path) -> None:
         """清理debug目录中的旧文件。
@@ -1214,6 +1594,7 @@ class MainWindow(MSFluentWindow):
         file_path: Path,
         arcname: str,
         errors: list[str],
+        cancel_event: threading.Event | None = None,
     ) -> None:
         """读取可能被占用的日志文件并写入压缩包。
 
@@ -1226,6 +1607,7 @@ class MainWindow(MSFluentWindow):
         SPECIAL_TAIL_LOGS = {
             "maa.log",
             "maafw.log",
+            "maa.bak.log",
             "maa.log.bak",
             "maafw.log.bak",
         }
@@ -1243,8 +1625,8 @@ class MainWindow(MSFluentWindow):
 
                 # 小于等于 100MB：直接完整保存
                 if file_size <= MAX_TAIL_BYTES:
-                    data = file_path.read_bytes()
-                    zip_file.writestr(arcname, data)
+                    with file_path.open("rb") as src, zip_file.open(arcname, "w") as dest:
+                        self._copy_stream_with_cancel(src, dest, cancel_event)
                     return
 
                 # 大于 100MB：只保留末尾约 100MB，并按行对齐
@@ -1253,6 +1635,8 @@ class MainWindow(MSFluentWindow):
                     start_pos = max(0, file_size - MAX_TAIL_BYTES)
                     f.seek(start_pos)
                     tail = f.read(MAX_TAIL_BYTES)
+                    if cancel_event is not None and cancel_event.is_set():
+                        raise LogZipCancelled()
 
                 # 为了“按行数保存”，从第一个换行符之后开始，避免半行
                 newline_index = tail.find(b"\n")
@@ -1262,8 +1646,10 @@ class MainWindow(MSFluentWindow):
                 zip_file.writestr(arcname, tail)
             else:
                 # 其他被占用日志（如 clash.log）仍然尝试完整读取
-                data = file_path.read_bytes()
-                zip_file.writestr(arcname, data)
+                with file_path.open("rb") as src, zip_file.open(arcname, "w") as dest:
+                    self._copy_stream_with_cancel(src, dest, cancel_event)
+        except LogZipCancelled:
+            raise
         except Exception as exc:
             errors.append(f"{arcname} ({exc})")
             logger.warning(" 读取占用日志失败：%s (%s)", file_path, exc)
@@ -1274,14 +1660,26 @@ class MainWindow(MSFluentWindow):
         file_path: Path,
         arcname: str,
         errors: list[str],
+        cancel_event: threading.Event | None = None,
     ) -> None:
         """流式复制文件到压缩包，单个文件出错不影响整体。"""
         try:
             with file_path.open("rb") as src, zip_file.open(arcname, "w") as dest:
-                shutil.copyfileobj(src, dest, length=1024 * 512)
+                self._copy_stream_with_cancel(src, dest, cancel_event)
+        except LogZipCancelled:
+            raise
         except Exception as exc:
             errors.append(f"{arcname} ({exc})")
             logger.warning(" 添加日志文件失败：%s (%s)", file_path, exc)
+
+    def _copy_stream_with_cancel(self, src, dest, cancel_event: threading.Event | None) -> None:
+        while True:
+            if cancel_event is not None and cancel_event.is_set():
+                raise LogZipCancelled()
+            chunk = src.read(1024 * 512)
+            if not chunk:
+                break
+            dest.write(chunk)
 
     def _save_log_images_to_zip(self, zf: zipfile.ZipFile, errors: list[str]) -> None:
         """将日志组件中的图片保存到压缩包的 live 文件夹中。"""
@@ -1404,32 +1802,37 @@ class MainWindow(MSFluentWindow):
             "info", self.tr("Log has been packaged:") + str(zip_path.resolve())
         )
 
-    def _show_log_zip_progress_infobar(self):
-        """显示“正在压缩”提示。"""
-        self._close_log_zip_progress()
-        bar = InfoBar.info(
-            title=self.tr("Packing logs"),
-            content=self.tr("Please wait..."),
-            orient=Qt.Orientation.Horizontal,
-            isClosable=True,
-            position=InfoBarPosition.TOP_RIGHT,
-            duration=-1,
-            parent=self,
-        )
-        self._log_zip_infobar = bar
+    def _build_log_zip_result_message(self, zip_path: Path, errors: list[str]) -> str:
+        if errors:
+            return self.tr("Packaging completed, but some files were skipped.")
+        return self.tr("Packaging completed:") + str(zip_path.resolve())
 
-    def _close_log_zip_progress(self):
-        """关闭进度 InfoBar（切回主线程执行）。"""
-        bar = self._log_zip_infobar
-        if not bar:
+    def _update_log_zip_dialog_progress(
+        self,
+        current: int,
+        total: int,
+        message: str | None = None,
+    ) -> None:
+        dialog = self._log_zip_dialog
+        if dialog is None:
             return
 
-        def _close():
-            if bar:
-                bar.close()
+        def _update():
+            if self._log_zip_dialog is dialog:
+                dialog.update_progress(current, total, message or "")
 
-        self._invoke_in_ui(_close)
-        self._log_zip_infobar = None
+        self._invoke_in_ui(_update)
+
+    def _set_log_zip_dialog_finished(self, message: str, *, error: bool) -> None:
+        dialog = self._log_zip_dialog
+        if dialog is None:
+            return
+
+        def _finish():
+            if self._log_zip_dialog is dialog:
+                dialog.set_finished(message, error=error)
+
+        self._invoke_in_ui(_finish)
 
     def _open_debug_dir(self, debug_dir: Path):
         """压缩完成后打开 debug 目录。"""
