@@ -875,6 +875,8 @@ class BaseUpdate(QThread):
 
 class Update(BaseUpdate):
 
+    FORCE_FULL_DOWNLOAD_VERSION = "v0.0.1"
+
     # 当以“仅检查更新”模式运行时，用于在检查完成后返回结果
     check_result_ready = Signal(dict)
 
@@ -1493,13 +1495,25 @@ class Update(BaseUpdate):
         self.version_name = None
         self.release_note = ""
 
-        # 尝试 Mirror 源（强制下载模式跳过）
-        if not self.force_full_download and self.current_res_id:
-            logger.info("  [检查更新] 尝试 MirrorChyan 源...")
+        mirror_request_version = (
+            self.FORCE_FULL_DOWNLOAD_VERSION
+            if self.force_full_download
+            else self.current_version
+        )
+
+        # 尝试 Mirror 源；强制全量下载时使用约定版本号请求完整资源包
+        if self.current_res_id:
+            if self.force_full_download:
+                logger.info(
+                    "  [检查更新] 强制全量下载模式：使用 MirrorChyan 请求全量包，current_version=%s",
+                    mirror_request_version,
+                )
+            else:
+                logger.info("  [检查更新] 尝试 MirrorChyan 源...")
             mirror_result = self.mirror_check(
                 res_id=self.current_res_id,
                 cdk=self.mirror_cdk,
-                version=self.current_version,
+                version=mirror_request_version,
                 channel=self.current_channel,
                 os_type=self.current_os_type,
                 arch=self.current_arch,
@@ -1514,10 +1528,15 @@ class Update(BaseUpdate):
 
             # Mirror 检查表示当前版本已是最新
             if mirror_status == "no_need":
-                logger.info("  [检查更新] Mirror: 当前已是最新版本")
-                self.latest_update_version = self.current_version
-                cfg.set(cfg.latest_update_version, self.latest_update_version)
-                return False
+                if self.force_full_download:
+                    logger.info(
+                        "  [检查更新] Mirror 在强制全量下载模式下返回 no_need，回退 GitHub 最新版本"
+                    )
+                else:
+                    logger.info("  [检查更新] Mirror: 当前已是最新版本")
+                    self.latest_update_version = self.current_version
+                    cfg.set(cfg.latest_update_version, self.latest_update_version)
+                    return False
             elif mirror_status == "failed_info":
                 logger.info(
                     "  [检查更新] Mirror 检查失败: %s", mirror_result.get("msg")
@@ -1573,18 +1592,13 @@ class Update(BaseUpdate):
                 logger.info("  [检查更新] Mirror 未提供版本号，回退 GitHub 检查")
         else:
             # 进入该分支的两种典型情况：
-            # 1) force_full_download=True：来自“重置资源”等场景
-            # 2) current_res_id 为空：当前资源未配置 MirrorChyan ID
-            if self.force_full_download:
-                logger.info(
-                    "  [检查更新] 因 force_full_download=True，使用强制下载模式，跳过 Mirror 源"
-                )
-            elif not self.current_res_id:
+            # 1) current_res_id 为空：当前资源未配置 MirrorChyan ID
+            if not self.current_res_id:
                 logger.info(
                     "  [检查更新] 因未配置 MirrorChyan 资源ID，直接跳过 Mirror 源"
                 )
             logger.info(
-                "  [检查更新] 强制下载模式：跳过 Mirror 源，直接使用 GitHub 最新版本"
+                "  [检查更新] 回退到 GitHub 最新版本检查"
             )
 
         # 尝试 GitHub
