@@ -106,6 +106,8 @@ class ServiceCoordinator:
         # 在主要内容初始化完毕后，清理无效的 bundle 索引（不删除配置）
         self._cleanup_invalid_bundles()
 
+        logger.info(f"资源版本: {self._interface.get('version', 'unknown')}")
+
     def _resolve_interface_path(
         self, main_config_path: Path, interface_path: Path | str | None
     ) -> Path | None:
