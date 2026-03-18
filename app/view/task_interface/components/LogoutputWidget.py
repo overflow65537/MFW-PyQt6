@@ -41,6 +41,11 @@ class LogoutputWidget(QWidget):
     日志输出组件
     """
 
+    _ERROR_HINT_PATTERN = re.compile(
+        r"错误|錯誤|失败|失敗|\berror\b|\bfailed\b|\bfailure\b",
+        re.IGNORECASE,
+    )
+
     def __init__(
         self, service_coordinator: ServiceCoordinator | None = None, parent=None
     ):
@@ -268,9 +273,24 @@ class LogoutputWidget(QWidget):
 
     def _on_log_output(self, level: str, text: str):
         """处理日志输出信号"""
-        if (level or "").upper() == "ERROR":
+        normalized_level = self._normalize_level_by_text(level, text)
+        if normalized_level in {"ERROR", "CRITICAL"}:
             self._start_log_zip_attention_effect()
-        self.add_structured_log(level, text)
+        self.add_structured_log(normalized_level, text)
+
+    def _normalize_level_by_text(self, level: str, text: str) -> str:
+        """根据日志级别与关键词将消息归一化到最终显示级别。"""
+        normalized = (level or "INFO").upper()
+        if normalized in {"ERROR", "CRITICAL"}:
+            return normalized
+
+        message = str(text or "")
+        if self._ERROR_HINT_PATTERN.search(message):
+            return "ERROR"
+
+        if normalized in self._level_color:
+            return normalized
+        return "INFO"
 
     def _init_log_zip_attention_effect(self) -> None:
         effect = QGraphicsDropShadowEffect(self.generate_log_zip_button)
