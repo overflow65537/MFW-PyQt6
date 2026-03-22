@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Dict, Tuple
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET
 
 from PySide6.QtCore import QTranslator
 

@@ -70,6 +70,20 @@ class InterfaceManager:
     def _detect_language_from_config(self) -> str:
         """根据全局配置推断语言代码"""
         qt_locale = cfg.get(cfg.language)
+
+        # 兼容不同返回类型：Language / ConfigItem / QLocale
+        language_value = getattr(qt_locale, "value", qt_locale)
+
+        if language_value == Language.CHINESE_SIMPLIFIED.value:
+            return "zh_cn"
+        if language_value == Language.CHINESE_TRADITIONAL.value:
+            return "zh_hk"
+        if language_value == Language.JAPANESE.value:
+            return "ja_jp"
+        if language_value == Language.ENGLISH.value:
+            return "en_us"
+
+        # 兜底：若仍是 Language 枚举，继续直接比较
         if qt_locale == Language.CHINESE_SIMPLIFIED:
             return "zh_cn"
         if qt_locale == Language.CHINESE_TRADITIONAL:
@@ -78,6 +92,7 @@ class InterfaceManager:
             return "ja_jp"
         if qt_locale == Language.ENGLISH:
             return "en_us"
+
         return "zh_cn"
 
     def initialize(
