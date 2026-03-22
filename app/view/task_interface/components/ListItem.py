@@ -738,7 +738,7 @@ class TaskListItem(BaseListItem):
                                     break
 
                         # 兼容旧路径：combobox 使用 options
-                        elif option_type == "combox":
+                        elif option_type == "combobox":
                             options = option_def.get("options", [])
                             for opt in options:
                                 if isinstance(opt, dict):
