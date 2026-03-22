@@ -367,7 +367,10 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             )
             return
         dlg = AddTaskDialog(
-            task_map=filtered_task_map, interface=interface, parent=self.window()
+            task_map=filtered_task_map,
+            interface=interface,
+            interface_path=self.service_coordinator.interface_path,
+            parent=self.window(),
         )
         if dlg.exec():
             new_task = dlg.get_task_item()

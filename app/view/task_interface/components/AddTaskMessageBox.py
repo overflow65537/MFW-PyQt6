@@ -1,15 +1,29 @@
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QFileDialog, QSizePolicy
-from PySide6.QtCore import Qt
+from pathlib import Path
+
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import (
+    QButtonGroup,
+    QVBoxLayout,
+    QHBoxLayout,
+    QWidget,
+)
+from PySide6.QtCore import Qt, QEasingCurve
 from qfluentwidgets import (
     MessageBoxBase,
     LineEdit,
     ComboBox,
     SubtitleLabel,
     BodyLabel,
-    ToolButton,
-    FluentIcon as FIF,
+    CaptionLabel,
+    StrongBodyLabel,
     InfoBar,
     InfoBarPosition,
+    ScrollArea,
+    SimpleCardWidget,
+    FlowLayout,
+    TogglePushButton,
+    ToolTipFilter,
+    ToolTipPosition,
 )
 import jsonc
 from app.core.Item import TaskItem, ConfigItem
@@ -305,28 +319,65 @@ class AddConfigDialog(BaseAddDialog):
 
 
 class AddTaskDialog(BaseAddDialog):
+    _DEFAULT_GROUP_KEY = "__default_group__"
+
     def __init__(
         self,
         task_map: dict[str, dict[str, dict]],
         interface: dict | None = None,
+        interface_path: Path | str | None = None,
         parent=None,
     ):
         # 调用基类构造函数，设置标题
         super().__init__(self.tr("Add New Task"), parent)
+        self.widget.setMinimumWidth(620)
+        self.widget.setMinimumHeight(500)
+        self.cancelButton.setText(self.tr("Close"))
+        self.yesButton.setText(self.tr("Add"))
 
-        # 任务名下拉框
         self.task_layout = QVBoxLayout()
-        self.task_label = BodyLabel(self.tr("Task Name:"), self)
-        self.task_combo = ComboBox(self)
+        self.task_layout.setContentsMargins(0, 0, 0, 0)
+        self.task_layout.setSpacing(12)
 
-        # 加载可用的任务名
-        self.task_names = list(task_map.keys())
+        self.task_label = CaptionLabel(self.tr("Task List"), self)
+        self.task_hint = BodyLabel(
+            self.tr("Select one task from the groups below."), self
+        )
+        self.task_hint.setWordWrap(True)
+
+        self.task_scroll_area = ScrollArea(self)
+        self.task_scroll_area.setWidgetResizable(True)
+        self.task_scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self.task_scroll_area.enableTransparentBackground()
+        self.task_scroll_area.setStyleSheet("background: transparent; border: none;")
+        self.task_scroll_area.viewport().setStyleSheet("background: transparent;")
+
+        self.task_scroll_content = QWidget(self.task_scroll_area)
+        self.task_scroll_content.setObjectName("taskScrollContent")
+        self.task_scroll_content.setStyleSheet(
+            "QWidget#taskScrollContent { background: transparent; }"
+        )
+        self.task_group_layout = QVBoxLayout(self.task_scroll_content)
+        self.task_group_layout.setContentsMargins(8, 8, 8, 8)
+        self.task_group_layout.setSpacing(12)
+
+        self._task_button_group = QButtonGroup(self)
+        self._task_button_group.setExclusive(True)
+
         self.task_map = task_map
         self.interface = interface or {}
-        self.load_task_names(self.task_names)
+        self._interface_dir = self._normalize_interface_dir(interface_path)
+        self._task_meta = self._build_task_meta()
+        self._group_meta = self._build_group_meta()
+        self._populate_task_groups()
+
+        self.task_scroll_area.setWidget(self.task_scroll_content)
 
         self.task_layout.addWidget(self.task_label)
-        self.task_layout.addWidget(self.task_combo)
+        self.task_layout.addWidget(self.task_hint)
+        self.task_layout.addWidget(self.task_scroll_area)
 
         # 将布局添加到对话框
         self.viewLayout.addLayout(self.task_layout)
@@ -335,46 +386,200 @@ class AddTaskDialog(BaseAddDialog):
         self.task_name = ""
         self.task_type = "task"
 
-    def load_task_names(self, task_names):
-        """加载可用的任务名到下拉框（显示label，存储name）
+    def _normalize_interface_dir(self, interface_path: Path | str | None) -> Path:
+        """解析当前 interface 目录，作为相对图标路径基准。"""
+        if not interface_path:
+            return Path.cwd()
 
-        注意：保留 $ 前缀，它用于国际化标记
-        """
-        if task_names:
-            # 清空下拉框
-            self.task_combo.clear()
+        candidate = Path(interface_path)
+        if candidate.suffix.lower() in {".json", ".jsonc"}:
+            return candidate.parent.resolve()
+        return candidate.resolve()
 
-            # 构建显示文本（label）到任务名（name）的映射
-            self.display_to_name = {}
-            display_labels = []
+    def _build_task_meta(self) -> dict[str, dict]:
+        """构建任务元数据，保留 interface 中的展示顺序。"""
+        task_meta: dict[str, dict] = {}
+        interface_tasks = self.interface.get("task", []) if self.interface else []
 
-            for task_name in task_names:
-                # 在 interface 中查找对应的 label
-                display_label = task_name  # 默认使用 name
-                if self.interface:
-                    for task in self.interface.get("task", []):
-                        if task["name"] == task_name:
-                            display_label = task.get(
-                                "label", task.get("name", task_name)
-                            )
-                            break
+        for task in interface_tasks:
+            task_name = task.get("name")
+            if not isinstance(task_name, str) or task_name not in self.task_map:
+                continue
+            task_meta[task_name] = task
 
-                display_labels.append(display_label)
-                self.display_to_name[display_label] = task_name
+        # 兼容 task_map 中存在但 interface 未声明的任务
+        for task_name in self.task_map.keys():
+            task_meta.setdefault(task_name, {"name": task_name})
 
-            self.task_combo.addItems(display_labels)
+        return task_meta
+
+    def _build_group_meta(self) -> dict[str, dict]:
+        """根据 interface.group 和 task.group 构建分组元数据。"""
+        group_meta: dict[str, dict] = {}
+        for group_def in self.interface.get("group", []) if self.interface else []:
+            group_name = group_def.get("name")
+            if not isinstance(group_name, str) or not group_name:
+                continue
+            group_meta[group_name] = group_def
+
+        for task_name, task_def in self._task_meta.items():
+            groups = task_def.get("group")
+            if isinstance(groups, str):
+                groups = [groups]
+            if not isinstance(groups, list):
+                continue
+            for group_name in groups:
+                if not isinstance(group_name, str) or not group_name:
+                    continue
+                group_meta.setdefault(group_name, {"name": group_name})
+
+        group_meta.setdefault(
+            self._DEFAULT_GROUP_KEY,
+            {
+                "name": self._DEFAULT_GROUP_KEY,
+                "label": self.tr("Default Group"),
+                "description": self.tr("Tasks without an explicit group"),
+                "default_expand": True,
+            },
+        )
+        return group_meta
+
+    def _task_groups(self, task_def: dict) -> list[str]:
+        """获取任务所属分组；未声明时归入默认分组。"""
+        groups = task_def.get("group")
+        if isinstance(groups, str):
+            groups = [groups]
+        if isinstance(groups, list):
+            normalized = []
+            for group_name in groups:
+                if not isinstance(group_name, str):
+                    continue
+                group_name = group_name.strip()
+                if not group_name:
+                    continue
+                normalized.append(group_name)
+            if normalized:
+                return normalized
+        return [self._DEFAULT_GROUP_KEY]
+
+    def _group_sort_key(self, group_name: str) -> tuple[int, int, str]:
+        """按 interface.group 顺序排序，默认分组放末尾。"""
+        interface_groups = self.interface.get("group", []) if self.interface else []
+        if group_name == self._DEFAULT_GROUP_KEY:
+            return (2, 0, group_name)
+        for idx, group_def in enumerate(interface_groups):
+            if group_def.get("name") == group_name:
+                return (0, idx, group_name)
+        return (1, 0, group_name)
+
+    def _resolve_icon(self, icon_value: str | None) -> QIcon | None:
+        """解析相对路径图标，失败时返回 None。"""
+        if not icon_value or not isinstance(icon_value, str):
+            return None
+        icon_path = Path(icon_value)
+        if not icon_path.is_absolute():
+            icon_path = self._interface_dir / icon_path
+        if not icon_path.exists():
+            return None
+        icon = QIcon(str(icon_path))
+        return icon if not icon.isNull() else None
+
+    def _apply_fluent_tooltip(self, widget: QWidget, text: str | None) -> None:
+        """为控件启用 qfluentwidgets 风格的 tooltip。"""
+        if not isinstance(text, str) or not text:
+            return
+
+        widget.installEventFilter(ToolTipFilter(widget, 0, ToolTipPosition.TOP))
+        widget.setToolTip(text)
+
+    def _grouped_task_names(self) -> dict[str, list[str]]:
+        """按分组收集任务名。"""
+        grouped_tasks: dict[str, list[str]] = {}
+        for task_name, task_def in self._task_meta.items():
+            for group_name in self._task_groups(task_def):
+                grouped_tasks.setdefault(group_name, []).append(task_name)
+        return grouped_tasks
+
+    def _create_group_widget(
+        self, group_name: str, task_names: list[str]
+    ) -> SimpleCardWidget:
+        """创建单个分组卡片和动画流式布局。"""
+        group_widget = SimpleCardWidget(self.task_scroll_content)
+        group_layout = QVBoxLayout(group_widget)
+        group_layout.setContentsMargins(16, 14, 16, 14)
+        group_layout.setSpacing(8)
+
+        group_def = self._group_meta.get(group_name, {"name": group_name})
+        group_label = group_def.get("label") or group_def.get("name") or group_name
+        group_title = StrongBodyLabel(str(group_label), group_widget)
+        self._apply_fluent_tooltip(group_title, group_def.get("description"))
+
+        group_hint = CaptionLabel(
+            self.tr("{} tasks").format(len(task_names)), group_widget
+        )
+        group_hint.setStyleSheet("color: rgba(128, 128, 128, 0.9);")
+
+        flow_container = QWidget(group_widget)
+        flow_container.setObjectName("taskFlowContainer")
+        flow_container.setStyleSheet(
+            "QWidget#taskFlowContainer { background: transparent; }"
+        )
+        flow_layout = FlowLayout(flow_container, needAni=True)
+        flow_layout.setAnimation(250, QEasingCurve.Type.OutQuad)
+        flow_layout.setContentsMargins(0, 2, 0, 0)
+        flow_layout.setHorizontalSpacing(10)
+        flow_layout.setVerticalSpacing(10)
+
+        for task_name in task_names:
+            task_button = self._create_task_button(task_name)
+            flow_layout.addWidget(task_button)
+
+        group_layout.addWidget(group_title)
+        group_layout.addWidget(group_hint)
+        group_layout.addWidget(flow_container)
+        return group_widget
+
+    def _create_task_button(self, task_name: str) -> TogglePushButton:
+        """创建任务切换按钮。"""
+        task_def = self._task_meta.get(task_name, {"name": task_name})
+        task_label = task_def.get("label") or task_name
+        task_button = TogglePushButton(self.task_scroll_content)
+        task_button.setCheckable(True)
+        task_button.setText(str(task_label))
+        task_button.setMinimumHeight(38)
+        task_button.setMinimumWidth(116)
+        task_button.setProperty("taskName", task_name)
+
+        task_icon = self._resolve_icon(task_def.get("icon"))
+        if task_icon:
+            task_button.setIcon(task_icon)
+
+        self._apply_fluent_tooltip(task_button, task_def.get("description"))
+        self._task_button_group.addButton(task_button)
+        return task_button
+
+    def _populate_task_groups(self) -> None:
+        """按 group -> 动画流式布局 构建滚动内容。"""
+        grouped_tasks = self._grouped_task_names()
+        for group_name in sorted(grouped_tasks.keys(), key=self._group_sort_key):
+            group_widget = self._create_group_widget(group_name, grouped_tasks[group_name])
+            self.task_group_layout.addWidget(group_widget)
+        self.task_group_layout.addStretch(1)
+
+    def _selected_task_name(self) -> str:
+        """获取当前被选中的任务名。"""
+        checked_button = self._task_button_group.checkedButton()
+        if checked_button is None:
+            return ""
+        return str(checked_button.property("taskName") or "")
 
     def on_confirm(self):
         """确认添加任务"""
-        # 获取选中的显示文本
-        selected_label = self.task_combo.currentText().strip()
-
-        # 通过映射获取真实的任务名称（name）
-        self.task_name = self.display_to_name.get(selected_label, selected_label)
+        self.task_name = self._selected_task_name().strip()
 
         # 验证输入
         if not self.task_name:
-            self.show_error(self.tr("Task name cannot be empty"))
+            self.show_error(self.tr("Please select a task"))
             return
 
         # 检查任务是否为特殊任务

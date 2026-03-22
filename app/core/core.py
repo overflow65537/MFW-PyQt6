@@ -900,6 +900,11 @@ class ServiceCoordinator:
         return self._interface
 
     @property
+    def interface_path(self) -> Path | str | None:
+        """返回当前生效的 interface 文件路径。"""
+        return self._interface_path
+
+    @property
     def config(self) -> ConfigService:
         return self.config_service
 
