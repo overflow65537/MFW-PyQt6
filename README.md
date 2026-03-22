@@ -38,7 +38,7 @@ MFW-ChainFlow Assistant 旨在为 MaaFramework 用户提供开箱即用的可视
 
 ## 功能亮点
 
-- 完整支持 [interface v2 协议](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/3.3-ProjectInterfaceV2%E5%8D%8F%E8%AE%AE.md)
+- 完整支持 [interface v2 协议](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/3.3-ProjectInterfaceV2%E5%8D%8F%E8%AE%AE.md) V2.4.0
 - 跨平台支持：Windows / Linux / macOS
 - 可带参数启动：指定配置 ID 与自动执行任务
 - 外部通知：钉钉、飞书、SMTP、WxPusher、企业微信机器人、Gotify

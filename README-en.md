@@ -36,7 +36,7 @@ MFW-ChainFlow Assistant provides a ready-to-use visual orchestrator for MaaFrame
 
 ## Highlights
 
-- Full support for [interface v2](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/3.3-ProjectInterfaceV2%E5%8D%8F%E8%AE%AE.md)
+- Full support for [interface v2](https://github.com/MaaXYZ/MaaFramework/blob/main/docs/zh_cn/3.3-ProjectInterfaceV2%E5%8D%8F%E8%AE%AE.md) V2.4.0
 - Cross-platform: Windows / Linux / macOS
 - Parameterized launch: specify config ID and auto-run tasks
 - External notifications: DingTalk, Lark/Feishu, SMTP, WxPusher, WeCom bot, Gotify
