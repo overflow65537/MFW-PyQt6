@@ -720,8 +720,25 @@ class TaskListItem(BaseListItem):
                     display_value = None
                     if interface_options and key in interface_options:
                         option_def = interface_options[key]
-                        # 如果是 combobox 类型，尝试根据 value 找到对应的 label
-                        if option_def.get("type", "").lower() == "combobox":
+                        option_type = str(option_def.get("type", "")).lower()
+
+                        # 新协议主路径：select/switch/checkbox 使用 cases
+                        if option_type in ("select", "switch", "checkbox"):
+                            cases = option_def.get("cases", [])
+                            for case in cases:
+                                if not isinstance(case, dict):
+                                    continue
+                                case_name = str(case.get("name", ""))
+                                case_label = str(case.get("label", case_name))
+                                if (
+                                    case_name == str(option_value)
+                                    or case_label == str(option_value)
+                                ):
+                                    display_value = case_label
+                                    break
+
+                        # 兼容旧路径：combobox 使用 options
+                        elif option_type == "combox":
                             options = option_def.get("options", [])
                             for opt in options:
                                 if isinstance(opt, dict):

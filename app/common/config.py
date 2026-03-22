@@ -66,6 +66,7 @@ class Language(Enum):
     CHINESE_SIMPLIFIED = QLocale(QLocale.Language.Chinese, QLocale.Country.China)
     CHINESE_TRADITIONAL = QLocale(QLocale.Language.Chinese, QLocale.Country.HongKong)
     ENGLISH = QLocale(QLocale.Language.English)
+    JAPANESE = QLocale(QLocale.Language.Japanese, QLocale.Country.Japan)
 
 
 def isWin11():
@@ -313,10 +314,14 @@ def detect_system_language() -> Language:
     # 中文判断
     if language == QLocale.Language.Chinese:
         # 繁体
-        if country in (QLocale.Country.HongKong,):
+        if country in (QLocale.Country.HongKong, QLocale.Country.Taiwan):
             return Language.CHINESE_TRADITIONAL
         # 简体
         return Language.CHINESE_SIMPLIFIED
+
+    # 日语判断
+    if language == QLocale.Language.Japanese:
+        return Language.JAPANESE
 
     # 其他语言默认英文
     else:

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, Optional
+import re
 
 import jsonc
 
@@ -54,16 +55,44 @@ class I18nService:
 
         lang = self._current_language
         languages = interface_data.get("languages", {})
-        translation_file = languages.get(lang)
+
+        # 支持繁体语言码双键兼容：zh_tw 与 zh_hk 可互相回退
+        candidate_keys = [lang]
+        if lang == "zh_tw":
+            candidate_keys.append("zh_hk")
+        elif lang == "zh_hk":
+            candidate_keys.append("zh_tw")
+
+        translation_file = None
+        used_lang_key = None
+        for key in candidate_keys:
+            translation_file = languages.get(key)
+            if translation_file:
+                used_lang_key = key
+                break
+
         if not translation_file:
             logger.warning("未找到语言 %s 的翻译文件配置", lang)
             return
+
+        if used_lang_key and used_lang_key != lang:
+            logger.info(
+                "语言 %s 未直接配置，已回退使用 %s 对应翻译文件",
+                lang,
+                used_lang_key,
+            )
 
         translation_path = interface_dir / translation_file
         try:
             with open(translation_path, "r", encoding="utf-8") as f:
                 translations: Dict[str, str] = jsonc.load(f)
             self._translations[lang] = translations
+
+            # 繁体兼容缓存：保证后续按 zh_tw/zh_hk 任一语言码查询都可命中
+            if lang in ("zh_tw", "zh_hk"):
+                self._translations["zh_tw"] = translations
+                self._translations["zh_hk"] = translations
+
             logger.debug(
                 "已加载翻译文件: %s (%d 条翻译)",
                 translation_path,
@@ -103,9 +132,28 @@ class I18nService:
         """
         翻译单个文本：
         - 文本以 $ 开头时，视为 key，从翻译表中查找
+        - 文本中包含内嵌 $key 时，逐个替换为翻译文本
         - 否则原样返回
         """
-        return self.translate_label(text, language=language)
+        translated = self.translate_label(text, language=language)
+        if translated != text:
+            return translated
+
+        if "$" not in text:
+            return text
+
+        lang = language or self._current_language
+        mapping = self._translations.get(lang)
+        if not mapping:
+            return text
+
+        pattern = re.compile(r"\$([A-Za-z0-9_.-]+)")
+
+        def _replace(match: re.Match[str]) -> str:
+            key = match.group(1)
+            return mapping.get(key, match.group(0))
+
+        return pattern.sub(_replace, text)
 
     def translate_any(self, data: Any, language: Optional[str] = None) -> Any:
         """

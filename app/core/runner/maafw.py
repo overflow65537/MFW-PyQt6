@@ -96,6 +96,13 @@ class MaaContextSink(ContextEventSink):
         content = content.replace("{task_id}", str(details.get("task_id", "")))
         content = content.replace("{list}", details.get("list", ""))
 
+        # 兼容部分资源中使用的 $xxx 占位写法，避免未替换键直接显示到 UI
+        label_value = details.get("label", details.get("name", ""))
+        content = content.replace("$label", str(label_value or ""))
+        content = content.replace("$name", str(details.get("name", "") or ""))
+        content = content.replace("$task_id", str(details.get("task_id", "") or ""))
+        content = content.replace("$list", str(details.get("list", "") or ""))
+
         signalBus.callback.emit({"name": "context", "details": content, "display": display})
 
         if msg == "Node.Recognition.Succeeded":

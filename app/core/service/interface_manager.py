@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Sequence
 from copy import deepcopy
 
-from app.common.config import cfg
+from app.common.config import cfg, Language
 from app.utils.logger import logger
-from app.core.service.i18n_service import I18nService
+from app.core.service.i18n_service import I18nService, get_i18n_service
 from app.utils.custom_builder import build_custom_bundle
 
 
@@ -69,16 +69,16 @@ class InterfaceManager:
 
     def _detect_language_from_config(self) -> str:
         """根据全局配置推断语言代码"""
-        language_map = {
-            "Chinese (China)": "zh_cn",
-            "Chinese (Hong Kong)": "zh_hk",
-            "English": "en_us",
-        }
         qt_locale = cfg.get(cfg.language)
-        locale_name = (
-            qt_locale.value.name() if hasattr(qt_locale, "value") else "Chinese (China)"
-        )
-        return language_map.get(locale_name, "zh_cn")
+        if qt_locale == Language.CHINESE_SIMPLIFIED:
+            return "zh_cn"
+        if qt_locale == Language.CHINESE_TRADITIONAL:
+            return "zh_hk"
+        if qt_locale == Language.JAPANESE:
+            return "ja_jp"
+        if qt_locale == Language.ENGLISH:
+            return "en_us"
+        return "zh_cn"
 
     def initialize(
         self,
@@ -163,6 +163,13 @@ class InterfaceManager:
             self._original_interface, self._interface_dir
         )
 
+        # 同步到全局 i18n 服务，供日志等模块直接调用
+        shared_i18n = get_i18n_service()
+        shared_i18n.language = self._current_language
+        shared_i18n.load_translations_from_interface(
+            self._original_interface, self._interface_dir
+        )
+
     def _translate_interface(self):
         """翻译整个 interface 配置"""
         if not self._original_interface:
@@ -221,8 +228,9 @@ class InterfaceManager:
                 data[i] = self._translate_dict(item)
 
         elif isinstance(data, str):
-            # 直接翻译字符串（如果以 $ 开头）
-            return self._i18n_service.translate_text(data)
+            # 普通字符串不做全量翻译，避免把 task.option / option.option 等标识符数组误翻译
+            # 需要翻译的字段在 dict 分支中按键名显式处理（label/description/title/...）
+            return data
 
         return data
 

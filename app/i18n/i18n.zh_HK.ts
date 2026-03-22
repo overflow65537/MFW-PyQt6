@@ -2901,7 +2901,7 @@ Please check for updates first, or visit the GitHub releases page.</source>
     <message>
         <location filename="../view/setting_interface/setting_interface.py" line="1234"/>
         <source>HTML</source>
-        <translation></translation>
+        <translation>HTML</translation>
     </message>
     <message>
         <location filename="../view/setting_interface/setting_interface.py" line="1242"/>

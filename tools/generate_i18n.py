@@ -115,6 +115,7 @@ project_root = os.getcwd()
 output_ts_files = [
     os.path.join(project_root, "app", "i18n", "i18n.zh_CN.ts"),
     os.path.join(project_root, "app", "i18n", "i18n.zh_HK.ts"),
+    os.path.join(project_root, "app", "i18n", "i18n.ja_JP.ts"),
 ]
 
 # 创建 translations 目录（如果不存在）

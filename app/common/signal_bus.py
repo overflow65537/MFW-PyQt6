@@ -89,5 +89,4 @@ class SignalBus(QObject):
     # payload: dict（包含原因/标志位等，字段可扩展）
     task_flow_finished = Signal(dict)
 
-
 signalBus = SignalBus()

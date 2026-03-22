@@ -864,7 +864,12 @@ class SettingInterface(QWidget):
             FIF.LANGUAGE,
             self.tr("Language"),
             self.tr("Set your preferred language for UI"),
-            texts=["简体中文", "繁體中文", "English"],
+            texts=[
+                "简体中文 / Chinese (Simplified)",
+                "繁體中文 / Chinese (Traditional)",
+                "英语 / English",
+                "日语 / Japanese",
+            ],
             parent=self.personalGroup,
         )
 

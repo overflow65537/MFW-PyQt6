@@ -205,11 +205,13 @@ shutil.copy(
 
 os.makedirs(os.path.join(os.getcwd(), "dist", "MFW", "app", "i18n"), exist_ok=True)
 # 复制i18n文件
-for qm_file in ["i18n.zh_CN.qm", "i18n.zh_HK.qm"]:
-    shutil.copy(
-        os.path.join(os.getcwd(), "app", "i18n", qm_file),
-        os.path.join(os.getcwd(), "dist", "MFW", "app", "i18n", qm_file),
-    )
+for qm_file in ["i18n.zh_CN.qm", "i18n.zh_HK.qm", "i18n.ja_JP.qm"]:
+    src_qm = os.path.join(os.getcwd(), "app", "i18n", qm_file)
+    dst_qm = os.path.join(os.getcwd(), "dist", "MFW", "app", "i18n", qm_file)
+    if os.path.exists(src_qm):
+        shutil.copy(src_qm, dst_qm)
+    else:
+        print(f"[WARN] i18n 文件不存在，跳过复制: {src_qm}")
 
 # === 构建updater ===
 updater_command = [

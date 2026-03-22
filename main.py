@@ -53,6 +53,7 @@ from app.common.config import cfg
 from app.view.main_window.main_window import MainWindow
 from app.common.config import Language
 from app.utils.crypto import crypto_manager
+from app.utils.ts_translator import TsTranslator
 
 
 class _SingleInstanceLock:
@@ -212,20 +213,38 @@ if __name__ == "__main__":
     locale: ConfigItem = cfg.get(cfg.language)
     translator = FluentTranslator(locale.value)
     galleryTranslator = QTranslator()
+    fallbackTsTranslator = TsTranslator()
+
+    def _load_gallery_translation(qm_name: str, ts_name: str, log_name: str) -> bool:
+        """优先加载 qm，失败时回退加载 ts。"""
+        qm_path = os.path.join(".", "app", "i18n", qm_name)
+        if galleryTranslator.load(qm_path):
+            logger.info(f"加载{log_name}翻译(qm)")
+            return True
+
+        ts_path = os.path.join(".", "app", "i18n", ts_name)
+        if fallbackTsTranslator.load_ts(ts_path):
+            app.installTranslator(fallbackTsTranslator)
+            logger.info(f"加载{log_name}翻译(ts回退)")
+            return True
+
+        logger.warning(f"未找到可用的{log_name}翻译文件: {qm_path} / {ts_path}")
+        return False
 
     # 确定语言代码
     language_code = "zh_cn"  # 默认中文
     if locale == Language.CHINESE_SIMPLIFIED:
-        galleryTranslator.load(os.path.join(".", "app", "i18n", "i18n.zh_CN.qm"))
+        _load_gallery_translation("i18n.zh_CN.qm", "i18n.zh_CN.ts", "简体中文")
         language_code = "zh_cn"
-        logger.info("加载简体中文翻译")
     elif locale == Language.CHINESE_TRADITIONAL:
-        galleryTranslator.load(os.path.join(".", "app", "i18n", "i18n.zh_HK.qm"))
+        _load_gallery_translation("i18n.zh_HK.qm", "i18n.zh_HK.ts", "繁体中文")
         language_code = "zh_hk"
-        logger.info("加载繁体中文翻译")
     elif locale == Language.ENGLISH:
         language_code = "en_us"
         logger.info("加载英文翻译")
+    elif locale == Language.JAPANESE:
+        _load_gallery_translation("i18n.ja_JP.qm", "i18n.ja_JP.ts", "日语")
+        language_code = "ja_jp"
     app.installTranslator(translator)
     app.installTranslator(galleryTranslator)
 
