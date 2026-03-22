@@ -80,18 +80,17 @@ class I18nService:
         根据语言代码和原始 label 返回翻译结果。
 
         Args:
-            label: 原始 label，可以是 "$key" 或 "key"
+            label: 原始 label，仅当为 "$key" 时才会查翻译表
             language: 语言代码；为空时使用当前语言
         """
         if not label:
             return label
 
-        lang = language or self._current_language
+        if not label.startswith("$"):
+            return label
 
-        if label.startswith("$"):
-            key = label[1:]
-        else:
-            key = label
+        lang = language or self._current_language
+        key = label[1:]
 
         mapping = self._translations.get(lang)
         if not mapping:
@@ -112,7 +111,7 @@ class I18nService:
         递归翻译 dict / list / str 结构。
 
         仅用于通用 key 不敏感的场景；如果需要对特定字段名做特殊处理，
-        由上层在调用前/后自行处理。
+        由上层在调用前/后自行处理。仅 $key 会被翻译。
         """
         if isinstance(data, dict):
             for key, value in data.items():

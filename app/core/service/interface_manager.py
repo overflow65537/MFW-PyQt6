@@ -195,9 +195,9 @@ class InterfaceManager:
             翻译后的数据
         """
         if isinstance(data, dict):
-            # 递归翻译字典中的每个值
+            # 递归翻译字典中的每个固定值
             for key, value in data.items():
-                # 特殊处理 label, icon, description, title, welcome, contact 等需要翻译的字段
+                # 特殊处理 label, icon, description, title, welcome, contact, "doc", "pattern_msg"等需要翻译的字段
                 if (
                     key
                     in (
@@ -208,22 +208,21 @@ class InterfaceManager:
                         "title",
                         "welcome",
                         "contact",
+                        "doc",
+                        "pattern_msg",
                     )
-                    and isinstance(value, str)
-                ):
+                ) and isinstance(value, str):
                     data[key] = self._i18n_service.translate_text(value)
-                else:
+                elif isinstance(value, (dict, list)):
                     data[key] = self._translate_dict(value)
 
         elif isinstance(data, list):
             # 递归翻译列表中的每个元素
             for i, item in enumerate(data):
-                data[i] = self._translate_dict(item)
+                if isinstance(item, (dict, list)):
+                    data[i] = self._translate_dict(item)
 
-        elif isinstance(data, str):
-            # 直接翻译字符串（如果以 $ 开头）
-            return self._i18n_service.translate_text(data)
-
+        # 其他类型不处理，保持原样返回,防止破坏结构
         return data
 
     def _resolve_text_fields_from_files(self, data: Any):
@@ -265,7 +264,9 @@ class InterfaceManager:
         except (OSError, UnicodeDecodeError):
             return value
 
-    def _deep_merge_option(self, base: Dict[str, Any], override: Dict[str, Any]) -> None:
+    def _deep_merge_option(
+        self, base: Dict[str, Any], override: Dict[str, Any]
+    ) -> None:
         """
         将 override 深度合并到 base（仅合并 option 结构：同键为 dict 则递归，否则 override 覆盖）。
         """
@@ -400,7 +401,12 @@ class InterfaceManager:
             logger.warning("找不到 agent.child_args 指向的启动脚本，跳过嵌入式转换")
             return
 
-        project_name = str(self._original_interface.get("name") or self._interface_dir.name).strip() or "custom"
+        project_name = (
+            str(
+                self._original_interface.get("name") or self._interface_dir.name
+            ).strip()
+            or "custom"
+        )
         custom_dir = self._interface_dir / f"{project_name}_custom"
 
         try:
@@ -420,7 +426,9 @@ class InterfaceManager:
         if self._interface_path:
             try:
                 with open(self._interface_path, "w", encoding="utf-8") as f:
-                    jsonc.dump(self._original_interface, f, indent=4, ensure_ascii=False)
+                    jsonc.dump(
+                        self._original_interface, f, indent=4, ensure_ascii=False
+                    )
                 logger.debug(f"已将 custom 字段保存到: {self._interface_path}")
             except Exception as exc:
                 logger.exception(f"保存 interface 文件失败: {exc}")
