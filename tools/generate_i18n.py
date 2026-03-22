@@ -108,92 +108,80 @@ if len(sys.argv) > 1:
                 print("警告: 指定的目录中未找到 pylupdate6，使用 lupdate")
                 print("  注意: lupdate 可能不支持 Python 文件，请确保使用 pylupdate6")
 
-# 项目根目录
-project_root = os.getcwd()
+# 项目根目录（与 tools/lrelease.py 一致，避免在子目录执行时路径错误）
+_script_dir = Path(__file__).resolve().parent
+_project_root_path = _script_dir.parent
+if not (_project_root_path / "main.py").exists():
+    _project_root_path = Path.cwd()
+project_root = str(_project_root_path)
 
-# 输出的 .ts 文件路径
+# 输出的 .ts 文件路径（繁体仅 zh_TW；繁体译文风格见 llm_translate_ts）
 output_ts_files = [
     os.path.join(project_root, "app", "i18n", "i18n.zh_CN.ts"),
-    os.path.join(project_root, "app", "i18n", "i18n.zh_HK.ts"),
+    os.path.join(project_root, "app", "i18n", "i18n.zh_TW.ts"),
+    os.path.join(project_root, "app", "i18n", "i18n.ja_JP.ts"),
 ]
 
-# 创建 translations 目录（如果不存在）
+# 查找项目内所有的 Python 文件（每个语言 .ts 共用同一份源文件列表，只扫描一次）
+app_dir = os.path.join(project_root, "app")
+exclude_dirs = [
+    "__pycache__",
+    "i18n",  # 排除翻译文件目录
+]
+python_files: list[str] = []
+if os.path.exists(app_dir):
+    for root, dirs, files in os.walk(app_dir):
+        rel_path = os.path.relpath(root, app_dir)
+        if any(exclude_dir in rel_path.split(os.sep) for exclude_dir in exclude_dirs):
+            dirs[:] = []
+            continue
+        for file in files:
+            if file.endswith(".py"):
+                python_files.append(os.path.join(root, file))
+else:
+    print(f"警告: 未找到 app 目录: {app_dir}")
+    print("  将扫描整个项目目录...")
+    exclude_dirs_full = [
+        "dist",
+        "build",
+        "__pycache__",
+        ".git",
+        ".venv",
+        "venv",
+        "env",
+        "node_modules",
+        "backup",
+        "hotfix",
+        "runtime",
+        "tests",
+    ]
+    exclude_files = [
+        "build.py",
+        "generate_i18n.py",
+        "generate_custom_json.py",
+        "lrelease.py",
+        "find_i18n_tools.py",
+        "updater.py",
+        "main.py",
+    ]
+    for root, dirs, files in os.walk(project_root):
+        rel_path = os.path.relpath(root, project_root)
+        if any(
+            exclude_dir in rel_path.split(os.sep) for exclude_dir in exclude_dirs_full
+        ):
+            dirs[:] = []
+            continue
+        for file in files:
+            if file.endswith(".py"):
+                file_path = os.path.join(root, file)
+                if os.path.dirname(file_path) == project_root and file in exclude_files:
+                    continue
+                python_files.append(file_path)
+
 for output_ts_file in output_ts_files:
     translations_dir = os.path.dirname(output_ts_file)
     if not os.path.exists(translations_dir):
         os.makedirs(translations_dir)
-
-    # 查找项目内所有的 Python 文件
-    # 只扫描 app 目录（主要的应用代码）
-    app_dir = os.path.join(project_root, "app")
-
-    # 排除的目录
-    exclude_dirs = [
-        "__pycache__",
-        "i18n",  # 排除翻译文件目录
-    ]
-
-    python_files = []
-    if os.path.exists(app_dir):
-        for root, dirs, files in os.walk(app_dir):
-            # 跳过排除的目录
-            rel_path = os.path.relpath(root, app_dir)
-            if any(
-                exclude_dir in rel_path.split(os.sep) for exclude_dir in exclude_dirs
-            ):
-                dirs[:] = []  # 跳过当前目录及其子目录
-                continue
-
-            for file in files:
-                if file.endswith(".py"):
-                    file_path = os.path.join(root, file)
-                    python_files.append(file_path)
-    else:
-        print(f"警告: 未找到 app 目录: {app_dir}")
-        print("  将扫描整个项目目录...")
-        # 如果 app 目录不存在，回退到扫描整个项目
-        exclude_dirs_full = [
-            "dist",
-            "build",
-            "__pycache__",
-            ".git",
-            ".venv",
-            "venv",
-            "env",
-            "node_modules",
-            "backup",
-            "hotfix",
-            "runtime",
-            "tests",
-        ]
-        exclude_files = [
-            "build.py",  # 已移动到 tools/build.py
-            "generate_i18n.py",
-            "generate_custom_json.py",
-            "lrelease.py",
-            "find_i18n_tools.py",
-            "updater.py",
-            "main.py",  # 排除 main.py，因为 lupdate 可能无法处理
-        ]
-
-        for root, dirs, files in os.walk(project_root):
-            rel_path = os.path.relpath(root, project_root)
-            if any(
-                exclude_dir in rel_path.split(os.sep)
-                for exclude_dir in exclude_dirs_full
-            ):
-                dirs[:] = []
-                continue
-
-            for file in files:
-                if file.endswith(".py"):
-                    file_path = os.path.join(root, file)
-                    if (
-                        os.path.dirname(file_path) == project_root
-                        and file in exclude_files
-                    ):
-                        continue
-                    python_files.append(file_path)
 
     # 构建命令
     # 对于 lupdate，需要使用目录方式并添加 -extensions py 选项

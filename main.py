@@ -43,7 +43,7 @@ from qasync import QEventLoop, asyncio
 
 # 应用qasync Windows平台补丁
 import app.utils.qasync_patch
-from qfluentwidgets import ConfigItem, FluentTranslator
+from qfluentwidgets import FluentTranslator
 from PySide6.QtCore import Qt, QTranslator
 from PySide6.QtWidgets import QApplication
 
@@ -209,20 +209,35 @@ if __name__ == "__main__":
     app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
 
     # 国际化配置
-    locale: ConfigItem = cfg.get(cfg.language)
+    locale = cfg.get(cfg.language)
     translator = FluentTranslator(locale.value)
     galleryTranslator = QTranslator()
 
-    # 确定语言代码
-    language_code = "zh_cn"  # 默认中文
+    i18n_dir = os.path.join(".", "app", "i18n")
+
+    def _try_load_qm(translator: QTranslator, filenames: tuple[str, ...]) -> bool:
+        for name in filenames:
+            path = os.path.join(i18n_dir, name)
+            if os.path.isfile(path) and translator.load(path):
+                return True
+        return False
+
+    # 确定语言代码（与 interface_manager / 资源包 languages 键一致）
+    language_code = "zh_cn"
     if locale == Language.CHINESE_SIMPLIFIED:
-        galleryTranslator.load(os.path.join(".", "app", "i18n", "i18n.zh_CN.qm"))
+        _try_load_qm(galleryTranslator, ("i18n.zh_CN.qm",))
         language_code = "zh_cn"
         logger.info("加载简体中文翻译")
     elif locale == Language.CHINESE_TRADITIONAL:
-        galleryTranslator.load(os.path.join(".", "app", "i18n", "i18n.zh_HK.qm"))
-        language_code = "zh_hk"
-        logger.info("加载繁体中文翻译")
+        if _try_load_qm(galleryTranslator, ("i18n.zh_TW.qm",)):
+            logger.info("加载繁体中文翻译")
+        else:
+            logger.warning("未找到繁体 .qm：i18n.zh_TW.qm")
+        language_code = "zh_tw"
+    elif locale == Language.JAPANESE:
+        _try_load_qm(galleryTranslator, ("i18n.ja_JP.qm",))
+        language_code = "ja_jp"
+        logger.info("加载日语翻译")
     elif locale == Language.ENGLISH:
         language_code = "en_us"
         logger.info("加载英文翻译")

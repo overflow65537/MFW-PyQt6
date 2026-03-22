@@ -64,7 +64,9 @@ class Language(Enum):
     """Language enumeration mapped to QLocale."""
 
     CHINESE_SIMPLIFIED = QLocale(QLocale.Language.Chinese, QLocale.Country.China)
+    # 繁体中文：港台澳统一为此项（界面仅「繁體中文」一项）
     CHINESE_TRADITIONAL = QLocale(QLocale.Language.Chinese, QLocale.Country.HongKong)
+    JAPANESE = QLocale(QLocale.Language.Japanese, QLocale.Country.Japan)
     ENGLISH = QLocale(QLocale.Language.English)
 
 
@@ -92,6 +94,8 @@ class Config(QConfig):
 
         def deserialize(self, value: str) -> Language:
             if isinstance(value, str):
+                if value == "CHINESE_TRADITIONAL_TW":
+                    return Language.CHINESE_TRADITIONAL
                 try:
                     return Language[value]
                 except KeyError:
@@ -310,17 +314,20 @@ def detect_system_language() -> Language:
     language = system_locale.language()
     country = system_locale.country()
 
-    # 中文判断
+    # 中文判断（繁体：台港澳统一为 CHINESE_TRADITIONAL）
     if language == QLocale.Language.Chinese:
-        # 繁体
-        if country in (QLocale.Country.HongKong,):
+        if country in (
+            QLocale.Country.HongKong,
+            QLocale.Country.Macao,
+            QLocale.Country.Taiwan,
+        ):
             return Language.CHINESE_TRADITIONAL
-        # 简体
         return Language.CHINESE_SIMPLIFIED
 
-    # 其他语言默认英文
-    else:
-        return Language.ENGLISH
+    if language == QLocale.Language.Japanese:
+        return Language.JAPANESE
+
+    return Language.ENGLISH
 
 
 def init_language_on_first_run():

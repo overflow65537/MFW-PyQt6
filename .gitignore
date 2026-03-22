@@ -481,7 +481,9 @@ update_flag.txt
 bundle/*
 MPAcustom/*
 app/i18n/i18n.zh_CN.qm
-app/i18n/i18n.zh_HK.qm
+app/i18n/i18n.zh_TW.qm
+app/i18n/i18n.ja_JP.qm
 release_notes/*
 MPA_custom/*
 tasks/*
+.llm.txt

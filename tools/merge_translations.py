@@ -233,10 +233,11 @@ def main():
     os.chdir(project_root)
     print(f"[INFO] working directory has been set to: {os.getcwd()}")
     
-    # 定义要处理的语言
+    # 定义要处理的语言（与 generate_i18n 输出的 i18n.<lang>.ts 一致）
     languages = [
         ("zh_CN", "简体中文"),
-        ("zh_HK", "繁体中文"),
+        ("zh_TW", "繁体中文"),
+        ("ja_JP", "日语"),
     ]
     
     print("=" * 60)

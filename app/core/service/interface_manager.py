@@ -69,14 +69,23 @@ class InterfaceManager:
 
     def _detect_language_from_config(self) -> str:
         """根据全局配置推断语言代码"""
+        # QLocale.name() 多为 BCP47（如 zh_CN）；旧配置或展示名可能为英文描述
         language_map = {
+            "zh_CN": "zh_cn",
             "Chinese (China)": "zh_cn",
-            "Chinese (Hong Kong)": "zh_hk",
+            # 繁体界面语言：QLocale 可能为 zh_HK（香港）或 zh_TW（台湾），interface 统一用 zh_tw
+            "zh_HK": "zh_tw",
+            "Chinese (Hong Kong)": "zh_tw",
+            "zh_TW": "zh_tw",
+            "Chinese (Taiwan)": "zh_tw",
+            "ja_JP": "ja_jp",
+            "Japanese (Japan)": "ja_jp",
+            "en_US": "en_us",
             "English": "en_us",
         }
         qt_locale = cfg.get(cfg.language)
         locale_name = (
-            qt_locale.value.name() if hasattr(qt_locale, "value") else "Chinese (China)"
+            qt_locale.value.name() if hasattr(qt_locale, "value") else "zh_CN"
         )
         return language_map.get(locale_name, "zh_cn")
 
@@ -90,7 +99,7 @@ class InterfaceManager:
 
         Args:
             interface_path: interface 配置文件路径，默认为项目根目录下的 interface.jsonc 或 interface.json
-            language: 语言代码（如 "zh_cn", "en_us", "zh_hk"），默认从配置读取
+            language: 语言代码（如 "zh_cn", "en_us", "zh_tw"），默认从配置读取
         """
         desired_path = self._normalize_interface_path(interface_path)
         if language is not None:
@@ -463,7 +472,7 @@ class InterfaceManager:
 
         Args:
             interface_path: 要加载的 interface 配置文件路径（json/jsonc）
-            language: 语言代码（如 "zh_cn", "en_us", "zh_hk"）。如果为 None：
+            language: 语言代码（如 "zh_cn", "en_us", "zh_tw"）。如果为 None：
                 - 若当前尚未初始化且语言为默认值，则按配置自动推断；
                 - 否则使用当前管理器的语言设置。
 
@@ -585,7 +594,7 @@ def get_interface_manager(
 
     Args:
         interface_path: interface 配置文件路径（可为 json/jsonc）
-        language: 语言代码（如 "zh_cn", "en_us", "zh_hk"），默认从配置读取
+        language: 语言代码（如 "zh_cn", "en_us", "zh_tw"），默认从配置读取
 
     Returns:
         InterfaceManager 实例
