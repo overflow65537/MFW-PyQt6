@@ -211,7 +211,8 @@ class InterfaceManager:
                         "doc",
                         "pattern_msg",
                     )
-                ) and isinstance(value, str):
+                    and isinstance(value, str)
+                ):
                     data[key] = self._i18n_service.translate_text(value)
                 elif isinstance(value, (dict, list)):
                     data[key] = self._translate_dict(value)
