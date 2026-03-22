@@ -235,7 +235,7 @@ class LogoutputWidget(QWidget):
         """初始化日志输出标题"""
 
         # 日志输出标题
-        self.log_output_title = BodyLabel("日志输出")
+        self.log_output_title = BodyLabel(self.tr("Log Output"))
 
         # 设置字体大小
         self.log_output_title.setStyleSheet("font-size: 20px;")
