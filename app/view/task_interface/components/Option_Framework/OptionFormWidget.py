@@ -232,13 +232,14 @@ class OptionFormWidget(QWidget):
                 if option_item.current_value is not None:
                     option_item._update_children_for_checkbox(skip_animation=True)
     
-    def _apply_single_child_config(self, option_item: "OptionItemBase", option_value: str, child_config: Any):
+    def _apply_single_child_config(self, option_item: "OptionItemBase", option_value: str, child_config: Any, target_widget: "OptionItemBase" = None):
         """
         应用单个子选项的配置
         
         :param option_item: 选项项组件
         :param option_value: 子选项的值（当前选中值）
         :param child_config: 子选项配置
+        :param target_widget: 已定位的子选项控件（优先使用，避免重复查找导致定位错误）
         """
         if option_value in option_item.config.get("children", {}):
             child_structure = option_item.config["children"][option_value]
@@ -249,7 +250,7 @@ class OptionFormWidget(QWidget):
                 self._apply_single_child_config(option_item, option_value, config_item)
             return
 
-        child_widget = option_item.find_child_widget(option_value, child_config)
+        child_widget = target_widget or option_item.find_child_widget(option_value, child_config)
         if child_widget:
             # 注意：不需要设置可见性，因为 set_value 已经通过 _update_children_visibility 处理了
             
@@ -270,7 +271,7 @@ class OptionFormWidget(QWidget):
                 else:
                     # 如果字典不包含 value 字段，可能是输入框的值（inputs 类型）
                     # 需要根据子选项的类型来判断
-                    if child_widget.config_type in ["lineedit", "input", "inputs"]:
+                    if child_widget.config_type in ["input", "inputs"]:
                         # input/inputs 类型可以接收字典
                         child_widget.set_value(child_config)
                     else:
@@ -284,8 +285,7 @@ class OptionFormWidget(QWidget):
         """
         应用子选项配置，兼容多种配置格式：
         1. config_key 是 option_value（如 "自行输入角色名"）
-        2. config_key 是旧格式的内部 key（如 "选择A级角色_child_自行输入角色名_输入A级角色名_0"）
-        3. config_key 是 child_name（如 "输入A级角色名"）
+        2. config_key 是 child_name（如 "输入A级角色名"）
         会跳过标记为 hidden 的子选项。
         """
         if not children_config:
@@ -306,11 +306,7 @@ class OptionFormWidget(QWidget):
             if config_key in child_definitions:
                 option_value = config_key
             
-            # 尝试方式2：config_key 是旧格式的内部 key
-            if not option_value:
-                option_value = option_item.get_option_value_for_child_key(config_key)
-            
-            # 尝试方式3：config_key 是 child_name
+            # 尝试方式2：config_key 是 child_name
             if not option_value:
                 result = option_item.find_child_by_name(config_key)
                 if result:
@@ -324,9 +320,9 @@ class OptionFormWidget(QWidget):
                     # 如果移除 hidden 后只剩下 value 字段，直接使用 value
                     if len(actual_cfg) == 1 and "value" in actual_cfg:
                         actual_cfg = actual_cfg["value"]
-                    self._apply_single_child_config(option_item, option_value, actual_cfg)
+                    self._apply_single_child_config(option_item, option_value, actual_cfg, child_widget)
                 else:
-                    self._apply_single_child_config(option_item, option_value, child_cfg)
+                    self._apply_single_child_config(option_item, option_value, child_cfg, child_widget)
             else:
                 logger.debug(
                     f"跳过无效的子选项配置: option_key={option_item.key}, config_key={config_key}"

@@ -620,10 +620,10 @@ class OptionItemBase(QWidget):
         ]
 
     def find_child_widget(
-        self, option_value: str, child_config: Dict[str, Any]
+        self, option_value: str, child_config: Any
     ) -> Optional["OptionItemBase"]:
         """查找子选项控件"""
-        child_name = child_config.get("name")
+        child_name = child_config.get("name") if isinstance(child_config, dict) else None
         if child_name:
             child_key = self._child_name_map.get((option_value, child_name))
             if child_key:

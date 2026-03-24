@@ -131,8 +131,8 @@ class OptionService:
     def _copy_description_from_source(
         self, target: Dict[str, Any], source: Dict[str, Any]
     ) -> None:
-        """将 source 中的 description/doc 字段复制到 target"""
-        description = source.get("description") or source.get("doc")
+        """将 source 中的 description 字段复制到 target"""
+        description = source.get("description")
         if description:
             target["description"] = description
 
@@ -171,10 +171,8 @@ class OptionService:
         label = option_def.get("label", option_def.get("name", option_key))
         field_config["label"] = label
 
-        # 处理description字段（向后兼容 doc）
+        # 处理description字段
         description = option_def.get("description")
-        if not description and "doc" in option_def:
-            description = option_def["doc"]
         if description:
             field_config["description"] = description
 
@@ -394,7 +392,7 @@ class OptionService:
                 # 获取任务的option字段（字符串数组）
                 task_option_names = task.get("option", [])
                 # 检查任务是否有description字段
-                task_description = task.get("description") or task.get("doc")
+                task_description = task.get("description")
                 if task_description:
                     form_structure["description"] = task_description
                 # 获取顶层的option定义

@@ -81,15 +81,6 @@ class OptionItemRegistry:
         if isinstance(type_name, str):
             type_name = type_name.lower()
 
-        # 向后兼容：lineedit 类型映射到对应的 input/inputs
-        if type_name == "lineedit":
-            inputs = config.get("inputs", [])
-            single_input = config.get("single_input", False)
-            if single_input or len(inputs) <= 1:
-                type_name = "input"
-            else:
-                type_name = "inputs"
-
         # 获取对应的类
         item_class = cls._registry.get(type_name)
 
@@ -155,10 +146,9 @@ def register_default_types():
     OptionItemRegistry.register("switch", SwitchOptionItem)
     OptionItemRegistry.register("input", InputOptionItem)
     OptionItemRegistry.register("inputs", InputsOptionItem)
-    OptionItemRegistry.register("lineedit", InputOptionItem)  # lineedit 向后兼容
     OptionItemRegistry.register("checkbox", CheckBoxOptionItem)
 
-    logger.debug("\u5df2\u6ce8\u518c\u9ed8\u8ba4\u9009\u9879\u7c7b\u578b: combobox, select, switch, input, inputs, lineedit, checkbox")
+    logger.debug("\u5df2\u6ce8\u518c\u9ed8\u8ba4\u9009\u9879\u7c7b\u578b: combobox, select, switch, input, inputs, checkbox")
 
 
 # 模块加载时自动注册默认类型
