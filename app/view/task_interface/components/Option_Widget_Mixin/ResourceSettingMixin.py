@@ -446,10 +446,7 @@ class ResourceSettingMixin:
         if not form_structure:
             self._clear_global_options()
             return
-        from app.common.constants import _RESOURCE_
-        option_service = self.service_coordinator.option_service
-        resource_task = option_service.task_service.get_task(_RESOURCE_)
-        option_config = (resource_task.task_option.get("global_options", {}) if resource_task else {}) or {}
+        option_config = self.service_coordinator.config_service.get_current_global_options()
         if self.global_option_label is None:
             self.global_option_label = BodyLabel(self.tr("Global Option"))
             self.option_page_layout.addWidget(self.global_option_label)
@@ -496,21 +493,12 @@ class ResourceSettingMixin:
             self._connect_global_option_child_signals(child_widget)
 
     def _on_global_option_changed(self, key: str, value: Any):
-        """全局选项变化时写入 Resource 任务的 task_option.global_options。"""
-        from app.common.constants import _RESOURCE_
+        """全局选项变化时写入当前配置根层的 global_options。"""
         option_service = self.service_coordinator.option_service
-        resource_task = option_service.task_service.get_task(_RESOURCE_)
-        if not resource_task:
-            return
         if self.global_option_form_widget is None:
             return
         all_options = self.global_option_form_widget.get_options()
-        if not isinstance(resource_task.task_option, dict):
-            resource_task.task_option = {}
-        resource_task.task_option["global_options"] = dict(all_options)
-        option_service.task_service.update_task(resource_task)
-        if option_service.current_task_id == _RESOURCE_:
-            option_service.current_options.update(all_options)
+        if self.service_coordinator.config_service.update_current_global_options(dict(all_options)):
             option_service.signal_bus.option_updated.emit(all_options)
 
     def _update_resource_options_hidden_state(self, current_resource_option_names: list):

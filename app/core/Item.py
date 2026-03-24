@@ -134,6 +134,7 @@ class ConfigItem:
         tasks: List[TaskItem],
         know_task: List[str],
         bundle: str,
+        global_options: Dict[str, Any] | None = None,
     ):
         self.name = name
         self.item_id = item_id
@@ -142,6 +143,7 @@ class ConfigItem:
         self.know_task = know_task
         # 仅保存 bundle 名称，由 Config_Service 通过主配置解析具体信息
         self.bundle = bundle
+        self.global_options = global_options or {}
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -149,6 +151,7 @@ class ConfigItem:
             "item_id": self.item_id,
             "tasks": [task.to_dict() for task in self.tasks],
             "know_task": self.know_task,
+            "global_options": self.global_options,
             # 子配置中只保存 bundle 名称（字符串），不重复保存 bundle 详情
             "bundle": self.bundle,
         }
@@ -160,6 +163,24 @@ class ConfigItem:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ConfigItem":
         item_id = data.get("item_id", "") or cls.generate_id()
+        raw_global_options = data.get("global_options", {})
+        if not isinstance(raw_global_options, dict):
+            raw_global_options = {}
+
+        if not raw_global_options:
+            for task_data in data.get("tasks", []):
+                if not isinstance(task_data, dict):
+                    continue
+                item_id_or_name = task_data.get("item_id") or task_data.get("name")
+                if item_id_or_name != _RESOURCE_:
+                    continue
+                task_option = task_data.get("task_option", {})
+                if not isinstance(task_option, dict):
+                    continue
+                legacy_global_options = task_option.get("global_options")
+                if isinstance(legacy_global_options, dict):
+                    raw_global_options = dict(legacy_global_options)
+                    break
 
         # 兼容旧数据：
         # - 新格式： "bundle": "MPA"
@@ -190,4 +211,5 @@ class ConfigItem:
             tasks=[TaskItem.from_dict(task) for task in data.get("tasks", [])],
             know_task=data.get("know_task", []),
             bundle=bundle_name,
+            global_options=raw_global_options,
         )

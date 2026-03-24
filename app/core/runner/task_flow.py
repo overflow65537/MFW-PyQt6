@@ -358,7 +358,7 @@ class TaskFlowRunner(QObject):
             logger.info("资源加载完成")
 
             # 构建默认 pipeline_override
-            # 合并优先级（从低到高）：global_option < resource.option < controller.option
+            # 合并优先级（从低到高）：配置级 global_option < resource.option < controller.option
             # 任务级 override 在 run_task 中合并（最高优先级）
             from app.core.utils.pipeline_helper import (
                 get_pipeline_override_from_task_option,
@@ -366,9 +366,12 @@ class TaskFlowRunner(QObject):
                 _deep_merge_dict,
             )
 
-            # 1. global_option + resource.option（已在函数内按优先级合并）
+            # 1. 配置级 global_option + resource.option（已在函数内按优先级合并）
             self._default_pipeline_override = get_pipeline_override_from_task_option(
-                self.task_service.interface, resource_cfg.task_option, _RESOURCE_
+                self.task_service.interface,
+                resource_cfg.task_option,
+                _RESOURCE_,
+                self.config_service.get_current_global_options(),
             )
 
             # 2. controller.option（优先级高于 resource.option 和 global_option）

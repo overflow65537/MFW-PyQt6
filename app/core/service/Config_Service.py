@@ -204,6 +204,8 @@ class ConfigService:
         
         # 向后兼容：检查并转换旧的 Pre-Configuration 任务
         self._migrate_pre_configuration_task(config)
+        # 向后兼容：将历史 Resource 任务中的全局选项迁移到配置根层
+        self._migrate_global_options_storage(config)
         
         return config
 
@@ -275,6 +277,18 @@ class ConfigService:
     def update_config(self, config_id: str, config_data: ConfigItem) -> bool:
         """更新配置"""
         return self.save_config(config_id, config_data)
+
+    def get_current_global_options(self) -> Dict[str, Any]:
+        """获取当前配置的全局选项。"""
+        config = self.get_current_config()
+        global_options = getattr(config, "global_options", {}) or {}
+        return dict(global_options) if isinstance(global_options, dict) else {}
+
+    def update_current_global_options(self, global_options: Dict[str, Any]) -> bool:
+        """更新当前配置的全局选项。"""
+        config = self.get_current_config()
+        config.global_options = dict(global_options) if isinstance(global_options, dict) else {}
+        return self.update_config(config.item_id, config)
 
     def delete_config(self, config_id: str) -> bool:
         """删除配置（禁止删除最后一个配置）"""
@@ -469,3 +483,47 @@ class ConfigService:
         else:
             logger.warning(f"配置迁移完成但保存失败")
             return False
+
+    def _migrate_global_options_storage(self, config: ConfigItem) -> bool:
+        """将历史上保存在 Resource 任务中的全局选项迁移到配置根层。"""
+        global_option_names = {
+            name for name in self.repo.interface.get("global_option", []) if isinstance(name, str) and name
+        }
+
+        resource_task = next((task for task in config.tasks if task.item_id == _RESOURCE_), None)
+        if resource_task is None or not isinstance(resource_task.task_option, dict):
+            return False
+
+        task_option = resource_task.task_option
+        current_global_options = getattr(config, "global_options", {})
+        if not isinstance(current_global_options, dict):
+            current_global_options = {}
+
+        changed = False
+
+        legacy_nested_global_options = task_option.get("global_options")
+        if isinstance(legacy_nested_global_options, dict):
+            for key, value in legacy_nested_global_options.items():
+                if key not in current_global_options:
+                    current_global_options[key] = value
+                    changed = True
+            if "global_options" in task_option:
+                del task_option["global_options"]
+                changed = True
+
+        for option_name in global_option_names:
+            if option_name not in task_option:
+                continue
+            if option_name not in current_global_options:
+                current_global_options[option_name] = task_option[option_name]
+            del task_option[option_name]
+            changed = True
+
+        if changed:
+            config.global_options = current_global_options
+            if self.save_config(config.item_id, config):
+                logger.info("已将 Resource 任务中的全局选项迁移到配置根层")
+                return True
+            logger.warning("全局选项迁移完成但保存失败")
+
+        return changed

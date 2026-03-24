@@ -926,7 +926,10 @@ class TaskService:
         )
 
         option_pipeline_override = get_pipeline_override_from_task_option(
-            self.interface, task.task_option, task.item_id
+            self.interface,
+            task.task_option,
+            task.item_id,
+            self.config_service.get_current_global_options() if task.item_id == _RESOURCE_ else None,
         )
 
         # 深度合并：任务级 pipeline_override + 选项级 pipeline_override
