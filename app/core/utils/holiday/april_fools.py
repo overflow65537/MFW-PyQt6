@@ -65,6 +65,6 @@ class AprilFoolsEasterEgg(HolidayEasterEgg):
         self._now_provider = now_provider or datetime.now
 
     def should_emit_today(self) -> bool:
-        return True
+        #return True
         now = self._now_provider()
         return now.month == 4 and now.day == 1
