@@ -35,7 +35,7 @@ class AprilFoolsEasterEgg(HolidayEasterEgg):
         ),
         (
             ' April Fools detected, enabling "Anti-Boss Mode" automatically.',
-            ' Taskbar title changed to: "2025 Q2 Quarterly Report - Data Analysis.exe"',
+            ' Taskbar title changed to: "2026 Q2 Quarterly Report - Data Analysis.exe"',
             " Pretending to load Excel...",
         ),
         (
@@ -50,7 +50,7 @@ class AprilFoolsEasterEgg(HolidayEasterEgg):
         None,
         None,
         None,
-        "2025 Q2 Quarterly Report - Data Analysis.exe",
+        "2026 Q2 Quarterly Report - Data Analysis.exe",
         None,
     )
 
@@ -65,5 +65,6 @@ class AprilFoolsEasterEgg(HolidayEasterEgg):
         self._now_provider = now_provider or datetime.now
 
     def should_emit_today(self) -> bool:
+        return True
         now = self._now_provider()
         return now.month == 4 and now.day == 1

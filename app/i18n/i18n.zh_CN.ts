@@ -4365,12 +4365,12 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
             <translation> 检测到今天是愚人节，自动开启“防老板模式”。</translation>
         </message>
         <message>
-            <source> Taskbar title changed to: &quot;2025 Q2 Quarterly Report - Data Analysis.exe&quot;</source>
-            <translation> 任务栏标题已修改为：“2025年Q2季度报表 - 数据分析.exe”</translation>
+            <source> Taskbar title changed to: &quot;2026 Q2 Quarterly Report - Data Analysis.exe&quot;</source>
+            <translation> 任务栏标题已修改为：“2026年Q2季度报表 - 数据分析.exe”</translation>
         </message>
         <message>
-            <source>2025 Q2 Quarterly Report - Data Analysis.exe</source>
-            <translation>2025年Q2季度报表 - 数据分析.exe</translation>
+            <source>2026 Q2 Quarterly Report - Data Analysis.exe</source>
+            <translation>2026年Q2季度报表 - 数据分析.exe</translation>
         </message>
         <message>
             <source> Pretending to load Excel...</source>

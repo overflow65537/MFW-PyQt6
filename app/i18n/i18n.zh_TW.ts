@@ -3912,12 +3912,12 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
             <translation> 檢測到今天是愚人節，自動開啟「防老闆模式」。</translation>
         </message>
         <message>
-            <source> Taskbar title changed to: &quot;2025 Q2 Quarterly Report - Data Analysis.exe&quot;</source>
-            <translation> 任務欄標題已修改為：「2025年Q2季度報表 - 數據分析.exe」</translation>
+            <source> Taskbar title changed to: &quot;2026 Q2 Quarterly Report - Data Analysis.exe&quot;</source>
+            <translation> 任務欄標題已修改為：「2026年Q2季度報表 - 數據分析.exe」</translation>
         </message>
         <message>
-            <source>2025 Q2 Quarterly Report - Data Analysis.exe</source>
-            <translation>2025年Q2季度報表 - 數據分析.exe</translation>
+            <source>2026 Q2 Quarterly Report - Data Analysis.exe</source>
+            <translation>2026年Q2季度報表 - 數據分析.exe</translation>
         </message>
         <message>
             <source> Pretending to load Excel...</source>

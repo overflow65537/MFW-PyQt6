@@ -3912,12 +3912,12 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
             <translation> 本日がエイプリルフールのため、「上司対策モード」を自動で有効化しました。</translation>
         </message>
         <message>
-            <source> Taskbar title changed to: &quot;2025 Q2 Quarterly Report - Data Analysis.exe&quot;</source>
-            <translation> タスクバーのタイトルを「2025年Q2四半期レポート - データ分析.exe」に変更しました。</translation>
+            <source> Taskbar title changed to: &quot;2026 Q2 Quarterly Report - Data Analysis.exe&quot;</source>
+            <translation> タスクバーのタイトルを「2026年Q2四半期レポート - データ分析.exe」に変更しました。</translation>
         </message>
         <message>
-            <source>2025 Q2 Quarterly Report - Data Analysis.exe</source>
-            <translation>2025年Q2四半期レポート - データ分析.exe</translation>
+            <source>2026 Q2 Quarterly Report - Data Analysis.exe</source>
+            <translation>2026年Q2四半期レポート - データ分析.exe</translation>
         </message>
         <message>
             <source> Pretending to load Excel...</source>
