@@ -226,6 +226,8 @@ class MaaFW(QObject):
         self.agent_output_thread = None
 
         self.agent_data_raw = None
+        # v2.5.0: 启动 agent 子进程时注入的 PI_* 环境变量
+        self.agent_env_vars: Dict[str, str] = {}
         # 控制是否需要向 UI 报告自定义对象注册情况
         self.need_register_report: bool = False
         # 记录最近一次自定义对象加载的成功/失败情况
@@ -689,6 +691,15 @@ class MaaFW(QObject):
         # 使用 sys.frozen 判断是否打包（PyInstaller 标准方式）
         is_packed = getattr(sys, "frozen", False)
         encoding = "utf-8" if is_packed else "gbk"
+
+        # v2.5.0: 构建子进程环境变量，注入 PI_* 变量
+        env = os.environ.copy()
+        if self.agent_env_vars:
+            env.update(self.agent_env_vars)
+            logger.debug(
+                f"注入 PI_* 环境变量: {list(self.agent_env_vars.keys())}"
+            )
+
         try:
             agent_process = subprocess.Popen(
                 start_cmd,
@@ -698,6 +709,7 @@ class MaaFW(QObject):
                 encoding=encoding,
                 errors="replace",
                 bufsize=1,
+                env=env,
             )
             self.agent_thread = agent_process
             self._watch_agent_output(agent_process)

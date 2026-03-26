@@ -193,6 +193,87 @@ class TaskFlowRunner(QObject):
             info = info.split("| INFO |")[1]
             signalBus.log_output.emit("INFO", info)
 
+    def _build_agent_env_vars(
+        self, controller_cfg: TaskItem, resource_cfg: TaskItem
+    ) -> Dict[str, str]:
+        """v2.5.0: 构建 PI_* 环境变量，在启动 agent 子进程时注入。"""
+        import json as _json
+
+        from app.common.__version__ import __version__
+        from app.core.service.interface_manager import InterfaceManager
+
+        env_vars: Dict[str, str] = {}
+        interface = self.task_service.interface or {}
+
+        # PI_INTERFACE_VERSION: Client 实现的 PI 扩展能力版本
+        env_vars["PI_INTERFACE_VERSION"] = "v2.5.0"
+
+        # PI_CLIENT_NAME
+        env_vars["PI_CLIENT_NAME"] = "MFW"
+
+        # PI_CLIENT_VERSION
+        env_vars["PI_CLIENT_VERSION"] = __version__
+
+        # PI_CLIENT_LANGUAGE: 当前 UI 语言代码
+        try:
+            im = InterfaceManager()
+            env_vars["PI_CLIENT_LANGUAGE"] = im._current_language or ""
+        except Exception:
+            env_vars["PI_CLIENT_LANGUAGE"] = ""
+
+        # PI_CLIENT_MAAFW_VERSION
+        try:
+            from maa.library import Library
+
+            env_vars["PI_CLIENT_MAAFW_VERSION"] = Library.version() or ""
+        except Exception:
+            env_vars["PI_CLIENT_MAAFW_VERSION"] = ""
+
+        # PI_VERSION: interface.json 顶层 version 字段
+        env_vars["PI_VERSION"] = str(interface.get("version", ""))
+
+        # PI_CONTROLLER: 当前选中的 controller 完整对象（i18n 已解析），紧凑 JSON
+        controller_name = ""
+        try:
+            controller_type_raw = (controller_cfg.task_option or {}).get(
+                "controller_type"
+            )
+            if isinstance(controller_type_raw, str):
+                controller_name = controller_type_raw.strip()
+            elif isinstance(controller_type_raw, dict):
+                controller_name = str(
+                    controller_type_raw.get("value", "") or ""
+                ).strip()
+        except Exception:
+            pass
+
+        if controller_name:
+            for ctrl in interface.get("controller", []):
+                if isinstance(ctrl, dict) and ctrl.get("name") == controller_name:
+                    env_vars["PI_CONTROLLER"] = _json.dumps(
+                        ctrl, ensure_ascii=False, separators=(",", ":")
+                    )
+                    break
+
+        # PI_RESOURCE: 当前选中的 resource 完整对象（i18n 已解析），紧凑 JSON
+        resource_name = ""
+        try:
+            resource_name = str(
+                (resource_cfg.task_option or {}).get("resource", "") or ""
+            ).strip()
+        except Exception:
+            pass
+
+        if resource_name:
+            for res in interface.get("resource", []):
+                if isinstance(res, dict) and res.get("name") == resource_name:
+                    env_vars["PI_RESOURCE"] = _json.dumps(
+                        res, ensure_ascii=False, separators=(",", ":")
+                    )
+                    break
+
+        return env_vars
+
     def _handle_maafw_custom_info(self, error_code: int):
         try:
             error = MaaFWError(error_code)
@@ -391,6 +472,10 @@ class TaskFlowRunner(QObject):
             if self.task_service.interface.get("agent", None):
                 self.maafw.agent_data_raw = self.task_service.interface.get(
                     "agent", None
+                )
+                # v2.5.0: 构建 PI_* 环境变量供 agent 子进程使用
+                self.maafw.agent_env_vars = self._build_agent_env_vars(
+                    controller_cfg, resource_cfg
                 )
                 signalBus.log_output.emit("INFO", self.tr("Agent Service Start"))
 
