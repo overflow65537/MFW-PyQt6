@@ -1060,6 +1060,7 @@ class MainWindow(MSFluentWindow):
         """连接信号到槽函数。"""
         signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
         signalBus.title_changed.connect(self.set_title)
+        signalBus.set_window_title.connect(self.setWindowTitle)
         signalBus.info_bar_requested.connect(self.show_info_bar)
         signalBus.request_log_zip.connect(self._on_request_log_zip)
         signalBus.background_image_changed.connect(self._on_background_image_changed)

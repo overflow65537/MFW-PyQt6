@@ -35,6 +35,7 @@ class SignalBus(QObject):
     show_option = Signal(dict)  # 显示选项
     agent_info = Signal(dict)  # 智能体信息
     title_changed = Signal()  # 窗口标题改变
+    set_window_title = Signal(str)  # 直接设置窗口标题字符串
     # maa sink 发送信号
     callback = Signal(dict)
 

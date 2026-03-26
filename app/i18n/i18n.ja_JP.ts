@@ -3916,6 +3916,10 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
             <translation> タスクバーのタイトルを「2025年Q2四半期レポート - データ分析.exe」に変更しました。</translation>
         </message>
         <message>
+            <source>2025 Q2 Quarterly Report - Data Analysis.exe</source>
+            <translation>2025年Q2四半期レポート - データ分析.exe</translation>
+        </message>
+        <message>
             <source> Pretending to load Excel...</source>
             <translation> Excelを読み込んでいるふりをしています...</translation>
         </message>

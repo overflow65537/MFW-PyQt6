@@ -4369,6 +4369,10 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
             <translation> 任务栏标题已修改为：“2025年Q2季度报表 - 数据分析.exe”</translation>
         </message>
         <message>
+            <source>2025 Q2 Quarterly Report - Data Analysis.exe</source>
+            <translation>2025年Q2季度报表 - 数据分析.exe</translation>
+        </message>
+        <message>
             <source> Pretending to load Excel...</source>
             <translation> 正在假装加载Excel...</translation>
         </message>
