@@ -51,7 +51,7 @@ from app.utils.markdown_helper import render_markdown
 from app.widget.notice_message import NoticeMessageBox
 from app.common.config import cfg, isWin11, Config
 from app.common.__version__ import __version__ as UI_VERSION
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import global_signal_bus
 from app.core.core import ServiceCoordinator
 from app.utils.crypto import crypto_manager
 from app.utils.logger import logger
@@ -296,7 +296,7 @@ class SettingInterface(QWidget):
             else:
                 # 如果自动更新关闭，发送信号给 main_window 检查是否需要立刻运行
                 logger.info("自动更新未开启，通知 main_window 检查是否需要自动运行")
-                signalBus.check_auto_run_after_update_cancel.emit()
+                global_signal_bus.check_auto_run_after_update_cancel.emit()
         self._init_update_checker()
 
     def connect_notice_card_clicked(self):
@@ -1068,14 +1068,14 @@ class SettingInterface(QWidget):
         current = cfg.get(config_item)
         if not key_text:
             self._set_shortcut_line_text(card, current)
-            signalBus.info_bar_requested.emit("warning", self.tr("Key cannot be empty"))
+            global_signal_bus.info_bar_requested.emit("warning", self.tr("Key cannot be empty"))
             return
 
         raw = f"{required_modifier}+{key_text}" if required_modifier else key_text
         normalized = GlobalHotkeyManager._normalize(raw)
         if not normalized:
             self._set_shortcut_line_text(card, current)
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning",
                 self.tr("Key format is invalid, restored to previous configuration."),
             )
@@ -1093,7 +1093,7 @@ class SettingInterface(QWidget):
                     if required_modifier == "ctrl"
                     else self.tr("Stop task")
                 )
-                signalBus.info_bar_requested.emit(
+                global_signal_bus.info_bar_requested.emit(
                     "warning",
                     self.tr("Shortcut must start with %1+, used for %2.")
                     .replace("%1", modifier_name)
@@ -1107,7 +1107,7 @@ class SettingInterface(QWidget):
 
         cfg.set(config_item, normalized)
         self._set_shortcut_line_text(card, normalized)
-        signalBus.hotkey_shortcuts_changed.emit()
+        global_signal_bus.hotkey_shortcuts_changed.emit()
 
         if normalized == current:
             self._set_shortcut_line_text(card, normalized)
@@ -1115,7 +1115,7 @@ class SettingInterface(QWidget):
 
         cfg.set(config_item, normalized)
         self._set_shortcut_line_text(card, normalized)
-        signalBus.hotkey_shortcuts_changed.emit()
+        global_signal_bus.hotkey_shortcuts_changed.emit()
 
     def _set_shortcut_line_text(self, card: LineEditCard, value: str | None):
         normalized = GlobalHotkeyManager._normalize(str(value or "")) or str(
@@ -1496,7 +1496,7 @@ class SettingInterface(QWidget):
             return str(decrypted)
         except Exception as exc:
             logger.warning("解密 Mirror CDK 失败: %s", exc)
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning",
                 self.tr("decrypt Mirror CDK failed, please fill in again and save."),
             )
@@ -1528,7 +1528,7 @@ class SettingInterface(QWidget):
             logger.info("Mirror CDK 已保存")
         except Exception as exc:
             logger.error("加密 Mirror CDK 失败: %s", exc)
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "error", self.tr("Failed to save Mirror CDK: {}").format(str(exc))
             )
             return
@@ -1733,7 +1733,7 @@ class SettingInterface(QWidget):
     def _on_update_ui_clicked(self) -> None:
         """更新 UI 按钮点击回调，占位接口，后续可在此实现 UI 更新逻辑。"""
         # TODO: 在此处实现 UI 更新的具体行为（如检查并更新前端资源等）
-        signalBus.info_bar_requested.emit(
+        global_signal_bus.info_bar_requested.emit(
             "info",
             self.tr("UI update feature is not implemented yet."),
         )
@@ -1749,7 +1749,7 @@ class SettingInterface(QWidget):
         # 同时隐藏多资源适配开关，避免重复误操作。
         self.multi_resource_adaptation_card.setEnabled(False)
         self.reset_resource_card.setEnabled(False)
-        signalBus.title_changed.emit()
+        global_signal_bus.title_changed.emit()
         self._refresh_update_header()
 
         # 检查是否已经迁移过，避免重复执行迁移操作
@@ -2147,7 +2147,7 @@ class SettingInterface(QWidget):
         normalized = str(Path(path).expanduser()) if path else ""
         if normalized and not Path(normalized).is_file():
             if notify_missing:
-                signalBus.info_bar_requested.emit(
+                global_signal_bus.info_bar_requested.emit(
                     "warning", self.tr("Image file does not exist")
                 )
             # 回滚到上一次有效的路径
@@ -2159,7 +2159,7 @@ class SettingInterface(QWidget):
         cfg.set(cfg.background_image_path, normalized)
         self.background_image_card.lineEdit.setText(normalized)
         self.background_image_card.lineEdit.setToolTip(normalized)
-        signalBus.background_image_changed.emit(normalized)
+        global_signal_bus.background_image_changed.emit(normalized)
 
     def _on_background_opacity_changed(self, value: int):
         """调整背景透明度并实时应用。"""
@@ -2168,7 +2168,7 @@ class SettingInterface(QWidget):
         except (TypeError, ValueError):
             value_int = 80
         value_int = max(0, min(100, value_int))
-        signalBus.background_opacity_changed.emit(value_int)
+        global_signal_bus.background_opacity_changed.emit(value_int)
 
     def _on_multi_resource_adaptation_changed(self, checked: bool):
         """处理多资源适配开关状态变更，开启前给出二次确认。"""
@@ -2188,7 +2188,7 @@ class SettingInterface(QWidget):
             self.run_multi_resource_post_enable_tasks()
             # 通知主界面等组件：多资源适配已启用，可初始化相关界面
             try:
-                signalBus.multi_resource_adaptation_enabled.emit()
+                global_signal_bus.multi_resource_adaptation_enabled.emit()
             except Exception as exc:
                 logger.warning(
                     f"发射 multi_resource_adaptation_enabled 信号失败: {exc}"
@@ -2315,7 +2315,7 @@ class SettingInterface(QWidget):
 
     def __showRestartTooltip(self):
         """显示重启提示。"""
-        signalBus.info_bar_requested.emit(
+        global_signal_bus.info_bar_requested.emit(
             "info", self.tr("Configuration takes effect after restart")
         )
 
@@ -2327,7 +2327,7 @@ class SettingInterface(QWidget):
 
         cfg.themeChanged.connect(setTheme)
         self.themeColorCard.colorChanged.connect(lambda c: setThemeColor(c))
-        self.micaCard.checkedChanged.connect(signalBus.micaEnableChanged)
+        self.micaCard.checkedChanged.connect(global_signal_bus.mica_enable_changed)
         self.multi_resource_adaptation_card.checkedChanged.connect(
             self._on_multi_resource_adaptation_changed
         )
@@ -2350,15 +2350,15 @@ class SettingInterface(QWidget):
         interface = self._service_coordinator.task.interface or {}
         self._updater = Update(
             service_coordinator=self._service_coordinator,
-            stop_signal=signalBus.update_stopped,
-            progress_signal=signalBus.update_progress,
-            info_bar_signal=signalBus.info_bar_requested,
+            stop_signal=global_signal_bus.update_stopped,
+            progress_signal=global_signal_bus.update_progress,
+            info_bar_signal=global_signal_bus.info_bar_requested,
             interface=interface,
         )
 
         # 绑定信号
-        signalBus.update_progress.connect(self._on_download_progress)
-        signalBus.update_stopped.connect(self._on_update_stopped)
+        global_signal_bus.update_progress.connect(self._on_download_progress)
+        global_signal_bus.update_stopped.connect(self._on_update_stopped)
 
         logger.info("更新器初始化完成")
 
@@ -2375,9 +2375,9 @@ class SettingInterface(QWidget):
         interface = self._service_coordinator.task.interface or {}
         self._update_checker = Update(
             service_coordinator=self._service_coordinator,
-            stop_signal=signalBus.update_stopped,
-            progress_signal=signalBus.update_progress,
-            info_bar_signal=signalBus.info_bar_requested,
+            stop_signal=global_signal_bus.update_stopped,
+            progress_signal=global_signal_bus.update_progress,
+            info_bar_signal=global_signal_bus.info_bar_requested,
             interface=interface,
             force_full_download=False,
             check_only=True,
@@ -2475,9 +2475,9 @@ class SettingInterface(QWidget):
                 package_path,
             )
             try:
-                from app.common.signal_bus import signalBus
+                from app.common.signal_bus import global_signal_bus
 
-                signalBus.info_bar_requested.emit(
+                global_signal_bus.info_bar_requested.emit(
                     "warning",
                     self.tr(
                         "Update failed too many times, local update package has been cleared."
@@ -2619,7 +2619,7 @@ class SettingInterface(QWidget):
         release_note = result.get("release_note", "")
         if latest_version:
             # 发送 InfoBar 通知用户有新版本
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "info", self.tr("New version available: ") + str(latest_version)
             )
             logger.info(f"检测到新版本: {latest_version}")
@@ -2713,13 +2713,13 @@ class SettingInterface(QWidget):
     def _on_reset_resource_clicked(self):
         """重置资源：强制重新下载最新资源包（跳过版本/热更新判断）。"""
         if self._updater and self._updater.isRunning():
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning", self.tr("Update is already running")
             )
             return
 
         if not self._service_coordinator:
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "error", self.tr("Service is not ready, cannot reset resource")
             )
             return
@@ -2729,15 +2729,15 @@ class SettingInterface(QWidget):
         self._bind_stop_button(self.tr("Stop update"), enable=False)
         self._lock_update_button_temporarily()
         logger.info("触发资源重置，强制全量下载最新资源包（跳过 update_flag/hotfix）")
-        signalBus.info_bar_requested.emit("info", self.tr("Starting Reset Resource"))
+        global_signal_bus.info_bar_requested.emit("info", self.tr("Starting Reset Resource"))
 
         # 创建强制全量下载的更新器实例
         interface = self._service_coordinator.task.interface or {}
         self._updater = Update(
             service_coordinator=self._service_coordinator,
-            stop_signal=signalBus.update_stopped,
-            progress_signal=signalBus.update_progress,
-            info_bar_signal=signalBus.info_bar_requested,
+            stop_signal=global_signal_bus.update_stopped,
+            progress_signal=global_signal_bus.update_progress,
+            info_bar_signal=global_signal_bus.info_bar_requested,
             interface=interface,
             force_full_download=True,
         )
@@ -2757,9 +2757,9 @@ class SettingInterface(QWidget):
         confirmed = self._prompt_instant_update(auto_accept=auto_accept)
         if not confirmed:
             if notify_if_cancel:
-                signalBus.update_stopped.emit(3)
+                global_signal_bus.update_stopped.emit(3)
             # 用户取消更新，通知 main_window 检查是否需要自动运行
-            signalBus.check_auto_run_after_update_cancel.emit()
+            global_signal_bus.check_auto_run_after_update_cancel.emit()
             return
 
         if self._updater_started:
@@ -2778,9 +2778,9 @@ class SettingInterface(QWidget):
         except Exception as e:
             self._updater_started = False
             logger.error(f"重命名更新程序失败: {e}")
-            signalBus.info_bar_requested.emit("error", e)
+            global_signal_bus.info_bar_requested.emit("error", e)
             if notify_if_cancel:
-                signalBus.update_stopped.emit(3)
+                global_signal_bus.update_stopped.emit(3)
             return
 
         try:
@@ -2788,9 +2788,9 @@ class SettingInterface(QWidget):
         except Exception as e:
             self._updater_started = False
             logger.error(f"启动更新程序失败: {e}")
-            signalBus.info_bar_requested.emit("error", e)
+            global_signal_bus.info_bar_requested.emit("error", e)
             if notify_if_cancel:
-                signalBus.update_stopped.emit(3)
+                global_signal_bus.update_stopped.emit(3)
             return
         from PySide6.QtWidgets import QApplication
 
@@ -2824,10 +2824,10 @@ class SettingInterface(QWidget):
         package = self._refresh_local_update_package(restart_required=True)
         if not package:
             logger.error("重试后仍未检测到本地更新包，无法触发立即更新确认")
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "error", self.tr("Update package not found, please try updating again.")
             )
-            signalBus.update_stopped.emit(3)
+            global_signal_bus.update_stopped.emit(3)
             return
         self._prepare_instant_update_state(restart_required=True)
         logger.info(
@@ -2913,7 +2913,7 @@ class SettingInterface(QWidget):
             launch_updater_process(*extra_args)
         except Exception as e:
             logger.error(f"启动更新程序失败: {e}")
-            signalBus.info_bar_requested.emit("error", str(e))
+            global_signal_bus.info_bar_requested.emit("error", str(e))
             return
 
     def _on_download_progress(self, downloaded: int, total: int):

@@ -40,7 +40,7 @@ from email.mime.text import MIMEText
 from queue import Queue
 from PySide6.QtCore import QThread
 
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import GlobalSignalBus
 from app.common.config import cfg
 from app.utils.logger import logger
 from app.utils.crypto import crypto_manager
@@ -409,72 +409,72 @@ class NoticeSendThread(QThread):
                     self._active_tasks += 1
                 try:
                     result = send_func(msg_dict, status)
-                    signalBus.notice_finished.emit(int(result), send_func.__name__)
+                    GlobalSignalBus.NoticeFinished.emit(int(result), send_func.__name__)
                     # 根据枚举类型显示不同的提示
                     match result:
                         case NoticeErrorCode.SUCCESS:
-                            signalBus.info_bar_requested.emit(
+                            GlobalSignalBus.InfoBarRequested.emit(
                                 "success",
                                 send_func.__name__
                                 + self.tr(" sent successfully."),
                             )
                         case NoticeErrorCode.DISABLED:
-                            signalBus.info_bar_requested.emit(
+                            GlobalSignalBus.InfoBarRequested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" disabled."),
                             )
                         case NoticeErrorCode.PARAM_EMPTY:
-                            signalBus.info_bar_requested.emit(
+                            GlobalSignalBus.InfoBarRequested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" param empty."),
                             )
                         case NoticeErrorCode.PARAM_INVALID:
-                            signalBus.info_bar_requested.emit(
+                            GlobalSignalBus.InfoBarRequested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" param invalid."),
                             )
                         case NoticeErrorCode.NETWORK_ERROR:
-                            signalBus.info_bar_requested.emit(
+                            GlobalSignalBus.InfoBarRequested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" network error."),
                             )
                         case NoticeErrorCode.RESPONSE_ERROR:
-                            signalBus.info_bar_requested.emit(
+                            GlobalSignalBus.InfoBarRequested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" response error."),
                             )
                         case NoticeErrorCode.UNKNOWN_ERROR:
-                            signalBus.info_bar_requested.emit(
+                            GlobalSignalBus.InfoBarRequested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" unknown error."),
                             )
                         case NoticeErrorCode.SMTP_PORT_INVALID:
-                            signalBus.info_bar_requested.emit(
+                            GlobalSignalBus.InfoBarRequested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" smtp port invalid."),
                             )
                         case NoticeErrorCode.SMTP_CONNECT_FAILED:
-                            signalBus.info_bar_requested.emit(
+                            GlobalSignalBus.InfoBarRequested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" smtp connect failed."),
                             )
                         case _:
-                            signalBus.info_bar_requested.emit(
+                            GlobalSignalBus.InfoBarRequested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" unknown error."),
                             )
                 except Exception as e:
                     logger.error(f"通知线程 {send_func.__name__} 执行异常: {str(e)}")
-                    signalBus.notice_finished.emit(
+                    GlobalSignalBus.NoticeFinished.emit(
                         int(NoticeErrorCode.UNKNOWN_ERROR), send_func.__name__
                     )
                 finally:

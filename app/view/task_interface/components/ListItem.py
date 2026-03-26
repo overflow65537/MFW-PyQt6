@@ -415,7 +415,7 @@ class TaskListItem(BaseListItem):
         self._apply_interface_constraints()
 
         # 基础任务（资源、完成后操作）的复选框始终勾选且禁用
-        if self.task.is_base_task():
+        if self.task.IsBaseTask():
             self.checkbox.setChecked(True)
             self.checkbox.setDisabled(True)
 
@@ -429,7 +429,7 @@ class TaskListItem(BaseListItem):
         """根据 interface 中的 task 列表决定是否允许此任务勾选/显示为禁用状态。"""
         interface_task_defs = self.interface.get("task")
         self._interface_allowed = True
-        if isinstance(interface_task_defs, list) and not self.task.is_base_task():
+        if isinstance(interface_task_defs, list) and not self.task.IsBaseTask():
             allowed_names = [
                 task_def.get("name")
                 for task_def in interface_task_defs
@@ -442,7 +442,7 @@ class TaskListItem(BaseListItem):
             self.name_label.setStyleSheet("color: #d32f2f;")
         else:
             # 只有非基础任务才需要解除禁用
-            if not self.task.is_base_task():
+            if not self.task.IsBaseTask():
                 self.checkbox.setDisabled(False)
             self._apply_theme_colors()
 
@@ -514,7 +514,7 @@ class TaskListItem(BaseListItem):
         self.setting_button = self._create_setting_button()
         self.setting_button.clicked.connect(self._on_delete_button_clicked)
         # 基础任务禁用删除按钮
-        if self.task.is_base_task():
+        if self.task.IsBaseTask():
             self.setting_button.setDisabled(True)
         layout.addWidget(self.setting_button)
 
@@ -811,7 +811,7 @@ class TaskListItem(BaseListItem):
                 pass
 
         # 如果是基础任务，不显示选项
-        if self.task.is_base_task():
+        if self.task.IsBaseTask():
             self._option_full_text = ""
             self.option_label.setText("")
             self.option_label.setToolTip("")
@@ -852,11 +852,11 @@ class TaskListItem(BaseListItem):
         menu = RoundMenu(parent=self)
         run_action = Action(FIF.PLAY, self.tr("Run this task"))
         run_action.triggered.connect(self._run_single_task)
-        if self.task.is_base_task():
+        if self.task.IsBaseTask():
             run_action.setEnabled(False)
         menu.addAction(run_action)
 
-        if not self.task.is_base_task():
+        if not self.task.IsBaseTask():
             run_from_action = Action(
                 FIF.RIGHT_ARROW, self.tr("Run from here")
             )
@@ -879,7 +879,7 @@ class TaskListItem(BaseListItem):
         asyncio.create_task(self.service_coordinator.run_tasks_flow(self.task.item_id))
 
     def _run_from_task(self):
-        if not self.service_coordinator or self.task.is_base_task():
+        if not self.service_coordinator or self.task.IsBaseTask():
             return
         asyncio.create_task(
             self.service_coordinator.run_manager.run_tasks_flow(
@@ -897,7 +897,7 @@ class TaskListItem(BaseListItem):
 
         # 打开添加任务对话框
         from app.view.task_interface.components.AddTaskMessageBox import AddTaskDialog
-        from app.common.signal_bus import signalBus
+        from app.common.signal_bus import GlobalSignalBus
 
         task_map = getattr(self.service_coordinator.task, "default_option", {})
         interface = getattr(self.service_coordinator.task, "interface", {})
@@ -906,7 +906,7 @@ class TaskListItem(BaseListItem):
         filtered_task_map = task_map  # 可以根据需要添加过滤逻辑
 
         if not filtered_task_map:
-            signalBus.info_bar_requested.emit(
+            GlobalSignalBus.InfoBarRequested.emit(
                 "warning", self.tr("No available tasks to add.")
             )
             return
@@ -970,7 +970,7 @@ class TaskListItem(BaseListItem):
                 "waiting", "skipped", ""(清除状态)
         """
         # 基础任务不显示状态标志
-        if self.task.is_base_task():
+        if self.task.IsBaseTask():
             self.status_widget.hide()
             return
         
@@ -1053,7 +1053,7 @@ class TaskListItem(BaseListItem):
             return
 
         # 基础任务不能删除
-        if self.task.is_base_task():
+        if self.task.IsBaseTask():
             return
 
         # 获取任务显示名称
@@ -1114,7 +1114,7 @@ class SpecialTaskListItem(TaskListItem):
 
     def _on_item_clicked(self):
         """处理item点击事件：相当于点击checkbox，并切换到任务设置"""
-        if not self._interface_allowed or self.task.is_base_task():
+        if not self._interface_allowed or self.task.IsBaseTask():
             return
 
         # 如果当前未选中，则选中（相当于点击checkbox）
@@ -1278,11 +1278,11 @@ class ConfigListItem(BaseListItem):
                 return None
 
             # 使用 preview_interface 获取 interface 数据（不改变当前激活的 interface）
-            from app.core.service.interface_manager import get_interface_manager
+            from app.core.service.InterfaceManager import GetInterfaceManager
 
-            interface_manager = get_interface_manager()
-            current_language = interface_manager.get_language()
-            interface_data = interface_manager.preview_interface(
+            interface_manager = GetInterfaceManager()
+            current_language = interface_manager.GetLanguage()
+            interface_data = interface_manager.PreviewInterface(
                 interface_path, language=current_language
             )
 
@@ -1386,7 +1386,7 @@ class ConfigListItem(BaseListItem):
                         self.name_label.setText(new_name)
 
                         # 发送配置已保存的信号，触发刷新
-                        self.service_coordinator.signal_bus.config_saved.emit(True)
+                        self.service_coordinator.signal_bus.ConfigSaved.emit(True)
                     else:
                         from app.utils.logger import logger
 

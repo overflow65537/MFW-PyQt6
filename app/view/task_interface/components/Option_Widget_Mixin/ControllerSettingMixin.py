@@ -1490,10 +1490,10 @@ class ControllerSettingWidget(QWidget):
             else:
                 message = self.tr("No devices were found for current controller type.")
 
-            from app.common.signal_bus import signalBus
+            from app.common.signal_bus import GlobalSignalBus
 
             # 确保 signalBus 对象有效后再发送信号
-            if signalBus and hasattr(signalBus, "info_bar_requested"):
+            if GlobalSignalBus and hasattr(GlobalSignalBus, "info_bar_requested"):
                 try:
                     # 使用 QTimer 延迟发送信号，确保在界面更新完成后再显示 InfoBar
                     # 这样可以避免在清理选项组件时 InfoBar 被立即关闭
@@ -1501,8 +1501,8 @@ class ControllerSettingWidget(QWidget):
                     def delayed_emit():
                         try:
                             # 再次检查对象有效性（防止在延迟期间对象被销毁）
-                            if signalBus and hasattr(signalBus, "info_bar_requested"):
-                                signalBus.info_bar_requested.emit(level, message)
+                            if GlobalSignalBus and hasattr(GlobalSignalBus, "info_bar_requested"):
+                                GlobalSignalBus.InfoBarRequested.emit(level, message)
                         except Exception as e:
                             logger.warning(f"延迟发送 InfoBar 提示失败: {e}")
 

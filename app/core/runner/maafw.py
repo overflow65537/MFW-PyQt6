@@ -63,7 +63,7 @@ from maa.resource import ResourceEventSink, Resource
 from maa.tasker import TaskerEventSink, Tasker
 from maa.context import ContextEventSink, Context
 
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import global_signal_bus
 
 
 class MaaContextSink(ContextEventSink):
@@ -96,11 +96,13 @@ class MaaContextSink(ContextEventSink):
         content = content.replace("{task_id}", str(details.get("task_id", "")))
         content = content.replace("{list}", details.get("list", ""))
 
-        signalBus.callback.emit({"name": "context", "details": content, "display": display})
+        global_signal_bus.callback.emit(
+            {"name": "context", "details": content, "display": display}
+        )
 
         if msg == "Node.Recognition.Succeeded":
             if details.get("Abort", False):
-                signalBus.callback.emit({"name": "abort"})
+                global_signal_bus.callback.emit({"name": "abort"})
             if details.get("Notice", False):
                 pass
 
@@ -153,7 +155,7 @@ class MaaResourceEventSink(ResourceEventSink):
         noti_type: NotificationType,
         detail: ResourceEventSink.ResourceLoadingDetail,
     ):
-        signalBus.callback.emit({"name": "resource", "status": noti_type.value})
+        global_signal_bus.callback.emit({"name": "resource", "status": noti_type.value})
 
 
 class MaaTaskerEventSink(TaskerEventSink):
@@ -166,7 +168,7 @@ class MaaTaskerEventSink(TaskerEventSink):
         noti_type: NotificationType,
         detail: TaskerEventSink.TaskerTaskDetail,
     ):
-        signalBus.callback.emit(
+        global_signal_bus.callback.emit(
             {"name": "task", "task": detail.entry, "status": noti_type.value}
         )
 

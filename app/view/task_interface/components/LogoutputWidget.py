@@ -27,7 +27,7 @@ from qfluentwidgets import (
     qconfig,
 )
 
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import global_signal_bus
 from app.common.config import cfg
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
@@ -135,13 +135,13 @@ class LogoutputWidget(QWidget):
         self.main_layout.addWidget(self.log_output_widget, 1)
 
         # 连接日志输出信号
-        signalBus.log_output.connect(self._on_log_output)
+        global_signal_bus.log_output.connect(self._on_log_output)
 
-        signalBus.log_clear_requested.connect(self.clear_log)
-        signalBus.log_zip_started.connect(
+        global_signal_bus.log_clear_requested.connect(self.clear_log)
+        global_signal_bus.log_zip_started.connect(
             lambda: self.generate_log_zip_button.setEnabled(False)
         )
-        signalBus.log_zip_finished.connect(
+        global_signal_bus.log_zip_finished.connect(
             lambda: self.generate_log_zip_button.setEnabled(True)
         )
 
@@ -252,7 +252,7 @@ class LogoutputWidget(QWidget):
         self.log_output_title_layout.addWidget(self.generate_log_zip_button)
 
         # 交互信号：由组件发射，外部处理
-        self.generate_log_zip_button.clicked.connect(signalBus.request_log_zip)
+        self.generate_log_zip_button.clicked.connect(global_signal_bus.request_log_zip)
 
     def clear_log(self):
         """清空日志内容，清除缓存图像并重置序号"""

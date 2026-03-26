@@ -22,7 +22,7 @@ from app.core.core import  ServiceCoordinator
 from app.core.Item import TaskItem, ConfigItem
 from app.view.task_interface.components.ListItem import TaskListItem, ConfigListItem, SpecialTaskListItem
 from app.utils.logger import logger
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import GlobalSignalBus
 from app.common.constants import _RESOURCE_, _CONTROLLER_
 
 
@@ -155,19 +155,19 @@ class TaskDragListWidget(BaseListWidget):
         self._init_loading_overlay()
 
         self.item_selected.connect(self._on_item_selected_to_service)
-        self.service_coordinator.signal_bus.config_changed.connect(
+        self.service_coordinator.signal_bus.ConfigChanged.connect(
             self._on_config_changed
         )
         # 监听资源变化信号，更新任务列表
-        self.service_coordinator.signal_bus.option_updated.connect(
+        self.service_coordinator.signal_bus.OptionUpdated.connect(
             self._on_resource_changed
         )
-        service_coordinator.fs_signal_bus.fs_task_modified.connect(self.modify_task)
-        service_coordinator.fs_signal_bus.fs_task_removed.connect(self.remove_task)
+        service_coordinator.fs_signal_bus.FsTaskModified.connect(self.modify_task)
+        service_coordinator.fs_signal_bus.FsTaskRemoved.connect(self.remove_task)
         
         # 监听任务状态变化信号
-        from app.common.signal_bus import signalBus
-        signalBus.task_status_changed.connect(self._on_task_status_changed)
+        from app.common.signal_bus import GlobalSignalBus
+        GlobalSignalBus.TaskStatusChanged.connect(self._on_task_status_changed)
         
         self._bulk_toggle_queue: list[tuple[TaskListItem, bool]] = []
         self._bulk_toggle_timer = QTimer(self)
@@ -213,7 +213,7 @@ class TaskDragListWidget(BaseListWidget):
     def _should_show_by_resource(self, task: TaskItem) -> bool:
         """根据当前选择的资源判断任务是否应该显示"""
         # 基础任务（资源、控制器、完成后操作）始终显示
-        if task.is_base_task():
+        if task.IsBaseTask():
             return True
         
         # 获取当前配置中的资源
@@ -272,7 +272,7 @@ class TaskDragListWidget(BaseListWidget):
         - interface.task[*].controller 缺省/空：对所有控制器显示
         - 否则仅当当前 controller_type 命中 controller 列表才显示
         """
-        if task.is_base_task():
+        if task.IsBaseTask():
             return True
 
         try:
@@ -546,7 +546,7 @@ class TaskDragListWidget(BaseListWidget):
         task_widget.checkbox_changed.connect(self._on_task_checkbox_changed)
 
         flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
-        if not task.is_base_task():
+        if not task.IsBaseTask():
             flags |= Qt.ItemFlag.ItemIsDragEnabled
         else:
             flags &= ~Qt.ItemFlag.ItemIsDragEnabled
@@ -613,7 +613,7 @@ class TaskDragListWidget(BaseListWidget):
         # 复选框状态变更信号
         task_widget.checkbox_changed.connect(self._on_task_checkbox_changed)
         # 基础任务禁止拖动
-        if task.is_base_task():
+        if task.IsBaseTask():
             list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
         
         # 批量刷新时严格按传入顺序追加；单项新增时根据任务在完整列表中的位置插入
@@ -665,9 +665,9 @@ class TaskDragListWidget(BaseListWidget):
             item = self.item(i)
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem) and widget.task.item_id == task_id:
-                if widget.task.is_base_task():
+                if widget.task.IsBaseTask():
                     # 基础任务不可删除，记录日志并显示提示
-                    signalBus.info_bar_requested.emit(
+                    GlobalSignalBus.InfoBarRequested.emit(
                         "warning", "基础任务（资源、完成后操作）不可删除"
                     )
                     return
@@ -695,7 +695,7 @@ class TaskDragListWidget(BaseListWidget):
         for idx in positions:
             if 0 <= idx < len(tasks):
                 task = tasks[idx]
-                if task.is_base_task():
+                if task.IsBaseTask():
                     protected[idx] = task.item_id
         return protected
 
@@ -793,7 +793,7 @@ class TaskDragListWidget(BaseListWidget):
 
     def _on_task_checkbox_changed(self, task: TaskItem):
         """复选框状态变更信号转发"""
-        if task.is_base_task():
+        if task.IsBaseTask():
             return
         if self._filter_mode == "special" and task.is_checked:
             # 单选：取消其它特殊任务的勾选
@@ -815,10 +815,10 @@ class TaskDragListWidget(BaseListWidget):
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem):
                 if self._filter_mode == "special":
-                    if not widget.task.is_base_task() and widget.task.is_special:
+                    if not widget.task.IsBaseTask() and widget.task.is_special:
                         steps.append((widget, True))
                 else:
-                    if not widget.task.is_base_task() and not widget.task.is_special:
+                    if not widget.task.IsBaseTask() and not widget.task.is_special:
                         steps.append((widget, True))
         self._enqueue_bulk_toggle(steps)
 
@@ -829,7 +829,7 @@ class TaskDragListWidget(BaseListWidget):
             item = self.item(i)
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem):
-                if widget.task.is_base_task():
+                if widget.task.IsBaseTask():
                     continue
                 if self._filter_mode == "special":
                     if widget.task.is_special:
@@ -912,11 +912,11 @@ class ConfigListWidget(BaseListWidget):
 
         self.item_selected.connect(self._on_item_selected_to_service)
 
-        self.service_coordinator.fs_signal_bus.fs_config_added.connect(self.add_config)
-        self.service_coordinator.fs_signal_bus.fs_config_removed.connect(
+        self.service_coordinator.fs_signal_bus.FsConfigAdded.connect(self.add_config)
+        self.service_coordinator.fs_signal_bus.FsConfigRemoved.connect(
             self.remove_config
         )
-        self.service_coordinator.signal_bus.config_changed.connect(
+        self.service_coordinator.signal_bus.ConfigChanged.connect(
             self._on_config_changed
         )
         self.update_list()
@@ -1028,13 +1028,13 @@ class ConfigListWidget(BaseListWidget):
                 self.setCurrentRow(i)
                 # 直接触发 config_changed 信号以更新任务列表标题
                 if emit_signal:
-                    self.service_coordinator.signal_bus.config_changed.emit(config_id)
+                    self.service_coordinator.signal_bus.ConfigChanged.emit(config_id)
                 break
 
     def _on_config_changed(self, config_id: str):
         """服务层配置切换时同步高亮配置项。"""
         self._select_config_by_id(config_id, emit_signal=False)
-        signalBus.title_changed.emit()
+        GlobalSignalBus.TitleChanged.emit()
 
     def add_config(self, config: ConfigItem):
         """添加配置项到列表"""

@@ -116,7 +116,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
                             QTimer.singleShot(
                                 50,
-                                lambda: self.service_coordinator.signal_bus.option_updated.emit(
+                                lambda: self.service_coordinator.signal_bus.OptionUpdated.emit(
                                     {"resource": current_resource}
                                 ),
                             )
@@ -177,7 +177,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
                                 QTimer.singleShot(
                                     50,
-                                    lambda: self.service_coordinator.signal_bus.option_updated.emit(
+                                    lambda: self.service_coordinator.signal_bus.OptionUpdated.emit(
                                         {"resource": first_resource_name}
                                     ),
                                 )
@@ -197,7 +197,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
                                     QTimer.singleShot(
                                         50,
-                                        lambda: self.service_coordinator.signal_bus.option_updated.emit(
+                                        lambda: self.service_coordinator.signal_bus.OptionUpdated.emit(
                                             {"resource": final_resource}
                                         ),
                                     )
@@ -211,12 +211,13 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self.speedrun_widget.config_changed.connect(self._on_speedrun_changed)
 
         # 连接CoreSignalBus的options_loaded信号
-        service_coordinator.signal_bus.options_loaded.connect(self._on_options_loaded)
-        service_coordinator.signal_bus.config_changed.connect(self._on_config_changed)
+        service_coordinator.signal_bus.OptionsLoaded.connect(self._on_options_loaded)
+        service_coordinator.signal_bus.ConfigChanged.connect(self._on_config_changed)
         
         # 监听运行状态变化，禁用/启用选项编辑
-        from app.common.signal_bus import signalBus
-        signalBus.task_status_changed.connect(self._on_task_status_changed)
+        from app.common.signal_bus import global_signal_bus
+
+        global_signal_bus.task_status_changed.connect(self._on_task_status_changed)
         
         # 初始化时隐藏描述区域
         self._toggle_description(visible=False, animate=False)

@@ -101,7 +101,7 @@ from app.view.setting_interface.setting_interface import (
 from app.view.test_interface.test_interface import TestInterface
 from app.view.bundle_interface.bundle_interface import BundleInterface
 from app.common.config import cfg
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import global_signal_bus
 from app.utils.hotkey_manager import GlobalHotkeyManager
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
@@ -425,7 +425,7 @@ class MainWindow(MSFluentWindow):
             level, message = pending_error
             # 处理国际化：将英文消息转换为可翻译的格式
             translated_message = self._translate_config_error(message)
-            signalBus.info_bar_requested.emit(level, translated_message)
+            global_signal_bus.info_bar_requested.emit(level, translated_message)
         try:
             event_loop = self._loop or asyncio.get_event_loop()
         except RuntimeError:
@@ -435,7 +435,7 @@ class MainWindow(MSFluentWindow):
             start_factory=lambda: self.service_coordinator.run_tasks_flow(),
             stop_factory=lambda: self.service_coordinator.stop_task_flow(),
         )
-        signalBus.hotkey_shortcuts_changed.connect(self._reload_global_hotkeys)
+        global_signal_bus.hotkey_shortcuts_changed.connect(self._reload_global_hotkeys)
 
         # 检测快捷键权限（macOS/Linux）
         self._check_hotkey_permission()
@@ -1058,27 +1058,27 @@ class MainWindow(MSFluentWindow):
 
     def connectSignalToSlot(self):
         """连接信号到槽函数。"""
-        signalBus.micaEnableChanged.connect(self.setMicaEffectEnabled)
-        signalBus.title_changed.connect(self.set_title)
-        signalBus.set_window_title.connect(self.setWindowTitle)
-        signalBus.info_bar_requested.connect(self.show_info_bar)
-        signalBus.request_log_zip.connect(self._on_request_log_zip)
-        signalBus.background_image_changed.connect(self._on_background_image_changed)
-        signalBus.background_opacity_changed.connect(
+        global_signal_bus.mica_enable_changed.connect(self.setMicaEffectEnabled)
+        global_signal_bus.title_changed.connect(self.set_title)
+        global_signal_bus.set_window_title.connect(self.setWindowTitle)
+        global_signal_bus.info_bar_requested.connect(self.show_info_bar)
+        global_signal_bus.request_log_zip.connect(self._on_request_log_zip)
+        global_signal_bus.background_image_changed.connect(self._on_background_image_changed)
+        global_signal_bus.background_opacity_changed.connect(
             self._on_background_opacity_changed
         )
-        signalBus.update_stopped.connect(self._on_update_stopped_main)
-        signalBus.check_auto_run_after_update_cancel.connect(
+        global_signal_bus.update_stopped.connect(self._on_update_stopped_main)
+        global_signal_bus.check_auto_run_after_update_cancel.connect(
             self._on_check_auto_run_after_update_cancel
         )
-        signalBus.all_updates_completed.connect(self._on_all_updates_completed)
+        global_signal_bus.all_updates_completed.connect(self._on_all_updates_completed)
         # focus display 渠道信号
-        signalBus.focus_toast.connect(self._on_focus_toast)
-        signalBus.focus_notification.connect(self._on_focus_notification)
-        signalBus.focus_dialog.connect(self._on_focus_dialog)
-        signalBus.focus_modal.connect(self._on_focus_modal)
+        global_signal_bus.focus_toast.connect(self._on_focus_toast)
+        global_signal_bus.focus_notification.connect(self._on_focus_notification)
+        global_signal_bus.focus_dialog.connect(self._on_focus_dialog)
+        global_signal_bus.focus_modal.connect(self._on_focus_modal)
         # 多资源适配启用后，将 BundleInterface 添加到导航栏
-        signalBus.multi_resource_adaptation_enabled.connect(
+        global_signal_bus.multi_resource_adaptation_enabled.connect(
             self._on_multi_resource_adaptation_enabled
         )
 
@@ -1144,7 +1144,7 @@ class MainWindow(MSFluentWindow):
             if dialog is not None:
                 dialog.raise_()
                 dialog.activateWindow()
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning", self.tr("Log is being packaged, please wait...")
             )
             return
@@ -1168,7 +1168,7 @@ class MainWindow(MSFluentWindow):
             self._log_zip_dialog.set_running(True)
             self._log_zip_dialog.update_progress(0, 1, self.tr("Preparing files..."))
         self._log_zip_running = True
-        signalBus.log_zip_started.emit()
+        global_signal_bus.log_zip_started.emit()
         threading.Thread(
             target=self._generate_log_zip,
             args=(options,),
@@ -1191,12 +1191,12 @@ class MainWindow(MSFluentWindow):
                 self.tr("Debug directory not found, cannot package logs."),
                 error=True,
             )
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "error", self.tr("Debug directory not found, cannot package logs.")
             )
             self._log_zip_running = False
             self._log_zip_cancel_event = None
-            signalBus.log_zip_finished.emit()
+            global_signal_bus.log_zip_finished.emit()
             return
 
         zip_path = self._build_log_zip_path()
@@ -1210,7 +1210,7 @@ class MainWindow(MSFluentWindow):
                     self.tr("No matching files were found for the selected options."),
                     error=True,
                 )
-                signalBus.info_bar_requested.emit(
+                global_signal_bus.info_bar_requested.emit(
                     "warning",
                     self.tr("No matching files were found for the selected options."),
                 )
@@ -1259,20 +1259,20 @@ class MainWindow(MSFluentWindow):
             except Exception as exc:
                 logger.warning("取消后删除未完成压缩包失败：%s", exc)
             self._set_log_zip_dialog_finished(self.tr("Log packaging cancelled."), error=False)
-            signalBus.info_bar_requested.emit("warning", self.tr("Log packaging cancelled."))
+            global_signal_bus.info_bar_requested.emit("warning", self.tr("Log packaging cancelled."))
         except Exception as exc:
             logger.exception("生成日志压缩包失败")
             self._set_log_zip_dialog_finished(
                 self.tr("Log packaging failed:") + str(exc),
                 error=True,
             )
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "error", self.tr("Log packaging failed:") + str(exc)
             )
         finally:
             self._log_zip_running = False
             self._log_zip_cancel_event = None
-            signalBus.log_zip_finished.emit()
+            global_signal_bus.log_zip_finished.emit()
 
     def _collect_log_zip_entries(
         self,
@@ -1791,7 +1791,7 @@ class MainWindow(MSFluentWindow):
                     + str(more_count)
                     + self.tr(" files not added")
                 )
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning",
                 self.tr("Log has been packaged, but some files failed to read:")
                 + preview
@@ -1799,7 +1799,7 @@ class MainWindow(MSFluentWindow):
             )
             return
 
-        signalBus.info_bar_requested.emit(
+        global_signal_bus.info_bar_requested.emit(
             "info", self.tr("Log has been packaged:") + str(zip_path.resolve())
         )
 
@@ -2313,7 +2313,7 @@ class MainWindow(MSFluentWindow):
 
         if not bundle_auto_update_enabled:
             logger.info("Bundle 自动更新未开启，直接发送所有更新完成信号")
-            signalBus.all_updates_completed.emit()
+            global_signal_bus.all_updates_completed.emit()
             # 处理自动运行
             if self._pending_auto_run:
                 self._schedule_auto_run()
@@ -2324,7 +2324,7 @@ class MainWindow(MSFluentWindow):
         bundle_interface = getattr(self, "BundleInterface", None)
         if not bundle_interface:
             logger.warning("BundleInterface 不存在，无法启动 bundle 更新")
-            signalBus.all_updates_completed.emit()
+            global_signal_bus.all_updates_completed.emit()
             if self._pending_auto_run:
                 self._schedule_auto_run()
             self._pending_auto_run = False
@@ -2338,7 +2338,7 @@ class MainWindow(MSFluentWindow):
         except Exception as e:
             logger.error(f"启动 bundle 自动更新失败: {e}", exc_info=True)
             self._bundle_update_in_progress = False
-            signalBus.all_updates_completed.emit()
+            global_signal_bus.all_updates_completed.emit()
             if self._pending_auto_run:
                 self._schedule_auto_run()
             self._pending_auto_run = False

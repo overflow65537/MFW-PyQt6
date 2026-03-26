@@ -27,7 +27,7 @@ from app.view.task_interface.components.AddTaskMessageBox import (
 )
 from app.core.core import ServiceCoordinator
 from app.view.task_interface.components.ListItem import TaskListItem, ConfigListItem
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import GlobalSignalBus
 from app.common.constants import _RESOURCE_, _CONTROLLER_, PRE_CONFIGURATION
 
 
@@ -137,7 +137,7 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
 
         # 任务运行中锁定配置列表（禁止切换/增删）
         try:
-            self.service_coordinator.fs_signal_bus.fs_start_button_status.connect(
+            self.service_coordinator.fs_signal_bus.FsStartButtonStatus.connect(
                 self._on_start_button_status_changed
             )
         except Exception:
@@ -177,7 +177,7 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
     def add_config(self):
         """添加配置项。"""
         if self._locked:
-            signalBus.info_bar_requested.emit(
+            GlobalSignalBus.InfoBarRequested.emit(
                 "warning", self.tr("Task is running, configurations are locked.")
             )
             return
@@ -231,16 +231,16 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
     def remove_config(self):
         """移除配置项"""
         if self._locked:
-            signalBus.info_bar_requested.emit(
+            GlobalSignalBus.InfoBarRequested.emit(
                 "warning", self.tr("Task is running, configurations are locked.")
             )
             return
         config_list = self.service_coordinator.config.list_configs()
         if len(config_list) <= 1:
-            signalBus.info_bar_requested.emit(
+            GlobalSignalBus.InfoBarRequested.emit(
                 "warning", self.tr("Cannot delete the last configuration!")
             )
-            signalBus.info_bar_requested.emit(
+            GlobalSignalBus.InfoBarRequested.emit(
                 "warning", self.tr("Cannot delete the last configuration!")
             )
             return False
@@ -296,7 +296,7 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         self.set_title(self.tr("Tasks"))
 
         # 监听配置切换信号，当配置切换时重新检查是否有特殊任务
-        self.core_signalBus.config_changed.connect(self._on_config_changed)
+        self.core_signalBus.ConfigChanged.connect(self._on_config_changed)
 
         # 初始填充任务列表
         # 不在工具栏直接刷新列表：视图会订阅 ServiceCoordinator 的信号自行更新
@@ -362,7 +362,7 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         interface = self.service_coordinator.task.interface
         filtered_task_map = self._filter_task_map_by_mode(task_map, interface)
         if not filtered_task_map:
-            signalBus.info_bar_requested.emit(
+            GlobalSignalBus.InfoBarRequested.emit(
                 "warning", self.tr("No available tasks to add.")
             )
             return
@@ -542,10 +542,10 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         task_id = widget.task.item_id if widget.task else None
         if not task_id:
             return
-        elif widget.task.is_base_task():
-            from app.common.signal_bus import signalBus
+        elif widget.task.IsBaseTask():
+            from app.common.signal_bus import GlobalSignalBus
 
-            signalBus.info_bar_requested.emit(
+            GlobalSignalBus.InfoBarRequested.emit(
                 "warning",
                 self.tr(
                     "Base tasks (Resource, Post-Task) cannot be deleted (ID: {id})"

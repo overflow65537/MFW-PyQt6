@@ -13,19 +13,29 @@ class CoreSignalBus(QObject):
     config_changed = Signal(str)  # 配置ID
     config_loaded = Signal(object)  # ConfigItem 或 dict (向后兼容)
     config_saved = Signal(bool)  # 保存结果
+    ConfigChanged = config_changed
+    ConfigLoaded = config_loaded
+    ConfigSaved = config_saved
 
     # 任务相关信号
     tasks_loaded = Signal(object)  # List[TaskItem]
     task_updated = Signal(object)  # TaskItem
     task_selected = Signal(str)  # 任务ID
     task_order_updated = Signal(object)  # List[str]
+    TasksLoaded = tasks_loaded
+    TaskUpdated = task_updated
+    TaskSelected = task_selected
+    TaskOrderUpdated = task_order_updated
 
     # 选项相关信号
     options_loaded = Signal()  # 选项加载完成信号，不携带数据
     option_updated = Signal(object)  # 选项更新(dict)
+    OptionsLoaded = options_loaded
+    OptionUpdated = option_updated
 
     # UI 操作信号
     need_save = Signal()
+    NeedSave = need_save
     # UI 操作信号（仅保留通用保存信号，具体操作通过 ServiceCoordinator 的方法调用）
 
 
@@ -41,6 +51,11 @@ class FromeServiceCoordinator(QObject):
     fs_start_button_status = Signal(
         dict
     )  # 控制开始按钮状态和文本，载荷如 {"text": "开始", "status": "enabled"}
+    FsTaskModified = fs_task_modified
+    FsTaskRemoved = fs_task_removed
+    FsConfigAdded = fs_config_added
+    FsConfigRemoved = fs_config_removed
+    FsStartButtonStatus = fs_start_button_status
 
 
 # ==================== 数据模型 ====================
@@ -121,6 +136,11 @@ class TaskItem:
             task_option=task_option,
             is_special=is_special,
         )
+
+    IsBaseTask = is_base_task
+    ToDict = to_dict
+    GenerateId = generate_id
+    FromDict = from_dict
 
 
 @dataclass
@@ -208,8 +228,12 @@ class ConfigItem:
         return cls(
             name=data.get("name", ""),
             item_id=item_id,
-            tasks=[TaskItem.from_dict(task) for task in data.get("tasks", [])],
+                tasks=[TaskItem.from_dict(task) for task in data.get("tasks", [])],
             know_task=data.get("know_task", []),
             bundle=bundle_name,
             global_options=raw_global_options,
         )
+
+            ToDict = to_dict
+            GenerateId = generate_id
+            FromDict = from_dict

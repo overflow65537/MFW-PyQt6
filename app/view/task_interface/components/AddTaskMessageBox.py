@@ -30,7 +30,6 @@ from app.core.Item import TaskItem, ConfigItem
 from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.common.config import cfg
 from app.core.core import ServiceCoordinator
-from app.common.signal_bus import signalBus
 
 
 class BaseAddDialog(MessageBoxBase):

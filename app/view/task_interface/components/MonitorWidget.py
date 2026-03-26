@@ -30,7 +30,7 @@ from app.utils.logger import (
     suppress_asyncify_logging,
     suppress_qasync_logging,
 )
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import global_signal_bus
 from app.common.config import cfg
 
 
@@ -170,12 +170,12 @@ class MonitorWidget(QWidget):
         """连接信号"""
         # 监听任务开始/停止信号
         if hasattr(self.service_coordinator, 'fs_signals'):
-            self.service_coordinator.fs_signals.fs_start_button_status.connect(
+            self.service_coordinator.fs_signals.FsStartButtonStatus.connect(
                 self._on_task_status_changed
             )
 
         # 监听任务流结束信号：无论何种结束方式，都要停止监控（比按钮状态更及时）
-        signalBus.task_flow_finished.connect(self._on_task_flow_finished)
+        global_signal_bus.task_flow_finished.connect(self._on_task_flow_finished)
 
     def _on_task_flow_finished(self, payload: dict) -> None:
         """任务流结束时的处理：停止监控（带防抖/幂等）"""
@@ -701,7 +701,7 @@ class MonitorWidget(QWidget):
     def _on_save_screenshot(self) -> None:
         """保存截图"""
         if not self._current_pil_image:
-            signalBus.info_bar_requested.emit("warning", self.tr("No screenshot available to save"))
+            global_signal_bus.info_bar_requested.emit("warning", self.tr("No screenshot available to save"))
             return
         save_dir = Path("debug") / "save_screen"
         save_dir.mkdir(parents=True, exist_ok=True)
@@ -710,9 +710,9 @@ class MonitorWidget(QWidget):
         try:
             self._current_pil_image.save(save_path)
             message = self.tr("Screenshot saved to ") + str(save_path)
-            signalBus.info_bar_requested.emit("success", message)
+            global_signal_bus.info_bar_requested.emit("success", message)
         except Exception as exc:
-            signalBus.info_bar_requested.emit("error", self.tr("Failed to save screenshot: ") + str(exc))
+            global_signal_bus.info_bar_requested.emit("error", self.tr("Failed to save screenshot: ") + str(exc))
 
     def _on_monitor_control_clicked(self) -> None:
         """处理开始/停止监控按钮点击"""
@@ -773,7 +773,7 @@ class MonitorWidget(QWidget):
                     if not self._check_task_flow_controller_ready():
                         logger.warning(f"[MonitorWidget] 等待超时，控制器仍未就绪 (等待了 {waited_time:.1f}秒)")
                         if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
-                            signalBus.info_bar_requested.emit(
+                            global_signal_bus.info_bar_requested.emit(
                                 "error", self.tr("Controller not ready. Please ensure the device is connected.")
                             )
                         self._hide_loading_overlay()
@@ -800,7 +800,7 @@ class MonitorWidget(QWidget):
                     if not self._monitoring_active:
                         logger.error("[MonitorWidget] 监控循环启动失败")
                         if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
-                            signalBus.info_bar_requested.emit(
+                            global_signal_bus.info_bar_requested.emit(
                                 "error", self.tr("Failed to start monitoring loop")
                             )
                         self._starting_monitoring = False
@@ -809,7 +809,7 @@ class MonitorWidget(QWidget):
                     logger.info("[MonitorWidget] 正常模式监控循环已启动")
                 
                 self._update_button_state()
-                signalBus.info_bar_requested.emit("success", self.tr("Monitoring started"))
+                global_signal_bus.info_bar_requested.emit("success", self.tr("Monitoring started"))
                 
                 # 尝试捕获第一帧（仅正常模式）
                 if not use_low_power:
@@ -828,7 +828,7 @@ class MonitorWidget(QWidget):
             except Exception as exc:
                 logger.error(f"[MonitorWidget] 启动监控流程失败: {exc}", exc_info=True)
                 if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
-                    signalBus.info_bar_requested.emit(
+                    global_signal_bus.info_bar_requested.emit(
                         "error", self.tr("Failed to start monitoring: ") + str(exc)
                     )
                 self._hide_loading_overlay()
@@ -892,10 +892,10 @@ class MonitorWidget(QWidget):
                 
                 self._update_button_state()
                 logger.info("[MonitorWidget] 监控已停止")
-                signalBus.info_bar_requested.emit("success", self.tr("Monitoring stopped"))
+                global_signal_bus.info_bar_requested.emit("success", self.tr("Monitoring stopped"))
             except Exception as exc:
                 logger.error(f"[MonitorWidget] 停止监控流程失败: {exc}", exc_info=True)
-                signalBus.info_bar_requested.emit(
+                global_signal_bus.info_bar_requested.emit(
                     "error", self.tr("Failed to stop monitoring: ") + str(exc)
                 )
             finally:

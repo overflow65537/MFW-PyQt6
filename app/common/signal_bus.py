@@ -28,7 +28,8 @@ from PySide6.QtCore import Signal, QObject
 class SignalBus(QObject):
     """Signal bus"""
 
-    micaEnableChanged = Signal(bool)  # Mica效果开关信号
+    mica_enable_changed = Signal(bool)  # Mica效果开关信号
+    micaEnableChanged = mica_enable_changed
 
     # 主布局中的配置切换和选项切换
     change_task_flow = Signal(dict)  # 切换任务列表
@@ -36,16 +37,26 @@ class SignalBus(QObject):
     agent_info = Signal(dict)  # 智能体信息
     title_changed = Signal()  # 窗口标题改变
     set_window_title = Signal(str)  # 直接设置窗口标题字符串
+    ChangeTaskFlow = change_task_flow
+    ShowOption = show_option
+    AgentInfo = agent_info
+    TitleChanged = title_changed
+    SetWindowTitle = set_window_title
     # maa sink 发送信号
     callback = Signal(dict)
+    Callback = callback
 
     # 输出到日志组件
     log_output = Signal(str, str)  # (level,text)
     background_image_changed = Signal(str)
     background_opacity_changed = Signal(int)
+    LogOutput = log_output
+    BackgroundImageChanged = background_image_changed
+    BackgroundOpacityChanged = background_opacity_changed
 
     # 显示 InfoBar 的请求
     info_bar_requested = Signal(str, str)  # (level, message)
+    InfoBarRequested = info_bar_requested
 
     # focus display 渠道信号
     focus_toast = Signal(str)  # 应用内轻提示（message）
@@ -54,15 +65,25 @@ class SignalBus(QObject):
     focus_modal = Signal(str)  # 阻塞式弹窗（message）
     log_zip_started = Signal()  # 日志打包开始
     log_zip_finished = Signal()  # 日志打包结束
+    FocusToast = focus_toast
+    FocusNotification = focus_notification
+    FocusDialog = focus_dialog
+    FocusModal = focus_modal
+    LogZipStarted = log_zip_started
+    LogZipFinished = log_zip_finished
 
     config_changed = Signal(str)  # (config_id)
     log_clear_requested = Signal()
+    ConfigChanged = config_changed
+    LogClearRequested = log_clear_requested
 
     # 外部通知发送完成
     notice_finished = Signal(int, str)  # (result, send_func.__name__)
+    NoticeFinished = notice_finished
 
     # 由信息输出组件发射，外部模块处理
     request_log_zip = Signal()  # 请求生成日志压缩包
+    RequestLogZip = request_log_zip
 
     # 下载相关进度
     start_update = Signal()  # 开始更新
@@ -70,25 +91,37 @@ class SignalBus(QObject):
     update_stopped = Signal(
         int
     )  # 更新停止(0:手动停止, 1:热更新完成, 2:更新包下载完成,需要重启安装)
+    StartUpdate = start_update
+    UpdateProgress = update_progress
+    UpdateStopped = update_stopped
 
     hotkey_shortcuts_changed = Signal()
+    HotkeyShortcutsChanged = hotkey_shortcuts_changed
 
     # 服务协调器重新初始化
     fs_reinit_requested = Signal()  # 热更新完成后请求服务协调器重新初始化
+    FsReinitRequested = fs_reinit_requested
 
     # 多资源适配启用后通知主界面等组件初始化相关 UI
     multi_resource_adaptation_enabled = Signal()
+    MultiResourceAdaptationEnabled = multi_resource_adaptation_enabled
 
     # 更新相关信号
     check_auto_run_after_update_cancel = Signal()  # 更新取消后检查是否需要自动运行
     all_updates_completed = Signal()  # 所有更新（设置更新 + bundle更新）完成
+    CheckAutoRunAfterUpdateCancel = check_auto_run_after_update_cancel
+    AllUpdatesCompleted = all_updates_completed
 
     # 任务状态信号
     task_status_changed = Signal(str, str)  # (task_id, status) status: "running", "completed", "failed", "restart_success", "waiting"
+    TaskStatusChanged = task_status_changed
 
     # 任务流结束信号：无论正常结束/异常/手动停止/中止，都会在任务流退出时发射
     # payload: dict（包含原因/标志位等，字段可扩展）
     task_flow_finished = Signal(dict)
+    TaskFlowFinished = task_flow_finished
 
 
-signalBus = SignalBus()
+global_signal_bus = SignalBus()
+GlobalSignalBus = global_signal_bus
+signalBus = global_signal_bus

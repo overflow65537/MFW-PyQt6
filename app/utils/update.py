@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 from app.utils.logger import logger
 from app.common.config import cfg, Config
 from app.utils.crypto import crypto_manager
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import GlobalSignalBus
 from app.core.core import ServiceCoordinator
 
 
@@ -1414,7 +1414,7 @@ class Update(BaseUpdate):
             self._emit_info_bar("success", self.tr("Update applied successfully"))
             self._cleanup_update_artifacts(download_dir, zip_file_path)
             # 触发服务协调器重新初始化
-            signalBus.fs_reinit_requested.emit()
+            GlobalSignalBus.FsReinitRequested.emit()
             self.stop_signal.emit(1)
 
         except Exception as e:
@@ -2281,7 +2281,7 @@ class MultiResourceUpdate(Update):
             self._emit_info_bar("success", self.tr("Update applied successfully"))
             self._cleanup_update_artifacts(download_dir, zip_file_path)
             # 触发服务协调器重新初始化
-            signalBus.fs_reinit_requested.emit()
+            GlobalSignalBus.FsReinitRequested.emit()
             self.stop_signal.emit(1)
 
         except Exception as e:

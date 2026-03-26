@@ -1,17 +1,4 @@
-from app.core.service.InterfaceManager import (
-    GetInterfaceManager,
-    InterfaceManager,
-    get_interface_manager,
-    refresh_interface_translation,
-)
-
-
-__all__ = [
-    "InterfaceManager",
-    "get_interface_manager",
-    "GetInterfaceManager",
-    "refresh_interface_translation",
-]"""
+"""
 Interface 管理器
 用于加载和管理 interface 配置文件，并提供国际化支持
 """
@@ -23,7 +10,7 @@ from copy import deepcopy
 
 from app.common.config import cfg
 from app.utils.logger import logger
-from app.core.service.i18n_service import I18nService
+from app.core.service.I18nService import I18nService
 from app.utils.custom_builder import build_custom_bundle
 
 
@@ -181,7 +168,7 @@ class InterfaceManager:
         if not self._original_interface:
             return
         # 委托给 I18nService，根据当前语言从 interface 中加载翻译
-        self._i18n_service.LoadTranslationsFromInterface(
+        self._i18n_service.load_translations_from_interface(
             self._original_interface, self._interface_dir
         )
 
@@ -235,7 +222,7 @@ class InterfaceManager:
                     )
                     and isinstance(value, str)
                 ):
-                    data[key] = self._i18n_service.TranslateText(value)
+                    data[key] = self._i18n_service.translate_text(value)
                 elif isinstance(value, (dict, list)):
                     data[key] = self._translate_dict(value)
 
@@ -594,6 +581,14 @@ class InterfaceManager:
 
         logger.info("interface 配置文件重新加载完成")
 
+    Initialize = initialize
+    GetInterface = get_interface
+    PreviewInterface = preview_interface
+    GetLanguage = get_language
+    SetLanguage = set_language
+    Refresh = refresh
+    Reload = reload
+
 
 # 全局单例实例
 _interface_manager = InterfaceManager()
@@ -634,3 +629,6 @@ def refresh_interface_translation():
         >>> refresh_interface_translation()
     """
     _interface_manager.refresh()
+
+
+GetInterfaceManager = get_interface_manager

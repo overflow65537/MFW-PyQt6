@@ -36,7 +36,7 @@ class TaskInterface(UI_TaskInterface, QWidget):
             self.task_info.switch_button.clicked.connect(self._on_switch_button_clicked)
 
         # 连接服务协调器的信号，用于更新按钮状态
-        self.service_coordinator.fs_signals.fs_start_button_status.connect(
+        self.service_coordinator.fs_signals.FsStartButtonStatus.connect(
             self._on_button_status_changed
         )
 
@@ -70,8 +70,9 @@ class TaskInterface(UI_TaskInterface, QWidget):
                 self.log_output_widget.clear_log()
                 target_task = self._get_selected_special_task()
                 if not target_task:
-                    from app.common.signal_bus import signalBus
-                    signalBus.info_bar_requested.emit(
+                    from app.common.signal_bus import global_signal_bus
+
+                    global_signal_bus.info_bar_requested.emit(
                         "warning", self.tr("Please select a special task to run.")
                     )
                     self.start_bar.run_button.setEnabled(True)
