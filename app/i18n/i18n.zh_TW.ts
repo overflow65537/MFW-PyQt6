@@ -3849,4 +3849,83 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
             <translation>WxPusher 狀態：</translation>
         </message>
     </context>
+    <context>
+        <name>AprilFoolsEasterEgg</name>
+        <message>
+            <source> Checking anti-addiction system...</source>
+            <translation> 正在檢測防沉迷系統...</translation>
+        </message>
+        <message>
+            <source> April Fools detected. System verdict: &quot;Limited-time April Fools addiction mode&quot;.</source>
+            <translation> 檢測到當前為愚人節，系統判定為「愚人節限時沉迷」。</translation>
+        </message>
+        <message>
+            <source> Task execution failed! Reason: You are granted &quot;slacking rights&quot; today. Please grab a coffee manually.</source>
+            <translation> 任務執行失敗！原因：今天你被賦予「摸魚」權利，請手動去喝杯咖啡。</translation>
+        </message>
+        <message>
+            <source> Just kidding, back to serious work...</source>
+            <translation> 騙你的，開始正經幹活...</translation>
+        </message>
+        <message>
+            <source> Today's task progress: ▓▓▓▓▓▓▓▓▓▓ 100%</source>
+            <translation> 今日任務進度: ▓▓▓▓▓▓▓▓▓▓ 100%</translation>
+        </message>
+        <message>
+            <source> Verifying... Verification failed!</source>
+            <translation> 校驗中... 校驗失敗！</translation>
+        </message>
+        <message>
+            <source> Server fluctuation detected (actually April Fools fluctuation), progress rolled back to 0%.</source>
+            <translation> 檢測到伺服器波動（其實是愚人節波動），進度已回滾至 0%。</translation>
+        </message>
+        <message>
+            <source> Re-executing...</source>
+            <translation> 正在重新執行...</translation>
+        </message>
+        <message>
+            <source> [System Notice] Since today is April Fools, all players can claim the limited title &quot;Ultimate Sucker&quot; upon login.</source>
+            <translation> [系統公告] 由於今天是愚人節，所有玩家今日登入即可領取限定稱號「大冤種」。</translation>
+        </message>
+        <message>
+            <source> Title claimed automatically. Please restart the game to view it.</source>
+            <translation> 已自動為您領取稱號，請重啟遊戲查看。</translation>
+        </message>
+        <message>
+            <source> Daily task completion: ■■□□□ 40%</source>
+            <translation> 每日任務完成度：■■□□□ 40%</translation>
+        </message>
+        <message>
+            <source> Injecting April Fools special patch...</source>
+            <translation> 注入愚人節特供補丁...</translation>
+        </message>
+        <message>
+            <source> Output: sudo rm -rf</source>
+            <translation> 輸出結果：sudo rm -rf</translation>
+        </message>
+        <message>
+            <source> Got scared? Back to normal task execution...</source>
+            <translation> 哈哈，嚇到了沒？正在正經執行任務...</translation>
+        </message>
+        <message>
+            <source> April Fools detected, enabling &quot;Anti-Boss Mode&quot; automatically.</source>
+            <translation> 檢測到今天是愚人節，自動開啟「防老闆模式」。</translation>
+        </message>
+        <message>
+            <source> Taskbar title changed to: &quot;2025 Q2 Quarterly Report - Data Analysis.exe&quot;</source>
+            <translation> 任務欄標題已修改為：「2025年Q2季度報表 - 數據分析.exe」</translation>
+        </message>
+        <message>
+            <source> Pretending to load Excel...</source>
+            <translation> 正在假裝載入Excel...</translation>
+        </message>
+        <message>
+            <source> Today's task list: 1. Enter game; 2. Claim rewards; 3. Be kind to yourself.</source>
+            <translation> 今日任務列表：1.進入遊戲；2.領獎勵；3.對自己好一點。</translation>
+        </message>
+        <message>
+            <source> The first two are already done for you, please do the third one yourself.</source>
+            <translation> 前兩項任務已代勞，第三項請親自完成。</translation>
+        </message>
+    </context>
 </TS>

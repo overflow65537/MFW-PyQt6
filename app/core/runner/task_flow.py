@@ -32,6 +32,7 @@ from app.utils.notice import NoticeTiming, send_notice, send_thread
 
 from app.utils.logger import logger
 from app.core.service.Config_Service import ConfigService
+from app.core.service.april_fools_easter_egg import emit_april_fools_startup_logs
 from app.core.service.Task_Service import TaskService
 from app.core.runner.maafw import (
     MaaFW,
@@ -314,6 +315,11 @@ class TaskFlowRunner(QObject):
 
         # 连接日志输出信号
         signalBus.log_output.connect(collect_log)
+
+        # 4 月 1 日启动任务时，随机输出一组愚人节彩蛋文案
+        await emit_april_fools_startup_logs(
+            lambda level, text: signalBus.log_output.emit(level, text)
+        )
         current_config = self.config_service.get_config(
             self.config_service.current_config_id
         )

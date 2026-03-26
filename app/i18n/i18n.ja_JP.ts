@@ -3849,4 +3849,83 @@ Below is the detailed stack trace. You can copy it and report to the developer:<
             <translation>WxPusher ステータス:</translation>
         </message>
     </context>
+    <context>
+        <name>AprilFoolsEasterEgg</name>
+        <message>
+            <source> Checking anti-addiction system...</source>
+            <translation> 依存防止システムをチェック中...</translation>
+        </message>
+        <message>
+            <source> April Fools detected. System verdict: &quot;Limited-time April Fools addiction mode&quot;.</source>
+            <translation> 本日はエイプリルフールのため、システム判定は「期間限定エイプリルフール依存モード」です。</translation>
+        </message>
+        <message>
+            <source> Task execution failed! Reason: You are granted &quot;slacking rights&quot; today. Please grab a coffee manually.</source>
+            <translation> タスク実行失敗！理由：今日は「サボり権」が付与されました。手動でコーヒーを飲みに行ってください。</translation>
+        </message>
+        <message>
+            <source> Just kidding, back to serious work...</source>
+            <translation> うそです。真面目に作業を開始します...</translation>
+        </message>
+        <message>
+            <source> Today's task progress: ▓▓▓▓▓▓▓▓▓▓ 100%</source>
+            <translation> 本日のタスク進捗: ▓▓▓▓▓▓▓▓▓▓ 100%</translation>
+        </message>
+        <message>
+            <source> Verifying... Verification failed!</source>
+            <translation> 検証中... 検証失敗！</translation>
+        </message>
+        <message>
+            <source> Server fluctuation detected (actually April Fools fluctuation), progress rolled back to 0%.</source>
+            <translation> サーバーの揺らぎを検出（実はエイプリルフール揺らぎ）。進捗は 0% にロールバックされました。</translation>
+        </message>
+        <message>
+            <source> Re-executing...</source>
+            <translation> 再実行中...</translation>
+        </message>
+        <message>
+            <source> [System Notice] Since today is April Fools, all players can claim the limited title &quot;Ultimate Sucker&quot; upon login.</source>
+            <translation> [システム告知] 本日はエイプリルフールのため、ログインした全プレイヤーに限定称号「大冤種」を配布します。</translation>
+        </message>
+        <message>
+            <source> Title claimed automatically. Please restart the game to view it.</source>
+            <translation> 称号は自動受け取り済みです。確認するにはゲームを再起動してください。</translation>
+        </message>
+        <message>
+            <source> Daily task completion: ■■□□□ 40%</source>
+            <translation> デイリー任務達成度：■■□□□ 40%</translation>
+        </message>
+        <message>
+            <source> Injecting April Fools special patch...</source>
+            <translation> エイプリルフール特別パッチを注入中...</translation>
+        </message>
+        <message>
+            <source> Output: sudo rm -rf</source>
+            <translation> 出力結果：sudo rm -rf</translation>
+        </message>
+        <message>
+            <source> Got scared? Back to normal task execution...</source>
+            <translation> びっくりしましたか？通常タスクを実行します...</translation>
+        </message>
+        <message>
+            <source> April Fools detected, enabling &quot;Anti-Boss Mode&quot; automatically.</source>
+            <translation> 本日がエイプリルフールのため、「上司対策モード」を自動で有効化しました。</translation>
+        </message>
+        <message>
+            <source> Taskbar title changed to: &quot;2025 Q2 Quarterly Report - Data Analysis.exe&quot;</source>
+            <translation> タスクバーのタイトルを「2025年Q2四半期レポート - データ分析.exe」に変更しました。</translation>
+        </message>
+        <message>
+            <source> Pretending to load Excel...</source>
+            <translation> Excelを読み込んでいるふりをしています...</translation>
+        </message>
+        <message>
+            <source> Today's task list: 1. Enter game; 2. Claim rewards; 3. Be kind to yourself.</source>
+            <translation> 本日のタスクリスト：1.ゲーム起動；2.報酬受取；3.自分を大切にする。</translation>
+        </message>
+        <message>
+            <source> The first two are already done for you, please do the third one yourself.</source>
+            <translation> 最初の2項目は代行しました。3項目目はご自身でお願いします。</translation>
+        </message>
+    </context>
 </TS>
