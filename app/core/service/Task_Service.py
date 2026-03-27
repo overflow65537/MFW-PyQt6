@@ -1,13 +1,10 @@
-from app.core.service.TaskService import DEFAULT_SPEEDRUN_CONFIG, TaskService
-
-
-__all__ = ["DEFAULT_SPEEDRUN_CONFIG", "TaskService"]from copy import deepcopy
+from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
-from app.utils.logger import logger
-from app.core.service.Config_Service import ConfigService
-from app.core.Item import TaskItem, CoreSignalBus
 from app.common.constants import _RESOURCE_, _CONTROLLER_
+from app.core.item import CoreSignalBus, TaskItem
+from app.core.service.config_service import ConfigService
+from app.utils.logger import logger
 
 # 速通配置默认值
 DEFAULT_SPEEDRUN_CONFIG: Dict[str, Any] = {
@@ -53,7 +50,7 @@ class TaskService:
                 self.refresh_hidden_flags()
 
                 # 发出 TaskItem 列表，UI 层可以选择转换为 dict 显示
-                self.signal_bus.TasksLoaded.emit(self.current_tasks)
+                self.signal_bus.tasks_loaded.emit(self.current_tasks)
                 self._check_know_task()
 
     def _check_know_task(self) -> bool:
@@ -118,7 +115,7 @@ class TaskService:
         config = self.config_service.get_config(config_id)
         if not config:
             return
-        base_tasks = [t for t in config.tasks if t.IsBaseTask()]
+        base_tasks = [t for t in config.tasks if t.is_base_task()]
         config.tasks = base_tasks
         self.config_service.update_config(config_id, config)
         self.current_tasks = base_tasks
@@ -168,7 +165,7 @@ class TaskService:
         # 遍历当前配置的所有任务，应用预设
         changed_tasks: List[TaskItem] = []
         for task in config.tasks:
-            if task.IsBaseTask():
+            if task.is_base_task():
                 continue
 
             if task.name in preset_task_map:
@@ -390,7 +387,7 @@ class TaskService:
             for t in self.current_tasks or []:
                 if not isinstance(t, TaskItem):
                     continue
-                if t.IsBaseTask():
+                if t.is_base_task():
                     t.is_hidden = False
                     continue
                 td = task_def_map.get(t.name)
@@ -438,7 +435,7 @@ class TaskService:
         注意：基础任务（Controller, Resource, Post-Action）不需要 speedrun_config
         """
         # 基础任务不需要 speedrun_config
-        if task.IsBaseTask():
+        if task.is_base_task():
             # 如果基础任务中有 speedrun_config，删除它
             if isinstance(task.task_option, dict) and "_speedrun_config" in task.task_option:
                 del task.task_option["_speedrun_config"]
@@ -483,7 +480,7 @@ class TaskService:
 
                 new_task = TaskItem(
                     name=task["name"],
-                    item_id=TaskItem.GenerateId(is_special=task_is_special),
+                    item_id=TaskItem.generate_id(is_special=task_is_special),
                     is_checked=default_check,
                     task_option=task_default_option,
                     is_special=task_is_special,
@@ -701,7 +698,7 @@ class TaskService:
         if isinstance(task_data, TaskItem):
             incoming = task_data
         else:
-            incoming = TaskItem.FromDict(task_data)
+            incoming = TaskItem.from_dict(task_data)
 
         # 查找并更新任务
         task_updated = False
@@ -754,7 +751,7 @@ class TaskService:
         if self.config_service.update_config(config_id, config):
             # 更新本地任务列表并发出对象列表
             self.current_tasks = config.tasks
-            self.signal_bus.TasksLoaded.emit(self.current_tasks)
+            self.signal_bus.tasks_loaded.emit(self.current_tasks)
             return True
         return False
 
@@ -843,7 +840,7 @@ class TaskService:
             # 更新本地任务列表并发送整体 loaded 信号（UI 会进行 diff）
             self.current_tasks = config.tasks
             # 优先发送 tasks_loaded 以便视图基于完整列表做最小更新
-            self.signal_bus.TasksLoaded.emit(self.current_tasks)
+            self.signal_bus.tasks_loaded.emit(self.current_tasks)
         return ok
 
     def delete_task(self, task_id: str) -> bool:
@@ -865,7 +862,7 @@ class TaskService:
         if (
             target_task
             and hasattr(target_task, "is_base_task")
-            and target_task.IsBaseTask()
+            and target_task.is_base_task()
         ):
             return False
 
@@ -876,7 +873,7 @@ class TaskService:
         if self.config_service.update_config(config_id, config):
             # 更新本地任务列表
             self.current_tasks = config.tasks
-            self.signal_bus.TasksLoaded.emit(self.current_tasks)
+            self.signal_bus.tasks_loaded.emit(self.current_tasks)
             return True
 
         return False

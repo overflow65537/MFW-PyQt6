@@ -15,7 +15,7 @@ from qfluentwidgets import (
 )
 
 from app.core.service.task_service import DEFAULT_SPEEDRUN_CONFIG
-from app.view.task_interface.components.Option_Framework.animations import HeightAnimator
+from app.view.task_interface.components.option_framework.animations import HeightAnimator
 
 
 class SpeedrunConfigWidget(QWidget):

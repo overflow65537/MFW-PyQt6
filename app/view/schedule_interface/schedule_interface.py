@@ -36,9 +36,9 @@ from qfluentwidgets import (
     TimePicker,
 )
 
-from app.common.signal_bus import GlobalSignalBus
+from app.common.signal_bus import global_signal_bus
 from app.core.core import ServiceCoordinator
-from app.core.service.ScheduleService import (
+from app.core.service.schedule_service import (
     SCHEDULE_DAILY,
     SCHEDULE_MONTHLY,
     SCHEDULE_SINGLE,
@@ -121,7 +121,7 @@ class ScheduleInterface(QWidget):
 
     def _connect_signals(self) -> None:
         self.schedule_service.schedules_changed.connect(self._refresh_schedule_table)
-        self.service_coordinator.signals.ConfigChanged.connect(
+        self.service_coordinator.signal_bus.config_changed.connect(
             lambda _: self._refresh_config_selector()
         )
         self.trigger_group.buttonClicked.connect(self._on_trigger_button_clicked)
@@ -619,5 +619,6 @@ class ScheduleInterface(QWidget):
 
     def _info_with_log(self, level: str, message: str) -> None:
         normalized_level = (level or "info").lower()
-        GlobalSignalBus.InfoBarRequested.emit(normalized_level, message)
-        GlobalSignalBus.LogOutput.emit(normalized_level.upper(), message)
+        global_signal_bus.info_bar_requested.emit(normalized_level, message)
+        global_signal_bus.log_output.emit(normalized_level.upper(), message)
+

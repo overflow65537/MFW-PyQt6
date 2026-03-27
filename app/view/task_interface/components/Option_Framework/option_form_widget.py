@@ -6,13 +6,13 @@ import warnings
 from typing import Dict, Any, Optional, TYPE_CHECKING
 from PySide6.QtWidgets import QWidget, QVBoxLayout
 from app.utils.logger import logger
-from app.view.task_interface.components.Option_Framework.items import (
+from app.view.task_interface.components.option_framework.items import (
     OptionItemBase,
     OptionItemRegistry,
 )
 
 if TYPE_CHECKING:
-    from app.view.task_interface.components.Option_Framework.items import OptionItemBase
+    from app.view.task_interface.components.option_framework.items import OptionItemBase
 
 
 class OptionFormWidget(QWidget):

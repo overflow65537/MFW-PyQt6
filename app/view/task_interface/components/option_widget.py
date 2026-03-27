@@ -16,18 +16,18 @@ from app.view.task_interface.animations.optionwidget import (
     DescriptionTransitionAnimator,
     OptionTransitionAnimator,
 )
-from app.view.task_interface.components.ImagePreviewDialog import ImagePreviewDialog
-from app.view.task_interface.components.Option_Framework import (
+from app.view.task_interface.components.image_preview_dialog import ImagePreviewDialog
+from app.view.task_interface.components.option_framework import (
     OptionFormWidget,
     SpeedrunConfigWidget,
 )
-from app.view.task_interface.components.Option_Widget_Mixin.PostActionSettingMixin import (
+from app.view.task_interface.components.option_widget_mixin.post_action_setting_mixin import (
     PostActionSettingMixin,
 )
-from app.view.task_interface.components.Option_Widget_Mixin.ResourceSettingMixin import (
+from app.view.task_interface.components.option_widget_mixin.resource_setting_mixin import (
     ResourceSettingMixin,
 )
-from app.view.task_interface.components.Option_Widget_Mixin.ControllerSettingMixin import (
+from app.view.task_interface.components.option_widget_mixin.controller_setting_mixin import (
     ControllerSettingWidget,
 )
 from ....core.core import ServiceCoordinator
@@ -62,7 +62,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self.controller_setting_widget._set_description = self.set_description
         self.controller_setting_widget._toggle_description = self._toggle_description
 
-        # 初始化 Resource 和 PostAction Mixin（它们现在是 OptionWidget 的一部分）
+        # 初始化 resource 和 post-action mixin。
         self._init_resource_settings()
         self._init_post_action_settings()
         
@@ -116,7 +116,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
                             QTimer.singleShot(
                                 50,
-                                lambda: self.service_coordinator.signal_bus.OptionUpdated.emit(
+                                lambda: self.service_coordinator.signal_bus.option_updated.emit(
                                     {"resource": current_resource}
                                 ),
                             )
@@ -177,7 +177,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
                                 QTimer.singleShot(
                                     50,
-                                    lambda: self.service_coordinator.signal_bus.OptionUpdated.emit(
+                                    lambda: self.service_coordinator.signal_bus.option_updated.emit(
                                         {"resource": first_resource_name}
                                     ),
                                 )
@@ -197,7 +197,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
                                     QTimer.singleShot(
                                         50,
-                                        lambda: self.service_coordinator.signal_bus.OptionUpdated.emit(
+                                        lambda: self.service_coordinator.signal_bus.option_updated.emit(
                                             {"resource": final_resource}
                                         ),
                                     )
@@ -211,8 +211,8 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self.speedrun_widget.config_changed.connect(self._on_speedrun_changed)
 
         # 连接CoreSignalBus的options_loaded信号
-        service_coordinator.signal_bus.OptionsLoaded.connect(self._on_options_loaded)
-        service_coordinator.signal_bus.ConfigChanged.connect(self._on_config_changed)
+        service_coordinator.signal_bus.options_loaded.connect(self._on_options_loaded)
+        service_coordinator.signal_bus.config_changed.connect(self._on_config_changed)
         
         # 监听运行状态变化，禁用/启用选项编辑
         from app.common.signal_bus import global_signal_bus
@@ -1139,3 +1139,4 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             elif item.layout():
                 # 递归处理子布局
                 self._set_layout_enabled(item.layout(), enabled)
+

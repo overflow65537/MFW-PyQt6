@@ -1,6 +1,6 @@
 from app.core.runner.task_flow import TaskFlowRunner
-from app.core.service.TaskService import TaskService
-from app.core.service.ConfigService import ConfigService
+from app.core.service.config_service import ConfigService
+from app.core.service.task_service import TaskService
 
 
 class MonitorTask(TaskFlowRunner):

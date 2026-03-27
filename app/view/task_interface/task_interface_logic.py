@@ -36,7 +36,7 @@ class TaskInterface(UI_TaskInterface, QWidget):
             self.task_info.switch_button.clicked.connect(self._on_switch_button_clicked)
 
         # 连接服务协调器的信号，用于更新按钮状态
-        self.service_coordinator.fs_signals.FsStartButtonStatus.connect(
+        self.service_coordinator.fs_signal_bus.fs_start_button_status.connect(
             self._on_button_status_changed
         )
 
@@ -230,3 +230,4 @@ class TaskInterface(UI_TaskInterface, QWidget):
         except Exception:
             pass
         return None
+

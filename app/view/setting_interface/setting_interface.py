@@ -49,22 +49,22 @@ from qfluentwidgets import (
 
 from app.utils.markdown_helper import render_markdown
 from app.widget.notice_message import NoticeMessageBox
-from app.common.config import cfg, isWin11, Config
+from app.common.config import cfg, is_win11, Config
 from app.common.__version__ import __version__ as UI_VERSION
 from app.common.signal_bus import global_signal_bus
 from app.core.core import ServiceCoordinator
 from app.utils.crypto import crypto_manager
 from app.utils.logger import logger
 from app.utils.update import Update
-from app.view.setting_interface.widget.ProxySettingCard import ProxySettingCard
+from app.view.setting_interface.widget.proxy_setting_card import ProxySettingCard
 from app.utils.hotkey_manager import GlobalHotkeyManager
-from app.view.setting_interface.widget.SliderSettingCard import SliderSettingCard
+from app.view.setting_interface.widget.slider_setting_card import SliderSettingCard
 import sys
-from app.view.setting_interface.widget.LineEditCard import (
+from app.view.setting_interface.widget.line_edit_card import (
     LineEditCard,
     MirrorCdkLineEditCard,
 )
-from app.view.setting_interface.widget.NoticeType import (
+from app.view.setting_interface.widget.notice_type import (
     QYWXNoticeType,
     DingTalkNoticeType,
     LarkNoticeType,
@@ -246,7 +246,7 @@ class SettingInterface(QWidget):
         propagate_direct_run_arg: bool = False,
     ):
         super().__init__(parent=parent)
-        self.setObjectName("settingInterface")
+        self.setObjectName("setting_interface")
         self._service_coordinator = service_coordinator
         self.interface_data = self._service_coordinator.task.interface
         self._suppress_multi_resource_signal = False
@@ -270,8 +270,8 @@ class SettingInterface(QWidget):
         self._last_downloaded_bytes = 0
         self._detail_progress_animation: Optional[QPropertyAnimation] = None
         self._progress_content_animation: Optional[QPropertyAnimation] = None
-        self.Setting_scroll_widget = QWidget()
-        self.Setting_expand_layout = ExpandLayout(self.Setting_scroll_widget)
+        self.setting_scroll_widget = QWidget()
+        self.setting_expand_layout = ExpandLayout(self.setting_scroll_widget)
         self.scroll_area = ScrollArea(self)
         self._setup_ui()
         self.connect_notice_card_clicked()
@@ -301,12 +301,12 @@ class SettingInterface(QWidget):
 
     def connect_notice_card_clicked(self):
         # 连接通知卡片的点击事件
-        self.dingtalk_noticeTypeCard.clicked.connect(self._on_dingtalk_notice_clicked)
-        self.lark_noticeTypeCard.clicked.connect(self._on_lark_notice_clicked)
-        self.SMTP_noticeTypeCard.clicked.connect(self._on_smtp_notice_clicked)
-        self.WxPusher_noticeTypeCard.clicked.connect(self._on_wxpusher_notice_clicked)
-        self.QYWX_noticeTypeCard.clicked.connect(self._on_qywx_notice_clicked)
-        self.gotify_noticeTypeCard.clicked.connect(self._on_gotify_notice_clicked)
+        self.dingtalk_notice_type_card.clicked.connect(self._on_dingtalk_notice_clicked)
+        self.lark_notice_type_card.clicked.connect(self._on_lark_notice_clicked)
+        self.smtp_notice_type_card.clicked.connect(self._on_smtp_notice_clicked)
+        self.wx_pusher_notice_type_card.clicked.connect(self._on_wxpusher_notice_clicked)
+        self.qywx_notice_type_card.clicked.connect(self._on_qywx_notice_clicked)
+        self.gotify_notice_type_card.clicked.connect(self._on_gotify_notice_clicked)
         self.notice_timing_card.clicked.connect(self._on_notice_timing_clicked)
 
     def _setup_ui(self):
@@ -322,8 +322,8 @@ class SettingInterface(QWidget):
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
 
-        self.Setting_expand_layout.setSpacing(28)
-        self.Setting_expand_layout.setContentsMargins(24, 24, 24, 24)
+        self.setting_expand_layout.setSpacing(28)
+        self.setting_expand_layout.setContentsMargins(24, 24, 24, 24)
 
         self.scroll_content = QWidget()
         self.scroll_content_layout = QVBoxLayout(self.scroll_content)
@@ -331,7 +331,7 @@ class SettingInterface(QWidget):
         self.scroll_content_layout.setSpacing(16)
 
         self.scroll_content_layout.addWidget(self._build_update_header())
-        self.scroll_content_layout.addWidget(self.Setting_scroll_widget)
+        self.scroll_content_layout.addWidget(self.setting_scroll_widget)
         self.scroll_area.setWidget(self.scroll_content)
 
         self.initialize_start_settings()
@@ -352,10 +352,10 @@ class SettingInterface(QWidget):
         self.bottom_label.setStyleSheet("background-color: transparent;")
         self.main_layout.addWidget(self.bottom_label)
 
-        self.__connectSignalToSlot()
+        self.__connect_signal_to_slot()
         self._apply_theme_from_config()
         self._apply_interface_font()
-        self.micaCard.setEnabled(isWin11())
+        self.mica_card.setEnabled(is_win11())
 
     def _apply_markdown_to_label(self, label: QLabel, content: str | None) -> None:
         """把 Markdown 文本渲染到标签并开启链接交互。"""
@@ -778,26 +778,26 @@ class SettingInterface(QWidget):
         """
         向 ExpandLayout 插入设置卡片组。
         """
-        self.Setting_expand_layout.addWidget(group_widget)
+        self.setting_expand_layout.addWidget(group_widget)
 
     def initialize_start_settings(self):
         """构建启动设置组，与旧版保持一致的外层包裹。"""
-        self.start_Setting = SettingCardGroup(
-            self.tr("Custom Startup"), self.Setting_scroll_widget
+        self.start_setting_group = SettingCardGroup(
+            self.tr("Custom Startup"), self.setting_scroll_widget
         )
         self.run_after_startup = SwitchSettingCard(
             FIF.SPEED_HIGH,
             self.tr("run after startup"),
             self.tr("Launch the task immediately after starting the GUI program"),
             configItem=cfg.run_after_startup,
-            parent=self.start_Setting,
+            parent=self.start_setting_group,
         )
         self.auto_minimize_card = SwitchSettingCard(
             FIF.MINIMIZE,
             self.tr("Start minimized"),
             self.tr("Automatically minimize the window right after launch"),
             configItem=cfg.auto_minimize_on_startup,
-            parent=self.start_Setting,
+            parent=self.start_setting_group,
         )
         self.minimize_to_tray_card = SwitchSettingCard(
             FIF.MINIMIZE,
@@ -806,46 +806,46 @@ class SettingInterface(QWidget):
                 "When enabled, minimizing the window will hide it to the system tray"
             ),
             configItem=cfg.minimize_to_tray_on_minimize_windows,
-            parent=self.start_Setting,
+            parent=self.start_setting_group,
         )
         if not sys.platform.startswith("win32"):
             # Windows 专属功能：其它平台禁用
             self.minimize_to_tray_card.setEnabled(False)
-        self.start_Setting.addSettingCard(self.run_after_startup)
-        self.start_Setting.addSettingCard(self.auto_minimize_card)
-        self.start_Setting.addSettingCard(self.minimize_to_tray_card)
-        self.add_setting_group(self.start_Setting)
+        self.start_setting_group.addSettingCard(self.run_after_startup)
+        self.start_setting_group.addSettingCard(self.auto_minimize_card)
+        self.start_setting_group.addSettingCard(self.minimize_to_tray_card)
+        self.add_setting_group(self.start_setting_group)
 
     def initialize_personalization_settings(self):
         """构建个性化设置组。"""
-        self.personalGroup = SettingCardGroup(
-            self.tr("Personalization"), self.Setting_scroll_widget
+        self.personal_group = SettingCardGroup(
+            self.tr("Personalization"), self.setting_scroll_widget
         )
 
-        self.micaCard = SwitchSettingCard(
+        self.mica_card = SwitchSettingCard(
             FIF.TRANSPARENT,
             self.tr("Mica Effect"),
             self.tr("Apply semi transparent to windows and surfaces"),
-            cfg.micaEnabled,
-            self.personalGroup,
+            cfg.mica_enabled,
+            self.personal_group,
         )
-        self.themeCard = OptionsSettingCard(
+        self.theme_card = OptionsSettingCard(
             cfg.themeMode,
             FIF.BRUSH,
             self.tr("Application Theme"),
             self.tr("Change the appearance of your application"),
             texts=[self.tr("Light"), self.tr("Dark"), self.tr("Use system setting")],
-            parent=self.personalGroup,
+            parent=self.personal_group,
         )
-        self.themeColorCard = CustomColorSettingCard(
+        self.theme_color_card = CustomColorSettingCard(
             cfg.themeColor,
             FIF.PALETTE,
             self.tr("Theme Color"),
             self.tr("Change the theme color of your application"),
-            self.personalGroup,
+            self.personal_group,
         )
-        self.zoomCard = OptionsSettingCard(
-            cfg.dpiScale,
+        self.zoom_card = OptionsSettingCard(
+            cfg.dpi_scale,
             FIF.ZOOM,
             self.tr("Interface Zoom"),
             self.tr("Change the size of widgets and fonts"),
@@ -857,15 +857,15 @@ class SettingInterface(QWidget):
                 "200%",
                 self.tr("Use system setting"),
             ],
-            parent=self.personalGroup,
+            parent=self.personal_group,
         )
-        self.languageCard = ComboBoxSettingCard(
+        self.language_card = ComboBoxSettingCard(
             cfg.language,
             FIF.LANGUAGE,
             self.tr("Language"),
             self.tr("Set your preferred language for UI"),
             texts=["简体中文", "繁體中文", "日本語", "English"],
-            parent=self.personalGroup,
+            parent=self.personal_group,
         )
 
         self.remember_geometry_card = SwitchSettingCard(
@@ -875,14 +875,14 @@ class SettingInterface(QWidget):
                 "When enabled, the application reopens at the last recorded size and position"
             ),
             cfg.remember_window_geometry,
-            self.personalGroup,
+            self.personal_group,
         )
         self.advanced_settings_card = SwitchSettingCard(
             FIF.SETTING,
             self.tr("Advanced Settings"),
             self.tr("Enable to show more options in Pre-configuration"),
             cfg.show_advanced_startup_options,
-            self.personalGroup,
+            self.personal_group,
         )
 
         background_path_value = cfg.get(cfg.background_image_path) or ""
@@ -891,7 +891,7 @@ class SettingInterface(QWidget):
             self.tr("Background Image"),
             holderText=background_path_value,
             content=self.tr("Select an image as application background"),
-            parent=self.personalGroup,
+            parent=self.personal_group,
             num_only=False,
             button=True,
         )
@@ -937,7 +937,7 @@ class SettingInterface(QWidget):
             FIF.TRANSPARENT,
             self.tr("Background Opacity"),
             self.tr("Adjust transparency of the background image"),
-            parent=self.personalGroup,
+            parent=self.personal_group,
             minimum=0,
             maximum=100,
             step=5,
@@ -946,21 +946,21 @@ class SettingInterface(QWidget):
             on_value_changed=self._on_background_opacity_changed,
         )
 
-        self.personalGroup.addSettingCard(self.micaCard)
-        self.personalGroup.addSettingCard(self.themeCard)
-        self.personalGroup.addSettingCard(self.themeColorCard)
-        self.personalGroup.addSettingCard(self.background_image_card)
-        self.personalGroup.addSettingCard(self.background_opacity_card)
-        self.personalGroup.addSettingCard(self.zoomCard)
-        self.personalGroup.addSettingCard(self.languageCard)
-        self.personalGroup.addSettingCard(self.remember_geometry_card)
-        self.personalGroup.addSettingCard(self.advanced_settings_card)
-        self.add_setting_group(self.personalGroup)
+        self.personal_group.addSettingCard(self.mica_card)
+        self.personal_group.addSettingCard(self.theme_card)
+        self.personal_group.addSettingCard(self.theme_color_card)
+        self.personal_group.addSettingCard(self.background_image_card)
+        self.personal_group.addSettingCard(self.background_opacity_card)
+        self.personal_group.addSettingCard(self.zoom_card)
+        self.personal_group.addSettingCard(self.language_card)
+        self.personal_group.addSettingCard(self.remember_geometry_card)
+        self.personal_group.addSettingCard(self.advanced_settings_card)
+        self.add_setting_group(self.personal_group)
 
     def initialize_hotkey_settings(self):
         """添加全局快捷键配置入口，可自定义开始/结束任务组合键。"""
-        self.hotkeyGroup = SettingCardGroup(
-            self.tr("Global Shortcuts"), self.Setting_scroll_widget
+        self.hotkey_group = SettingCardGroup(
+            self.tr("Global Shortcuts"), self.setting_scroll_widget
         )
 
         start_value = str(cfg.get(cfg.start_task_shortcut) or "")
@@ -973,7 +973,7 @@ class SettingInterface(QWidget):
             content=self.tr(
                 "Default Ctrl+F1, can also trigger when focus is not on the main window"
             ),
-            parent=self.hotkeyGroup,
+            parent=self.hotkey_group,
             num_only=False,
         )
         self._decorate_shortcut_card(self.start_shortcut_card, self.tr("Ctrl+"))
@@ -994,7 +994,7 @@ class SettingInterface(QWidget):
             self.tr("Stop task shortcut"),
             holderText=stop_value,
             content=self.tr("Default Alt+F1, used to interrupt tasks in advance"),
-            parent=self.hotkeyGroup,
+            parent=self.hotkey_group,
             num_only=False,
         )
         self._decorate_shortcut_card(self.stop_shortcut_card, self.tr("Alt+"))
@@ -1010,9 +1010,9 @@ class SettingInterface(QWidget):
             )
         )
 
-        self.hotkeyGroup.addSettingCard(self.start_shortcut_card)
-        self.hotkeyGroup.addSettingCard(self.stop_shortcut_card)
-        self.add_setting_group(self.hotkeyGroup)
+        self.hotkey_group.addSettingCard(self.start_shortcut_card)
+        self.hotkey_group.addSettingCard(self.stop_shortcut_card)
+        self.add_setting_group(self.hotkey_group)
 
         # 检测权限并禁用设置（如果权限不足）
         self._check_and_disable_hotkey_settings()
@@ -1143,87 +1143,87 @@ class SettingInterface(QWidget):
         """
         初始化外部通知设置。
         """
-        self.noticeGroup = SettingCardGroup(
-            self.tr("Notice"), self.Setting_scroll_widget
+        self.notice_group = SettingCardGroup(
+            self.tr("Notice"), self.setting_scroll_widget
         )
-        if cfg.get(cfg.Notice_DingTalk_status):
-            dingtalk_contene = self.tr("DingTalk Notification Enabled")
+        if cfg.get(cfg.notice_dingtalk_status):
+            dingtalk_content = self.tr("DingTalk Notification Enabled")
         else:
-            dingtalk_contene = self.tr("DingTalk Notification Disabled")
+            dingtalk_content = self.tr("DingTalk Notification Disabled")
 
-        self.dingtalk_noticeTypeCard = PrimaryPushSettingCard(
+        self.dingtalk_notice_type_card = PrimaryPushSettingCard(
             text=self.tr("Modify"),
             icon=FIF.SEND,
             title=self.tr("DingTalk"),
-            content=dingtalk_contene,
-            parent=self.noticeGroup,
+            content=dingtalk_content,
+            parent=self.notice_group,
         )
-        if cfg.get(cfg.Notice_Lark_status):
-            lark_contene = self.tr("Lark Notification Enabled")
+        if cfg.get(cfg.notice_lark_status):
+            lark_content = self.tr("Lark Notification Enabled")
         else:
-            lark_contene = self.tr("Lark Notification Disabled")
-        self.lark_noticeTypeCard = PrimaryPushSettingCard(
+            lark_content = self.tr("Lark Notification Disabled")
+        self.lark_notice_type_card = PrimaryPushSettingCard(
             text=self.tr("Modify"),
             icon=FIF.SEND,
             title=self.tr("Lark"),
-            content=lark_contene,
-            parent=self.noticeGroup,
+            content=lark_content,
+            parent=self.notice_group,
         )
-        if cfg.get(cfg.Notice_SMTP_status):
-            SMTP_contene = self.tr("SMTP Notification Enabled")
+        if cfg.get(cfg.notice_smtp_status):
+            smtp_content = self.tr("SMTP Notification Enabled")
         else:
-            SMTP_contene = self.tr("SMTP Notification Disabled")
-        self.SMTP_noticeTypeCard = PrimaryPushSettingCard(
+            smtp_content = self.tr("SMTP Notification Disabled")
+        self.smtp_notice_type_card = PrimaryPushSettingCard(
             text=self.tr("Modify"),
             icon=FIF.SEND,
             title=self.tr("SMTP"),
-            content=SMTP_contene,
-            parent=self.noticeGroup,
+            content=smtp_content,
+            parent=self.notice_group,
         )
-        if cfg.get(cfg.Notice_WxPusher_status):
-            WxPusher_contene = self.tr("WxPusher Notification Enabled")
+        if cfg.get(cfg.notice_wx_pusher_status):
+            wx_pusher_content = self.tr("WxPusher Notification Enabled")
         else:
-            WxPusher_contene = self.tr("WxPusher Notification Disabled")
+            wx_pusher_content = self.tr("WxPusher Notification Disabled")
 
-        self.WxPusher_noticeTypeCard = PrimaryPushSettingCard(
+        self.wx_pusher_notice_type_card = PrimaryPushSettingCard(
             text=self.tr("Modify"),
             icon=FIF.SEND,
             title=self.tr("WxPusher"),
-            content=WxPusher_contene,
-            parent=self.noticeGroup,
+            content=wx_pusher_content,
+            parent=self.notice_group,
         )
-        if cfg.get(cfg.Notice_QYWX_status):
-            QYWX_contene = self.tr("QYWX Notification Enabled")
+        if cfg.get(cfg.notice_qywx_status):
+            qywx_content = self.tr("QYWX Notification Enabled")
         else:
-            QYWX_contene = self.tr("QYWX Notification Disabled")
+            qywx_content = self.tr("QYWX Notification Disabled")
 
-        self.QYWX_noticeTypeCard = PrimaryPushSettingCard(
+        self.qywx_notice_type_card = PrimaryPushSettingCard(
             text=self.tr("Modify"),
             icon=FIF.SEND,
             title=self.tr("QYWX"),
-            content=QYWX_contene,
-            parent=self.noticeGroup,
+            content=qywx_content,
+            parent=self.notice_group,
         )
 
-        if cfg.get(cfg.Notice_Gotify_status):
-            gotify_contene = self.tr("Gotify Notification Enabled")
+        if cfg.get(cfg.notice_gotify_status):
+            gotify_content = self.tr("Gotify Notification Enabled")
         else:
-            gotify_contene = self.tr("Gotify Notification Disabled")
+            gotify_content = self.tr("Gotify Notification Disabled")
 
-        self.gotify_noticeTypeCard = PrimaryPushSettingCard(
+        self.gotify_notice_type_card = PrimaryPushSettingCard(
             text=self.tr("Modify"),
             icon=FIF.SEND,
             title=self.tr("Gotify"),
-            content=gotify_contene,
-            parent=self.noticeGroup,
+            content=gotify_content,
+            parent=self.notice_group,
         )
 
-        self.noticeGroup.addSettingCard(self.dingtalk_noticeTypeCard)
-        self.noticeGroup.addSettingCard(self.lark_noticeTypeCard)
-        self.noticeGroup.addSettingCard(self.SMTP_noticeTypeCard)
-        self.noticeGroup.addSettingCard(self.WxPusher_noticeTypeCard)
-        self.noticeGroup.addSettingCard(self.QYWX_noticeTypeCard)
-        self.noticeGroup.addSettingCard(self.gotify_noticeTypeCard)
+        self.notice_group.addSettingCard(self.dingtalk_notice_type_card)
+        self.notice_group.addSettingCard(self.lark_notice_type_card)
+        self.notice_group.addSettingCard(self.smtp_notice_type_card)
+        self.notice_group.addSettingCard(self.wx_pusher_notice_type_card)
+        self.notice_group.addSettingCard(self.qywx_notice_type_card)
+        self.notice_group.addSettingCard(self.gotify_notice_type_card)
 
         # 发送格式：纯文本 / HTML（影响如 SMTP 等支持 HTML 的渠道）
         self.notice_format_card = ComboBoxSettingCard(
@@ -1232,9 +1232,9 @@ class SettingInterface(QWidget):
             self.tr("Send Format"),
             self.tr("Plain text or HTML for external notifications (e.g. email body)"),
             texts=[self.tr("Plain text"), self.tr("HTML")],
-            parent=self.noticeGroup,
+            parent=self.notice_group,
         )
-        self.noticeGroup.addSettingCard(self.notice_format_card)
+        self.notice_group.addSettingCard(self.notice_format_card)
 
         # 是否随通知发送截图
         self.notice_send_screenshot_card = SwitchSettingCard(
@@ -1244,9 +1244,9 @@ class SettingInterface(QWidget):
                 "When enabled, a screenshot is captured and sent with notifications (e.g. as email attachment) if controller is available"
             ),
             cfg.notice_send_screenshot,
-            parent=self.noticeGroup,
+            parent=self.notice_group,
         )
-        self.noticeGroup.addSettingCard(self.notice_send_screenshot_card)
+        self.notice_group.addSettingCard(self.notice_send_screenshot_card)
 
         # 添加通知时机设置按钮
         self.notice_timing_card = PrimaryPushSettingCard(
@@ -1254,16 +1254,16 @@ class SettingInterface(QWidget):
             icon=FIF.SETTING,
             title=self.tr("Notification Timing"),
             content=self.tr("Configure when to send notifications"),
-            parent=self.noticeGroup,
+            parent=self.notice_group,
         )
-        self.noticeGroup.addSettingCard(self.notice_timing_card)
+        self.notice_group.addSettingCard(self.notice_timing_card)
 
-        self.add_setting_group(self.noticeGroup)
+        self.add_setting_group(self.notice_group)
 
     def initialize_task_settings(self):
         """Task settings"""
-        self.taskGroup = SettingCardGroup(
-            self.tr("Task Settings"), self.Setting_scroll_widget
+        self.task_group = SettingCardGroup(
+            self.tr("Task Settings"), self.setting_scroll_widget
         )
 
         # 低功耗监控模式
@@ -1274,25 +1274,25 @@ class SettingInterface(QWidget):
                 "Use cached images instead of dedicated monitoring thread, refresh rate: 24 FPS"
             ),
             configItem=cfg.low_power_monitoring_mode,
-            parent=self.taskGroup,
+            parent=self.task_group,
         )
 
-        self.taskGroup.addSettingCard(self.low_power_monitoring_mode_card)
-        self.add_setting_group(self.taskGroup)
+        self.task_group.addSettingCard(self.low_power_monitoring_mode_card)
+        self.add_setting_group(self.task_group)
 
     def initialize_update_settings(self):
         """插入更新设置卡片组（跟原先的 UpdateSettingsSection 等价）。"""
-        self.updateGroup = SettingCardGroup(
-            self.tr("Update"), self.Setting_scroll_widget
+        self.update_group = SettingCardGroup(
+            self.tr("Update"), self.setting_scroll_widget
         )
 
-        self.MirrorCard = MirrorCdkLineEditCard(
+        self.mirror_card = MirrorCdkLineEditCard(
             icon=FIF.APPLICATION,
             title=self.tr("mirrorchyan CDK"),
             content=self.tr("Enter mirrorchyan CDK for stable update path"),
             holderText=self._get_mirror_holder_text(),
             button_text=self.tr("About Mirror"),
-            parent=self.updateGroup,
+            parent=self.update_group,
         )
 
         self.auto_update = SwitchSettingCard(
@@ -1300,10 +1300,10 @@ class SettingInterface(QWidget):
             self.tr("Automatically update after startup"),
             self.tr("Automatically download and apply updates once available"),
             configItem=cfg.auto_update,
-            parent=self.updateGroup,
+            parent=self.update_group,
         )
 
-        channel_parent = getattr(self, "personalGroup", None) or self.updateGroup
+        channel_parent = getattr(self, "personal_group", None) or self.update_group
         self.channel_selector = ComboBoxSettingCard(
             cfg.resource_update_channel,
             FIF.UPDATE,
@@ -1318,7 +1318,7 @@ class SettingInterface(QWidget):
             self.tr("Force use GitHub"),
             self.tr("Force use GitHub for resource update"),
             configItem=cfg.force_github,
-            parent=self.updateGroup,
+            parent=self.update_group,
         )
 
         self.reset_resource_card = PrimaryPushSettingCard(
@@ -1326,7 +1326,7 @@ class SettingInterface(QWidget):
             icon=FIF.SYNC,
             title=self.tr("Reset resource"),
             content=self.tr("Redownload resource package without version/tag check"),
-            parent=self.updateGroup,
+            parent=self.update_group,
         )
 
         self.github_api_key_card = LineEditCard(
@@ -1335,7 +1335,7 @@ class SettingInterface(QWidget):
             content=self.tr(
                 "Personal access tokens increase GitHub API rate limits for update checks."
             ),
-            parent=self.updateGroup,
+            parent=self.update_group,
             is_passwork=True,
             num_only=False,
         )
@@ -1353,28 +1353,28 @@ class SettingInterface(QWidget):
             self.tr(
                 "After filling in the proxy settings, all traffic except that to the Mirror will be proxied."
             ),
-            parent=self.updateGroup,
+            parent=self.update_group,
         )
 
         self._initialize_proxy_controls()
         self._configure_mirror_card()
-        self.MirrorCard.lineEdit.textChanged.connect(self._onMirrorCardChange)
+        self.mirror_card.lineEdit.textChanged.connect(self._on_mirror_card_change)
         self.reset_resource_card.clicked.connect(self._on_reset_resource_clicked)
 
-        self.updateGroup.addSettingCard(self.MirrorCard)
-        self.updateGroup.addSettingCard(self.auto_update)
-        self.updateGroup.addSettingCard(self.channel_selector)
-        self.updateGroup.addSettingCard(self.force_github)
-        self.updateGroup.addSettingCard(self.reset_resource_card)
-        self.updateGroup.addSettingCard(self.github_api_key_card)
-        self.updateGroup.addSettingCard(self.proxy)
+        self.update_group.addSettingCard(self.mirror_card)
+        self.update_group.addSettingCard(self.auto_update)
+        self.update_group.addSettingCard(self.channel_selector)
+        self.update_group.addSettingCard(self.force_github)
+        self.update_group.addSettingCard(self.reset_resource_card)
+        self.update_group.addSettingCard(self.github_api_key_card)
+        self.update_group.addSettingCard(self.proxy)
 
-        self.add_setting_group(self.updateGroup)
+        self.add_setting_group(self.update_group)
 
     def initialize_compatibility_settings(self):
         """添加兼容性/实验功能设置组，默认不推荐开启。"""
         self.compatibility_group = SettingCardGroup(
-            self.tr("Experimental / Compatibility"), self.Setting_scroll_widget
+            self.tr("Experimental / Compatibility"), self.setting_scroll_widget
         )
         self.multi_resource_adaptation_card = SwitchSettingCard(
             FIF.SETTING,
@@ -1468,20 +1468,20 @@ class SettingInterface(QWidget):
         metadata = self.interface_data or {}
         mirror_supported = bool(metadata.get("mirrorchyan_rid"))
         if mirror_supported:
-            self.MirrorCard.setContent(
+            self.mirror_card.setContent(
                 self.tr("Enter mirrorchyan CDK for stable update path")
             )
-            self.MirrorCard.lineEdit.setEnabled(True)
+            self.mirror_card.lineEdit.setEnabled(True)
         else:
-            self.MirrorCard.setContent(
+            self.mirror_card.setContent(
                 self.tr(
                     "Resource does not support Mirrorchyan, right-click about mirror to unlock input"
                 )
             )
-            self.MirrorCard.lineEdit.setEnabled(False)
+            self.mirror_card.lineEdit.setEnabled(False)
 
     def _get_mirror_holder_text(self) -> str:
-        encrypted = cfg.get(cfg.Mcdk)
+        encrypted = cfg.get(cfg.mcdk)
         if not encrypted:
             return ""
         try:
@@ -1502,18 +1502,18 @@ class SettingInterface(QWidget):
             )
             return ""
 
-    def _onMirrorCardChange(self):
+    def _on_mirror_card_change(self):
         """处理 Mirror CDK 输入变化，检查并删除行尾空格后保存。"""
-        current_text = self.MirrorCard.lineEdit.text()
+        current_text = self.mirror_card.lineEdit.text()
 
         # 检查行尾是否有空格，如果有则删除
         if current_text and current_text.rstrip() != current_text:
             # 删除行尾空格
             cleaned_text = current_text.rstrip()
             # 更新输入框内容（不触发信号，避免循环）
-            self.MirrorCard.lineEdit.blockSignals(True)
-            self.MirrorCard.lineEdit.setText(cleaned_text)
-            self.MirrorCard.lineEdit.blockSignals(False)
+            self.mirror_card.lineEdit.blockSignals(True)
+            self.mirror_card.lineEdit.setText(cleaned_text)
+            self.mirror_card.lineEdit.blockSignals(False)
             current_text = cleaned_text
 
         # 保存配置
@@ -1524,7 +1524,7 @@ class SettingInterface(QWidget):
                 if isinstance(encrypted, bytes)
                 else str(encrypted)
             )
-            cfg.set(cfg.Mcdk, encrypted_value)
+            cfg.set(cfg.mcdk, encrypted_value)
             logger.info("Mirror CDK 已保存")
         except Exception as exc:
             logger.error("加密 Mirror CDK 失败: %s", exc)
@@ -2228,41 +2228,41 @@ class SettingInterface(QWidget):
     def _update_notice_card_status(self, notice_type: str):
         """更新通知卡片的状态显示"""
         if notice_type == "DingTalk":
-            if cfg.get(cfg.Notice_DingTalk_status):
+            if cfg.get(cfg.notice_dingtalk_status):
                 content = self.tr("DingTalk Notification Enabled")
             else:
                 content = self.tr("DingTalk Notification Disabled")
-            self.dingtalk_noticeTypeCard.setContent(content)
+            self.dingtalk_notice_type_card.setContent(content)
         elif notice_type == "Lark":
-            if cfg.get(cfg.Notice_Lark_status):
+            if cfg.get(cfg.notice_lark_status):
                 content = self.tr("Lark Notification Enabled")
             else:
                 content = self.tr("Lark Notification Disabled")
-            self.lark_noticeTypeCard.setContent(content)
+            self.lark_notice_type_card.setContent(content)
         elif notice_type == "SMTP":
-            if cfg.get(cfg.Notice_SMTP_status):
+            if cfg.get(cfg.notice_smtp_status):
                 content = self.tr("SMTP Notification Enabled")
             else:
                 content = self.tr("SMTP Notification Disabled")
-            self.SMTP_noticeTypeCard.setContent(content)
+            self.smtp_notice_type_card.setContent(content)
         elif notice_type == "WxPusher":
-            if cfg.get(cfg.Notice_WxPusher_status):
+            if cfg.get(cfg.notice_wx_pusher_status):
                 content = self.tr("WxPusher Notification Enabled")
             else:
                 content = self.tr("WxPusher Notification Disabled")
-            self.WxPusher_noticeTypeCard.setContent(content)
+            self.wx_pusher_notice_type_card.setContent(content)
         elif notice_type == "QYWX":
-            if cfg.get(cfg.Notice_QYWX_status):
+            if cfg.get(cfg.notice_qywx_status):
                 content = self.tr("QYWX Notification Enabled")
             else:
                 content = self.tr("QYWX Notification Disabled")
-            self.QYWX_noticeTypeCard.setContent(content)
+            self.qywx_notice_type_card.setContent(content)
         elif notice_type == "Gotify":
-            if cfg.get(cfg.Notice_Gotify_status):
+            if cfg.get(cfg.notice_gotify_status):
                 content = self.tr("Gotify Notification Enabled")
             else:
                 content = self.tr("Gotify Notification Disabled")
-            self.gotify_noticeTypeCard.setContent(content)
+            self.gotify_notice_type_card.setContent(content)
 
     def _on_dingtalk_notice_clicked(self):
         """处理钉钉通知卡片点击事件"""
@@ -2313,21 +2313,21 @@ class SettingInterface(QWidget):
         dialog = NoticeTimingDialog(parent)
         dialog.exec()
 
-    def __showRestartTooltip(self):
+    def __show_restart_tooltip(self):
         """显示重启提示。"""
         global_signal_bus.info_bar_requested.emit(
             "info", self.tr("Configuration takes effect after restart")
         )
 
-    def __connectSignalToSlot(self):
+    def __connect_signal_to_slot(self):
         """连接信号到对应的槽函数。"""
-        cfg.appRestartSig.connect(self.__showRestartTooltip)
+        cfg.appRestartSig.connect(self.__show_restart_tooltip)
 
-        self.run_after_startup.checkedChanged.connect(self._onRunAfterStartupCardChange)
+        self.run_after_startup.checkedChanged.connect(self._on_run_after_startup_card_change)
 
         cfg.themeChanged.connect(setTheme)
-        self.themeColorCard.colorChanged.connect(lambda c: setThemeColor(c))
-        self.micaCard.checkedChanged.connect(global_signal_bus.mica_enable_changed)
+        self.theme_color_card.colorChanged.connect(lambda c: setThemeColor(c))
+        self.mica_card.checkedChanged.connect(global_signal_bus.mica_enable_changed)
         self.multi_resource_adaptation_card.checkedChanged.connect(
             self._on_multi_resource_adaptation_changed
         )
@@ -2336,7 +2336,7 @@ class SettingInterface(QWidget):
         )
         self._apply_theme_from_config()
 
-    def _onRunAfterStartupCardChange(self):
+    def _on_run_after_startup_card_change(self):
         """根据输入更新启动前运行的程序脚本路径。"""
         cfg.set(cfg.run_after_startup, self.run_after_startup.isChecked())
 
@@ -2957,3 +2957,4 @@ class SettingInterface(QWidget):
         """停止更新"""
         if self._updater and self._updater.isRunning():
             self._updater.stop()
+

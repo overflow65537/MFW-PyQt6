@@ -17,7 +17,7 @@ from app.utils.logger import logger
 from app.common.config import cfg
 from app.utils.crypto import crypto_manager
 from app.utils.notice import send_thread
-from app.common.signal_bus import GlobalSignalBus
+from app.common.signal_bus import global_signal_bus
 
 
 class BaseNoticeType(MessageBoxBase):
@@ -26,9 +26,9 @@ class BaseNoticeType(MessageBoxBase):
     def __init__(self, parent=None, notice_type: str = ""):
         super().__init__(parent)
         self.notice_type = notice_type
-        self.testButton = PushButton(self.tr("Test"), self)
-        self.testButton.setAttribute(Qt.WidgetAttribute.WA_MacShowFocusRect, False)
-        self.buttonLayout.insertWidget(1, self.testButton)
+        self.test_button = PushButton(self.tr("Test"), self)
+        self.test_button.setAttribute(Qt.WidgetAttribute.WA_MacShowFocusRect, False)
+        self.buttonLayout.insertWidget(1, self.test_button)
         self.buttonLayout.setStretch(0, 1)
         self.buttonLayout.setStretch(1, 1)
         self.buttonLayout.setStretch(2, 1)
@@ -36,21 +36,21 @@ class BaseNoticeType(MessageBoxBase):
         self.widget.setMinimumHeight(100)
 
         self.yesButton.clicked.connect(self.on_yes)
-        self.testButton.clicked.connect(self.on_test)
+        self.test_button.clicked.connect(self.on_test)
         self.cancelButton.clicked.connect(self.on_cancel)
-        GlobalSignalBus.NoticeFinished.connect(self.notice_send_finished)
+        global_signal_bus.notice_finished.connect(self.notice_send_finished)
 
     def on_test(self):
         test_msg = {"title": "Test Title", "text": "Test Text"}
         try:
             send_thread.add_task(self.notice_type.lower(), test_msg, True)
-            self.testButton.setEnabled(False)
+            self.test_button.setEnabled(False)
         except Exception as e:
             logger.error(f"不支持的通知类型: {self.notice_type}")
             raise Exception(f"不支持的通知类型: {self.notice_type}")
 
     def notice_send_finished(self):
-        self.testButton.setEnabled(True)
+        self.test_button.setEnabled(True)
 
     def encrypt_key(self, secret: str) -> str:
         """加密密钥（返回可写入配置的 utf-8 字符串）。"""
@@ -66,13 +66,13 @@ class BaseNoticeType(MessageBoxBase):
     def decode_key(self, key_name) -> str:
         """解密密钥"""
         mapping = {
-            "dingtalk": cfg.Notice_DingTalk_secret,
-            "lark": cfg.Notice_Lark_secret,
-            "smtp": cfg.Notice_SMTP_password,
-            "wxpusher": cfg.Notice_WxPusher_SPT_token,
-            "qmsg": cfg.Notice_Qmsg_key,
-            "QYWX": cfg.Notice_QYWX_key,
-            "gotify": cfg.Notice_Gotify_token,
+            "dingtalk": cfg.notice_dingtalk_secret,
+            "lark": cfg.notice_lark_secret,
+            "smtp": cfg.notice_smtp_password,
+            "wxpusher": cfg.notice_wx_pusher_spt_token,
+            "qmsg": cfg.notice_qmsg_key,
+            "QYWX": cfg.notice_qywx_key,
+            "gotify": cfg.notice_gotify_token,
         }
         cfg_key = mapping.get(key_name)
         if cfg_key is None:
@@ -88,13 +88,13 @@ class BaseNoticeType(MessageBoxBase):
             return decrypted.decode("utf-8")
         except InvalidToken:
             logger.exception("密钥解密失败: %s", key_name)
-            GlobalSignalBus.InfoBarRequested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning",
                 self.tr("decrypt notice key failed: {}，please fill in again and save.").format(key_name),
             )
         except Exception:
             logger.exception("解析密钥时发生错误: %s", key_name)
-            GlobalSignalBus.InfoBarRequested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning",
                 self.tr("parse notice key error: {}，please save again.").format(key_name),
             )
@@ -134,9 +134,9 @@ class DingTalkNoticeType(BaseNoticeType):
         dingtalk_secret_title.setText(self.tr("DingTalk Secret:"))
         dingtalk_status_title.setText(self.tr("DingTalk Status:"))
 
-        self.dingtalk_url_input.setText(cfg.get(cfg.Notice_DingTalk_url))
+        self.dingtalk_url_input.setText(cfg.get(cfg.notice_dingtalk_url))
         self.dingtalk_secret_input.setText(self.decode_key("dingtalk"))
-        self.dingtalk_status_switch.setChecked(cfg.get(cfg.Notice_DingTalk_status))
+        self.dingtalk_status_switch.setChecked(cfg.get(cfg.notice_dingtalk_status))
 
         col1 = QVBoxLayout()
         col2 = QVBoxLayout()
@@ -158,12 +158,12 @@ class DingTalkNoticeType(BaseNoticeType):
 
     def save_fields(self):
         """保存钉钉相关的输入框"""
-        cfg.set(cfg.Notice_DingTalk_url, self.dingtalk_url_input.text())
+        cfg.set(cfg.notice_dingtalk_url, self.dingtalk_url_input.text())
         cfg.set(
-            cfg.Notice_DingTalk_secret,
+            cfg.notice_dingtalk_secret,
             self.encrypt_key(self.dingtalk_secret_input.text()),
         )
-        cfg.set(cfg.Notice_DingTalk_status, self.dingtalk_status_switch.isChecked())
+        cfg.set(cfg.notice_dingtalk_status, self.dingtalk_status_switch.isChecked())
 
 
 class LarkNoticeType(BaseNoticeType):
@@ -186,9 +186,9 @@ class LarkNoticeType(BaseNoticeType):
         lark_secret_title.setText(self.tr("Lark App Key:"))
         lark_status_title.setText(self.tr("Lark Status:"))
 
-        self.lark_url_input.setText(cfg.get(cfg.Notice_Lark_url))
+        self.lark_url_input.setText(cfg.get(cfg.notice_lark_url))
         self.lark_secret_input.setText(self.decode_key("lark"))
-        self.lark_status_switch.setChecked(cfg.get(cfg.Notice_Lark_status))
+        self.lark_status_switch.setChecked(cfg.get(cfg.notice_lark_status))
 
         col1 = QVBoxLayout()
         col2 = QVBoxLayout()
@@ -211,9 +211,9 @@ class LarkNoticeType(BaseNoticeType):
 
     def save_fields(self):
         """保存飞书相关的输入框"""
-        cfg.set(cfg.Notice_Lark_url, self.lark_url_input.text())
-        cfg.set(cfg.Notice_Lark_secret, self.encrypt_key(self.lark_secret_input.text()))
-        cfg.set(cfg.Notice_Lark_status, self.lark_status_switch.isChecked())
+        cfg.set(cfg.notice_lark_url, self.lark_url_input.text())
+        cfg.set(cfg.notice_lark_secret, self.encrypt_key(self.lark_secret_input.text()))
+        cfg.set(cfg.notice_lark_status, self.lark_status_switch.isChecked())
 
 
 class QmsgNoticeType(BaseNoticeType):
@@ -243,11 +243,11 @@ class QmsgNoticeType(BaseNoticeType):
         robot_qq_title.setText(self.tr("Robot QQ:"))
         qmsg_status_title.setText(self.tr("Qmsg Status:"))
 
-        self.sever_input.setText(cfg.get(cfg.Notice_Qmsg_sever))
+        self.sever_input.setText(cfg.get(cfg.notice_qmsg_server))
         self.key_input.setText(self.decode_key("qmsg"))
-        self.user_qq_input.setText(cfg.get(cfg.Notice_Qmsg_user_qq))
-        self.robot_qq_input.setText(cfg.get(cfg.Notice_Qmsg_robot_qq))
-        self.qmsg_status_switch.setChecked(cfg.get(cfg.Notice_Qmsg_status))
+        self.user_qq_input.setText(cfg.get(cfg.notice_qmsg_user_qq))
+        self.robot_qq_input.setText(cfg.get(cfg.notice_qmsg_robot_qq))
+        self.qmsg_status_switch.setChecked(cfg.get(cfg.notice_qmsg_status))
 
         col1 = QVBoxLayout()
         col2 = QVBoxLayout()
@@ -276,11 +276,11 @@ class QmsgNoticeType(BaseNoticeType):
 
     def save_fields(self):
         """保存 Qmsg 相关的输入框"""
-        cfg.set(cfg.Notice_Qmsg_sever, self.sever_input.text())
-        cfg.set(cfg.Notice_Qmsg_key, self.encrypt_key(self.key_input.text()))
-        cfg.set(cfg.Notice_Qmsg_user_qq, self.user_qq_input.text())
-        cfg.set(cfg.Notice_Qmsg_robot_qq, self.robot_qq_input.text())
-        cfg.set(cfg.Notice_Qmsg_status, self.qmsg_status_switch.isChecked())
+        cfg.set(cfg.notice_qmsg_server, self.sever_input.text())
+        cfg.set(cfg.notice_qmsg_key, self.encrypt_key(self.key_input.text()))
+        cfg.set(cfg.notice_qmsg_user_qq, self.user_qq_input.text())
+        cfg.set(cfg.notice_qmsg_robot_qq, self.robot_qq_input.text())
+        cfg.set(cfg.notice_qmsg_status, self.qmsg_status_switch.isChecked())
 
 
 class SMTPNoticeType(BaseNoticeType):
@@ -314,13 +314,13 @@ class SMTPNoticeType(BaseNoticeType):
         receive_mail_title.setText(self.tr("Receive Mail:"))
         smtp_status_title.setText(self.tr("SMTP Status:"))
 
-        self.server_address_input.setText(cfg.get(cfg.Notice_SMTP_sever_address))
-        self.server_port_input.setText(cfg.get(cfg.Notice_SMTP_sever_port))
-        self.used_ssl.setChecked(cfg.get(cfg.Notice_SMTP_used_ssl))
-        self.user_name_input.setText(cfg.get(cfg.Notice_SMTP_user_name))
+        self.server_address_input.setText(cfg.get(cfg.notice_smtp_server_address))
+        self.server_port_input.setText(cfg.get(cfg.notice_smtp_server_port))
+        self.used_ssl.setChecked(cfg.get(cfg.notice_smtp_used_ssl))
+        self.user_name_input.setText(cfg.get(cfg.notice_smtp_user_name))
         self.password_input.setText(self.decode_key("smtp"))
-        self.receive_mail_input.setText(cfg.get(cfg.Notice_SMTP_receive_mail))
-        self.smtp_status_switch.setChecked(cfg.get(cfg.Notice_SMTP_status))
+        self.receive_mail_input.setText(cfg.get(cfg.notice_smtp_receive_mail))
+        self.smtp_status_switch.setChecked(cfg.get(cfg.notice_smtp_status))
 
         self.port_field = QHBoxLayout()
         self.port_field.addWidget(self.server_port_input)
@@ -358,13 +358,13 @@ class SMTPNoticeType(BaseNoticeType):
 
     def save_fields(self):
         """保存 SMTP 相关的输入框"""
-        cfg.set(cfg.Notice_SMTP_sever_address, self.server_address_input.text())
-        cfg.set(cfg.Notice_SMTP_sever_port, self.server_port_input.text())
-        cfg.set(cfg.Notice_SMTP_used_ssl, self.used_ssl.isChecked())
-        cfg.set(cfg.Notice_SMTP_user_name, self.user_name_input.text())
-        cfg.set(cfg.Notice_SMTP_password, self.encrypt_key(self.password_input.text()))
-        cfg.set(cfg.Notice_SMTP_receive_mail, self.receive_mail_input.text())
-        cfg.set(cfg.Notice_SMTP_status, self.smtp_status_switch.isChecked())
+        cfg.set(cfg.notice_smtp_server_address, self.server_address_input.text())
+        cfg.set(cfg.notice_smtp_server_port, self.server_port_input.text())
+        cfg.set(cfg.notice_smtp_used_ssl, self.used_ssl.isChecked())
+        cfg.set(cfg.notice_smtp_user_name, self.user_name_input.text())
+        cfg.set(cfg.notice_smtp_password, self.encrypt_key(self.password_input.text()))
+        cfg.set(cfg.notice_smtp_receive_mail, self.receive_mail_input.text())
+        cfg.set(cfg.notice_smtp_status, self.smtp_status_switch.isChecked())
 
 
 class WxPusherNoticeType(BaseNoticeType):
@@ -386,7 +386,7 @@ class WxPusherNoticeType(BaseNoticeType):
         wxpusher_status_title.setText(self.tr("WxPusher Status:"))
 
         self.wxpusher_spt_input.setText(self.decode_key("wxpusher"))
-        self.wxpusher_status_switch.setChecked(cfg.get(cfg.Notice_WxPusher_status))
+        self.wxpusher_status_switch.setChecked(cfg.get(cfg.notice_wx_pusher_status))
 
         col1 = QVBoxLayout()
         col2 = QVBoxLayout()
@@ -407,10 +407,10 @@ class WxPusherNoticeType(BaseNoticeType):
     def save_fields(self):
         """保存 WxPusher 相关的输入框"""
         cfg.set(
-            cfg.Notice_WxPusher_SPT_token,
+            cfg.notice_wx_pusher_spt_token,
             self.encrypt_key(self.wxpusher_spt_input.text()),
         )
-        cfg.set(cfg.Notice_WxPusher_status, self.wxpusher_status_switch.isChecked())
+        cfg.set(cfg.notice_wx_pusher_status, self.wxpusher_status_switch.isChecked())
 
 
 class QYWXNoticeType(BaseNoticeType):
@@ -432,7 +432,7 @@ class QYWXNoticeType(BaseNoticeType):
         qywx_status_title.setText(self.tr("QYWXbot Status:"))
 
         self.qywx_key_input.setText(self.decode_key("QYWX"))
-        self.qywx_status_switch.setChecked(cfg.get(cfg.Notice_QYWX_status))
+        self.qywx_status_switch.setChecked(cfg.get(cfg.notice_qywx_status))
 
         col1 = QVBoxLayout()
         col2 = QVBoxLayout()
@@ -452,8 +452,8 @@ class QYWXNoticeType(BaseNoticeType):
 
     def save_fields(self):
         """保存 QYWX 相关的输入框"""
-        cfg.set(cfg.Notice_QYWX_key, self.encrypt_key(self.qywx_key_input.text()))
-        cfg.set(cfg.Notice_QYWX_status, self.qywx_status_switch.isChecked())
+        cfg.set(cfg.notice_qywx_key, self.encrypt_key(self.qywx_key_input.text()))
+        cfg.set(cfg.notice_qywx_status, self.qywx_status_switch.isChecked())
 
 
 class GotifyNoticeType(BaseNoticeType):
@@ -484,10 +484,10 @@ class GotifyNoticeType(BaseNoticeType):
         gotify_priority_title.setText(self.tr("Notification Priority (0-10):"))
         gotify_status_title.setText(self.tr("Gotify Status:"))
 
-        self.gotify_url_input.setText(cfg.get(cfg.Notice_Gotify_url))
+        self.gotify_url_input.setText(cfg.get(cfg.notice_gotify_url))
         self.gotify_token_input.setText(self.decode_key("gotify"))
-        self.gotify_priority_input.setText(cfg.get(cfg.Notice_Gotify_priority))
-        self.gotify_status_switch.setChecked(cfg.get(cfg.Notice_Gotify_status))
+        self.gotify_priority_input.setText(cfg.get(cfg.notice_gotify_priority))
+        self.gotify_status_switch.setChecked(cfg.get(cfg.notice_gotify_status))
 
         col1 = QVBoxLayout()
         col2 = QVBoxLayout()
@@ -536,12 +536,12 @@ class GotifyNoticeType(BaseNoticeType):
 
     def save_fields(self):
         """保存 Gotify 相关的输入框"""
-        cfg.set(cfg.Notice_Gotify_url, self.gotify_url_input.text())
-        cfg.set(cfg.Notice_Gotify_token, self.encrypt_key(self.gotify_token_input.text()))
+        cfg.set(cfg.notice_gotify_url, self.gotify_url_input.text())
+        cfg.set(cfg.notice_gotify_token, self.encrypt_key(self.gotify_token_input.text()))
         # priority 只有校验通过才写入，避免非法值落盘后仍可“照样运行”
         if self._validate_priority(show_hint=False):
-            cfg.set(cfg.Notice_Gotify_priority, self.gotify_priority_input.text().strip())
-        cfg.set(cfg.Notice_Gotify_status, self.gotify_status_switch.isChecked())
+            cfg.set(cfg.notice_gotify_priority, self.gotify_priority_input.text().strip())
+        cfg.set(cfg.notice_gotify_status, self.gotify_status_switch.isChecked())
 
 
 class NoticeTimingDialog(MessageBoxBase):
@@ -551,8 +551,8 @@ class NoticeTimingDialog(MessageBoxBase):
         super().__init__(parent)
         
         # 设置对话框标题
-        self.titleLabel = SubtitleLabel(self.tr("Notification Timing Settings"), self)
-        self.viewLayout.addWidget(self.titleLabel)
+        self.title_label = SubtitleLabel(self.tr("Notification Timing Settings"), self)
+        self.viewLayout.addWidget(self.title_label)
         self.viewLayout.addSpacing(10)
         
         self.widget.setMinimumWidth(400)

@@ -7,21 +7,21 @@ import jsonc
 
 from PySide6.QtCore import QTimer
 
-from app.core.Item import (
+from app.core.item import (
     CoreSignalBus,
-    FromeServiceCoordinator,
+    FromServiceCoordinator,
     ConfigItem,
     TaskItem,
 )
-from app.core.service.ConfigService import ConfigService, JsonConfigRepository
-from app.core.service.ScheduleService import ScheduleService
-from app.core.service.TaskService import TaskService
-from app.core.service.OptionService import OptionService
-from app.core.service.InterfaceManager import get_interface_manager, InterfaceManager
+from app.core.service.config_service import ConfigService, JsonConfigRepository
+from app.core.service.interface_manager import InterfaceManager, get_interface_manager
+from app.core.service.option_service import OptionService
+from app.core.service.schedule_service import ScheduleService
+from app.core.service.task_service import TaskService
 from app.core.runner.task_flow import TaskFlowRunner
 from app.core.log_processor import CallbackLogProcessor
 from app.utils.logger import logger
-from app.common.signal_bus import GlobalSignalBus
+from app.common.signal_bus import global_signal_bus
 
 
 class ServiceCoordinator:
@@ -35,7 +35,7 @@ class ServiceCoordinator:
     ):
         # 初始化信号总线
         self.signal_bus = CoreSignalBus()
-        self.fs_signal_bus = FromeServiceCoordinator()
+        self.fs_signal_bus = FromServiceCoordinator()
         
         # 存储待显示的错误信息（用于在 UI 初始化完成后显示）
         self._pending_error_message: tuple[str, str] | None = None
@@ -563,9 +563,9 @@ class ServiceCoordinator:
     def _connect_signals(self):
         """连接所有信号"""
         # UI请求保存配置
-        self.signal_bus.NeedSave.connect(self._on_need_save)
+        self.signal_bus.need_save.connect(self._on_need_save)
         # 热更新完成后重新初始化
-        GlobalSignalBus.FsReinitRequested.connect(self.reinit)
+        global_signal_bus.fs_reinit_requested.connect(self.reinit)
 
     def _on_config_changed(self, config_id: str):
         """配置变化后刷新内部服务状态"""
@@ -710,7 +710,7 @@ class ServiceCoordinator:
                     self.task_service.apply_preset(preset)
 
             # Notify UI incrementally
-            self.fs_signal_bus.FsConfigAdded.emit(
+            self.fs_signal_bus.fs_config_added.emit(
                 self.config_service.get_config(new_id)
             )
         return new_id
@@ -735,7 +735,7 @@ class ServiceCoordinator:
         ok = self.config_service.delete_config(config_id)
         if ok:
             # notify UI incremental removal
-            self.fs_signal_bus.FsConfigRemoved.emit(config_id)
+            self.fs_signal_bus.fs_config_removed.emit(config_id)
         return ok
 
     def select_config(self, config_id: str) -> bool:
@@ -761,7 +761,7 @@ class ServiceCoordinator:
         """
         ok = self.task_service.update_task(task, idx)
         if ok:
-            self.fs_signal_bus.FsTaskModified.emit(task)
+            self.fs_signal_bus.fs_task_modified.emit(task)
         return ok
 
     def update_task_checked(self, task_id: str, is_checked: bool) -> bool:
@@ -788,8 +788,8 @@ class ServiceCoordinator:
         if ok:
             for task in changed_tasks:
                 # UI 通知：保持与旧行为兼容
-                self.signal_bus.TaskUpdated.emit(task)
-                self.fs_signal_bus.FsTaskModified.emit(task)
+                self.signal_bus.task_updated.emit(task)
+                self.fs_signal_bus.fs_task_modified.emit(task)
 
         return ok
 
@@ -803,7 +803,7 @@ class ServiceCoordinator:
             # 兼容：对于希望逐项更新的监听者，仍发出逐项 task_updated 信号
             try:
                 for t in tasks:
-                    self.fs_signal_bus.FsTaskModified.emit(t)
+                    self.fs_signal_bus.fs_task_modified.emit(t)
             except Exception:
                 pass
         return ok
@@ -820,7 +820,7 @@ class ServiceCoordinator:
                 return False
         ok = self.task_service.delete_task(task_id)
         if ok:
-            self.fs_signal_bus.FsTaskRemoved.emit(task_id)
+            self.fs_signal_bus.fs_task_removed.emit(task_id)
         return ok
 
     def select_task(self, task_id: str) -> bool:
@@ -837,14 +837,14 @@ class ServiceCoordinator:
     def _on_need_save(self):
         """当UI请求保存时保存所有配置"""
         self.config_service.save_main_config()
-        self.signal_bus.ConfigSaved.emit(True)
+        self.signal_bus.config_saved.emit(True)
 
     def reinit(self):
         """重新初始化服务协调器，用于热更新完成后刷新资源"""
         logger.info("开始重新初始化服务协调器...")
         try:
             # 重新加载主配置
-            self.config_repo.LoadMainConfig()
+            self.config_repo.load_main_config()
 
             # 刷新 interface 数据
             self.interface_manager.reload(self._interface_path)
@@ -857,7 +857,7 @@ class ServiceCoordinator:
             # 通知 UI 配置已更新
             current_config_id = self.config_service.current_config_id
             if current_config_id:
-                self.signal_bus.ConfigChanged.emit(current_config_id)
+                self.signal_bus.config_changed.emit(current_config_id)
 
             logger.info("服务协调器重新初始化完成")
         except Exception as e:
@@ -915,14 +915,6 @@ class ServiceCoordinator:
     @property
     def option(self) -> OptionService:
         return self.option_service
-
-    @property
-    def fs_signals(self) -> FromeServiceCoordinator:
-        return self.fs_signal_bus
-
-    @property
-    def signals(self) -> CoreSignalBus:
-        return self.signal_bus
     
     def get_pending_error_message(self) -> tuple[str, str] | None:
         """获取并清除待显示的错误信息

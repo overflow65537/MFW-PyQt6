@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 from app.utils.logger import logger
 from app.common.config import cfg, Config
 from app.utils.crypto import crypto_manager
-from app.common.signal_bus import GlobalSignalBus
+from app.common.signal_bus import global_signal_bus
 from app.core.core import ServiceCoordinator
 
 
@@ -494,9 +494,9 @@ class BaseUpdate(QThread):
             elif os.path.isfile(path):
                 os.remove(path)
 
-    def Mirror_ckd(self) -> str:
+    def _get_mirror_cdk(self) -> str:
         try:
-            cdk_encrypted = cfg.get(cfg.Mcdk)
+            cdk_encrypted = cfg.get(cfg.mcdk)
             if not cdk_encrypted:
                 return ""
             decrypted = crypto_manager.decrypt_payload(cdk_encrypted)
@@ -925,7 +925,7 @@ class Update(BaseUpdate):
         self.current_res_id = self.interface.get("mirrorchyan_rid", "")
 
         # 从配置中获取 mirror_cdk
-        self.mirror_cdk = self.Mirror_ckd()
+        self.mirror_cdk = self._get_mirror_cdk()
 
         # 从配置中获取更新通道
         channel_value = cfg.get(cfg.resource_update_channel)
@@ -1031,7 +1031,7 @@ class Update(BaseUpdate):
 
         self._is_running = True
         # 从配置中获取 mirror_cdk
-        self.mirror_cdk = self.Mirror_ckd()
+        self.mirror_cdk = self._get_mirror_cdk()
         try:
             # 每次运行前按当前配置初始化上下文（包括 interface / 频道 / 版本 等）
             self._init_run_context()
@@ -1414,7 +1414,7 @@ class Update(BaseUpdate):
             self._emit_info_bar("success", self.tr("Update applied successfully"))
             self._cleanup_update_artifacts(download_dir, zip_file_path)
             # 触发服务协调器重新初始化
-            GlobalSignalBus.FsReinitRequested.emit()
+            global_signal_bus.fs_reinit_requested.emit()
             self.stop_signal.emit(1)
 
         except Exception as e:
@@ -2281,7 +2281,7 @@ class MultiResourceUpdate(Update):
             self._emit_info_bar("success", self.tr("Update applied successfully"))
             self._cleanup_update_artifacts(download_dir, zip_file_path)
             # 触发服务协调器重新初始化
-            GlobalSignalBus.FsReinitRequested.emit()
+            global_signal_bus.fs_reinit_requested.emit()
             self.stop_signal.emit(1)
 
         except Exception as e:

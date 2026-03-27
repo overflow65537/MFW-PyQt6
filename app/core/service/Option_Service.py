@@ -1,10 +1,7 @@
-from app.core.service.OptionService import OptionService
+from typing import Any, Dict, Optional
 
-
-__all__ = ["OptionService"]from typing import Any, Dict, Optional
-
-from app.core.service.Task_Service import TaskService
-from app.core.Item import CoreSignalBus
+from app.core.item import CoreSignalBus
+from app.core.service.task_service import TaskService
 
 
 class OptionService:
@@ -41,7 +38,7 @@ class OptionService:
                 self.form_structure = self.get_form_structure_by_task_name(
                     task.name, self.task_service.interface
                 )
-            self.signal_bus.OptionsLoaded.emit()
+            self.signal_bus.options_loaded.emit()
             return True
         return False
 
@@ -66,7 +63,7 @@ class OptionService:
         # 基础任务不应该包含 speedrun_config
         from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 
-        if task.IsBaseTask() and "_speedrun_config" in task.task_option:
+        if task.is_base_task() and "_speedrun_config" in task.task_option:
             del task.task_option["_speedrun_config"]
 
         success = self.task_service.update_task(task)
@@ -80,14 +77,14 @@ class OptionService:
                 except Exception:
                     pass
             # 控制器类型变化时，重新计算当前任务的 form_structure（按 interface.option[*].controller 过滤），并通知 UI 刷新选项表单
-            if "controller_type" in option_data and task and not task.IsBaseTask():
+            if "controller_type" in option_data and task and not task.is_base_task():
                 interface = getattr(self.task_service, "interface", None)
                 if interface:
                     self.form_structure = self.get_form_structure_by_task_name(
                         task.name, interface
                     ) or {}
-                    self.signal_bus.OptionsLoaded.emit()
-            self.signal_bus.OptionUpdated.emit(option_data)
+                self.signal_bus.options_loaded.emit()
+            self.signal_bus.option_updated.emit(option_data)
 
         return success
 

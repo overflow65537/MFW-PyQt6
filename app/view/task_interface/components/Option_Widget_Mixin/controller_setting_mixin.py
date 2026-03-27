@@ -16,8 +16,8 @@ from app.utils.gpu_cache import gpu_cache
 from app.utils.logger import logger
 from app.common.config import cfg
 from app.core.core import ServiceCoordinator
-from app.widget.PathLineEdit import PathLineEdit
-from app.view.task_interface.components.Option_Widget_Mixin.DeviceFinderWidget import (
+from app.widget.path_line_edit import PathLineEdit
+from app.view.task_interface.components.option_widget_mixin.device_finder_widget import (
     DeviceFinderWidget,
 )
 from PySide6.QtWidgets import QWidget
@@ -1490,10 +1490,10 @@ class ControllerSettingWidget(QWidget):
             else:
                 message = self.tr("No devices were found for current controller type.")
 
-            from app.common.signal_bus import GlobalSignalBus
+            from app.common.signal_bus import global_signal_bus
 
-            # 确保 signalBus 对象有效后再发送信号
-            if GlobalSignalBus and hasattr(GlobalSignalBus, "info_bar_requested"):
+            # 确保 global_signal_bus 对象有效后再发送信号
+            if global_signal_bus and hasattr(global_signal_bus, "info_bar_requested"):
                 try:
                     # 使用 QTimer 延迟发送信号，确保在界面更新完成后再显示 InfoBar
                     # 这样可以避免在清理选项组件时 InfoBar 被立即关闭
@@ -1501,8 +1501,8 @@ class ControllerSettingWidget(QWidget):
                     def delayed_emit():
                         try:
                             # 再次检查对象有效性（防止在延迟期间对象被销毁）
-                            if GlobalSignalBus and hasattr(GlobalSignalBus, "info_bar_requested"):
-                                GlobalSignalBus.InfoBarRequested.emit(level, message)
+                            if global_signal_bus and hasattr(global_signal_bus, "info_bar_requested"):
+                                global_signal_bus.info_bar_requested.emit(level, message)
                         except Exception as e:
                             logger.warning(f"延迟发送 InfoBar 提示失败: {e}")
 
@@ -1869,3 +1869,5 @@ class ControllerSettingWidget(QWidget):
         # 清理字典
         self.resource_setting_widgets.clear()
         self.current_controller_type = None
+
+

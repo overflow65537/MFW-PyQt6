@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QVBoxLayout
 
 
 from app.utils.logger import logger
-from app.widget.PathLineEdit import PathLineEdit
+from app.widget.path_line_edit import PathLineEdit
 
 from app.core.core import ServiceCoordinator
 
@@ -448,3 +448,4 @@ class PostActionSettingMixin:
             logger.error(f"保存完成后操作配置失败: {exc}")
 
     # endregion
+

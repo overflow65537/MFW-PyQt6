@@ -40,7 +40,7 @@ from email.mime.text import MIMEText
 from queue import Queue
 from PySide6.QtCore import QThread
 
-from app.common.signal_bus import GlobalSignalBus
+from app.common.signal_bus import global_signal_bus
 from app.common.config import cfg
 from app.utils.logger import logger
 from app.utils.crypto import crypto_manager
@@ -49,12 +49,12 @@ from app.utils.crypto import crypto_manager
 # 解码密钥
 def decode_key(key_name) -> str:
     mapping = {
-        "dingtalk": cfg.Notice_DingTalk_secret,
-        "lark": cfg.Notice_Lark_secret,
-        "smtp": cfg.Notice_SMTP_password,
-        "wxpusher": cfg.Notice_WxPusher_SPT_token,
-        "QYWX": cfg.Notice_QYWX_key,
-        "gotify": cfg.Notice_Gotify_token,
+        "dingtalk": cfg.notice_dingtalk_secret,
+        "lark": cfg.notice_lark_secret,
+        "smtp": cfg.notice_smtp_password,
+        "wxpusher": cfg.notice_wx_pusher_spt_token,
+        "QYWX": cfg.notice_qywx_key,
+        "gotify": cfg.notice_gotify_token,
     }
 
     config_item = mapping.get(key_name)
@@ -127,7 +127,7 @@ class DingTalk:
 
     def sign(self) -> list[str]:
         # 钉钉的签名校验方法为将 sign 与 timestamp 组合进 url 中
-        url = cfg.get(cfg.Notice_DingTalk_url)
+        url = cfg.get(cfg.notice_dingtalk_url)
         secret = decode_key("dingtalk")
 
         if url == "":
@@ -198,7 +198,7 @@ class Lark:
         # 对结果进行base64处理
         sign = base64.b64encode(hmac_code).decode("utf-8")
 
-        return [cfg.get(cfg.Notice_Lark_url), timestamp, sign]
+        return [cfg.get(cfg.notice_lark_url), timestamp, sign]
 
 
 class SMTP:
@@ -224,37 +224,37 @@ class SMTP:
             msg = text_part
 
         msg["Subject"] = msg_dict["title"]
-        msg["From"] = cfg.get(cfg.Notice_SMTP_user_name)
-        msg["To"] = cfg.get(cfg.Notice_SMTP_receive_mail)
+        msg["From"] = cfg.get(cfg.notice_smtp_user_name)
+        msg["To"] = cfg.get(cfg.notice_smtp_receive_mail)
 
         return msg
 
     def send(self, msg_dict: dict) -> NoticeErrorCode:
         msg = self.msg(msg_dict)
         try:
-            port = int(cfg.get(cfg.Notice_SMTP_sever_port))
+            port = int(cfg.get(cfg.notice_smtp_server_port))
         except ValueError:
             logger.error(
-                f"SMTP 端口号 {cfg.get(cfg.Notice_SMTP_sever_port)} 不是有效的整数"
+                f"SMTP 端口号 {cfg.get(cfg.notice_smtp_server_port)} 不是有效的整数"
             )
             return NoticeErrorCode.SMTP_PORT_INVALID
 
         try:
-            if cfg.get(cfg.Notice_SMTP_used_ssl):
-                smtp = smtplib.SMTP_SSL(cfg.get(cfg.Notice_SMTP_sever_address), port)
+            if cfg.get(cfg.notice_smtp_used_ssl):
+                smtp = smtplib.SMTP_SSL(cfg.get(cfg.notice_smtp_server_address), port)
             else:
                 smtp = smtplib.SMTP(
-                    cfg.get(cfg.Notice_SMTP_sever_address), port, timeout=1
+                    cfg.get(cfg.notice_smtp_server_address), port, timeout=1
                 )
-            smtp.login(cfg.get(cfg.Notice_SMTP_user_name), decode_key("smtp"))
+            smtp.login(cfg.get(cfg.notice_smtp_user_name), decode_key("smtp"))
         except Exception as e:
             logger.error(f"SMTP 连接失败: {e}")
             return NoticeErrorCode.SMTP_CONNECT_FAILED
 
         try:
             smtp.sendmail(
-                cfg.get(cfg.Notice_SMTP_user_name),
-                cfg.get(cfg.Notice_SMTP_receive_mail),
+                cfg.get(cfg.notice_smtp_user_name),
+                cfg.get(cfg.notice_smtp_receive_mail),
                 msg.as_string(),
             )
             return NoticeErrorCode.SUCCESS
@@ -274,7 +274,7 @@ class WxPusher:
             "summary": msg_dict["title"],
             "contentType": 1,
             "spt": decode_key("wxpusher"),
-            "sptList": [cfg.get(cfg.Notice_WxPusher_SPT_token)],
+            "sptList": [cfg.get(cfg.notice_wx_pusher_spt_token)],
         }
         return msg
 
@@ -329,13 +329,13 @@ class Gotify:
         msg = {
             "title": msg_dict["title"],
             "message": msg_text,
-            "priority": int(cfg.get(cfg.Notice_Gotify_priority))
+            "priority": int(cfg.get(cfg.notice_gotify_priority))
         }
         return msg
 
     def send(self, msg_dict: dict) -> NoticeErrorCode:
         gotify_token = decode_key("gotify")
-        url = cfg.get(cfg.Notice_Gotify_url)
+        url = cfg.get(cfg.notice_gotify_url)
         if not url:
             logger.error("Gotify URL为空")
             return NoticeErrorCode.PARAM_EMPTY
@@ -384,9 +384,9 @@ class NoticeSendThread(QThread):
         self.notice_mapping = {
             "dingtalk": dingtalk_send,
             "lark": lark_send,
-            "smtp": SMTP_send,
-            "wxpusher": WxPusher_send,
-            "qywx": QYWX_send,
+            "smtp": smtp_send,
+            "wxpusher": wx_pusher_send,
+            "qywx": qywx_send,
             "gotify": gotify_send,
         }
 
@@ -409,72 +409,72 @@ class NoticeSendThread(QThread):
                     self._active_tasks += 1
                 try:
                     result = send_func(msg_dict, status)
-                    GlobalSignalBus.NoticeFinished.emit(int(result), send_func.__name__)
+                    global_signal_bus.notice_finished.emit(int(result), send_func.__name__)
                     # 根据枚举类型显示不同的提示
                     match result:
                         case NoticeErrorCode.SUCCESS:
-                            GlobalSignalBus.InfoBarRequested.emit(
+                            global_signal_bus.info_bar_requested.emit(
                                 "success",
                                 send_func.__name__
                                 + self.tr(" sent successfully."),
                             )
                         case NoticeErrorCode.DISABLED:
-                            GlobalSignalBus.InfoBarRequested.emit(
+                            global_signal_bus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" disabled."),
                             )
                         case NoticeErrorCode.PARAM_EMPTY:
-                            GlobalSignalBus.InfoBarRequested.emit(
+                            global_signal_bus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" param empty."),
                             )
                         case NoticeErrorCode.PARAM_INVALID:
-                            GlobalSignalBus.InfoBarRequested.emit(
+                            global_signal_bus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" param invalid."),
                             )
                         case NoticeErrorCode.NETWORK_ERROR:
-                            GlobalSignalBus.InfoBarRequested.emit(
+                            global_signal_bus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" network error."),
                             )
                         case NoticeErrorCode.RESPONSE_ERROR:
-                            GlobalSignalBus.InfoBarRequested.emit(
+                            global_signal_bus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" response error."),
                             )
                         case NoticeErrorCode.UNKNOWN_ERROR:
-                            GlobalSignalBus.InfoBarRequested.emit(
+                            global_signal_bus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" unknown error."),
                             )
                         case NoticeErrorCode.SMTP_PORT_INVALID:
-                            GlobalSignalBus.InfoBarRequested.emit(
+                            global_signal_bus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" smtp port invalid."),
                             )
                         case NoticeErrorCode.SMTP_CONNECT_FAILED:
-                            GlobalSignalBus.InfoBarRequested.emit(
+                            global_signal_bus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" smtp connect failed."),
                             )
                         case _:
-                            GlobalSignalBus.InfoBarRequested.emit(
+                            global_signal_bus.info_bar_requested.emit(
                                 "warning",
                                 send_func.__name__
                                 + self.tr(" unknown error."),
                             )
                 except Exception as e:
                     logger.error(f"通知线程 {send_func.__name__} 执行异常: {str(e)}")
-                    GlobalSignalBus.NoticeFinished.emit(
+                    global_signal_bus.notice_finished.emit(
                         int(NoticeErrorCode.UNKNOWN_ERROR), send_func.__name__
                     )
                 finally:
@@ -611,7 +611,7 @@ def lark_send(
     return NoticeErrorCode.SUCCESS
 
 
-def SMTP_send(
+def smtp_send(
     msg_dict: dict = {"title": "Test", "text": "Test"}, status: bool = False
 ) -> NoticeErrorCode:
     if not status:
@@ -629,7 +629,7 @@ def SMTP_send(
     return result
 
 
-def WxPusher_send(
+def wx_pusher_send(
     msg_dict: dict[str, str] = {"title": "Test", "text": "Test"}, status: bool = False
 ) -> NoticeErrorCode:
     if not status:
@@ -655,7 +655,7 @@ def WxPusher_send(
     return NoticeErrorCode.SUCCESS
 
 
-def QYWX_send(
+def qywx_send(
     msg_dict: dict[str, str] = {"title": "Test", "text": "Test"}, status: bool = False
 ) -> NoticeErrorCode:
     if not status:
@@ -680,12 +680,12 @@ def gotify_send(
 
 
 NOTICE_CHANNEL_STATUS = {
-    "dingtalk": cfg.Notice_DingTalk_status,
-    "lark": cfg.Notice_Lark_status,
-    "smtp": cfg.Notice_SMTP_status,
-    "wxpusher": cfg.Notice_WxPusher_status,
-    "qywx": cfg.Notice_QYWX_status,
-    "gotify": cfg.Notice_Gotify_status,
+    "dingtalk": cfg.notice_dingtalk_status,
+    "lark": cfg.notice_lark_status,
+    "smtp": cfg.notice_smtp_status,
+    "wxpusher": cfg.notice_wx_pusher_status,
+    "qywx": cfg.notice_qywx_status,
+    "gotify": cfg.notice_gotify_status,
 }
 
 NOTICE_EVENT_CONFIG = {

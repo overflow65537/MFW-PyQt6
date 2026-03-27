@@ -20,7 +20,7 @@ from qfluentwidgets import ListWidget, IndeterminateProgressRing, SimpleCardWidg
 
 from app.core.core import ServiceCoordinator
 from app.core.item import ConfigItem, TaskItem
-from app.view.task_interface.components.ListItem import TaskListItem, ConfigListItem, SpecialTaskListItem
+from app.view.task_interface.components.list_item import TaskListItem, ConfigListItem, SpecialTaskListItem
 from app.utils.logger import logger
 from app.common.signal_bus import global_signal_bus
 from app.common.constants import _RESOURCE_, _CONTROLLER_
@@ -213,7 +213,7 @@ class TaskDragListWidget(BaseListWidget):
     def _should_show_by_resource(self, task: TaskItem) -> bool:
         """根据当前选择的资源判断任务是否应该显示"""
         # 基础任务（资源、控制器、完成后操作）始终显示
-        if task.IsBaseTask():
+        if task.is_base_task():
             return True
         
         # 获取当前配置中的资源
@@ -272,7 +272,7 @@ class TaskDragListWidget(BaseListWidget):
         - interface.task[*].controller 缺省/空：对所有控制器显示
         - 否则仅当当前 controller_type 命中 controller 列表才显示
         """
-        if task.IsBaseTask():
+        if task.is_base_task():
             return True
 
         try:
@@ -546,7 +546,7 @@ class TaskDragListWidget(BaseListWidget):
         task_widget.checkbox_changed.connect(self._on_task_checkbox_changed)
 
         flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
-        if not task.IsBaseTask():
+        if not task.is_base_task():
             flags |= Qt.ItemFlag.ItemIsDragEnabled
         else:
             flags &= ~Qt.ItemFlag.ItemIsDragEnabled
@@ -613,7 +613,7 @@ class TaskDragListWidget(BaseListWidget):
         # 复选框状态变更信号
         task_widget.checkbox_changed.connect(self._on_task_checkbox_changed)
         # 基础任务禁止拖动
-        if task.IsBaseTask():
+        if task.is_base_task():
             list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
         
         # 批量刷新时严格按传入顺序追加；单项新增时根据任务在完整列表中的位置插入
@@ -665,7 +665,7 @@ class TaskDragListWidget(BaseListWidget):
             item = self.item(i)
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem) and widget.task.item_id == task_id:
-                if widget.task.IsBaseTask():
+                if widget.task.is_base_task():
                     # 基础任务不可删除，记录日志并显示提示
                     global_signal_bus.info_bar_requested.emit(
                         "warning", "基础任务（资源、完成后操作）不可删除"
@@ -695,7 +695,7 @@ class TaskDragListWidget(BaseListWidget):
         for idx in positions:
             if 0 <= idx < len(tasks):
                 task = tasks[idx]
-                if task.IsBaseTask():
+                if task.is_base_task():
                     protected[idx] = task.item_id
         return protected
 
@@ -793,7 +793,7 @@ class TaskDragListWidget(BaseListWidget):
 
     def _on_task_checkbox_changed(self, task: TaskItem):
         """复选框状态变更信号转发"""
-        if task.IsBaseTask():
+        if task.is_base_task():
             return
         if self._filter_mode == "special" and task.is_checked:
             # 单选：取消其它特殊任务的勾选
@@ -815,10 +815,10 @@ class TaskDragListWidget(BaseListWidget):
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem):
                 if self._filter_mode == "special":
-                    if not widget.task.IsBaseTask() and widget.task.is_special:
+                    if not widget.task.is_base_task() and widget.task.is_special:
                         steps.append((widget, True))
                 else:
-                    if not widget.task.IsBaseTask() and not widget.task.is_special:
+                    if not widget.task.is_base_task() and not widget.task.is_special:
                         steps.append((widget, True))
         self._enqueue_bulk_toggle(steps)
 
@@ -829,7 +829,7 @@ class TaskDragListWidget(BaseListWidget):
             item = self.item(i)
             widget = self.itemWidget(item)
             if isinstance(widget, TaskListItem):
-                if widget.task.IsBaseTask():
+                if widget.task.is_base_task():
                     continue
                 if self._filter_mode == "special":
                     if widget.task.is_special:
@@ -1055,3 +1055,5 @@ class ConfigListWidget(BaseListWidget):
     def set_current_config(self, config_id: str):
         """设置当前选中配置项"""
         self.select_item(config_id)
+
+

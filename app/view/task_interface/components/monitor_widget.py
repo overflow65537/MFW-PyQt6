@@ -170,7 +170,7 @@ class MonitorWidget(QWidget):
         """连接信号"""
         # 监听任务开始/停止信号
         if hasattr(self.service_coordinator, 'fs_signals'):
-            self.service_coordinator.fs_signals.FsStartButtonStatus.connect(
+            self.service_coordinator.fs_signal_bus.fs_start_button_status.connect(
                 self._on_task_status_changed
             )
 
@@ -957,4 +957,5 @@ class MonitorWidget(QWidget):
             loop = None
         if loop and loop.is_running():
             loop.create_task(self._handle_controller_disconnection())
+
 

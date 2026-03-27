@@ -62,13 +62,13 @@ class NoticeMessageBox(MessageBoxBase):
     def __init__(self, parent, title: str, content: Dict[str, str]):
         super().__init__(parent)
 
-        self.index = self.NoticeIndexCard(title, content, self)
+        self.index_card = self.NoticeIndexCard(title, content, self)
 
         # 原 BodyLabel 初始化（保持不变）
-        self.text = BodyLabel(self)
-        self.text.setOpenExternalLinks(True)
-        self.text.setWordWrap(True)
-        self.text.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.text_label = BodyLabel(self)
+        self.text_label.setOpenExternalLinks(True)
+        self.text_label.setWordWrap(True)
+        self.text_label.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # 新增：创建滚动区域并包裹 BodyLabel
         self.scroll_area = ScrollArea(self)
@@ -78,7 +78,7 @@ class NoticeMessageBox(MessageBoxBase):
         self.scroll_area.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )  # 隐藏水平滚动条
-        self.scroll_area.setWidget(self.text)  # 将 BodyLabel 放入滚动区域
+        self.scroll_area.setWidget(self.text_label)  # 将 BodyLabel 放入滚动区域
 
         self.button_yes = PrimaryPushButton(self.tr("Confirm and never show again"), self)
         self.button_cancel = PrimaryPushButton(self.tr("Confirm"), self)
@@ -94,7 +94,7 @@ class NoticeMessageBox(MessageBoxBase):
         self.v_layout.addLayout(self.button_layout)
 
         self.h_layout = QHBoxLayout()
-        self.h_layout.addWidget(self.index)
+        self.h_layout.addWidget(self.index_card)
         self.h_layout.addLayout(self.v_layout)
         self.h_layout.setStretch(0, 1)
         self.h_layout.setStretch(1, 3)
@@ -103,10 +103,10 @@ class NoticeMessageBox(MessageBoxBase):
         self.viewLayout.addLayout(self.h_layout)
         self.widget.setFixedSize(1000, 640)
 
-        self.index.index_changed.connect(self.__update_text)
+        self.index_card.index_changed.connect(self.__update_text)
         self.button_yes.clicked.connect(self.yesButton.click)
         self.button_cancel.clicked.connect(self.cancelButton.click)
-        self.index.index_cards[0].clicked.emit()
+        self.index_card.index_cards[0].clicked.emit()
         remote_image_cache.image_cached.connect(self._on_remote_image_cached)
         self._last_rendered_text = ""
 
@@ -125,7 +125,7 @@ class NoticeMessageBox(MessageBoxBase):
         html = re.sub(r"<li><p>(.*?)</p></li>", r"<p><strong>◆ </strong>\1</p>", html)
         html = re.sub(r"<ul>(.*?)</ul>", r"\1", html)
 
-        self.text.setText(f"<body>{html}</body>")
+        self.text_label.setText(f"<body>{html}</body>")
 
     def _on_remote_image_cached(self, _url: str):
         if self._last_rendered_text:
@@ -139,8 +139,8 @@ class NoticeMessageBox(MessageBoxBase):
             super().__init__(parent)
             self.setTitle(title)
 
-            self.Layout = QVBoxLayout()
-            self.viewLayout.addLayout(self.Layout)
+            self.layout = QVBoxLayout()
+            self.viewLayout.addLayout(self.layout)
             self.viewLayout.setContentsMargins(3, 0, 3, 3)
 
             self.index_cards: List[QuantifiedItemCard] = []
@@ -151,12 +151,12 @@ class NoticeMessageBox(MessageBoxBase):
                 self.index_cards[-1].clicked.connect(
                     partial(self.index_changed.emit, text)
                 )
-                self.Layout.addWidget(self.index_cards[-1])
+                self.layout.addWidget(self.index_cards[-1])
 
             if not content:
-                self.Layout.addWidget(QuantifiedItemCard(["暂无信息", ""]))
+                self.layout.addWidget(QuantifiedItemCard(["暂无信息", ""]))
 
-            self.Layout.addStretch(1)
+            self.layout.addStretch(1)
 
 
 class QuantifiedItemCard(CardWidget):
@@ -164,14 +164,14 @@ class QuantifiedItemCard(CardWidget):
     def __init__(self, item: list, parent=None):
         super().__init__(parent)
 
-        self.Layout = QHBoxLayout(self)
+        self.layout = QHBoxLayout(self)
 
-        self.Name = BodyLabel(item[0], self)
-        self.Numb = BodyLabel(str(item[1]), self)
+        self.name_label = BodyLabel(item[0], self)
+        self.count_label = BodyLabel(str(item[1]), self)
 
-        self.Layout.addWidget(self.Name)
-        self.Layout.addStretch(1)
-        self.Layout.addWidget(self.Numb)
+        self.layout.addWidget(self.name_label)
+        self.layout.addStretch(1)
+        self.layout.addWidget(self.count_label)
 
 
 class DelayedCloseNoticeMessageBox(NoticeMessageBox):

@@ -6,19 +6,18 @@ from qfluentwidgets import SimpleCardWidget, BodyLabel
 
 
 class SimpleCardWidgetWithTitle(QWidget):
-    def __init__(self, title, LayoutClass, parent=None):
+    def __init__(self, title, layout_class, parent=None):
 
         super().__init__(parent)
-        self.title = title
         self.vbox = QVBoxLayout(self)
-        self.title = BodyLabel(title)
-        self.title.setStyleSheet("font-size: 20px;")
-        self.title.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.title_label = BodyLabel(title)
+        self.title_label.setStyleSheet("font-size: 20px;")
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         self.main_widget = SimpleCardWidget()
-        self.main_widget_layout: QVBoxLayout = LayoutClass(self.main_widget)
+        self.main_widget_layout: QVBoxLayout = layout_class(self.main_widget)
 
-        self.vbox.addWidget(self.title)
+        self.vbox.addWidget(self.title_label)
         self.vbox.addWidget(self.main_widget)
         # 设置比例1:99
         self.vbox.setStretch(0, 1)

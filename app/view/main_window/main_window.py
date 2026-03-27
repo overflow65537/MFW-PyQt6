@@ -299,7 +299,7 @@ class MainWindow(MSFluentWindow):
         cfg.set(cfg.show_advanced_startup_options, False)
 
         # 使用自定义的主题监听器
-        self.themeListener = CustomSystemThemeListener(self)
+        self.theme_listener = CustomSystemThemeListener(self)
 
         # 初始化配置管理器
         multi_config_path = Path.cwd() / "config" / "multi_config.json"
@@ -325,46 +325,46 @@ class MainWindow(MSFluentWindow):
         self._init_announcement()
 
         # 初始化窗口
-        self.initWindow()
+        self.init_window()
         # 创建子界面
-        self.TaskInterface = TaskInterface(self.service_coordinator)
-        self.addSubInterface(self.TaskInterface, FIF.CHECKBOX, self.tr("Task"))
+        self.task_interface = TaskInterface(self.service_coordinator)
+        self.addSubInterface(self.task_interface, FIF.CHECKBOX, self.tr("Task"))
         """self.SpecialTaskInterface = SpecialTaskInterface(self.service_coordinator)
         self.addSubInterface(
             self.SpecialTaskInterface,
             FIF.TILES,
             self.tr("Special Task"),
         )"""
-        self.MonitorInterface = MonitorInterface(self.service_coordinator)
+        self.monitor_interface = MonitorInterface(self.service_coordinator)
         self.addSubInterface(
-            self.MonitorInterface,
+            self.monitor_interface,
             FIF.PROJECTOR,
             self.tr("Monitor"),
         )
-        self.ScheduleInterface = ScheduleInterface(self.service_coordinator)
+        self.schedule_interface = ScheduleInterface(self.service_coordinator)
         self.addSubInterface(
-            self.ScheduleInterface,
+            self.schedule_interface,
             FIF.CALENDAR,
             self.tr("Schedule"),
         )
         enable_test_page = self._cli_force_enable_test or ENABLE_TEST_INTERFACE_PAGE
         if enable_test_page:
-            self.TestInterface = TestInterface(self.service_coordinator)
+            self.test_interface = TestInterface(self.service_coordinator)
             self.addSubInterface(
-                self.TestInterface,
+                self.test_interface,
                 FIF.MEGAPHONE,
                 self.tr("test_interface"),
             )
         # 总是初始化 BundleInterface，但不添加到导航栏（除非多资源适配已开启）
         try:
             logger.info("初始化 BundleInterface...")
-            self.BundleInterface = BundleInterface(self.service_coordinator)
+            self.bundle_interface = BundleInterface(self.service_coordinator)
             logger.info("BundleInterface 创建成功")
         except Exception as exc:
             logger.error(f"创建 BundleInterface 失败: {exc}", exc_info=True)
-            self.BundleInterface = None
+            self.bundle_interface = None
 
-        self.SettingInterface = SettingInterface(
+        self.setting_interface = SettingInterface(
             self.service_coordinator, propagate_direct_run_arg=self._cli_auto_run
         )
 
@@ -378,9 +378,9 @@ class MainWindow(MSFluentWindow):
                 "多资源适配已开启，添加 BundleInterface 到导航栏，隐藏 Announcement"
             )
             # 添加 Bundle，确保它在 Setting 之前
-            if hasattr(self, "BundleInterface") and self.BundleInterface is not None:
+            if hasattr(self, "bundle_interface") and self.bundle_interface is not None:
                 self.addSubInterface(
-                    self.BundleInterface,
+                    self.bundle_interface,
                     FIF.FOLDER,
                     self.tr("Bundle"),
                     position=NavigationItemPosition.BOTTOM,
@@ -394,7 +394,7 @@ class MainWindow(MSFluentWindow):
 
         # 添加 SettingInterface
         self.addSubInterface(
-            self.SettingInterface,
+            self.setting_interface,
             FIF.SETTING,
             self.tr("Setting"),
             position=NavigationItemPosition.BOTTOM,
@@ -409,15 +409,15 @@ class MainWindow(MSFluentWindow):
             logger.info("多资源适配已开启，Announcement 不会显示在导航栏")
 
         # 添加导航项
-        self.splashScreen.finish()
+        self.splash_screen.finish()
         self._maybe_show_pending_announcement()
         QTimer.singleShot(0, self.service_coordinator.schedule_service.start)
 
         # 启动主题监听器
-        self.themeListener.start()
+        self.theme_listener.start()
 
         # 连接公共信号
-        self.connectSignalToSlot()
+        self.connect_signal_to_slot()
 
         # 检查是否有待显示的错误信息（配置加载错误等）
         pending_error = self.service_coordinator.get_pending_error_message()
@@ -446,7 +446,7 @@ class MainWindow(MSFluentWindow):
         # 程序启动并完成主界面初始化后，如果已开启多资源适配，则执行一次后续操作钩子
         try:
             if cfg.get(cfg.multi_resource_adaptation):
-                self.SettingInterface.run_multi_resource_post_enable_tasks()
+                self.setting_interface.run_multi_resource_post_enable_tasks()
         except Exception as exc:
             logger.warning(f"运行多资源适配启动钩子失败: {exc}")
 
@@ -592,7 +592,7 @@ class MainWindow(MSFluentWindow):
         try:
             logger.info("_add_bundle_interface_to_navigation 被调用")
 
-            if not hasattr(self, "BundleInterface") or self.BundleInterface is None:
+            if not hasattr(self, "bundle_interface") or self.bundle_interface is None:
                 logger.warning("BundleInterface 未初始化，无法添加到导航栏")
                 return
 
@@ -602,7 +602,7 @@ class MainWindow(MSFluentWindow):
                 return
 
             logger.info("开始添加 BundleInterface 到导航栏（动态启用多资源适配）...")
-            logger.info(f"BundleInterface 对象: {self.BundleInterface}")
+            logger.info(f"BundleInterface 对象: {self.bundle_interface}")
 
             # 隐藏 Announcement（如果存在）并禁用其功能
             try:
@@ -639,8 +639,8 @@ class MainWindow(MSFluentWindow):
                 )
 
             # 首先确保 BundleInterface 被添加到 stackedWidget
-            if self.stackedWidget.indexOf(self.BundleInterface) == -1:
-                self.stackedWidget.addWidget(self.BundleInterface)
+            if self.stackedWidget.indexOf(self.bundle_interface) == -1:
+                self.stackedWidget.addWidget(self.bundle_interface)
                 logger.info("BundleInterface 已添加到 stackedWidget")
 
             # 添加 Bundle 到导航栏（在 Setting 之前）
@@ -653,7 +653,7 @@ class MainWindow(MSFluentWindow):
                     FIF.FOLDER,
                     self.tr("Bundle"),
                     onClick=lambda: self.stackedWidget.setCurrentWidget(
-                        self.BundleInterface
+                        self.bundle_interface
                     ),
                     selectable=True,
                     position=NavigationItemPosition.BOTTOM,
@@ -663,7 +663,7 @@ class MainWindow(MSFluentWindow):
                 # 如果 insertItem 失败，使用 addSubInterface
                 logger.warning(f"insertItem 失败，使用 addSubInterface: {insert_exc}")
                 self.addSubInterface(
-                    self.BundleInterface,
+                    self.bundle_interface,
                     FIF.FOLDER,
                     self.tr("Bundle"),
                     position=NavigationItemPosition.BOTTOM,
@@ -677,13 +677,13 @@ class MainWindow(MSFluentWindow):
 
             logger.error(f"详细错误信息: {traceback.format_exc()}")
 
-    def initWindow(self):
+    def init_window(self):
         """初始化窗口设置。"""
         self.resize(1170, 760)
         self.setMinimumWidth(1170)
         self.setMinimumHeight(760)
         self.set_title()
-        self.setMicaEffectEnabled(cfg.get(cfg.micaEnabled))
+        self.setMicaEffectEnabled(cfg.get(cfg.mica_enabled))
         self._adjust_title_bar_for_macos()
 
         # 设置图标
@@ -699,9 +699,9 @@ class MainWindow(MSFluentWindow):
         self.setWindowIcon(QIcon(str(icon_path)))
 
         # 创建启动画面
-        self.splashScreen = SplashScreen(self.windowIcon(), self)
-        self.splashScreen.setIconSize(QSize(106, 106))
-        self.splashScreen.raise_()
+        self.splash_screen = SplashScreen(self.windowIcon(), self)
+        self.splash_screen.setIconSize(QSize(106, 106))
+        self.splash_screen.raise_()
 
         self._set_initial_geometry()
         self.show()
@@ -1056,7 +1056,7 @@ class MainWindow(MSFluentWindow):
             )
         return message
 
-    def connectSignalToSlot(self):
+    def connect_signal_to_slot(self):
         """连接信号到槽函数。"""
         global_signal_bus.mica_enable_changed.connect(self.setMicaEffectEnabled)
         global_signal_bus.title_changed.connect(self.set_title)
@@ -1114,7 +1114,7 @@ class MainWindow(MSFluentWindow):
     def _disable_hotkey_settings(self):
         """禁用快捷键设置界面。"""
         try:
-            setting_interface = getattr(self, "SettingInterface", None)
+            setting_interface = getattr(self, "setting_interface", None)
             if setting_interface and hasattr(setting_interface, "start_shortcut_card"):
                 # 禁用开始任务快捷键设置
                 if hasattr(setting_interface, "start_shortcut_card"):
@@ -1434,7 +1434,7 @@ class MainWindow(MSFluentWindow):
         """收集日志面板中的实时图片，归入“其他图片”。"""
         try:
             log_widget = getattr(
-                getattr(self, "TaskInterface", None), "log_output_widget", None
+                getattr(self, "task_interface", None), "log_output_widget", None
             )
             if not log_widget or not hasattr(log_widget, "collect_log_images"):
                 return []
@@ -1692,7 +1692,7 @@ class MainWindow(MSFluentWindow):
                 return
 
             log_widget = getattr(
-                getattr(self, "TaskInterface", None), "log_output_widget", None
+                getattr(self, "task_interface", None), "log_output_widget", None
             )
             if not log_widget or not hasattr(log_widget, "collect_log_images"):
                 return
@@ -2040,24 +2040,24 @@ class MainWindow(MSFluentWindow):
 
     def _build_tutorial_steps(self) -> list[TutorialStep]:
         def get_config_area():
-            task_interface = getattr(self, "TaskInterface", None)
+            task_interface = getattr(self, "task_interface", None)
             return getattr(task_interface, "config_selection", None)
 
         def get_task_area():
-            task_interface = getattr(self, "TaskInterface", None)
+            task_interface = getattr(self, "task_interface", None)
             return getattr(task_interface, "task_info", None)
 
         def get_monitor_area():
-            return getattr(self, "MonitorInterface", None)
+            return getattr(self, "monitor_interface", None)
 
         def get_log_button():
             log_widget = getattr(
-                getattr(self, "TaskInterface", None), "log_output_widget", None
+                getattr(self, "task_interface", None), "log_output_widget", None
             )
             return getattr(log_widget, "generate_log_zip_button", None)
 
         def get_special_button():
-            task_info = getattr(getattr(self, "TaskInterface", None), "task_info", None)
+            task_info = getattr(getattr(self, "task_interface", None), "task_info", None)
             return getattr(task_info, "switch_button", None)
 
         return [
@@ -2155,7 +2155,7 @@ class MainWindow(MSFluentWindow):
             logger.info("自动更新已在进行，跳过启动")
             return
 
-        setting_interface = getattr(self, "SettingInterface", None)
+        setting_interface = getattr(self, "setting_interface", None)
         if not self.service_coordinator or setting_interface is None:
             logger.warning(
                 "自动更新未启动：更新器未就绪，改为检查并执行 bundle 自动更新"
@@ -2251,7 +2251,7 @@ class MainWindow(MSFluentWindow):
                 # 需要重启完成更新，触发立即更新提示
                 self._auto_update_pending_restart = True
                 self._pending_auto_run = False
-                setting_interface = getattr(self, "SettingInterface", None)
+                setting_interface = getattr(self, "setting_interface", None)
                 logger.info(
                     "设置更新需要重启完成更新，auto_update=%s，设置页存在=%s",
                     cfg.get(cfg.auto_update),
@@ -2289,7 +2289,7 @@ class MainWindow(MSFluentWindow):
         if status == 2:
             self._auto_update_pending_restart = True
             self._pending_auto_run = False
-            setting_interface = getattr(self, "SettingInterface", None)
+            setting_interface = getattr(self, "setting_interface", None)
             logger.info(
                 "检测到需要重启完成更新，auto_update=%s，设置页存在=%s",
                 cfg.get(cfg.auto_update),
@@ -2321,7 +2321,7 @@ class MainWindow(MSFluentWindow):
             return
 
         # 检查是否有 bundle 需要更新
-        bundle_interface = getattr(self, "BundleInterface", None)
+        bundle_interface = getattr(self, "bundle_interface", None)
         if not bundle_interface:
             logger.warning("BundleInterface 不存在，无法启动 bundle 更新")
             global_signal_bus.all_updates_completed.emit()
@@ -2566,7 +2566,7 @@ class MainWindow(MSFluentWindow):
         """重写尺寸事件。"""
         super().resizeEvent(e)
         if hasattr(self, "splashScreen"):
-            self.splashScreen.resize(self.size())
+            self.splash_screen.resize(self.size())
         self._update_background_geometry()
         if hasattr(self, "_tutorial_overlay") and self._tutorial_overlay:
             self._tutorial_overlay.resize(self.size())
@@ -2592,11 +2592,11 @@ class MainWindow(MSFluentWindow):
         if getattr(self, "_hotkey_manager", None):
             self._hotkey_manager.shutdown()
 
-        self.themeListener.terminate()
-        self.themeListener.deleteLater()
+        self.theme_listener.terminate()
+        self.theme_listener.deleteLater()
 
         e.accept()
-        QTimer.singleShot(0, self.clear_thread_async)
+        QTimer.singleShot(0, self.clear_threads_async)
         super().closeEvent(e)
 
     def _onThemeChangedFinished(self):
@@ -2610,7 +2610,7 @@ class MainWindow(MSFluentWindow):
                 lambda: self.windowEffect.setMicaEffect(self.winId(), isDarkTheme()),
             )
 
-    def clear_thread_async(self):
+    def clear_threads_async(self):
         """异步清理线程和资源"""
         send_thread = getattr(self.service_coordinator.task_runner, "send_thread", None)
         # 兼容：旧版本 task_runner 可能没有暴露 send_thread，这里直接回落到全局单例
@@ -2680,7 +2680,7 @@ class MainWindow(MSFluentWindow):
 
     def _stop_update_workers(self):
         """停止更新相关线程/进程，避免退出时残留。"""
-        setting_interface = getattr(self, "settingInterface", None)
+        setting_interface = getattr(self, "setting_interface", None)
         if not setting_interface:
             return
 

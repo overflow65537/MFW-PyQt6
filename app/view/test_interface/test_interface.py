@@ -14,9 +14,9 @@ from PySide6.QtWidgets import (
 )
 from qfluentwidgets import BodyLabel, PrimaryPushButton
 
-from app.common.signal_bus import GlobalSignalBus
+from app.common.signal_bus import global_signal_bus
 from app.core.core import ServiceCoordinator
-from app.core.service.ScheduleService import (
+from app.core.service.schedule_service import (
     ScheduleEntry,
     SCHEDULE_SINGLE,
 )
@@ -32,7 +32,7 @@ class TestInterface(QWidget):
         self.service_coordinator = service_coordinator
         self._log_buffer: deque[str] = deque(maxlen=500)
         self._init_ui()
-        GlobalSignalBus.LogOutput.connect(self._on_log_output)
+        global_signal_bus.log_output.connect(self._on_log_output)
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -69,7 +69,7 @@ class TestInterface(QWidget):
     def _test_switch_config(self) -> None:
         configs = self.service_coordinator.config.list_configs()
         if not configs:
-            GlobalSignalBus.InfoBarRequested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning", "未找到任何配置，无法切换"
             )
             return
@@ -84,7 +84,7 @@ class TestInterface(QWidget):
             target_info = configs[0]
         target_id = target_info.get("item_id", "")
         if not target_id:
-            GlobalSignalBus.InfoBarRequested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning", "目标配置 ID 无效"
             )
             return
@@ -95,22 +95,22 @@ class TestInterface(QWidget):
             if success
             else "切换配置失败: {id}".format(id=target_id)
         )
-        GlobalSignalBus.InfoBarRequested.emit("info" if success else "error", msg)
+        global_signal_bus.info_bar_requested.emit("info" if success else "error", msg)
         logger.info("测试页面：切换配置 %s -> %s", current, target_id)
 
     def _test_run_tasks(self) -> None:
         if self.service_coordinator.run_manager.is_running:
-            GlobalSignalBus.InfoBarRequested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning", "任务流正在运行，无法重复启动"
             )
             return
-        GlobalSignalBus.InfoBarRequested.emit("info", "已触发任务流测试")
+        global_signal_bus.info_bar_requested.emit("info", "已触发任务流测试")
         asyncio.create_task(self.service_coordinator.run_tasks_flow())
 
     def _test_force_start(self) -> None:
         configs = self.service_coordinator.config.list_configs()
         if not configs:
-            GlobalSignalBus.InfoBarRequested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning", "未找到任何配置，无法强制运行"
             )
             return
@@ -118,7 +118,7 @@ class TestInterface(QWidget):
         if not current_id:
             current_id = configs[0].get("item_id", "")
         if not current_id:
-            GlobalSignalBus.InfoBarRequested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning", "当前配置 ID 不可用"
             )
             return
@@ -135,7 +135,7 @@ class TestInterface(QWidget):
             enabled=True,
             created_at=datetime.now(),
         )
-        GlobalSignalBus.InfoBarRequested.emit("info", "已发起强制运行")
+        global_signal_bus.info_bar_requested.emit("info", "已发起强制运行")
         asyncio.create_task(self.service_coordinator.schedule_service._force_start(entry))
 
     def _on_log_output(self, level: str, message: str) -> None:
