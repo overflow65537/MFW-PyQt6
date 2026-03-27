@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Dict, Any, Callable, Protocol, Optional
 from qfluentwidgets import (
     BodyLabel,
@@ -727,13 +728,14 @@ class ResourceSettingMixin:
             resource_task = option_service.task_service.get_task(_RESOURCE_)
             
             if resource_task:
+                updated_resource_task = deepcopy(resource_task)
                 # 更新 task_option（保留 resource 字段，将资源选项保存到 resource_options 字段）
-                if not isinstance(resource_task.task_option, dict):
-                    resource_task.task_option = {}
+                if not isinstance(updated_resource_task.task_option, dict):
+                    updated_resource_task.task_option = {}
                 
                 # 初始化 resource_options 字段（如果不存在）
-                if "resource_options" not in resource_task.task_option:
-                    resource_task.task_option["resource_options"] = {}
+                if "resource_options" not in updated_resource_task.task_option:
+                    updated_resource_task.task_option["resource_options"] = {}
                 
                 # 获取所有可能的资源选项名称（从所有资源中收集）
                 interface = self.service_coordinator.interface
@@ -744,7 +746,7 @@ class ResourceSettingMixin:
                 
                 # 对于不在当前资源选项列表中的选项，标记为 hidden（保留其值）
                 # 对于当前资源的选项，移除 hidden 标记（如果有）
-                existing_resource_options = resource_task.task_option["resource_options"].copy()
+                existing_resource_options = updated_resource_task.task_option["resource_options"].copy()
                 
                 for option_name in all_resource_option_names:
                     if option_name not in resource_option_names:
@@ -770,24 +772,24 @@ class ResourceSettingMixin:
                 
                 # 更新当前资源的选项值到 resource_options 字段（覆盖隐藏的选项）
                 existing_resource_options.update(resource_options)
-                resource_task.task_option["resource_options"] = existing_resource_options
+                updated_resource_task.task_option["resource_options"] = existing_resource_options
                 
                 # 确保不包含不应该保存到 Resource 任务的字段
                 fields_to_remove = ["gpu", "agent_timeout", "custom", "_speedrun_config", "controller_type", "adb", "win32"]
                 for field in fields_to_remove:
-                    if field in resource_task.task_option:
-                        del resource_task.task_option[field]
+                    if field in updated_resource_task.task_option:
+                        del updated_resource_task.task_option[field]
                 
                 # 清理根级别的旧资源选项（向后兼容，迁移到 resource_options）
                 old_keys_to_remove = [
-                    k for k in resource_task.task_option.keys() 
+                    k for k in updated_resource_task.task_option.keys() 
                     if k != "resource" and k != "resource_options" and k in all_resource_option_names
                 ]
                 for k in old_keys_to_remove:
-                    del resource_task.task_option[k]
+                    del updated_resource_task.task_option[k]
                 
                 # 保存任务
-                if not option_service.task_service.update_task(resource_task):
+                if not option_service.task_service.update_task(updated_resource_task):
                     logger.warning("资源选项保存失败")
                     return
                 

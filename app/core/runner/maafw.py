@@ -12,7 +12,7 @@ import re
 import sys
 import importlib.util
 from enum import Enum
-from typing import List, Dict
+from typing import Callable, List, Dict
 import subprocess
 import threading
 from pathlib import Path
@@ -63,7 +63,18 @@ from maa.resource import ResourceEventSink, Resource
 from maa.tasker import TaskerEventSink, Tasker
 from maa.context import ContextEventSink, Context
 
-from app.common.signal_bus import global_signal_bus
+
+_callback_emitter: Callable[[dict], None] | None = None
+
+
+def set_callback_emitter(emitter: Callable[[dict], None] | None) -> None:
+    global _callback_emitter
+    _callback_emitter = emitter
+
+
+def _emit_callback(payload: dict) -> None:
+    if _callback_emitter is not None:
+        _callback_emitter(payload)
 
 
 class MaaContextSink(ContextEventSink):
@@ -96,13 +107,13 @@ class MaaContextSink(ContextEventSink):
         content = content.replace("{task_id}", str(details.get("task_id", "")))
         content = content.replace("{list}", details.get("list", ""))
 
-        global_signal_bus.callback.emit(
+        _emit_callback(
             {"name": "context", "details": content, "display": display}
         )
 
         if msg == "Node.Recognition.Succeeded":
             if details.get("Abort", False):
-                global_signal_bus.callback.emit({"name": "abort"})
+                _emit_callback({"name": "abort"})
             if details.get("Notice", False):
                 pass
 
@@ -141,7 +152,7 @@ class MaaControllerEventSink(ControllerEventSink):
         noti_type: NotificationType,
         detail: ControllerEventSink.ControllerActionDetail,
     ):
-        # global_signal_bus.callback.emit({"name": "controller", "status": noti_type.value})
+        # 当前控制器动作通知暂未向上转发，如有需要可按 resource/task 的模式补齐。
         pass
 
 
@@ -155,7 +166,7 @@ class MaaResourceEventSink(ResourceEventSink):
         noti_type: NotificationType,
         detail: ResourceEventSink.ResourceLoadingDetail,
     ):
-        global_signal_bus.callback.emit({"name": "resource", "status": noti_type.value})
+        _emit_callback({"name": "resource", "status": noti_type.value})
 
 
 class MaaTaskerEventSink(TaskerEventSink):
@@ -168,7 +179,7 @@ class MaaTaskerEventSink(TaskerEventSink):
         noti_type: NotificationType,
         detail: TaskerEventSink.TaskerTaskDetail,
     ):
-        global_signal_bus.callback.emit(
+        _emit_callback(
             {"name": "task", "task": detail.entry, "status": noti_type.value}
         )
 

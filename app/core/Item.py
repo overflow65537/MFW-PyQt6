@@ -40,9 +40,21 @@ class FromServiceCoordinator(QObject):
     fs_task_removed = Signal(str)  # 文件系统任务移除，载荷为 task_id
     fs_config_added = Signal(object)  # 文件系统配置新增，载荷为 config
     fs_config_removed = Signal(str)  # 文件系统配置移除，载荷为 config_id
+    fs_config_changed = Signal(str)  # 当前配置切换，载荷为 config_id
     fs_start_button_status = Signal(
         dict
     )  # 控制开始按钮状态和文本，载荷如 {"text": "开始", "status": "enabled"}
+    fs_log_clear_requested = Signal()  # 请求清空日志面板
+    fs_info_bar_requested = Signal(str, str)  # 请求显示信息栏，载荷为 level, message
+    fs_callback = Signal(dict)  # Core 内部回调信号，供日志/任务流桥接使用
+    fs_log_output = Signal(str, str)  # 请求输出日志，载荷为 level, message
+    fs_focus_toast = Signal(str)  # 请求前台 toast
+    fs_focus_notification = Signal(str)  # 请求系统通知
+    fs_focus_dialog = Signal(str)  # 请求对话框提示
+    fs_focus_modal = Signal(str)  # 请求模态提示
+    fs_task_status_changed = Signal(str, str)  # 任务状态变化，载荷为 task_id, status
+    fs_task_flow_finished = Signal(dict)  # 任务流完成，载荷为状态字典
+    fs_set_window_title = Signal(str)  # 请求设置窗口标题
 
 
 # ==================== 数据模型 ====================

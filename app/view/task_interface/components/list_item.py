@@ -1,5 +1,6 @@
 import asyncio
 import re
+from copy import deepcopy
 from pathlib import Path
 
 import shiboken6
@@ -398,7 +399,7 @@ class BaseListItem(QWidget):
 
 # 任务列表项组件
 class TaskListItem(BaseListItem):
-    checkbox_changed = Signal(object)  # 发射 TaskItem 对象
+    checkbox_changed = Signal(str, bool)  # 发射 task_id 和勾选状态
 
     def __init__(
         self,
@@ -840,9 +841,8 @@ class TaskListItem(BaseListItem):
     def on_checkbox_changed(self, state):
         # 复选框状态变更处理
         is_checked = state == 2
-        self.task.is_checked = is_checked
-        # 发射信号通知父组件更新
-        self.checkbox_changed.emit(self.task)
+        # 发射信号通知父组件更新，由 Service 层处理状态落盘
+        self.checkbox_changed.emit(self.task.item_id, is_checked)
 
     def contextMenuEvent(self, event):
         """右键菜单：单独运行任务、插入任务"""
@@ -1372,16 +1372,16 @@ class ConfigListItem(BaseListItem):
             new_name = dialog.get_new_name()
             if new_name and new_name.strip() and new_name != current_name:
                 new_name = new_name.strip()
-
-                # 更新配置项的 name
-                self.item.name = new_name
+                updated_config = deepcopy(self.item)
+                updated_config.name = new_name
 
                 # 保存配置
                 try:
                     success = self.service_coordinator.config.save_config(
-                        self.item.item_id, self.item
+                        updated_config.item_id, updated_config
                     )
                     if success:
+                        self.item = updated_config
                         # 更新显示的标签文本
                         self.name_label.setText(new_name)
 

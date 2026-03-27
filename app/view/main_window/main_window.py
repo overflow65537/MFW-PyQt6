@@ -1058,6 +1058,40 @@ class MainWindow(MSFluentWindow):
 
     def connect_signal_to_slot(self):
         """连接信号到槽函数。"""
+        global_signal_bus.fs_reinit_requested.connect(self.service_coordinator.reinit)
+        self.service_coordinator.fs_signal_bus.fs_log_clear_requested.connect(
+            global_signal_bus.log_clear_requested
+        )
+        self.service_coordinator.fs_signal_bus.fs_config_changed.connect(
+            global_signal_bus.config_changed
+        )
+        self.service_coordinator.fs_signal_bus.fs_info_bar_requested.connect(
+            global_signal_bus.info_bar_requested
+        )
+        self.service_coordinator.fs_signal_bus.fs_log_output.connect(
+            global_signal_bus.log_output
+        )
+        self.service_coordinator.fs_signal_bus.fs_focus_toast.connect(
+            global_signal_bus.focus_toast
+        )
+        self.service_coordinator.fs_signal_bus.fs_focus_notification.connect(
+            global_signal_bus.focus_notification
+        )
+        self.service_coordinator.fs_signal_bus.fs_focus_dialog.connect(
+            global_signal_bus.focus_dialog
+        )
+        self.service_coordinator.fs_signal_bus.fs_focus_modal.connect(
+            global_signal_bus.focus_modal
+        )
+        self.service_coordinator.fs_signal_bus.fs_task_status_changed.connect(
+            global_signal_bus.task_status_changed
+        )
+        self.service_coordinator.fs_signal_bus.fs_task_flow_finished.connect(
+            global_signal_bus.task_flow_finished
+        )
+        self.service_coordinator.fs_signal_bus.fs_set_window_title.connect(
+            global_signal_bus.set_window_title
+        )
         global_signal_bus.mica_enable_changed.connect(self.setMicaEffectEnabled)
         global_signal_bus.title_changed.connect(self.set_title)
         global_signal_bus.set_window_title.connect(self.setWindowTitle)

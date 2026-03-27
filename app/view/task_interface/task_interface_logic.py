@@ -78,14 +78,6 @@ class TaskInterface(UI_TaskInterface, QWidget):
                     self.start_bar.run_button.setEnabled(True)
                     return
 
-                # 同步内存态：确保服务层当前任务列表中只有该特殊任务被视为选中，但不落盘
-                try:
-                    for task in self.service_coordinator.task.get_tasks():
-                        if task.is_special:
-                            task.is_checked = task.item_id == target_task.item_id
-                except Exception:
-                    pass
-
                 def _start_special_task():
                     asyncio.create_task(
                         self.service_coordinator.run_tasks_flow(task_id=target_task.item_id)

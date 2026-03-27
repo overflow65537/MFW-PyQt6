@@ -3,6 +3,7 @@ import re
 import tempfile
 import urllib.parse
 import urllib.request
+from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Any
 
@@ -456,11 +457,14 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         merged_cfg = task_service.build_speedrun_config(task.name, existing_cfg)
 
         # 如果缺失或需要修正，持久化到任务
-        if not isinstance(task.task_option, dict):
-            task.task_option = {}
-        if task.task_option.get("_speedrun_config") != merged_cfg:
-            task.task_option["_speedrun_config"] = merged_cfg
-            task_service.update_task(task)
+        task_option = task.task_option if isinstance(task.task_option, dict) else {}
+        if task_option.get("_speedrun_config") != merged_cfg:
+            updated_task = deepcopy(task)
+            if not isinstance(updated_task.task_option, dict):
+                updated_task.task_option = {}
+            updated_task.task_option["_speedrun_config"] = merged_cfg
+            task_service.update_task(updated_task)
+            task = updated_task
 
         try:
             option_service.current_options["_speedrun_config"] = merged_cfg

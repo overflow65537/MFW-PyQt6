@@ -21,7 +21,6 @@ from app.core.service.task_service import TaskService
 from app.core.runner.task_flow import TaskFlowRunner
 from app.core.log_processor import CallbackLogProcessor
 from app.utils.logger import logger
-from app.common.signal_bus import global_signal_bus
 
 
 class ServiceCoordinator:
@@ -98,7 +97,7 @@ class ServiceCoordinator:
         self.schedule_service = ScheduleService(self, schedule_store)
 
         # 初始化日志处理器（将 callback 信号转换为 log_output 信号）
-        self.log_processor = CallbackLogProcessor()
+        self.log_processor = CallbackLogProcessor(self.fs_signal_bus)
 
         # 连接信号
         self._connect_signals()
@@ -565,7 +564,6 @@ class ServiceCoordinator:
         # UI请求保存配置
         self.signal_bus.need_save.connect(self._on_need_save)
         # 热更新完成后重新初始化
-        global_signal_bus.fs_reinit_requested.connect(self.reinit)
 
     def _on_config_changed(self, config_id: str):
         """配置变化后刷新内部服务状态"""

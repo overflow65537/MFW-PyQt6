@@ -11,7 +11,6 @@ from typing import Any, Callable, Deque, List, Optional, TYPE_CHECKING
 import jsonc
 from PySide6.QtCore import QObject, Signal
 
-from app.common.signal_bus import global_signal_bus
 from app.utils.logger import logger
 
 if TYPE_CHECKING:
@@ -511,7 +510,8 @@ class ScheduleService(QObject):
             return
 
     async def _execute_entry(self, entry: ScheduleEntry) -> None:
-        global_signal_bus.log_clear_requested.emit()
+        if self.service_coordinator.fs_signal_bus:
+            self.service_coordinator.fs_signal_bus.fs_log_clear_requested.emit()
         self._log_info(f"计划任务：{entry.name} ({entry.describe()}) 开始执行")
         original_config = self.service_coordinator.config.current_config_id
         switched = False
@@ -522,7 +522,10 @@ class ScheduleService(QObject):
                 self._current_task = None
                 await self._try_start_next()
                 return
-            global_signal_bus.config_changed.emit(entry.config_id)
+            if self.service_coordinator.fs_signal_bus:
+                self.service_coordinator.fs_signal_bus.fs_config_changed.emit(
+                    entry.config_id
+                )
             logger.info(
                 "计划任务：配置切换完成，当前配置 %s",
                 self.service_coordinator.config.current_config_id,
@@ -544,4 +547,7 @@ class ScheduleService(QObject):
 
     def _log_info(self, message: str) -> None:
         logger.info(message)
-        global_signal_bus.info_bar_requested.emit("INFO", message)
+        if self.service_coordinator.fs_signal_bus:
+            self.service_coordinator.fs_signal_bus.fs_info_bar_requested.emit(
+                "INFO", message
+            )

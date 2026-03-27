@@ -477,13 +477,21 @@ class TaskDragListWidget(BaseListWidget):
         task_list = [t for t in all_tasks if self._should_include(t)]
         if self._filter_mode == "special":
             # 特殊任务仅允许单选，若有多个选中则只保留第一个
-            first_checked = False
+            first_checked_task_id = None
+            has_duplicate_checked = False
             for t in task_list:
-                if t.is_checked and not first_checked:
-                    first_checked = True
+                if t.is_checked and first_checked_task_id is None:
+                    first_checked_task_id = t.item_id
                     continue
                 if t.is_checked:
-                    t.is_checked = False
+                    has_duplicate_checked = True
+            if first_checked_task_id and has_duplicate_checked:
+                QTimer.singleShot(
+                    0,
+                    lambda task_id=first_checked_task_id: self.service_coordinator.update_task_checked(
+                        task_id, True
+                    ),
+                )
         self._pending_tasks = task_list
         self._render_index = 0
         self._loading_tasks = bool(task_list)
@@ -791,21 +799,12 @@ class TaskDragListWidget(BaseListWidget):
         if hasattr(self, "_loading_overlay"):
             self._loading_overlay.setGeometry(self.viewport().geometry())
 
-    def _on_task_checkbox_changed(self, task: TaskItem):
+    def _on_task_checkbox_changed(self, task_id: str, is_checked: bool):
         """复选框状态变更信号转发"""
-        if task.is_base_task():
+        task = self.service_coordinator.task.get_task(task_id)
+        if not task or task.is_base_task():
             return
-        if self._filter_mode == "special" and task.is_checked:
-            # 单选：取消其它特殊任务的勾选
-            for item_id, widget in list(self._task_widgets.items()):
-                if item_id == task.item_id:
-                    continue
-                if widget.checkbox.isChecked():
-                    widget.checkbox.blockSignals(True)
-                    widget.checkbox.setChecked(False)
-                    widget.checkbox.blockSignals(False)
-                    widget.task.is_checked = False
-        self.service_coordinator.update_task_checked(task.item_id, task.is_checked)
+        self.service_coordinator.update_task_checked(task_id, is_checked)
 
     def select_all(self) -> None:
         """批量勾选当前列表中的任务（基础任务除外）。"""
