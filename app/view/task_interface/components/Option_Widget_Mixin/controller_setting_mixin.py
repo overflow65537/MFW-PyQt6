@@ -1198,51 +1198,42 @@ class ControllerSettingWidget(QWidget):
             options_to_save = self._normalize_config_for_json(options_to_save)
             ok = self.service_coordinator.update_selected_options(options_to_save)
             # 强制同步到预配置任务，确保落盘
-            from app.common.constants import _CONTROLLER_
-
-            task = self.service_coordinator.get_task(_CONTROLLER_)
-            if task:
-                # 只保存应该保存到 Controller 任务的字段
-                # Controller 任务应该包含：controller_type, gpu, agent_timeout, custom, 以及控制器特定的配置（如 adb, win32）
-                controller_task_option = {}
-                # 保存基础字段
-                if "controller_type" in self.current_config:
-                    controller_task_option["controller_type"] = self.current_config[
-                        "controller_type"
-                    ]
-                if "gpu" in self.current_config:
-                    controller_task_option["gpu"] = self.current_config["gpu"]
-                if "agent_timeout" in self.current_config:
-                    controller_task_option["agent_timeout"] = self.current_config[
-                        "agent_timeout"
-                    ]
-                if "custom" in self.current_config:
-                    controller_task_option["custom"] = self.current_config["custom"]
-                # 保存控制器特定的配置（使用控制器名称作为键）
-                # 遍历所有控制器名称，保存其配置
-                for controller_info in self.controller_type_mapping.values():
-                    controller_name = controller_info["name"]
-                    if controller_name in self.current_config:
-                        # 规范化配置数据，确保所有路径类型都被转换为字符串
-                        controller_task_option[controller_name] = (
-                            self._normalize_config_for_json(
-                                self.current_config[controller_name]
-                            )
+            # 只保存应该保存到 Controller 任务的字段
+            # Controller 任务应该包含：controller_type, gpu, agent_timeout, custom, 以及控制器特定的配置（如 adb, win32）
+            controller_task_option = {}
+            # 保存基础字段
+            if "controller_type" in self.current_config:
+                controller_task_option["controller_type"] = self.current_config[
+                    "controller_type"
+                ]
+            if "gpu" in self.current_config:
+                controller_task_option["gpu"] = self.current_config["gpu"]
+            if "agent_timeout" in self.current_config:
+                controller_task_option["agent_timeout"] = self.current_config[
+                    "agent_timeout"
+                ]
+            if "custom" in self.current_config:
+                controller_task_option["custom"] = self.current_config["custom"]
+            # 保存控制器特定的配置（使用控制器名称作为键）
+            # 遍历所有控制器名称，保存其配置
+            for controller_info in self.controller_type_mapping.values():
+                controller_name = controller_info["name"]
+                if controller_name in self.current_config:
+                    # 规范化配置数据，确保所有路径类型都被转换为字符串
+                    controller_task_option[controller_name] = (
+                        self._normalize_config_for_json(
+                            self.current_config[controller_name]
                         )
+                    )
 
-                # 更新任务选项（只更新相关字段，保留其他字段）
-                # 规范化整个 controller_task_option，确保所有路径类型都被转换为字符串
-                controller_task_option = self._normalize_config_for_json(
-                    controller_task_option
-                )
-                task.task_option.update(controller_task_option)
-                # 确保不包含 speedrun_config
-                if "_speedrun_config" in task.task_option:
-                    del task.task_option["_speedrun_config"]
-                if not self.service_coordinator.update_task(task):
-                    logger.warning("控制器设置强制保存失败")
-            else:
-                logger.warning("未找到 Controller 任务，无法保存控制器设置")
+            # 规范化整个 controller_task_option，确保所有路径类型都被转换为字符串
+            controller_task_option = self._normalize_config_for_json(
+                controller_task_option
+            )
+            if not self.service_coordinator.save_controller_task_options(
+                controller_task_option
+            ):
+                logger.warning("控制器设置强制保存失败")
 
             if not ok:
                 logger.warning("资源设置保存返回 False（已尝试强制保存）")

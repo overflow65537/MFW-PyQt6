@@ -456,6 +456,227 @@ class TaskService:
                 self.update_task(task)
         return normalized
 
+    def get_task_speedrun_payload(
+        self, task_id: str
+    ) -> tuple[TaskItem | None, Dict[str, Any] | None, Dict[str, Any]]:
+        """获取任务的速通配置与运行时状态，必要时在 Service 内完成标准化持久化。"""
+        task = self.get_task(task_id)
+        if not task:
+            return None, None, {}
+
+        if getattr(task, "is_special", False):
+            return task, None, {}
+
+        original_options = deepcopy(task.task_option)
+        updated_task = deepcopy(task)
+        normalized = self.ensure_speedrun_config_for_task(updated_task, persist=False)
+
+        if updated_task.task_option != original_options:
+            self.update_task(updated_task)
+            task = updated_task
+
+        state = {}
+        if isinstance(task.task_option, dict):
+            state = task.task_option.get("_speedrun_state", {}) or {}
+
+        return task, normalized, state
+
+    def save_post_action_option(self, option_key: str, payload: Any) -> bool:
+        """保存 Post-Action 任务中的单个配置片段。"""
+        task = self.get_task(POST_ACTION)
+        if not task:
+            return False
+
+        updated_task = deepcopy(task)
+        if not isinstance(updated_task.task_option, dict):
+            updated_task.task_option = {}
+        updated_task.task_option[option_key] = payload
+        updated_task.task_option.pop("_speedrun_config", None)
+        return self.update_task(updated_task)
+
+    def save_controller_task_options(self, controller_task_option: Dict[str, Any]) -> bool:
+        """保存 Controller 任务的配置片段。"""
+        task = self.get_task(_CONTROLLER_)
+        if not task:
+            return False
+
+        updated_task = deepcopy(task)
+        if not isinstance(updated_task.task_option, dict):
+            updated_task.task_option = {}
+        updated_task.task_option.update(controller_task_option)
+        updated_task.task_option.pop("_speedrun_config", None)
+        return self.update_task(updated_task)
+
+    def update_resource_options_hidden_state(
+        self, current_resource_option_names: List[str]
+    ) -> bool:
+        """更新 Resource 任务中资源选项的 hidden 状态。"""
+        task = self.get_task(_RESOURCE_)
+        if not task or not isinstance(task.task_option, dict):
+            return False
+        if "resource_options" not in task.task_option:
+            return False
+
+        updated_task = deepcopy(task)
+        resource_options = updated_task.task_option.get("resource_options", {})
+        if not isinstance(resource_options, dict):
+            return False
+
+        all_resource_option_names = set()
+        for resource in self.interface.get("resource", []):
+            all_resource_option_names.update(resource.get("option", []))
+
+        has_changes = False
+        for option_name in all_resource_option_names:
+            if option_name not in resource_options:
+                continue
+
+            existing_value = resource_options[option_name]
+            if option_name not in current_resource_option_names:
+                if isinstance(existing_value, dict):
+                    if not existing_value.get("hidden", False):
+                        resource_options[option_name] = {**existing_value, "hidden": True}
+                        has_changes = True
+                else:
+                    resource_options[option_name] = {
+                        "value": existing_value,
+                        "hidden": True,
+                    }
+                    has_changes = True
+                continue
+
+            if isinstance(existing_value, dict) and existing_value.get("hidden", False):
+                new_value = {k: v for k, v in existing_value.items() if k != "hidden"}
+                if len(new_value) == 1 and "value" in new_value:
+                    resource_options[option_name] = new_value["value"]
+                else:
+                    resource_options[option_name] = new_value
+                has_changes = True
+
+        if not has_changes:
+            return True
+
+        updated_task.task_option["resource_options"] = resource_options
+        return self.update_task(updated_task)
+
+    def get_resource_option_config(self, form_structure: Dict[str, Any]) -> Dict[str, Any]:
+        """读取并规范化当前 Resource 任务的资源选项配置。"""
+        task = self.get_task(_RESOURCE_)
+        if not task:
+            return {}
+
+        updated_task = deepcopy(task)
+        if not isinstance(updated_task.task_option, dict):
+            updated_task.task_option = {}
+
+        has_changes = False
+        for field in RESOURCE_TASK_FORBIDDEN_FIELDS:
+            if field in updated_task.task_option:
+                del updated_task.task_option[field]
+                has_changes = True
+
+        resource_options = updated_task.task_option.get("resource_options", {})
+        if not isinstance(resource_options, dict):
+            resource_options = {}
+            updated_task.task_option["resource_options"] = resource_options
+            has_changes = True
+
+        old_resource_options = {
+            key: value
+            for key, value in updated_task.task_option.items()
+            if key not in ("resource", "resource_options") and key in form_structure
+        }
+        if old_resource_options:
+            merged_options = {**old_resource_options, **resource_options}
+            updated_task.task_option["resource_options"] = merged_options
+            for key in old_resource_options:
+                updated_task.task_option.pop(key, None)
+            resource_options = merged_options
+            has_changes = True
+
+        if has_changes:
+            self.update_task(updated_task)
+
+        option_config: Dict[str, Any] = {}
+        for key, value in resource_options.items():
+            if key not in form_structure:
+                continue
+            if isinstance(value, dict) and value.get("hidden", False):
+                continue
+            if isinstance(value, dict) and "hidden" in value:
+                value = {k: v for k, v in value.items() if k != "hidden"}
+                if len(value) == 1 and "value" in value:
+                    value = value["value"]
+            option_config[key] = value
+
+        return option_config
+
+    def save_resource_options(
+        self, current_resource_option_names: List[str], resource_options: Dict[str, Any]
+    ) -> bool:
+        """保存当前资源对应的 Resource 选项，并维护 hidden/兼容迁移。"""
+        task = self.get_task(_RESOURCE_)
+        if not task:
+            return False
+
+        updated_task = deepcopy(task)
+        if not isinstance(updated_task.task_option, dict):
+            updated_task.task_option = {}
+        existing_resource_options = updated_task.task_option.get("resource_options", {})
+        if not isinstance(existing_resource_options, dict):
+            existing_resource_options = {}
+
+        all_resource_option_names = set()
+        for resource in self.interface.get("resource", []):
+            all_resource_option_names.update(resource.get("option", []))
+
+        existing_resource_options = deepcopy(existing_resource_options)
+        for option_name in all_resource_option_names:
+            if option_name not in current_resource_option_names:
+                if option_name not in existing_resource_options:
+                    continue
+                existing_value = existing_resource_options[option_name]
+                if isinstance(existing_value, dict):
+                    existing_resource_options[option_name] = {
+                        **existing_value,
+                        "hidden": True,
+                    }
+                else:
+                    existing_resource_options[option_name] = {
+                        "value": existing_value,
+                        "hidden": True,
+                    }
+                continue
+
+            if option_name in existing_resource_options:
+                existing_value = existing_resource_options[option_name]
+                if isinstance(existing_value, dict) and "hidden" in existing_value:
+                    cleaned_value = {
+                        key: value
+                        for key, value in existing_value.items()
+                        if key != "hidden"
+                    }
+                    if len(cleaned_value) == 1 and "value" in cleaned_value:
+                        cleaned_value = cleaned_value["value"]
+                    existing_resource_options[option_name] = cleaned_value
+
+        existing_resource_options.update(resource_options)
+        updated_task.task_option["resource_options"] = existing_resource_options
+
+        for field in RESOURCE_TASK_FORBIDDEN_FIELDS:
+            updated_task.task_option.pop(field, None)
+
+        old_keys_to_remove = [
+            key
+            for key in list(updated_task.task_option.keys())
+            if key not in ("resource", "resource_options")
+            and key in all_resource_option_names
+        ]
+        for key in old_keys_to_remove:
+            del updated_task.task_option[key]
+
+        return self.update_task(updated_task)
+
     def get_current_resource_name(self) -> str:
         """获取当前 Resource 任务中保存的资源名称。"""
         res_task = self.get_task(_RESOURCE_)

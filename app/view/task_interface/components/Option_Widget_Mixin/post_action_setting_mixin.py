@@ -429,19 +429,9 @@ class PostActionSettingMixin:
             self.current_config[self._CONFIG_KEY] = payload
             ok = self.service_coordinator.update_selected_option(self._CONFIG_KEY, payload)
             if not ok:
-                # 兜底：直接更新 POST_ACTION 任务后再持久化
-                from app.common.constants import POST_ACTION
-
-                task = self.service_coordinator.get_task(POST_ACTION)
-                if task:
-                    # 只保存 post_action 字段，不保存其他字段（如 speedrun_config 等）
-                    task.task_option[self._CONFIG_KEY] = payload
-                    # 确保不包含 speedrun_config
-                    if "_speedrun_config" in task.task_option:
-                        del task.task_option["_speedrun_config"]
-                    if not self.service_coordinator.update_task(task):
-                        logger.warning("完成后操作配置兜底保存失败")
-                else:
+                if not self.service_coordinator.save_post_action_option(
+                    self._CONFIG_KEY, payload
+                ):
                     logger.warning("未找到 Post-Action 任务，无法保存完成后操作配置")
         except Exception as exc:
             logger.error(f"保存完成后操作配置失败: {exc}")
