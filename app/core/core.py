@@ -778,6 +778,7 @@ class ServiceCoordinator:
                 continue
             bundles.append(
                 {
+                    "id": str(name),
                     "name": str(info.get("name", name)),
                     "path": str(info.get("path", "")),
                 }
