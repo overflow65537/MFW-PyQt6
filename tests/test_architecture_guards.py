@@ -81,6 +81,30 @@ class ArchitectureGuardTests(unittest.TestCase):
         self.assertIn("CoreSignalBus", class_names)
         self.assertIn("FromServiceCoordinator", class_names)
 
+    def test_core_signal_bus_does_not_contain_command_signals(self):
+        tree = _parse_python_file(EVENTS_FILE)
+        forbidden_names = {"need_save", "task_selected"}
+        core_signal_bus = None
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name == "CoreSignalBus":
+                core_signal_bus = node
+                break
+
+        self.assertIsNotNone(core_signal_bus, msg="CoreSignalBus 必须存在")
+
+        assigned_names = set()
+        for stmt in core_signal_bus.body:
+            if isinstance(stmt, ast.Assign):
+                for target in stmt.targets:
+                    if isinstance(target, ast.Name):
+                        assigned_names.add(target.id)
+
+        self.assertTrue(
+            forbidden_names.isdisjoint(assigned_names),
+            msg="CoreSignalBus 中禁止出现命令型信号 need_save 和 task_selected",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
