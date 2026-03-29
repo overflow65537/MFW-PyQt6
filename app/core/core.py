@@ -766,6 +766,16 @@ class ServiceCoordinator:
         """获取 bundle 配置。"""
         return self.config_service.get_bundle(bundle_name)
 
+    def get_current_config(self) -> ConfigItem | None:
+        """获取当前配置。"""
+        return self.config_service.get_current_config()
+
+    def get_bundle_path_for_config(self, config: ConfigItem | None) -> str:
+        """获取指定配置对应的 bundle 路径。"""
+        if config is None:
+            return ""
+        return self.config_service.get_bundle_path_for_config(config)
+
     def get_task(self, task_id: str) -> TaskItem | None:
         """获取当前配置中的任务。"""
         return self.task_service.get_task(task_id)
