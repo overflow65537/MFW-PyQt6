@@ -830,6 +830,10 @@ class ServiceCoordinator:
         """批量更新当前选中任务的选项。"""
         return self.option_service.update_options(options)
 
+    def save_post_action_option(self, option_key: str, payload: Any) -> bool:
+        """保存 Post-Action 任务中的单个配置片段。"""
+        return self.task_service.save_post_action_option(option_key, payload)
+
     def build_speedrun_config(
         self, task_name: str, existing: Dict[str, Any] | None = None
     ) -> Dict[str, Any]:
