@@ -789,15 +789,9 @@ class LogoutputWidget(QWidget):
         if not self.service_coordinator:
             return self.tr("System")
         try:
-            runner = getattr(self.service_coordinator, "run_manager", None)
-            task_id = getattr(runner, "_current_running_task_id", None)
-            if not task_id:
-                return self.tr("System")
-            task_service = getattr(self.service_coordinator, "task", None)
-            tasks = task_service.get_tasks() if task_service else []
-            for t in tasks or []:
-                if getattr(t, "item_id", None) == task_id:
-                    return str(getattr(t, "name", "")) or self.tr("System")
+            task_name = self.service_coordinator.get_current_running_task_name()
+            if task_name:
+                return task_name
         except Exception:
             return self.tr("System")
         return self.tr("System")

@@ -768,6 +768,22 @@ class ServiceCoordinator:
         """获取 bundle 配置。"""
         return self.config_service.get_bundle(bundle_name)
 
+    def get_bundle_choices(self) -> List[Dict[str, str]]:
+        """获取可供界面展示的 bundle 列表。"""
+        bundles: List[Dict[str, str]] = []
+        for name in self.config_service.list_bundles():
+            try:
+                info = self.config_service.get_bundle(name)
+            except FileNotFoundError:
+                continue
+            bundles.append(
+                {
+                    "name": str(info.get("name", name)),
+                    "path": str(info.get("path", "")),
+                }
+            )
+        return bundles
+
     def get_current_config(self) -> ConfigItem | None:
         """获取当前配置。"""
         return self.config_service.get_current_config()
@@ -788,6 +804,22 @@ class ServiceCoordinator:
     def get_task(self, task_id: str) -> TaskItem | None:
         """获取当前配置中的任务。"""
         return self.task_service.get_task(task_id)
+
+    def get_default_task_map(self) -> Dict[str, Any]:
+        """获取当前 interface 生成的默认任务选项映射。"""
+        return dict(getattr(self.task_service, "default_option", {}))
+
+    def get_current_running_task_name(self) -> str | None:
+        """返回当前运行中的任务名称。"""
+        runner = getattr(self, "run_manager", None)
+        task_id = getattr(runner, "_current_running_task_id", None)
+        if not task_id:
+            return None
+
+        task = self.task_service.get_task(task_id)
+        if task is None:
+            return None
+        return str(getattr(task, "name", "") or "") or None
 
     def update_task(self, task: TaskItem, idx: int = -2) -> bool:
         """更新任务。"""
