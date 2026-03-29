@@ -765,6 +765,7 @@ class ServiceCoordinator:
             return False
 
     # region 配置域入口
+    # 固定顺序：bundle 查询 -> config 查询 -> config 路径/列表 -> global option
 
     def get_bundle(self, bundle_name: str) -> Dict[str, Any]:
         """获取 bundle 配置。"""
@@ -827,6 +828,7 @@ class ServiceCoordinator:
     # endregion
 
     # region 任务域入口
+    # 固定顺序：task 查询 -> controller/resource 投影 -> option 查询/写入 -> task 预览/辅助
 
     def get_task(self, task_id: str) -> TaskItem | None:
         """获取当前配置中的任务。"""
@@ -1051,6 +1053,7 @@ class ServiceCoordinator:
     # endregion
 
     # region 运行时入口
+    # 固定顺序：运行状态查询 -> 运行时辅助对象 -> 运行时清理
 
     def get_current_running_task_name(self) -> str | None:
         """返回当前运行中的任务名称。"""
@@ -1091,8 +1094,6 @@ class ServiceCoordinator:
         if maafw.agent:
             maafw.agent.disconnect()
         maafw.agent = None
-
-    # endregion
 
     # endregion
 
