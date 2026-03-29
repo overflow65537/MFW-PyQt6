@@ -181,10 +181,8 @@ class TaskInterface(UI_TaskInterface, QWidget):
                 # 只对普通任务列表清除选中状态
                 if hasattr(task_list, '_filter_mode') and task_list._filter_mode != "special":
                     # 先清除选项服务的状态，避免状态不一致
-                    if self.service_coordinator and hasattr(self.service_coordinator, 'option'):
-                        option_service = self.service_coordinator.option
-                        if hasattr(option_service, 'clear_selection'):
-                            option_service.clear_selection()
+                    if self.service_coordinator:
+                        self.service_coordinator.clear_task_selection()
                     # 使用 setCurrentRow(-1) 完全清除选中状态
                     # 这会触发 currentItemChanged 信号（current 为 None），确保状态完全清除
                     task_list.setCurrentRow(-1)

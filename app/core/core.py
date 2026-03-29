@@ -958,6 +958,10 @@ class ServiceCoordinator:
         """返回当前选中的任务 ID。"""
         return getattr(self.option_service, "current_task_id", None)
 
+    def clear_task_selection(self) -> None:
+        """清空当前任务选择。"""
+        self.option_service.clear_selection()
+
     def get_current_options(self) -> Dict[str, Any]:
         """获取当前选中的任务选项。"""
         return self.option_service.get_options()
@@ -1184,6 +1188,10 @@ class ServiceCoordinator:
     async def stop_task(self, *, manual: bool = False):
         """停止当前任务流（供内部/调度等模块调用，可指定是否视为手动停止）。"""
         return await self.task_runner.stop_task(manual=manual)
+
+    def is_task_flow_running(self) -> bool:
+        """返回任务流是否正在运行。"""
+        return bool(getattr(self.task_runner, "is_running", False))
 
     def create_monitor_task(self) -> MonitorTask:
         """创建监控任务实例。"""

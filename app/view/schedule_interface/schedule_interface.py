@@ -460,14 +460,18 @@ class ScheduleInterface(QWidget):
         return card
 
     def _refresh_config_selector(self) -> None:
-        configs = self.service_coordinator.config.list_configs()
+        configs = self.service_coordinator.get_available_config_choices()
 
         self.config_selector.blockSignals(True)
         self.config_selector.clear()
         self._config_map.clear()
         for config in configs:
-            name = str(config.get("name") or config.get("item_id") or "")
-            raw_id = config.get("item_id", "")
+            if isinstance(config, tuple):
+                raw_id, raw_name = config
+            else:
+                raw_id = config.get("item_id", "")
+                raw_name = config.get("name")
+            name = str(raw_name or raw_id or "")
             if not raw_id:
                 continue
             config_id = str(raw_id)
