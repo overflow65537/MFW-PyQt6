@@ -23,21 +23,6 @@ VIEW_CAPABILITY_FUNCTION_PATTERN = re.compile(
     r"def\s+_(?:should_show_by_resource|should_show_by_controller)\s*\("
 )
 
-DIRECT_SERVICE_ACCESS_ALLOWLIST = {
-    "app/view/bundle_interface/bundle_interface.py",
-    "app/view/monitor_interface/monitor_interface.py",
-    "app/view/setting_interface/setting_interface.py",
-    "app/view/task_interface/components/logoutput_widget.py",
-    "app/view/task_interface/components/monitor_widget.py",
-}
-
-MODEL_MUTATION_ALLOWLIST = {
-    "app/view/task_interface/components/option_widget.py",
-    "app/view/task_interface/components/option_widget_mixin/controller_setting_mixin.py",
-    "app/view/task_interface/components/option_widget_mixin/post_action_setting_mixin.py",
-    "app/view/task_interface/components/option_widget_mixin/resource_setting_mixin.py",
-}
-
 
 def _iter_python_files(root: Path):
     return sorted(path for path in root.rglob("*.py") if path.is_file())
@@ -81,36 +66,34 @@ class ArchitectureGuardTests(unittest.TestCase):
             msg="View 层禁止直接 emit service_coordinator.signal_bus 或 option_service.signal_bus",
         )
 
-    def test_view_direct_service_access_is_restricted_to_allowlist(self):
+    def test_view_does_not_access_internal_services_directly(self):
         violations: list[str] = []
 
         for file_path in _iter_python_files(VIEW_ROOT):
             relative_path = str(file_path.relative_to(PROJECT_ROOT)).replace("\\", "/")
             source = file_path.read_text(encoding="utf-8")
             if VIEW_DIRECT_SERVICE_ACCESS_PATTERN.search(source):
-                if relative_path not in DIRECT_SERVICE_ACCESS_ALLOWLIST:
-                    violations.append(relative_path)
+                violations.append(relative_path)
 
         self.assertEqual(
             [],
             violations,
-            msg="View 层禁止新增对 task_service/config_service/option_service 的直接访问",
+            msg="View 层禁止直接访问 task_service/config_service/option_service",
         )
 
-    def test_view_model_mutation_is_restricted_to_allowlist(self):
+    def test_view_does_not_mutate_task_models_directly(self):
         violations: list[str] = []
 
         for file_path in _iter_python_files(VIEW_ROOT):
             relative_path = str(file_path.relative_to(PROJECT_ROOT)).replace("\\", "/")
             source = file_path.read_text(encoding="utf-8")
             if VIEW_MODEL_MUTATION_PATTERN.search(source):
-                if relative_path not in MODEL_MUTATION_ALLOWLIST:
-                    violations.append(relative_path)
+                violations.append(relative_path)
 
         self.assertEqual(
             [],
             violations,
-            msg="View 层禁止新增对 task.task_option 或 task.is_hidden 的直接写入",
+            msg="View 层禁止直接写入 task.task_option 或 task.is_hidden",
         )
 
     def test_view_does_not_define_capability_filter_functions(self):
