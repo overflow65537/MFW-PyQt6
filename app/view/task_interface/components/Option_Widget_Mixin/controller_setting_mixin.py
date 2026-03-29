@@ -553,7 +553,7 @@ class ControllerSettingWidget(QWidget):
         self.interface_custom_default = (
             interface_custom if isinstance(interface_custom, str) else ""
         )
-        self.current_config = self.service_coordinator.option_service.current_options
+        self.current_config = self.service_coordinator.get_current_options()
         self.current_config.setdefault("gpu", -1)
         agent_timeout_default = self._coerce_int(agent_interface_config.get("timeout"))
         if agent_timeout_default is None:
@@ -1193,15 +1193,14 @@ class ControllerSettingWidget(QWidget):
         if self._syncing:
             return
         try:
-            option_service = self.service_coordinator.option_service
             options_to_save = changed_options or self.current_config
             # 规范化配置数据，确保所有路径类型都被转换为字符串
             options_to_save = self._normalize_config_for_json(options_to_save)
-            ok = option_service.update_options(options_to_save)
+            ok = self.service_coordinator.update_selected_options(options_to_save)
             # 强制同步到预配置任务，确保落盘
             from app.common.constants import _CONTROLLER_
 
-            task = option_service.task_service.get_task(_CONTROLLER_)
+            task = self.service_coordinator.get_task(_CONTROLLER_)
             if task:
                 # 只保存应该保存到 Controller 任务的字段
                 # Controller 任务应该包含：controller_type, gpu, agent_timeout, custom, 以及控制器特定的配置（如 adb, win32）
@@ -1240,7 +1239,7 @@ class ControllerSettingWidget(QWidget):
                 # 确保不包含 speedrun_config
                 if "_speedrun_config" in task.task_option:
                     del task.task_option["_speedrun_config"]
-                if not option_service.task_service.update_task(task):
+                if not self.service_coordinator.update_task(task):
                     logger.warning("控制器设置强制保存失败")
             else:
                 logger.warning("未找到 Controller 任务，无法保存控制器设置")

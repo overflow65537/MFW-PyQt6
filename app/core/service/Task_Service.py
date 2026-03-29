@@ -20,6 +20,16 @@ DEFAULT_SPEEDRUN_CONFIG: Dict[str, Any] = {
     "run": {"count": 1, "min_interval_hours": 0},
 }
 
+RESOURCE_TASK_FORBIDDEN_FIELDS = (
+    "gpu",
+    "agent_timeout",
+    "custom",
+    "_speedrun_config",
+    "controller_type",
+    "adb",
+    "win32",
+)
+
 
 class TaskService:
     """任务服务实现"""
@@ -347,17 +357,8 @@ class TaskService:
         设计目标：任务配置层给出“可运行配置”，runner 只需要读取 is_checked/is_hidden。
         """
         try:
-            # 当前资源与控制器类型（为空则视为“不过滤”）
-            resource_name = ""
-            controller_type = ""
-
-            res_task = self.get_task(_RESOURCE_)
-            if res_task and isinstance(res_task.task_option, dict):
-                resource_name = str(res_task.task_option.get("resource", "") or "").strip()
-
-            ctrl_task = self.get_task(_CONTROLLER_)
-            if ctrl_task and isinstance(ctrl_task.task_option, dict):
-                controller_type = str(ctrl_task.task_option.get("controller_type", "") or "").strip()
+            resource_name = self.get_current_resource_name()
+            controller_type = self.get_current_controller_type()
 
             interface_tasks = self.interface.get("task", []) if isinstance(self.interface, dict) else []
             # name -> def 快速索引
@@ -454,6 +455,73 @@ class TaskService:
             if persist:
                 self.update_task(task)
         return normalized
+
+    def get_current_resource_name(self) -> str:
+        """获取当前 Resource 任务中保存的资源名称。"""
+        res_task = self.get_task(_RESOURCE_)
+        if res_task and isinstance(res_task.task_option, dict):
+            return str(res_task.task_option.get("resource", "") or "").strip()
+        return ""
+
+    def get_current_controller_type(self) -> str:
+        """获取当前 Controller 任务中保存的控制器类型。"""
+        ctrl_task = self.get_task(_CONTROLLER_)
+        if ctrl_task and isinstance(ctrl_task.task_option, dict):
+            return str(ctrl_task.task_option.get("controller_type", "") or "").strip()
+        return ""
+
+    def get_task_option_value(
+        self, task_id: str, option_key: str, default: Any = None
+    ) -> Any:
+        """读取指定任务的某个 option 值。"""
+        task = self.get_task(task_id)
+        if not task or not isinstance(task.task_option, dict):
+            return default
+        return task.task_option.get(option_key, default)
+
+    def set_resource_name(self, resource_name: str) -> bool:
+        """更新 Resource 任务的资源名称，并清理不应落盘的字段。"""
+        task = self.get_task(_RESOURCE_)
+        if not task:
+            return False
+
+        updated_task = deepcopy(task)
+        if not isinstance(updated_task.task_option, dict):
+            updated_task.task_option = {}
+        updated_task.task_option["resource"] = resource_name
+        for field in RESOURCE_TASK_FORBIDDEN_FIELDS:
+            updated_task.task_option.pop(field, None)
+
+        ok = self.update_task(updated_task)
+        if ok:
+            self.refresh_hidden_flags()
+        return ok
+
+    def ensure_resource_matches_controller_resources(
+        self, resources: List[Dict[str, Any]]
+    ) -> str | None:
+        """确保当前资源与控制器可用资源集合兼容，不兼容时回退到首个资源。"""
+        current_resource_name = self.get_current_resource_name()
+        if not current_resource_name:
+            return None
+
+        for resource in resources:
+            resource_name = resource.get("name", "")
+            resource_label = resource.get("label", resource_name)
+            if current_resource_name in (resource_name, resource_label):
+                return resource_name
+
+        if not resources:
+            return None
+
+        fallback_resource_name = resources[0].get("name", "")
+        if not fallback_resource_name:
+            return None
+
+        if self.set_resource_name(fallback_resource_name):
+            return fallback_resource_name
+
+        return None
 
     def add_task(self, task_name: str, is_special: bool = False) -> bool:
         """添加任务

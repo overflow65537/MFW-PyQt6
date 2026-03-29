@@ -186,11 +186,10 @@ class ResourceSettingMixin:
             return
         try:
             from app.common.constants import _RESOURCE_
-            option_service = self.service_coordinator.option_service
             # 更新当前配置
             self.current_config["resource"] = resource_name
             # 保存到Resource任务
-            resource_task = option_service.task_service.get_task(_RESOURCE_)
+            resource_task = self.service_coordinator.get_task(_RESOURCE_)
             if resource_task:
                 # 只保存 resource 字段，不保存其他字段（如 gpu, agent_timeout, custom, speedrun_config 等）
                 resource_task.task_option["resource"] = resource_name
@@ -199,13 +198,13 @@ class ResourceSettingMixin:
                 for field in fields_to_remove:
                     if field in resource_task.task_option:
                         del resource_task.task_option[field]
-                if not option_service.task_service.update_task(resource_task):
+                if not self.service_coordinator.update_task(resource_task):
                     logger.warning("资源选项保存失败")
             else:
                 logger.warning("未找到 Resource 任务，无法保存资源选项")
             
             # 同时通过OptionService保存（用于触发信号）
-            option_service.update_options({"resource": resource_name})
+            self.service_coordinator.update_selected_options({"resource": resource_name})
         except Exception as e:
             logger.error(f"自动保存资源选项失败: {e}")
 
@@ -350,7 +349,7 @@ class ResourceSettingMixin:
         from app.common.constants import _CONTROLLER_
 
         try:
-            controller_task = self.service_coordinator.task.get_task(_CONTROLLER_)
+            controller_task = self.service_coordinator.get_task(_CONTROLLER_)
             if controller_task and isinstance(controller_task.task_option, dict):
                 return controller_task.task_option.get("controller_type", "") or ""
         except Exception:
@@ -378,7 +377,6 @@ class ResourceSettingMixin:
             return None
         
         form_structure = {}
-        option_service = self.service_coordinator.option_service
         current_controller = self._get_current_controller_name()
         
         # 遍历资源需要的每个选项
@@ -386,12 +384,12 @@ class ResourceSettingMixin:
             if option_name in all_options:
                 option_def = all_options[option_name]
                 # 按 controller 字段过滤：仅当当前控制器匹配时才显示
-                if not option_service._is_option_visible_for_controller(
+                if not self.service_coordinator.is_option_visible_for_controller(
                     option_def, current_controller
                 ):
                     continue
                 # 使用 process_option_def 方法递归处理选项定义
-                field_config = option_service.process_option_def(
+                field_config = self.service_coordinator.process_option_def(
                     option_def, all_options, option_name
                 )
                 form_structure[option_name] = field_config
@@ -407,7 +405,6 @@ class ResourceSettingMixin:
         all_options = interface.get("option", {})
         if not all_options:
             return None
-        option_service = self.service_coordinator.option_service
         current_controller = self._get_current_controller_name()
         form_structure = {}
         if isinstance(global_option_def, list):
@@ -415,11 +412,11 @@ class ResourceSettingMixin:
                 if option_name in all_options:
                     option_def = all_options[option_name]
                     # 按 controller 字段过滤
-                    if not option_service._is_option_visible_for_controller(
+                    if not self.service_coordinator.is_option_visible_for_controller(
                         option_def, current_controller
                     ):
                         continue
-                    field_config = option_service.process_option_def(
+                    field_config = self.service_coordinator.process_option_def(
                         option_def, all_options, option_name
                     )
                     form_structure[option_name] = field_config
@@ -428,11 +425,11 @@ class ResourceSettingMixin:
                 if option_name == "description":
                     continue
                 # 按 controller 字段过滤
-                if isinstance(option_def, dict) and not option_service._is_option_visible_for_controller(
+                if isinstance(option_def, dict) and not self.service_coordinator.is_option_visible_for_controller(
                     option_def, current_controller
                 ):
                     continue
-                field_config = option_service.process_option_def(
+                field_config = self.service_coordinator.process_option_def(
                     option_def, all_options, option_name
                 )
                 form_structure[option_name] = field_config
@@ -444,7 +441,7 @@ class ResourceSettingMixin:
         if not form_structure:
             self._clear_global_options()
             return
-        option_config = self.service_coordinator.config_service.get_current_global_options()
+        option_config = self.service_coordinator.get_current_global_options()
         if self.global_option_label is None:
             self.global_option_label = BodyLabel(self.tr("Global Option"))
             self.option_page_layout.addWidget(self.global_option_label)
@@ -492,11 +489,10 @@ class ResourceSettingMixin:
 
     def _on_global_option_changed(self, key: str, value: Any):
         """全局选项变化时写入当前配置根层的 global_options。"""
-        option_service = self.service_coordinator.option_service
         if self.global_option_form_widget is None:
             return
         all_options = self.global_option_form_widget.get_options()
-        if self.service_coordinator.config_service.update_current_global_options(dict(all_options)):
+        if self.service_coordinator.update_current_global_options(dict(all_options)):
             self.service_coordinator.notify_option_updated(all_options)
 
     def _update_resource_options_hidden_state(self, current_resource_option_names: list):
@@ -507,8 +503,7 @@ class ResourceSettingMixin:
         """
         try:
             from app.common.constants import _RESOURCE_
-            option_service = self.service_coordinator.option_service
-            resource_task = option_service.task_service.get_task(_RESOURCE_)
+            resource_task = self.service_coordinator.get_task(_RESOURCE_)
             
             if not resource_task or "resource_options" not in resource_task.task_option:
                 return
@@ -552,7 +547,7 @@ class ResourceSettingMixin:
             
             # 如果有变化，保存任务
             if has_changes:
-                option_service.task_service.update_task(resource_task)
+                self.service_coordinator.update_task(resource_task)
         except Exception as e:
             logger.error(f"更新资源选项 hidden 状态失败: {e}")
     
@@ -574,8 +569,7 @@ class ResourceSettingMixin:
         
         # 获取当前 Resource 任务的配置
         from app.common.constants import _RESOURCE_
-        option_service = self.service_coordinator.option_service
-        resource_task = option_service.task_service.get_task(_RESOURCE_)
+        resource_task = self.service_coordinator.get_task(_RESOURCE_)
         resource_config = resource_task.task_option if resource_task else {}
         
         # 确保 Resource 任务不包含不应该有的字段（清理从配置文件加载时可能存在的错误字段）
@@ -588,7 +582,7 @@ class ResourceSettingMixin:
                     has_changes = True
             # 如果有清理字段，保存任务
             if has_changes:
-                option_service.task_service.update_task(resource_task)
+                self.service_coordinator.update_task(resource_task)
         
         # 从 resource_options 字段中提取资源选项的值
         # 向后兼容：如果存在旧的根级别资源选项，优先使用，并迁移到 resource_options
@@ -615,7 +609,7 @@ class ResourceSettingMixin:
                     if k in resource_task.task_option:
                         del resource_task.task_option[k]
                 # 保存迁移后的配置
-                option_service.task_service.update_task(resource_task)
+                self.service_coordinator.update_task(resource_task)
         
         # 从 resource_options 中提取当前资源的选项配置
         # 过滤掉 hidden 的选项（它们不属于当前资源）
@@ -721,8 +715,7 @@ class ResourceSettingMixin:
             
             # 保存到 Resource 任务的 task_option
             from app.common.constants import _RESOURCE_
-            option_service = self.service_coordinator.option_service
-            resource_task = option_service.task_service.get_task(_RESOURCE_)
+            resource_task = self.service_coordinator.get_task(_RESOURCE_)
             
             if resource_task:
                 updated_resource_task = deepcopy(resource_task)
@@ -786,14 +779,14 @@ class ResourceSettingMixin:
                     del updated_resource_task.task_option[k]
                 
                 # 保存任务
-                if not option_service.task_service.update_task(updated_resource_task):
+                if not self.service_coordinator.update_task(updated_resource_task):
                     logger.warning("资源选项保存失败")
                     return
                 
                 # 如果当前选中的是 Resource 任务，同时更新 OptionService 的 current_options
-                if option_service.current_task_id == _RESOURCE_:
-                    # 更新 OptionService 的本地选项字典
-                    option_service.current_options.update(resource_options)
+                if self.service_coordinator.get_current_option_task_id() == _RESOURCE_:
+                    current_options = self.service_coordinator.get_current_options()
+                    current_options.update(resource_options)
                     self.service_coordinator.notify_option_updated(resource_options)
         except Exception as e:
             logger.error(f"保存资源选项失败: {e}")
