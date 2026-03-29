@@ -609,12 +609,9 @@ class LogoutputWidget(QWidget):
         if not self.service_coordinator:
             return None
         try:
-            if hasattr(self.service_coordinator, "run_manager"):
-                task_flow = self.service_coordinator.run_manager
-                if task_flow and hasattr(task_flow, "maafw"):
-                    controller = getattr(task_flow.maafw, "controller", None)
-                    if controller is not None:
-                        return controller
+            controller = self.service_coordinator.runtime_query.get_task_flow_controller()
+            if controller is not None:
+                return controller
         except Exception:
             return None
         return None

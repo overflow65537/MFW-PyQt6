@@ -322,12 +322,9 @@ class MonitorWidget(QWidget):
     def _get_controller(self):
         """获取控制器：优先使用任务流的控制器，如果没有则使用监控任务的控制器"""
         # 优先使用任务流的控制器（如果任务流已连接）
-        if hasattr(self.service_coordinator, 'run_manager'):
-            task_flow = self.service_coordinator.run_manager
-            if task_flow and hasattr(task_flow, 'maafw'):
-                controller = getattr(task_flow.maafw, 'controller', None)
-                if controller is not None:
-                    return controller
+        controller = self.service_coordinator.runtime_query.get_task_flow_controller()
+        if controller is not None:
+            return controller
         
         # 回退到监控任务的控制器
         controller = getattr(self.monitor_task.maafw, 'controller', None)
@@ -504,14 +501,9 @@ class MonitorWidget(QWidget):
     def _is_controller_connected(self) -> bool:
         """检查控制器是否连接：优先检查任务流的控制器"""
         # 优先检查任务流的控制器
-        if hasattr(self.service_coordinator, 'run_manager'):
-            task_flow = self.service_coordinator.run_manager
-            if task_flow and hasattr(task_flow, 'maafw'):
-                controller = getattr(task_flow.maafw, 'controller', None)
-                if controller is not None:
-                    connected = getattr(controller, "connected", None)
-                    if connected is not False:
-                        return True
+        controller = self.service_coordinator.runtime_query.get_task_flow_controller()
+        if self.service_coordinator.runtime_query.is_controller_connected(controller):
+            return True
         
         # 回退到监控任务的控制器
         controller = getattr(self.monitor_task.maafw, "controller", None)
@@ -522,21 +514,7 @@ class MonitorWidget(QWidget):
     
     def _check_task_flow_controller_ready(self) -> bool:
         """检查任务流的控制器是否就绪（存在且connected为true）"""
-        if not hasattr(self.service_coordinator, 'run_manager'):
-            return False
-        
-        task_flow = self.service_coordinator.run_manager
-        if not task_flow or not hasattr(task_flow, 'maafw'):
-            return False
-        
-        maafw = task_flow.maafw
-        controller = getattr(maafw, 'controller', None)
-        if controller is None:
-            return False
-        
-        connected = getattr(controller, 'connected', None)
-        is_ready = connected is True
-        return is_ready
+        return self.service_coordinator.runtime_query.is_task_flow_controller_ready()
     
     async def _get_required_wait_time(self) -> float:
         """从配置中获取需要的等待时间（如果配置了启动模拟器或程序）"""

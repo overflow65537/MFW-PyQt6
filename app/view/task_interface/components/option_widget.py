@@ -974,7 +974,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
     def _update_options_enabled(self):
         """根据运行状态更新所有选项的启用/禁用状态"""
         # 检查是否有任务正在运行
-        is_running = self.service_coordinator.run_manager.is_running
+        is_running = self.service_coordinator.runtime_query.is_task_flow_running()
         self._set_options_enabled(not is_running)
 
     def _set_options_enabled(self, enabled: bool):

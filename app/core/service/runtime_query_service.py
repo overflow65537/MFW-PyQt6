@@ -40,6 +40,36 @@ class RuntimeQueryService:
     def get_notice_send_thread(self) -> Any:
         return getattr(self._task_runner, "send_thread", None)
 
+    def get_task_flow_controller(self) -> Any:
+        maafw = getattr(self._task_runner, "maafw", None)
+        if maafw is None:
+            return None
+        return getattr(maafw, "controller", None)
+
+    def is_controller_connected(self, controller: Any) -> bool:
+        if controller is None:
+            return False
+        connected = getattr(controller, "connected", None)
+        return connected is not False
+
+    def is_task_flow_controller_ready(self) -> bool:
+        controller = self.get_task_flow_controller()
+        if controller is None:
+            return False
+        return getattr(controller, "connected", None) is True
+
+    def get_agent_thread_process(self) -> Any:
+        maafw = getattr(self._task_runner, "maafw", None)
+        if maafw is None:
+            return None
+        return getattr(maafw, "agent_thread", None)
+
+    def clear_agent_thread_process(self) -> None:
+        maafw = getattr(self._task_runner, "maafw", None)
+        if maafw is None:
+            return
+        maafw.agent_thread = None
+
     def clear_maafw_sync(self) -> None:
         maafw = self._task_runner.maafw
         if maafw.tasker and maafw.tasker.running:
