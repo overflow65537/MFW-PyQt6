@@ -753,6 +753,19 @@ class ServiceCoordinator:
             self.signal_bus.config_saved.emit(True)
         return ok
 
+    def reload_main_config(self) -> bool:
+        """重新加载主配置。"""
+        try:
+            self.config_service.load_main_config()
+            return True
+        except Exception as exc:
+            logger.warning(f"重新加载主配置失败: {exc}")
+            return False
+
+    def get_bundle(self, bundle_name: str) -> Dict[str, Any]:
+        """获取 bundle 配置。"""
+        return self.config_service.get_bundle(bundle_name)
+
     def get_task(self, task_id: str) -> TaskItem | None:
         """获取当前配置中的任务。"""
         return self.task_service.get_task(task_id)

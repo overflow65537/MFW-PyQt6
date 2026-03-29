@@ -1222,11 +1222,8 @@ class BundleInterface(UI_BundleInterface, QWidget):
         """响应多资源适配启用信号，刷新 bundle 列表"""
         logger.info("收到多资源适配启用信号，刷新 bundle 列表")
         # 重新加载配置服务的主配置
-        try:
-            self.service_coordinator.config_service.load_main_config()
+        if self.service_coordinator.reload_main_config():
             logger.debug("已重新加载主配置")
-        except Exception as e:
-            logger.warning(f"重新加载主配置失败: {e}")
 
         # 重新加载 bundle 列表
         self._load_bundles()
@@ -1260,11 +1257,8 @@ class BundleInterface(UI_BundleInterface, QWidget):
             return
 
         # 重新加载配置服务的主配置，确保能获取到新添加的 bundle
-        try:
-            self.service_coordinator.config_service.load_main_config()
+        if self.service_coordinator.reload_main_config():
             logger.debug("已重新加载主配置，确保获取到新添加的 bundle")
-        except Exception as e:
-            logger.warning(f"重新加载主配置失败: {e}")
 
         # 重新加载 bundle 列表以显示新添加的 bundle
         self._load_bundles()
@@ -1430,10 +1424,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 )
                 
                 # 重新加载配置服务的主配置
-                try:
-                    self.service_coordinator.config_service.load_main_config()
-                except Exception as e:
-                    logger.warning(f"重新加载主配置失败: {e}")
+                self.service_coordinator.reload_main_config()
                 
                 # 刷新 bundle 列表
                 self._load_bundles()
