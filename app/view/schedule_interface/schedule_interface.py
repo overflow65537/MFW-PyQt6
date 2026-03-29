@@ -460,7 +460,7 @@ class ScheduleInterface(QWidget):
         return card
 
     def _refresh_config_selector(self) -> None:
-        configs = self.service_coordinator.get_available_config_choices()
+        configs = self.service_coordinator.config_query.get_available_config_choices()
 
         self.config_selector.blockSignals(True)
         self.config_selector.clear()

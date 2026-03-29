@@ -1254,7 +1254,7 @@ class ConfigListItem(BaseListItem):
 
         try:
             # 获取 bundle 信息
-            bundle_info = self.service_coordinator.get_bundle(bundle_name)
+            bundle_info = self.service_coordinator.config_query.get_bundle(bundle_name)
             if not bundle_info:
                 return None
 

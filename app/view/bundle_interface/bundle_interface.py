@@ -478,7 +478,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         self._bundle_data.clear()
 
         try:
-            bundle_choices = self.service_coordinator.get_bundle_choices()
+            bundle_choices = self.service_coordinator.config_query.get_bundle_choices()
             if not bundle_choices:
                 logger.warning("未找到任何 bundle")
                 return
@@ -486,7 +486,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
             for bundle_choice in bundle_choices:
                 try:
                     bundle_name = bundle_choice.get("id") or bundle_choice.get("name", "")
-                    bundle_info = self.service_coordinator.get_bundle(bundle_name)
+                    bundle_info = self.service_coordinator.config_query.get_bundle(bundle_name)
                     bundle_path_str = bundle_info.get("path", "")
                     bundle_display_name = bundle_info.get("name", bundle_name)
 
@@ -840,7 +840,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         try:
             bundle_names = [
                 choice.get("id") or choice.get("name", "")
-                for choice in self.service_coordinator.get_bundle_choices()
+                for choice in self.service_coordinator.config_query.get_bundle_choices()
             ]
             if not bundle_names:
                 return
@@ -972,7 +972,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         try:
             bundle_names = [
                 choice.get("id") or choice.get("name", "")
-                for choice in self.service_coordinator.get_bundle_choices()
+                for choice in self.service_coordinator.config_query.get_bundle_choices()
             ]
             if not bundle_names:
                 logger.warning("没有找到任何bundle")
@@ -1035,7 +1035,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         try:
             bundle_names = [
                 choice.get("id") or choice.get("name", "")
-                for choice in self.service_coordinator.get_bundle_choices()
+                for choice in self.service_coordinator.config_query.get_bundle_choices()
             ]
             if not bundle_names:
                 logger.warning("没有找到任何bundle")
@@ -1359,14 +1359,14 @@ class BundleInterface(UI_BundleInterface, QWidget):
         # 查找所有使用该 bundle 的配置
         configs_to_delete = []
         try:
-            all_configs = self.service_coordinator.get_available_config_choices()
+            all_configs = self.service_coordinator.config_query.get_available_config_choices()
             for config_info in all_configs:
                 config_id = config_info[0] if isinstance(config_info, tuple) else config_info.get("item_id")
                 if not config_id:
                     continue
                 
                 # 获取配置的完整数据
-                config_item = self.service_coordinator.get_config(config_id)
+                config_item = self.service_coordinator.config_query.get_config(config_id)
                 if config_item and config_item.bundle == bundle_name:
                     configs_to_delete.append({
                         "id": config_id,

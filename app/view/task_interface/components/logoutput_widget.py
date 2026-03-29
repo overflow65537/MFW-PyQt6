@@ -810,9 +810,9 @@ class LogoutputWidget(QWidget):
                 if isinstance(log_rel, str) and log_rel.strip():
                     # 获取当前配置的 bundle path
                     try:
-                        config = self.service_coordinator.get_current_config()
+                        config = self.service_coordinator.config_query.get_current_config()
                         bundle_path_str = (
-                            self.service_coordinator.get_bundle_path_for_config(config)
+                            self.service_coordinator.config_query.get_bundle_path_for_config(config)
                             or ""
                         )
                         if bundle_path_str:

@@ -384,7 +384,7 @@ class ResourceSettingMixin:
         if not form_structure:
             self._clear_global_options()
             return
-        option_config = self.service_coordinator.get_current_global_options()
+        option_config = self.service_coordinator.config_query.get_current_global_options()
         if self.global_option_label is None:
             self.global_option_label = BodyLabel(self.tr("Global Option"))
             self.option_page_layout.addWidget(self.global_option_label)
@@ -435,7 +435,7 @@ class ResourceSettingMixin:
         if self.global_option_form_widget is None:
             return
         all_options = self.global_option_form_widget.get_options()
-        if self.service_coordinator.update_current_global_options(dict(all_options)):
+        if self.service_coordinator.config_query.update_current_global_options(dict(all_options)):
             self.service_coordinator.notify_option_updated(all_options)
 
     def _update_resource_options_hidden_state(self, current_resource_option_names: list):

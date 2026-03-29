@@ -868,7 +868,7 @@ class ConfigListWidget(BaseListWidget):
     def update_list(self):
         """刷新配置列表UI"""
         self.clear()
-        config_summaries = self.service_coordinator.get_available_config_choices()
+        config_summaries = self.service_coordinator.config_query.get_available_config_choices()
         for summary in config_summaries:
             if isinstance(summary, tuple):
                 config_id = summary[0]
@@ -877,12 +877,12 @@ class ConfigListWidget(BaseListWidget):
             else:
                 config_id = None
             if config_id:
-                cfg = self.service_coordinator.get_config(config_id)
+                cfg = self.service_coordinator.config_query.get_config(config_id)
                 if cfg:
                     self._add_config_to_list(cfg)
         
         # 选中当前配置
-        current_config_id = self.service_coordinator.get_current_config_id()
+        current_config_id = self.service_coordinator.config_query.get_current_config_id()
         if current_config_id:
             self._select_config_by_id(current_config_id, emit_signal=False)
 

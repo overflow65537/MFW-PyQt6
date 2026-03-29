@@ -17,6 +17,7 @@ from app.core.item import (
     TaskItem,
 )
 from app.core.service.config_service import ConfigService, JsonConfigRepository
+from app.core.service.config_query_service import ConfigQueryService
 from app.core.service.interface_manager import InterfaceManager, get_interface_manager
 from app.core.service.option_service import OptionService
 from app.core.service.schedule_service import ScheduleService
@@ -88,6 +89,10 @@ class ServiceCoordinator:
                 raise
         
         self.option_service = OptionService(self.task_service, self.signal_bus)
+        self.config_query_service = ConfigQueryService(
+            self.config_service,
+            self.config_repo,
+        )
         self.config_service.register_on_change(self._on_config_changed)
 
         # 运行器
@@ -767,64 +772,6 @@ class ServiceCoordinator:
     # region 配置域入口
     # 固定顺序：bundle 查询 -> config 查询 -> config 路径/列表 -> global option
 
-    def get_bundle(self, bundle_name: str) -> Dict[str, Any]:
-        """获取 bundle 配置。"""
-        return self.config_service.get_bundle(bundle_name)
-
-    def get_bundle_choices(self) -> List[Dict[str, str]]:
-        """获取可供界面展示的 bundle 列表。"""
-        bundles: List[Dict[str, str]] = []
-        for name in self.config_service.list_bundles():
-            try:
-                info = self.config_service.get_bundle(name)
-            except FileNotFoundError:
-                continue
-            bundles.append(
-                {
-                    "id": str(name),
-                    "name": str(info.get("name", name)),
-                    "path": str(info.get("path", "")),
-                }
-            )
-        return bundles
-
-    def get_current_config(self) -> ConfigItem | None:
-        """获取当前配置。"""
-        return self.config_service.get_current_config()
-
-    def get_config(self, config_id: str) -> ConfigItem | None:
-        """按配置 ID 获取配置对象。"""
-        return self.config_service.get_config(config_id)
-
-    def get_current_config_id(self) -> str:
-        """返回当前配置 ID。"""
-        return self.config_service.current_config_id
-
-    def get_bundle_path_for_config(self, config: ConfigItem | None) -> str:
-        """获取指定配置对应的 bundle 路径。"""
-        if config is None:
-            return ""
-        return self.config_service.get_bundle_path_for_config(config)
-
-    def get_main_config_path(self) -> Path:
-        """返回主配置文件路径。"""
-        return self.config_repo.main_config_path
-
-    def get_available_config_choices(self) -> List[tuple[str, str]]:
-        """获取可用于切换/运行的配置列表。"""
-        return [
-            (info.get("item_id", ""), info.get("name", ""))
-            for info in self.config_service.list_configs()
-        ]
-
-    def get_current_global_options(self) -> Dict[str, Any]:
-        """获取当前配置的全局选项。"""
-        return self.config_service.get_current_global_options()
-
-    def update_current_global_options(self, global_options: Dict[str, Any]) -> bool:
-        """更新当前配置的全局选项。"""
-        return self.config_service.update_current_global_options(global_options)
-
     # endregion
 
     # region 任务域入口
@@ -1257,6 +1204,10 @@ class ServiceCoordinator:
     @property
     def config(self) -> ConfigService:
         return self.config_service
+
+    @property
+    def config_query(self) -> ConfigQueryService:
+        return self.config_query_service
 
     @property
     def task(self) -> TaskService:

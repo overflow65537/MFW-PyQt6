@@ -300,7 +300,7 @@ class PostActionSettingMixin:
     def _load_available_configs(self) -> List[Tuple[str, str]]:
         try:
             configs: List[Tuple[str, str]] = []
-            for config_id, display_name in self.service_coordinator.get_available_config_choices():
+            for config_id, display_name in self.service_coordinator.config_query.get_available_config_choices():
                 configs.append(
                     (
                         config_id,

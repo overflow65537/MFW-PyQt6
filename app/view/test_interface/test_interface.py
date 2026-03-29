@@ -67,14 +67,14 @@ class TestInterface(QWidget):
         layout.addWidget(self._log_view)
 
     def _test_switch_config(self) -> None:
-        configs = self.service_coordinator.get_available_config_choices()
+        configs = self.service_coordinator.config_query.get_available_config_choices()
         if not configs:
             global_signal_bus.info_bar_requested.emit(
                 "warning", "未找到任何配置，无法切换"
             )
             return
 
-        current = self.service_coordinator.get_current_config_id()
+        current = self.service_coordinator.config_query.get_current_config_id()
         target_info = None
         for config in configs:
             config_id = config[0] if isinstance(config, tuple) else config.get("item_id")
@@ -109,13 +109,13 @@ class TestInterface(QWidget):
         asyncio.create_task(self.service_coordinator.run_tasks_flow())
 
     def _test_force_start(self) -> None:
-        configs = self.service_coordinator.get_available_config_choices()
+        configs = self.service_coordinator.config_query.get_available_config_choices()
         if not configs:
             global_signal_bus.info_bar_requested.emit(
                 "warning", "未找到任何配置，无法强制运行"
             )
             return
-        current_id = self.service_coordinator.get_current_config_id()
+        current_id = self.service_coordinator.config_query.get_current_config_id()
         if not current_id:
             first_config = configs[0]
             current_id = first_config[0] if isinstance(first_config, tuple) else first_config.get("item_id", "")

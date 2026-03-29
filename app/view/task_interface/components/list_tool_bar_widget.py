@@ -183,7 +183,7 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
             return
         # 通过对话框创建新配置
         try:
-            bundles = self.service_coordinator.get_bundle_choices()
+            bundles = self.service_coordinator.config_query.get_bundle_choices()
         except Exception:
             bundles = []
 
@@ -206,7 +206,7 @@ class ConfigListToolBarWidget(BaseListToolBarWidget):
                 "warning", self.tr("Task is running, configurations are locked.")
             )
             return
-        config_list = self.service_coordinator.get_available_config_choices()
+        config_list = self.service_coordinator.config_query.get_available_config_choices()
         if len(config_list) <= 1:
             global_signal_bus.info_bar_requested.emit(
                 "warning", self.tr("Cannot delete the last configuration!")
