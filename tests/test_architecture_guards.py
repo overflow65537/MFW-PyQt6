@@ -148,6 +148,8 @@ class ArchitectureGuardTests(unittest.TestCase):
         self.assertIsNotNone(core_signal_bus, msg="CoreSignalBus 必须存在")
 
         assigned_names = set()
+        if not core_signal_bus:
+            raise AssertionError("CoreSignalBus 类定义未找到")
         for stmt in core_signal_bus.body:
             if isinstance(stmt, ast.Assign):
                 for target in stmt.targets:
