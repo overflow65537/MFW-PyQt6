@@ -834,6 +834,12 @@ class ServiceCoordinator:
         """保存 Post-Action 任务中的单个配置片段。"""
         return self.task_service.save_post_action_option(option_key, payload)
 
+    def save_controller_task_options(
+        self, controller_task_option: Dict[str, Any]
+    ) -> bool:
+        """保存 Controller 任务的配置片段。"""
+        return self.task_service.save_controller_task_options(controller_task_option)
+
     def build_speedrun_config(
         self, task_name: str, existing: Dict[str, Any] | None = None
     ) -> Dict[str, Any]:
