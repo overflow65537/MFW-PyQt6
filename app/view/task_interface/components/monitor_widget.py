@@ -22,7 +22,6 @@ from qfluentwidgets import (
 )
 
 from app.core.core import ServiceCoordinator
-from app.core.runner.monitor_task import MonitorTask
 from app.utils.logger import (
     logger,
     restore_asyncify_logging,
@@ -57,10 +56,7 @@ class MonitorWidget(QWidget):
         self._stop_debounce_timer.setSingleShot(True)
         self._stop_debounce_timer.timeout.connect(self._stop_monitoring_now)
         
-        self.monitor_task = MonitorTask(
-            task_service=self.service_coordinator.task_service,
-            config_service=self.service_coordinator.config_service,
-        )
+        self.monitor_task = self.service_coordinator.create_monitor_task()
         
         self._setup_ui()
         self._connect_signals()
@@ -548,7 +544,7 @@ class MonitorWidget(QWidget):
         
         try:
             # 获取控制器配置
-            controller_cfg = self.service_coordinator.task_service.get_task(_CONTROLLER_)
+            controller_cfg = self.service_coordinator.get_task(_CONTROLLER_)
             if not controller_cfg:
                 return 0.0
             
@@ -591,7 +587,7 @@ class MonitorWidget(QWidget):
         
         try:
             # 获取控制器配置
-            controller_cfg = self.service_coordinator.task_service.get_task(_CONTROLLER_)
+            controller_cfg = self.service_coordinator.get_task(_CONTROLLER_)
             if not controller_cfg:
                 return 30.0  # 默认30秒
             
@@ -654,7 +650,7 @@ class MonitorWidget(QWidget):
                 controller_name = ""
             
             controller_name = controller_name.lower()
-            for controller in self.service_coordinator.task_service.interface.get("controller", []):
+            for controller in self.service_coordinator.interface.get("controller", []):
                 if controller.get("name", "").lower() == controller_name:
                     return controller.get("type", "").lower()
             
