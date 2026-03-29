@@ -19,6 +19,7 @@ from app.core.service.config_service import ConfigService, JsonConfigRepository
 from app.core.service.config_query_service import ConfigQueryService
 from app.core.service.interface_manager import InterfaceManager, get_interface_manager
 from app.core.service.option_service import OptionService
+from app.core.service.runtime_query_service import RuntimeQueryService
 from app.core.service.schedule_service import ScheduleService
 from app.core.service.task_query_service import TaskQueryService
 from app.core.service.task_service import TaskService
@@ -105,6 +106,11 @@ class ServiceCoordinator:
             task_service=self.task_service,
             config_service=self.config_service,
             fs_signal_bus=self.fs_signal_bus,
+        )
+        self.runtime_query_service = RuntimeQueryService(
+            self.task_runner,
+            self.task_service,
+            self.config_service,
         )
         schedule_store = main_config_path.parent / "schedules.json"
         self.schedule_service = ScheduleService(self, schedule_store)
@@ -844,46 +850,6 @@ class ServiceCoordinator:
     # region 运行时入口
     # 固定顺序：运行状态查询 -> 运行时辅助对象 -> 运行时清理
 
-    def get_current_running_task_name(self) -> str | None:
-        """返回当前运行中的任务名称。"""
-        runner = getattr(self, "run_manager", None)
-        task_id = getattr(runner, "_current_running_task_id", None)
-        if not task_id:
-            return None
-
-        task = self.task_service.get_task(task_id)
-        if task is None:
-            return None
-        return str(getattr(task, "name", "") or "") or None
-
-    def is_task_flow_running(self) -> bool:
-        """返回任务流是否正在运行。"""
-        return bool(getattr(self.task_runner, "is_running", False))
-
-    def create_monitor_task(self) -> MonitorTask:
-        """创建监控任务实例。"""
-        return MonitorTask(self.task_service, self.config_service)
-
-    def get_notice_send_thread(self) -> Any:
-        """返回运行期通知线程对象。"""
-        return getattr(self.task_runner, "send_thread", None)
-
-    def clear_maafw_sync(self) -> None:
-        """同步清理 maafw 运行时资源。"""
-        maafw = self.task_runner.maafw
-        if maafw.tasker and maafw.tasker.running:
-            logger.debug("停止任务线程")
-            maafw.tasker.post_stop().wait()
-            logger.debug("停止任务线程完成")
-        maafw.tasker = None
-        if maafw.resource:
-            maafw.resource.clear()
-        maafw.resource = None
-        maafw.controller = None
-        if maafw.agent:
-            maafw.agent.disconnect()
-        maafw.agent = None
-
     # endregion
 
     # region 任务相关方法
@@ -1058,6 +1024,10 @@ class ServiceCoordinator:
     @property
     def task_query(self) -> TaskQueryService:
         return self.task_query_service
+
+    @property
+    def runtime_query(self) -> RuntimeQueryService:
+        return self.runtime_query_service
 
     @property
     def option(self) -> OptionService:

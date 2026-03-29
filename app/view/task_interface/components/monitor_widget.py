@@ -56,7 +56,7 @@ class MonitorWidget(QWidget):
         self._stop_debounce_timer.setSingleShot(True)
         self._stop_debounce_timer.timeout.connect(self._stop_monitoring_now)
         
-        self.monitor_task = self.service_coordinator.create_monitor_task()
+        self.monitor_task = self.service_coordinator.runtime_query.create_monitor_task()
         
         self._setup_ui()
         self._connect_signals()

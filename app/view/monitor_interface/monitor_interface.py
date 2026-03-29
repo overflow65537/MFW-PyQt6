@@ -61,7 +61,7 @@ class MonitorInterface(QWidget):
         self._image_height: Optional[int] = None
         self._is_landscape: Optional[bool] = None
         self._setup_ui()
-        self.monitor_task = self.service_coordinator.create_monitor_task()
+        self.monitor_task = self.service_coordinator.runtime_query.create_monitor_task()
         self._monitor_loop_task: Optional[asyncio.Task] = None
         self._image_processing_task: Optional[asyncio.Task] = None
         self._monitoring_active = False

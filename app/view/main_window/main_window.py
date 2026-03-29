@@ -2646,7 +2646,7 @@ class MainWindow(MSFluentWindow):
 
     def clear_threads_async(self):
         """异步清理线程和资源"""
-        send_thread = self.service_coordinator.get_notice_send_thread()
+        send_thread = self.service_coordinator.runtime_query.get_notice_send_thread()
         # 兼容：旧版本 task_runner 可能没有暴露 send_thread，这里直接回落到全局单例
         if send_thread is None:
             try:
@@ -2667,7 +2667,7 @@ class MainWindow(MSFluentWindow):
     def _clear_maafw_sync(self):
         """同步清理 maafw（回退逻辑）"""
         try:
-            self.service_coordinator.clear_maafw_sync()
+            self.service_coordinator.runtime_query.clear_maafw_sync()
             maafw = self.service_coordinator.run_manager.maafw
             agent_proc = getattr(maafw, "agent_thread", None)
             if agent_proc:

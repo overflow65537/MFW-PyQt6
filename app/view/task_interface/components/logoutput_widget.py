@@ -789,7 +789,7 @@ class LogoutputWidget(QWidget):
         if not self.service_coordinator:
             return self.tr("System")
         try:
-            task_name = self.service_coordinator.get_current_running_task_name()
+            task_name = self.service_coordinator.runtime_query.get_current_running_task_name()
             if task_name:
                 return task_name
         except Exception:
