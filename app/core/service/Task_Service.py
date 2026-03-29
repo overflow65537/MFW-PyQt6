@@ -38,6 +38,23 @@ RESOURCE_TASK_FORBIDDEN_FIELDS = (
 class TaskService:
     """任务服务实现"""
 
+    POST_ACTION_PRIMARY_ACTIONS = {"none", "shutdown", "run_other"}
+    POST_ACTION_SECONDARY_ACTIONS = {"close_controller", "close_software"}
+    POST_ACTION_OPTIONAL_ACTIONS = {"run_program"}
+    POST_ACTION_DEFAULT_STATE: Dict[str, Any] = {
+        "none": True,
+        "shutdown": False,
+        "close_controller": False,
+        "close_software": False,
+        "run_other": False,
+        "run_program": False,
+        "always_run": False,
+        "target_config": "",
+        "program_path": "",
+        "program_args": "",
+    }
+    POST_ACTION_EXCLUSIVE_EXIT_GROUP = {"run_other", "close_software", "shutdown"}
+
     def __init__(
         self,
         config_service: ConfigService,
@@ -956,6 +973,65 @@ class TaskService:
             state = task.task_option.get("_speedrun_state", {}) or {}
 
         return task, normalized, state
+
+    def normalize_post_action_state(
+        self, raw_state: Dict[str, Any] | None = None
+    ) -> Dict[str, Any]:
+        """规范化完成后操作状态并处理互斥逻辑。"""
+        merged = dict(self.POST_ACTION_DEFAULT_STATE)
+        if isinstance(raw_state, dict):
+            merged.update(raw_state)
+
+        if merged.get("shutdown"):
+            merged["close_software"] = False
+            merged["run_other"] = False
+        elif merged.get("close_software"):
+            merged["run_other"] = False
+        elif merged.get("run_other"):
+            merged["close_software"] = False
+            merged["shutdown"] = False
+
+        action_keys = (
+            self.POST_ACTION_PRIMARY_ACTIONS
+            .union(self.POST_ACTION_SECONDARY_ACTIONS)
+            .union(self.POST_ACTION_OPTIONAL_ACTIONS)
+        )
+        if merged.get("none"):
+            for action_key in action_keys:
+                if action_key != "none":
+                    merged[action_key] = False
+        else:
+            has_other_selected = any(
+                merged.get(action_key, False)
+                for action_key in action_keys
+                if action_key != "none"
+            )
+            merged["none"] = not has_other_selected
+
+        return merged
+
+    def apply_post_action_toggle(
+        self, state: Dict[str, Any] | None, key: str, checked: bool
+    ) -> Dict[str, Any]:
+        """应用单个完成后动作勾选变化，并返回规范化后的状态。"""
+        updated_state = self.normalize_post_action_state(state)
+        updated_state[key] = checked
+
+        if checked:
+            if key == "none":
+                for action_key in (
+                    self.POST_ACTION_PRIMARY_ACTIONS
+                    .union(self.POST_ACTION_SECONDARY_ACTIONS)
+                    .union(self.POST_ACTION_OPTIONAL_ACTIONS)
+                ) - {"none"}:
+                    updated_state[action_key] = False
+            else:
+                updated_state["none"] = False
+                if key in self.POST_ACTION_EXCLUSIVE_EXIT_GROUP:
+                    for action_key in self.POST_ACTION_EXCLUSIVE_EXIT_GROUP - {key}:
+                        updated_state[action_key] = False
+
+        return self.normalize_post_action_state(updated_state)
 
     def save_post_action_option(self, option_key: str, payload: Any) -> bool:
         """保存 Post-Action 任务中的单个配置片段。"""

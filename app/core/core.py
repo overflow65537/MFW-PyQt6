@@ -778,6 +778,13 @@ class ServiceCoordinator:
             return ""
         return self.config_service.get_bundle_path_for_config(config)
 
+    def get_available_config_choices(self) -> List[tuple[str, str]]:
+        """获取可用于切换/运行的配置列表。"""
+        return [
+            (info.get("item_id", ""), info.get("name", ""))
+            for info in self.config_service.list_configs()
+        ]
+
     def get_task(self, task_id: str) -> TaskItem | None:
         """获取当前配置中的任务。"""
         return self.task_service.get_task(task_id)
@@ -926,6 +933,18 @@ class ServiceCoordinator:
     def save_post_action_option(self, option_key: str, payload: Any) -> bool:
         """保存 Post-Action 任务中的单个配置片段。"""
         return self.task_service.save_post_action_option(option_key, payload)
+
+    def normalize_post_action_state(
+        self, raw_state: Dict[str, Any] | None = None
+    ) -> Dict[str, Any]:
+        """规范化完成后动作状态。"""
+        return self.task_service.normalize_post_action_state(raw_state)
+
+    def apply_post_action_toggle(
+        self, state: Dict[str, Any] | None, key: str, checked: bool
+    ) -> Dict[str, Any]:
+        """应用单个完成后动作勾选变化。"""
+        return self.task_service.apply_post_action_toggle(state, key, checked)
 
     def save_controller_task_options(
         self, controller_task_option: Dict[str, Any]
