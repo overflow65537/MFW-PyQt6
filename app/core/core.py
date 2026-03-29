@@ -804,6 +804,52 @@ class ServiceCoordinator:
         """更新当前资源名称。"""
         return self.task_service.set_resource_name(resource_name)
 
+    def get_controller_ui_context(self, current_options: Dict[str, Any]) -> Dict[str, Any]:
+        """获取 Controller 视图所需的投影数据。"""
+        return self.task_service.get_controller_ui_context(current_options)
+
+    def sync_controller_meta_fields(
+        self,
+        current_config: Dict[str, Any],
+        controller_name: str,
+        controller_info: Dict[str, Any] | None,
+    ) -> Dict[str, Any]:
+        """将 controller 元信息同步到当前控制器子配置。"""
+        return self.task_service.sync_controller_meta_fields(
+            current_config, controller_name, controller_info
+        )
+
+    def ensure_controller_config(
+        self,
+        current_config: Dict[str, Any],
+        controller_name: str,
+        controller_info: Dict[str, Any],
+        win32_default_mapping: Dict[str, Dict[str, Any]],
+        gamepad_default_mapping: Dict[str, Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """确保当前控制器配置存在并补齐默认值。"""
+        return self.task_service.ensure_controller_config(
+            current_config,
+            controller_name,
+            controller_info,
+            win32_default_mapping,
+            gamepad_default_mapping,
+        )
+
+    def normalize_config_for_json(self, config: Any) -> Any:
+        """递归规范化配置数据。"""
+        return self.task_service.normalize_config_for_json(config)
+
+    def build_controller_task_option(
+        self,
+        current_config: Dict[str, Any],
+        controller_type_mapping: Dict[str, Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """构建 Controller 任务需要落盘的配置片段。"""
+        return self.task_service.build_controller_task_option(
+            current_config, controller_type_mapping
+        )
+
     def ensure_resource_matches_controller_resources(
         self, resources: List[Dict[str, Any]]
     ) -> str | None:

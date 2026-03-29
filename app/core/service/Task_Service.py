@@ -1,7 +1,11 @@
 from copy import deepcopy
+from pathlib import Path
+import sys
 from typing import Any, Dict, List, Optional
 
-from app.common.constants import _RESOURCE_, _CONTROLLER_
+from maa.define import MaaWin32InputMethodEnum, MaaWin32ScreencapMethodEnum
+
+from app.common.constants import POST_ACTION, _RESOURCE_, _CONTROLLER_
 from app.core.events import CoreSignalBus
 from app.core.item import TaskItem
 from app.core.service.config_service import ConfigService
@@ -455,6 +459,411 @@ class TaskService:
             if persist:
                 self.update_task(task)
         return normalized
+
+    @staticmethod
+    def normalize_config_for_json(config: Any) -> Any:
+        """递归规范化配置数据，确保路径对象等可安全落盘。"""
+        if isinstance(config, Path):
+            return str(config)
+        if isinstance(config, dict):
+            return {
+                key: TaskService.normalize_config_for_json(value)
+                for key, value in config.items()
+            }
+        if isinstance(config, list):
+            return [TaskService.normalize_config_for_json(item) for item in config]
+        return config
+
+    @staticmethod
+    def _coerce_int(value: Any) -> int | None:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _normalize_method_name(value: str) -> str:
+        return "".join(ch.lower() for ch in value if ch.isalnum())
+
+    def _normalize_alias_map(self, alias_map: Dict[str, int]) -> Dict[str, int]:
+        normalized_map: Dict[str, int] = {}
+        for name, mapped_value in alias_map.items():
+            normalized_key = self._normalize_method_name(name)
+            if normalized_key:
+                normalized_map[normalized_key] = mapped_value
+        return normalized_map
+
+    def _resolve_gamepad_type_value(self, value: Any) -> int | None:
+        int_value = self._coerce_int(value)
+        if int_value is not None:
+            return int_value
+        if not isinstance(value, str):
+            return None
+        normalized = self._normalize_method_name(value)
+        if normalized in ("xbox360", "xbox"):
+            return 0
+        if normalized in ("dualshock4", "ds4"):
+            return 1
+        return None
+
+    def _resolve_win32_setting_value(
+        self,
+        value: Any,
+        method_type: str | None,
+        input_aliases: Dict[str, int],
+        screencap_aliases: Dict[str, int],
+    ) -> int | None:
+        int_value = self._coerce_int(value)
+        if int_value is not None:
+            return int_value
+
+        if method_type is None or not isinstance(value, str):
+            return None
+
+        normalized_value = self._normalize_method_name(value)
+        if not normalized_value:
+            return None
+
+        if normalized_value == "default":
+            mt = method_type.lower()
+            if mt in {"mouse", "keyboard", "input"}:
+                return int(MaaWin32InputMethodEnum.Seize.value)
+            if mt == "screencap":
+                return int(MaaWin32ScreencapMethodEnum.DXGI_DesktopDup.value)
+
+        alias_map = (
+            input_aliases
+            if method_type.lower() in {"mouse", "keyboard", "input"}
+            else screencap_aliases
+        )
+        if (mapped := alias_map.get(normalized_value)) is not None:
+            return mapped
+
+        if method_type.lower() in {"mouse", "keyboard"}:
+            fallback_rules = (
+                ("sendmessagewithcursorpos", "sendmessagewithcursorpos"),
+                ("postmessagewithcursorpos", "postmessagewithcursorpos"),
+                ("sendmessage", "sendmessage"),
+                ("postmessage", "postmessage"),
+                ("legacyevent", "legacyevent"),
+                ("postthreadmessage", "postthreadmessage"),
+                ("seize", "seize"),
+            )
+            for keyword, alias_key in fallback_rules:
+                if keyword in normalized_value and alias_key in alias_map:
+                    return alias_map[alias_key]
+
+        return None
+
+    def get_controller_ui_context(self, current_options: Dict[str, Any]) -> Dict[str, Any]:
+        """生成 Controller 视图所需的投影数据，并补齐基础默认项。"""
+        controllers = self.interface.get("controller", [])
+        filtered_controllers = []
+        for controller in controllers:
+            ctrl_type = str(controller.get("type", "")).lower()
+            if ctrl_type == "playcover" and sys.platform != "darwin":
+                continue
+            if ctrl_type in {"win32", "gamepad"} and sys.platform != "win32":
+                continue
+            filtered_controllers.append(controller)
+
+        controller_type_mapping = {
+            ctrl.get("label", ctrl.get("name", "")): {
+                "name": ctrl.get("name", ""),
+                "type": ctrl.get("type", ""),
+                "icon": ctrl.get("icon", ""),
+                "description": ctrl.get("description", ""),
+                "permission_required": ctrl.get("permission_required"),
+                "display_short_side": ctrl.get("display_short_side"),
+                "display_long_side": ctrl.get("display_long_side"),
+                "display_raw": ctrl.get("display_raw"),
+                "playcover": ctrl.get("playcover", {}),
+                "gamepad": ctrl.get("gamepad", {}),
+            }
+            for ctrl in filtered_controllers
+        }
+
+        win32_input_alias_values = {
+            "null": 0,
+            "handle": 1,
+            "message": 2,
+            "seize": 3,
+            "sendmessage": 2,
+            "postmessage": 2,
+            "sendmessagewithcursorpos": 2,
+            "postmessagewithcursorpos": 2,
+            "legacyevent": 1,
+            "postthreadmessage": 2,
+        }
+        win32_screencap_alias_values = {
+            "null": 0,
+            "fastestway": 1,
+            "rawbybitblt": 2,
+            "rawwithwindowdc": 3,
+            "dxgidesktopdup": 4,
+            "framepool": 5,
+        }
+        input_aliases = self._normalize_alias_map(win32_input_alias_values)
+        screencap_aliases = self._normalize_alias_map(win32_screencap_alias_values)
+
+        win32_default_mapping: dict[str, dict[str, Any]] = {}
+        gamepad_default_mapping: dict[str, dict[str, Any]] = {}
+        for controller in controllers:
+            controller_name = controller.get("name", "")
+            controller_type = str(controller.get("type", "")).lower()
+            if not controller_name:
+                continue
+
+            if controller_type == "win32":
+                win32_config = controller.get("win32")
+                if not isinstance(win32_config, dict):
+                    continue
+                normalized = {
+                    str(key).lower(): value
+                    for key, value in win32_config.items()
+                    if isinstance(key, str)
+                }
+                mouse_value = self._resolve_win32_setting_value(
+                    normalized.get("mouse_input", normalized.get("mouse")),
+                    "mouse",
+                    input_aliases,
+                    screencap_aliases,
+                )
+                keyboard_value = self._resolve_win32_setting_value(
+                    normalized.get("keyboard_input", normalized.get("keyboard")),
+                    "keyboard",
+                    input_aliases,
+                    screencap_aliases,
+                )
+                general_input = self._resolve_win32_setting_value(
+                    normalized.get(
+                        "input",
+                        normalized.get("input_method", normalized.get("input_methods")),
+                    ),
+                    "input",
+                    input_aliases,
+                    screencap_aliases,
+                )
+                if mouse_value is None:
+                    mouse_value = general_input
+                if keyboard_value is None:
+                    keyboard_value = general_input
+                defaults: dict[str, int] = {}
+                if mouse_value is not None:
+                    defaults["mouse_input_methods"] = mouse_value
+                if keyboard_value is not None:
+                    defaults["keyboard_input_methods"] = keyboard_value
+                screencap_value = self._resolve_win32_setting_value(
+                    normalized.get(
+                        "screencap",
+                        normalized.get("screencap_method", normalized.get("screencap_methods")),
+                    ),
+                    "screencap",
+                    input_aliases,
+                    screencap_aliases,
+                )
+                if screencap_value is not None:
+                    defaults["win32_screencap_methods"] = screencap_value
+                entry: dict[str, Any] = {"defaults": defaults}
+                if normalized.get("class_regex"):
+                    entry["class_regex"] = str(normalized["class_regex"])
+                if normalized.get("window_regex"):
+                    entry["window_regex"] = str(normalized["window_regex"])
+                if entry.get("defaults") or "class_regex" in entry or "window_regex" in entry:
+                    win32_default_mapping[controller_name] = entry
+                continue
+
+            if controller_type == "gamepad":
+                gamepad_config = controller.get("gamepad")
+                if not isinstance(gamepad_config, dict):
+                    gamepad_config = {}
+                normalized = {
+                    str(key).lower(): value
+                    for key, value in gamepad_config.items()
+                    if isinstance(key, str)
+                }
+                entry: dict[str, Any] = {}
+                if normalized.get("class_regex"):
+                    entry["class_regex"] = str(normalized["class_regex"])
+                if normalized.get("window_regex"):
+                    entry["window_regex"] = str(normalized["window_regex"])
+                gamepad_type = self._resolve_gamepad_type_value(
+                    normalized.get("gamepad_type")
+                )
+                if gamepad_type is not None:
+                    entry["defaults"] = {"gamepad_type": gamepad_type}
+                if entry:
+                    gamepad_default_mapping[controller_name] = entry
+
+        agent_interface_config = self.interface.get("agent", {})
+        interface_custom = self.interface.get("custom")
+        current_options.setdefault("gpu", -1)
+        timeout_default = self._coerce_int(agent_interface_config.get("timeout"))
+        if timeout_default is None:
+            timeout_default = 30
+        current_options.setdefault("agent_timeout", timeout_default)
+        if not isinstance(current_options.get("custom"), str):
+            current_options["custom"] = (
+                interface_custom if isinstance(interface_custom, str) else ""
+            )
+
+        return {
+            "controller_type_mapping": controller_type_mapping,
+            "win32_default_mapping": win32_default_mapping,
+            "gamepad_default_mapping": gamepad_default_mapping,
+            "agent_timeout_default": timeout_default,
+            "interface_custom_default": (
+                interface_custom if isinstance(interface_custom, str) else ""
+            ),
+        }
+
+    def sync_controller_meta_fields(
+        self,
+        current_config: Dict[str, Any],
+        controller_name: str,
+        controller_info: Dict[str, Any] | None,
+    ) -> Dict[str, Any]:
+        """将 controller 元信息同步到当前控制器子配置。"""
+        if not controller_name:
+            return {}
+        info = controller_info or {}
+        controller_cfg = current_config.setdefault(controller_name, {})
+        if not isinstance(controller_cfg, dict):
+            controller_cfg = {}
+            current_config[controller_name] = controller_cfg
+
+        changed: Dict[str, Any] = {}
+        for key in (
+            "permission_required",
+            "display_short_side",
+            "display_long_side",
+            "display_raw",
+        ):
+            if key not in info:
+                continue
+            value = info.get(key)
+            if value is None:
+                continue
+            if controller_cfg.get(key) != value:
+                controller_cfg[key] = value
+                changed[key] = value
+        return changed
+
+    def ensure_controller_config(
+        self,
+        current_config: Dict[str, Any],
+        controller_name: str,
+        controller_info: Dict[str, Any],
+        win32_default_mapping: Dict[str, Dict[str, Any]],
+        gamepad_default_mapping: Dict[str, Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """确保当前控制器配置存在并补齐默认值/兼容迁移。"""
+        controller_type = str(controller_info.get("type", "")).lower()
+        if controller_name in current_config:
+            controller_cfg = current_config[controller_name]
+        elif controller_type in current_config:
+            controller_cfg = current_config[controller_type]
+            current_config[controller_name] = controller_cfg
+        else:
+            controller_cfg = {}
+            current_config[controller_name] = controller_cfg
+
+        if not isinstance(controller_cfg, dict):
+            controller_cfg = {}
+            current_config[controller_name] = controller_cfg
+
+        if controller_type == "adb":
+            defaults = {
+                "adb_path": "",
+                "address": "",
+                "emulator_path": "",
+                "emulator_params": "",
+                "wait_time": 30,
+                "screencap_methods": 0,
+                "input_methods": 0,
+                "config": "{}",
+            }
+            for key, value in defaults.items():
+                controller_cfg.setdefault(key, value)
+            return controller_cfg
+
+        if controller_type == "win32":
+            defaults = {
+                "hwnd": "",
+                "program_path": "",
+                "program_params": "",
+                "wait_time": 30,
+            }
+            for key, value in defaults.items():
+                controller_cfg.setdefault(key, value)
+            for key in (
+                "mouse_input_methods",
+                "keyboard_input_methods",
+                "win32_screencap_methods",
+            ):
+                controller_cfg.setdefault(
+                    key,
+                    win32_default_mapping.get(controller_name, {})
+                    .get("defaults", {})
+                    .get(key, 0),
+                )
+            return controller_cfg
+
+        if controller_type == "gamepad":
+            defaults = {
+                "hwnd": "",
+                "program_path": "",
+                "program_params": "",
+                "wait_time": 30,
+                "gamepad_type": 0,
+            }
+            for key, value in defaults.items():
+                controller_cfg.setdefault(key, value)
+            resolved = self._resolve_gamepad_type_value(
+                controller_cfg.get("gamepad_type")
+            )
+            if resolved is None:
+                resolved = (
+                    gamepad_default_mapping.get(controller_name, {})
+                    .get("defaults", {})
+                    .get("gamepad_type", 0)
+                )
+            controller_cfg["gamepad_type"] = resolved
+            return controller_cfg
+
+        if controller_type == "playcover":
+            controller_cfg.pop("playcover_uuid", None)
+            default_uuid = "maa.playcover"
+            playcover_config = controller_info.get("playcover", {})
+            if isinstance(playcover_config, dict):
+                default_uuid = playcover_config.get("uuid", default_uuid)
+            controller_cfg.setdefault("uuid", default_uuid)
+            if not controller_cfg.get("uuid"):
+                controller_cfg["uuid"] = default_uuid
+            controller_cfg.setdefault("address", "")
+            return controller_cfg
+
+        return controller_cfg
+
+    def build_controller_task_option(
+        self,
+        current_config: Dict[str, Any],
+        controller_type_mapping: Dict[str, Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """构建 Controller 任务需要落盘的配置片段。"""
+        controller_task_option: Dict[str, Any] = {}
+        for key in ("controller_type", "gpu", "agent_timeout", "custom"):
+            if key in current_config:
+                controller_task_option[key] = current_config[key]
+
+        for controller_info in controller_type_mapping.values():
+            controller_name = controller_info.get("name", "")
+            if controller_name and controller_name in current_config:
+                controller_task_option[controller_name] = self.normalize_config_for_json(
+                    current_config[controller_name]
+                )
+
+        return self.normalize_config_for_json(controller_task_option)
 
     def get_task_speedrun_payload(
         self, task_id: str
