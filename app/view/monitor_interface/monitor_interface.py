@@ -24,7 +24,6 @@ from qfluentwidgets import (
 )
 
 from app.core.core import ServiceCoordinator
-from app.core.runner.monitor_task import MonitorTask
 from app.utils.logger import (
     logger,
     restore_asyncify_logging,
@@ -62,10 +61,7 @@ class MonitorInterface(QWidget):
         self._image_height: Optional[int] = None
         self._is_landscape: Optional[bool] = None
         self._setup_ui()
-        self.monitor_task = MonitorTask(
-            task_service=self.service_coordinator.task_service,
-            config_service=self.service_coordinator.config_service,
-        )
+        self.monitor_task = self.service_coordinator.create_monitor_task()
         self._monitor_loop_task: Optional[asyncio.Task] = None
         self._image_processing_task: Optional[asyncio.Task] = None
         self._monitoring_active = False

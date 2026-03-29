@@ -21,6 +21,7 @@ from app.core.service.option_service import OptionService
 from app.core.service.schedule_service import ScheduleService
 from app.core.service.task_service import TaskService
 from app.core.runner.task_flow import TaskFlowRunner
+from app.core.runner.monitor_task import MonitorTask
 from app.core.log_processor import CallbackLogProcessor
 from app.utils.logger import logger
 
@@ -995,6 +996,10 @@ class ServiceCoordinator:
     async def stop_task(self, *, manual: bool = False):
         """停止当前任务流（供内部/调度等模块调用，可指定是否视为手动停止）。"""
         return await self.task_runner.stop_task(manual=manual)
+
+    def create_monitor_task(self) -> MonitorTask:
+        """创建监控任务实例。"""
+        return MonitorTask(self.task_service, self.config_service)
 
     @property
     def run_manager(self) -> TaskFlowRunner:
