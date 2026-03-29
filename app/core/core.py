@@ -1169,6 +1169,14 @@ class ServiceCoordinator:
             pass
         return await self.task_runner.run_tasks_flow(task_id)
 
+    async def run_tasks_flow_from(self, start_task_id: str) -> Any:
+        """从指定任务开始运行任务流。"""
+        try:
+            self.task_service.refresh_hidden_flags()
+        except Exception:
+            pass
+        return await self.task_runner.run_tasks_flow(start_task_id=start_task_id)
+
     async def stop_task_flow(self):
         """停止当前任务流（UI/外部调用，视为手动停止）。"""
         return await self.task_runner.stop_task(manual=True)
