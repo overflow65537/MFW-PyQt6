@@ -160,34 +160,6 @@ class ControllerSettingWidget(QWidget):
         except (TypeError, ValueError):
             return None
 
-    def _sync_controller_meta_fields(
-        self,
-        controller_name: str,
-        controller_info: dict[str, Any] | None,
-        *,
-        persist: bool,
-    ) -> dict[str, Any]:
-        """
-        将 interface 中控制器的元信息字段复制到“该控制器自己的子配置字典”中：
-        例如 config 里的 "Win32控制器": {...}
-
-        规则：
-        - 控制器里写了什么（同名键），配置里就记什么
-        - 如果为 None 或不存在就不记
-        - 仅在值发生变化时才触发保存，避免无意义刷新
-        """
-        changed = self.service_coordinator.sync_controller_meta_fields(
-            self.current_config,
-            controller_name,
-            controller_info,
-        )
-
-        if persist and changed:
-            # 仅提交当前控制器子配置，确保落盘到 configs/*.json 的对应控制器块中
-            self._auto_save_options({controller_name: self.current_config[controller_name]})
-
-        return changed
-
     def _persist_current_controller_meta_if_needed(self) -> None:
         """初始化阶段补偿：将当前控制器的 meta 字段复制到子配置并落盘。"""
         controller_name = self.current_controller_name
@@ -195,8 +167,10 @@ class ControllerSettingWidget(QWidget):
         if not controller_name or not isinstance(ctrl_info, dict):
             return
 
-        changed = self._sync_controller_meta_fields(
-            controller_name, ctrl_info, persist=False
+        changed = self.service_coordinator.sync_controller_meta_fields(
+            self.current_config,
+            controller_name,
+            ctrl_info,
         )
         if not changed:
             return
@@ -1043,17 +1017,6 @@ class ControllerSettingWidget(QWidget):
             {current_controller_name: self.current_config[current_controller_name]}
         )
 
-    def _normalize_config_for_json(self, config: Any) -> Any:
-        """递归规范化配置数据，确保所有路径类型都被转换为字符串
-
-        Args:
-            config: 需要规范化的配置数据
-
-        Returns:
-            规范化后的配置数据
-        """
-        return self.service_coordinator.normalize_config_for_json(config)
-
     def _auto_save_options(self, changed_options: dict[str, Any] | None = None):
         """自动保存当前选项
 
@@ -1066,7 +1029,7 @@ class ControllerSettingWidget(QWidget):
         try:
             options_to_save = changed_options or self.current_config
             # 规范化配置数据，确保所有路径类型都被转换为字符串
-            options_to_save = self._normalize_config_for_json(options_to_save)
+            options_to_save = self.service_coordinator.normalize_config_for_json(options_to_save)
             ok = self.service_coordinator.update_selected_options(options_to_save)
             # 强制同步到预配置任务，确保落盘
             # 只保存应该保存到 Controller 任务的字段
@@ -1414,8 +1377,10 @@ class ControllerSettingWidget(QWidget):
 
         # interface.json 新增字段：permission_required / display_* 写入到“当前控制器子配置”
         controller_name = ctrl_info["name"]
-        meta_changed = self._sync_controller_meta_fields(
-            controller_name, ctrl_info, persist=False
+        meta_changed = self.service_coordinator.sync_controller_meta_fields(
+            self.current_config,
+            controller_name,
+            ctrl_info,
         )
 
         # interface.json 新增字段：permission_required（需要管理员权限时显示红字提示）

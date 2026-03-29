@@ -203,48 +203,6 @@ class PostActionSettingMixin:
         self._apply_post_action_state_to_widgets()
         self._save_post_action_state()
 
-    def _deactivate_all_post_actions_except_none(self) -> None:
-        """取消除"无动作"外的所有选项"""
-        all_other_actions = self._PRIMARY_ACTIONS.union(self._SECONDARY_ACTIONS).union(
-            self._OPTIONAL_ACTIONS
-        ) - {"none"}
-        for action_key in all_other_actions:
-            widget = self.post_action_widgets.get(action_key)
-            if isinstance(widget, CheckBox):
-                widget.setChecked(False)
-            self._post_action_state[action_key] = False
-        # 更新相关UI状态
-        self._update_combo_enabled_state()
-        self._update_program_inputs_enabled()
-
-    def _deactivate_none_action(self) -> None:
-        """取消"无动作"选项"""
-        none_widget = self.post_action_widgets.get("none")
-        if isinstance(none_widget, CheckBox):
-            none_widget.setChecked(False)
-        self._post_action_state["none"] = False
-
-    def _deactivate_shutdown(self) -> None:
-        """取消"关机"选项"""
-        shutdown_widget = self.post_action_widgets.get("shutdown")
-        if isinstance(shutdown_widget, CheckBox):
-            shutdown_widget.setChecked(False)
-        self._post_action_state["shutdown"] = False
-
-    def _deactivate_close_software(self) -> None:
-        """取消"退出软件"选项"""
-        close_software_widget = self.post_action_widgets.get("close_software")
-        if isinstance(close_software_widget, CheckBox):
-            close_software_widget.setChecked(False)
-        self._post_action_state["close_software"] = False
-
-    def _deactivate_run_other(self) -> None:
-        """取消"切换其他配置"选项"""
-        run_other_widget = self.post_action_widgets.get("run_other")
-        if isinstance(run_other_widget, CheckBox):
-            run_other_widget.setChecked(False)
-        self._post_action_state["run_other"] = False
-
     def _on_other_config_changed(self, combo: ComboBox, index: int) -> None:
         if self._post_action_syncing:
             return
