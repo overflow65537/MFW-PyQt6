@@ -125,9 +125,10 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
                 # 即使资源下拉框不存在，也需要更新资源任务的配置
                 # 检查当前资源是否在新控制器的资源列表中
                 if label in self.resource_mapping:
-                    current_resources = self.resource_mapping[
-                        label
-                    ]
+                    current_resources = self.service_coordinator.get_resources_for_controller(
+                        label,
+                        self.controller_type_mapping,
+                    )
                     if current_resources:
                         final_resource = self.service_coordinator.get_current_resource_name()
                         if not is_initializing:

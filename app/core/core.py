@@ -850,6 +850,33 @@ class ServiceCoordinator:
             current_config, controller_type_mapping
         )
 
+    def build_resource_mapping(
+        self, controller_type_mapping: Dict[str, Dict[str, Any]] | None = None
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """按控制器标签构建资源映射表。"""
+        return self.task_service.build_resource_mapping(controller_type_mapping)
+
+    def get_resources_for_controller(
+        self,
+        controller_label: str,
+        controller_type_mapping: Dict[str, Dict[str, Any]] | None = None,
+    ) -> List[Dict[str, Any]]:
+        """获取指定控制器标签下可用的资源列表。"""
+        return self.task_service.get_resources_for_controller(
+            controller_label, controller_type_mapping
+        )
+
+    def get_current_resource_entry(
+        self,
+        controller_label: str,
+        resource_name: str,
+        controller_type_mapping: Dict[str, Dict[str, Any]] | None = None,
+    ) -> Dict[str, Any] | None:
+        """解析当前控制器下选中的资源配置。"""
+        return self.task_service.get_current_resource_entry(
+            controller_label, resource_name, controller_type_mapping
+        )
+
     def ensure_resource_matches_controller_resources(
         self, resources: List[Dict[str, Any]]
     ) -> str | None:

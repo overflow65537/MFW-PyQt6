@@ -46,51 +46,14 @@ class ResourceSettingMixin:
 
     def _rebuild_resource_mapping(self):
         """重新构建资源映射表（用于多配置模式下interface更新时）"""
-        # 获取最新的interface
-        interface = self.service_coordinator.interface
-
-        # 获取控制器类型映射（应该由 ControllerSettingMixin 提供）
         if not hasattr(self, "controller_type_mapping") or not self.controller_type_mapping:
-            # 如果没有控制器映射，创建一个临时的
-            self.controller_type_mapping = {
-                ctrl.get("label", ctrl.get("name", "")): {
-                    "name": ctrl.get("name", ""),
-                    "type": ctrl.get("type", ""),
-                    "icon": ctrl.get("icon", ""),
-                    "description": ctrl.get("description", ""),
-                }
-                for ctrl in interface.get("controller", [])
-            }
+            self.controller_type_mapping = self.service_coordinator.get_controller_ui_context(
+                self.current_config
+            )["controller_type_mapping"]
 
-        # 构建资源映射表
-        # 使用 label（如果存在）或 name 作为键，确保与 controller_type_mapping 的键一致
-        self.resource_mapping = {}
-        # 使用 controller_type_mapping 的键来构建资源映射表，确保键的一致性
-        for label in self.controller_type_mapping.keys():
-            self.resource_mapping[label] = []
-        
-        # 遍历每个资源，确定它支持哪些控制器
-        for resource in interface.get("resource", []):
-            supported_controllers = resource.get("controller")
-            if not supported_controllers:
-                # 未指定支持的控制器则默认对所有控制器生效
-                for key in self.resource_mapping:
-                    self.resource_mapping[key].append(resource)
-                continue
-
-            # 资源中的 controller 字段存储的是控制器的 name（不是 type）
-            # 例如：["安卓端", "桌面端"]
-            for controller in interface.get("controller", []):
-                controller_name = controller.get("name", "")
-                # 检查控制器的 name 是否在资源支持的控制器列表中
-                if controller_name in supported_controllers:
-                    label = controller.get("label", controller.get("name", ""))
-                    if label in self.resource_mapping:
-                        self.resource_mapping[label].append(resource)
-                    else:
-                        logger.warning(
-                            f"控制器标签 {label} 不在资源映射表中，无法添加资源 {resource.get('name', '')}"
-                        )
+        self.resource_mapping = self.service_coordinator.build_resource_mapping(
+            self.controller_type_mapping
+        )
 
     def create_resource_settings(self) -> None:
         """创建固定的资源设置UI"""
@@ -141,7 +104,10 @@ class ResourceSettingMixin:
         if current_controller_label not in self.resource_mapping:
             return
 
-        for resource in self.resource_mapping[current_controller_label]:
+        for resource in self.service_coordinator.get_resources_for_controller(
+            current_controller_label,
+            self.controller_type_mapping,
+        ):
             if resource.get("label", resource.get("name", "")) == self.current_resource:
                 # 检查资源是否真的改变了
                 old_resource = self.current_config.get("resource", "")
@@ -318,18 +284,12 @@ class ResourceSettingMixin:
         
         current_controller_label = self.current_controller_label
         
-        if not hasattr(self, "resource_mapping") or current_controller_label not in self.resource_mapping:
-            return None
-        
         current_resource_name = self.current_config.get("resource", "")
-        if not current_resource_name:
-            return None
-        
-        for resource in self.resource_mapping[current_controller_label]:
-            if resource.get("name", "") == current_resource_name:
-                return resource
-        
-        return None
+        return self.service_coordinator.get_current_resource_entry(
+            current_controller_label,
+            current_resource_name,
+            getattr(self, "controller_type_mapping", None),
+        )
     
     def _get_current_controller_name(self) -> str:
         """获取当前选中的控制器 name（用于按 controller 字段过滤选项）"""

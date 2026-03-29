@@ -865,6 +865,73 @@ class TaskService:
 
         return self.normalize_config_for_json(controller_task_option)
 
+    def build_resource_mapping(
+        self, controller_type_mapping: Dict[str, Dict[str, Any]] | None = None
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """按控制器标签构建资源映射表。"""
+        interface = self.interface
+        mapping_source = controller_type_mapping or {
+            ctrl.get("label", ctrl.get("name", "")): {
+                "name": ctrl.get("name", ""),
+                "type": ctrl.get("type", ""),
+                "icon": ctrl.get("icon", ""),
+                "description": ctrl.get("description", ""),
+            }
+            for ctrl in interface.get("controller", [])
+        }
+
+        resource_mapping: Dict[str, List[Dict[str, Any]]] = {
+            label: [] for label in mapping_source.keys()
+        }
+        controller_label_by_name = {
+            ctrl.get("name", ""): ctrl.get("label", ctrl.get("name", ""))
+            for ctrl in interface.get("controller", [])
+        }
+
+        for resource in interface.get("resource", []):
+            supported_controllers = resource.get("controller")
+            if not supported_controllers:
+                for label in resource_mapping:
+                    resource_mapping[label].append(resource)
+                continue
+
+            for controller_name in supported_controllers:
+                label = controller_label_by_name.get(controller_name)
+                if label in resource_mapping:
+                    resource_mapping[label].append(resource)
+
+        return resource_mapping
+
+    def get_resources_for_controller(
+        self,
+        controller_label: str,
+        controller_type_mapping: Dict[str, Dict[str, Any]] | None = None,
+    ) -> List[Dict[str, Any]]:
+        """获取指定控制器标签下可用的资源列表。"""
+        return self.build_resource_mapping(controller_type_mapping).get(
+            controller_label, []
+        )
+
+    def get_current_resource_entry(
+        self,
+        controller_label: str,
+        resource_name: str,
+        controller_type_mapping: Dict[str, Dict[str, Any]] | None = None,
+    ) -> Dict[str, Any] | None:
+        """解析当前控制器下选中的资源配置。"""
+        if not controller_label or not resource_name:
+            return None
+
+        resources = self.get_resources_for_controller(
+            controller_label, controller_type_mapping
+        )
+        for resource in resources:
+            name = resource.get("name", "")
+            label = resource.get("label", name)
+            if resource_name in {name, label}:
+                return resource
+        return None
+
     def get_task_speedrun_payload(
         self, task_id: str
     ) -> tuple[TaskItem | None, Dict[str, Any] | None, Dict[str, Any]]:
