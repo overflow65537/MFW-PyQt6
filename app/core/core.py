@@ -1,4 +1,5 @@
 from pathlib import Path
+from copy import deepcopy
 from typing import List, Dict, Any
 import time
 import shutil
@@ -834,6 +835,19 @@ class ServiceCoordinator:
     ) -> Dict[str, Any]:
         """构建任务速通配置。"""
         return self.task_service.build_speedrun_config(task_name, existing)
+
+    def get_task_speedrun_payload(
+        self, task_id: str
+    ) -> tuple[TaskItem | None, Dict[str, Any] | None, Dict[str, Any]]:
+        """获取任务的速通配置与运行时状态。"""
+        task, speedrun_config, state = self.task_service.get_task_speedrun_payload(task_id)
+        if (
+            task
+            and speedrun_config is not None
+            and self.option_service.current_task_id == task_id
+        ):
+            self.option_service.current_options["_speedrun_config"] = deepcopy(speedrun_config)
+        return task, speedrun_config, state
 
     def get_current_global_options(self) -> Dict[str, Any]:
         """获取当前配置的全局选项。"""

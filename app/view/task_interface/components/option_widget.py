@@ -378,7 +378,13 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
     def _apply_speedrun_config(self) -> None:
         """加载当前任务的速通配置到 UI"""
         task_id = self.service_coordinator.get_current_option_task_id()
-        task = self.service_coordinator.get_task(task_id) if task_id else None
+        task = None
+        merged_cfg = None
+        state = {}
+        if task_id:
+            task, merged_cfg, state = self.service_coordinator.get_task_speedrun_payload(
+                task_id
+            )
         if not task:
             self.speedrun_widget.set_config(None, emit=False)
             return
@@ -387,32 +393,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         if getattr(task, "is_special", False):
             self._set_speedrun_visible(False)
             return
-
-        existing_cfg = (
-            task.task_option.get("_speedrun_config")
-            if isinstance(task.task_option, dict)
-            else None
-        )
-        merged_cfg = self.service_coordinator.build_speedrun_config(task.name, existing_cfg)
-
-        # 如果缺失或需要修正，持久化到任务
-        task_option = task.task_option if isinstance(task.task_option, dict) else {}
-        if task_option.get("_speedrun_config") != merged_cfg:
-            updated_task = deepcopy(task)
-            if not isinstance(updated_task.task_option, dict):
-                updated_task.task_option = {}
-            updated_task.task_option["_speedrun_config"] = merged_cfg
-            self.service_coordinator.update_task(updated_task)
-            task = updated_task
-
-        try:
-            self.service_coordinator.get_current_options()["_speedrun_config"] = merged_cfg
-        except Exception:
-            pass
-
-        state = {}
-        if isinstance(task.task_option, dict):
-            state = task.task_option.get("_speedrun_state", {}) or {}
+        if merged_cfg is None:
+            self.speedrun_widget.set_config(None, emit=False)
+            return
 
         self.speedrun_widget.set_config(merged_cfg, emit=False)
         try:
