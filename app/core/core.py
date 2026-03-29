@@ -7,9 +7,11 @@ import jsonc
 
 from PySide6.QtCore import QTimer
 
-from app.core.item import (
+from app.core.events import (
     CoreSignalBus,
     FromServiceCoordinator,
+)
+from app.core.item import (
     ConfigItem,
     TaskItem,
 )

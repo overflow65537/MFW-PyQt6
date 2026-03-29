@@ -6,7 +6,7 @@ MFW-ChainFlow Assistant
 
 from PySide6.QtCore import QObject
 
-from app.core.item import FromServiceCoordinator
+from app.core.events import FromServiceCoordinator
 from app.core.service.i18n_service import get_i18n_service
 
 

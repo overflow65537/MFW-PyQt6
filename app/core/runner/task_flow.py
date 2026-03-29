@@ -44,7 +44,8 @@ from app.core.runner.maafw import (
 )
 from app.utils.controller_utils import ControllerHelper
 
-from app.core.item import FromServiceCoordinator, TaskItem
+from app.core.events import FromServiceCoordinator
+from app.core.item import TaskItem
 
 
 class _SignalProxy:
