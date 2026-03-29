@@ -212,11 +212,8 @@ class ResourceSettingMixin:
     def _notify_task_list_update(self):
         """通知任务列表更新（资源变化时调用）"""
         try:
-            # 通过信号总线通知任务列表更新
             if hasattr(self, "service_coordinator"):
-                # 发出 option_updated 信号，任务列表可以监听此信号来更新
-                # 仅携带 resource 字段，避免其他字段变化导致任务列表重载
-                self.service_coordinator.signal_bus.option_updated.emit(
+                self.service_coordinator.notify_option_updated(
                     {"resource": self.current_config.get("resource")}
                 )
         except Exception:
@@ -500,7 +497,7 @@ class ResourceSettingMixin:
             return
         all_options = self.global_option_form_widget.get_options()
         if self.service_coordinator.config_service.update_current_global_options(dict(all_options)):
-            option_service.signal_bus.option_updated.emit(all_options)
+            self.service_coordinator.notify_option_updated(all_options)
 
     def _update_resource_options_hidden_state(self, current_resource_option_names: list):
         """更新资源选项的 hidden 状态（当资源切换时调用）
@@ -797,8 +794,7 @@ class ResourceSettingMixin:
                 if option_service.current_task_id == _RESOURCE_:
                     # 更新 OptionService 的本地选项字典
                     option_service.current_options.update(resource_options)
-                    # 触发选项更新信号（用于通知UI更新）
-                    option_service.signal_bus.option_updated.emit(resource_options)
+                    self.service_coordinator.notify_option_updated(resource_options)
         except Exception as e:
             logger.error(f"保存资源选项失败: {e}")
 
