@@ -810,6 +810,26 @@ class ServiceCoordinator:
         """确保当前资源与控制器资源集合兼容。"""
         return self.task_service.ensure_resource_matches_controller_resources(resources)
 
+    def update_resource_options_hidden_state(
+        self, current_resource_option_names: List[str]
+    ) -> bool:
+        """更新 Resource 任务中资源选项的 hidden 状态。"""
+        return self.task_service.update_resource_options_hidden_state(
+            current_resource_option_names
+        )
+
+    def get_resource_option_config(self, form_structure: Dict[str, Any]) -> Dict[str, Any]:
+        """获取当前 Resource 任务的资源选项配置。"""
+        return self.task_service.get_resource_option_config(form_structure)
+
+    def save_resource_options(
+        self, current_resource_option_names: List[str], resource_options: Dict[str, Any]
+    ) -> bool:
+        """保存当前资源对应的 Resource 选项。"""
+        return self.task_service.save_resource_options(
+            current_resource_option_names, resource_options
+        )
+
     def get_current_option_task_id(self) -> str | None:
         """返回当前选中的任务 ID。"""
         return getattr(self.option_service, "current_task_id", None)
