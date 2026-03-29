@@ -1202,6 +1202,26 @@ class ServiceCoordinator:
         """创建监控任务实例。"""
         return MonitorTask(self.task_service, self.config_service)
 
+    def get_notice_send_thread(self) -> Any:
+        """返回运行期通知线程对象。"""
+        return getattr(self.task_runner, "send_thread", None)
+
+    def clear_maafw_sync(self) -> None:
+        """同步清理 maafw 运行时资源。"""
+        maafw = self.task_runner.maafw
+        if maafw.tasker and maafw.tasker.running:
+            logger.debug("停止任务线程")
+            maafw.tasker.post_stop().wait()
+            logger.debug("停止任务线程完成")
+        maafw.tasker = None
+        if maafw.resource:
+            maafw.resource.clear()
+        maafw.resource = None
+        maafw.controller = None
+        if maafw.agent:
+            maafw.agent.disconnect()
+        maafw.agent = None
+
     @property
     def run_manager(self) -> TaskFlowRunner:
         return self.task_runner

@@ -687,7 +687,7 @@ class MainWindow(MSFluentWindow):
         self._adjust_title_bar_for_macos()
 
         # 设置图标
-        icon_path = self.service_coordinator.task.interface.get(
+        icon_path = self.service_coordinator.interface.get(
             "icon", "./app/assets/icons/logo.png"
         )
         icon_path = Path(icon_path)
@@ -1998,7 +1998,7 @@ class MainWindow(MSFluentWindow):
 
     def _refresh_announcement_sections(self) -> None:
         """重新读取欢迎信息和 resource/announcement.md，更新公告内容。"""
-        welcome_content = self.service_coordinator.task.interface.get("welcome", "")
+        welcome_content = self.service_coordinator.interface.get("welcome", "")
         sections: list[tuple[str, str]] = []
         if welcome_content:
             sections.append((self.tr("Welcome"), welcome_content))
@@ -2567,7 +2567,7 @@ class MainWindow(MSFluentWindow):
 
     def set_title(self):
         """设置窗口标题"""
-        meta = self.service_coordinator.task.interface or {}
+        meta = self.service_coordinator.interface or {}
         base_title = (
             meta.get("title", "")
             or meta.get("custom_title", "")
@@ -2646,7 +2646,7 @@ class MainWindow(MSFluentWindow):
 
     def clear_threads_async(self):
         """异步清理线程和资源"""
-        send_thread = getattr(self.service_coordinator.task_runner, "send_thread", None)
+        send_thread = self.service_coordinator.get_notice_send_thread()
         # 兼容：旧版本 task_runner 可能没有暴露 send_thread，这里直接回落到全局单例
         if send_thread is None:
             try:
@@ -2666,20 +2666,9 @@ class MainWindow(MSFluentWindow):
 
     def _clear_maafw_sync(self):
         """同步清理 maafw（回退逻辑）"""
-        maafw = self.service_coordinator.task_runner.maafw
         try:
-            if maafw.tasker and maafw.tasker.running:
-                logger.debug("停止任务线程")
-                maafw.tasker.post_stop().wait()
-                logger.debug("停止任务线程完成")
-            maafw.tasker = None
-            if maafw.resource:
-                maafw.resource.clear()
-            maafw.resource = None
-            maafw.controller = None
-            if maafw.agent:
-                maafw.agent.disconnect()
-            maafw.agent = None
+            self.service_coordinator.clear_maafw_sync()
+            maafw = self.service_coordinator.run_manager.maafw
             agent_proc = getattr(maafw, "agent_thread", None)
             if agent_proc:
                 try:
