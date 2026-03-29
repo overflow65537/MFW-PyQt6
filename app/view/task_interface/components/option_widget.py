@@ -129,79 +129,20 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
                         label
                     ]
                     if current_resources:
-                        # 获取当前保存的资源
-                        from app.common.constants import _RESOURCE_
-
-                        resource_task = self.service_coordinator.get_task(
-                            _RESOURCE_
-                        )
-                        current_resource_name = ""
-                        if resource_task and isinstance(
-                            resource_task.task_option, dict
-                        ):
-                            current_resource_name = resource_task.task_option.get(
-                                "resource", ""
-                            )
-
-                        # 检查当前资源是否在新控制器的资源列表中
-                        resource_found = False
-                        for resource in current_resources:
-                            resource_name = resource.get("name", "")
-                            resource_label = resource.get("label", resource_name)
-                            if current_resource_name and current_resource_name in (
-                                resource_name,
-                                resource_label,
-                            ):
-                                resource_found = True
-                                break
-
-                        # 如果当前资源不在新控制器的资源列表中，自动选择第一个资源并保存（仅在非初始化时）
-                        if (
-                            not resource_found
-                            and current_resource_name
-                            and not is_initializing
-                        ):
-                            first_resource = current_resources[0]
-                            first_resource_name = first_resource.get("name", "")
-
-                            # 更新配置并保存
-                            if resource_task:
-                                resource_task.task_option["resource"] = (
-                                    first_resource_name
-                                )
-                                self.service_coordinator.update_task(
-                                    resource_task
-                                )
-
-                                # 触发任务列表更新（延迟触发，确保资源任务已保存）
+                        final_resource = self.service_coordinator.get_current_resource_name()
+                        if not is_initializing:
+                            final_resource = self.service_coordinator.ensure_resource_matches_controller_resources(
+                                current_resources
+                            ) or final_resource
+                            if final_resource:
                                 from PySide6.QtCore import QTimer
 
                                 QTimer.singleShot(
                                     50,
                                     lambda: self.service_coordinator.notify_option_updated(
-                                        {"resource": first_resource_name}
+                                        {"resource": final_resource}
                                     ),
                                 )
-                            else:
-                                logger.warning(f"未找到 Resource 任务，无法保存资源")
-                        elif not is_initializing:
-                            # 即使资源没有变化，也要触发任务列表更新（确保任务列表根据当前资源正确显示）
-                            if resource_task and isinstance(
-                                resource_task.task_option, dict
-                            ):
-                                final_resource = resource_task.task_option.get(
-                                    "resource", ""
-                                )
-                                if final_resource:
-                                    # 使用 QTimer 延迟触发，确保资源任务已保存
-                                    from PySide6.QtCore import QTimer
-
-                                    QTimer.singleShot(
-                                        50,
-                                        lambda: self.service_coordinator.notify_option_updated(
-                                            {"resource": final_resource}
-                                        ),
-                                    )
 
         # 将回调设置到控制器组件
         setattr(
@@ -944,10 +885,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 从Controller任务的配置中获取当前控制器类型（资源任务应该使用Controller任务的配置）
         from app.common.constants import _CONTROLLER_
 
-        controller_task = self.service_coordinator.get_task(_CONTROLLER_)
-        controller_name = ""
-        if controller_task and isinstance(controller_task.task_option, dict):
-            controller_name = controller_task.task_option.get("controller_type", "")
+        controller_name = self.service_coordinator.get_current_controller_type()
 
         # 如果Controller任务中没有配置，尝试从当前配置中获取（作为fallback）
         if not controller_name:
@@ -981,12 +919,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 注意：必须在 create_resource_settings 之前设置，因为 create_resource_settings 会调用 _fill_resource_option
         from app.common.constants import _RESOURCE_
 
-        resource_task = self.service_coordinator.get_task(_RESOURCE_)
-        if resource_task and isinstance(resource_task.task_option, dict):
-            resource_name = resource_task.task_option.get("resource", "")
-            if resource_name:
-                # 确保 current_config 中有 resource 字段
-                self.current_config["resource"] = resource_name
+        resource_name = self.service_coordinator.get_current_resource_name()
+        if resource_name:
+            self.current_config["resource"] = resource_name
 
         # 创建资源下拉框（此时 current_config 中已经有 resource 值了）
         self.create_resource_settings()
@@ -1022,12 +957,11 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 从 POST_ACTION 任务的配置中获取完成后操作配置，并设置到 current_config 中
         from app.common.constants import POST_ACTION
 
-        post_action_task = self.service_coordinator.get_task(POST_ACTION)
-        if post_action_task and isinstance(post_action_task.task_option, dict):
-            post_action_config = post_action_task.task_option.get("post_action", {})
-            if post_action_config:
-                # 确保 current_config 中有 post_action 字段
-                self.current_config["post_action"] = post_action_config
+        post_action_config = self.service_coordinator.get_task_option_value(
+            POST_ACTION, "post_action", {}
+        )
+        if post_action_config:
+            self.current_config["post_action"] = post_action_config
 
         # 创建完成后操作设置（此时 current_config 中已经有 post_action 值了）
         self.create_post_action_settings()

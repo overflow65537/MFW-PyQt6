@@ -761,6 +761,30 @@ class ServiceCoordinator:
         """更新任务。"""
         return self.task_service.update_task(task, idx)
 
+    def get_task_option_value(
+        self, task_id: str, option_key: str, default: Any = None
+    ) -> Any:
+        """读取指定任务的某个 option 值。"""
+        return self.task_service.get_task_option_value(task_id, option_key, default)
+
+    def get_current_resource_name(self) -> str:
+        """返回当前资源名称。"""
+        return self.task_service.get_current_resource_name()
+
+    def get_current_controller_type(self) -> str:
+        """返回当前控制器类型。"""
+        return self.task_service.get_current_controller_type()
+
+    def set_resource_name(self, resource_name: str) -> bool:
+        """更新当前资源名称。"""
+        return self.task_service.set_resource_name(resource_name)
+
+    def ensure_resource_matches_controller_resources(
+        self, resources: List[Dict[str, Any]]
+    ) -> str | None:
+        """确保当前资源与控制器资源集合兼容。"""
+        return self.task_service.ensure_resource_matches_controller_resources(resources)
+
     def get_current_option_task_id(self) -> str | None:
         """返回当前选中的任务 ID。"""
         return getattr(self.option_service, "current_task_id", None)

@@ -188,17 +188,9 @@ class TaskDragListWidget(BaseListWidget):
     def _should_include(self, task: TaskItem) -> bool:
         """判断任务是否应显示在当前列表。
 
-        注意：`task.is_hidden` 是“能力禁用”标记（由配置层/列表层根据 resource/controller 计算）。
+        注意：`task.is_hidden` 是“能力禁用”标记（由 TaskService 根据 resource/controller 计算）。
         列表过滤模式（normal/special）只是 UI 展示策略，不应影响 is_hidden 的正确性。
         """
-        # 先根据资源/控制器刷新一次 is_hidden（避免因 normal/special 过滤提前 return 而漏更新）
-        should_show_by_resource = self._should_show_by_resource(task)
-        should_show_by_controller = self._should_show_by_controller(task)
-        capability_show = should_show_by_resource and should_show_by_controller
-        
-        # 更新任务的 is_hidden 状态（仅标记，不改变选中状态）
-        task.is_hidden = not capability_show
-        
         if task.is_hidden:
             return False
 
@@ -209,120 +201,6 @@ class TaskDragListWidget(BaseListWidget):
             return not bool(task.is_special)
         
         return True
-    
-    def _should_show_by_resource(self, task: TaskItem) -> bool:
-        """根据当前选择的资源判断任务是否应该显示"""
-        # 基础任务（资源、控制器、完成后操作）始终显示
-        if task.is_base_task():
-            return True
-        
-        # 获取当前配置中的资源
-        try:
-            # 从 Resource 任务中获取资源
-            resource_task = self.service_coordinator.task.get_task(_RESOURCE_)
-            if not resource_task:
-                logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 没有 Resource 任务，显示所有任务")
-                return True  # 如果没有 Resource 任务，显示所有任务
-            
-            current_resource_name = ""
-            if isinstance(resource_task.task_option, dict):
-                current_resource_name = resource_task.task_option.get("resource", "")
-            
-            if not current_resource_name:
-                logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 没有选择资源，显示所有任务")
-                return True  # 如果没有选择资源，显示所有任务
-            
-            # 获取 interface 中的任务定义
-            try:
-                interface = self.service_coordinator.task.interface
-            except Exception:
-                interface = {}
-            if not interface:
-                logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 没有 interface，显示所有任务")
-                return True
-            
-            # 查找任务定义中的 resource 字段
-            for task_def in interface.get("task", []):
-                if task_def.get("name") == task.name:
-                    task_resources = task_def.get("resource", [])
-                    # 如果任务没有 resource 字段，或者 resource 为空列表，表示所有资源都可用
-                    if not task_resources:
-                        logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 没有 resource 字段，显示（所有资源可用）")
-                        return True
-                    # 如果任务的 resource 列表包含当前资源（使用 name 匹配），则显示
-                    if current_resource_name in task_resources:
-                        logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 当前资源 {current_resource_name} 在任务的 resource 列表中，显示")
-                        return True
-                    logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 当前资源 {current_resource_name} 不在任务的 resource 列表 {task_resources} 中，隐藏")
-                    return False
-            
-            # 如果找不到任务定义，默认显示
-            logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 找不到任务定义，默认显示")
-            return True
-        except Exception as e:
-            # 发生错误时，默认显示所有任务
-            logger.warning(f"[_should_show_by_resource] 任务 {task.name}: 发生错误，默认显示: {e}")
-            return True
-
-    def _should_show_by_controller(self, task: TaskItem) -> bool:
-        """根据当前选择的控制器类型判断任务是否应该显示。
-
-        规则：
-        - 基础任务始终显示
-        - interface.task[*].controller 缺省/空：对所有控制器显示
-        - 否则仅当当前 controller_type 命中 controller 列表才显示
-        """
-        if task.is_base_task():
-            return True
-
-        try:
-            controller_task = self.service_coordinator.task.get_task(_CONTROLLER_)
-            current_controller = ""
-            if controller_task and isinstance(controller_task.task_option, dict):
-                current_controller = controller_task.task_option.get("controller_type", "") or ""
-            if not current_controller:
-                # 若尚未配置控制器，默认显示全部任务
-                return True
-            current_controller_norm = str(current_controller).strip().lower()
-
-            try:
-                interface = self.service_coordinator.task.interface
-            except Exception:
-                interface = {}
-            if not interface:
-                return True
-
-            for task_def in interface.get("task", []):
-                if task_def.get("name") != task.name:
-                    continue
-                controllers = task_def.get("controller", None)
-
-                # 缺省/空表示全部控制器可用
-                if controllers in (None, "", [], {}):
-                    return True
-
-                allowed: list[str] = []
-                if isinstance(controllers, str):
-                    if controllers.strip():
-                        allowed = [controllers.strip()]
-                elif isinstance(controllers, list):
-                    allowed = [
-                        str(x).strip()
-                        for x in controllers
-                        if x is not None and str(x).strip()
-                    ]
-                else:
-                    # 不支持的格式：兜底为“全部可用”
-                    return True
-
-                allowed_norm = {s.lower() for s in allowed if s}
-                return current_controller_norm in allowed_norm
-
-            # 找不到任务定义：默认显示
-            return True
-        except Exception as e:
-            logger.warning(f"[_should_show_by_controller] 任务 {task.name}: 发生错误，默认显示: {e}")
-            return True
 
     def dragMoveEvent(self, event):
         """拖拽移动事件：检测鼠标位置并触发自动滚动，同时允许滚轮滚动"""
