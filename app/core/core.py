@@ -788,6 +788,14 @@ class ServiceCoordinator:
         """获取当前配置。"""
         return self.config_service.get_current_config()
 
+    def get_config(self, config_id: str) -> ConfigItem | None:
+        """按配置 ID 获取配置对象。"""
+        return self.config_service.get_config(config_id)
+
+    def get_current_config_id(self) -> str:
+        """返回当前配置 ID。"""
+        return self.config_service.current_config_id
+
     def get_bundle_path_for_config(self, config: ConfigItem | None) -> str:
         """获取指定配置对应的 bundle 路径。"""
         if config is None:
@@ -804,6 +812,10 @@ class ServiceCoordinator:
     def get_task(self, task_id: str) -> TaskItem | None:
         """获取当前配置中的任务。"""
         return self.task_service.get_task(task_id)
+
+    def get_tasks(self) -> List[TaskItem]:
+        """获取当前配置中的全部任务。"""
+        return self.task_service.get_tasks()
 
     def get_default_task_map(self) -> Dict[str, Any]:
         """获取当前 interface 生成的默认任务选项映射。"""

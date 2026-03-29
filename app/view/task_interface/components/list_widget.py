@@ -293,7 +293,7 @@ class TaskDragListWidget(BaseListWidget):
             self._restore_order([task.item_id for task in previous_tasks])
             event.ignore()
             return
-        full_tasks = self.service_coordinator.task.get_tasks()
+        full_tasks = self.service_coordinator.get_tasks()
         reorder_seq = self._build_reorder_sequence(full_tasks, current_tasks)
         self.service_coordinator.reorder_tasks(reorder_seq)
 
@@ -351,7 +351,7 @@ class TaskDragListWidget(BaseListWidget):
         self._task_widgets.clear()
         self._skeleton_items.clear()
         # 不清除待处理状态，因为任务列表刷新后这些状态仍然有效
-        all_tasks = self.service_coordinator.task.get_tasks()
+        all_tasks = self.service_coordinator.get_tasks()
         task_list = [t for t in all_tasks if self._should_include(t)]
         if self._filter_mode == "special":
             # 特殊任务仅允许单选，若有多个选中则只保留第一个
@@ -405,7 +405,7 @@ class TaskDragListWidget(BaseListWidget):
     def _render_task_at_index(self, index: int, task: TaskItem):
         """将指定位置的骨架替换为实际的 `TaskListItem`"""
         try:
-            interface = self.service_coordinator.task.interface
+            interface = self.service_coordinator.interface
         except Exception:
             interface = None
         if index < len(self._skeleton_items):
@@ -467,7 +467,7 @@ class TaskDragListWidget(BaseListWidget):
         
         # 获取 interface 配置
         try:
-            interface = self.service_coordinator.task.interface
+            interface = self.service_coordinator.interface
         except Exception:
             interface = None
         # 如果已有同 id 的项，进行更新
@@ -507,7 +507,7 @@ class TaskDragListWidget(BaseListWidget):
             self.addItem(list_item)
         else:
             # 获取完整任务列表，找到新任务在完整列表中的位置
-            all_tasks = self.service_coordinator.task.get_tasks()
+            all_tasks = self.service_coordinator.get_tasks()
             task_index_in_all = -1
             for i, t in enumerate(all_tasks):
                 if t.item_id == task.item_id:
@@ -679,7 +679,7 @@ class TaskDragListWidget(BaseListWidget):
 
     def _on_task_checkbox_changed(self, task_id: str, is_checked: bool):
         """复选框状态变更信号转发"""
-        task = self.service_coordinator.task.get_task(task_id)
+        task = self.service_coordinator.get_task(task_id)
         if not task or task.is_base_task():
             return
         self.service_coordinator.update_task_checked(task_id, is_checked)
@@ -868,22 +868,21 @@ class ConfigListWidget(BaseListWidget):
     def update_list(self):
         """刷新配置列表UI"""
         self.clear()
-        config_summaries = self.service_coordinator.config.list_configs()
+        config_summaries = self.service_coordinator.get_available_config_choices()
         for summary in config_summaries:
-            if isinstance(summary, dict):
+            if isinstance(summary, tuple):
+                config_id = summary[0]
+            elif isinstance(summary, dict):
                 config_id = summary.get("item_id")
             else:
-                try:
-                    config_id = summary.item_id
-                except Exception:
-                    config_id = None
+                config_id = None
             if config_id:
-                cfg = self.service_coordinator.config.get_config(config_id)
+                cfg = self.service_coordinator.get_config(config_id)
                 if cfg:
                     self._add_config_to_list(cfg)
         
         # 选中当前配置
-        current_config_id = self.service_coordinator.config.current_config_id
+        current_config_id = self.service_coordinator.get_current_config_id()
         if current_config_id:
             self._select_config_by_id(current_config_id, emit_signal=False)
 
