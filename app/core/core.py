@@ -764,6 +764,8 @@ class ServiceCoordinator:
             logger.warning(f"重新加载主配置失败: {exc}")
             return False
 
+    # region 配置域入口
+
     def get_bundle(self, bundle_name: str) -> Dict[str, Any]:
         """获取 bundle 配置。"""
         return self.config_service.get_bundle(bundle_name)
@@ -814,6 +816,18 @@ class ServiceCoordinator:
             for info in self.config_service.list_configs()
         ]
 
+    def get_current_global_options(self) -> Dict[str, Any]:
+        """获取当前配置的全局选项。"""
+        return self.config_service.get_current_global_options()
+
+    def update_current_global_options(self, global_options: Dict[str, Any]) -> bool:
+        """更新当前配置的全局选项。"""
+        return self.config_service.update_current_global_options(global_options)
+
+    # endregion
+
+    # region 任务域入口
+
     def get_task(self, task_id: str) -> TaskItem | None:
         """获取当前配置中的任务。"""
         return self.task_service.get_task(task_id)
@@ -825,18 +839,6 @@ class ServiceCoordinator:
     def get_default_task_map(self) -> Dict[str, Any]:
         """获取当前 interface 生成的默认任务选项映射。"""
         return dict(getattr(self.task_service, "default_option", {}))
-
-    def get_current_running_task_name(self) -> str | None:
-        """返回当前运行中的任务名称。"""
-        runner = getattr(self, "run_manager", None)
-        task_id = getattr(runner, "_current_running_task_id", None)
-        if not task_id:
-            return None
-
-        task = self.task_service.get_task(task_id)
-        if task is None:
-            return None
-        return str(getattr(task, "name", "") or "") or None
 
     def update_task(self, task: TaskItem, idx: int = -2) -> bool:
         """更新任务。"""
@@ -1024,14 +1026,6 @@ class ServiceCoordinator:
             self.option_service.current_options["_speedrun_config"] = deepcopy(speedrun_config)
         return task, speedrun_config, state
 
-    def get_current_global_options(self) -> Dict[str, Any]:
-        """获取当前配置的全局选项。"""
-        return self.config_service.get_current_global_options()
-
-    def update_current_global_options(self, global_options: Dict[str, Any]) -> bool:
-        """更新当前配置的全局选项。"""
-        return self.config_service.update_current_global_options(global_options)
-
     def process_option_def(
         self,
         option_def: Dict[str, Any],
@@ -1053,6 +1047,52 @@ class ServiceCoordinator:
         """对外暴露的选项刷新入口，避免 View 直接发内部信号。"""
         if isinstance(option_data, dict):
             self.signal_bus.option_updated.emit(option_data)
+
+    # endregion
+
+    # region 运行时入口
+
+    def get_current_running_task_name(self) -> str | None:
+        """返回当前运行中的任务名称。"""
+        runner = getattr(self, "run_manager", None)
+        task_id = getattr(runner, "_current_running_task_id", None)
+        if not task_id:
+            return None
+
+        task = self.task_service.get_task(task_id)
+        if task is None:
+            return None
+        return str(getattr(task, "name", "") or "") or None
+
+    def is_task_flow_running(self) -> bool:
+        """返回任务流是否正在运行。"""
+        return bool(getattr(self.task_runner, "is_running", False))
+
+    def create_monitor_task(self) -> MonitorTask:
+        """创建监控任务实例。"""
+        return MonitorTask(self.task_service, self.config_service)
+
+    def get_notice_send_thread(self) -> Any:
+        """返回运行期通知线程对象。"""
+        return getattr(self.task_runner, "send_thread", None)
+
+    def clear_maafw_sync(self) -> None:
+        """同步清理 maafw 运行时资源。"""
+        maafw = self.task_runner.maafw
+        if maafw.tasker and maafw.tasker.running:
+            logger.debug("停止任务线程")
+            maafw.tasker.post_stop().wait()
+            logger.debug("停止任务线程完成")
+        maafw.tasker = None
+        if maafw.resource:
+            maafw.resource.clear()
+        maafw.resource = None
+        maafw.controller = None
+        if maafw.agent:
+            maafw.agent.disconnect()
+        maafw.agent = None
+
+    # endregion
 
     # endregion
 
@@ -1193,34 +1233,6 @@ class ServiceCoordinator:
     async def stop_task(self, *, manual: bool = False):
         """停止当前任务流（供内部/调度等模块调用，可指定是否视为手动停止）。"""
         return await self.task_runner.stop_task(manual=manual)
-
-    def is_task_flow_running(self) -> bool:
-        """返回任务流是否正在运行。"""
-        return bool(getattr(self.task_runner, "is_running", False))
-
-    def create_monitor_task(self) -> MonitorTask:
-        """创建监控任务实例。"""
-        return MonitorTask(self.task_service, self.config_service)
-
-    def get_notice_send_thread(self) -> Any:
-        """返回运行期通知线程对象。"""
-        return getattr(self.task_runner, "send_thread", None)
-
-    def clear_maafw_sync(self) -> None:
-        """同步清理 maafw 运行时资源。"""
-        maafw = self.task_runner.maafw
-        if maafw.tasker and maafw.tasker.running:
-            logger.debug("停止任务线程")
-            maafw.tasker.post_stop().wait()
-            logger.debug("停止任务线程完成")
-        maafw.tasker = None
-        if maafw.resource:
-            maafw.resource.clear()
-        maafw.resource = None
-        maafw.controller = None
-        if maafw.agent:
-            maafw.agent.disconnect()
-        maafw.agent = None
 
     @property
     def run_manager(self) -> TaskFlowRunner:
