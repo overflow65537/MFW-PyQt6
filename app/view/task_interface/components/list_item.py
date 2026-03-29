@@ -1377,16 +1377,11 @@ class ConfigListItem(BaseListItem):
 
                 # 保存配置
                 try:
-                    success = self.service_coordinator.config.save_config(
-                        updated_config.item_id, updated_config
-                    )
+                    success = self.service_coordinator.save_config_item(updated_config)
                     if success:
                         self.item = updated_config
                         # 更新显示的标签文本
                         self.name_label.setText(new_name)
-
-                        # 发送配置已保存的信号，触发刷新
-                        self.service_coordinator.signal_bus.config_saved.emit(True)
                     else:
                         from app.utils.logger import logger
 

@@ -1025,9 +1025,8 @@ class ConfigListWidget(BaseListWidget):
             widget = self.itemWidget(item)
             if isinstance(widget, ConfigListItem) and widget.item.item_id == config_id:
                 self.setCurrentRow(i)
-                # 直接触发 config_changed 信号以更新任务列表标题
                 if emit_signal:
-                    self.service_coordinator.signal_bus.config_changed.emit(config_id)
+                    self.service_coordinator.select_config(config_id)
                 break
 
     def _on_config_changed(self, config_id: str):
@@ -1039,7 +1038,7 @@ class ConfigListWidget(BaseListWidget):
         """添加配置项到列表"""
         self._add_config_to_list(config)
         # 新增时尝试选中它，保持UI当前配置与服务一致
-        self._select_config_by_id(config.item_id)
+        self._select_config_by_id(config.item_id, emit_signal=False)
 
     def remove_config(self, config_id: str):
         """移除配置项"""

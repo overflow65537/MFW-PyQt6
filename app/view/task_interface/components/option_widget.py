@@ -117,7 +117,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
                             QTimer.singleShot(
                                 50,
-                                lambda: self.service_coordinator.signal_bus.option_updated.emit(
+                                lambda: self.service_coordinator.notify_option_updated(
                                     {"resource": current_resource}
                                 ),
                             )
@@ -178,7 +178,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
                                 QTimer.singleShot(
                                     50,
-                                    lambda: self.service_coordinator.signal_bus.option_updated.emit(
+                                    lambda: self.service_coordinator.notify_option_updated(
                                         {"resource": first_resource_name}
                                     ),
                                 )
@@ -198,7 +198,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
                                     QTimer.singleShot(
                                         50,
-                                        lambda: self.service_coordinator.signal_bus.option_updated.emit(
+                                        lambda: self.service_coordinator.notify_option_updated(
                                             {"resource": final_resource}
                                         ),
                                     )

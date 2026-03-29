@@ -746,6 +746,18 @@ class ServiceCoordinator:
         self.config_service.current_config_id = config_id
         return self.config_service.current_config_id == config_id
 
+    def save_config_item(self, config_item: ConfigItem) -> bool:
+        """保存配置对象并广播保存完成状态。"""
+        ok = self.config_service.save_config(config_item.item_id, config_item)
+        if ok:
+            self.signal_bus.config_saved.emit(True)
+        return ok
+
+    def notify_option_updated(self, option_data: Dict[str, Any]) -> None:
+        """对外暴露的选项刷新入口，避免 View 直接发内部信号。"""
+        if isinstance(option_data, dict):
+            self.signal_bus.option_updated.emit(option_data)
+
     # endregion
 
     # region 任务相关方法
