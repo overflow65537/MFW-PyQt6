@@ -26,11 +26,10 @@ from qfluentwidgets import (
     ToolTipPosition,
 )
 import jsonc
-from app.core.Item import TaskItem, ConfigItem
+from app.core.item import ConfigItem, TaskItem
 from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.common.config import cfg
 from app.core.core import ServiceCoordinator
-from app.common.signal_bus import signalBus
 
 
 class BaseAddDialog(MessageBoxBase):
@@ -40,7 +39,7 @@ class BaseAddDialog(MessageBoxBase):
         super().__init__(parent)
 
         # 设置对话框标题和大小
-        self.titleLabel = SubtitleLabel(title, self)
+        self.title_label = SubtitleLabel(title, self)
         self.widget.setMinimumWidth(400)
         self.widget.setMinimumHeight(180)
 
@@ -56,7 +55,7 @@ class BaseAddDialog(MessageBoxBase):
         self.cancelButton.setText(self.tr("Cancel"))
 
         # 添加标题到布局
-        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addWidget(self.title_label)
         self.viewLayout.addSpacing(10)
 
     def on_confirm(self):

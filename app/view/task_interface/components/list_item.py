@@ -1,5 +1,6 @@
 import asyncio
 import re
+from copy import deepcopy
 from pathlib import Path
 
 import shiboken6
@@ -34,7 +35,7 @@ from qfluentwidgets import (
     ProgressRing,
     IconWidget,
 )
-from app.core.Item import TaskItem, ConfigItem
+from app.core.item import ConfigItem, TaskItem
 from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.core.core import ServiceCoordinator
 
@@ -398,7 +399,7 @@ class BaseListItem(QWidget):
 
 # 任务列表项组件
 class TaskListItem(BaseListItem):
-    checkbox_changed = Signal(object)  # 发射 TaskItem 对象
+    checkbox_changed = Signal(str, bool)  # 发射 task_id 和勾选状态
 
     def __init__(
         self,
@@ -803,7 +804,7 @@ class TaskListItem(BaseListItem):
         # 尝试从 service_coordinator 获取最新的 task 对象，确保使用最新的 task_option
         if self.service_coordinator:
             try:
-                latest_task = self.service_coordinator.task.get_task(self.task.item_id)
+                latest_task = self.service_coordinator.task_query.get_task(self.task.item_id)
                 if latest_task:
                     self.task = latest_task
             except Exception:
@@ -840,9 +841,8 @@ class TaskListItem(BaseListItem):
     def on_checkbox_changed(self, state):
         # 复选框状态变更处理
         is_checked = state == 2
-        self.task.is_checked = is_checked
-        # 发射信号通知父组件更新
-        self.checkbox_changed.emit(self.task)
+        # 发射信号通知父组件更新，由 Service 层处理状态落盘
+        self.checkbox_changed.emit(self.task.item_id, is_checked)
 
     def contextMenuEvent(self, event):
         """右键菜单：单独运行任务、插入任务"""
@@ -882,9 +882,7 @@ class TaskListItem(BaseListItem):
         if not self.service_coordinator or self.task.is_base_task():
             return
         asyncio.create_task(
-            self.service_coordinator.run_manager.run_tasks_flow(
-                start_task_id=self.task.item_id
-            )
+            self.service_coordinator.run_tasks_flow_from(self.task.item_id)
         )
 
     def _insert_task(self):
@@ -896,17 +894,17 @@ class TaskListItem(BaseListItem):
         current_task_id = self.task.item_id
 
         # 打开添加任务对话框
-        from app.view.task_interface.components.AddTaskMessageBox import AddTaskDialog
-        from app.common.signal_bus import signalBus
+        from app.view.task_interface.components.add_task_message_box import AddTaskDialog
+        from app.common.signal_bus import global_signal_bus
 
-        task_map = getattr(self.service_coordinator.task, "default_option", {})
-        interface = getattr(self.service_coordinator.task, "interface", {})
+        task_map = self.service_coordinator.task_query.get_default_task_map()
+        interface = self.service_coordinator.interface
 
         # 过滤任务映射（根据当前工具栏的过滤模式，这里使用全部任务）
         filtered_task_map = task_map  # 可以根据需要添加过滤逻辑
 
         if not filtered_task_map:
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning", self.tr("No available tasks to add.")
             )
             return
@@ -921,7 +919,7 @@ class TaskListItem(BaseListItem):
             new_task = dlg.get_task_item()
             if new_task:
                 # 在对话框关闭后重新获取任务列表和索引（因为列表可能在对话框打开期间发生了变化）
-                all_tasks = self.service_coordinator.task.get_tasks()
+                all_tasks = self.service_coordinator.task_query.get_tasks()
                 current_idx = -1
                 for i, task in enumerate(all_tasks):
                     if task.item_id == current_task_id:
@@ -1152,8 +1150,8 @@ class RenameConfigDialog(MessageBoxBase):
         super().__init__(parent)
 
         # 设置对话框标题
-        self.titleLabel = SubtitleLabel(self.tr("Rename config"), self)
-        self.viewLayout.addWidget(self.titleLabel)
+        self.title_label = SubtitleLabel(self.tr("Rename config"), self)
+        self.viewLayout.addWidget(self.title_label)
         self.viewLayout.addSpacing(10)
 
         # 创建输入框布局
@@ -1256,7 +1254,7 @@ class ConfigListItem(BaseListItem):
 
         try:
             # 获取 bundle 信息
-            bundle_info = self.service_coordinator.config.get_bundle(bundle_name)
+            bundle_info = self.service_coordinator.config_query.get_bundle(bundle_name)
             if not bundle_info:
                 return None
 
@@ -1372,21 +1370,16 @@ class ConfigListItem(BaseListItem):
             new_name = dialog.get_new_name()
             if new_name and new_name.strip() and new_name != current_name:
                 new_name = new_name.strip()
-
-                # 更新配置项的 name
-                self.item.name = new_name
+                updated_config = deepcopy(self.item)
+                updated_config.name = new_name
 
                 # 保存配置
                 try:
-                    success = self.service_coordinator.config.save_config(
-                        self.item.item_id, self.item
-                    )
+                    success = self.service_coordinator.save_config_item(updated_config)
                     if success:
+                        self.item = updated_config
                         # 更新显示的标签文本
                         self.name_label.setText(new_name)
-
-                        # 发送配置已保存的信号，触发刷新
-                        self.service_coordinator.signal_bus.config_saved.emit(True)
                     else:
                         from app.utils.logger import logger
 
@@ -1401,3 +1394,5 @@ class ConfigListItem(BaseListItem):
         if not config_id:
             return
         QGuiApplication.clipboard().setText(str(config_id))
+
+

@@ -20,7 +20,7 @@ class DeviceFinderTask(QRunnable):
     def __init__(self, controller_type):
         super().__init__()
         self.controller_type = controller_type
-        self.signals = DeviceFinderTask.Signals()
+        self.signal_bus = DeviceFinderTask.Signals()
 
     def run(self):
         device_mapping = {}
@@ -96,7 +96,7 @@ class DeviceFinderTask(QRunnable):
 
                 safe_mapping[key] = safe_value
 
-            self.signals.finished.emit(safe_mapping, self.controller_type)
+            self.signal_bus.finished.emit(safe_mapping, self.controller_type)
 
 
 class DeviceFinderWidget(QWidget):
@@ -139,7 +139,7 @@ class DeviceFinderWidget(QWidget):
 
         # 创建任务并将其提交到线程池
         task = DeviceFinderTask(self.current_controller_type)
-        task.signals.finished.connect(self._on_device_found)
+        task.signal_bus.finished.connect(self._on_device_found)
         QThreadPool.globalInstance().start(task)
 
     def _on_device_found(self, device_mapping, controller_type):
@@ -198,3 +198,4 @@ class DeviceFinderWidget(QWidget):
         except re.error as exc:
             logger.warning(f"正则过滤器 [{label}] 编译失败: {exc}")
             return None
+

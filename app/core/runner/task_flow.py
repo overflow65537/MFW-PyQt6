@@ -18,7 +18,6 @@ from app.common.constants import (
     _CONTROLLER_,
     _RESOURCE_,
 )
-from app.common.signal_bus import signalBus
 from app.common.config import cfg
 
 from maa.toolkit import Toolkit
@@ -31,9 +30,9 @@ from maa.define import (
 from app.utils.notice import NoticeTiming, send_notice, send_thread
 
 from app.utils.logger import logger
-from app.core.service.Config_Service import ConfigService
+from app.core.service.config_service import ConfigService
 from app.core.utils.holiday import emit_holiday_startup_logs
-from app.core.service.Task_Service import TaskService
+from app.core.service.task_service import TaskService
 from app.core.runner.maafw import (
     MaaFW,
     MaaFWError,
@@ -41,10 +40,29 @@ from app.core.runner.maafw import (
     maa_controller_sink,
     maa_resource_sink,
     maa_tasker_sink,
+    set_callback_emitter,
 )
 from app.utils.controller_utils import ControllerHelper
 
-from app.core.Item import FromeServiceCoordinator, TaskItem
+from app.core.events import FromServiceCoordinator
+from app.core.item import TaskItem
+
+
+class _SignalProxy:
+    def __init__(self, signal: Any | None = None):
+        self._signal = signal
+
+    def emit(self, *args: Any) -> None:
+        if self._signal is not None:
+            self._signal.emit(*args)
+
+    def connect(self, slot: Any) -> None:
+        if self._signal is not None:
+            self._signal.connect(slot)
+
+    def disconnect(self, slot: Any) -> None:
+        if self._signal is not None:
+            self._signal.disconnect(slot)
 
 
 def _ndarray_to_png_bytes(ndarray) -> bytes | None:
@@ -75,7 +93,7 @@ class TaskFlowRunner(QObject):
         self,
         task_service: TaskService,
         config_service: ConfigService,
-        fs_signal_bus: FromeServiceCoordinator | None = None,
+        fs_signal_bus: FromServiceCoordinator | None = None,
     ):
         super().__init__()
         self.task_service = task_service
@@ -94,6 +112,28 @@ class TaskFlowRunner(QObject):
         else:
             self.maafw = MaaFW()
             self.fs_signal_bus = None
+        self._callback_signal = _SignalProxy(
+            self.fs_signal_bus.fs_callback if self.fs_signal_bus else None
+        )
+        self._log_output_signal = _SignalProxy(
+            self.fs_signal_bus.fs_log_output if self.fs_signal_bus else None
+        )
+        self._task_status_changed_signal = _SignalProxy(
+            self.fs_signal_bus.fs_task_status_changed if self.fs_signal_bus else None
+        )
+        self._task_flow_finished_signal = _SignalProxy(
+            self.fs_signal_bus.fs_task_flow_finished if self.fs_signal_bus else None
+        )
+        self._set_window_title_signal = _SignalProxy(
+            self.fs_signal_bus.fs_set_window_title if self.fs_signal_bus else None
+        )
+        self._log_clear_requested_signal = _SignalProxy(
+            self.fs_signal_bus.fs_log_clear_requested if self.fs_signal_bus else None
+        )
+        self._info_bar_requested_signal = _SignalProxy(
+            self.fs_signal_bus.fs_info_bar_requested if self.fs_signal_bus else None
+        )
+        set_callback_emitter(self._emit_callback)
         self.maafw.custom_info.connect(self._handle_maafw_custom_info)
         self.maafw.agent_info.connect(self._handle_agent_info)
         self.process = None
@@ -136,10 +176,13 @@ class TaskFlowRunner(QObject):
         self._log_messages: list[tuple[str, str, str]] = []  # (level, text, timestamp)
 
         # 监听 MaaFW 回调信号，用于接收 abort 等特殊事件
-        signalBus.callback.connect(self._handle_maafw_callback)
+        self._callback_signal.connect(self._handle_maafw_callback)
 
         # 连接前置检查失败原因（用于在上层发送更明确的通知文案）
         self._connect_error_reason: str | None = None
+
+    def _emit_callback(self, payload: Dict[str, Any]) -> None:
+        self._callback_signal.emit(payload)
 
     def _is_admin_runtime(self) -> bool:
         """运行时检测是否具备管理员权限（优先用 cfg 标记，失败则在 Windows 上兜底检测）。"""
@@ -183,15 +226,96 @@ class TaskFlowRunner(QObject):
         if "| WARNING |" in info:
             # 从warning开始截断
             info = info.split("| WARNING |")[1]
-            signalBus.log_output.emit("WARNING", info)
+            self._log_output_signal.emit("WARNING", info)
         elif "| ERROR |" in info:
             # 从error开始截断
             info = info.split("| ERROR |")[1]
-            signalBus.log_output.emit("ERROR", info)
+            self._log_output_signal.emit("ERROR", info)
         elif "| INFO |" in info:
             # 从info开始截断
             info = info.split("| INFO |")[1]
-            signalBus.log_output.emit("INFO", info)
+            self._log_output_signal.emit("INFO", info)
+
+    def _build_agent_env_vars(
+        self, controller_cfg: TaskItem, resource_cfg: TaskItem
+    ) -> Dict[str, str]:
+        """v2.5.0: 构建 PI_* 环境变量，在启动 agent 子进程时注入。"""
+        import json as _json
+
+        from app.common.__version__ import __version__
+        from app.core.service.interface_manager import InterfaceManager
+
+        env_vars: Dict[str, str] = {}
+        interface = self.task_service.interface or {}
+
+        # PI_INTERFACE_VERSION: Client 实现的 PI 扩展能力版本
+        env_vars["PI_INTERFACE_VERSION"] = "v2.5.0"
+
+        # PI_CLIENT_NAME
+        env_vars["PI_CLIENT_NAME"] = "MFW"
+
+        # PI_CLIENT_VERSION
+        env_vars["PI_CLIENT_VERSION"] = __version__
+
+        # PI_CLIENT_LANGUAGE: 当前 UI 语言代码
+        try:
+            im = InterfaceManager()
+            env_vars["PI_CLIENT_LANGUAGE"] = im._current_language or ""
+        except Exception:
+            env_vars["PI_CLIENT_LANGUAGE"] = ""
+
+        # PI_CLIENT_MAAFW_VERSION
+        try:
+            from maa.library import Library
+
+            env_vars["PI_CLIENT_MAAFW_VERSION"] = Library.version() or ""
+        except Exception:
+            env_vars["PI_CLIENT_MAAFW_VERSION"] = ""
+
+        # PI_VERSION: interface.json 顶层 version 字段
+        env_vars["PI_VERSION"] = str(interface.get("version", ""))
+
+        # PI_CONTROLLER: 当前选中的 controller 完整对象（i18n 已解析），紧凑 JSON
+        controller_name = ""
+        try:
+            controller_type_raw = (controller_cfg.task_option or {}).get(
+                "controller_type"
+            )
+            if isinstance(controller_type_raw, str):
+                controller_name = controller_type_raw.strip()
+            elif isinstance(controller_type_raw, dict):
+                controller_name = str(
+                    controller_type_raw.get("value", "") or ""
+                ).strip()
+        except Exception:
+            pass
+
+        if controller_name:
+            for ctrl in interface.get("controller", []):
+                if isinstance(ctrl, dict) and ctrl.get("name") == controller_name:
+                    env_vars["PI_CONTROLLER"] = _json.dumps(
+                        ctrl, ensure_ascii=False, separators=(",", ":")
+                    )
+                    break
+
+        # PI_RESOURCE: 当前选中的 resource 完整对象（i18n 已解析），紧凑 JSON
+        resource_name = ""
+        try:
+            resource_name = str(
+                (resource_cfg.task_option or {}).get("resource", "") or ""
+            ).strip()
+        except Exception:
+            pass
+
+        if resource_name:
+            for res in interface.get("resource", []):
+                if isinstance(res, dict) and res.get("name") == resource_name:
+                    env_vars["PI_RESOURCE"] = _json.dumps(
+                        res, ensure_ascii=False, separators=(",", ":")
+                    )
+                    break
+
+        return env_vars
 
     def _handle_maafw_custom_info(self, error_code: int):
         try:
@@ -205,10 +329,10 @@ class TaskFlowRunner(QObject):
                     msg = self.tr("Tasker not initialized")
                 case _:
                     msg = self.tr("Unknown MaaFW error code: {}").format(error_code)
-            signalBus.log_output.emit("ERROR", msg)
+            self._log_output_signal.emit("ERROR", msg)
         except ValueError:
             logger.warning(f"Received unknown MaaFW error code: {error_code}")
-            signalBus.log_output.emit(
+            self._log_output_signal.emit(
                 "WARNING", self.tr("Unknown MaaFW error code: {}").format(error_code)
             )
 
@@ -300,7 +424,7 @@ class TaskFlowRunner(QObject):
                         and not task.is_hidden
                     ):
                         # 完整运行时，设置当前起始任务及之后的选中任务为等待中
-                        signalBus.task_status_changed.emit(task.item_id, "waiting")
+                        self._task_status_changed_signal.emit(task.item_id, "waiting")
 
         # 延迟 200ms 发送，确保任务列表已经渲染完成
         QTimer.singleShot(200, set_waiting_status)
@@ -314,12 +438,12 @@ class TaskFlowRunner(QObject):
             self._log_messages.append((level, text, timestamp))
 
         # 连接日志输出信号
-        signalBus.log_output.connect(collect_log)
+        self._log_output_signal.connect(collect_log)
 
         # 节日彩蛋：检测当天节日并随机输出一组彩蛋文案
         await emit_holiday_startup_logs(
-            lambda level, text: signalBus.log_output.emit(level, text),
-            lambda title: signalBus.set_window_title.emit(title),
+            lambda level, text: self._log_output_signal.emit(level, text),
+            lambda title: self._set_window_title_signal.emit(title),
         )
         current_config = self.config_service.get_config(
             self.config_service.current_config_id
@@ -346,19 +470,19 @@ class TaskFlowRunner(QObject):
             invalid_reason = self._validate_base_controller_and_resource()
             if invalid_reason is not None:
                 self._reset_base_controller_and_resource_to_default()
-                signalBus.log_output.emit(
+                self._log_output_signal.emit(
                     "ERROR",
                     self.tr(
                         "Controller or resource in current config does not exist in interface. They have been reset to default. Please check and run again."
                     ),
                 )
-                signalBus.log_output.emit("ERROR", invalid_reason)
+                self._log_output_signal.emit("ERROR", invalid_reason)
                 await self.stop_task()
                 return
 
             # 先加载资源，再连接控制器
             logger.info("开始加载资源...")
-            signalBus.log_output.emit("INFO", self.tr("Starting to load resources..."))
+            self._log_output_signal.emit("INFO", self.tr("Starting to load resources..."))
             if not await self.load_resources(resource_cfg.task_option):
                 logger.error("资源加载失败")
                 return
@@ -392,10 +516,14 @@ class TaskFlowRunner(QObject):
                 self.maafw.agent_data_raw = self.task_service.interface.get(
                     "agent", None
                 )
-                signalBus.log_output.emit("INFO", self.tr("Agent Service Start"))
+                # v2.5.0: 构建 PI_* 环境变量供 agent 子进程使用
+                self.maafw.agent_env_vars = self._build_agent_env_vars(
+                    controller_cfg, resource_cfg
+                )
+                self._log_output_signal.emit("INFO", self.tr("Agent Service Start"))
 
             if self.task_service.interface.get("custom", None) and self.maafw.resource:
-                signalBus.log_output.emit(
+                self._log_output_signal.emit(
                     "INFO", self.tr("Starting to load custom components...")
                 )
                 self.maafw.resource.clear_custom_recognition()
@@ -441,21 +569,21 @@ class TaskFlowRunner(QObject):
                     )
 
                     logger.error(f"自定义组件加载失败，流程终止: {detail_msg}")
-                    signalBus.log_output.emit(
+                    self._log_output_signal.emit(
                         "ERROR",
                         self.tr(
                             "Custom components loading failed, the flow is terminated: "
                         )
                         + detail_msg,
                     )
-                    signalBus.log_output.emit(
+                    self._log_output_signal.emit(
                         "ERROR", self.tr("please try to reset resource in setting")
                     )
                     await self.stop_task()
                     return
             # 资源加载完成后连接控制器
             logger.info("开始连接设备...")
-            signalBus.log_output.emit("INFO", self.tr("Starting to connect device..."))
+            self._log_output_signal.emit("INFO", self.tr("Starting to connect device..."))
             self._connect_error_reason = None
             resource_target = (
                 resource_cfg.task_option.get("resource")
@@ -475,7 +603,7 @@ class TaskFlowRunner(QObject):
                     or self.tr("Failed to connect to the device."),
                 )
                 return
-            signalBus.log_output.emit("INFO", self.tr("Device connected successfully"))
+            self._log_output_signal.emit("INFO", self.tr("Device connected successfully"))
             logger.info("设备连接成功")
             image_bytes = await self._get_notice_screenshot_bytes()
             send_notice(
@@ -487,7 +615,7 @@ class TaskFlowRunner(QObject):
             start_time = _time.time()
             await self.maafw.screencap_test()
             end_time = _time.time()
-            signalBus.callback.emit(
+            self._emit_callback(
                 {"name": "speed_test", "details": end_time - start_time}
             )
             tasks_to_run = self._collect_tasks_to_run(
@@ -508,7 +636,7 @@ class TaskFlowRunner(QObject):
                 # 记录当前正在执行的任务，用于超时处理
                 self._current_running_task_id = task.item_id
                 # 发送任务运行中状态
-                signalBus.task_status_changed.emit(task.item_id, "running")
+                self._task_status_changed_signal.emit(task.item_id, "running")
                 try:
                     task_result = await self.run_task(
                         task.item_id,
@@ -517,7 +645,7 @@ class TaskFlowRunner(QObject):
                     if task_result == "skipped":
                         # 因 speedrun 限制被跳过：记录结果并在列表中显示为“已跳过”
                         self._task_results[task.item_id] = "skipped"
-                        signalBus.task_status_changed.emit(task.item_id, "skipped")
+                        self._task_status_changed_signal.emit(task.item_id, "skipped")
                         continue
                     # 如果任务显式返回 False，视为致命失败，终止整个任务流
                     if task_result is False:
@@ -526,7 +654,7 @@ class TaskFlowRunner(QObject):
                         # 记录任务结果
                         self._task_results[task.item_id] = "failed"
                         # 发送任务失败状态
-                        signalBus.task_status_changed.emit(task.item_id, "failed")
+                        self._task_status_changed_signal.emit(task.item_id, "failed")
                         # 发送任务失败通知
                         if not self._manual_stop:
                             image_bytes = await self._get_notice_screenshot_bytes()
@@ -549,7 +677,7 @@ class TaskFlowRunner(QObject):
                         )
                         # 记录任务结果并发送任务失败状态
                         self._task_results[task.item_id] = "failed"
-                        signalBus.task_status_changed.emit(task.item_id, "failed")
+                        self._task_status_changed_signal.emit(task.item_id, "failed")
                         # 发送任务失败通知
                         if not self._manual_stop:
                             image_bytes = await self._get_notice_screenshot_bytes()
@@ -563,7 +691,7 @@ class TaskFlowRunner(QObject):
                         # 记录任务结果
                         status = "completed"
                         self._task_results[task.item_id] = status
-                        signalBus.task_status_changed.emit(task.item_id, status)
+                        self._task_status_changed_signal.emit(task.item_id, status)
                         # 发送任务成功通知
                         image_bytes = await self._get_notice_screenshot_bytes()
                         send_notice(
@@ -578,7 +706,7 @@ class TaskFlowRunner(QObject):
                 except Exception as exc:
                     logger.error(f"任务执行失败: {task.name}, 错误: {str(exc)}")
                     # 发送任务失败状态
-                    signalBus.task_status_changed.emit(task.item_id, "failed")
+                    self._task_status_changed_signal.emit(task.item_id, "failed")
                     # 发送任务失败通知
                     if not self._manual_stop:
                         image_bytes = await self._get_notice_screenshot_bytes()
@@ -600,13 +728,13 @@ class TaskFlowRunner(QObject):
 
             # 只有在任务流正常完成（非手动停止）时才输出"所有任务都已完成"
             if self._is_tasks_flow_completed_normally():
-                signalBus.log_output.emit(
+                self._log_output_signal.emit(
                     "INFO", self.tr("All tasks have been completed")
                 )
 
         except Exception as exc:
             logger.error(f"任务流程执行异常: {str(exc)}")
-            signalBus.log_output.emit("ERROR", self.tr("Task flow error: ") + str(exc))
+            self._log_output_signal.emit("ERROR", self.tr("Task flow error: ") + str(exc))
             import traceback
 
             logger.critical(traceback.format_exc())
@@ -616,7 +744,7 @@ class TaskFlowRunner(QObject):
             if not self._task_flow_finished_emitted:
                 self._task_flow_finished_emitted = True
                 try:
-                    signalBus.task_flow_finished.emit(
+                    self._task_flow_finished_signal.emit(
                         {
                             "manual_stop": bool(self._manual_stop),
                             "need_stop": bool(self.need_stop),
@@ -630,7 +758,7 @@ class TaskFlowRunner(QObject):
 
             # 先发送任务完成通知（在完成后操作之前，以便退出软件时可以等待通知发送完成）
             # 断开日志收集信号
-            signalBus.log_output.disconnect(collect_log)
+            self._log_output_signal.disconnect(collect_log)
 
             # 发送收集的日志信息（仅在非手动停止时发送）
             # 注意：这里检查 _manual_stop 标志，如果为 True 则不发送通知
@@ -710,7 +838,7 @@ class TaskFlowRunner(QObject):
             all_tasks = self.task_service.get_tasks()
             for task in all_tasks:
                 if not task.is_base_task():
-                    signalBus.task_status_changed.emit(task.item_id, "")
+                    self._task_status_changed_signal.emit(task.item_id, "")
 
             next_config = self._next_config_to_run
             self._next_config_to_run = None
@@ -947,7 +1075,7 @@ class TaskFlowRunner(QObject):
             )
             self._connect_error_reason = msg
             logger.error("控制器名称为空，无法连接设备")
-            signalBus.log_output.emit("ERROR", msg)
+            self._log_output_signal.emit("ERROR", msg)
             try:
                 await self.stop_task()
             except Exception:
@@ -961,7 +1089,7 @@ class TaskFlowRunner(QObject):
             ).format(controller_name)
             self._connect_error_reason = msg
             logger.error(f"未找到控制器名称: {controller_name}")
-            signalBus.log_output.emit("ERROR", msg)
+            self._log_output_signal.emit("ERROR", msg)
             try:
                 await self.stop_task()
             except Exception:
@@ -1042,7 +1170,7 @@ class TaskFlowRunner(QObject):
             msg = self.tr("this Controller requires admin permission to run")
             self._connect_error_reason = msg
             logger.error(msg)
-            signalBus.log_output.emit("ERROR", msg)
+            self._log_output_signal.emit("ERROR", msg)
             # 立即停止任务流（而不是等待上层 finally）
             try:
                 await self.stop_task()
@@ -1058,7 +1186,7 @@ class TaskFlowRunner(QObject):
             )
             self._connect_error_reason = msg
             logger.error(f"控制器配置无效: {exc}")
-            signalBus.log_output.emit("ERROR", msg)
+            self._log_output_signal.emit("ERROR", msg)
             try:
                 await self.stop_task()
             except Exception:
@@ -1121,7 +1249,7 @@ class TaskFlowRunner(QObject):
                 "Controller config not found, please configure controller first"
             )
             logger.error("未找到控制器配置")
-            signalBus.log_output.emit("ERROR", msg)
+            self._log_output_signal.emit("ERROR", msg)
             await self.stop_task()
             return False
 
@@ -1131,7 +1259,7 @@ class TaskFlowRunner(QObject):
                 "Controller '{}' not found, please reset controller in settings"
             ).format(controller_name or "unknown")
             logger.error(f"未找到控制器名称: {controller_name}")
-            signalBus.log_output.emit("ERROR", msg)
+            self._log_output_signal.emit("ERROR", msg)
             await self.stop_task()
             return False
 
@@ -1147,7 +1275,7 @@ class TaskFlowRunner(QObject):
                 "Resource target is empty, please configure resource in settings"
             )
             logger.error("未找到资源目标")
-            signalBus.log_output.emit("ERROR", msg)
+            self._log_output_signal.emit("ERROR", msg)
             await self.stop_task()
             return False
 
@@ -1165,8 +1293,8 @@ class TaskFlowRunner(QObject):
                 "Resource '{}' not found, please reset resource in settings"
             ).format(resource_target)
             logger.error(f"未找到目标资源: {resource_target}")
-            signalBus.log_output.emit("ERROR", msg)
-            signalBus.log_output.emit(
+            self._log_output_signal.emit("ERROR", msg)
+            self._log_output_signal.emit(
                 "ERROR", self.tr("please try to reset resource in setting")
             )
             await self.stop_task()
@@ -1190,14 +1318,14 @@ class TaskFlowRunner(QObject):
             resource = (bundle_base / normalized).resolve()
             if not resource.exists():
                 logger.error(f"资源不存在: {resource}")
-                signalBus.log_output.emit(
+                self._log_output_signal.emit(
                     "ERROR",
                     self.tr("Resource ")
                     + path_item
                     + self.tr(" not found in bundle: ")
                     + bundle_path_str,
                 )
-                signalBus.log_output.emit(
+                self._log_output_signal.emit(
                     "ERROR", self.tr("please try to reset resource in setting")
                 )
                 return False
@@ -1244,7 +1372,7 @@ class TaskFlowRunner(QObject):
         if (not skip_speedrun) and speedrun_cfg and speedrun_cfg.get("enabled", False):
             allowed, reason = self._evaluate_speedrun(task, speedrun_cfg)
             if not allowed:
-                signalBus.log_output.emit(
+                self._log_output_signal.emit(
                     "INFO",
                     self.tr("Task ")
                     + task.name
@@ -1310,7 +1438,7 @@ class TaskFlowRunner(QObject):
         self.need_stop = True
         self._stop_task_timeout()
         if self.fs_signal_bus:
-            signalBus.log_output.emit("INFO", self.tr("Stopping task..."))
+            self._log_output_signal.emit("INFO", self.tr("Stopping task..."))
             self.fs_signal_bus.fs_start_button_status.emit(
                 {"text": "STOP", "status": "disabled"}
             )
@@ -1426,7 +1554,7 @@ class TaskFlowRunner(QObject):
             ).format(entry_text, time_str)
 
             logger.warning(timeout_message)
-            signalBus.log_output.emit("WARNING", timeout_message)
+            self._log_output_signal.emit("WARNING", timeout_message)
 
             # 获取收集到的任务日志内容
             log_content = self._get_collected_logs()
@@ -1490,7 +1618,7 @@ class TaskFlowRunner(QObject):
         )
 
         logger.info("每次连接前自动搜索 ADB 设备...")
-        signalBus.log_output.emit("INFO", self.tr("Auto searching ADB devices..."))
+        self._log_output_signal.emit("INFO", self.tr("Auto searching ADB devices..."))
         found_device = await self._auto_find_adb_device(
             controller_raw, controller_type, controller_config
         )
@@ -1513,7 +1641,7 @@ class TaskFlowRunner(QObject):
                 "ADB path is empty, please configure ADB path in settings"
             )
             logger.error("ADB 路径为空")
-            signalBus.log_output.emit("ERROR", error_msg)
+            self._log_output_signal.emit("ERROR", error_msg)
             return False
 
         if not address:
@@ -1521,7 +1649,7 @@ class TaskFlowRunner(QObject):
                 "ADB connection address is empty, please configure device connection in settings"
             )
             logger.error("ADB 连接地址为空")
-            signalBus.log_output.emit("ERROR", error_msg)
+            self._log_output_signal.emit("ERROR", error_msg)
             return False
         # 使用之前保存的原始值（已在重新搜索前读取）
 
@@ -1548,7 +1676,7 @@ class TaskFlowRunner(QObject):
             return True
         elif controller_config.get("emulator_path", ""):
             logger.info("尝试启动模拟器")
-            signalBus.log_output.emit("INFO", self.tr("try to start emulator"))
+            self._log_output_signal.emit("INFO", self.tr("try to start emulator"))
             emu_path = controller_config.get("emulator_path", "")
             emu_params = controller_config.get("emulator_params", "")
             wait_emu_start = int(controller_config.get("wait_time", 0))
@@ -1576,7 +1704,7 @@ class TaskFlowRunner(QObject):
                     # 启动模拟器后首次直接连接成功时，额外等待 5 秒
                     await asyncio.sleep(5)
                     return True
-        signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+        self._log_output_signal.emit("ERROR", self.tr("Device connection failed"))
         return False
 
     async def _connect_win32_controller(self, controller_raw: Dict[str, Any]):
@@ -1585,7 +1713,7 @@ class TaskFlowRunner(QObject):
         if sys.platform != "win32":
             error_msg = self.tr("Win32 controller is only supported on Windows")
             logger.error("Win32 控制器仅在 Windows 上支持")
-            signalBus.log_output.emit("ERROR", error_msg)
+            self._log_output_signal.emit("ERROR", error_msg)
             return False
 
         activate_controller = controller_raw.get("controller_type")
@@ -1659,7 +1787,7 @@ class TaskFlowRunner(QObject):
             return hwnd_value, screencap, mouse, keyboard
 
         logger.info("每次连接前自动搜索 Win32 窗口...")
-        signalBus.log_output.emit("INFO", self.tr("Auto searching Win32 windows..."))
+        self._log_output_signal.emit("INFO", self.tr("Auto searching Win32 windows..."))
         found_device = await self._auto_find_win32_window(
             controller_raw, controller_type, controller_name, controller_config
         )
@@ -1675,7 +1803,7 @@ class TaskFlowRunner(QObject):
                     "Window handle (hwnd) is empty, please configure window connection in settings"
                 )
                 logger.error("Win32 窗口句柄为空")
-                signalBus.log_output.emit("ERROR", error_msg)
+                self._log_output_signal.emit("ERROR", error_msg)
                 return False
 
             # 需求：如果已搜索到窗口，则直接尝试连接并返回成功/失败（不再启动程序兜底）
@@ -1686,18 +1814,18 @@ class TaskFlowRunner(QObject):
                 keyboard_method,
             )
             if not connect_success:
-                signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+                self._log_output_signal.emit("ERROR", self.tr("Device connection failed"))
             return bool(connect_success)
 
         # 需求：首次未搜索到窗口时，才检查是否配置了启动程序路径
         program_path = (controller_config.get("program_path") or "").strip()
         if not program_path:
             logger.error("Win32 控制器未匹配窗口且未配置启动程序")
-            signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+            self._log_output_signal.emit("ERROR", self.tr("Device connection failed"))
             return False
 
         # 启动程序+参数，轮询搜索窗口并连接
-        signalBus.log_output.emit("INFO", self.tr("try to start program"))
+        self._log_output_signal.emit("INFO", self.tr("try to start program"))
         logger.info("尝试启动程序")
         program_params = controller_config.get("program_params", "")
         wait_program_start = int(controller_config.get("wait_time", 0))
@@ -1737,7 +1865,7 @@ class TaskFlowRunner(QObject):
                 return True
 
         logger.error("启动程序后未找到与配置匹配的 Win32 窗口")
-        signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+        self._log_output_signal.emit("ERROR", self.tr("Device connection failed"))
         return False
 
     async def _connect_gamepad_controller(self, controller_raw: Dict[str, Any]):
@@ -1746,7 +1874,7 @@ class TaskFlowRunner(QObject):
         if sys.platform != "win32":
             error_msg = self.tr("Gamepad controller is only supported on Windows")
             logger.error("Gamepad 控制器仅在 Windows 上支持")
-            signalBus.log_output.emit("ERROR", error_msg)
+            self._log_output_signal.emit("ERROR", error_msg)
             return False
 
         if not isinstance(controller_raw, dict):
@@ -1801,7 +1929,7 @@ class TaskFlowRunner(QObject):
         screencap_method = _resolve_gamepad_screencap_method()
 
         logger.info("每次连接前自动搜索 Gamepad 窗口...")
-        signalBus.log_output.emit("INFO", self.tr("Auto searching desktop windows..."))
+        self._log_output_signal.emit("INFO", self.tr("Auto searching desktop windows..."))
         found_device = await self._auto_find_win32_window(
             controller_raw, controller_type, controller_name, controller_config
         )
@@ -1814,24 +1942,24 @@ class TaskFlowRunner(QObject):
                     "Window handle (hwnd) is empty, please configure window connection in settings"
                 )
                 logger.error("Gamepad 窗口句柄为空")
-                signalBus.log_output.emit("ERROR", error_msg)
+                self._log_output_signal.emit("ERROR", error_msg)
                 return False
 
             connect_success = await self.maafw.connect_gamepad(
                 hwnd, gamepad_type, screencap_method
             )
             if not connect_success:
-                signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+                self._log_output_signal.emit("ERROR", self.tr("Device connection failed"))
             return bool(connect_success)
 
         # 若未搜索到窗口时，才检查是否配置了启动程序路径
         program_path = (controller_config.get("program_path") or "").strip()
         if not program_path:
             logger.error("Gamepad 控制器未匹配窗口且未配置启动程序")
-            signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+            self._log_output_signal.emit("ERROR", self.tr("Device connection failed"))
             return False
 
-        signalBus.log_output.emit("INFO", self.tr("try to start program"))
+        self._log_output_signal.emit("INFO", self.tr("try to start program"))
         logger.info("尝试启动程序")
         program_params = controller_config.get("program_params", "")
         wait_program_start = int(controller_config.get("wait_time", 0))
@@ -1849,7 +1977,7 @@ class TaskFlowRunner(QObject):
         )
         if not found_after_launch:
             logger.error("启动程序后未找到与配置匹配的窗口")
-            signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+            self._log_output_signal.emit("ERROR", self.tr("Device connection failed"))
             return False
 
         self._save_device_to_config(controller_raw, controller_name, found_after_launch)
@@ -1860,14 +1988,14 @@ class TaskFlowRunner(QObject):
                 "Window handle (hwnd) is empty, please configure window connection in settings"
             )
             logger.error("Gamepad 窗口句柄为空")
-            signalBus.log_output.emit("ERROR", error_msg)
+            self._log_output_signal.emit("ERROR", error_msg)
             return False
 
         connect_success = await self.maafw.connect_gamepad(
             hwnd, gamepad_type, screencap_method
         )
         if not connect_success:
-            signalBus.log_output.emit("ERROR", self.tr("Device connection failed"))
+            self._log_output_signal.emit("ERROR", self.tr("Device connection failed"))
         return bool(connect_success)
 
     async def _connect_playcover_controller(self, controller_raw: Dict[str, Any]):
@@ -1876,7 +2004,7 @@ class TaskFlowRunner(QObject):
         if sys.platform != "darwin":
             error_msg = self.tr("PlayCover controller is only supported on macOS")
             logger.error("PlayCover 控制器仅在 macOS 上支持")
-            signalBus.log_output.emit("ERROR", error_msg)
+            self._log_output_signal.emit("ERROR", error_msg)
             return False
 
         if not isinstance(controller_raw, dict):
@@ -1915,7 +2043,7 @@ class TaskFlowRunner(QObject):
                 "PlayCover UUID is empty, please configure UUID in settings"
             )
             logger.error("PlayCover UUID 为空")
-            signalBus.log_output.emit("ERROR", error_msg)
+            self._log_output_signal.emit("ERROR", error_msg)
             return False
 
         if not address:
@@ -1923,7 +2051,7 @@ class TaskFlowRunner(QObject):
                 "PlayCover connection address is empty, please configure address in settings"
             )
             logger.error("PlayCover 连接地址为空")
-            signalBus.log_output.emit("ERROR", error_msg)
+            self._log_output_signal.emit("ERROR", error_msg)
             return False
 
         logger.debug(f"PlayCover 参数: uuid={uuid}, address={address}")
@@ -1933,18 +2061,18 @@ class TaskFlowRunner(QObject):
             address=address,
             uuid=uuid,
         )
-        signalBus.log_output.emit("INFO", msg)
+        self._log_output_signal.emit("INFO", msg)
 
         if await self.maafw.connect_playcover(address, uuid):
             logger.info("PlayCover 连接成功")
-            signalBus.log_output.emit(
+            self._log_output_signal.emit(
                 "INFO", self.tr("PlayCover connected successfully")
             )
             return True
         else:
             error_msg = self.tr("Failed to connect to PlayCover")
             logger.error("PlayCover 连接失败")
-            signalBus.log_output.emit("ERROR", error_msg)
+            self._log_output_signal.emit("ERROR", error_msg)
             return False
 
     def _parse_address_components(self, address: str | None) -> tuple[str, str | None]:
@@ -2144,7 +2272,7 @@ class TaskFlowRunner(QObject):
 
         for remaining in range(wait_seconds, 0, -1):
             if remaining in log_points:
-                signalBus.log_output.emit(
+                self._log_output_signal.emit(
                     "INFO",
                     message + str(remaining) + self.tr(" seconds"),
                 )
@@ -2156,7 +2284,7 @@ class TaskFlowRunner(QObject):
                 since_last_try = 0
                 try:
                     if await connect_coro_fn():
-                        signalBus.log_output.emit(
+                        self._log_output_signal.emit(
                             "INFO", self.tr("Device connected successfully")
                         )
                         return True
@@ -2168,7 +2296,7 @@ class TaskFlowRunner(QObject):
         # 最后再尝试一次
         try:
             if await connect_coro_fn():
-                signalBus.log_output.emit(
+                self._log_output_signal.emit(
                     "INFO", self.tr("Device connected successfully")
                 )
                 return True
@@ -2191,7 +2319,7 @@ class TaskFlowRunner(QObject):
 
         for remaining in range(wait_seconds, 0, -1):
             if remaining in log_points:
-                signalBus.log_output.emit(
+                self._log_output_signal.emit(
                     "INFO",
                     message + str(remaining) + self.tr(" seconds"),
                 )
@@ -2510,7 +2638,7 @@ class TaskFlowRunner(QObject):
         config_service.current_config_id = config_id
         if config_service.current_config_id == config_id:
             logger.debug(f"已切换至完成后指定配置: {config_id}")
-            signalBus.log_clear_requested.emit()
+            self._log_clear_requested_signal.emit()
             self._next_config_to_run = config_id
         else:
             logger.warning(f"切换至配置 {config_id} 失败")
@@ -2534,7 +2662,7 @@ class TaskFlowRunner(QObject):
 
         try:
             if not send_thread.is_idle():
-                signalBus.info_bar_requested.emit(
+                self._info_bar_requested_signal.emit(
                     "info",
                     self.tr(
                         "Notifications are being sent, please wait up to {} seconds"
@@ -3094,3 +3222,4 @@ class TaskFlowRunner(QObject):
         """
         # 约定：任务流执行前由配置层（TaskService/Coordinator/UI）刷新过 is_hidden
         return bool(task.is_hidden)
+

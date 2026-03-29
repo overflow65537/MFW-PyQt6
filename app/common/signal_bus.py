@@ -28,7 +28,7 @@ from PySide6.QtCore import Signal, QObject
 class SignalBus(QObject):
     """Signal bus"""
 
-    micaEnableChanged = Signal(bool)  # Mica效果开关信号
+    mica_enable_changed = Signal(bool)  # Mica效果开关信号
 
     # 主布局中的配置切换和选项切换
     change_task_flow = Signal(dict)  # 切换任务列表
@@ -36,6 +36,7 @@ class SignalBus(QObject):
     agent_info = Signal(dict)  # 智能体信息
     title_changed = Signal()  # 窗口标题改变
     set_window_title = Signal(str)  # 直接设置窗口标题字符串
+
     # maa sink 发送信号
     callback = Signal(dict)
 
@@ -91,4 +92,5 @@ class SignalBus(QObject):
     task_flow_finished = Signal(dict)
 
 
-signalBus = SignalBus()
+global_signal_bus = SignalBus()
+

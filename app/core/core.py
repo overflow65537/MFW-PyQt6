@@ -7,21 +7,26 @@ import jsonc
 
 from PySide6.QtCore import QTimer
 
-from app.core.Item import (
+from app.core.events import (
     CoreSignalBus,
-    FromeServiceCoordinator,
+    FromServiceCoordinator,
+)
+from app.core.item import (
     ConfigItem,
     TaskItem,
 )
-from app.core.service.Config_Service import ConfigService, JsonConfigRepository
-from app.core.service.Schedule_Service import ScheduleService
-from app.core.service.Task_Service import TaskService
-from app.core.service.Option_Service import OptionService
-from app.core.service.interface_manager import get_interface_manager, InterfaceManager
+from app.core.service.config_service import ConfigService, JsonConfigRepository
+from app.core.service.config_query_service import ConfigQueryService
+from app.core.service.interface_manager import InterfaceManager, get_interface_manager
+from app.core.service.option_service import OptionService
+from app.core.service.runtime_query_service import RuntimeQueryService
+from app.core.service.schedule_service import ScheduleService
+from app.core.service.task_query_service import TaskQueryService
+from app.core.service.task_service import TaskService
 from app.core.runner.task_flow import TaskFlowRunner
+from app.core.runner.monitor_task import MonitorTask
 from app.core.log_processor import CallbackLogProcessor
 from app.utils.logger import logger
-from app.common.signal_bus import signalBus
 
 
 class ServiceCoordinator:
@@ -35,7 +40,7 @@ class ServiceCoordinator:
     ):
         # 初始化信号总线
         self.signal_bus = CoreSignalBus()
-        self.fs_signal_bus = FromeServiceCoordinator()
+        self.fs_signal_bus = FromServiceCoordinator()
         
         # 存储待显示的错误信息（用于在 UI 初始化完成后显示）
         self._pending_error_message: tuple[str, str] | None = None
@@ -85,6 +90,14 @@ class ServiceCoordinator:
                 raise
         
         self.option_service = OptionService(self.task_service, self.signal_bus)
+        self.config_query_service = ConfigQueryService(
+            self.config_service,
+            self.config_repo,
+        )
+        self.task_query_service = TaskQueryService(
+            self.task_service,
+            self.option_service,
+        )
         self.config_service.register_on_change(self._on_config_changed)
 
         # 运行器
@@ -94,14 +107,16 @@ class ServiceCoordinator:
             config_service=self.config_service,
             fs_signal_bus=self.fs_signal_bus,
         )
+        self.runtime_query_service = RuntimeQueryService(
+            self.task_runner,
+            self.task_service,
+            self.config_service,
+        )
         schedule_store = main_config_path.parent / "schedules.json"
         self.schedule_service = ScheduleService(self, schedule_store)
 
         # 初始化日志处理器（将 callback 信号转换为 log_output 信号）
-        self.log_processor = CallbackLogProcessor()
-
-        # 连接信号
-        self._connect_signals()
+        self.log_processor = CallbackLogProcessor(self.fs_signal_bus)
 
         # 在主要内容初始化完毕后，清理无效的 bundle 索引（不删除配置）
         self._cleanup_invalid_bundles()
@@ -221,9 +236,7 @@ class ServiceCoordinator:
                     bundle_name
                 )
                 if not bundle_path_str:
-                    logger.warning(
-                        f"未在主配置中找到 bundle: {bundle_name}"
-                    )
+                    logger.warning(f"未在主配置中找到 bundle: {bundle_name}")
                     return None
                 bundle_info = {"path": bundle_path_str}
         except FileNotFoundError:
@@ -238,7 +251,6 @@ class ServiceCoordinator:
         if not base_dir.is_absolute():
             base_dir = Path.cwd() / base_dir
 
-        # 优先使用 interface.jsonc，其次 interface.json
         candidate = base_dir / "interface.jsonc"
         if not candidate.exists():
             candidate = base_dir / "interface.json"
@@ -280,13 +292,13 @@ class ServiceCoordinator:
     def _handle_config_load_error(
         self, main_config_path: Path, configs_dir: Path, error: Exception
     ) -> bool:
-        """处理配置加载错误：备份损坏的配置文件并用默认配置覆盖
-        
+        """处理配置加载错误：备份损坏的配置文件并用默认配置覆盖。
+
         Args:
             main_config_path: 主配置文件路径
             configs_dir: 配置目录路径
             error: 发生的错误
-            
+
         Returns:
             bool: 是否成功重置配置
         """
@@ -560,13 +572,6 @@ class ServiceCoordinator:
         self.config_repo.interface = self._interface
         self.task_service.reload_interface(self._interface)
 
-    def _connect_signals(self):
-        """连接所有信号"""
-        # UI请求保存配置
-        self.signal_bus.need_save.connect(self._on_need_save)
-        # 热更新完成后重新初始化
-        signalBus.fs_reinit_requested.connect(self.reinit)
-
     def _on_config_changed(self, config_id: str):
         """配置变化后刷新内部服务状态"""
         if not config_id:
@@ -748,6 +753,103 @@ class ServiceCoordinator:
         self.config_service.current_config_id = config_id
         return self.config_service.current_config_id == config_id
 
+    def save_config_item(self, config_item: ConfigItem) -> bool:
+        """保存配置对象并广播保存完成状态。"""
+        ok = self.config_service.save_config(config_item.item_id, config_item)
+        if ok:
+            self.signal_bus.config_saved.emit(True)
+        return ok
+
+    def save_all(self) -> bool:
+        """显式保存主配置并广播保存完成状态。"""
+        ok = self.config_service.save_main_config()
+        if ok:
+            self.signal_bus.config_saved.emit(True)
+        return ok
+
+    def reload_main_config(self) -> bool:
+        """重新加载主配置。"""
+        try:
+            self.config_service.load_main_config()
+            return True
+        except Exception as exc:
+            logger.warning(f"重新加载主配置失败: {exc}")
+            return False
+
+    # region 配置域入口
+    # 固定顺序：bundle 查询 -> config 查询 -> config 路径/列表 -> global option
+
+    # endregion
+
+    # region 任务域入口
+    # 固定顺序：task 查询 -> controller/resource 投影 -> option 查询/写入 -> task 预览/辅助
+
+    def update_task(self, task: TaskItem, idx: int = -2) -> bool:
+        """更新任务。"""
+        return self.task_service.update_task(task, idx)
+
+    def set_resource_name(self, resource_name: str) -> bool:
+        """更新当前资源名称。"""
+        return self.task_service.set_resource_name(resource_name)
+
+    def save_resource_options(
+        self, current_resource_option_names: List[str], resource_options: Dict[str, Any]
+    ) -> bool:
+        """保存当前资源对应的 Resource 选项。"""
+        return self.task_service.save_resource_options(
+            current_resource_option_names, resource_options
+        )
+
+    def clear_task_selection(self) -> None:
+        """清空当前任务选择。"""
+        self.option_service.clear_selection()
+
+    def update_selected_option(self, option_key: str, option_value: Any) -> bool:
+        """更新当前选中任务的单个选项。"""
+        return self.option_service.update_option(option_key, option_value)
+
+    def update_selected_options(self, options: Dict[str, Any]) -> bool:
+        """批量更新当前选中任务的选项。"""
+        return self.option_service.update_options(options)
+
+    def save_post_action_option(self, option_key: str, payload: Any) -> bool:
+        """保存 Post-Action 任务中的单个配置片段。"""
+        return self.task_service.save_post_action_option(option_key, payload)
+
+    def normalize_post_action_state(
+        self, raw_state: Dict[str, Any] | None = None
+    ) -> Dict[str, Any]:
+        """规范化完成后动作状态。"""
+        return self.task_service.normalize_post_action_state(raw_state)
+
+    def apply_post_action_toggle(
+        self, state: Dict[str, Any] | None, key: str, checked: bool
+    ) -> Dict[str, Any]:
+        """应用单个完成后动作勾选变化。"""
+        return self.task_service.apply_post_action_toggle(state, key, checked)
+
+    def save_controller_task_options(
+        self, controller_task_option: Dict[str, Any]
+    ) -> bool:
+        """保存 Controller 任务的配置片段。"""
+        return self.task_service.save_controller_task_options(controller_task_option)
+
+    def build_speedrun_config(
+        self, task_name: str, existing: Dict[str, Any] | None = None
+    ) -> Dict[str, Any]:
+        """构建任务速通配置。"""
+        return self.task_service.build_speedrun_config(task_name, existing)
+
+    def notify_option_updated(self, option_data: Dict[str, Any]) -> None:
+        """对外暴露的选项刷新入口，避免 View 直接发内部信号。"""
+        if isinstance(option_data, dict):
+            self.signal_bus.option_updated.emit(option_data)
+
+    # endregion
+
+    # region 运行时入口
+    # 固定顺序：运行状态查询 -> 运行时辅助对象 -> 运行时清理
+
     # endregion
 
     # region 任务相关方法
@@ -834,11 +936,6 @@ class ServiceCoordinator:
         return self.task_service.reorder_tasks(new_order)
 
     # endregion
-    def _on_need_save(self):
-        """当UI请求保存时保存所有配置"""
-        self.config_service.save_main_config()
-        self.signal_bus.config_saved.emit(True)
-
     def reinit(self):
         """重新初始化服务协调器，用于热更新完成后刷新资源"""
         logger.info("开始重新初始化服务协调器...")
@@ -877,6 +974,14 @@ class ServiceCoordinator:
             pass
         return await self.task_runner.run_tasks_flow(task_id)
 
+    async def run_tasks_flow_from(self, start_task_id: str) -> Any:
+        """从指定任务开始运行任务流。"""
+        try:
+            self.task_service.refresh_hidden_flags()
+        except Exception:
+            pass
+        return await self.task_runner.run_tasks_flow(start_task_id=start_task_id)
+
     async def stop_task_flow(self):
         """停止当前任务流（UI/外部调用，视为手动停止）。"""
         return await self.task_runner.stop_task(manual=True)
@@ -909,20 +1014,24 @@ class ServiceCoordinator:
         return self.config_service
 
     @property
+    def config_query(self) -> ConfigQueryService:
+        return self.config_query_service
+
+    @property
     def task(self) -> TaskService:
         return self.task_service
 
     @property
+    def task_query(self) -> TaskQueryService:
+        return self.task_query_service
+
+    @property
+    def runtime_query(self) -> RuntimeQueryService:
+        return self.runtime_query_service
+
+    @property
     def option(self) -> OptionService:
         return self.option_service
-
-    @property
-    def fs_signals(self) -> FromeServiceCoordinator:
-        return self.fs_signal_bus
-
-    @property
-    def signals(self) -> CoreSignalBus:
-        return self.signal_bus
     
     def get_pending_error_message(self) -> tuple[str, str] | None:
         """获取并清除待显示的错误信息

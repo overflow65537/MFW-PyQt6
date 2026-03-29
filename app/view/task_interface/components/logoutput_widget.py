@@ -27,13 +27,13 @@ from qfluentwidgets import (
     qconfig,
 )
 
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import global_signal_bus
 from app.common.config import cfg
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
-from app.view.task_interface.components.MonitorWidget import MonitorWidget
+from app.view.task_interface.components.monitor_widget import MonitorWidget
 from app.utils.markdown_helper import render_markdown
-from app.view.task_interface.components.LogItemWidget import LogItemWidget, LogItemData
+from app.view.task_interface.components.log_item_widget import LogItemWidget, LogItemData
 
 
 class LogoutputWidget(QWidget):
@@ -135,13 +135,13 @@ class LogoutputWidget(QWidget):
         self.main_layout.addWidget(self.log_output_widget, 1)
 
         # 连接日志输出信号
-        signalBus.log_output.connect(self._on_log_output)
+        global_signal_bus.log_output.connect(self._on_log_output)
 
-        signalBus.log_clear_requested.connect(self.clear_log)
-        signalBus.log_zip_started.connect(
+        global_signal_bus.log_clear_requested.connect(self.clear_log)
+        global_signal_bus.log_zip_started.connect(
             lambda: self.generate_log_zip_button.setEnabled(False)
         )
-        signalBus.log_zip_finished.connect(
+        global_signal_bus.log_zip_finished.connect(
             lambda: self.generate_log_zip_button.setEnabled(True)
         )
 
@@ -252,7 +252,7 @@ class LogoutputWidget(QWidget):
         self.log_output_title_layout.addWidget(self.generate_log_zip_button)
 
         # 交互信号：由组件发射，外部处理
-        self.generate_log_zip_button.clicked.connect(signalBus.request_log_zip)
+        self.generate_log_zip_button.clicked.connect(global_signal_bus.request_log_zip)
 
     def clear_log(self):
         """清空日志内容，清除缓存图像并重置序号"""
@@ -609,12 +609,9 @@ class LogoutputWidget(QWidget):
         if not self.service_coordinator:
             return None
         try:
-            if hasattr(self.service_coordinator, "run_manager"):
-                task_flow = self.service_coordinator.run_manager
-                if task_flow and hasattr(task_flow, "maafw"):
-                    controller = getattr(task_flow.maafw, "controller", None)
-                    if controller is not None:
-                        return controller
+            controller = self.service_coordinator.runtime_query.get_task_flow_controller()
+            if controller is not None:
+                return controller
         except Exception:
             return None
         return None
@@ -789,15 +786,9 @@ class LogoutputWidget(QWidget):
         if not self.service_coordinator:
             return self.tr("System")
         try:
-            runner = getattr(self.service_coordinator, "run_manager", None)
-            task_id = getattr(runner, "_current_running_task_id", None)
-            if not task_id:
-                return self.tr("System")
-            task_service = getattr(self.service_coordinator, "task", None)
-            tasks = task_service.get_tasks() if task_service else []
-            for t in tasks or []:
-                if getattr(t, "item_id", None) == task_id:
-                    return str(getattr(t, "name", "")) or self.tr("System")
+            task_name = self.service_coordinator.runtime_query.get_current_running_task_name()
+            if task_name:
+                return task_name
         except Exception:
             return self.tr("System")
         return self.tr("System")
@@ -816,9 +807,9 @@ class LogoutputWidget(QWidget):
                 if isinstance(log_rel, str) and log_rel.strip():
                     # 获取当前配置的 bundle path
                     try:
-                        config = self.service_coordinator.config_service.get_current_config()
+                        config = self.service_coordinator.config_query.get_current_config()
                         bundle_path_str = (
-                            self.service_coordinator.config_service.get_bundle_path_for_config(config)
+                            self.service_coordinator.config_query.get_bundle_path_for_config(config)
                             or ""
                         )
                         if bundle_path_str:
@@ -932,3 +923,4 @@ class LogoutputWidget(QWidget):
                 image_map[img_hash] = (data.image_bytes, [original_idx])
         
         return image_map
+

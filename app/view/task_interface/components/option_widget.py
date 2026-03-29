@@ -3,6 +3,7 @@ import re
 import tempfile
 import urllib.parse
 import urllib.request
+from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Any
 
@@ -16,18 +17,18 @@ from app.view.task_interface.animations.optionwidget import (
     DescriptionTransitionAnimator,
     OptionTransitionAnimator,
 )
-from app.view.task_interface.components.ImagePreviewDialog import ImagePreviewDialog
-from app.view.task_interface.components.Option_Framework import (
+from app.view.task_interface.components.image_preview_dialog import ImagePreviewDialog
+from app.view.task_interface.components.option_framework import (
     OptionFormWidget,
     SpeedrunConfigWidget,
 )
-from app.view.task_interface.components.Option_Widget_Mixin.PostActionSettingMixin import (
+from app.view.task_interface.components.option_widget_mixin.post_action_setting_mixin import (
     PostActionSettingMixin,
 )
-from app.view.task_interface.components.Option_Widget_Mixin.ResourceSettingMixin import (
+from app.view.task_interface.components.option_widget_mixin.resource_setting_mixin import (
     ResourceSettingMixin,
 )
-from app.view.task_interface.components.Option_Widget_Mixin.ControllerSettingMixin import (
+from app.view.task_interface.components.option_widget_mixin.controller_setting_mixin import (
     ControllerSettingWidget,
 )
 from ....core.core import ServiceCoordinator
@@ -62,7 +63,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         self.controller_setting_widget._set_description = self.set_description
         self.controller_setting_widget._toggle_description = self._toggle_description
 
-        # 初始化 Resource 和 PostAction Mixin（它们现在是 OptionWidget 的一部分）
+        # 初始化 resource 和 post-action mixin。
         self._init_resource_settings()
         self._init_post_action_settings()
         
@@ -116,7 +117,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
                             QTimer.singleShot(
                                 50,
-                                lambda: self.service_coordinator.signal_bus.option_updated.emit(
+                                lambda: self.service_coordinator.notify_option_updated(
                                     {"resource": current_resource}
                                 ),
                             )
@@ -124,83 +125,25 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
                 # 即使资源下拉框不存在，也需要更新资源任务的配置
                 # 检查当前资源是否在新控制器的资源列表中
                 if label in self.resource_mapping:
-                    current_resources = self.resource_mapping[
-                        label
-                    ]
+                    current_resources = self.service_coordinator.task_query.get_resources_for_controller(
+                        label,
+                        self.controller_type_mapping,
+                    )
                     if current_resources:
-                        # 获取当前保存的资源
-                        from app.common.constants import _RESOURCE_
-
-                        resource_task = self.service_coordinator.task_service.get_task(
-                            _RESOURCE_
-                        )
-                        current_resource_name = ""
-                        if resource_task and isinstance(
-                            resource_task.task_option, dict
-                        ):
-                            current_resource_name = resource_task.task_option.get(
-                                "resource", ""
-                            )
-
-                        # 检查当前资源是否在新控制器的资源列表中
-                        resource_found = False
-                        for resource in current_resources:
-                            resource_name = resource.get("name", "")
-                            resource_label = resource.get("label", resource_name)
-                            if current_resource_name and current_resource_name in (
-                                resource_name,
-                                resource_label,
-                            ):
-                                resource_found = True
-                                break
-
-                        # 如果当前资源不在新控制器的资源列表中，自动选择第一个资源并保存（仅在非初始化时）
-                        if (
-                            not resource_found
-                            and current_resource_name
-                            and not is_initializing
-                        ):
-                            first_resource = current_resources[0]
-                            first_resource_name = first_resource.get("name", "")
-
-                            # 更新配置并保存
-                            if resource_task:
-                                resource_task.task_option["resource"] = (
-                                    first_resource_name
-                                )
-                                self.service_coordinator.task_service.update_task(
-                                    resource_task
-                                )
-
-                                # 触发任务列表更新（延迟触发，确保资源任务已保存）
+                        final_resource = self.service_coordinator.task_query.get_current_resource_name()
+                        if not is_initializing:
+                            final_resource = self.service_coordinator.task_query.ensure_resource_matches_controller_resources(
+                                current_resources
+                            ) or final_resource
+                            if final_resource:
                                 from PySide6.QtCore import QTimer
 
                                 QTimer.singleShot(
                                     50,
-                                    lambda: self.service_coordinator.signal_bus.option_updated.emit(
-                                        {"resource": first_resource_name}
+                                    lambda: self.service_coordinator.notify_option_updated(
+                                        {"resource": final_resource}
                                     ),
                                 )
-                            else:
-                                logger.warning(f"未找到 Resource 任务，无法保存资源")
-                        elif not is_initializing:
-                            # 即使资源没有变化，也要触发任务列表更新（确保任务列表根据当前资源正确显示）
-                            if resource_task and isinstance(
-                                resource_task.task_option, dict
-                            ):
-                                final_resource = resource_task.task_option.get(
-                                    "resource", ""
-                                )
-                                if final_resource:
-                                    # 使用 QTimer 延迟触发，确保资源任务已保存
-                                    from PySide6.QtCore import QTimer
-
-                                    QTimer.singleShot(
-                                        50,
-                                        lambda: self.service_coordinator.signal_bus.option_updated.emit(
-                                            {"resource": final_resource}
-                                        ),
-                                    )
 
         # 将回调设置到控制器组件
         setattr(
@@ -215,8 +158,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         service_coordinator.signal_bus.config_changed.connect(self._on_config_changed)
         
         # 监听运行状态变化，禁用/启用选项编辑
-        from app.common.signal_bus import signalBus
-        signalBus.task_status_changed.connect(self._on_task_status_changed)
+        from app.common.signal_bus import global_signal_bus
+
+        global_signal_bus.task_status_changed.connect(self._on_task_status_changed)
         
         # 初始化时隐藏描述区域
         self._toggle_description(visible=False, animate=False)
@@ -434,10 +378,14 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
 
     def _apply_speedrun_config(self) -> None:
         """加载当前任务的速通配置到 UI"""
-        option_service = self.service_coordinator.option
-        task_service = self.service_coordinator.task
-        task_id = getattr(option_service, "current_task_id", None)
-        task = task_service.get_task(task_id) if task_id else None
+        task_id = self.service_coordinator.task_query.get_current_option_task_id()
+        task = None
+        merged_cfg = None
+        state = {}
+        if task_id:
+            task, merged_cfg, state = self.service_coordinator.task_query.get_task_speedrun_payload(
+                task_id
+            )
         if not task:
             self.speedrun_widget.set_config(None, emit=False)
             return
@@ -446,29 +394,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         if getattr(task, "is_special", False):
             self._set_speedrun_visible(False)
             return
-
-        existing_cfg = (
-            task.task_option.get("_speedrun_config")
-            if isinstance(task.task_option, dict)
-            else None
-        )
-        merged_cfg = task_service.build_speedrun_config(task.name, existing_cfg)
-
-        # 如果缺失或需要修正，持久化到任务
-        if not isinstance(task.task_option, dict):
-            task.task_option = {}
-        if task.task_option.get("_speedrun_config") != merged_cfg:
-            task.task_option["_speedrun_config"] = merged_cfg
-            task_service.update_task(task)
-
-        try:
-            option_service.current_options["_speedrun_config"] = merged_cfg
-        except Exception:
-            pass
-
-        state = {}
-        if isinstance(task.task_option, dict):
-            state = task.task_option.get("_speedrun_state", {}) or {}
+        if merged_cfg is None:
+            self.speedrun_widget.set_config(None, emit=False)
+            return
 
         self.speedrun_widget.set_config(merged_cfg, emit=False)
         try:
@@ -479,7 +407,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
     def _on_speedrun_changed(self, config: Dict[str, Any]) -> None:
         """速通配置修改后立即保存到当前任务"""
         try:
-            self.service_coordinator.option.update_option("_speedrun_config", config)
+            self.service_coordinator.update_selected_option("_speedrun_config", config)
         except Exception as exc:
             logger.error(f"保存速通配置失败: {exc}")
 
@@ -817,7 +745,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             # 获取当前所有配置
             all_config = self.get_current_form_config()
             # 调用OptionService的update_options方法保存选项
-            self.service_coordinator.option_service.update_options(all_config)
+            self.service_coordinator.update_selected_options(all_config)
         except Exception as e:
             # 如果保存失败，记录错误但不影响用户操作
             logger.error(f"自动保存选项失败: {e}")
@@ -827,12 +755,12 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         当选项被加载时触发
         """
         # 先从OptionService获取form_structure
-        form_structure = self.service_coordinator.option.get_form_structure()
+        form_structure = self.service_coordinator.task_query.get_option_form_structure()
 
         # 只使用form_structure更新表单
         if form_structure:
             # 获取最新配置并更新到共享字典中（保持字典引用不变）
-            new_config = self.service_coordinator.option.get_options()
+            new_config = self.service_coordinator.task_query.get_current_options()
             self.current_config.clear()
             self.current_config.update(new_config)
             # 同步更新控制器组件的 current_config（Resource 和 PostAction 现在直接使用 self.current_config）
@@ -876,10 +804,8 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             logger.info("没有提供form_structure，已清除界面")
 
         # 同步速通配置到堆叠页（资源/完成后/特殊任务隐藏速通页）
-        option_service = self.service_coordinator.option
-        task_service = self.service_coordinator.task
-        task_id = getattr(option_service, "current_task_id", None)
-        task = task_service.get_task(task_id) if task_id else None
+        task_id = self.service_coordinator.task_query.get_current_option_task_id()
+        task = self.service_coordinator.task_query.get_task(task_id) if task_id else None
         is_special_task = getattr(task, "is_special", False) if task else False
 
         speedrun_visible = (
@@ -943,10 +869,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 从Controller任务的配置中获取当前控制器类型（资源任务应该使用Controller任务的配置）
         from app.common.constants import _CONTROLLER_
 
-        controller_task = self.service_coordinator.task_service.get_task(_CONTROLLER_)
-        controller_name = ""
-        if controller_task and isinstance(controller_task.task_option, dict):
-            controller_name = controller_task.task_option.get("controller_type", "")
+        controller_name = self.service_coordinator.task_query.get_current_controller_type()
 
         # 如果Controller任务中没有配置，尝试从当前配置中获取（作为fallback）
         if not controller_name:
@@ -980,12 +903,9 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 注意：必须在 create_resource_settings 之前设置，因为 create_resource_settings 会调用 _fill_resource_option
         from app.common.constants import _RESOURCE_
 
-        resource_task = self.service_coordinator.task_service.get_task(_RESOURCE_)
-        if resource_task and isinstance(resource_task.task_option, dict):
-            resource_name = resource_task.task_option.get("resource", "")
-            if resource_name:
-                # 确保 current_config 中有 resource 字段
-                self.current_config["resource"] = resource_name
+        resource_name = self.service_coordinator.task_query.get_current_resource_name()
+        if resource_name:
+            self.current_config["resource"] = resource_name
 
         # 创建资源下拉框（此时 current_config 中已经有 resource 值了）
         self.create_resource_settings()
@@ -1021,12 +941,11 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
         # 从 POST_ACTION 任务的配置中获取完成后操作配置，并设置到 current_config 中
         from app.common.constants import POST_ACTION
 
-        post_action_task = self.service_coordinator.task_service.get_task(POST_ACTION)
-        if post_action_task and isinstance(post_action_task.task_option, dict):
-            post_action_config = post_action_task.task_option.get("post_action", {})
-            if post_action_config:
-                # 确保 current_config 中有 post_action 字段
-                self.current_config["post_action"] = post_action_config
+        post_action_config = self.service_coordinator.task_query.get_task_option_value(
+            POST_ACTION, "post_action", {}
+        )
+        if post_action_config:
+            self.current_config["post_action"] = post_action_config
 
         # 创建完成后操作设置（此时 current_config 中已经有 post_action 值了）
         self.create_post_action_settings()
@@ -1055,7 +974,7 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
     def _update_options_enabled(self):
         """根据运行状态更新所有选项的启用/禁用状态"""
         # 检查是否有任务正在运行
-        is_running = self.service_coordinator.run_manager.is_running
+        is_running = self.service_coordinator.runtime_query.is_task_flow_running()
         self._set_options_enabled(not is_running)
 
     def _set_options_enabled(self, enabled: bool):
@@ -1138,3 +1057,4 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             elif item.layout():
                 # 递归处理子布局
                 self._set_layout_enabled(item.layout(), enabled)
+

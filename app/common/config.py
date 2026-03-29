@@ -70,7 +70,7 @@ class Language(Enum):
     ENGLISH = QLocale(QLocale.Language.English)
 
 
-def isWin11():
+def is_win11():
     return sys.platform == "win32" and sys.getwindowsversion().build >= 22000
 
 
@@ -119,7 +119,7 @@ class Config(QConfig):
     http_proxy = ConfigItem("General", "http_proxy", "")
     socks5_proxy = ConfigItem("General", "socks5_proxy", "")
 
-    Mcdk = ConfigItem("General", "cdk", "")
+    mcdk = ConfigItem("General", "cdk", "")
 
     run_after_startup = ConfigItem(
         "General", "run_after_startup", False, BoolValidator()
@@ -179,39 +179,39 @@ class Config(QConfig):
     )  # 日志中保存的最大图片数量（默认25张，按200KB/张计算），同时控制界面显示和压缩包保存的数量
 
     # ===== 通知 =====
-    Notice_DingTalk_status = ConfigItem("Notice", "DingTalk_status", False)
-    Notice_DingTalk_url = ConfigItem("Notice", "DingTalk_url", "")
-    Notice_DingTalk_secret = ConfigItem("Notice", "DingTalk_secret", "")
+    notice_dingtalk_status = ConfigItem("Notice", "DingTalk_status", False)
+    notice_dingtalk_url = ConfigItem("Notice", "DingTalk_url", "")
+    notice_dingtalk_secret = ConfigItem("Notice", "DingTalk_secret", "")
 
-    Notice_Lark_status = ConfigItem("Notice", "Lark_status", False)
-    Notice_Lark_url = ConfigItem("Notice", "Lark_url", "")
-    Notice_Lark_secret = ConfigItem("Notice", "Lark_secret", "")
+    notice_lark_status = ConfigItem("Notice", "Lark_status", False)
+    notice_lark_url = ConfigItem("Notice", "Lark_url", "")
+    notice_lark_secret = ConfigItem("Notice", "Lark_secret", "")
 
-    Notice_Qmsg_status = ConfigItem("Notice", "Qmsg_status", False)
-    Notice_Qmsg_sever = ConfigItem("Notice", "Qmsg_sever", "")
-    Notice_Qmsg_key = ConfigItem("Notice", "Qmsg_key", "")
-    Notice_Qmsg_user_qq = ConfigItem("Notice", "Qmsg_uesr_qq", "")
-    Notice_Qmsg_robot_qq = ConfigItem("Notice", "Qmsg_robot_qq", "")
+    notice_qmsg_status = ConfigItem("Notice", "Qmsg_status", False)
+    notice_qmsg_server = ConfigItem("Notice", "Qmsg_sever", "")
+    notice_qmsg_key = ConfigItem("Notice", "Qmsg_key", "")
+    notice_qmsg_user_qq = ConfigItem("Notice", "Qmsg_uesr_qq", "")
+    notice_qmsg_robot_qq = ConfigItem("Notice", "Qmsg_robot_qq", "")
 
-    Notice_SMTP_status = ConfigItem("Notice", "SMTP_status", False)
-    Notice_SMTP_sever_address = ConfigItem("Notice", "SMTP_sever_address", "")
-    Notice_SMTP_sever_port = ConfigItem("Notice", "SMTP_sever_port", "25")
-    Notice_SMTP_used_ssl = ConfigItem("Notice", "SMTP_used_ssl", False)
-    Notice_SMTP_user_name = ConfigItem("Notice", "SMTP_uesr_name", "")
-    Notice_SMTP_password = ConfigItem("Notice", "SMTP_password", "")
-    Notice_SMTP_send_mail = ConfigItem("Notice", "SMTP_send_mail", "")
-    Notice_SMTP_receive_mail = ConfigItem("Notice", "SMTP_receive_mail", "")
+    notice_smtp_status = ConfigItem("Notice", "SMTP_status", False)
+    notice_smtp_server_address = ConfigItem("Notice", "SMTP_sever_address", "")
+    notice_smtp_server_port = ConfigItem("Notice", "SMTP_sever_port", "25")
+    notice_smtp_used_ssl = ConfigItem("Notice", "SMTP_used_ssl", False)
+    notice_smtp_user_name = ConfigItem("Notice", "SMTP_uesr_name", "")
+    notice_smtp_password = ConfigItem("Notice", "SMTP_password", "")
+    notice_smtp_send_mail = ConfigItem("Notice", "SMTP_send_mail", "")
+    notice_smtp_receive_mail = ConfigItem("Notice", "SMTP_receive_mail", "")
 
-    Notice_WxPusher_status = ConfigItem("Notice", "WxPush_status", False)
-    Notice_WxPusher_SPT_token = ConfigItem("Notice", "WxPusher_SPT_token", "")
+    notice_wx_pusher_status = ConfigItem("Notice", "WxPush_status", False)
+    notice_wx_pusher_spt_token = ConfigItem("Notice", "WxPusher_SPT_token", "")
 
-    Notice_QYWX_status = ConfigItem("Notice", "QYWX_status", False)
-    Notice_QYWX_key = ConfigItem("Notice", "QYWX_key", "")
+    notice_qywx_status = ConfigItem("Notice", "QYWX_status", False)
+    notice_qywx_key = ConfigItem("Notice", "QYWX_key", "")
 
-    Notice_Gotify_status = ConfigItem("Notice", "Gotify_status", False)
-    Notice_Gotify_url = ConfigItem("Notice", "Gotify_url", "")
-    Notice_Gotify_token = ConfigItem("Notice", "Gotify_token", "")
-    Notice_Gotify_priority = ConfigItem("Notice", "Gotify_priority", "0")
+    notice_gotify_status = ConfigItem("Notice", "Gotify_status", False)
+    notice_gotify_url = ConfigItem("Notice", "Gotify_url", "")
+    notice_gotify_token = ConfigItem("Notice", "Gotify_token", "")
+    notice_gotify_priority = ConfigItem("Notice", "Gotify_priority", "0")
 
     when_start_up = ConfigItem("Notice", "when_start_up", False)
     # 通知时机配置，分别控制不同场景下的通知发送
@@ -237,9 +237,9 @@ class Config(QConfig):
     )
 
     # ===== 主窗口 =====
-    micaEnabled = ConfigItem("MainWindow", "MicaEnabled", isWin11(), BoolValidator())
+    mica_enabled = ConfigItem("MainWindow", "MicaEnabled", is_win11(), BoolValidator())
 
-    dpiScale = OptionsConfigItem(
+    dpi_scale = OptionsConfigItem(
         "MainWindow",
         "DpiScale",
         "Auto",

@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional
 
-from app.core.service.Task_Service import TaskService
-from app.core.Item import CoreSignalBus
+from app.core.events import CoreSignalBus
+from app.core.service.task_service import TaskService
 
 
 class OptionService:
@@ -83,7 +83,7 @@ class OptionService:
                     self.form_structure = self.get_form_structure_by_task_name(
                         task.name, interface
                     ) or {}
-                    self.signal_bus.options_loaded.emit()
+                self.signal_bus.options_loaded.emit()
             self.signal_bus.option_updated.emit(option_data)
 
         return success

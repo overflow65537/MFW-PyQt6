@@ -12,6 +12,21 @@ on:
   workflow_dispatch:
 
 jobs:
+  architecture_guards:
+    name: Architecture guards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Run architecture guard tests
+        run: |
+          python -m unittest discover -s tests -p "test_architecture_guards.py"
+
   changelog:
     name: Generate changelog
     runs-on: ubuntu-latest
@@ -34,6 +49,7 @@ jobs:
           GITHUB_REPO: ${{ github.repository }}
 
   meta:
+    needs: architecture_guards
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -99,7 +115,7 @@ jobs:
       is_prerelease: ${{ steps.set_tag.outputs.is_prerelease }}
 
   pyinstaller:
-    needs: meta
+    needs: [meta, architecture_guards]
     name: Build (${{ matrix.platform }}-${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
     strategy:

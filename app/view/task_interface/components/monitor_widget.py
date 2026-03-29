@@ -22,7 +22,6 @@ from qfluentwidgets import (
 )
 
 from app.core.core import ServiceCoordinator
-from app.core.runner.monitor_task import MonitorTask
 from app.utils.logger import (
     logger,
     restore_asyncify_logging,
@@ -30,7 +29,7 @@ from app.utils.logger import (
     suppress_asyncify_logging,
     suppress_qasync_logging,
 )
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import global_signal_bus
 from app.common.config import cfg
 
 
@@ -57,10 +56,7 @@ class MonitorWidget(QWidget):
         self._stop_debounce_timer.setSingleShot(True)
         self._stop_debounce_timer.timeout.connect(self._stop_monitoring_now)
         
-        self.monitor_task = MonitorTask(
-            task_service=self.service_coordinator.task_service,
-            config_service=self.service_coordinator.config_service,
-        )
+        self.monitor_task = self.service_coordinator.runtime_query.create_monitor_task()
         
         self._setup_ui()
         self._connect_signals()
@@ -170,12 +166,12 @@ class MonitorWidget(QWidget):
         """连接信号"""
         # 监听任务开始/停止信号
         if hasattr(self.service_coordinator, 'fs_signals'):
-            self.service_coordinator.fs_signals.fs_start_button_status.connect(
+            self.service_coordinator.fs_signal_bus.fs_start_button_status.connect(
                 self._on_task_status_changed
             )
 
         # 监听任务流结束信号：无论何种结束方式，都要停止监控（比按钮状态更及时）
-        signalBus.task_flow_finished.connect(self._on_task_flow_finished)
+        global_signal_bus.task_flow_finished.connect(self._on_task_flow_finished)
 
     def _on_task_flow_finished(self, payload: dict) -> None:
         """任务流结束时的处理：停止监控（带防抖/幂等）"""
@@ -326,12 +322,9 @@ class MonitorWidget(QWidget):
     def _get_controller(self):
         """获取控制器：优先使用任务流的控制器，如果没有则使用监控任务的控制器"""
         # 优先使用任务流的控制器（如果任务流已连接）
-        if hasattr(self.service_coordinator, 'run_manager'):
-            task_flow = self.service_coordinator.run_manager
-            if task_flow and hasattr(task_flow, 'maafw'):
-                controller = getattr(task_flow.maafw, 'controller', None)
-                if controller is not None:
-                    return controller
+        controller = self.service_coordinator.runtime_query.get_task_flow_controller()
+        if controller is not None:
+            return controller
         
         # 回退到监控任务的控制器
         controller = getattr(self.monitor_task.maafw, 'controller', None)
@@ -508,14 +501,9 @@ class MonitorWidget(QWidget):
     def _is_controller_connected(self) -> bool:
         """检查控制器是否连接：优先检查任务流的控制器"""
         # 优先检查任务流的控制器
-        if hasattr(self.service_coordinator, 'run_manager'):
-            task_flow = self.service_coordinator.run_manager
-            if task_flow and hasattr(task_flow, 'maafw'):
-                controller = getattr(task_flow.maafw, 'controller', None)
-                if controller is not None:
-                    connected = getattr(controller, "connected", None)
-                    if connected is not False:
-                        return True
+        controller = self.service_coordinator.runtime_query.get_task_flow_controller()
+        if self.service_coordinator.runtime_query.is_controller_connected(controller):
+            return True
         
         # 回退到监控任务的控制器
         controller = getattr(self.monitor_task.maafw, "controller", None)
@@ -526,21 +514,7 @@ class MonitorWidget(QWidget):
     
     def _check_task_flow_controller_ready(self) -> bool:
         """检查任务流的控制器是否就绪（存在且connected为true）"""
-        if not hasattr(self.service_coordinator, 'run_manager'):
-            return False
-        
-        task_flow = self.service_coordinator.run_manager
-        if not task_flow or not hasattr(task_flow, 'maafw'):
-            return False
-        
-        maafw = task_flow.maafw
-        controller = getattr(maafw, 'controller', None)
-        if controller is None:
-            return False
-        
-        connected = getattr(controller, 'connected', None)
-        is_ready = connected is True
-        return is_ready
+        return self.service_coordinator.runtime_query.is_task_flow_controller_ready()
     
     async def _get_required_wait_time(self) -> float:
         """从配置中获取需要的等待时间（如果配置了启动模拟器或程序）"""
@@ -548,7 +522,7 @@ class MonitorWidget(QWidget):
         
         try:
             # 获取控制器配置
-            controller_cfg = self.service_coordinator.task_service.get_task(_CONTROLLER_)
+            controller_cfg = self.service_coordinator.task_query.get_task(_CONTROLLER_)
             if not controller_cfg:
                 return 0.0
             
@@ -591,7 +565,7 @@ class MonitorWidget(QWidget):
         
         try:
             # 获取控制器配置
-            controller_cfg = self.service_coordinator.task_service.get_task(_CONTROLLER_)
+            controller_cfg = self.service_coordinator.task_query.get_task(_CONTROLLER_)
             if not controller_cfg:
                 return 30.0  # 默认30秒
             
@@ -654,7 +628,7 @@ class MonitorWidget(QWidget):
                 controller_name = ""
             
             controller_name = controller_name.lower()
-            for controller in self.service_coordinator.task_service.interface.get("controller", []):
+            for controller in self.service_coordinator.interface.get("controller", []):
                 if controller.get("name", "").lower() == controller_name:
                     return controller.get("type", "").lower()
             
@@ -701,7 +675,7 @@ class MonitorWidget(QWidget):
     def _on_save_screenshot(self) -> None:
         """保存截图"""
         if not self._current_pil_image:
-            signalBus.info_bar_requested.emit("warning", self.tr("No screenshot available to save"))
+            global_signal_bus.info_bar_requested.emit("warning", self.tr("No screenshot available to save"))
             return
         save_dir = Path("debug") / "save_screen"
         save_dir.mkdir(parents=True, exist_ok=True)
@@ -710,9 +684,9 @@ class MonitorWidget(QWidget):
         try:
             self._current_pil_image.save(save_path)
             message = self.tr("Screenshot saved to ") + str(save_path)
-            signalBus.info_bar_requested.emit("success", message)
+            global_signal_bus.info_bar_requested.emit("success", message)
         except Exception as exc:
-            signalBus.info_bar_requested.emit("error", self.tr("Failed to save screenshot: ") + str(exc))
+            global_signal_bus.info_bar_requested.emit("error", self.tr("Failed to save screenshot: ") + str(exc))
 
     def _on_monitor_control_clicked(self) -> None:
         """处理开始/停止监控按钮点击"""
@@ -773,7 +747,7 @@ class MonitorWidget(QWidget):
                     if not self._check_task_flow_controller_ready():
                         logger.warning(f"[MonitorWidget] 等待超时，控制器仍未就绪 (等待了 {waited_time:.1f}秒)")
                         if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
-                            signalBus.info_bar_requested.emit(
+                            global_signal_bus.info_bar_requested.emit(
                                 "error", self.tr("Controller not ready. Please ensure the device is connected.")
                             )
                         self._hide_loading_overlay()
@@ -800,7 +774,7 @@ class MonitorWidget(QWidget):
                     if not self._monitoring_active:
                         logger.error("[MonitorWidget] 监控循环启动失败")
                         if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
-                            signalBus.info_bar_requested.emit(
+                            global_signal_bus.info_bar_requested.emit(
                                 "error", self.tr("Failed to start monitoring loop")
                             )
                         self._starting_monitoring = False
@@ -809,7 +783,7 @@ class MonitorWidget(QWidget):
                     logger.info("[MonitorWidget] 正常模式监控循环已启动")
                 
                 self._update_button_state()
-                signalBus.info_bar_requested.emit("success", self.tr("Monitoring started"))
+                global_signal_bus.info_bar_requested.emit("success", self.tr("Monitoring started"))
                 
                 # 尝试捕获第一帧（仅正常模式）
                 if not use_low_power:
@@ -828,7 +802,7 @@ class MonitorWidget(QWidget):
             except Exception as exc:
                 logger.error(f"[MonitorWidget] 启动监控流程失败: {exc}", exc_info=True)
                 if self._starting_monitoring:  # 只有在未被停止的情况下才显示错误
-                    signalBus.info_bar_requested.emit(
+                    global_signal_bus.info_bar_requested.emit(
                         "error", self.tr("Failed to start monitoring: ") + str(exc)
                     )
                 self._hide_loading_overlay()
@@ -892,10 +866,10 @@ class MonitorWidget(QWidget):
                 
                 self._update_button_state()
                 logger.info("[MonitorWidget] 监控已停止")
-                signalBus.info_bar_requested.emit("success", self.tr("Monitoring stopped"))
+                global_signal_bus.info_bar_requested.emit("success", self.tr("Monitoring stopped"))
             except Exception as exc:
                 logger.error(f"[MonitorWidget] 停止监控流程失败: {exc}", exc_info=True)
-                signalBus.info_bar_requested.emit(
+                global_signal_bus.info_bar_requested.emit(
                     "error", self.tr("Failed to stop monitoring: ") + str(exc)
                 )
             finally:
@@ -957,4 +931,5 @@ class MonitorWidget(QWidget):
             loop = None
         if loop and loop.is_running():
             loop.create_task(self._handle_controller_disconnection())
+
 

@@ -44,7 +44,7 @@ from app.core.core import ServiceCoordinator
 from app.core.service.interface_manager import get_interface_manager
 from app.utils.logger import logger
 from app.utils.update import Update, MultiResourceUpdate
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import global_signal_bus
 from app.utils.markdown_helper import render_markdown
 from app.widget.notice_message import NoticeMessageBox
 import os
@@ -454,10 +454,10 @@ class BundleInterface(UI_BundleInterface, QWidget):
         self.welcome_button.clicked.connect(self._open_welcome_dialog)
 
         # 监听更新停止信号（Update 类会自动发送，用于通知主界面）
-        signalBus.update_stopped.connect(self._on_update_stopped)
+        global_signal_bus.update_stopped.connect(self._on_update_stopped)
 
         # 监听多资源适配启用信号，刷新 bundle 列表
-        signalBus.multi_resource_adaptation_enabled.connect(
+        global_signal_bus.multi_resource_adaptation_enabled.connect(
             self._on_multi_resource_enabled
         )
 
@@ -478,16 +478,15 @@ class BundleInterface(UI_BundleInterface, QWidget):
         self._bundle_data.clear()
 
         try:
-            bundle_names = self.service_coordinator.config.list_bundles()
-            if not bundle_names:
+            bundle_choices = self.service_coordinator.config_query.get_bundle_choices()
+            if not bundle_choices:
                 logger.warning("未找到任何 bundle")
                 return
 
-            for bundle_name in bundle_names:
+            for bundle_choice in bundle_choices:
                 try:
-                    bundle_info = self.service_coordinator.config.get_bundle(
-                        bundle_name
-                    )
+                    bundle_name = bundle_choice.get("id") or bundle_choice.get("name", "")
+                    bundle_info = self.service_coordinator.config_query.get_bundle(bundle_name)
                     bundle_path_str = bundle_info.get("path", "")
                     bundle_display_name = bundle_info.get("name", bundle_name)
 
@@ -839,7 +838,10 @@ class BundleInterface(UI_BundleInterface, QWidget):
             return
 
         try:
-            bundle_names = self.service_coordinator.config.list_bundles()
+            bundle_names = [
+                choice.get("id") or choice.get("name", "")
+                for choice in self.service_coordinator.config_query.get_bundle_choices()
+            ]
             if not bundle_names:
                 return
 
@@ -855,9 +857,9 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 # 创建更新检查器
                 checker = Update(
                     service_coordinator=self.service_coordinator,
-                    stop_signal=signalBus.update_stopped,
-                    progress_signal=signalBus.update_progress,
-                    info_bar_signal=signalBus.info_bar_requested,
+                    stop_signal=global_signal_bus.update_stopped,
+                    progress_signal=global_signal_bus.update_progress,
+                    info_bar_signal=global_signal_bus.info_bar_requested,
                     interface=interface_data,
                     check_only=True,
                 )
@@ -899,9 +901,9 @@ class BundleInterface(UI_BundleInterface, QWidget):
             # 创建更新检查器
             checker = Update(
                 service_coordinator=self.service_coordinator,
-                stop_signal=signalBus.update_stopped,
-                progress_signal=signalBus.update_progress,
-                info_bar_signal=signalBus.info_bar_requested,
+                stop_signal=global_signal_bus.update_stopped,
+                progress_signal=global_signal_bus.update_progress,
+                info_bar_signal=global_signal_bus.info_bar_requested,
                 interface=interface_data,
                 check_only=True,
             )
@@ -959,7 +961,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         # 检查多资源适配是否开启
         if not self._is_multi_resource_enabled():
             logger.warning("多资源适配未开启，无法自动更新bundle")
-            signalBus.all_updates_completed.emit()
+            global_signal_bus.all_updates_completed.emit()
             return
 
         if self._current_updater:
@@ -968,11 +970,14 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
         logger.info("开始自动更新所有bundle...")
         try:
-            bundle_names = self.service_coordinator.config.list_bundles()
+            bundle_names = [
+                choice.get("id") or choice.get("name", "")
+                for choice in self.service_coordinator.config_query.get_bundle_choices()
+            ]
             if not bundle_names:
                 logger.warning("没有找到任何bundle")
                 # 没有bundle，直接发送完成信号
-                signalBus.all_updates_completed.emit()
+                global_signal_bus.all_updates_completed.emit()
                 return
 
             # 过滤出有更新的bundle
@@ -995,7 +1000,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
             if not bundles_to_update:
                 logger.info("所有bundle都是最新版本，无需更新")
                 # 没有需要更新的bundle，直接发送完成信号
-                signalBus.all_updates_completed.emit()
+                global_signal_bus.all_updates_completed.emit()
                 return
 
             # 将需要更新的bundle加入队列
@@ -1007,13 +1012,13 @@ class BundleInterface(UI_BundleInterface, QWidget):
             logger.error(f"自动更新所有bundle失败: {e}", exc_info=True)
             self._is_updating_all = False
             # 发生错误，发送完成信号
-            signalBus.all_updates_completed.emit()
+            global_signal_bus.all_updates_completed.emit()
 
     def _on_update_all_bundles(self):
         """更新所有bundle按钮点击事件"""
         # 检查多资源适配是否开启
         if not self._is_multi_resource_enabled():
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning",
                 self.tr(
                     "Multi-resource adaptation is not enabled. Please enable it in Settings first."
@@ -1028,7 +1033,10 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
         logger.info("开始更新所有bundle...")
         try:
-            bundle_names = self.service_coordinator.config.list_bundles()
+            bundle_names = [
+                choice.get("id") or choice.get("name", "")
+                for choice in self.service_coordinator.config_query.get_bundle_choices()
+            ]
             if not bundle_names:
                 logger.warning("没有找到任何bundle")
                 return
@@ -1052,7 +1060,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
             if not bundles_to_update:
                 logger.info("所有bundle都是最新版本，无需更新")
-                signalBus.info_bar_requested.emit(
+                global_signal_bus.info_bar_requested.emit(
                     "info", self.tr("All bundles are up to date")
                 )
                 return
@@ -1070,7 +1078,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         """处理单个bundle的更新"""
         # 检查多资源适配是否开启
         if not self._is_multi_resource_enabled():
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning",
                 self.tr(
                     "Multi-resource adaptation is not enabled. Please enable it in Settings first."
@@ -1098,7 +1106,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
             if not is_auto_update_all:
                 # 如果不是自动更新所有模式，显示通知
-                signalBus.info_bar_requested.emit(
+                global_signal_bus.info_bar_requested.emit(
                     "success", self.tr("All updates completed")
                 )
             logger.info("所有更新任务完成")
@@ -1113,7 +1121,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
 
                 # 如果是自动更新所有模式，发送所有更新完成信号
                 if is_auto_update_all:
-                    signalBus.all_updates_completed.emit()
+                    global_signal_bus.all_updates_completed.emit()
                     logger.info(
                         "Bundle 自动更新完成，已发送 all_updates_completed 信号"
                     )
@@ -1138,9 +1146,9 @@ class BundleInterface(UI_BundleInterface, QWidget):
         # 创建更新器（使用 MultiResourceUpdate 子类处理多资源更新）
         updater = MultiResourceUpdate(
             service_coordinator=self.service_coordinator,
-            stop_signal=signalBus.update_stopped,
-            progress_signal=signalBus.update_progress,
-            info_bar_signal=signalBus.info_bar_requested,
+            stop_signal=global_signal_bus.update_stopped,
+            progress_signal=global_signal_bus.update_progress,
+            info_bar_signal=global_signal_bus.info_bar_requested,
             interface=interface_data,
             force_full_download=False,
         )
@@ -1152,7 +1160,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         self._current_bundle_name = bundle_name  # 保存当前更新的bundle名称
         updater.start()
         logger.info(f"开始更新 bundle: {bundle_name}")
-        signalBus.info_bar_requested.emit(
+        global_signal_bus.info_bar_requested.emit(
             "info", self.tr(f"Updating bundle: {bundle_name}")
         )
 
@@ -1176,28 +1184,28 @@ class BundleInterface(UI_BundleInterface, QWidget):
             logger.info(f"Bundle '{bundle_name}' 热更新成功完成")
             if not is_auto_update_all:
                 # 如果不是自动更新所有，显示通知
-                signalBus.info_bar_requested.emit(
+                global_signal_bus.info_bar_requested.emit(
                     "success", self.tr(f"Bundle '{bundle_name}' updated successfully")
                 )
         elif status == 0:
             # 用户取消
             logger.warning(f"Bundle '{bundle_name}' 更新被取消")
             if not is_auto_update_all:
-                signalBus.info_bar_requested.emit(
+                global_signal_bus.info_bar_requested.emit(
                     "warning", self.tr(f"Update cancelled: {bundle_name}")
                 )
         elif status == 2:
             # 需要重启
             logger.info(f"Bundle '{bundle_name}' 需要重启以完成更新")
             if not is_auto_update_all:
-                signalBus.info_bar_requested.emit(
+                global_signal_bus.info_bar_requested.emit(
                     "info", self.tr(f"Restart required for bundle: {bundle_name}")
                 )
         else:
             # 其他错误
             logger.error(f"Bundle '{bundle_name}' 更新失败，状态码: {status}")
             if not is_auto_update_all:
-                signalBus.info_bar_requested.emit(
+                global_signal_bus.info_bar_requested.emit(
                     "error", self.tr(f"Update failed for bundle: {bundle_name}")
                 )
 
@@ -1222,11 +1230,8 @@ class BundleInterface(UI_BundleInterface, QWidget):
         """响应多资源适配启用信号，刷新 bundle 列表"""
         logger.info("收到多资源适配启用信号，刷新 bundle 列表")
         # 重新加载配置服务的主配置
-        try:
-            self.service_coordinator.config_service.load_main_config()
+        if self.service_coordinator.reload_main_config():
             logger.debug("已重新加载主配置")
-        except Exception as e:
-            logger.warning(f"重新加载主配置失败: {e}")
 
         # 重新加载 bundle 列表
         self._load_bundles()
@@ -1240,7 +1245,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         """打开添加 bundle 对话框"""
         # 检查多资源适配是否开启
         if not self._is_multi_resource_enabled():
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning",
                 self.tr(
                     "Multi-resource adaptation is not enabled. Please enable it in Settings first."
@@ -1260,11 +1265,8 @@ class BundleInterface(UI_BundleInterface, QWidget):
             return
 
         # 重新加载配置服务的主配置，确保能获取到新添加的 bundle
-        try:
-            self.service_coordinator.config_service.load_main_config()
+        if self.service_coordinator.reload_main_config():
             logger.debug("已重新加载主配置，确保获取到新添加的 bundle")
-        except Exception as e:
-            logger.warning(f"重新加载主配置失败: {e}")
 
         # 重新加载 bundle 列表以显示新添加的 bundle
         self._load_bundles()
@@ -1279,7 +1281,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
         logger.info(f"已添加新 bundle: {bundle_name} -> {bundle_path}")
         
         # 显示成功提示
-        signalBus.info_bar_requested.emit(
+        global_signal_bus.info_bar_requested.emit(
             "success",
             self.tr("Bundle '{}' added successfully").format(bundle_name)
         )
@@ -1357,14 +1359,14 @@ class BundleInterface(UI_BundleInterface, QWidget):
         # 查找所有使用该 bundle 的配置
         configs_to_delete = []
         try:
-            all_configs = self.service_coordinator.config.list_configs()
+            all_configs = self.service_coordinator.config_query.get_available_config_choices()
             for config_info in all_configs:
-                config_id = config_info.get("item_id")
+                config_id = config_info[0] if isinstance(config_info, tuple) else config_info.get("item_id")
                 if not config_id:
                     continue
                 
                 # 获取配置的完整数据
-                config_item = self.service_coordinator.config.get_config(config_id)
+                config_item = self.service_coordinator.config_query.get_config(config_id)
                 if config_item and config_item.bundle == bundle_name:
                     configs_to_delete.append({
                         "id": config_id,
@@ -1372,7 +1374,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
                     })
         except Exception as e:
             logger.error(f"查找使用 bundle '{bundle_name}' 的配置时出错: {e}")
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "error",
                 self.tr("Failed to find configurations using this bundle: {}").format(str(e))
             )
@@ -1422,7 +1424,7 @@ class BundleInterface(UI_BundleInterface, QWidget):
             success = self.service_coordinator.delete_bundle(bundle_name)
             if success:
                 logger.info(f"已删除 bundle: {bundle_display_name} ({bundle_name})")
-                signalBus.info_bar_requested.emit(
+                global_signal_bus.info_bar_requested.emit(
                     "success",
                     self.tr("Bundle '{}' and {} related configuration(s) deleted successfully").format(
                         bundle_display_name, len(configs_to_delete)
@@ -1430,22 +1432,19 @@ class BundleInterface(UI_BundleInterface, QWidget):
                 )
                 
                 # 重新加载配置服务的主配置
-                try:
-                    self.service_coordinator.config_service.load_main_config()
-                except Exception as e:
-                    logger.warning(f"重新加载主配置失败: {e}")
+                self.service_coordinator.reload_main_config()
                 
                 # 刷新 bundle 列表
                 self._load_bundles()
             else:
                 logger.error(f"删除 bundle 失败: {bundle_display_name}")
-                signalBus.info_bar_requested.emit(
+                global_signal_bus.info_bar_requested.emit(
                     "error",
                     self.tr("Failed to delete bundle: {}").format(bundle_display_name)
                 )
         except Exception as e:
             logger.error(f"删除 bundle '{bundle_name}' 时发生错误: {e}", exc_info=True)
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "error",
                 self.tr("An error occurred while deleting bundle: {}").format(str(e))
             )
@@ -1463,8 +1462,8 @@ class AddBundleDialog(MessageBoxBase):
         self.widget.setMinimumWidth(420)
         self.widget.setMinimumHeight(200)
 
-        self.titleLabel = SubtitleLabel(self.tr("Add Resource Bundle"), self)
-        self.viewLayout.addWidget(self.titleLabel)
+        self.title_label = SubtitleLabel(self.tr("Add Resource Bundle"), self)
+        self.viewLayout.addWidget(self.title_label)
         self.viewLayout.addSpacing(8)
 
         # 资源名称
@@ -1533,7 +1532,7 @@ class AddBundleDialog(MessageBoxBase):
             # 读取 interface.json 的 name 字段以预填 bundle 名称
             self._read_interface_name_and_prefill(p)
         else:
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning",
                 self.tr("Please select interface.json or interface.jsonc file")
             )
@@ -1578,7 +1577,7 @@ class AddBundleDialog(MessageBoxBase):
         def _show_error(msg: str) -> None:
             # 通过信号总线发送 InfoBar 通知，由主窗口统一处理
             logger.error(f"[错误] {msg}")
-            signalBus.info_bar_requested.emit("error", msg)
+            global_signal_bus.info_bar_requested.emit("error", msg)
             self._is_processing = False  # 错误时重置标志
 
         try:
@@ -1907,3 +1906,4 @@ class AddBundleDialog(MessageBoxBase):
     def closeEvent(self, event) -> None:
         """对话框关闭事件。"""
         super().closeEvent(event)
+

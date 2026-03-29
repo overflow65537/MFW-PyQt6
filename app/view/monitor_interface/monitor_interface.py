@@ -24,7 +24,6 @@ from qfluentwidgets import (
 )
 
 from app.core.core import ServiceCoordinator
-from app.core.runner.monitor_task import MonitorTask
 from app.utils.logger import (
     logger,
     restore_asyncify_logging,
@@ -32,7 +31,7 @@ from app.utils.logger import (
     suppress_asyncify_logging,
     suppress_qasync_logging,
 )
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import global_signal_bus
 
 
 class _ClickablePreviewLabel(PixmapLabel):
@@ -62,10 +61,7 @@ class MonitorInterface(QWidget):
         self._image_height: Optional[int] = None
         self._is_landscape: Optional[bool] = None
         self._setup_ui()
-        self.monitor_task = MonitorTask(
-            task_service=self.service_coordinator.task_service,
-            config_service=self.service_coordinator.config_service,
-        )
+        self.monitor_task = self.service_coordinator.runtime_query.create_monitor_task()
         self._monitor_loop_task: Optional[asyncio.Task] = None
         self._image_processing_task: Optional[asyncio.Task] = None
         self._monitoring_active = False
@@ -474,7 +470,7 @@ class MonitorInterface(QWidget):
             self._current_pil_image.save(save_path)
             logger.info("监控子页面：截图已保存至 %s", save_path)
             message = self.tr("Screenshot saved to ")+str(save_path)
-            signalBus.info_bar_requested.emit("success", message)
+            global_signal_bus.info_bar_requested.emit("success", message)
         except Exception as exc:
             logger.exception("监控子页面：保存截图失败：%s", exc)
 
@@ -562,7 +558,7 @@ class MonitorInterface(QWidget):
                     connected = await self.monitor_task._connect()
                     if not connected:
                         logger.error("设备连接失败，无法开始监控")
-                        signalBus.info_bar_requested.emit(
+                        global_signal_bus.info_bar_requested.emit(
                             "error", self.tr("Device connection failed, cannot start monitoring")
                         )
                         return
@@ -575,7 +571,7 @@ class MonitorInterface(QWidget):
                 self.monitor_control_button.setIcon(FIF.CLOSE)
                 self.monitor_control_button.setToolTip(self.tr("Stop monitoring task"))
                 
-                signalBus.info_bar_requested.emit("success", self.tr("Monitoring started"))
+                global_signal_bus.info_bar_requested.emit("success", self.tr("Monitoring started"))
                 
                 # 立即捕获一帧以显示画面
                 try:
@@ -590,7 +586,7 @@ class MonitorInterface(QWidget):
                         self._apply_preview_from_pil(pil_image)
             except Exception as exc:
                 logger.exception("监控子页面：开始监控失败：%s", exc)
-                signalBus.info_bar_requested.emit(
+                global_signal_bus.info_bar_requested.emit(
                     "error", self.tr("Failed to start monitoring: ") + str(exc)
                 )
             finally:
@@ -632,10 +628,10 @@ class MonitorInterface(QWidget):
                 self.monitor_control_button.setIcon(FIF.PLAY)
                 self.monitor_control_button.setToolTip(self.tr("Start monitoring task"))
                 
-                signalBus.info_bar_requested.emit("success", self.tr("Monitoring stopped"))
+                global_signal_bus.info_bar_requested.emit("success", self.tr("Monitoring stopped"))
             except Exception as exc:
                 logger.exception("监控子页面：停止监控失败：%s", exc)
-                signalBus.info_bar_requested.emit(
+                global_signal_bus.info_bar_requested.emit(
                     "error", self.tr("Failed to stop monitoring: ") + str(exc)
                 )
             finally:

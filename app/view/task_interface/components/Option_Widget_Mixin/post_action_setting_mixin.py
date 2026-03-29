@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QVBoxLayout
 
 
 from app.utils.logger import logger
-from app.widget.PathLineEdit import PathLineEdit
+from app.widget.path_line_edit import PathLineEdit
 
 from app.core.core import ServiceCoordinator
 
@@ -145,42 +145,7 @@ class PostActionSettingMixin:
             self.current_config = {}
 
         raw_state = self.current_config.get(self._CONFIG_KEY)
-        if not isinstance(raw_state, dict):
-            raw_state = {}
-
-        merged = dict(self._DEFAULT_STATE)
-        merged.update(raw_state)
-
-        # 一组互斥：run_other / close_software / shutdown
-        # 兼容旧配置：若多选，按优先级保留一个（shutdown > close_software > run_other）
-        if merged.get("shutdown"):
-            merged["close_software"] = False
-            merged["run_other"] = False
-        elif merged.get("close_software"):
-            merged["run_other"] = False
-        elif merged.get("run_other"):
-            merged["close_software"] = False
-            merged["shutdown"] = False
-
-        # 新的互斥逻辑：只有"无动作"与其他选项互斥
-        if merged.get("none"):
-            # 如果"无动作"被选中，其他选项都设为False
-            for action_key in self._PRIMARY_ACTIONS.union(
-                self._SECONDARY_ACTIONS
-            ).union(self._OPTIONAL_ACTIONS):
-                if action_key != "none":
-                    merged[action_key] = False
-        else:
-            # 如果有其他选项被选中，确保"无动作"为False
-            has_other_selected = any(
-                merged.get(action_key, False)
-                for action_key in self._PRIMARY_ACTIONS.union(
-                    self._SECONDARY_ACTIONS
-                ).union(self._OPTIONAL_ACTIONS)
-                if action_key != "none"
-            )
-            if has_other_selected:
-                merged["none"] = False
+        merged = self.service_coordinator.normalize_post_action_state(raw_state)
 
         self.current_config[self._CONFIG_KEY] = merged
         self._post_action_state = merged
@@ -229,86 +194,14 @@ class PostActionSettingMixin:
         if self._post_action_syncing:
             return
 
-        self._post_action_syncing = True
-        self._post_action_state[key] = checked
-
-        if checked:
-            if key == "none":
-                # 选中"无动作"时，取消所有其他选项
-                self._deactivate_all_post_actions_except_none()
-            else:
-                # 选中其他任何选项时，取消"无动作"
-                self._deactivate_none_action()
-                # 一组互斥：切换其他配置 / 退出软件 / 关机
-                if key in self._EXCLUSIVE_EXIT_GROUP:
-                    if key != "shutdown":
-                        self._deactivate_shutdown()
-                    if key != "close_software":
-                        self._deactivate_close_software()
-                    if key != "run_other":
-                        self._deactivate_run_other()
-        else:
-            # 取消选择后，检查是否所有动作选项都未选中
-            all_action_keys = self._PRIMARY_ACTIONS.union(
-                self._SECONDARY_ACTIONS
-            ).union(self._OPTIONAL_ACTIONS)
-            has_any_selected = any(
-                self._post_action_state.get(action_key, False)
-                for action_key in all_action_keys
-            )
-            if not has_any_selected:
-                # 如果什么都没选，自动勾选"无动作"
-                self._post_action_state["none"] = True
-                none_widget = self.post_action_widgets.get("none")
-                if isinstance(none_widget, CheckBox):
-                    none_widget.setChecked(True)
-
-        self._update_combo_enabled_state()
-        self._update_program_inputs_enabled()
-        self._post_action_syncing = False
+        self._post_action_state = self.service_coordinator.apply_post_action_toggle(
+            self._post_action_state,
+            key,
+            checked,
+        )
+        self.current_config[self._CONFIG_KEY] = dict(self._post_action_state)
+        self._apply_post_action_state_to_widgets()
         self._save_post_action_state()
-
-    def _deactivate_all_post_actions_except_none(self) -> None:
-        """取消除"无动作"外的所有选项"""
-        all_other_actions = self._PRIMARY_ACTIONS.union(self._SECONDARY_ACTIONS).union(
-            self._OPTIONAL_ACTIONS
-        ) - {"none"}
-        for action_key in all_other_actions:
-            widget = self.post_action_widgets.get(action_key)
-            if isinstance(widget, CheckBox):
-                widget.setChecked(False)
-            self._post_action_state[action_key] = False
-        # 更新相关UI状态
-        self._update_combo_enabled_state()
-        self._update_program_inputs_enabled()
-
-    def _deactivate_none_action(self) -> None:
-        """取消"无动作"选项"""
-        none_widget = self.post_action_widgets.get("none")
-        if isinstance(none_widget, CheckBox):
-            none_widget.setChecked(False)
-        self._post_action_state["none"] = False
-
-    def _deactivate_shutdown(self) -> None:
-        """取消"关机"选项"""
-        shutdown_widget = self.post_action_widgets.get("shutdown")
-        if isinstance(shutdown_widget, CheckBox):
-            shutdown_widget.setChecked(False)
-        self._post_action_state["shutdown"] = False
-
-    def _deactivate_close_software(self) -> None:
-        """取消"退出软件"选项"""
-        close_software_widget = self.post_action_widgets.get("close_software")
-        if isinstance(close_software_widget, CheckBox):
-            close_software_widget.setChecked(False)
-        self._post_action_state["close_software"] = False
-
-    def _deactivate_run_other(self) -> None:
-        """取消"切换其他配置"选项"""
-        run_other_widget = self.post_action_widgets.get("run_other")
-        if isinstance(run_other_widget, CheckBox):
-            run_other_widget.setChecked(False)
-        self._post_action_state["run_other"] = False
 
     def _on_other_config_changed(self, combo: ComboBox, index: int) -> None:
         if self._post_action_syncing:
@@ -405,46 +298,33 @@ class PostActionSettingMixin:
 
     # region 数据 & 持久化
     def _load_available_configs(self) -> List[Tuple[str, str]]:
-        configs: List[Tuple[str, str]] = []
-        config_service = getattr(self.service_coordinator, "config_service", None)
-        if not config_service:
-            return configs
-
         try:
-            for info in config_service.list_configs():
+            configs: List[Tuple[str, str]] = []
+            for config_id, display_name in self.service_coordinator.config_query.get_available_config_choices():
                 configs.append(
                     (
-                        info.get("item_id", ""),
-                        info.get("name", "") or self.tr("Unnamed Configuration"),
+                        config_id,
+                        display_name or self.tr("Unnamed Configuration"),
                     )
                 )
+            return configs
         except Exception as exc:
             logger.error(f"加载配置列表失败: {exc}")
-        return configs
+        return []
 
     def _save_post_action_state(self) -> None:
         try:
             # 仅写入 post_action 片段，避免携带无关字段导致覆盖
             payload = dict(self._post_action_state)
             self.current_config[self._CONFIG_KEY] = payload
-            option_service = self.service_coordinator.option_service
-            ok = option_service.update_option(self._CONFIG_KEY, payload)
+            ok = self.service_coordinator.update_selected_option(self._CONFIG_KEY, payload)
             if not ok:
-                # 兜底：直接更新 POST_ACTION 任务后再持久化
-                from app.common.constants import POST_ACTION
-
-                task = option_service.task_service.get_task(POST_ACTION)
-                if task:
-                    # 只保存 post_action 字段，不保存其他字段（如 speedrun_config 等）
-                    task.task_option[self._CONFIG_KEY] = payload
-                    # 确保不包含 speedrun_config
-                    if "_speedrun_config" in task.task_option:
-                        del task.task_option["_speedrun_config"]
-                    if not option_service.task_service.update_task(task):
-                        logger.warning("完成后操作配置兜底保存失败")
-                else:
+                if not self.service_coordinator.save_post_action_option(
+                    self._CONFIG_KEY, payload
+                ):
                     logger.warning("未找到 Post-Action 任务，无法保存完成后操作配置")
         except Exception as exc:
             logger.error(f"保存完成后操作配置失败: {exc}")
 
     # endregion
+

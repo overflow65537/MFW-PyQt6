@@ -195,9 +195,9 @@ if __name__ == "__main__":
     sys.excepthook = global_except_hook
 
     # DPI缩放配置
-    if cfg.get(cfg.dpiScale) != "Auto":
+    if cfg.get(cfg.dpi_scale) != "Auto":
         os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
-        os.environ["QT_SCALE_FACTOR"] = str(cfg.get(cfg.dpiScale))
+        os.environ["QT_SCALE_FACTOR"] = str(cfg.get(cfg.dpi_scale))
 
     # 首次启动时自动检测系统语言
     from app.common.config import init_language_on_first_run

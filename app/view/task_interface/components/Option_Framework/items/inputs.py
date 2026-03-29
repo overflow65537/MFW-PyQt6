@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 from PySide6.QtWidgets import QVBoxLayout
 from qfluentwidgets import LineEdit
 
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import global_signal_bus
 from app.utils.logger import logger
 from .base import OptionItemBase
 
@@ -43,7 +43,7 @@ class InputsOptionItem(OptionItemBase):
                 invalid = bool(text and not re.match(pattern, text))
                 line_edit.setError(invalid)
                 if invalid and message and not last_invalid:
-                    signalBus.info_bar_requested.emit("warning", message)
+                    global_signal_bus.info_bar_requested.emit("warning", message)
                 last_invalid = invalid
 
             line_edit.textChanged.connect(validate)

@@ -18,9 +18,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal
 from qfluentwidgets import ComboBox, LineEdit, BodyLabel, ToolTipFilter, SwitchButton, isDarkTheme, qconfig
 import re
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import global_signal_bus
 from app.utils.logger import logger
-from app.view.task_interface.components.Option_Framework.animations import HeightAnimator
+from app.view.task_interface.components.option_framework.animations import HeightAnimator
 
 
 class TooltipComboBox(ComboBox):
@@ -51,7 +51,7 @@ class TooltipComboBox(ComboBox):
 
     def _createComboMenu(self):
         """创建使用描述委托的下拉菜单"""
-        from app.view.task_interface.components.Option_Framework.items.base import (
+        from app.view.task_interface.components.option_framework.items.base import (
             _DescriptionComboBoxMenu,
         )
 
@@ -359,7 +359,7 @@ class OptionItemWidget(QWidget):
                 invalid = bool(text and not re.match(pattern, text))
                 line_edit.setError(invalid)
                 if invalid and message and not last_invalid:
-                    signalBus.info_bar_requested.emit("warning", message)
+                    global_signal_bus.info_bar_requested.emit("warning", message)
                 last_invalid = invalid
 
             line_edit.textChanged.connect(validate)

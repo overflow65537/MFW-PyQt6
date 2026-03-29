@@ -1,10 +1,15 @@
 from copy import deepcopy
+from pathlib import Path
+import sys
 from typing import Any, Dict, List, Optional
 
+from maa.define import MaaWin32InputMethodEnum, MaaWin32ScreencapMethodEnum
+
+from app.common.constants import POST_ACTION, _RESOURCE_, _CONTROLLER_
+from app.core.events import CoreSignalBus
+from app.core.item import TaskItem
+from app.core.service.config_service import ConfigService
 from app.utils.logger import logger
-from app.core.service.Config_Service import ConfigService
-from app.core.Item import TaskItem, CoreSignalBus
-from app.common.constants import _RESOURCE_, _CONTROLLER_
 
 # 速通配置默认值
 DEFAULT_SPEEDRUN_CONFIG: Dict[str, Any] = {
@@ -19,9 +24,36 @@ DEFAULT_SPEEDRUN_CONFIG: Dict[str, Any] = {
     "run": {"count": 1, "min_interval_hours": 0},
 }
 
+RESOURCE_TASK_FORBIDDEN_FIELDS = (
+    "gpu",
+    "agent_timeout",
+    "custom",
+    "_speedrun_config",
+    "controller_type",
+    "adb",
+    "win32",
+)
+
 
 class TaskService:
     """任务服务实现"""
+
+    POST_ACTION_PRIMARY_ACTIONS = {"none", "shutdown", "run_other"}
+    POST_ACTION_SECONDARY_ACTIONS = {"close_controller", "close_software"}
+    POST_ACTION_OPTIONAL_ACTIONS = {"run_program"}
+    POST_ACTION_DEFAULT_STATE: Dict[str, Any] = {
+        "none": True,
+        "shutdown": False,
+        "close_controller": False,
+        "close_software": False,
+        "run_other": False,
+        "run_program": False,
+        "always_run": False,
+        "target_config": "",
+        "program_path": "",
+        "program_args": "",
+    }
+    POST_ACTION_EXCLUSIVE_EXIT_GROUP = {"run_other", "close_software", "shutdown"}
 
     def __init__(
         self,
@@ -346,17 +378,8 @@ class TaskService:
         设计目标：任务配置层给出“可运行配置”，runner 只需要读取 is_checked/is_hidden。
         """
         try:
-            # 当前资源与控制器类型（为空则视为“不过滤”）
-            resource_name = ""
-            controller_type = ""
-
-            res_task = self.get_task(_RESOURCE_)
-            if res_task and isinstance(res_task.task_option, dict):
-                resource_name = str(res_task.task_option.get("resource", "") or "").strip()
-
-            ctrl_task = self.get_task(_CONTROLLER_)
-            if ctrl_task and isinstance(ctrl_task.task_option, dict):
-                controller_type = str(ctrl_task.task_option.get("controller_type", "") or "").strip()
+            resource_name = self.get_current_resource_name()
+            controller_type = self.get_current_controller_type()
 
             interface_tasks = self.interface.get("task", []) if isinstance(self.interface, dict) else []
             # name -> def 快速索引
@@ -453,6 +476,825 @@ class TaskService:
             if persist:
                 self.update_task(task)
         return normalized
+
+    @staticmethod
+    def normalize_config_for_json(config: Any) -> Any:
+        """递归规范化配置数据，确保路径对象等可安全落盘。"""
+        if isinstance(config, Path):
+            return str(config)
+        if isinstance(config, dict):
+            return {
+                key: TaskService.normalize_config_for_json(value)
+                for key, value in config.items()
+            }
+        if isinstance(config, list):
+            return [TaskService.normalize_config_for_json(item) for item in config]
+        return config
+
+    @staticmethod
+    def _coerce_int(value: Any) -> int | None:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _normalize_method_name(value: str) -> str:
+        return "".join(ch.lower() for ch in value if ch.isalnum())
+
+    def _normalize_alias_map(self, alias_map: Dict[str, int]) -> Dict[str, int]:
+        normalized_map: Dict[str, int] = {}
+        for name, mapped_value in alias_map.items():
+            normalized_key = self._normalize_method_name(name)
+            if normalized_key:
+                normalized_map[normalized_key] = mapped_value
+        return normalized_map
+
+    def _resolve_gamepad_type_value(self, value: Any) -> int | None:
+        int_value = self._coerce_int(value)
+        if int_value is not None:
+            return int_value
+        if not isinstance(value, str):
+            return None
+        normalized = self._normalize_method_name(value)
+        if normalized in ("xbox360", "xbox"):
+            return 0
+        if normalized in ("dualshock4", "ds4"):
+            return 1
+        return None
+
+    def _resolve_win32_setting_value(
+        self,
+        value: Any,
+        method_type: str | None,
+        input_aliases: Dict[str, int],
+        screencap_aliases: Dict[str, int],
+    ) -> int | None:
+        int_value = self._coerce_int(value)
+        if int_value is not None:
+            return int_value
+
+        if method_type is None or not isinstance(value, str):
+            return None
+
+        normalized_value = self._normalize_method_name(value)
+        if not normalized_value:
+            return None
+
+        if normalized_value == "default":
+            mt = method_type.lower()
+            if mt in {"mouse", "keyboard", "input"}:
+                return int(MaaWin32InputMethodEnum.Seize.value)
+            if mt == "screencap":
+                return int(MaaWin32ScreencapMethodEnum.DXGI_DesktopDup.value)
+
+        alias_map = (
+            input_aliases
+            if method_type.lower() in {"mouse", "keyboard", "input"}
+            else screencap_aliases
+        )
+        if (mapped := alias_map.get(normalized_value)) is not None:
+            return mapped
+
+        if method_type.lower() in {"mouse", "keyboard"}:
+            fallback_rules = (
+                ("sendmessagewithcursorpos", "sendmessagewithcursorpos"),
+                ("postmessagewithcursorpos", "postmessagewithcursorpos"),
+                ("sendmessage", "sendmessage"),
+                ("postmessage", "postmessage"),
+                ("legacyevent", "legacyevent"),
+                ("postthreadmessage", "postthreadmessage"),
+                ("seize", "seize"),
+            )
+            for keyword, alias_key in fallback_rules:
+                if keyword in normalized_value and alias_key in alias_map:
+                    return alias_map[alias_key]
+
+        return None
+
+    def get_controller_ui_context(self, current_options: Dict[str, Any]) -> Dict[str, Any]:
+        """生成 Controller 视图所需的投影数据，并补齐基础默认项。"""
+        controllers = self.interface.get("controller", [])
+        filtered_controllers = []
+        for controller in controllers:
+            ctrl_type = str(controller.get("type", "")).lower()
+            if ctrl_type == "playcover" and sys.platform != "darwin":
+                continue
+            if ctrl_type in {"win32", "gamepad"} and sys.platform != "win32":
+                continue
+            filtered_controllers.append(controller)
+
+        controller_type_mapping = {
+            ctrl.get("label", ctrl.get("name", "")): {
+                "name": ctrl.get("name", ""),
+                "type": ctrl.get("type", ""),
+                "icon": ctrl.get("icon", ""),
+                "description": ctrl.get("description", ""),
+                "permission_required": ctrl.get("permission_required"),
+                "display_short_side": ctrl.get("display_short_side"),
+                "display_long_side": ctrl.get("display_long_side"),
+                "display_raw": ctrl.get("display_raw"),
+                "playcover": ctrl.get("playcover", {}),
+                "gamepad": ctrl.get("gamepad", {}),
+            }
+            for ctrl in filtered_controllers
+        }
+
+        win32_input_alias_values = {
+            "null": 0,
+            "handle": 1,
+            "message": 2,
+            "seize": 3,
+            "sendmessage": 2,
+            "postmessage": 2,
+            "sendmessagewithcursorpos": 2,
+            "postmessagewithcursorpos": 2,
+            "legacyevent": 1,
+            "postthreadmessage": 2,
+        }
+        win32_screencap_alias_values = {
+            "null": 0,
+            "fastestway": 1,
+            "rawbybitblt": 2,
+            "rawwithwindowdc": 3,
+            "dxgidesktopdup": 4,
+            "framepool": 5,
+        }
+        input_aliases = self._normalize_alias_map(win32_input_alias_values)
+        screencap_aliases = self._normalize_alias_map(win32_screencap_alias_values)
+
+        win32_default_mapping: dict[str, dict[str, Any]] = {}
+        gamepad_default_mapping: dict[str, dict[str, Any]] = {}
+        for controller in controllers:
+            controller_name = controller.get("name", "")
+            controller_type = str(controller.get("type", "")).lower()
+            if not controller_name:
+                continue
+
+            if controller_type == "win32":
+                win32_config = controller.get("win32")
+                if not isinstance(win32_config, dict):
+                    continue
+                normalized = {
+                    str(key).lower(): value
+                    for key, value in win32_config.items()
+                    if isinstance(key, str)
+                }
+                mouse_value = self._resolve_win32_setting_value(
+                    normalized.get("mouse_input", normalized.get("mouse")),
+                    "mouse",
+                    input_aliases,
+                    screencap_aliases,
+                )
+                keyboard_value = self._resolve_win32_setting_value(
+                    normalized.get("keyboard_input", normalized.get("keyboard")),
+                    "keyboard",
+                    input_aliases,
+                    screencap_aliases,
+                )
+                general_input = self._resolve_win32_setting_value(
+                    normalized.get(
+                        "input",
+                        normalized.get("input_method", normalized.get("input_methods")),
+                    ),
+                    "input",
+                    input_aliases,
+                    screencap_aliases,
+                )
+                if mouse_value is None:
+                    mouse_value = general_input
+                if keyboard_value is None:
+                    keyboard_value = general_input
+                defaults: dict[str, int] = {}
+                if mouse_value is not None:
+                    defaults["mouse_input_methods"] = mouse_value
+                if keyboard_value is not None:
+                    defaults["keyboard_input_methods"] = keyboard_value
+                screencap_value = self._resolve_win32_setting_value(
+                    normalized.get(
+                        "screencap",
+                        normalized.get("screencap_method", normalized.get("screencap_methods")),
+                    ),
+                    "screencap",
+                    input_aliases,
+                    screencap_aliases,
+                )
+                if screencap_value is not None:
+                    defaults["win32_screencap_methods"] = screencap_value
+                entry: dict[str, Any] = {"defaults": defaults}
+                if normalized.get("class_regex"):
+                    entry["class_regex"] = str(normalized["class_regex"])
+                if normalized.get("window_regex"):
+                    entry["window_regex"] = str(normalized["window_regex"])
+                if entry.get("defaults") or "class_regex" in entry or "window_regex" in entry:
+                    win32_default_mapping[controller_name] = entry
+                continue
+
+            if controller_type == "gamepad":
+                gamepad_config = controller.get("gamepad")
+                if not isinstance(gamepad_config, dict):
+                    gamepad_config = {}
+                normalized = {
+                    str(key).lower(): value
+                    for key, value in gamepad_config.items()
+                    if isinstance(key, str)
+                }
+                entry: dict[str, Any] = {}
+                if normalized.get("class_regex"):
+                    entry["class_regex"] = str(normalized["class_regex"])
+                if normalized.get("window_regex"):
+                    entry["window_regex"] = str(normalized["window_regex"])
+                gamepad_type = self._resolve_gamepad_type_value(
+                    normalized.get("gamepad_type")
+                )
+                if gamepad_type is not None:
+                    entry["defaults"] = {"gamepad_type": gamepad_type}
+                if entry:
+                    gamepad_default_mapping[controller_name] = entry
+
+        agent_interface_config = self.interface.get("agent", {})
+        interface_custom = self.interface.get("custom")
+        current_options.setdefault("gpu", -1)
+        timeout_default = self._coerce_int(agent_interface_config.get("timeout"))
+        if timeout_default is None:
+            timeout_default = 30
+        current_options.setdefault("agent_timeout", timeout_default)
+        if not isinstance(current_options.get("custom"), str):
+            current_options["custom"] = (
+                interface_custom if isinstance(interface_custom, str) else ""
+            )
+
+        return {
+            "controller_type_mapping": controller_type_mapping,
+            "win32_default_mapping": win32_default_mapping,
+            "gamepad_default_mapping": gamepad_default_mapping,
+            "agent_timeout_default": timeout_default,
+            "interface_custom_default": (
+                interface_custom if isinstance(interface_custom, str) else ""
+            ),
+        }
+
+    def sync_controller_meta_fields(
+        self,
+        current_config: Dict[str, Any],
+        controller_name: str,
+        controller_info: Dict[str, Any] | None,
+    ) -> Dict[str, Any]:
+        """将 controller 元信息同步到当前控制器子配置。"""
+        if not controller_name:
+            return {}
+        info = controller_info or {}
+        controller_cfg = current_config.setdefault(controller_name, {})
+        if not isinstance(controller_cfg, dict):
+            controller_cfg = {}
+            current_config[controller_name] = controller_cfg
+
+        changed: Dict[str, Any] = {}
+        for key in (
+            "permission_required",
+            "display_short_side",
+            "display_long_side",
+            "display_raw",
+        ):
+            if key not in info:
+                continue
+            value = info.get(key)
+            if value is None:
+                continue
+            if controller_cfg.get(key) != value:
+                controller_cfg[key] = value
+                changed[key] = value
+        return changed
+
+    def ensure_controller_config(
+        self,
+        current_config: Dict[str, Any],
+        controller_name: str,
+        controller_info: Dict[str, Any],
+        win32_default_mapping: Dict[str, Dict[str, Any]],
+        gamepad_default_mapping: Dict[str, Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """确保当前控制器配置存在并补齐默认值/兼容迁移。"""
+        controller_type = str(controller_info.get("type", "")).lower()
+        if controller_name in current_config:
+            controller_cfg = current_config[controller_name]
+        elif controller_type in current_config:
+            controller_cfg = current_config[controller_type]
+            current_config[controller_name] = controller_cfg
+        else:
+            controller_cfg = {}
+            current_config[controller_name] = controller_cfg
+
+        if not isinstance(controller_cfg, dict):
+            controller_cfg = {}
+            current_config[controller_name] = controller_cfg
+
+        if controller_type == "adb":
+            defaults = {
+                "adb_path": "",
+                "address": "",
+                "emulator_path": "",
+                "emulator_params": "",
+                "wait_time": 30,
+                "screencap_methods": 0,
+                "input_methods": 0,
+                "config": "{}",
+            }
+            for key, value in defaults.items():
+                controller_cfg.setdefault(key, value)
+            return controller_cfg
+
+        if controller_type == "win32":
+            defaults = {
+                "hwnd": "",
+                "program_path": "",
+                "program_params": "",
+                "wait_time": 30,
+            }
+            for key, value in defaults.items():
+                controller_cfg.setdefault(key, value)
+            for key in (
+                "mouse_input_methods",
+                "keyboard_input_methods",
+                "win32_screencap_methods",
+            ):
+                controller_cfg.setdefault(
+                    key,
+                    win32_default_mapping.get(controller_name, {})
+                    .get("defaults", {})
+                    .get(key, 0),
+                )
+            return controller_cfg
+
+        if controller_type == "gamepad":
+            defaults = {
+                "hwnd": "",
+                "program_path": "",
+                "program_params": "",
+                "wait_time": 30,
+                "gamepad_type": 0,
+            }
+            for key, value in defaults.items():
+                controller_cfg.setdefault(key, value)
+            resolved = self._resolve_gamepad_type_value(
+                controller_cfg.get("gamepad_type")
+            )
+            if resolved is None:
+                resolved = (
+                    gamepad_default_mapping.get(controller_name, {})
+                    .get("defaults", {})
+                    .get("gamepad_type", 0)
+                )
+            controller_cfg["gamepad_type"] = resolved
+            return controller_cfg
+
+        if controller_type == "playcover":
+            controller_cfg.pop("playcover_uuid", None)
+            default_uuid = "maa.playcover"
+            playcover_config = controller_info.get("playcover", {})
+            if isinstance(playcover_config, dict):
+                default_uuid = playcover_config.get("uuid", default_uuid)
+            controller_cfg.setdefault("uuid", default_uuid)
+            if not controller_cfg.get("uuid"):
+                controller_cfg["uuid"] = default_uuid
+            controller_cfg.setdefault("address", "")
+            return controller_cfg
+
+        return controller_cfg
+
+    def build_controller_task_option(
+        self,
+        current_config: Dict[str, Any],
+        controller_type_mapping: Dict[str, Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """构建 Controller 任务需要落盘的配置片段。"""
+        controller_task_option: Dict[str, Any] = {}
+        for key in ("controller_type", "gpu", "agent_timeout", "custom"):
+            if key in current_config:
+                controller_task_option[key] = current_config[key]
+
+        for controller_info in controller_type_mapping.values():
+            controller_name = controller_info.get("name", "")
+            if controller_name and controller_name in current_config:
+                controller_task_option[controller_name] = self.normalize_config_for_json(
+                    current_config[controller_name]
+                )
+
+        return self.normalize_config_for_json(controller_task_option)
+
+    def build_resource_mapping(
+        self, controller_type_mapping: Dict[str, Dict[str, Any]] | None = None
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """按控制器标签构建资源映射表。"""
+        interface = self.interface
+        mapping_source = controller_type_mapping or {
+            ctrl.get("label", ctrl.get("name", "")): {
+                "name": ctrl.get("name", ""),
+                "type": ctrl.get("type", ""),
+                "icon": ctrl.get("icon", ""),
+                "description": ctrl.get("description", ""),
+            }
+            for ctrl in interface.get("controller", [])
+        }
+
+        resource_mapping: Dict[str, List[Dict[str, Any]]] = {
+            label: [] for label in mapping_source.keys()
+        }
+        controller_label_by_name = {
+            ctrl.get("name", ""): ctrl.get("label", ctrl.get("name", ""))
+            for ctrl in interface.get("controller", [])
+        }
+
+        for resource in interface.get("resource", []):
+            supported_controllers = resource.get("controller")
+            if not supported_controllers:
+                for label in resource_mapping:
+                    resource_mapping[label].append(resource)
+                continue
+
+            for controller_name in supported_controllers:
+                label = controller_label_by_name.get(controller_name)
+                if label in resource_mapping:
+                    resource_mapping[label].append(resource)
+
+        return resource_mapping
+
+    def get_resources_for_controller(
+        self,
+        controller_label: str,
+        controller_type_mapping: Dict[str, Dict[str, Any]] | None = None,
+    ) -> List[Dict[str, Any]]:
+        """获取指定控制器标签下可用的资源列表。"""
+        return self.build_resource_mapping(controller_type_mapping).get(
+            controller_label, []
+        )
+
+    def get_current_resource_entry(
+        self,
+        controller_label: str,
+        resource_name: str,
+        controller_type_mapping: Dict[str, Dict[str, Any]] | None = None,
+    ) -> Dict[str, Any] | None:
+        """解析当前控制器下选中的资源配置。"""
+        if not controller_label or not resource_name:
+            return None
+
+        resources = self.get_resources_for_controller(
+            controller_label, controller_type_mapping
+        )
+        for resource in resources:
+            name = resource.get("name", "")
+            label = resource.get("label", name)
+            if resource_name in {name, label}:
+                return resource
+        return None
+
+    def get_task_speedrun_payload(
+        self, task_id: str
+    ) -> tuple[TaskItem | None, Dict[str, Any] | None, Dict[str, Any]]:
+        """获取任务的速通配置与运行时状态，必要时在 Service 内完成标准化持久化。"""
+        task = self.get_task(task_id)
+        if not task:
+            return None, None, {}
+
+        if getattr(task, "is_special", False):
+            return task, None, {}
+
+        original_options = deepcopy(task.task_option)
+        updated_task = deepcopy(task)
+        normalized = self.ensure_speedrun_config_for_task(updated_task, persist=False)
+
+        if updated_task.task_option != original_options:
+            self.update_task(updated_task)
+            task = updated_task
+
+        state = {}
+        if isinstance(task.task_option, dict):
+            state = task.task_option.get("_speedrun_state", {}) or {}
+
+        return task, normalized, state
+
+    def normalize_post_action_state(
+        self, raw_state: Dict[str, Any] | None = None
+    ) -> Dict[str, Any]:
+        """规范化完成后操作状态并处理互斥逻辑。"""
+        merged = dict(self.POST_ACTION_DEFAULT_STATE)
+        if isinstance(raw_state, dict):
+            merged.update(raw_state)
+
+        if merged.get("shutdown"):
+            merged["close_software"] = False
+            merged["run_other"] = False
+        elif merged.get("close_software"):
+            merged["run_other"] = False
+        elif merged.get("run_other"):
+            merged["close_software"] = False
+            merged["shutdown"] = False
+
+        action_keys = (
+            self.POST_ACTION_PRIMARY_ACTIONS
+            .union(self.POST_ACTION_SECONDARY_ACTIONS)
+            .union(self.POST_ACTION_OPTIONAL_ACTIONS)
+        )
+        if merged.get("none"):
+            for action_key in action_keys:
+                if action_key != "none":
+                    merged[action_key] = False
+        else:
+            has_other_selected = any(
+                merged.get(action_key, False)
+                for action_key in action_keys
+                if action_key != "none"
+            )
+            merged["none"] = not has_other_selected
+
+        return merged
+
+    def apply_post_action_toggle(
+        self, state: Dict[str, Any] | None, key: str, checked: bool
+    ) -> Dict[str, Any]:
+        """应用单个完成后动作勾选变化，并返回规范化后的状态。"""
+        updated_state = self.normalize_post_action_state(state)
+        updated_state[key] = checked
+
+        if checked:
+            if key == "none":
+                for action_key in (
+                    self.POST_ACTION_PRIMARY_ACTIONS
+                    .union(self.POST_ACTION_SECONDARY_ACTIONS)
+                    .union(self.POST_ACTION_OPTIONAL_ACTIONS)
+                ) - {"none"}:
+                    updated_state[action_key] = False
+            else:
+                updated_state["none"] = False
+                if key in self.POST_ACTION_EXCLUSIVE_EXIT_GROUP:
+                    for action_key in self.POST_ACTION_EXCLUSIVE_EXIT_GROUP - {key}:
+                        updated_state[action_key] = False
+
+        return self.normalize_post_action_state(updated_state)
+
+    def save_post_action_option(self, option_key: str, payload: Any) -> bool:
+        """保存 Post-Action 任务中的单个配置片段。"""
+        task = self.get_task(POST_ACTION)
+        if not task:
+            return False
+
+        updated_task = deepcopy(task)
+        if not isinstance(updated_task.task_option, dict):
+            updated_task.task_option = {}
+        updated_task.task_option[option_key] = payload
+        updated_task.task_option.pop("_speedrun_config", None)
+        return self.update_task(updated_task)
+
+    def save_controller_task_options(self, controller_task_option: Dict[str, Any]) -> bool:
+        """保存 Controller 任务的配置片段。"""
+        task = self.get_task(_CONTROLLER_)
+        if not task:
+            return False
+
+        updated_task = deepcopy(task)
+        if not isinstance(updated_task.task_option, dict):
+            updated_task.task_option = {}
+        updated_task.task_option.update(controller_task_option)
+        updated_task.task_option.pop("_speedrun_config", None)
+        return self.update_task(updated_task)
+
+    def update_resource_options_hidden_state(
+        self, current_resource_option_names: List[str]
+    ) -> bool:
+        """更新 Resource 任务中资源选项的 hidden 状态。"""
+        task = self.get_task(_RESOURCE_)
+        if not task or not isinstance(task.task_option, dict):
+            return False
+        if "resource_options" not in task.task_option:
+            return False
+
+        updated_task = deepcopy(task)
+        resource_options = updated_task.task_option.get("resource_options", {})
+        if not isinstance(resource_options, dict):
+            return False
+
+        all_resource_option_names = set()
+        for resource in self.interface.get("resource", []):
+            all_resource_option_names.update(resource.get("option", []))
+
+        has_changes = False
+        for option_name in all_resource_option_names:
+            if option_name not in resource_options:
+                continue
+
+            existing_value = resource_options[option_name]
+            if option_name not in current_resource_option_names:
+                if isinstance(existing_value, dict):
+                    if not existing_value.get("hidden", False):
+                        resource_options[option_name] = {**existing_value, "hidden": True}
+                        has_changes = True
+                else:
+                    resource_options[option_name] = {
+                        "value": existing_value,
+                        "hidden": True,
+                    }
+                    has_changes = True
+                continue
+
+            if isinstance(existing_value, dict) and existing_value.get("hidden", False):
+                new_value = {k: v for k, v in existing_value.items() if k != "hidden"}
+                if len(new_value) == 1 and "value" in new_value:
+                    resource_options[option_name] = new_value["value"]
+                else:
+                    resource_options[option_name] = new_value
+                has_changes = True
+
+        if not has_changes:
+            return True
+
+        updated_task.task_option["resource_options"] = resource_options
+        return self.update_task(updated_task)
+
+    def get_resource_option_config(self, form_structure: Dict[str, Any]) -> Dict[str, Any]:
+        """读取并规范化当前 Resource 任务的资源选项配置。"""
+        task = self.get_task(_RESOURCE_)
+        if not task:
+            return {}
+
+        updated_task = deepcopy(task)
+        if not isinstance(updated_task.task_option, dict):
+            updated_task.task_option = {}
+
+        has_changes = False
+        for field in RESOURCE_TASK_FORBIDDEN_FIELDS:
+            if field in updated_task.task_option:
+                del updated_task.task_option[field]
+                has_changes = True
+
+        resource_options = updated_task.task_option.get("resource_options", {})
+        if not isinstance(resource_options, dict):
+            resource_options = {}
+            updated_task.task_option["resource_options"] = resource_options
+            has_changes = True
+
+        old_resource_options = {
+            key: value
+            for key, value in updated_task.task_option.items()
+            if key not in ("resource", "resource_options") and key in form_structure
+        }
+        if old_resource_options:
+            merged_options = {**old_resource_options, **resource_options}
+            updated_task.task_option["resource_options"] = merged_options
+            for key in old_resource_options:
+                updated_task.task_option.pop(key, None)
+            resource_options = merged_options
+            has_changes = True
+
+        if has_changes:
+            self.update_task(updated_task)
+
+        option_config: Dict[str, Any] = {}
+        for key, value in resource_options.items():
+            if key not in form_structure:
+                continue
+            if isinstance(value, dict) and value.get("hidden", False):
+                continue
+            if isinstance(value, dict) and "hidden" in value:
+                value = {k: v for k, v in value.items() if k != "hidden"}
+                if len(value) == 1 and "value" in value:
+                    value = value["value"]
+            option_config[key] = value
+
+        return option_config
+
+    def save_resource_options(
+        self, current_resource_option_names: List[str], resource_options: Dict[str, Any]
+    ) -> bool:
+        """保存当前资源对应的 Resource 选项，并维护 hidden/兼容迁移。"""
+        task = self.get_task(_RESOURCE_)
+        if not task:
+            return False
+
+        updated_task = deepcopy(task)
+        if not isinstance(updated_task.task_option, dict):
+            updated_task.task_option = {}
+        existing_resource_options = updated_task.task_option.get("resource_options", {})
+        if not isinstance(existing_resource_options, dict):
+            existing_resource_options = {}
+
+        all_resource_option_names = set()
+        for resource in self.interface.get("resource", []):
+            all_resource_option_names.update(resource.get("option", []))
+
+        existing_resource_options = deepcopy(existing_resource_options)
+        for option_name in all_resource_option_names:
+            if option_name not in current_resource_option_names:
+                if option_name not in existing_resource_options:
+                    continue
+                existing_value = existing_resource_options[option_name]
+                if isinstance(existing_value, dict):
+                    existing_resource_options[option_name] = {
+                        **existing_value,
+                        "hidden": True,
+                    }
+                else:
+                    existing_resource_options[option_name] = {
+                        "value": existing_value,
+                        "hidden": True,
+                    }
+                continue
+
+            if option_name in existing_resource_options:
+                existing_value = existing_resource_options[option_name]
+                if isinstance(existing_value, dict) and "hidden" in existing_value:
+                    cleaned_value = {
+                        key: value
+                        for key, value in existing_value.items()
+                        if key != "hidden"
+                    }
+                    if len(cleaned_value) == 1 and "value" in cleaned_value:
+                        cleaned_value = cleaned_value["value"]
+                    existing_resource_options[option_name] = cleaned_value
+
+        existing_resource_options.update(resource_options)
+        updated_task.task_option["resource_options"] = existing_resource_options
+
+        for field in RESOURCE_TASK_FORBIDDEN_FIELDS:
+            updated_task.task_option.pop(field, None)
+
+        old_keys_to_remove = [
+            key
+            for key in list(updated_task.task_option.keys())
+            if key not in ("resource", "resource_options")
+            and key in all_resource_option_names
+        ]
+        for key in old_keys_to_remove:
+            del updated_task.task_option[key]
+
+        return self.update_task(updated_task)
+
+    def get_current_resource_name(self) -> str:
+        """获取当前 Resource 任务中保存的资源名称。"""
+        res_task = self.get_task(_RESOURCE_)
+        if res_task and isinstance(res_task.task_option, dict):
+            return str(res_task.task_option.get("resource", "") or "").strip()
+        return ""
+
+    def get_current_controller_type(self) -> str:
+        """获取当前 Controller 任务中保存的控制器类型。"""
+        ctrl_task = self.get_task(_CONTROLLER_)
+        if ctrl_task and isinstance(ctrl_task.task_option, dict):
+            return str(ctrl_task.task_option.get("controller_type", "") or "").strip()
+        return ""
+
+    def get_task_option_value(
+        self, task_id: str, option_key: str, default: Any = None
+    ) -> Any:
+        """读取指定任务的某个 option 值。"""
+        task = self.get_task(task_id)
+        if not task or not isinstance(task.task_option, dict):
+            return default
+        return task.task_option.get(option_key, default)
+
+    def set_resource_name(self, resource_name: str) -> bool:
+        """更新 Resource 任务的资源名称，并清理不应落盘的字段。"""
+        task = self.get_task(_RESOURCE_)
+        if not task:
+            return False
+
+        updated_task = deepcopy(task)
+        if not isinstance(updated_task.task_option, dict):
+            updated_task.task_option = {}
+        updated_task.task_option["resource"] = resource_name
+        for field in RESOURCE_TASK_FORBIDDEN_FIELDS:
+            updated_task.task_option.pop(field, None)
+
+        ok = self.update_task(updated_task)
+        if ok:
+            self.refresh_hidden_flags()
+        return ok
+
+    def ensure_resource_matches_controller_resources(
+        self, resources: List[Dict[str, Any]]
+    ) -> str | None:
+        """确保当前资源与控制器可用资源集合兼容，不兼容时回退到首个资源。"""
+        current_resource_name = self.get_current_resource_name()
+        if not current_resource_name:
+            return None
+
+        for resource in resources:
+            resource_name = resource.get("name", "")
+            resource_label = resource.get("label", resource_name)
+            if current_resource_name in (resource_name, resource_label):
+                return resource_name
+
+        if not resources:
+            return None
+
+        fallback_resource_name = resources[0].get("name", "")
+        if not fallback_resource_name:
+            return None
+
+        if self.set_resource_name(fallback_resource_name):
+            return fallback_resource_name
+
+        return None
 
     def add_task(self, task_name: str, is_special: bool = False) -> bool:
         """添加任务

@@ -36,7 +36,7 @@ class TaskInterface(UI_TaskInterface, QWidget):
             self.task_info.switch_button.clicked.connect(self._on_switch_button_clicked)
 
         # 连接服务协调器的信号，用于更新按钮状态
-        self.service_coordinator.fs_signals.fs_start_button_status.connect(
+        self.service_coordinator.fs_signal_bus.fs_start_button_status.connect(
             self._on_button_status_changed
         )
 
@@ -70,20 +70,13 @@ class TaskInterface(UI_TaskInterface, QWidget):
                 self.log_output_widget.clear_log()
                 target_task = self._get_selected_special_task()
                 if not target_task:
-                    from app.common.signal_bus import signalBus
-                    signalBus.info_bar_requested.emit(
+                    from app.common.signal_bus import global_signal_bus
+
+                    global_signal_bus.info_bar_requested.emit(
                         "warning", self.tr("Please select a special task to run.")
                     )
                     self.start_bar.run_button.setEnabled(True)
                     return
-
-                # 同步内存态：确保服务层当前任务列表中只有该特殊任务被视为选中，但不落盘
-                try:
-                    for task in self.service_coordinator.task.get_tasks():
-                        if task.is_special:
-                            task.is_checked = task.item_id == target_task.item_id
-                except Exception:
-                    pass
 
                 def _start_special_task():
                     asyncio.create_task(
@@ -188,10 +181,8 @@ class TaskInterface(UI_TaskInterface, QWidget):
                 # 只对普通任务列表清除选中状态
                 if hasattr(task_list, '_filter_mode') and task_list._filter_mode != "special":
                     # 先清除选项服务的状态，避免状态不一致
-                    if self.service_coordinator and hasattr(self.service_coordinator, 'option'):
-                        option_service = self.service_coordinator.option
-                        if hasattr(option_service, 'clear_selection'):
-                            option_service.clear_selection()
+                    if self.service_coordinator:
+                        self.service_coordinator.clear_task_selection()
                     # 使用 setCurrentRow(-1) 完全清除选中状态
                     # 这会触发 currentItemChanged 信号（current 为 None），确保状态完全清除
                     task_list.setCurrentRow(-1)
@@ -229,3 +220,4 @@ class TaskInterface(UI_TaskInterface, QWidget):
         except Exception:
             pass
         return None
+

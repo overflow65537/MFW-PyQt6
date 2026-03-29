@@ -14,9 +14,9 @@ from PySide6.QtWidgets import (
 )
 from qfluentwidgets import BodyLabel, PrimaryPushButton
 
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import global_signal_bus
 from app.core.core import ServiceCoordinator
-from app.core.service.Schedule_Service import (
+from app.core.service.schedule_service import (
     ScheduleEntry,
     SCHEDULE_SINGLE,
 )
@@ -32,7 +32,7 @@ class TestInterface(QWidget):
         self.service_coordinator = service_coordinator
         self._log_buffer: deque[str] = deque(maxlen=500)
         self._init_ui()
-        signalBus.log_output.connect(self._on_log_output)
+        global_signal_bus.log_output.connect(self._on_log_output)
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -67,24 +67,25 @@ class TestInterface(QWidget):
         layout.addWidget(self._log_view)
 
     def _test_switch_config(self) -> None:
-        configs = self.service_coordinator.config.list_configs()
+        configs = self.service_coordinator.config_query.get_available_config_choices()
         if not configs:
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning", "未找到任何配置，无法切换"
             )
             return
 
-        current = self.service_coordinator.config.current_config_id
+        current = self.service_coordinator.config_query.get_current_config_id()
         target_info = None
         for config in configs:
-            if config.get("item_id") != current:
+            config_id = config[0] if isinstance(config, tuple) else config.get("item_id")
+            if config_id != current:
                 target_info = config
                 break
         if not target_info:
             target_info = configs[0]
-        target_id = target_info.get("item_id", "")
+        target_id = target_info[0] if isinstance(target_info, tuple) else target_info.get("item_id", "")
         if not target_id:
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning", "目标配置 ID 无效"
             )
             return
@@ -95,30 +96,31 @@ class TestInterface(QWidget):
             if success
             else "切换配置失败: {id}".format(id=target_id)
         )
-        signalBus.info_bar_requested.emit("info" if success else "error", msg)
+        global_signal_bus.info_bar_requested.emit("info" if success else "error", msg)
         logger.info("测试页面：切换配置 %s -> %s", current, target_id)
 
     def _test_run_tasks(self) -> None:
-        if self.service_coordinator.run_manager.is_running:
-            signalBus.info_bar_requested.emit(
+        if self.service_coordinator.runtime_query.is_task_flow_running():
+            global_signal_bus.info_bar_requested.emit(
                 "warning", "任务流正在运行，无法重复启动"
             )
             return
-        signalBus.info_bar_requested.emit("info", "已触发任务流测试")
+        global_signal_bus.info_bar_requested.emit("info", "已触发任务流测试")
         asyncio.create_task(self.service_coordinator.run_tasks_flow())
 
     def _test_force_start(self) -> None:
-        configs = self.service_coordinator.config.list_configs()
+        configs = self.service_coordinator.config_query.get_available_config_choices()
         if not configs:
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning", "未找到任何配置，无法强制运行"
             )
             return
-        current_id = self.service_coordinator.config.current_config_id
+        current_id = self.service_coordinator.config_query.get_current_config_id()
         if not current_id:
-            current_id = configs[0].get("item_id", "")
+            first_config = configs[0]
+            current_id = first_config[0] if isinstance(first_config, tuple) else first_config.get("item_id", "")
         if not current_id:
-            signalBus.info_bar_requested.emit(
+            global_signal_bus.info_bar_requested.emit(
                 "warning", "当前配置 ID 不可用"
             )
             return
@@ -135,7 +137,7 @@ class TestInterface(QWidget):
             enabled=True,
             created_at=datetime.now(),
         )
-        signalBus.info_bar_requested.emit("info", "已发起强制运行")
+        global_signal_bus.info_bar_requested.emit("info", "已发起强制运行")
         asyncio.create_task(self.service_coordinator.schedule_service._force_start(entry))
 
     def _on_log_output(self, level: str, message: str) -> None:

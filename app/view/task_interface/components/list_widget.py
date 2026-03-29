@@ -18,11 +18,11 @@ from PySide6.QtCore import (
 )
 from qfluentwidgets import ListWidget, IndeterminateProgressRing, SimpleCardWidget
 
-from app.core.core import  ServiceCoordinator
-from app.core.Item import TaskItem, ConfigItem
-from app.view.task_interface.components.ListItem import TaskListItem, ConfigListItem, SpecialTaskListItem
+from app.core.core import ServiceCoordinator
+from app.core.item import ConfigItem, TaskItem
+from app.view.task_interface.components.list_item import TaskListItem, ConfigListItem, SpecialTaskListItem
 from app.utils.logger import logger
-from app.common.signal_bus import signalBus
+from app.common.signal_bus import global_signal_bus
 from app.common.constants import _RESOURCE_, _CONTROLLER_
 
 
@@ -166,8 +166,8 @@ class TaskDragListWidget(BaseListWidget):
         service_coordinator.fs_signal_bus.fs_task_removed.connect(self.remove_task)
         
         # 监听任务状态变化信号
-        from app.common.signal_bus import signalBus
-        signalBus.task_status_changed.connect(self._on_task_status_changed)
+        from app.common.signal_bus import global_signal_bus
+        global_signal_bus.task_status_changed.connect(self._on_task_status_changed)
         
         self._bulk_toggle_queue: list[tuple[TaskListItem, bool]] = []
         self._bulk_toggle_timer = QTimer(self)
@@ -188,17 +188,9 @@ class TaskDragListWidget(BaseListWidget):
     def _should_include(self, task: TaskItem) -> bool:
         """判断任务是否应显示在当前列表。
 
-        注意：`task.is_hidden` 是“能力禁用”标记（由配置层/列表层根据 resource/controller 计算）。
+        注意：`task.is_hidden` 是“能力禁用”标记（由 TaskService 根据 resource/controller 计算）。
         列表过滤模式（normal/special）只是 UI 展示策略，不应影响 is_hidden 的正确性。
         """
-        # 先根据资源/控制器刷新一次 is_hidden（避免因 normal/special 过滤提前 return 而漏更新）
-        should_show_by_resource = self._should_show_by_resource(task)
-        should_show_by_controller = self._should_show_by_controller(task)
-        capability_show = should_show_by_resource and should_show_by_controller
-        
-        # 更新任务的 is_hidden 状态（仅标记，不改变选中状态）
-        task.is_hidden = not capability_show
-        
         if task.is_hidden:
             return False
 
@@ -209,120 +201,6 @@ class TaskDragListWidget(BaseListWidget):
             return not bool(task.is_special)
         
         return True
-    
-    def _should_show_by_resource(self, task: TaskItem) -> bool:
-        """根据当前选择的资源判断任务是否应该显示"""
-        # 基础任务（资源、控制器、完成后操作）始终显示
-        if task.is_base_task():
-            return True
-        
-        # 获取当前配置中的资源
-        try:
-            # 从 Resource 任务中获取资源
-            resource_task = self.service_coordinator.task.get_task(_RESOURCE_)
-            if not resource_task:
-                logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 没有 Resource 任务，显示所有任务")
-                return True  # 如果没有 Resource 任务，显示所有任务
-            
-            current_resource_name = ""
-            if isinstance(resource_task.task_option, dict):
-                current_resource_name = resource_task.task_option.get("resource", "")
-            
-            if not current_resource_name:
-                logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 没有选择资源，显示所有任务")
-                return True  # 如果没有选择资源，显示所有任务
-            
-            # 获取 interface 中的任务定义
-            try:
-                interface = self.service_coordinator.task.interface
-            except Exception:
-                interface = {}
-            if not interface:
-                logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 没有 interface，显示所有任务")
-                return True
-            
-            # 查找任务定义中的 resource 字段
-            for task_def in interface.get("task", []):
-                if task_def.get("name") == task.name:
-                    task_resources = task_def.get("resource", [])
-                    # 如果任务没有 resource 字段，或者 resource 为空列表，表示所有资源都可用
-                    if not task_resources:
-                        logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 没有 resource 字段，显示（所有资源可用）")
-                        return True
-                    # 如果任务的 resource 列表包含当前资源（使用 name 匹配），则显示
-                    if current_resource_name in task_resources:
-                        logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 当前资源 {current_resource_name} 在任务的 resource 列表中，显示")
-                        return True
-                    logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 当前资源 {current_resource_name} 不在任务的 resource 列表 {task_resources} 中，隐藏")
-                    return False
-            
-            # 如果找不到任务定义，默认显示
-            logger.debug(f"[_should_show_by_resource] 任务 {task.name}: 找不到任务定义，默认显示")
-            return True
-        except Exception as e:
-            # 发生错误时，默认显示所有任务
-            logger.warning(f"[_should_show_by_resource] 任务 {task.name}: 发生错误，默认显示: {e}")
-            return True
-
-    def _should_show_by_controller(self, task: TaskItem) -> bool:
-        """根据当前选择的控制器类型判断任务是否应该显示。
-
-        规则：
-        - 基础任务始终显示
-        - interface.task[*].controller 缺省/空：对所有控制器显示
-        - 否则仅当当前 controller_type 命中 controller 列表才显示
-        """
-        if task.is_base_task():
-            return True
-
-        try:
-            controller_task = self.service_coordinator.task.get_task(_CONTROLLER_)
-            current_controller = ""
-            if controller_task and isinstance(controller_task.task_option, dict):
-                current_controller = controller_task.task_option.get("controller_type", "") or ""
-            if not current_controller:
-                # 若尚未配置控制器，默认显示全部任务
-                return True
-            current_controller_norm = str(current_controller).strip().lower()
-
-            try:
-                interface = self.service_coordinator.task.interface
-            except Exception:
-                interface = {}
-            if not interface:
-                return True
-
-            for task_def in interface.get("task", []):
-                if task_def.get("name") != task.name:
-                    continue
-                controllers = task_def.get("controller", None)
-
-                # 缺省/空表示全部控制器可用
-                if controllers in (None, "", [], {}):
-                    return True
-
-                allowed: list[str] = []
-                if isinstance(controllers, str):
-                    if controllers.strip():
-                        allowed = [controllers.strip()]
-                elif isinstance(controllers, list):
-                    allowed = [
-                        str(x).strip()
-                        for x in controllers
-                        if x is not None and str(x).strip()
-                    ]
-                else:
-                    # 不支持的格式：兜底为“全部可用”
-                    return True
-
-                allowed_norm = {s.lower() for s in allowed if s}
-                return current_controller_norm in allowed_norm
-
-            # 找不到任务定义：默认显示
-            return True
-        except Exception as e:
-            logger.warning(f"[_should_show_by_controller] 任务 {task.name}: 发生错误，默认显示: {e}")
-            return True
 
     def dragMoveEvent(self, event):
         """拖拽移动事件：检测鼠标位置并触发自动滚动，同时允许滚轮滚动"""
@@ -415,7 +293,7 @@ class TaskDragListWidget(BaseListWidget):
             self._restore_order([task.item_id for task in previous_tasks])
             event.ignore()
             return
-        full_tasks = self.service_coordinator.task.get_tasks()
+        full_tasks = self.service_coordinator.task_query.get_tasks()
         reorder_seq = self._build_reorder_sequence(full_tasks, current_tasks)
         self.service_coordinator.reorder_tasks(reorder_seq)
 
@@ -473,17 +351,25 @@ class TaskDragListWidget(BaseListWidget):
         self._task_widgets.clear()
         self._skeleton_items.clear()
         # 不清除待处理状态，因为任务列表刷新后这些状态仍然有效
-        all_tasks = self.service_coordinator.task.get_tasks()
+        all_tasks = self.service_coordinator.task_query.get_tasks()
         task_list = [t for t in all_tasks if self._should_include(t)]
         if self._filter_mode == "special":
             # 特殊任务仅允许单选，若有多个选中则只保留第一个
-            first_checked = False
+            first_checked_task_id = None
+            has_duplicate_checked = False
             for t in task_list:
-                if t.is_checked and not first_checked:
-                    first_checked = True
+                if t.is_checked and first_checked_task_id is None:
+                    first_checked_task_id = t.item_id
                     continue
                 if t.is_checked:
-                    t.is_checked = False
+                    has_duplicate_checked = True
+            if first_checked_task_id and has_duplicate_checked:
+                QTimer.singleShot(
+                    0,
+                    lambda task_id=first_checked_task_id: self.service_coordinator.update_task_checked(
+                        task_id, True
+                    ),
+                )
         self._pending_tasks = task_list
         self._render_index = 0
         self._loading_tasks = bool(task_list)
@@ -519,7 +405,7 @@ class TaskDragListWidget(BaseListWidget):
     def _render_task_at_index(self, index: int, task: TaskItem):
         """将指定位置的骨架替换为实际的 `TaskListItem`"""
         try:
-            interface = self.service_coordinator.task.interface
+            interface = self.service_coordinator.interface
         except Exception:
             interface = None
         if index < len(self._skeleton_items):
@@ -581,7 +467,7 @@ class TaskDragListWidget(BaseListWidget):
         
         # 获取 interface 配置
         try:
-            interface = self.service_coordinator.task.interface
+            interface = self.service_coordinator.interface
         except Exception:
             interface = None
         # 如果已有同 id 的项，进行更新
@@ -621,7 +507,7 @@ class TaskDragListWidget(BaseListWidget):
             self.addItem(list_item)
         else:
             # 获取完整任务列表，找到新任务在完整列表中的位置
-            all_tasks = self.service_coordinator.task.get_tasks()
+            all_tasks = self.service_coordinator.task_query.get_tasks()
             task_index_in_all = -1
             for i, t in enumerate(all_tasks):
                 if t.item_id == task.item_id:
@@ -667,7 +553,7 @@ class TaskDragListWidget(BaseListWidget):
             if isinstance(widget, TaskListItem) and widget.task.item_id == task_id:
                 if widget.task.is_base_task():
                     # 基础任务不可删除，记录日志并显示提示
-                    signalBus.info_bar_requested.emit(
+                    global_signal_bus.info_bar_requested.emit(
                         "warning", "基础任务（资源、完成后操作）不可删除"
                     )
                     return
@@ -791,21 +677,12 @@ class TaskDragListWidget(BaseListWidget):
         if hasattr(self, "_loading_overlay"):
             self._loading_overlay.setGeometry(self.viewport().geometry())
 
-    def _on_task_checkbox_changed(self, task: TaskItem):
+    def _on_task_checkbox_changed(self, task_id: str, is_checked: bool):
         """复选框状态变更信号转发"""
-        if task.is_base_task():
+        task = self.service_coordinator.task_query.get_task(task_id)
+        if not task or task.is_base_task():
             return
-        if self._filter_mode == "special" and task.is_checked:
-            # 单选：取消其它特殊任务的勾选
-            for item_id, widget in list(self._task_widgets.items()):
-                if item_id == task.item_id:
-                    continue
-                if widget.checkbox.isChecked():
-                    widget.checkbox.blockSignals(True)
-                    widget.checkbox.setChecked(False)
-                    widget.checkbox.blockSignals(False)
-                    widget.task.is_checked = False
-        self.service_coordinator.update_task_checked(task.item_id, task.is_checked)
+        self.service_coordinator.update_task_checked(task_id, is_checked)
 
     def select_all(self) -> None:
         """批量勾选当前列表中的任务（基础任务除外）。"""
@@ -991,22 +868,21 @@ class ConfigListWidget(BaseListWidget):
     def update_list(self):
         """刷新配置列表UI"""
         self.clear()
-        config_summaries = self.service_coordinator.config.list_configs()
+        config_summaries = self.service_coordinator.config_query.get_available_config_choices()
         for summary in config_summaries:
-            if isinstance(summary, dict):
+            if isinstance(summary, tuple):
+                config_id = summary[0]
+            elif isinstance(summary, dict):
                 config_id = summary.get("item_id")
             else:
-                try:
-                    config_id = summary.item_id
-                except Exception:
-                    config_id = None
+                config_id = None
             if config_id:
-                cfg = self.service_coordinator.config.get_config(config_id)
+                cfg = self.service_coordinator.config_query.get_config(config_id)
                 if cfg:
                     self._add_config_to_list(cfg)
         
         # 选中当前配置
-        current_config_id = self.service_coordinator.config.current_config_id
+        current_config_id = self.service_coordinator.config_query.get_current_config_id()
         if current_config_id:
             self._select_config_by_id(current_config_id, emit_signal=False)
 
@@ -1026,21 +902,20 @@ class ConfigListWidget(BaseListWidget):
             widget = self.itemWidget(item)
             if isinstance(widget, ConfigListItem) and widget.item.item_id == config_id:
                 self.setCurrentRow(i)
-                # 直接触发 config_changed 信号以更新任务列表标题
                 if emit_signal:
-                    self.service_coordinator.signal_bus.config_changed.emit(config_id)
+                    self.service_coordinator.select_config(config_id)
                 break
 
     def _on_config_changed(self, config_id: str):
         """服务层配置切换时同步高亮配置项。"""
         self._select_config_by_id(config_id, emit_signal=False)
-        signalBus.title_changed.emit()
+        global_signal_bus.title_changed.emit()
 
     def add_config(self, config: ConfigItem):
         """添加配置项到列表"""
         self._add_config_to_list(config)
         # 新增时尝试选中它，保持UI当前配置与服务一致
-        self._select_config_by_id(config.item_id)
+        self._select_config_by_id(config.item_id, emit_signal=False)
 
     def remove_config(self, config_id: str):
         """移除配置项"""
@@ -1055,3 +930,5 @@ class ConfigListWidget(BaseListWidget):
     def set_current_config(self, config_id: str):
         """设置当前选中配置项"""
         self.select_item(config_id)
+
+

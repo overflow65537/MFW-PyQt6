@@ -12,7 +12,7 @@ import re
 import sys
 import importlib.util
 from enum import Enum
-from typing import List, Dict
+from typing import Callable, List, Dict
 import subprocess
 import threading
 from pathlib import Path
@@ -63,7 +63,18 @@ from maa.resource import ResourceEventSink, Resource
 from maa.tasker import TaskerEventSink, Tasker
 from maa.context import ContextEventSink, Context
 
-from app.common.signal_bus import signalBus
+
+_callback_emitter: Callable[[dict], None] | None = None
+
+
+def set_callback_emitter(emitter: Callable[[dict], None] | None) -> None:
+    global _callback_emitter
+    _callback_emitter = emitter
+
+
+def _emit_callback(payload: dict) -> None:
+    if _callback_emitter is not None:
+        _callback_emitter(payload)
 
 
 class MaaContextSink(ContextEventSink):
@@ -96,11 +107,13 @@ class MaaContextSink(ContextEventSink):
         content = content.replace("{task_id}", str(details.get("task_id", "")))
         content = content.replace("{list}", details.get("list", ""))
 
-        signalBus.callback.emit({"name": "context", "details": content, "display": display})
+        _emit_callback(
+            {"name": "context", "details": content, "display": display}
+        )
 
         if msg == "Node.Recognition.Succeeded":
             if details.get("Abort", False):
-                signalBus.callback.emit({"name": "abort"})
+                _emit_callback({"name": "abort"})
             if details.get("Notice", False):
                 pass
 
@@ -139,7 +152,7 @@ class MaaControllerEventSink(ControllerEventSink):
         noti_type: NotificationType,
         detail: ControllerEventSink.ControllerActionDetail,
     ):
-        # signalBus.callback.emit({"name": "controller", "status": noti_type.value})
+        # 当前控制器动作通知暂未向上转发，如有需要可按 resource/task 的模式补齐。
         pass
 
 
@@ -153,7 +166,7 @@ class MaaResourceEventSink(ResourceEventSink):
         noti_type: NotificationType,
         detail: ResourceEventSink.ResourceLoadingDetail,
     ):
-        signalBus.callback.emit({"name": "resource", "status": noti_type.value})
+        _emit_callback({"name": "resource", "status": noti_type.value})
 
 
 class MaaTaskerEventSink(TaskerEventSink):
@@ -166,7 +179,7 @@ class MaaTaskerEventSink(TaskerEventSink):
         noti_type: NotificationType,
         detail: TaskerEventSink.TaskerTaskDetail,
     ):
-        signalBus.callback.emit(
+        _emit_callback(
             {"name": "task", "task": detail.entry, "status": noti_type.value}
         )
 
@@ -226,6 +239,8 @@ class MaaFW(QObject):
         self.agent_output_thread = None
 
         self.agent_data_raw = None
+        # v2.5.0: 启动 agent 子进程时注入的 PI_* 环境变量
+        self.agent_env_vars: Dict[str, str] = {}
         # 控制是否需要向 UI 报告自定义对象注册情况
         self.need_register_report: bool = False
         # 记录最近一次自定义对象加载的成功/失败情况
@@ -689,6 +704,15 @@ class MaaFW(QObject):
         # 使用 sys.frozen 判断是否打包（PyInstaller 标准方式）
         is_packed = getattr(sys, "frozen", False)
         encoding = "utf-8" if is_packed else "gbk"
+
+        # v2.5.0: 构建子进程环境变量，注入 PI_* 变量
+        env = os.environ.copy()
+        if self.agent_env_vars:
+            env.update(self.agent_env_vars)
+            logger.debug(
+                f"注入 PI_* 环境变量: {list(self.agent_env_vars.keys())}"
+            )
+
         try:
             agent_process = subprocess.Popen(
                 start_cmd,
@@ -698,6 +722,7 @@ class MaaFW(QObject):
                 encoding=encoding,
                 errors="replace",
                 bufsize=1,
+                env=env,
             )
             self.agent_thread = agent_process
             self._watch_agent_output(agent_process)
@@ -817,3 +842,4 @@ class MaaFW(QObject):
         if not self.controller:
             raise RuntimeError("Controller not initialized")
         return self.controller.post_screencap().wait().get()
+

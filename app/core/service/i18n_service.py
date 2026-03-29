@@ -136,7 +136,6 @@ def get_i18n_service() -> I18nService:
     """获取全局 i18n 服务实例，用于简单场景下的直接翻译调用。"""
     return _global_i18n_service
 
-
 __all__ = ["I18nService", "get_i18n_service"]
 
 
