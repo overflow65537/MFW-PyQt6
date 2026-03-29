@@ -248,7 +248,7 @@ class SettingInterface(QWidget):
         super().__init__(parent=parent)
         self.setObjectName("setting_interface")
         self._service_coordinator = service_coordinator
-        self.interface_data = self._service_coordinator.task.interface
+        self.interface_data = self._service_coordinator.interface
         self._suppress_multi_resource_signal = False
         self._propagate_direct_run_arg = bool(propagate_direct_run_arg)
 
@@ -1648,7 +1648,7 @@ class SettingInterface(QWidget):
         """从服务协调器的任务服务获取 interface 数据。"""
         if not self._service_coordinator:
             return {}
-        interface_data = getattr(self._service_coordinator.task, "interface", None)
+        interface_data = self._service_coordinator.interface
         return interface_data or {}
 
     def _get_project_name(self) -> str:
@@ -1819,7 +1819,7 @@ class SettingInterface(QWidget):
             return False
 
         try:
-            main_config_path = self._service_coordinator.config_repo.main_config_path
+            main_config_path = self._service_coordinator.get_main_config_path()
             if not main_config_path.exists():
                 return False
 
@@ -2347,7 +2347,7 @@ class SettingInterface(QWidget):
             return
 
         # 创建更新器
-        interface = self._service_coordinator.task.interface or {}
+        interface = self._service_coordinator.interface or {}
         self._updater = Update(
             service_coordinator=self._service_coordinator,
             stop_signal=global_signal_bus.update_stopped,
@@ -2372,7 +2372,7 @@ class SettingInterface(QWidget):
             logger.info("跳过更新检查器启动：%s", reason)
             return
         # 使用 Update 本身的仅检查模式进行后台检查，不触发下载与热更新流程
-        interface = self._service_coordinator.task.interface or {}
+        interface = self._service_coordinator.interface or {}
         self._update_checker = Update(
             service_coordinator=self._service_coordinator,
             stop_signal=global_signal_bus.update_stopped,
@@ -2732,7 +2732,7 @@ class SettingInterface(QWidget):
         global_signal_bus.info_bar_requested.emit("info", self.tr("Starting Reset Resource"))
 
         # 创建强制全量下载的更新器实例
-        interface = self._service_coordinator.task.interface or {}
+        interface = self._service_coordinator.interface or {}
         self._updater = Update(
             service_coordinator=self._service_coordinator,
             stop_signal=global_signal_bus.update_stopped,

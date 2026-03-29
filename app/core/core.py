@@ -803,6 +803,10 @@ class ServiceCoordinator:
             return ""
         return self.config_service.get_bundle_path_for_config(config)
 
+    def get_main_config_path(self) -> Path:
+        """返回主配置文件路径。"""
+        return self.config_repo.main_config_path
+
     def get_available_config_choices(self) -> List[tuple[str, str]]:
         """获取可用于切换/运行的配置列表。"""
         return [
