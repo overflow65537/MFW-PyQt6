@@ -753,6 +753,65 @@ class ServiceCoordinator:
             self.signal_bus.config_saved.emit(True)
         return ok
 
+    def get_task(self, task_id: str) -> TaskItem | None:
+        """获取当前配置中的任务。"""
+        return self.task_service.get_task(task_id)
+
+    def update_task(self, task: TaskItem, idx: int = -2) -> bool:
+        """更新任务。"""
+        return self.task_service.update_task(task, idx)
+
+    def get_current_option_task_id(self) -> str | None:
+        """返回当前选中的任务 ID。"""
+        return getattr(self.option_service, "current_task_id", None)
+
+    def get_current_options(self) -> Dict[str, Any]:
+        """获取当前选中的任务选项。"""
+        return self.option_service.get_options()
+
+    def get_option_form_structure(self) -> Dict[str, Any] | None:
+        """获取当前选中的任务表单结构。"""
+        return self.option_service.get_form_structure()
+
+    def update_selected_option(self, option_key: str, option_value: Any) -> bool:
+        """更新当前选中任务的单个选项。"""
+        return self.option_service.update_option(option_key, option_value)
+
+    def update_selected_options(self, options: Dict[str, Any]) -> bool:
+        """批量更新当前选中任务的选项。"""
+        return self.option_service.update_options(options)
+
+    def build_speedrun_config(
+        self, task_name: str, existing: Dict[str, Any] | None = None
+    ) -> Dict[str, Any]:
+        """构建任务速通配置。"""
+        return self.task_service.build_speedrun_config(task_name, existing)
+
+    def get_current_global_options(self) -> Dict[str, Any]:
+        """获取当前配置的全局选项。"""
+        return self.config_service.get_current_global_options()
+
+    def update_current_global_options(self, global_options: Dict[str, Any]) -> bool:
+        """更新当前配置的全局选项。"""
+        return self.config_service.update_current_global_options(global_options)
+
+    def process_option_def(
+        self,
+        option_def: Dict[str, Any],
+        all_options: Dict[str, Dict[str, Any]],
+        option_key: str = "",
+    ) -> Dict[str, Any]:
+        """处理 option 定义。"""
+        return self.option_service.process_option_def(option_def, all_options, option_key)
+
+    def is_option_visible_for_controller(
+        self, option_def: Dict[str, Any], current_controller: str
+    ) -> bool:
+        """判断选项是否在当前控制器下可见。"""
+        return self.option_service._is_option_visible_for_controller(
+            option_def, current_controller
+        )
+
     def notify_option_updated(self, option_data: Dict[str, Any]) -> None:
         """对外暴露的选项刷新入口，避免 View 直接发内部信号。"""
         if isinstance(option_data, dict):
