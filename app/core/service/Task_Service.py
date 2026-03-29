@@ -2,7 +2,8 @@ from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
 from app.common.constants import _RESOURCE_, _CONTROLLER_
-from app.core.item import CoreSignalBus, TaskItem
+from app.core.events import CoreSignalBus
+from app.core.item import TaskItem
 from app.core.service.config_service import ConfigService
 from app.utils.logger import logger
 

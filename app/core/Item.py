@@ -2,59 +2,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
-from PySide6.QtCore import QObject, Signal
-
 from app.common.constants import POST_ACTION, _CONTROLLER_, _RESOURCE_
-
-
-# ==================== 信号总线 ====================
-class CoreSignalBus(QObject):
-    """核心信号总线，用于组件间通信。"""
-
-    # 配置相关信号 (多数使用 object 以传递 dataclass 对象)
-    config_changed = Signal(str)  # 配置ID
-    config_loaded = Signal(object)  # ConfigItem 或 dict (向后兼容)
-    config_saved = Signal(bool)  # 保存结果
-
-    # 任务相关信号
-    tasks_loaded = Signal(object)  # List[TaskItem]
-    task_updated = Signal(object)  # TaskItem
-    task_selected = Signal(str)  # 任务ID
-    task_order_updated = Signal(object)  # List[str]
-
-    # 选项相关信号
-    options_loaded = Signal()  # 选项加载完成信号，不携带数据
-    option_updated = Signal(object)  # 选项更新(dict)
-
-    # UI 操作信号
-    need_save = Signal()
-    # UI 操作信号（仅保留通用保存信号，具体操作通过 ServiceCoordinator 的方法调用）
-
-
-class FromServiceCoordinator(QObject):
-    """
-    从服务协调器发送的信号,用来通知UI层进行更新
-    """
-
-    fs_task_modified = Signal(object)  # 文件系统任务修改，载荷为 task
-    fs_task_removed = Signal(str)  # 文件系统任务移除，载荷为 task_id
-    fs_config_added = Signal(object)  # 文件系统配置新增，载荷为 config
-    fs_config_removed = Signal(str)  # 文件系统配置移除，载荷为 config_id
-    fs_config_changed = Signal(str)  # 当前配置切换，载荷为 config_id
-    fs_start_button_status = Signal(
-        dict
-    )  # 控制开始按钮状态和文本，载荷如 {"text": "开始", "status": "enabled"}
-    fs_log_clear_requested = Signal()  # 请求清空日志面板
-    fs_info_bar_requested = Signal(str, str)  # 请求显示信息栏，载荷为 level, message
-    fs_callback = Signal(dict)  # Core 内部回调信号，供日志/任务流桥接使用
-    fs_log_output = Signal(str, str)  # 请求输出日志，载荷为 level, message
-    fs_focus_toast = Signal(str)  # 请求前台 toast
-    fs_focus_notification = Signal(str)  # 请求系统通知
-    fs_focus_dialog = Signal(str)  # 请求对话框提示
-    fs_focus_modal = Signal(str)  # 请求模态提示
-    fs_task_status_changed = Signal(str, str)  # 任务状态变化，载荷为 task_id, status
-    fs_task_flow_finished = Signal(dict)  # 任务流完成，载荷为状态字典
-    fs_set_window_title = Signal(str)  # 请求设置窗口标题
 
 
 # ==================== 数据模型 ====================
@@ -234,4 +182,4 @@ class ConfigItem:
         )
 
 
-__all__ = ["CoreSignalBus", "FromServiceCoordinator", "TaskItem", "ConfigItem"]
+__all__ = ["TaskItem", "ConfigItem"]

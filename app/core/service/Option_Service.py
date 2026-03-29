@@ -1,6 +1,6 @@
 from typing import Any, Dict, Optional
 
-from app.core.item import CoreSignalBus
+from app.core.events import CoreSignalBus
 from app.core.service.task_service import TaskService
 
 

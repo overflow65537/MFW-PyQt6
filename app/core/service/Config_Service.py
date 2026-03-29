@@ -3,7 +3,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION, PRE_CONFIGURATION
-from app.core.item import ConfigItem, CoreSignalBus, TaskItem
+from app.core.events import CoreSignalBus
+from app.core.item import ConfigItem, TaskItem
 from app.utils.logger import logger
 
 
