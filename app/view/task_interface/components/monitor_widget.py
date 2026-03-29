@@ -544,7 +544,7 @@ class MonitorWidget(QWidget):
         
         try:
             # 获取控制器配置
-            controller_cfg = self.service_coordinator.get_task(_CONTROLLER_)
+            controller_cfg = self.service_coordinator.task_query.get_task(_CONTROLLER_)
             if not controller_cfg:
                 return 0.0
             
@@ -587,7 +587,7 @@ class MonitorWidget(QWidget):
         
         try:
             # 获取控制器配置
-            controller_cfg = self.service_coordinator.get_task(_CONTROLLER_)
+            controller_cfg = self.service_coordinator.task_query.get_task(_CONTROLLER_)
             if not controller_cfg:
                 return 30.0  # 默认30秒
             

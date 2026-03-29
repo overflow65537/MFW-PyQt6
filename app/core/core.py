@@ -1,5 +1,4 @@
 from pathlib import Path
-from copy import deepcopy
 from typing import List, Dict, Any
 import time
 import shutil
@@ -21,6 +20,7 @@ from app.core.service.config_query_service import ConfigQueryService
 from app.core.service.interface_manager import InterfaceManager, get_interface_manager
 from app.core.service.option_service import OptionService
 from app.core.service.schedule_service import ScheduleService
+from app.core.service.task_query_service import TaskQueryService
 from app.core.service.task_service import TaskService
 from app.core.runner.task_flow import TaskFlowRunner
 from app.core.runner.monitor_task import MonitorTask
@@ -92,6 +92,10 @@ class ServiceCoordinator:
         self.config_query_service = ConfigQueryService(
             self.config_service,
             self.config_repo,
+        )
+        self.task_query_service = TaskQueryService(
+            self.task_service,
+            self.option_service,
         )
         self.config_service.register_on_change(self._on_config_changed)
 
@@ -226,9 +230,7 @@ class ServiceCoordinator:
                     bundle_name
                 )
                 if not bundle_path_str:
-                    logger.warning(
-                        f"未在主配置中找到 bundle: {bundle_name}"
-                    )
+                    logger.warning(f"未在主配置中找到 bundle: {bundle_name}")
                     return None
                 bundle_info = {"path": bundle_path_str}
         except FileNotFoundError:
@@ -243,7 +245,6 @@ class ServiceCoordinator:
         if not base_dir.is_absolute():
             base_dir = Path.cwd() / base_dir
 
-        # 优先使用 interface.jsonc，其次 interface.json
         candidate = base_dir / "interface.jsonc"
         if not candidate.exists():
             candidate = base_dir / "interface.json"
@@ -285,13 +286,13 @@ class ServiceCoordinator:
     def _handle_config_load_error(
         self, main_config_path: Path, configs_dir: Path, error: Exception
     ) -> bool:
-        """处理配置加载错误：备份损坏的配置文件并用默认配置覆盖
-        
+        """处理配置加载错误：备份损坏的配置文件并用默认配置覆盖。
+
         Args:
             main_config_path: 主配置文件路径
             configs_dir: 配置目录路径
             error: 发生的错误
-            
+
         Returns:
             bool: 是否成功重置配置
         """
@@ -777,130 +778,13 @@ class ServiceCoordinator:
     # region 任务域入口
     # 固定顺序：task 查询 -> controller/resource 投影 -> option 查询/写入 -> task 预览/辅助
 
-    def get_task(self, task_id: str) -> TaskItem | None:
-        """获取当前配置中的任务。"""
-        return self.task_service.get_task(task_id)
-
-    def get_tasks(self) -> List[TaskItem]:
-        """获取当前配置中的全部任务。"""
-        return self.task_service.get_tasks()
-
-    def get_default_task_map(self) -> Dict[str, Any]:
-        """获取当前 interface 生成的默认任务选项映射。"""
-        return dict(getattr(self.task_service, "default_option", {}))
-
     def update_task(self, task: TaskItem, idx: int = -2) -> bool:
         """更新任务。"""
         return self.task_service.update_task(task, idx)
 
-    def get_task_option_value(
-        self, task_id: str, option_key: str, default: Any = None
-    ) -> Any:
-        """读取指定任务的某个 option 值。"""
-        return self.task_service.get_task_option_value(task_id, option_key, default)
-
-    def get_current_resource_name(self) -> str:
-        """返回当前资源名称。"""
-        return self.task_service.get_current_resource_name()
-
-    def get_current_controller_type(self) -> str:
-        """返回当前控制器类型。"""
-        return self.task_service.get_current_controller_type()
-
     def set_resource_name(self, resource_name: str) -> bool:
         """更新当前资源名称。"""
         return self.task_service.set_resource_name(resource_name)
-
-    def get_controller_ui_context(self, current_options: Dict[str, Any]) -> Dict[str, Any]:
-        """获取 Controller 视图所需的投影数据。"""
-        return self.task_service.get_controller_ui_context(current_options)
-
-    def sync_controller_meta_fields(
-        self,
-        current_config: Dict[str, Any],
-        controller_name: str,
-        controller_info: Dict[str, Any] | None,
-    ) -> Dict[str, Any]:
-        """将 controller 元信息同步到当前控制器子配置。"""
-        return self.task_service.sync_controller_meta_fields(
-            current_config, controller_name, controller_info
-        )
-
-    def ensure_controller_config(
-        self,
-        current_config: Dict[str, Any],
-        controller_name: str,
-        controller_info: Dict[str, Any],
-        win32_default_mapping: Dict[str, Dict[str, Any]],
-        gamepad_default_mapping: Dict[str, Dict[str, Any]],
-    ) -> Dict[str, Any]:
-        """确保当前控制器配置存在并补齐默认值。"""
-        return self.task_service.ensure_controller_config(
-            current_config,
-            controller_name,
-            controller_info,
-            win32_default_mapping,
-            gamepad_default_mapping,
-        )
-
-    def normalize_config_for_json(self, config: Any) -> Any:
-        """递归规范化配置数据。"""
-        return self.task_service.normalize_config_for_json(config)
-
-    def build_controller_task_option(
-        self,
-        current_config: Dict[str, Any],
-        controller_type_mapping: Dict[str, Dict[str, Any]],
-    ) -> Dict[str, Any]:
-        """构建 Controller 任务需要落盘的配置片段。"""
-        return self.task_service.build_controller_task_option(
-            current_config, controller_type_mapping
-        )
-
-    def build_resource_mapping(
-        self, controller_type_mapping: Dict[str, Dict[str, Any]] | None = None
-    ) -> Dict[str, List[Dict[str, Any]]]:
-        """按控制器标签构建资源映射表。"""
-        return self.task_service.build_resource_mapping(controller_type_mapping)
-
-    def get_resources_for_controller(
-        self,
-        controller_label: str,
-        controller_type_mapping: Dict[str, Dict[str, Any]] | None = None,
-    ) -> List[Dict[str, Any]]:
-        """获取指定控制器标签下可用的资源列表。"""
-        return self.task_service.get_resources_for_controller(
-            controller_label, controller_type_mapping
-        )
-
-    def get_current_resource_entry(
-        self,
-        controller_label: str,
-        resource_name: str,
-        controller_type_mapping: Dict[str, Dict[str, Any]] | None = None,
-    ) -> Dict[str, Any] | None:
-        """解析当前控制器下选中的资源配置。"""
-        return self.task_service.get_current_resource_entry(
-            controller_label, resource_name, controller_type_mapping
-        )
-
-    def ensure_resource_matches_controller_resources(
-        self, resources: List[Dict[str, Any]]
-    ) -> str | None:
-        """确保当前资源与控制器资源集合兼容。"""
-        return self.task_service.ensure_resource_matches_controller_resources(resources)
-
-    def update_resource_options_hidden_state(
-        self, current_resource_option_names: List[str]
-    ) -> bool:
-        """更新 Resource 任务中资源选项的 hidden 状态。"""
-        return self.task_service.update_resource_options_hidden_state(
-            current_resource_option_names
-        )
-
-    def get_resource_option_config(self, form_structure: Dict[str, Any]) -> Dict[str, Any]:
-        """获取当前 Resource 任务的资源选项配置。"""
-        return self.task_service.get_resource_option_config(form_structure)
 
     def save_resource_options(
         self, current_resource_option_names: List[str], resource_options: Dict[str, Any]
@@ -910,21 +794,9 @@ class ServiceCoordinator:
             current_resource_option_names, resource_options
         )
 
-    def get_current_option_task_id(self) -> str | None:
-        """返回当前选中的任务 ID。"""
-        return getattr(self.option_service, "current_task_id", None)
-
     def clear_task_selection(self) -> None:
         """清空当前任务选择。"""
         self.option_service.clear_selection()
-
-    def get_current_options(self) -> Dict[str, Any]:
-        """获取当前选中的任务选项。"""
-        return self.option_service.get_options()
-
-    def get_option_form_structure(self) -> Dict[str, Any] | None:
-        """获取当前选中的任务表单结构。"""
-        return self.option_service.get_form_structure()
 
     def update_selected_option(self, option_key: str, option_value: Any) -> bool:
         """更新当前选中任务的单个选项。"""
@@ -961,36 +833,6 @@ class ServiceCoordinator:
     ) -> Dict[str, Any]:
         """构建任务速通配置。"""
         return self.task_service.build_speedrun_config(task_name, existing)
-
-    def get_task_speedrun_payload(
-        self, task_id: str
-    ) -> tuple[TaskItem | None, Dict[str, Any] | None, Dict[str, Any]]:
-        """获取任务的速通配置与运行时状态。"""
-        task, speedrun_config, state = self.task_service.get_task_speedrun_payload(task_id)
-        if (
-            task
-            and speedrun_config is not None
-            and self.option_service.current_task_id == task_id
-        ):
-            self.option_service.current_options["_speedrun_config"] = deepcopy(speedrun_config)
-        return task, speedrun_config, state
-
-    def process_option_def(
-        self,
-        option_def: Dict[str, Any],
-        all_options: Dict[str, Dict[str, Any]],
-        option_key: str = "",
-    ) -> Dict[str, Any]:
-        """处理 option 定义。"""
-        return self.option_service.process_option_def(option_def, all_options, option_key)
-
-    def is_option_visible_for_controller(
-        self, option_def: Dict[str, Any], current_controller: str
-    ) -> bool:
-        """判断选项是否在当前控制器下可见。"""
-        return self.option_service._is_option_visible_for_controller(
-            option_def, current_controller
-        )
 
     def notify_option_updated(self, option_data: Dict[str, Any]) -> None:
         """对外暴露的选项刷新入口，避免 View 直接发内部信号。"""
@@ -1212,6 +1054,10 @@ class ServiceCoordinator:
     @property
     def task(self) -> TaskService:
         return self.task_service
+
+    @property
+    def task_query(self) -> TaskQueryService:
+        return self.task_query_service
 
     @property
     def option(self) -> OptionService:

@@ -167,7 +167,7 @@ class ControllerSettingWidget(QWidget):
         if not controller_name or not isinstance(ctrl_info, dict):
             return
 
-        changed = self.service_coordinator.sync_controller_meta_fields(
+        changed = self.service_coordinator.task_query.sync_controller_meta_fields(
             self.current_config,
             controller_name,
             ctrl_info,
@@ -465,8 +465,8 @@ class ControllerSettingWidget(QWidget):
 
     def _rebuild_interface_data(self):
         """重新构建基于interface的数据结构（用于多配置模式下interface更新时）"""
-        self.current_config = self.service_coordinator.get_current_options()
-        context = self.service_coordinator.get_controller_ui_context(self.current_config)
+        self.current_config = self.service_coordinator.task_query.get_current_options()
+        context = self.service_coordinator.task_query.get_controller_ui_context(self.current_config)
         self.controller_type_mapping = context["controller_type_mapping"]
         self.win32_default_mapping = context["win32_default_mapping"]
         self.gamepad_default_mapping = context["gamepad_default_mapping"]
@@ -955,7 +955,7 @@ class ControllerSettingWidget(QWidget):
         # 使用当前控制器信息变量
         current_controller_name = self.current_controller_name
         current_controller_type = self.current_controller_type
-        self.service_coordinator.ensure_controller_config(
+        self.service_coordinator.task_query.ensure_controller_config(
             self.current_config,
             current_controller_name,
             self.current_controller_info or {},
@@ -1029,12 +1029,12 @@ class ControllerSettingWidget(QWidget):
         try:
             options_to_save = changed_options or self.current_config
             # 规范化配置数据，确保所有路径类型都被转换为字符串
-            options_to_save = self.service_coordinator.normalize_config_for_json(options_to_save)
+            options_to_save = self.service_coordinator.task_query.normalize_config_for_json(options_to_save)
             ok = self.service_coordinator.update_selected_options(options_to_save)
             # 强制同步到预配置任务，确保落盘
             # 只保存应该保存到 Controller 任务的字段
             # Controller 任务应该包含：controller_type, gpu, agent_timeout, custom, 以及控制器特定的配置（如 adb, win32）
-            controller_task_option = self.service_coordinator.build_controller_task_option(
+            controller_task_option = self.service_coordinator.task_query.build_controller_task_option(
                 self.current_config,
                 self.controller_type_mapping,
             )
@@ -1082,7 +1082,7 @@ class ControllerSettingWidget(QWidget):
         if controller_type is None:
             logger.warning(f"未能为控制器 {controller_name!r} 找到对应的类型配置")
             return
-        controller_cfg = self.service_coordinator.ensure_controller_config(
+        controller_cfg = self.service_coordinator.task_query.ensure_controller_config(
             self.current_config,
             controller_name,
             controller_info or {},
@@ -1377,7 +1377,7 @@ class ControllerSettingWidget(QWidget):
 
         # interface.json 新增字段：permission_required / display_* 写入到“当前控制器子配置”
         controller_name = ctrl_info["name"]
-        meta_changed = self.service_coordinator.sync_controller_meta_fields(
+        meta_changed = self.service_coordinator.task_query.sync_controller_meta_fields(
             self.current_config,
             controller_name,
             ctrl_info,
@@ -1386,7 +1386,7 @@ class ControllerSettingWidget(QWidget):
         # interface.json 新增字段：permission_required（需要管理员权限时显示红字提示）
         self._update_admin_permission_hint(ctrl_info)
 
-        self.service_coordinator.ensure_controller_config(
+        self.service_coordinator.task_query.ensure_controller_config(
             self.current_config,
             controller_name,
             ctrl_info,

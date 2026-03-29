@@ -804,7 +804,7 @@ class TaskListItem(BaseListItem):
         # 尝试从 service_coordinator 获取最新的 task 对象，确保使用最新的 task_option
         if self.service_coordinator:
             try:
-                latest_task = self.service_coordinator.get_task(self.task.item_id)
+                latest_task = self.service_coordinator.task_query.get_task(self.task.item_id)
                 if latest_task:
                     self.task = latest_task
             except Exception:
@@ -897,7 +897,7 @@ class TaskListItem(BaseListItem):
         from app.view.task_interface.components.add_task_message_box import AddTaskDialog
         from app.common.signal_bus import global_signal_bus
 
-        task_map = self.service_coordinator.get_default_task_map()
+        task_map = self.service_coordinator.task_query.get_default_task_map()
         interface = self.service_coordinator.interface
 
         # 过滤任务映射（根据当前工具栏的过滤模式，这里使用全部任务）
@@ -919,7 +919,7 @@ class TaskListItem(BaseListItem):
             new_task = dlg.get_task_item()
             if new_task:
                 # 在对话框关闭后重新获取任务列表和索引（因为列表可能在对话框打开期间发生了变化）
-                all_tasks = self.service_coordinator.get_tasks()
+                all_tasks = self.service_coordinator.task_query.get_tasks()
                 current_idx = -1
                 for i, task in enumerate(all_tasks):
                     if task.item_id == current_task_id:

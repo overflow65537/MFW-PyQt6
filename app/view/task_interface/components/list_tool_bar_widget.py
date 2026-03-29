@@ -329,7 +329,7 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             idx: 插入位置索引，默认为-2（倒数第二个位置）
         """
         # 打开添加任务对话框
-        task_map = self.service_coordinator.get_default_task_map()
+        task_map = self.service_coordinator.task_query.get_default_task_map()
         interface = self.service_coordinator.interface
         filtered_task_map = self._filter_task_map_by_mode(task_map, interface)
         if not filtered_task_map:
@@ -368,12 +368,12 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
         current_controller_type = ""
         try:
             # 新版本：资源选项位于固定基础任务 `Resource`
-            resource_task = self.service_coordinator.get_task(_RESOURCE_)
+            resource_task = self.service_coordinator.task_query.get_task(_RESOURCE_)
             if resource_task and isinstance(resource_task.task_option, dict):
                 current_resource_name = resource_task.task_option.get("resource", "")
             # 向后兼容：旧版本可能把 resource 放在 `Pre-Configuration`
             if not current_resource_name:
-                pre_config_task = self.service_coordinator.get_task(
+                pre_config_task = self.service_coordinator.task_query.get_task(
                     PRE_CONFIGURATION
                 )
                 if pre_config_task and isinstance(pre_config_task.task_option, dict):
@@ -382,14 +382,14 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
                     )
 
             # 控制器类型优先从固定基础任务 `Controller` 读取
-            controller_task = self.service_coordinator.get_task(_CONTROLLER_)
+            controller_task = self.service_coordinator.task_query.get_task(_CONTROLLER_)
             if controller_task and isinstance(controller_task.task_option, dict):
                 current_controller_type = controller_task.task_option.get(
                     "controller_type", ""
                 )
             # 向后兼容：旧版本可能把 controller_type 放在 `Pre-Configuration`
             if not current_controller_type:
-                pre_config_task = self.service_coordinator.get_task(
+                pre_config_task = self.service_coordinator.task_query.get_task(
                     PRE_CONFIGURATION
                 )
                 if pre_config_task and isinstance(pre_config_task.task_option, dict):
