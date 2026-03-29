@@ -1874,7 +1874,7 @@ class SettingInterface(QWidget):
         # 检查当前配置中的路径
         current_path = None
         try:
-            bundle_info = self._service_coordinator.config_service.get_bundle(name)
+            bundle_info = self._service_coordinator.get_bundle(name)
             current_path = bundle_info.get("path", "")
         except (FileNotFoundError, Exception) as e:
             logger.debug(f"获取当前 bundle 配置失败（可能不存在）: {e}")
