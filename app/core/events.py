@@ -10,13 +10,10 @@ class CoreSignalBus(QObject):
 
     tasks_loaded = Signal(object)
     task_updated = Signal(object)
-    task_selected = Signal(str)
     task_order_updated = Signal(object)
 
     options_loaded = Signal()
     option_updated = Signal(object)
-
-    need_save = Signal()
 
 
 class FromServiceCoordinator(QObject):

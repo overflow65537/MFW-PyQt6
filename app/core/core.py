@@ -101,9 +101,6 @@ class ServiceCoordinator:
         # 初始化日志处理器（将 callback 信号转换为 log_output 信号）
         self.log_processor = CallbackLogProcessor(self.fs_signal_bus)
 
-        # 连接信号
-        self._connect_signals()
-
         # 在主要内容初始化完毕后，清理无效的 bundle 索引（不删除配置）
         self._cleanup_invalid_bundles()
 
@@ -561,12 +558,6 @@ class ServiceCoordinator:
         self.config_repo.interface = self._interface
         self.task_service.reload_interface(self._interface)
 
-    def _connect_signals(self):
-        """连接所有信号"""
-        # UI请求保存配置
-        self.signal_bus.need_save.connect(self._on_need_save)
-        # 热更新完成后重新初始化
-
     def _on_config_changed(self, config_id: str):
         """配置变化后刷新内部服务状态"""
         if not config_id:
@@ -755,6 +746,13 @@ class ServiceCoordinator:
             self.signal_bus.config_saved.emit(True)
         return ok
 
+    def save_all(self) -> bool:
+        """显式保存主配置并广播保存完成状态。"""
+        ok = self.config_service.save_main_config()
+        if ok:
+            self.signal_bus.config_saved.emit(True)
+        return ok
+
     def notify_option_updated(self, option_data: Dict[str, Any]) -> None:
         """对外暴露的选项刷新入口，避免 View 直接发内部信号。"""
         if isinstance(option_data, dict):
@@ -846,11 +844,6 @@ class ServiceCoordinator:
         return self.task_service.reorder_tasks(new_order)
 
     # endregion
-    def _on_need_save(self):
-        """当UI请求保存时保存所有配置"""
-        self.config_service.save_main_config()
-        self.signal_bus.config_saved.emit(True)
-
     def reinit(self):
         """重新初始化服务协调器，用于热更新完成后刷新资源"""
         logger.info("开始重新初始化服务协调器...")
