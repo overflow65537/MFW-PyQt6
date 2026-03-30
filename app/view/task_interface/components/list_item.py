@@ -34,7 +34,7 @@ from qfluentwidgets import (
     ProgressRing,
     IconWidget,
 )
-from app.core.Item import TaskItem, ConfigItem
+from app.core.item import TaskItem, ConfigItem
 from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.core.core import ServiceCoordinator
 
@@ -896,7 +896,7 @@ class TaskListItem(BaseListItem):
         current_task_id = self.task.item_id
 
         # 打开添加任务对话框
-        from app.view.task_interface.components.AddTaskMessageBox import AddTaskDialog
+        from app.view.task_interface.components.add_task_message_box import AddTaskDialog
         from app.common.signal_bus import signalBus
 
         task_map = getattr(self.service_coordinator.task, "default_option", {})
@@ -1401,3 +1401,4 @@ class ConfigListItem(BaseListItem):
         if not config_id:
             return
         QGuiApplication.clipboard().setText(str(config_id))
+

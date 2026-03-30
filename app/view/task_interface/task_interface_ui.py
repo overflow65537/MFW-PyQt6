@@ -9,13 +9,13 @@ from PySide6.QtWidgets import (
 
 
 from app.core.core import ServiceCoordinator
-from app.view.task_interface.components.LogoutputWidget import LogoutputWidget
-from app.view.task_interface.components.ListToolBarWidget import (
+from app.view.task_interface.components.logoutput_widget import LogoutputWidget
+from app.view.task_interface.components.list_tool_bar_widget import (
     TaskListToolBarWidget,
     ConfigListToolBarWidget,
 )
-from app.view.task_interface.components.OptionWidget import OptionWidget
-from app.view.task_interface.components.StartBarWidget import StartBarWidget
+from app.view.task_interface.components.option_widget import OptionWidget
+from app.view.task_interface.components.start_bar_widget import StartBarWidget
 
 
 class UI_TaskInterface(object):
@@ -98,3 +98,4 @@ class UI_TaskInterface(object):
     def retranslateUi(self, TaskInterface):
         _translate = QCoreApplication.translate
         TaskInterface.setWindowTitle(_translate("TaskInterface", "Form"))
+

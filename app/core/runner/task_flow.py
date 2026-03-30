@@ -31,9 +31,9 @@ from maa.define import (
 from app.utils.notice import NoticeTiming, send_notice, send_thread
 
 from app.utils.logger import logger
-from app.core.service.Config_Service import ConfigService
+from app.core.service.config_service import ConfigService
 from app.core.utils.holiday import emit_holiday_startup_logs
-from app.core.service.Task_Service import TaskService
+from app.core.service.task_service import TaskService
 from app.core.runner.maafw import (
     MaaFW,
     MaaFWError,
@@ -44,7 +44,7 @@ from app.core.runner.maafw import (
 )
 from app.utils.controller_utils import ControllerHelper
 
-from app.core.Item import FromeServiceCoordinator, TaskItem
+from app.core.item import FromeServiceCoordinator, TaskItem
 
 
 def _ndarray_to_png_bytes(ndarray) -> bytes | None:

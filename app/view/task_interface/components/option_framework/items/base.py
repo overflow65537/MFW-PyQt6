@@ -24,7 +24,7 @@ from qfluentwidgets import BodyLabel, ComboBox, ToolTipFilter, isDarkTheme, qcon
 from qfluentwidgets.components.widgets.menu import RoundMenu
 
 from app.utils.logger import logger
-from app.view.task_interface.components.Option_Framework.animations import HeightAnimator
+from app.view.task_interface.components.option_framework.animations import HeightAnimator
 
 if TYPE_CHECKING:
     from PySide6.QtWidgets import QLayout

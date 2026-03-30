@@ -2,8 +2,8 @@ from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
 from app.utils.logger import logger
-from app.core.service.Config_Service import ConfigService
-from app.core.Item import TaskItem, CoreSignalBus
+from app.core.service.config_service import ConfigService
+from app.core.item import TaskItem, CoreSignalBus
 from app.common.constants import _RESOURCE_, _CONTROLLER_
 
 # 速通配置默认值

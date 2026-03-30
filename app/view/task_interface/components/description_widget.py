@@ -11,7 +11,7 @@ from qfluentwidgets import BodyLabel, ScrollArea, SimpleCardWidget
 
 from app.utils.logger import logger
 from app.utils.markdown_helper import render_markdown
-from app.view.task_interface.components.ImagePreviewDialog import ImagePreviewDialog
+from app.view.task_interface.components.image_preview_dialog import ImagePreviewDialog
 
 
 class DescriptionWidget(QWidget):
@@ -153,4 +153,5 @@ class DescriptionWidget(QWidget):
             # 打开图片预览对话框
             dialog = ImagePreviewDialog(image_path, self)
             dialog.exec()
+
 

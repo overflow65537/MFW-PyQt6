@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QVBoxLayout
 
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
-from app.view.task_interface.components.Option_Framework.OptionFormWidget import OptionFormWidget
+from app.view.task_interface.components.option_framework.option_form_widget import OptionFormWidget
 
 
 class ResourceSettingMixin:

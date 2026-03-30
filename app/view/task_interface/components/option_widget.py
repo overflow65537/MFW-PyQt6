@@ -16,18 +16,18 @@ from app.view.task_interface.animations.optionwidget import (
     DescriptionTransitionAnimator,
     OptionTransitionAnimator,
 )
-from app.view.task_interface.components.ImagePreviewDialog import ImagePreviewDialog
-from app.view.task_interface.components.Option_Framework import (
+from app.view.task_interface.components.image_preview_dialog import ImagePreviewDialog
+from app.view.task_interface.components.option_framework import (
     OptionFormWidget,
     SpeedrunConfigWidget,
 )
-from app.view.task_interface.components.Option_Widget_Mixin.PostActionSettingMixin import (
+from app.view.task_interface.components.option_widget_mixin.post_action_setting_mixin import (
     PostActionSettingMixin,
 )
-from app.view.task_interface.components.Option_Widget_Mixin.ResourceSettingMixin import (
+from app.view.task_interface.components.option_widget_mixin.resource_setting_mixin import (
     ResourceSettingMixin,
 )
-from app.view.task_interface.components.Option_Widget_Mixin.ControllerSettingMixin import (
+from app.view.task_interface.components.option_widget_mixin.controller_setting_mixin import (
     ControllerSettingWidget,
 )
 from ....core.core import ServiceCoordinator
@@ -1138,3 +1138,4 @@ class OptionWidget(QWidget, ResourceSettingMixin, PostActionSettingMixin):
             elif item.layout():
                 # 递归处理子布局
                 self._set_layout_enabled(item.layout(), enabled)
+

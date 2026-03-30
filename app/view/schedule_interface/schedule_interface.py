@@ -38,7 +38,7 @@ from qfluentwidgets import (
 
 from app.common.signal_bus import signalBus
 from app.core.core import ServiceCoordinator
-from app.core.service.Schedule_Service import (
+from app.core.service.schedule_service import (
     SCHEDULE_DAILY,
     SCHEDULE_MONTHLY,
     SCHEDULE_SINGLE,

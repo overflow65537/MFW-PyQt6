@@ -17,16 +17,16 @@ from qfluentwidgets import (
 )
 
 
-from app.view.task_interface.components.ListWidget import (
+from app.view.task_interface.components.list_widget import (
     TaskDragListWidget,
     ConfigListWidget,
 )
-from app.view.task_interface.components.AddTaskMessageBox import (
+from app.view.task_interface.components.add_task_message_box import (
     AddConfigDialog,
     AddTaskDialog,
 )
 from app.core.core import ServiceCoordinator
-from app.view.task_interface.components.ListItem import TaskListItem, ConfigListItem
+from app.view.task_interface.components.list_item import TaskListItem, ConfigListItem
 from app.common.signal_bus import signalBus
 from app.common.constants import _RESOURCE_, _CONTROLLER_, PRE_CONFIGURATION
 
@@ -554,3 +554,4 @@ class TaskListToolBarWidget(BaseListToolBarWidget):
             return False
         # 删除通过服务层执行，视图会通过fs系列信号刷新
         self.service_coordinator.delete_task(task_id)
+

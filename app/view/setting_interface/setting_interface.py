@@ -56,15 +56,15 @@ from app.core.core import ServiceCoordinator
 from app.utils.crypto import crypto_manager
 from app.utils.logger import logger
 from app.utils.update import Update
-from app.view.setting_interface.widget.ProxySettingCard import ProxySettingCard
+from app.view.setting_interface.widget.proxy_setting_card import ProxySettingCard
 from app.utils.hotkey_manager import GlobalHotkeyManager
-from app.view.setting_interface.widget.SliderSettingCard import SliderSettingCard
+from app.view.setting_interface.widget.slider_setting_card import SliderSettingCard
 import sys
-from app.view.setting_interface.widget.LineEditCard import (
+from app.view.setting_interface.widget.line_edit_card import (
     LineEditCard,
     MirrorCdkLineEditCard,
 )
-from app.view.setting_interface.widget.NoticeType import (
+from app.view.setting_interface.widget.notice_type import (
     QYWXNoticeType,
     DingTalkNoticeType,
     LarkNoticeType,
@@ -2957,3 +2957,4 @@ class SettingInterface(QWidget):
         """停止更新"""
         if self._updater and self._updater.isRunning():
             self._updater.stop()
+

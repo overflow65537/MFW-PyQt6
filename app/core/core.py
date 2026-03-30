@@ -7,16 +7,16 @@ import jsonc
 
 from PySide6.QtCore import QTimer
 
-from app.core.Item import (
+from app.core.item import (
     CoreSignalBus,
     FromeServiceCoordinator,
     ConfigItem,
     TaskItem,
 )
-from app.core.service.Config_Service import ConfigService, JsonConfigRepository
-from app.core.service.Schedule_Service import ScheduleService
-from app.core.service.Task_Service import TaskService
-from app.core.service.Option_Service import OptionService
+from app.core.service.config_service import ConfigService, JsonConfigRepository
+from app.core.service.schedule_service import ScheduleService
+from app.core.service.task_service import TaskService
+from app.core.service.option_service import OptionService
 from app.core.service.interface_manager import get_interface_manager, InterfaceManager
 from app.core.runner.task_flow import TaskFlowRunner
 from app.core.log_processor import CallbackLogProcessor

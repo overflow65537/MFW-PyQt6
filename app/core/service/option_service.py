@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional
 
-from app.core.service.Task_Service import TaskService
-from app.core.Item import CoreSignalBus
+from app.core.service.task_service import TaskService
+from app.core.item import CoreSignalBus
 
 
 class OptionService:

@@ -20,7 +20,7 @@ from qfluentwidgets import ComboBox, LineEdit, BodyLabel, ToolTipFilter, SwitchB
 import re
 from app.common.signal_bus import signalBus
 from app.utils.logger import logger
-from app.view.task_interface.components.Option_Framework.animations import HeightAnimator
+from app.view.task_interface.components.option_framework.animations import HeightAnimator
 
 
 class TooltipComboBox(ComboBox):
@@ -51,7 +51,7 @@ class TooltipComboBox(ComboBox):
 
     def _createComboMenu(self):
         """创建使用描述委托的下拉菜单"""
-        from app.view.task_interface.components.Option_Framework.items.base import (
+        from app.view.task_interface.components.option_framework.items.base import (
             _DescriptionComboBoxMenu,
         )
 

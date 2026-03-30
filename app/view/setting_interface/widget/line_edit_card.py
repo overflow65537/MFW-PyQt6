@@ -15,7 +15,7 @@ from qfluentwidgets import (
 )
 from qfluentwidgets import FluentIcon as FIF
 
-from app.view.setting_interface.widget.RightCheckPrimaryPushButton import (
+from app.view.setting_interface.widget.right_check_primary_push_button import (
     RightCheckPrimaryPushButton,
 )
 
@@ -194,3 +194,4 @@ class MirrorCdkLineEditCard(LineEditCard):
         if remaining_seconds >= 24 * 3600:
             return "#f59f00"
         return "#f03e3e"
+

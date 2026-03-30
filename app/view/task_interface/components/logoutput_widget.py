@@ -31,9 +31,9 @@ from app.common.signal_bus import signalBus
 from app.common.config import cfg
 from app.utils.logger import logger
 from app.core.core import ServiceCoordinator
-from app.view.task_interface.components.MonitorWidget import MonitorWidget
+from app.view.task_interface.components.monitor_widget import MonitorWidget
 from app.utils.markdown_helper import render_markdown
-from app.view.task_interface.components.LogItemWidget import LogItemWidget, LogItemData
+from app.view.task_interface.components.log_item_widget import LogItemWidget, LogItemData
 
 
 class LogoutputWidget(QWidget):
@@ -932,3 +932,4 @@ class LogoutputWidget(QWidget):
                 image_map[img_hash] = (data.image_bytes, [original_idx])
         
         return image_map
+

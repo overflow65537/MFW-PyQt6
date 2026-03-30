@@ -19,8 +19,8 @@ from PySide6.QtCore import (
 from qfluentwidgets import ListWidget, IndeterminateProgressRing, SimpleCardWidget
 
 from app.core.core import  ServiceCoordinator
-from app.core.Item import TaskItem, ConfigItem
-from app.view.task_interface.components.ListItem import TaskListItem, ConfigListItem, SpecialTaskListItem
+from app.core.item import TaskItem, ConfigItem
+from app.view.task_interface.components.list_item import TaskListItem, ConfigListItem, SpecialTaskListItem
 from app.utils.logger import logger
 from app.common.signal_bus import signalBus
 from app.common.constants import _RESOURCE_, _CONTROLLER_
@@ -1055,3 +1055,4 @@ class ConfigListWidget(BaseListWidget):
     def set_current_config(self, config_id: str):
         """设置当前选中配置项"""
         self.select_item(config_id)
+

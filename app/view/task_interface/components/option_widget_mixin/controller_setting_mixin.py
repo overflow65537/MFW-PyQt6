@@ -16,8 +16,8 @@ from app.utils.gpu_cache import gpu_cache
 from app.utils.logger import logger
 from app.common.config import cfg
 from app.core.core import ServiceCoordinator
-from app.widget.PathLineEdit import PathLineEdit
-from app.view.task_interface.components.Option_Widget_Mixin.DeviceFinderWidget import (
+from app.widget.path_line_edit import PathLineEdit
+from app.view.task_interface.components.option_widget_mixin.device_finder_widget import (
     DeviceFinderWidget,
 )
 from PySide6.QtWidgets import QWidget
@@ -1869,3 +1869,4 @@ class ControllerSettingWidget(QWidget):
         # 清理字典
         self.resource_setting_widgets.clear()
         self.current_controller_type = None
+
