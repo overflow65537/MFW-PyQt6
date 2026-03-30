@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal
 from qfluentwidgets import ComboBox, LineEdit, BodyLabel, ToolTipFilter, SwitchButton, isDarkTheme, qconfig
+from qfluentwidgets.components.widgets.combo_box import ComboBoxMenu
 import re
 from app.common.signal_bus import signalBus
 from app.utils.logger import logger
@@ -49,7 +50,7 @@ class TooltipComboBox(ComboBox):
         super().clear()
         self._item_descriptions.clear()
 
-    def _createComboMenu(self):
+    def _createComboMenu(self) -> ComboBoxMenu:
         """创建使用描述委托的下拉菜单"""
         from app.view.task_interface.components.option_framework.items.base import (
             _DescriptionComboBoxMenu,

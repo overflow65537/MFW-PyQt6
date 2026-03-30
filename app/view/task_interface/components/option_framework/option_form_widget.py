@@ -232,7 +232,13 @@ class OptionFormWidget(QWidget):
                 if option_item.current_value is not None:
                     option_item._update_children_for_checkbox(skip_animation=True)
     
-    def _apply_single_child_config(self, option_item: "OptionItemBase", option_value: str, child_config: Any, target_widget: "OptionItemBase" = None):
+    def _apply_single_child_config(
+        self,
+        option_item: "OptionItemBase",
+        option_value: str,
+        child_config: Any,
+        target_widget: Optional["OptionItemBase"] = None,
+    ):
         """
         应用单个子选项的配置
         
