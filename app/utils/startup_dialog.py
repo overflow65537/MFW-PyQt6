@@ -360,6 +360,45 @@ class StartupDialogManager(QObject):
         finally:
             self._cleanup_dummy_parent()
 
+    def show_startup_failure(
+        self, exc_type, exc_value, exc_traceback
+    ) -> None:
+        """显示启动阶段的致命错误弹窗"""
+        tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        tb_text = "".join(tb_lines)
+
+        config = StartupDialogConfig(
+            dialog_type=StartupDialogType.CRITICAL,
+            title=self.tr("Program Failed to Start"),
+            content=self.tr(
+                "The program failed during startup and could not continue.\n\n"
+                "Error type: {exc_type}\n"
+                "Error message: {exc_value}\n\n"
+                "You can copy the detailed stack trace below and report it to the developer."
+            ).format(exc_type=exc_type.__name__, exc_value=str(exc_value)),
+            detail=tb_text,
+            buttons=[
+                DialogButton(
+                    text=self.tr("Copy Error Info"),
+                    is_primary=False,
+                    callback=lambda: self._copy_to_clipboard(tb_text),
+                ),
+                DialogButton(
+                    text=self.tr("Exit"),
+                    is_primary=True,
+                ),
+            ],
+            exit_after_close=True,
+            exit_code=1,
+        )
+
+        self._ensure_app_exists()
+        try:
+            dialog = StartupDialog(config, self._get_parent())
+            dialog.exec()
+        finally:
+            self._cleanup_dummy_parent()
+
     def show_custom(
         self,
         title: str,
@@ -432,6 +471,14 @@ def show_uncaught_exception_dialog(
     """显示未捕获异常的弹窗"""
     manager = StartupDialogManager(parent)
     manager.show_uncaught_exception(exc_type, exc_value, exc_traceback)
+
+
+def show_startup_failure_dialog(
+    exc_type, exc_value, exc_traceback, parent=None
+) -> None:
+    """显示启动阶段的致命错误弹窗"""
+    manager = StartupDialogManager(parent)
+    manager.show_startup_failure(exc_type, exc_value, exc_traceback)
 
 
 def show_custom_dialog(

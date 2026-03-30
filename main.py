@@ -28,6 +28,7 @@ import argparse
 import atexit
 import hashlib
 import tempfile
+import traceback
 
 
 # 设置工作目录为运行方式位置
@@ -36,23 +37,6 @@ if getattr(sys, "frozen", False):
     os.environ["MAAFW_BINARY_PATH"] = os.getcwd()
 else:
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
-
-from app.utils.logger import logger
-from qasync import QEventLoop, asyncio
-
-# 应用qasync Windows平台补丁
-import app.utils.qasync_patch
-from qfluentwidgets import FluentTranslator
-from PySide6.QtCore import Qt, QTranslator
-from PySide6.QtWidgets import QApplication
-
-
-from app.common.__version__ import __version__
-from app.common.config import cfg
-from app.view.main_window.main_window import MainWindow
-from app.common.config import Language
-from app.utils.crypto import crypto_manager
 
 
 class _SingleInstanceLock:
@@ -131,7 +115,33 @@ class _SingleInstanceLock:
                 self._fp = None
 
 
-if __name__ == "__main__":
+def _show_fatal_startup_error(exc_type, exc_value, exc_traceback) -> None:
+    """显示启动阶段致命错误，优先使用项目内 Fluent 弹窗。"""
+    try:
+        from app.utils.startup_dialog import show_startup_failure_dialog
+
+        show_startup_failure_dialog(exc_type, exc_value, exc_traceback)
+    except Exception:
+        tb_text = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+        print("程序启动失败。", file=sys.stderr)
+        print(tb_text, file=sys.stderr)
+
+
+def _run() -> int:
+    from qasync import QEventLoop, asyncio
+
+    # 应用 qasync Windows 平台补丁
+    import app.utils.qasync_patch
+    from qfluentwidgets import FluentTranslator
+    from PySide6.QtCore import Qt, QTranslator
+    from PySide6.QtWidgets import QApplication
+
+    from app.common.__version__ import __version__
+    from app.common.config import Language, cfg, init_language_on_first_run
+    from app.utils.crypto import crypto_manager
+    from app.utils.logger import logger
+
+
     _instance_key = os.path.abspath(
         sys.executable if getattr(sys, "frozen", False) else __file__
     )
@@ -200,8 +210,6 @@ if __name__ == "__main__":
         os.environ["QT_SCALE_FACTOR"] = str(cfg.get(cfg.dpiScale))
 
     # 首次启动时自动检测系统语言
-    from app.common.config import init_language_on_first_run
-
     init_language_on_first_run()
 
     # 创建Qt应用实例
@@ -293,6 +301,8 @@ if __name__ == "__main__":
         logger.warning(f"GPU 信息缓存初始化失败，忽略: {e}")
 
     # 创建主窗口
+    from app.view.main_window.main_window import MainWindow
+
     w = MainWindow(
         loop=loop,
         auto_run=args.direct_run,
@@ -333,3 +343,15 @@ if __name__ == "__main__":
                 )
         except Exception as e:
             logger.warning(f"取消待处理任务时出错: {e}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(_run())
+    except SystemExit:
+        raise
+    except Exception:
+        _show_fatal_startup_error(*sys.exc_info())
+        sys.exit(1)
