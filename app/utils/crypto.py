@@ -54,12 +54,22 @@ class CryptoManager:
 
     def encrypt_payload(self, value: Union[bytes, str]) -> bytes:
         """将字符串或字节数据加密后返回字节串。"""
-        data = value if isinstance(value, bytes) else value.encode("utf-8")
+        if isinstance(value, bytes):
+            data = value
+        elif isinstance(value, str):
+            data = value.encode("utf-8")
+        else:
+            raise TypeError("Value must be bytes or str")
         return self.get_fernet().encrypt(data)
 
     def decrypt_payload(self, value: Union[bytes, str]) -> bytes:
         """将密文还原为原始字节串。"""
-        token = value if isinstance(value, bytes) else value.encode("utf-8")
+        if isinstance(value, bytes):
+            token = value
+        elif isinstance(value, str):
+            token = value.encode("utf-8")
+        else:
+            raise TypeError("Value must be bytes or str")
         return self.get_fernet().decrypt(token)
 
 

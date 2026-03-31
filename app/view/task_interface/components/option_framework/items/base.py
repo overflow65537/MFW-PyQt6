@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtGui import QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from qfluentwidgets import BodyLabel, ComboBox, ToolTipFilter, isDarkTheme, qconfig
-from qfluentwidgets.components.widgets.menu import RoundMenu
+from qfluentwidgets.components.widgets.combo_box import ComboBoxMenu
 
 from app.utils.logger import logger
 from app.view.task_interface.components.option_framework.animations import HeightAnimator
@@ -67,13 +67,13 @@ class _DescriptionIndicatorDelegate(QStyledItemDelegate):
         size.setHeight(h)
         return size
 
-    def paint(self, painter: "QPainter", option: "QStyleOptionViewItem", index):
+    def paint(self, painter: QPainter, option: Any, index):
         from PySide6.QtCore import QRectF
         from PySide6.QtGui import QColor, QPen
         from qfluentwidgets import themeColor
 
         # 检查分隔符
-        if index.model().data(index, Qt.DecorationRole) == "seperator":
+        if index.model().data(index, Qt.ItemDataRole.DecorationRole) == "seperator":
             painter.save()
             c = 0 if not isDarkTheme() else 255
             pen = QPen(QColor(c, c, c, 25), 1)
@@ -111,14 +111,14 @@ class _DescriptionIndicatorDelegate(QStyledItemDelegate):
             rect = option.rect
 
             # 计算文本区域偏移（考虑图标）
-            icon = index.data(Qt.DecorationRole)
+            icon = index.data(Qt.ItemDataRole.DecorationRole)
             text_x = 12
             if icon and not icon.isNull():
                 text_x = 44  # 为图标留出空间
 
             # 绘制主文本（上半部分）
             main_font = painter.font()
-            text = index.data(Qt.DisplayRole) or ""
+            text = index.data(Qt.ItemDataRole.DisplayRole) or ""
             text_color = QColor(255, 255, 255) if isDarkTheme() else QColor(0, 0, 0)
             painter.setPen(text_color)
             painter.setFont(main_font)
@@ -204,24 +204,20 @@ class TooltipComboBox(ComboBox):
         super().clear()
         self._item_descriptions.clear()
 
-    def _createComboMenu(self):
+    def _createComboMenu(self) -> ComboBoxMenu:
         """创建使用描述委托的下拉菜单"""
-        from qfluentwidgets.components.widgets.menu import (
-            MenuAnimationType,
-        )
-
         menu = _DescriptionComboBoxMenu(self._item_descriptions, parent=self)
         return menu
 
 
-class _DescriptionComboBoxMenu(RoundMenu):
+class _DescriptionComboBoxMenu(ComboBoxMenu):
     """支持描述文本的下拉框菜单"""
 
     NORMAL_ITEM_HEIGHT = 33
     DESCRIPTION_EXTRA_HEIGHT = 18
 
     def __init__(self, descriptions: List[Optional[str]], parent=None):
-        super().__init__(title="", parent=parent)
+        super().__init__(parent=parent)
         self._descriptions = list(descriptions)
 
         self.view.setViewportMargins(0, 2, 0, 6)
@@ -550,6 +546,10 @@ class OptionItemBase(QWidget):
                 return key
 
         return None
+
+    def _update_children_for_checkbox(self, skip_animation: bool = False):
+        """为多选子类提供统一接口，默认沿用普通子选项可见性更新逻辑。"""
+        self._update_children_visibility(self.current_value, skip_animation=skip_animation)
 
     def _preload_child_options(self):
         """预加载所有子选项"""
