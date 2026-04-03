@@ -1420,7 +1420,8 @@ class TaskFlowRunner(QObject):
         if manual:
             # 在任何情况下都记录手动停止的意图，避免后续错误发送通知
             self._manual_stop = True
-        if self.need_stop:
+        already_stopping = self.need_stop
+        if already_stopping and not self.maafw.has_active_runtime():
             return
         self.need_stop = True
         self._stop_task_timeout()
@@ -1436,6 +1437,14 @@ class TaskFlowRunner(QObject):
             )
         self._is_running = False
         logger.info("任务流停止")
+
+    def shutdown_runtime_sync(self) -> None:
+        """同步强制清理运行态，供窗口退出阶段兜底调用。"""
+        self.need_stop = True
+        self._manual_stop = True
+        self._is_running = False
+        self._stop_task_timeout()
+        self.maafw.force_shutdown()
 
     def _start_task_timeout(self, entry: str):
         """开始任务超时计时，每小时检查一次（单任务模式下不启动）"""

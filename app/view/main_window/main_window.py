@@ -2632,33 +2632,8 @@ class MainWindow(MSFluentWindow):
 
     def _clear_maafw_sync(self):
         """同步清理 maafw（回退逻辑）"""
-        maafw = self.service_coordinator.task_runner.maafw
         try:
-            if maafw.tasker and maafw.tasker.running:
-                logger.debug("停止任务线程")
-                maafw.tasker.post_stop().wait()
-                logger.debug("停止任务线程完成")
-            maafw.tasker = None
-            if maafw.resource:
-                maafw.resource.clear()
-            maafw.resource = None
-            maafw.controller = None
-            if maafw.agent:
-                maafw.agent.disconnect()
-            maafw.agent = None
-            agent_proc = getattr(maafw, "agent_thread", None)
-            if agent_proc:
-                try:
-                    agent_proc.terminate()
-                    try:
-                        agent_proc.wait(timeout=5)
-                    except Exception:
-                        agent_proc.kill()
-                    logger.debug("终止 maafw agent 子进程")
-                except Exception as agent_err:
-                    logger.warning("终止 maafw agent 失败: %s", agent_err)
-                finally:
-                    maafw.agent_thread = None
+            self.service_coordinator.task_runner.shutdown_runtime_sync()
         except Exception as e:
             logger.exception("清理 maafw 失败", exc_info=e)
 

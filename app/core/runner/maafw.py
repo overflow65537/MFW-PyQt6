@@ -784,6 +784,25 @@ class MaaFW(QObject):
 
     @asyncify
     def stop_task(self):
+        self._cleanup_runtime()
+
+    def has_active_runtime(self) -> bool:
+        return any(
+            (
+                self.tasker is not None,
+                self.resource is not None,
+                self.controller is not None,
+                self.agent is not None,
+                self.agent_thread is not None,
+                self.agent_output_thread is not None,
+            )
+        )
+
+    def force_shutdown(self) -> None:
+        """同步强制清理 MaaFW 运行态，供应用退出阶段调用。"""
+        self._cleanup_runtime()
+
+    def _cleanup_runtime(self) -> None:
         if self.tasker:
             try:
                 self.tasker.post_stop().wait()
@@ -791,7 +810,6 @@ class MaaFW(QObject):
                 logger.error(f"停止任务失败: {e}")
             finally:
                 self.tasker = None
-            self.tasker = None
         if self.resource:
             try:
                 self.resource.clear()
@@ -799,16 +817,17 @@ class MaaFW(QObject):
                 logger.error(f"清除资源失败: {e}")
             finally:
                 self.resource = None
-            self.resource = None
+        if self.controller:
+            self.controller = None
         if self.agent:
             try:
                 self.agent.disconnect()
-                self.agent_data_raw = None
             except Exception as e:
                 logger.error(f"断开agent连接失败: {e}")
             finally:
                 self.agent = None
-            self.agent = None
+        self.agent_data_raw = None
+        self.agent_env_vars = {}
         if self.agent_thread:
             try:
                 self.agent_thread.terminate()
@@ -817,6 +836,10 @@ class MaaFW(QObject):
                 except subprocess.TimeoutExpired:
                     logger.warning("等待 agent 终止超时，执行 kill 操作")
                     self.agent_thread.kill()
+                    try:
+                        self.agent_thread.wait(timeout=1)
+                    except Exception:
+                        pass
             except Exception as e:
                 logger.error(f"终止agent线程失败: {e}")
             finally:
