@@ -88,6 +88,7 @@ from qfluentwidgets import (
     InfoBar,
     InfoBarPosition,
     MSFluentWindow,
+    IndeterminateProgressRing,
 )
 from qfluentwidgets import FluentIcon as FIF
 
@@ -271,6 +272,13 @@ class MainWindow(MSFluentWindow):
         self._background_pixmap_original = None
         self._background_opacity_effect = None
         self._tutorial_overlay = None
+        self._shutdown_overlay = None
+        self._shutdown_indicator = None
+        self._shutdown_label = None
+        self._shutdown_sub_label = None
+        self._shutdown_cleanup_started = False
+        self._shutdown_cleanup_completed = False
+        self._allow_window_close = False
         
         super().__init__()
         self._loop = loop
@@ -326,6 +334,7 @@ class MainWindow(MSFluentWindow):
 
         # 初始化窗口
         self.initWindow()
+        self._init_shutdown_overlay()
         # 创建子界面
         self.TaskInterface = TaskInterface(self.service_coordinator)
         self.addSubInterface(self.TaskInterface, FIF.CHECKBOX, self.tr("Task"))
@@ -2570,6 +2579,81 @@ class MainWindow(MSFluentWindow):
         self._update_background_geometry()
         if hasattr(self, "_tutorial_overlay") and self._tutorial_overlay:
             self._tutorial_overlay.resize(self.size())
+        if self._shutdown_overlay:
+            self._shutdown_overlay.setGeometry(self.rect())
+
+    def _init_shutdown_overlay(self) -> None:
+        """初始化关闭时的加载遮罩。"""
+        self._shutdown_overlay = QWidget(self)
+        self._shutdown_overlay.hide()
+        self._shutdown_overlay.setGeometry(self.rect())
+        self._shutdown_overlay.setStyleSheet("background-color: rgba(0, 0, 0, 110);")
+
+        layout = QVBoxLayout(self._shutdown_overlay)
+        layout.setContentsMargins(32, 32, 32, 32)
+        layout.setSpacing(12)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self._shutdown_indicator = IndeterminateProgressRing(self._shutdown_overlay)
+        self._shutdown_indicator.setFixedSize(56, 56)
+        layout.addWidget(
+            self._shutdown_indicator, 0, Qt.AlignmentFlag.AlignHCenter
+        )
+
+        self._shutdown_label = QLabel(self.tr("Stopping task..."), self._shutdown_overlay)
+        self._shutdown_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._shutdown_label.setStyleSheet(
+            "color: white; font-size: 18px; font-weight: 600; background: transparent;"
+        )
+        layout.addWidget(self._shutdown_label)
+
+        self._shutdown_sub_label = QLabel(
+            self.tr("Please wait..."), self._shutdown_overlay
+        )
+        self._shutdown_sub_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._shutdown_sub_label.setStyleSheet(
+            "color: rgba(255, 255, 255, 0.88); font-size: 13px; background: transparent;"
+        )
+        layout.addWidget(self._shutdown_sub_label)
+
+    def _show_shutdown_overlay(self) -> None:
+        if not self._shutdown_overlay or not self._shutdown_indicator:
+            return
+        self._shutdown_overlay.setGeometry(self.rect())
+        self._shutdown_overlay.raise_()
+        self._shutdown_overlay.show()
+        self._shutdown_indicator.start()
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        QApplication.processEvents()
+
+    def _hide_shutdown_overlay(self) -> None:
+        if self._shutdown_indicator:
+            self._shutdown_indicator.stop()
+        if self._shutdown_overlay:
+            self._shutdown_overlay.hide()
+        QApplication.restoreOverrideCursor()
+
+    def _is_task_shutdown_pending(self) -> bool:
+        task_runner = getattr(self.service_coordinator, "task_runner", None)
+        if task_runner is None:
+            return False
+        try:
+            return bool(
+                task_runner.is_running or task_runner.maafw.has_active_runtime()
+            )
+        except Exception:
+            return False
+
+    def _continue_close_after_task_shutdown(self) -> None:
+        if self._shutdown_cleanup_started:
+            return
+        self._shutdown_cleanup_started = True
+        try:
+            self.clear_thread_async()
+        finally:
+            self._shutdown_cleanup_completed = True
+            self._allow_window_close = True
+            self.close()
 
     def _save_window_geometry_if_needed(self):
         """在关闭时保存当前窗口的位置与大小，用于下次恢复。"""
@@ -2583,6 +2667,13 @@ class MainWindow(MSFluentWindow):
 
     def closeEvent(self, e):
         """关闭事件"""
+        if not self._allow_window_close and self._is_task_shutdown_pending():
+            e.ignore()
+            self._save_window_geometry_if_needed()
+            self._show_shutdown_overlay()
+            QTimer.singleShot(50, self._continue_close_after_task_shutdown)
+            return
+
         self._save_window_geometry_if_needed()
 
         # 清理托盘图标，避免 Windows 托盘残影
@@ -2596,7 +2687,10 @@ class MainWindow(MSFluentWindow):
         self.themeListener.deleteLater()
 
         e.accept()
-        QTimer.singleShot(0, self.clear_thread_async)
+        if not self._shutdown_cleanup_completed:
+            QTimer.singleShot(0, self.clear_thread_async)
+        else:
+            self._hide_shutdown_overlay()
         super().closeEvent(e)
 
     def _onThemeChangedFinished(self):
