@@ -286,6 +286,55 @@ class OptionFormWidget(QWidget):
             else:
                 # 非字典值直接传递
                 child_widget.set_value(child_config)
+
+    def _get_active_child_option_values(self, option_item: "OptionItemBase") -> set[str]:
+        """获取当前处于激活状态的子选项分支。"""
+        if option_item.config_type == "checkbox":
+            current_value = getattr(option_item, "current_value", []) or []
+            return {str(value) for value in current_value}
+
+        child_definitions = option_item.config.get("children", {})
+        if not child_definitions or getattr(option_item, "current_value", None) is None:
+            return set()
+
+        current_value = option_item.current_value
+        selected_str = str(current_value)
+        matched_key = option_item._match_child_key(
+            child_definitions,
+            current_value,
+            selected_str,
+            selected_str.strip(),
+        )
+        return {str(matched_key)} if matched_key is not None else set()
+
+    def _resolve_child_target(
+        self,
+        option_item: "OptionItemBase",
+        config_key: str,
+        active_option_values: set[str],
+    ) -> tuple[Optional[str], Optional["OptionItemBase"]]:
+        """根据配置 key 定位子选项，优先命中当前激活分支。"""
+        child_definitions = option_item.config.get("children", {})
+
+        if config_key in child_definitions:
+            return str(config_key), None
+
+        direct_widget = option_item.child_options.get(config_key)
+        if direct_widget:
+            option_value = option_item.get_option_value_for_child_key(config_key)
+            return (str(option_value) if option_value is not None else None), direct_widget
+
+        for option_value in active_option_values:
+            child_key = option_item._child_name_map.get((option_value, config_key))
+            if child_key:
+                return option_value, option_item.child_options.get(child_key)
+
+        result = option_item.find_child_by_name(config_key)
+        if result:
+            option_value, child_widget = result
+            return str(option_value), child_widget
+
+        return None, None
     
     def _apply_children_config(self, option_item: "OptionItemBase", children_config: Dict[str, Any]):
         """
@@ -297,26 +346,18 @@ class OptionFormWidget(QWidget):
         if not children_config:
             return
 
-        child_definitions = option_item.config.get("children", {})
+        active_option_values = self._get_active_child_option_values(option_item)
 
         for config_key, child_cfg in children_config.items():
-            # 跳过标记为 hidden 的子选项（hidden=True）
+            option_value, child_widget = self._resolve_child_target(
+                option_item, config_key, active_option_values
+            )
+
+            # 跳过非当前激活分支上的 hidden 子选项；若 hidden 标记陈旧但当前分支已激活，则仍尝试应用
             if isinstance(child_cfg, dict) and child_cfg.get("hidden", False):
-                logger.debug(f"跳过隐藏的子选项: option_key={option_item.key}, config_key={config_key}")
-                continue
-            
-            option_value = None
-            child_widget = None
-            
-            # 尝试方式1：config_key 是 option_value
-            if config_key in child_definitions:
-                option_value = config_key
-            
-            # 尝试方式2：config_key 是 child_name
-            if not option_value:
-                result = option_item.find_child_by_name(config_key)
-                if result:
-                    option_value, child_widget = result
+                if not option_value or str(option_value) not in active_option_values:
+                    logger.debug(f"跳过隐藏的子选项: option_key={option_item.key}, config_key={config_key}")
+                    continue
 
             if option_value and child_cfg:
                 # 如果 child_cfg 是字典且包含 hidden 字段（但 hidden=False），移除 hidden 字段后应用

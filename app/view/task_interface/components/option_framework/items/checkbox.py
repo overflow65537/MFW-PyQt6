@@ -189,19 +189,30 @@ class CheckBoxOptionItem(OptionItemBase):
         # 递归获取子选项的配置
         children_config: Dict[str, Any] = {}
         selected_set = set(self.current_value)
+        child_name_counts: Dict[str, int] = {}
 
         children_def = self.config.get("children", {})
+
+        for child_widget in self.child_options.values():
+            if child_widget is None:
+                continue
+            child_name = child_widget.config.get("name", "")
+            if child_name:
+                child_name_counts[child_name] = child_name_counts.get(child_name, 0) + 1
 
         for child_key, child_widget in self.child_options.items():
             if child_widget is None:
                 continue
             child_option = child_widget.get_option()
             child_name = child_widget.config.get("name", "")
-            config_key = child_name if child_name else child_key
+            if child_name and child_name_counts.get(child_name, 0) == 1:
+                config_key = child_name
+            else:
+                config_key = child_key
 
-            # 判断该子选项所属的 case 是否被选中
+            # hidden 应由当前是否选中决定，避免父容器尚未显示时误判
             option_value = self.get_option_value_for_child_key(child_key)
-            is_active = option_value in selected_set and child_widget.isVisible()
+            is_active = option_value in selected_set
 
             if child_widget.config_type in ["input", "inputs"] and "children" not in child_option:
                 if not is_active:

@@ -132,6 +132,7 @@ class ComboBoxOptionItem(OptionItemBase):
         # 递归获取子选项的配置
         children_config = {}
         active_child_keys = set()
+        child_name_counts: Dict[str, int] = {}
 
         # 记录当前选中值对应的子选项键
         children_def = self.config.get("children", {})
@@ -145,6 +146,12 @@ class ComboBoxOptionItem(OptionItemBase):
         if matched_key:
             active_child_keys = set(self._child_value_map.get(matched_key, []))
 
+        for child_widget in self.child_options.values():
+            if child_widget:
+                child_name = child_widget.config.get("name", "")
+                if child_name:
+                    child_name_counts[child_name] = child_name_counts.get(child_name, 0) + 1
+
         # 获取所有已创建的子选项配置
         for child_key, child_widget in self.child_options.items():
             if child_widget:
@@ -152,12 +159,15 @@ class ComboBoxOptionItem(OptionItemBase):
 
                 # 获取子选项的 name（用于简洁的配置保存格式）
                 child_name = child_widget.config.get("name", "")
-                # 使用 child_name 作为配置 key（如果存在），否则使用内部 key
-                config_key = child_name if child_name else child_key
+                # 同名子选项可能出现在多个分支下，此时必须回退到内部 key 避免互相覆盖
+                if child_name and child_name_counts.get(child_name, 0) == 1:
+                    config_key = child_name
+                else:
+                    config_key = child_key
 
-                # 检查子选项是否被隐藏
+                # hidden 应由当前选中的 case 决定，避免父容器尚未显示时误判
                 is_active_child = child_key in active_child_keys
-                is_hidden = not (is_active_child and child_widget.isVisible())
+                is_hidden = not is_active_child
 
                 # 对于 input 类型的子选项，如果只有 value，直接使用值
                 if child_widget.config_type in ["input", "inputs"] and "children" not in child_option:

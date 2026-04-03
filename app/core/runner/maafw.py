@@ -24,12 +24,7 @@ from maa.context import Context, ContextEventSink
 from maa.custom_action import CustomAction
 from maa.custom_recognition import CustomRecognition
 
-from maa.controller import (
-    AdbController,
-    Win32Controller,
-    PlayCoverController,
-    GamepadController,
-)
+from maa.controller import AdbController, Win32Controller
 from maa.tasker import Tasker
 from maa.agent_client import AgentClient
 from maa.resource import Resource
@@ -62,6 +57,16 @@ from maa.controller import ControllerEventSink, Controller, NotificationType
 from maa.resource import ResourceEventSink, Resource
 from maa.tasker import TaskerEventSink, Tasker
 from maa.context import ContextEventSink, Context
+
+try:
+    from maa.controller import PlayCoverController
+except ImportError:
+    PlayCoverController = None
+
+try:
+    from maa.controller import GamepadController
+except ImportError:
+    GamepadController = None
 
 class MaaContextSink(ContextEventSink):
     def __init__(self, emit_callback=None):
@@ -190,9 +195,7 @@ class MaaFW(QObject):
     callback = Signal(dict)
 
     resource: Resource | None
-    controller: (
-        AdbController | Win32Controller | PlayCoverController | GamepadController | None
-    )
+    controller: Controller | None
     tasker: Tasker | None
     agent: AgentClient | None
 
@@ -596,6 +599,8 @@ class MaaFW(QObject):
 
     @asyncify
     def connect_playcover(self, address: str, uuid: str) -> bool:
+        if PlayCoverController is None:
+            raise RuntimeError("当前安装的 maa 版本不支持 PlayCoverController")
         controller = PlayCoverController(address, uuid)
         controller = self._init_controller(controller)
         connected = controller.post_connection().wait().succeeded
@@ -611,6 +616,8 @@ class MaaFW(QObject):
         gamepad_type: int = MaaGamepadTypeEnum.Xbox360,
         screencap_method: int = MaaWin32ScreencapMethodEnum.DXGI_DesktopDup,
     ) -> bool:
+        if GamepadController is None:
+            raise RuntimeError("当前安装的 maa 版本不支持 GamepadController")
         controller = GamepadController(hwnd, gamepad_type, screencap_method)
         controller = self._init_controller(controller)
         connected = controller.post_connection().wait().succeeded
@@ -619,12 +626,7 @@ class MaaFW(QObject):
             return False
         return True
 
-    def _init_controller(
-        self,
-        controller: (
-            AdbController | Win32Controller | PlayCoverController | GamepadController
-        ),
-    ) -> AdbController | Win32Controller | PlayCoverController | GamepadController:
+    def _init_controller(self, controller: Controller) -> Controller:
         if self.maa_controller_sink:
             controller.add_sink(self.maa_controller_sink)
         self.controller = controller

@@ -279,12 +279,16 @@ class TaskService:
                 continue
 
             for index, child_option_key in enumerate(child_keys):
-                child_key = f"{option_key}_child_{case_name}_{child_option_key}_{index}"
-                if child_key in children:
-                    if case_name == selected_case_name:
-                        children[child_key].pop("hidden", None)
-                    else:
-                        children[child_key]["hidden"] = True
+                candidate_keys = [
+                    f"{option_key}_child_{case_name}_{child_option_key}_{index}",
+                    child_option_key,
+                ]
+                for child_key in candidate_keys:
+                    if child_key in children and isinstance(children[child_key], dict):
+                        if case_name == selected_case_name:
+                            children[child_key].pop("hidden", None)
+                        else:
+                            children[child_key]["hidden"] = True
 
     def _update_children_visibility_checkbox(
         self,
@@ -315,12 +319,16 @@ class TaskService:
                 continue
 
             for index, child_option_key in enumerate(child_keys):
-                child_key = f"{option_key}_child_{case_name}_{child_option_key}_{index}"
-                if child_key in children:
-                    if case_name in selected_set:
-                        children[child_key].pop("hidden", None)
-                    else:
-                        children[child_key]["hidden"] = True
+                candidate_keys = [
+                    f"{option_key}_child_{case_name}_{child_option_key}_{index}",
+                    child_option_key,
+                ]
+                for child_key in candidate_keys:
+                    if child_key in children and isinstance(children[child_key], dict):
+                        if case_name in selected_set:
+                            children[child_key].pop("hidden", None)
+                        else:
+                            children[child_key]["hidden"] = True
 
     def reload_interface(self, interface: Dict[str, Any]):
         """刷新 interface 数据，用于热更新后同步"""
