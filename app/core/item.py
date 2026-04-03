@@ -43,6 +43,22 @@ class FromeServiceCoordinator(QObject):
     )  # 控制开始按钮状态和文本，载荷如 {"text": "开始", "status": "enabled"}
 
 
+class RunnerEvents(QObject):
+    """Runner 运行时事件，仅供 Core 内部向协调器上报。"""
+
+    callback = Signal(dict)
+    log_output = Signal(str, str)
+    set_window_title = Signal(str)
+    task_status_changed = Signal(str, str)
+    task_flow_finished = Signal(dict)
+    log_clear_requested = Signal()
+    info_bar_requested = Signal(str, str)
+    focus_toast = Signal(str)
+    focus_notification = Signal(str)
+    focus_dialog = Signal(str)
+    focus_modal = Signal(str)
+
+
 # ==================== 数据模型 ====================
 @dataclass
 class TaskItem:

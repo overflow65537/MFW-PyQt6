@@ -6,8 +6,9 @@ alwaysApply: true
 # MFW-PyQt6 AI Rules
 
 - Treat `.github/copilot-instructions.md` as the canonical project architecture guide.
-- `app/core/service/` and `app/core/runner/` must not add new direct imports of `app.common.signal_bus.signalBus`.
-- Prefer `Runner Signal -> ServiceCoordinator -> signalBus -> View` for runtime notifications.
+- `app/core/runner/` must not directly import or emit `app.common.signal_bus.signalBus`; route runtime events through `RunnerEvents`/Runner signals to `ServiceCoordinator`.
+- `app/core/service/` must not add new direct imports of `app.common.signal_bus.signalBus`.
+- Prefer `RunnerEvents/Runner Signal -> ServiceCoordinator -> signalBus -> View` for runtime notifications.
 - View code should call `ServiceCoordinator` methods instead of mutating model state or reaching into service internals.
 - Widget code must stay UI-only and must not import Core, Service, or `ServiceCoordinator`.
 - Keep business logic out of View; keep UI logic out of Core/Service.

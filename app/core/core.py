@@ -5,11 +5,12 @@ import shutil
 
 import jsonc
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, QObject, Qt, Slot
 
 from app.core.item import (
     CoreSignalBus,
     FromeServiceCoordinator,
+    RunnerEvents,
     ConfigItem,
     TaskItem,
 )
@@ -24,6 +25,54 @@ from app.utils.logger import logger
 from app.common.signal_bus import signalBus
 
 
+class _RunnerUiSignalBridge(QObject):
+    """将 Runner 信号安全转发到全局 signalBus。"""
+
+    @Slot(dict)
+    def forward_callback(self, payload: dict):
+        signalBus.callback.emit(payload)
+
+    @Slot(str, str)
+    def forward_log_output(self, level: str, text: str):
+        signalBus.log_output.emit(level, text)
+
+    @Slot(str)
+    def forward_set_window_title(self, title: str):
+        signalBus.set_window_title.emit(title)
+
+    @Slot(str, str)
+    def forward_task_status_changed(self, task_id: str, status: str):
+        signalBus.task_status_changed.emit(task_id, status)
+
+    @Slot(dict)
+    def forward_task_flow_finished(self, payload: dict):
+        signalBus.task_flow_finished.emit(payload)
+
+    @Slot()
+    def forward_log_clear_requested(self):
+        signalBus.log_clear_requested.emit()
+
+    @Slot(str, str)
+    def forward_info_bar_requested(self, level: str, message: str):
+        signalBus.info_bar_requested.emit(level, message)
+
+    @Slot(str)
+    def forward_focus_toast(self, message: str):
+        signalBus.focus_toast.emit(message)
+
+    @Slot(str)
+    def forward_focus_notification(self, message: str):
+        signalBus.focus_notification.emit(message)
+
+    @Slot(str)
+    def forward_focus_dialog(self, message: str):
+        signalBus.focus_dialog.emit(message)
+
+    @Slot(str)
+    def forward_focus_modal(self, message: str):
+        signalBus.focus_modal.emit(message)
+
+
 class ServiceCoordinator:
     """服务协调器，整合配置、任务和选项服务"""
 
@@ -36,6 +85,7 @@ class ServiceCoordinator:
         # 初始化信号总线
         self.signal_bus = CoreSignalBus()
         self.fs_signal_bus = FromeServiceCoordinator()
+        self.runner_events = RunnerEvents()
         
         # 存储待显示的错误信息（用于在 UI 初始化完成后显示）
         self._pending_error_message: tuple[str, str] | None = None
@@ -92,13 +142,15 @@ class ServiceCoordinator:
         self.task_runner = TaskFlowRunner(
             task_service=self.task_service,
             config_service=self.config_service,
+            runner_events=self.runner_events,
             fs_signal_bus=self.fs_signal_bus,
         )
         schedule_store = main_config_path.parent / "schedules.json"
         self.schedule_service = ScheduleService(self, schedule_store)
 
         # 初始化日志处理器（将 callback 信号转换为 log_output 信号）
-        self.log_processor = CallbackLogProcessor()
+        self.log_processor = CallbackLogProcessor(self.runner_events)
+        self._runner_ui_bridge = _RunnerUiSignalBridge()
 
         # 连接信号
         self._connect_signals()
@@ -566,14 +618,50 @@ class ServiceCoordinator:
         self.signal_bus.need_save.connect(self._on_need_save)
         # 热更新完成后重新初始化
         signalBus.fs_reinit_requested.connect(self.reinit)
-        # Runner -> UI 全局信号桥接，避免 runner 直接依赖 signalBus
-        self.task_runner.callback.connect(signalBus.callback.emit)
-        self.task_runner.log_output.connect(signalBus.log_output.emit)
-        self.task_runner.set_window_title.connect(signalBus.set_window_title.emit)
-        self.task_runner.task_status_changed.connect(signalBus.task_status_changed.emit)
-        self.task_runner.task_flow_finished.connect(signalBus.task_flow_finished.emit)
-        self.task_runner.log_clear_requested.connect(signalBus.log_clear_requested.emit)
-        self.task_runner.info_bar_requested.connect(signalBus.info_bar_requested.emit)
+        # 使用 QObject 槽转发，确保来自 runner/底层回调线程的信号稳定回到 UI 线程。
+        self.runner_events.callback.connect(
+            self._runner_ui_bridge.forward_callback, Qt.ConnectionType.QueuedConnection
+        )
+        self.runner_events.log_output.connect(
+            self._runner_ui_bridge.forward_log_output,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self.runner_events.set_window_title.connect(
+            self._runner_ui_bridge.forward_set_window_title,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self.runner_events.task_status_changed.connect(
+            self._runner_ui_bridge.forward_task_status_changed,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self.runner_events.task_flow_finished.connect(
+            self._runner_ui_bridge.forward_task_flow_finished,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self.runner_events.log_clear_requested.connect(
+            self._runner_ui_bridge.forward_log_clear_requested,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self.runner_events.info_bar_requested.connect(
+            self._runner_ui_bridge.forward_info_bar_requested,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self.runner_events.focus_toast.connect(
+            self._runner_ui_bridge.forward_focus_toast,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self.runner_events.focus_notification.connect(
+            self._runner_ui_bridge.forward_focus_notification,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self.runner_events.focus_dialog.connect(
+            self._runner_ui_bridge.forward_focus_dialog,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self.runner_events.focus_modal.connect(
+            self._runner_ui_bridge.forward_focus_modal,
+            Qt.ConnectionType.QueuedConnection,
+        )
 
     def _on_config_changed(self, config_id: str):
         """配置变化后刷新内部服务状态"""
