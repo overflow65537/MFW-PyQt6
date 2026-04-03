@@ -12,13 +12,12 @@ import time as _time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict
-from PySide6.QtCore import QCoreApplication, QObject, QTimer
+from PySide6.QtCore import QCoreApplication, QObject, QTimer, Signal
 from app.common.constants import (
     POST_ACTION,
     _CONTROLLER_,
     _RESOURCE_,
 )
-from app.common.signal_bus import signalBus
 from app.common.config import cfg
 
 from maa.toolkit import Toolkit
@@ -37,14 +36,40 @@ from app.core.service.task_service import TaskService
 from app.core.runner.maafw import (
     MaaFW,
     MaaFWError,
-    maa_context_sink,
-    maa_controller_sink,
-    maa_resource_sink,
-    maa_tasker_sink,
 )
 from app.utils.controller_utils import ControllerHelper
 
 from app.core.item import FromeServiceCoordinator, TaskItem
+
+
+class _NullRunnerSignal:
+    def emit(self, *args, **kwargs) -> None:
+        return None
+
+    def connect(self, *args, **kwargs) -> None:
+        return None
+
+    def disconnect(self, *args, **kwargs) -> None:
+        return None
+
+
+class _RunnerSignalBusProxy:
+    """在 runner 内部模拟 signalBus 访问，实际绑定到 TaskFlowRunner 自身信号。"""
+
+    def __init__(self) -> None:
+        self._runner: TaskFlowRunner | None = None
+        self._null_signal = _NullRunnerSignal()
+
+    def bind(self, runner: "TaskFlowRunner") -> None:
+        self._runner = runner
+
+    def __getattr__(self, name: str):
+        if self._runner is None:
+            return self._null_signal
+        return getattr(self._runner, name, self._null_signal)
+
+
+signalBus = _RunnerSignalBusProxy()
 
 
 def _ndarray_to_png_bytes(ndarray) -> bytes | None:
@@ -71,6 +96,14 @@ def _ndarray_to_png_bytes(ndarray) -> bytes | None:
 class TaskFlowRunner(QObject):
     """负责执行任务流的运行时组件"""
 
+    callback = Signal(dict)
+    log_output = Signal(str, str)
+    set_window_title = Signal(str)
+    task_status_changed = Signal(str, str)
+    task_flow_finished = Signal(dict)
+    log_clear_requested = Signal()
+    info_bar_requested = Signal(str, str)
+
     def __init__(
         self,
         task_service: TaskService,
@@ -78,22 +111,19 @@ class TaskFlowRunner(QObject):
         fs_signal_bus: FromeServiceCoordinator | None = None,
     ):
         super().__init__()
+        signalBus.bind(self)
         self.task_service = task_service
         self.config_service = config_service
         # 提供给主窗口退出清理使用：停止外部通知线程
         # 注意：send_thread 定义于 app.utils.notice，为全局单例
         self.send_thread = send_thread
         if fs_signal_bus:
-            self.maafw = MaaFW(
-                maa_context_sink=maa_context_sink,
-                maa_controller_sink=maa_controller_sink,
-                maa_resource_sink=maa_resource_sink,
-                maa_tasker_sink=maa_tasker_sink,
-            )
+            self.maafw = MaaFW()
             self.fs_signal_bus = fs_signal_bus
         else:
             self.maafw = MaaFW()
             self.fs_signal_bus = None
+        self.maafw.callback.connect(self.callback.emit)
         self.maafw.custom_info.connect(self._handle_maafw_custom_info)
         self.maafw.agent_info.connect(self._handle_agent_info)
         self.process = None

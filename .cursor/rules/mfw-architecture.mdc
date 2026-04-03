@@ -1,0 +1,17 @@
+---
+description: MFW-PyQt6 architecture and naming constraints
+alwaysApply: true
+---
+
+# MFW-PyQt6 AI Rules
+
+- Treat `.github/copilot-instructions.md` as the canonical project architecture guide.
+- `app/core/service/` and `app/core/runner/` must not add new direct imports of `app.common.signal_bus.signalBus`.
+- Prefer `Runner Signal -> ServiceCoordinator -> signalBus -> View` for runtime notifications.
+- View code should call `ServiceCoordinator` methods instead of mutating model state or reaching into service internals.
+- Widget code must stay UI-only and must not import Core, Service, or `ServiceCoordinator`.
+- Keep business logic out of View; keep UI logic out of Core/Service.
+- Use snake_case for modules, functions, methods, variables, attributes, and signals.
+- Use PascalCase for classes and exceptions; use UPPER_SNAKE_CASE for constants.
+- Use `self.tr("...")` for user-visible text in View and Runner code.
+- Avoid blocking the UI thread; prefer `@asyncify`, async flows, and `QTimer.singleShot` for delayed UI actions.

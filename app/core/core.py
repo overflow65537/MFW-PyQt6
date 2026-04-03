@@ -566,6 +566,14 @@ class ServiceCoordinator:
         self.signal_bus.need_save.connect(self._on_need_save)
         # 热更新完成后重新初始化
         signalBus.fs_reinit_requested.connect(self.reinit)
+        # Runner -> UI 全局信号桥接，避免 runner 直接依赖 signalBus
+        self.task_runner.callback.connect(signalBus.callback.emit)
+        self.task_runner.log_output.connect(signalBus.log_output.emit)
+        self.task_runner.set_window_title.connect(signalBus.set_window_title.emit)
+        self.task_runner.task_status_changed.connect(signalBus.task_status_changed.emit)
+        self.task_runner.task_flow_finished.connect(signalBus.task_flow_finished.emit)
+        self.task_runner.log_clear_requested.connect(signalBus.log_clear_requested.emit)
+        self.task_runner.info_bar_requested.connect(signalBus.info_bar_requested.emit)
 
     def _on_config_changed(self, config_id: str):
         """配置变化后刷新内部服务状态"""

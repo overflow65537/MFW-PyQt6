@@ -63,10 +63,14 @@ from maa.resource import ResourceEventSink, Resource
 from maa.tasker import TaskerEventSink, Tasker
 from maa.context import ContextEventSink, Context
 
-from app.common.signal_bus import signalBus
-
-
 class MaaContextSink(ContextEventSink):
+    def __init__(self, emit_callback=None):
+        self._emit_callback = emit_callback
+
+    def _emit(self, payload: dict) -> None:
+        if self._emit_callback is not None:
+            self._emit_callback(payload)
+
     def on_raw_notification(self, context: Context, msg: str, details: dict):
         focus_entry = (details.get("focus") or {}).get(msg)
         if not focus_entry:
@@ -96,11 +100,11 @@ class MaaContextSink(ContextEventSink):
         content = content.replace("{task_id}", str(details.get("task_id", "")))
         content = content.replace("{list}", details.get("list", ""))
 
-        signalBus.callback.emit({"name": "context", "details": content, "display": display})
+        self._emit({"name": "context", "details": content, "display": display})
 
         if msg == "Node.Recognition.Succeeded":
             if details.get("Abort", False):
-                signalBus.callback.emit({"name": "abort"})
+                self._emit({"name": "abort"})
             if details.get("Notice", False):
                 pass
 
@@ -130,6 +134,9 @@ class MaaContextSink(ContextEventSink):
 
 
 class MaaControllerEventSink(ControllerEventSink):
+    def __init__(self, emit_callback=None):
+        self._emit_callback = emit_callback
+
     def on_raw_notification(self, controller: Controller, msg: str, details: dict):
         pass
 
@@ -144,6 +151,9 @@ class MaaControllerEventSink(ControllerEventSink):
 
 
 class MaaResourceEventSink(ResourceEventSink):
+    def __init__(self, emit_callback=None):
+        self._emit_callback = emit_callback
+
     def on_raw_notification(self, resource: Resource, msg: str, details: dict):
         pass
 
@@ -153,10 +163,14 @@ class MaaResourceEventSink(ResourceEventSink):
         noti_type: NotificationType,
         detail: ResourceEventSink.ResourceLoadingDetail,
     ):
-        signalBus.callback.emit({"name": "resource", "status": noti_type.value})
+        if self._emit_callback is not None:
+            self._emit_callback({"name": "resource", "status": noti_type.value})
 
 
 class MaaTaskerEventSink(TaskerEventSink):
+    def __init__(self, emit_callback=None):
+        self._emit_callback = emit_callback
+
     def on_raw_notification(self, tasker: Tasker, msg: str, details: dict):
         pass
 
@@ -166,18 +180,14 @@ class MaaTaskerEventSink(TaskerEventSink):
         noti_type: NotificationType,
         detail: TaskerEventSink.TaskerTaskDetail,
     ):
-        signalBus.callback.emit(
-            {"name": "task", "task": detail.entry, "status": noti_type.value}
-        )
-
-
-maa_context_sink = MaaContextSink()
-maa_controller_sink = MaaControllerEventSink()
-maa_resource_sink = MaaResourceEventSink()
-maa_tasker_sink = MaaTaskerEventSink()
+        if self._emit_callback is not None:
+            self._emit_callback(
+                {"name": "task", "task": detail.entry, "status": noti_type.value}
+            )
 
 
 class MaaFW(QObject):
+    callback = Signal(dict)
 
     resource: Resource | None
     controller: (
@@ -215,11 +225,17 @@ class MaaFW(QObject):
         self.controller = None
         self.tasker = None
 
-        # 这里传入的是 Sink 类，需要在此处实例化，避免把类对象/descriptor 直接交给底层 C 接口
-        self.maa_controller_sink = maa_controller_sink
-        self.maa_context_sink = maa_context_sink
-        self.maa_resource_sink = maa_resource_sink
-        self.maa_tasker_sink = maa_tasker_sink
+        # sink 默认绑定到 MaaFW 自身回调信号，供上层按需转发到 UI。
+        self.maa_controller_sink = maa_controller_sink or MaaControllerEventSink(
+            self.callback.emit
+        )
+        self.maa_context_sink = maa_context_sink or MaaContextSink(self.callback.emit)
+        self.maa_resource_sink = maa_resource_sink or MaaResourceEventSink(
+            self.callback.emit
+        )
+        self.maa_tasker_sink = maa_tasker_sink or MaaTaskerEventSink(
+            self.callback.emit
+        )
 
         self.agent = None
         self.agent_thread = None
