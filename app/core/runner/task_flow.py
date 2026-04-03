@@ -70,13 +70,13 @@ class TaskFlowRunner(QObject):
         self,
         task_service: TaskService,
         config_service: ConfigService,
-        runner_events: RunnerEvents,
+        runner_events: RunnerEvents | None = None,
         fs_signal_bus: FromeServiceCoordinator | None = None,
     ):
         super().__init__()
         self.task_service = task_service
         self.config_service = config_service
-        self.runner_events = runner_events
+        self.runner_events = runner_events or RunnerEvents()
         # 提供给主窗口退出清理使用：停止外部通知线程
         # 注意：send_thread 定义于 app.utils.notice，为全局单例
         self.send_thread = send_thread
