@@ -10,6 +10,7 @@
 """
 
 from typing import Dict, Any, List, Optional
+from app.core.utils.option_branches_compat import get_option_branches
 from app.utils.logger import logger
 
 
@@ -267,8 +268,8 @@ def _process_option_recursive(
         logger.debug(f"跳过隐藏的选项: {option_name}")
         return
 
-    # 提取实际的选项值和子选项
-    actual_value, children = _extract_option_value_and_children(option_value)
+    # 提取实际的选项值和分支子选项
+    actual_value, branches = _extract_option_value_and_children(option_value)
 
     # 获取该选项的 pipeline_override
     option_override = _get_option_pipeline_override(options, option_name, actual_value)
@@ -277,15 +278,32 @@ def _process_option_recursive(
     _deep_merge_dict(merged_override, option_override)
 
     # 递归处理子选项（只处理可见的）
-    if children:
-        for child_key, child_data in children.items():
-            # 检查子选项是否隐藏
+    if branches:
+        for child_key, child_data in branches.items():
+            # 新格式：branches[父分支][子选项名] = payload
+            if (
+                isinstance(child_data, dict)
+                and child_key not in options
+                and "value" not in child_data
+                and "hidden" not in child_data
+                and "children" not in child_data
+            ):
+                for nested_key, nested_data in child_data.items():
+                    if isinstance(nested_data, dict) and nested_data.get("hidden", False):
+                        logger.debug(f"跳过隐藏的子选项: {nested_key}")
+                        continue
+
+                    actual_option_name = _extract_child_option_name(nested_key)
+                    if actual_option_name:
+                        _process_option_recursive(
+                            options, actual_option_name, nested_data, merged_override
+                        )
+                continue
+
             if isinstance(child_data, dict) and child_data.get("hidden", False):
                 logger.debug(f"跳过隐藏的子选项: {child_key}")
                 continue
 
-            # 从子选项 key 中提取实际的选项名称
-            # 格式: {父选项名}_child_{触发case名}_{子选项名}_{索引}
             actual_option_name = _extract_child_option_name(child_key)
 
             if actual_option_name:
@@ -315,8 +333,8 @@ def _extract_option_value_and_children(
     # 检查是否是复杂格式（包含 value 字段）
     if "value" in option_value:
         actual_value = option_value["value"]
-        children = option_value.get("children")
-        return actual_value, children
+        branches = get_option_branches(option_value)
+        return actual_value, branches
 
     # 普通字典（input类型的值）
     return option_value, None

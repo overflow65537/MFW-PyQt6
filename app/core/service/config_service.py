@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, List, Optional
 from app.utils.logger import logger
 from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION, PRE_CONFIGURATION
 from app.core.item import ConfigItem, TaskItem, CoreSignalBus
+from app.core.utils.option_branches_compat import normalize_config_item_branches
 
 
 class JsonConfigRepository:
@@ -206,6 +207,10 @@ class ConfigService:
         self._migrate_pre_configuration_task(config)
         # 向后兼容：将历史 Resource 任务中的全局选项迁移到配置根层
         self._migrate_global_options_storage(config)
+        # 向后兼容：将历史 `children` 字段更正为 `branches`
+        branches_changed = normalize_config_item_branches(config)
+        if branches_changed:
+            self.repo.save_config(config.item_id, config.to_dict())
         
         return config
 

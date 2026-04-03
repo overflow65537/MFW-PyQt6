@@ -5,6 +5,7 @@ from app.utils.logger import logger
 from app.core.service.config_service import ConfigService
 from app.core.item import TaskItem, CoreSignalBus
 from app.common.constants import _RESOURCE_, _CONTROLLER_
+from app.core.utils.option_branches_compat import get_option_branches, set_option_branches
 
 # 速通配置默认值
 DEFAULT_SPEEDRUN_CONFIG: Dict[str, Any] = {
@@ -260,8 +261,8 @@ class TaskService:
         interface_options: Dict[str, Any],
     ) -> None:
         """更新 select/switch 类型选项的子选项可见性。"""
-        children = option_data.get("children")
-        if not isinstance(children, dict):
+        branches = get_option_branches(option_data)
+        if not isinstance(branches, dict):
             return
 
         cases = option_template.get("cases", [])
@@ -284,11 +285,22 @@ class TaskService:
                     child_option_key,
                 ]
                 for child_key in candidate_keys:
-                    if child_key in children and isinstance(children[child_key], dict):
+                    if child_key in branches and isinstance(branches[child_key], dict):
                         if case_name == selected_case_name:
-                            children[child_key].pop("hidden", None)
+                            branches[child_key].pop("hidden", None)
                         else:
-                            children[child_key]["hidden"] = True
+                            branches[child_key]["hidden"] = True
+
+                grouped_children = branches.get(case_name)
+                if isinstance(grouped_children, dict):
+                    for nested_key, nested_value in grouped_children.items():
+                        if nested_key not in candidate_keys:
+                            continue
+                        if isinstance(nested_value, dict):
+                            if case_name == selected_case_name:
+                                nested_value.pop("hidden", None)
+                            else:
+                                nested_value["hidden"] = True
 
     def _update_children_visibility_checkbox(
         self,
@@ -299,8 +311,8 @@ class TaskService:
         interface_options: Dict[str, Any],
     ) -> None:
         """更新 checkbox 类型选项的子选项可见性。"""
-        children = option_data.get("children")
-        if not isinstance(children, dict):
+        branches = get_option_branches(option_data)
+        if not isinstance(branches, dict):
             return
 
         selected_set = set(selected_case_names)
@@ -324,11 +336,22 @@ class TaskService:
                     child_option_key,
                 ]
                 for child_key in candidate_keys:
-                    if child_key in children and isinstance(children[child_key], dict):
+                    if child_key in branches and isinstance(branches[child_key], dict):
                         if case_name in selected_set:
-                            children[child_key].pop("hidden", None)
+                            branches[child_key].pop("hidden", None)
                         else:
-                            children[child_key]["hidden"] = True
+                            branches[child_key]["hidden"] = True
+
+                grouped_children = branches.get(case_name)
+                if isinstance(grouped_children, dict):
+                    for nested_key, nested_value in grouped_children.items():
+                        if nested_key not in candidate_keys:
+                            continue
+                        if isinstance(nested_value, dict):
+                            if case_name in selected_set:
+                                nested_value.pop("hidden", None)
+                            else:
+                                nested_value["hidden"] = True
 
     def reload_interface(self, interface: Dict[str, Any]):
         """刷新 interface 数据，用于热更新后同步"""
@@ -557,7 +580,7 @@ class TaskService:
                     selected_case_names_set = set(default_case_names)
                     option_result: dict[str, Any] = {"value": list(default_case_names)}
 
-                    children: dict[str, Any] = {}
+                    branches: dict[str, Any] = {}
                     for case in cases:
                         case_name = case.get("name", "")
                         option_values = case.get("option")
@@ -588,13 +611,11 @@ class TaskService:
                             else:
                                 child_entry.pop("hidden", None)
 
-                            child_key = (
-                                f"{option_key}_child_{case_name}_{child_option_key}_{index}"
-                            )
-                            children[child_key] = child_entry
+                            branch_group = branches.setdefault(case_name, {})
+                            branch_group[child_option_key] = child_entry
 
-                    if children:
-                        option_result["children"] = children
+                    if branches:
+                        set_option_branches(option_result, branches)
 
                     return option_result
                 else:
@@ -605,7 +626,7 @@ class TaskService:
                     selected_case_name = selected_case.get("name", "")
                     option_result: dict[str, Any] = {"value": selected_case_name}
 
-                    children: dict[str, Any] = {}
+                    branches: dict[str, Any] = {}
                     for case in cases:
                         case_name = case.get("name", "")
                         option_values = case.get("option")
@@ -636,13 +657,11 @@ class TaskService:
                             else:
                                 child_entry.pop("hidden", None)
 
-                            child_key = (
-                                f"{option_key}_child_{case_name}_{child_option_key}_{index}"
-                            )
-                            children[child_key] = child_entry
+                            branch_group = branches.setdefault(case_name, {})
+                            branch_group[child_option_key] = child_entry
 
-                    if children:
-                        option_result["children"] = children
+                    if branches:
+                        set_option_branches(option_result, branches)
 
                     return option_result
 

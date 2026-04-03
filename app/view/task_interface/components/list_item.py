@@ -37,6 +37,7 @@ from qfluentwidgets import (
 from app.core.item import TaskItem, ConfigItem
 from app.common.constants import _RESOURCE_, _CONTROLLER_, POST_ACTION
 from app.core.core import ServiceCoordinator
+from app.core.utils.option_branches_compat import get_option_branches
 
 
 class ClickableLabel(BodyLabel):
@@ -750,12 +751,9 @@ class TaskListItem(BaseListItem):
                         if display_value and display_value.strip():
                             result.append(display_value.strip())
 
-                # 递归处理 children（只处理当前选择的选项的子选项）
-                if (
-                    "children" in value
-                    and isinstance(value["children"], dict)
-                    and option_value is not None
-                ):
+                # 递归处理 branches（兼容历史 children）
+                branches = get_option_branches(value)
+                if branches and option_value is not None:
                     # 获取当前选项值的子选项定义（children 中的选项定义）
                     child_interface_options = None
                     if interface_options and key in interface_options:
@@ -789,7 +787,7 @@ class TaskListItem(BaseListItem):
 
                     # 递归处理子选项
                     self._extract_option_values(
-                        value["children"], result, child_interface_options
+                        branches, result, child_interface_options
                     )
             else:
                 # 直接是值的情况（简单格式）- 这种情况表示当前选择的选项
