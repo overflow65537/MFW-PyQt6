@@ -475,9 +475,15 @@ class TaskFlowRunner(QObject):
                 _deep_merge_dict,
             )
 
+            from app.core.service.interface_manager import InterfaceManager
+
+            interface_manager = InterfaceManager()
+            embedded_ready = interface_manager.apply_agent_customization()
+            runner_interface = self.task_service.interface or {}
+
             # 1. 配置级 global_option + resource.option（已在函数内按优先级合并）
             self._default_pipeline_override = get_pipeline_override_from_task_option(
-                self.task_service.interface,
+                runner_interface,
                 resource_cfg.task_option,
                 _RESOURCE_,
                 self.config_service.get_current_global_options(),
@@ -485,22 +491,36 @@ class TaskFlowRunner(QObject):
 
             # 2. controller.option（优先级高于 resource.option 和 global_option）
             controller_override = get_controller_option_pipeline_override(
-                self.task_service.interface, controller_cfg.task_option
+                runner_interface, controller_cfg.task_option
             )
             if controller_override:
                 _deep_merge_dict(self._default_pipeline_override, controller_override)
 
-            if self.task_service.interface.get("agent", None):
-                self.maafw.agent_data_raw = self.task_service.interface.get(
-                    "agent", None
+            embedded_error = str(runner_interface.get("__embedded_agent_error", "") or "").strip()
+            if not embedded_ready:
+                logger.error("嵌入式 Agent 准备失败: %s", embedded_error or "未知原因")
+                self.log_output.emit(
+                    "ERROR",
+                    self.tr("Embedded Agent prepare failed: ")
+                    + (embedded_error or self.tr("Unknown reason")),
                 )
+                await self.stop_task()
+                return
+
+            agent_config = runner_interface.get("agent", None)
+            if (
+                isinstance(agent_config, dict)
+                and agent_config
+                and not agent_config.get("embedded")
+            ):
+                self.maafw.agent_data_raw = runner_interface.get("agent", None)
                 # v2.5.0: 构建 PI_* 环境变量供 agent 子进程使用
                 self.maafw.agent_env_vars = self._build_agent_env_vars(
                     controller_cfg, resource_cfg
                 )
                 self.log_output.emit("INFO", self.tr("Agent Service Start"))
 
-            if self.task_service.interface.get("custom", None) and self.maafw.resource:
+            if runner_interface.get("custom", None) and self.maafw.resource:
                 self.log_output.emit(
                     "INFO", self.tr("Starting to load custom components...")
                 )
@@ -508,7 +528,7 @@ class TaskFlowRunner(QObject):
                 self.maafw.resource.clear_custom_action()
 
                 # 兼容绝对路径与相对 bundle.path 的自定义配置路径
-                custom_config_path = self.task_service.interface.get("custom", "")
+                custom_config_path = runner_interface.get("custom", "")
                 if custom_config_path:
                     bundle_path_str = self.bundle_path or "./"
                     base_dir = Path(bundle_path_str)
@@ -1127,9 +1147,7 @@ class TaskFlowRunner(QObject):
         if permission_required is None:
             if isinstance(controller_name, str) and controller_name:
                 try:
-                    for ctrl in (self.task_service.interface or {}).get(
-                        "controller", []
-                    ):
+                    for ctrl in (self.task_service.interface or {}).get("controller", []):
                         if not isinstance(ctrl, dict):
                             continue
                         if ctrl.get("name") == controller_name:

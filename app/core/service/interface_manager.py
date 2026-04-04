@@ -149,9 +149,6 @@ class InterfaceManager:
         # 解析 import 字段：加载并合并其他 PI 文件中的 task 和 option
         self._resolve_imports()
 
-        # 检查 agent 嵌入式配置并尝试转换
-        self.apply_agent_customization()
-
         # 设置当前语言
         # 如果未显式传入语言且当前语言为默认值，使用配置推断（兼容旧逻辑）
         if language is None and self._current_language == "zh_cn":
@@ -173,25 +170,25 @@ class InterfaceManager:
         )
 
     def _translate_interface(self):
-        """翻译整个 interface 配置"""
+        """翻译整个 interface 配置。"""
         if not self._original_interface:
             logger.warning("原始 interface 配置为空，无法翻译")
             self._translated_interface = {}
             return
 
-        # 深拷贝原始数据
-        self._translated_interface = deepcopy(self._original_interface)
+        translated = deepcopy(self._original_interface)
 
         # 翻译顶层字段
-        self._translate_dict(self._translated_interface)
+        self._translate_dict(translated)
 
         # 尝试将可能指向文本文件的字段展开
-        self._resolve_text_fields_from_files(self._translated_interface)
+        self._resolve_text_fields_from_files(translated)
 
         logger.debug(f"interface 配置翻译完成，当前语言: {self._current_language}")
 
         # 自动补全label字段：如果label不存在或为空，用name填充
-        self._auto_fill_label(self._translated_interface)
+        self._auto_fill_label(translated)
+        self._translated_interface = translated
 
     def _translate_dict(self, data: Any) -> Any:
         """
@@ -388,60 +385,56 @@ class InterfaceManager:
         """
         return self._original_interface
 
-    def apply_agent_customization(self):
+    def apply_agent_customization(self) -> bool:
         """
-        若 interface 中 agent 存在且设置了 embedded，则复制入口目录并生成 custom。
+        若 interface 中 agent 存在且设置了 embedded，则在当前内存中的
+        interface 上准备 custom 产物并注入 custom 字段。
 
-        该方法对外公开，供每次更新后调用（无需再检测是否更新）。
+        该方法只修改内存中的 interface，不会回写 interface 文件。
         """
-        self._handle_embedded_agent()
+        if not self._initialized:
+            self.initialize()
+        return self._handle_embedded_agent()
 
-    def _handle_embedded_agent(self):
-        agent_info = self._original_interface.get("agent")
-        if not agent_info:
-            return
+    def _clear_embedded_customization(self, interface: Dict[str, Any]) -> None:
+        """清理上次运行前注入的 embedded custom 临时字段。"""
+        if interface.get("__embedded_generated_custom"):
+            interface.pop("custom", None)
+        interface.pop("__embedded_generated_custom", None)
+        interface.pop("__embedded_agent_error", None)
+
+    def _handle_embedded_agent(self) -> bool:
+        interface = self._translated_interface
+        self._clear_embedded_customization(interface)
+
+        agent_info = interface.get("agent")
+        if not isinstance(agent_info, dict):
+            return True
         if not agent_info.get("embedded"):
             logger.debug("agent 配置中没有 embedded 字段，跳过嵌入式转换")
-            return
+            return True
         logger.debug("处理嵌入式 agent")
 
         child_args = agent_info.get("child_args", [])
         entry_path = self._resolve_agent_entry(child_args)
         if entry_path is None:
+            interface["__embedded_agent_error"] = "找不到 agent.child_args 指向的启动脚本"
             logger.warning("找不到 agent.child_args 指向的启动脚本，跳过嵌入式转换")
-            return
+            return False
 
-        project_name = (
-            str(
-                self._original_interface.get("name") or self._interface_dir.name
-            ).strip()
-            or "custom"
-        )
-        custom_dir = self._interface_dir / f"{project_name}_custom"
+        custom_dir = entry_path.parent.with_name(f"{entry_path.parent.name}_custom")
 
         try:
             build_custom_bundle(entry_path, custom_dir)
         except Exception as exc:
+            interface["__embedded_agent_error"] = f"转换嵌入式 agent 失败: {exc}"
             logger.exception("转换嵌入式 agent 失败: %s", exc)
-            return
+            return False
 
-        self._original_interface["_agent_backup"] = deepcopy(agent_info)
-        self._original_interface.pop("agent", None)
-
-        # 计算相对于 bundle 目录（_interface_dir）的相对路径
-        custom_relative = custom_dir.relative_to(self._interface_dir) / "custom.json"
-        self._original_interface["custom"] = custom_relative.as_posix()
-
-        # 将修改后的 interface 保存回文件（保存到正确的 bundlepath 位置）
-        if self._interface_path:
-            try:
-                with open(self._interface_path, "w", encoding="utf-8") as f:
-                    jsonc.dump(
-                        self._original_interface, f, indent=4, ensure_ascii=False
-                    )
-                logger.debug(f"已将 custom 字段保存到: {self._interface_path}")
-            except Exception as exc:
-                logger.exception(f"保存 interface 文件失败: {exc}")
+        custom_relative = (custom_dir.relative_to(self._interface_dir) / "custom.json").as_posix()
+        interface["custom"] = custom_relative
+        interface["__embedded_generated_custom"] = True
+        return True
 
     def _resolve_agent_entry(self, child_args: Sequence[Any]) -> Path | None:
         """

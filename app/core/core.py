@@ -115,7 +115,9 @@ class ServiceCoordinator:
         try:
             self.config_service = ConfigService(self.config_repo, self.signal_bus)
             self.task_service = TaskService(
-                self.config_service, self.signal_bus, self._interface
+                self.config_service,
+                self.signal_bus,
+                self._interface,
             )
         except (IndexError, ValueError, jsonc.JSONDecodeError, FileNotFoundError, Exception) as e:
             # 配置加载错误，尝试重置配置
@@ -125,7 +127,9 @@ class ServiceCoordinator:
                 try:
                     self.config_service = ConfigService(self.config_repo, self.signal_bus)
                     self.task_service = TaskService(
-                        self.config_service, self.signal_bus, self._interface
+                        self.config_service,
+                        self.signal_bus,
+                        self._interface,
                     )
                 except Exception as retry_error:
                     logger.error(f"重置配置后重新初始化失败: {retry_error}")
