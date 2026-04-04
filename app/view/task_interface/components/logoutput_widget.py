@@ -664,9 +664,9 @@ class LogoutputWidget(QWidget):
                     and self._last_image_bytes is not None
                 ):
                     similarity = self._image_similarity(curr_small, self._last_image_small_gray)
-                    logger.info(f"[图片相似度] 当前相似度: {similarity:.2%} (阈值: {self._image_similarity_threshold:.2%})")
+                    #logger.info(f"[图片相似度] 当前相似度: {similarity:.2%} (阈值: {self._image_similarity_threshold:.2%})")
                     if similarity >= self._image_similarity_threshold:
-                        logger.info(f"[图片相似度] 检测到相同图片（相似度 {similarity:.2%} >= {self._image_similarity_threshold:.2%}），复用上一张图片，不新增存储")
+                        #logger.info(f"[图片相似度] 检测到相同图片（相似度 {similarity:.2%} >= {self._image_similarity_threshold:.2%}），复用上一张图片，不新增存储")
                         return self._last_image_bytes
 
                 bgr = cached[:, :, :3]
@@ -688,9 +688,10 @@ class LogoutputWidget(QWidget):
                     pil_resized = pil_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
                     rgb = np.array(pil_resized, dtype=np.uint8)
                     w, h = new_w, new_h
-                    logger.debug(f"[图片压缩] 原图 {cached.shape[1]}x{cached.shape[0]} (短边{short_edge}) 缩放到 {w}x{h} (短边{min(w, h)})")
+                    #logger.debug(f"[图片压缩] 原图 {cached.shape[1]}x{cached.shape[0]} (短边{short_edge}) 缩放到 {w}x{h} (短边{min(w, h)})")
                 else:
-                    logger.debug(f"[图片压缩] 原图 {w}x{h} (短边{short_edge}) 短边已小于等于目标{self._short_edge_target}，保持原尺寸")
+                    #logger.debug(f"[图片压缩] 原图 {w}x{h} (短边{short_edge}) 短边已小于等于目标{self._short_edge_target}，保持原尺寸")
+                    pass
                 
                 rgb = np.ascontiguousarray(rgb)
                 bytes_per_line = 3 * w
@@ -719,7 +720,7 @@ class LogoutputWidget(QWidget):
                 logger.warning(f"[LogImage] PNG save failed: {writer.errorString()}")
                 return None
             
-            logger.debug(f"[图片压缩] PNG 保存成功，大小: {ba.size()} bytes ({ba.size()/1024:.1f}KB), 质量: {self._thumb_png_quality}, 分辨率: {w}x{h}")
+            #logger.debug(f"[图片压缩] PNG 保存成功，大小: {ba.size()} bytes ({ba.size()/1024:.1f}KB), 质量: {self._thumb_png_quality}, 分辨率: {w}x{h}")
             
             if ba.isEmpty():
                 return None
