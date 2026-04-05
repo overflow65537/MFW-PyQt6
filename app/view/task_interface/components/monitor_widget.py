@@ -196,6 +196,14 @@ class MonitorWidget(QWidget):
         # 多次触发合并为一次（restart timer）
         if self._stop_debounce_timer.isActive():
             self._stop_debounce_timer.stop()
+
+        # 收到停止请求后，先同步关闭“继续产生日志”的刷新入口，
+        # 避免在防抖等待窗口内因为控制器已断开而重复刷警告。
+        self._starting_monitoring = False
+        if self._low_power_timer:
+            self._low_power_timer.stop()
+        self._monitoring_active = False
+
         self._stop_debounce_timer.start(self._stop_debounce_ms)
 
     def _on_task_status_changed(self, status: dict):

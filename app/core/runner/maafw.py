@@ -258,6 +258,8 @@ class MaaFW(QObject):
         self._custom_sys_paths: List[str] = []
         # 记录上次加载的 custom_root，用于清理模块缓存
         self._last_custom_root: Path | None = None
+        # 底层 maa 对象清理不是线程安全的，必须串行执行。
+        self._cleanup_lock = threading.Lock()
 
     def load_custom_objects(self, custom_config_path: str | Path) -> bool:
         """
@@ -803,50 +805,59 @@ class MaaFW(QObject):
         self._cleanup_runtime()
 
     def _cleanup_runtime(self) -> None:
-        if self.tasker:
-            try:
-                self.tasker.post_stop().wait()
-            except Exception as e:
-                logger.error(f"停止任务失败: {e}")
-            finally:
-                self.tasker = None
-        if self.resource:
-            try:
-                self.resource.clear()
-            except Exception as e:
-                logger.error(f"清除资源失败: {e}")
-            finally:
-                self.resource = None
-        if self.controller:
-            self.controller = None
-        if self.agent:
-            try:
-                self.agent.disconnect()
-            except Exception as e:
-                logger.error(f"断开agent连接失败: {e}")
-            finally:
-                self.agent = None
-        self.agent_data_raw = None
-        self.agent_env_vars = {}
-        if self.agent_thread:
-            try:
-                self.agent_thread.terminate()
+        if not self._cleanup_lock.acquire(blocking=False):
+            logger.debug("MaaFW 清理已在进行中，忽略重复请求")
+            return
+
+        try:
+            if self.tasker:
                 try:
-                    self.agent_thread.wait(timeout=self.AGENT_TERMINATE_TIMEOUT_SECONDS)
-                except subprocess.TimeoutExpired:
-                    logger.warning("等待 agent 终止超时，执行 kill 操作")
-                    self.agent_thread.kill()
+                    self.tasker.post_stop().wait()
+                except Exception as e:
+                    logger.error(f"停止任务失败: {e}")
+                finally:
+                    self.tasker = None
+            if self.resource:
+                try:
+                    self.resource.clear()
+                except Exception as e:
+                    logger.error(f"清除资源失败: {e}")
+                finally:
+                    self.resource = None
+            if self.controller:
+                self.controller = None
+            if self.agent:
+                try:
+                    self.agent.disconnect()
+                except Exception as e:
+                    logger.error(f"断开agent连接失败: {e}")
+                finally:
+                    self.agent = None
+            self.agent_data_raw = None
+            self.agent_env_vars = {}
+            if self.agent_thread:
+                try:
+                    self.agent_thread.terminate()
                     try:
-                        self.agent_thread.wait(timeout=1)
-                    except Exception:
-                        pass
-            except Exception as e:
-                logger.error(f"终止agent线程失败: {e}")
-            finally:
-                self.agent_thread = None
-        if self.agent_output_thread:
-            self.agent_output_thread.join(timeout=0.1)
-            self.agent_output_thread = None
+                        self.agent_thread.wait(
+                            timeout=self.AGENT_TERMINATE_TIMEOUT_SECONDS
+                        )
+                    except subprocess.TimeoutExpired:
+                        logger.warning("等待 agent 终止超时，执行 kill 操作")
+                        self.agent_thread.kill()
+                        try:
+                            self.agent_thread.wait(timeout=1)
+                        except Exception:
+                            pass
+                except Exception as e:
+                    logger.error(f"终止agent线程失败: {e}")
+                finally:
+                    self.agent_thread = None
+            if self.agent_output_thread:
+                self.agent_output_thread.join(timeout=0.1)
+                self.agent_output_thread = None
+        finally:
+            self._cleanup_lock.release()
 
     def _send_custom_info(self, error: MaaFWError):
         self.custom_info.emit(error.value)
