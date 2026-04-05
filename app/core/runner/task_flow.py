@@ -479,7 +479,8 @@ class TaskFlowRunner(QObject):
 
             interface_manager = InterfaceManager()
             embedded_ready = interface_manager.apply_agent_customization()
-            runner_interface = self.task_service.interface or {}
+            runner_interface = interface_manager.get_interface() or {}
+            self.task_service.interface = runner_interface
 
             # 1. 配置级 global_option + resource.option（已在函数内按优先级合并）
             self._default_pipeline_override = get_pipeline_override_from_task_option(
@@ -521,6 +522,10 @@ class TaskFlowRunner(QObject):
                 self.log_output.emit("INFO", self.tr("Agent Service Start"))
 
             if runner_interface.get("custom", None) and self.maafw.resource:
+                logger.info(
+                    "检测到 embedded custom，准备加载自定义组件: %s",
+                    runner_interface.get("custom", ""),
+                )
                 self.log_output.emit(
                     "INFO", self.tr("Starting to load custom components...")
                 )
