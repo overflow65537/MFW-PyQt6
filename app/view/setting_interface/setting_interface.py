@@ -592,9 +592,10 @@ class SettingInterface(QWidget):
 
     def _open_github_home(self):
         """
-        打开 MFW-ChainFlow Assistant 的 GitHub 仓库（固定地址，与当前 interface 无关）。
+        打开当前头部信息对应的 GitHub 地址。
         """
-        QDesktopServices.openUrl(QUrl("https://github.com/overflow65537/MFW-PyQt6"))
+        github_url = self._github_url or "https://github.com/overflow65537/MFW-PyQt6"
+        QDesktopServices.openUrl(QUrl(github_url))
 
     def _apply_header_icon(self, icon_path: Optional[str] = None) -> None:
         """加载 interface 中提供的图标路径，失败时回退到默认 logo。"""
