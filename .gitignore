@@ -487,3 +487,9 @@ release_notes/*
 MPA_custom/*
 tasks/*
 .llm.txt
+
+# Codex local environments
+.codex/environments/
+
+# Python virtual environment
+.venv/
