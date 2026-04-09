@@ -23,6 +23,7 @@
 - [简介](#简介)
 - [功能亮点](#功能亮点)
 - [速通模式](#速通模式)
+- [开发文档](#开发文档)
 - [常用命令行参数](#常用命令行参数)
 - [外部通知](#外部通知)
 - [计划任务](#计划任务)
@@ -50,9 +51,13 @@ MFW-ChainFlow Assistant 旨在为 MaaFramework 用户提供开箱即用的可视
 
 ## 速通模式
 
-- 在 `interface.json` 的任务节点下添加 `speedrun` 块定义周期与次数控制，并在 UI/CLI 打开 speedrun 模式后生效。
+- 在 `interface.json` 的任务节点下添加 `speedrun` 块定义周期与次数控制，并设置 `speedrun.enabled: true` 后生效。
 - 支持 daily / weekly / monthly，配置运行次数与最小间隔，超限时自动跳过。
 - 详细字段与示例见 [docs/speedrun_mode.md](docs/speedrun_mode.md)。
+
+## 开发文档
+
+- 开发环境、启动调试、测试、i18n 与打包流程见 [docs/development.md](docs/development.md)。
 
 ## 常用命令行参数
 
@@ -139,7 +144,7 @@ class 动作对象1(CustomAction):
 
 1. 复制 agent 入口目录
 2. 自动生成对应的 `custom.json` 配置
-3. 移除 `agent` 字段，改用 `custom` 字段加载
+3. 保留 `agent` 字段，并额外注入 `custom` 字段用于加载生成产物
 
 ## 使用 GitHub Action 自动构建
 
