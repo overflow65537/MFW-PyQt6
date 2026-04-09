@@ -4,10 +4,10 @@ GPU 信息缓存模块
 在程序启动时获取 GPU 信息并缓存，避免每次使用时重新检测导致卡顿。
 """
 
-import os
-import subprocess
 import platform
+import subprocess
 from typing import Dict, Optional
+
 from app.utils.logger import logger
 
 # Windows 系统下隐藏命令行窗口的标志
@@ -15,6 +15,61 @@ if platform.system() == "Windows":
     CREATE_NO_WINDOW = subprocess.CREATE_NO_WINDOW
 else:
     CREATE_NO_WINDOW = 0
+
+
+def _parse_gpu_names_from_lines(output: str) -> Dict[int, str]:
+    """将按行输出的 GPU 名称解析为顺序字典。"""
+    gpu_info: Dict[int, str] = {}
+    for index, line in enumerate(output.splitlines()):
+        gpu_name = line.strip()
+        if gpu_name:
+            gpu_info[index] = gpu_name
+    return gpu_info
+
+
+def _get_windows_gpu_info() -> Dict[int, str]:
+    """通过 PowerShell WMI/CIM Cmdlet 获取 Windows GPU 信息。"""
+    powershell_commands = [
+        [
+            "powershell",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "Get-CimInstance -ClassName Win32_VideoController | Select-Object -ExpandProperty Name",
+        ],
+        [
+            "powershell",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "Get-WmiObject -Class Win32_VideoController | Select-Object -ExpandProperty Name",
+        ],
+    ]
+
+    for command in powershell_commands:
+        try:
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                creationflags=CREATE_NO_WINDOW,
+                timeout=5,
+            )
+        except FileNotFoundError:
+            logger.warning("未找到 PowerShell，无法通过 WMI/CIM 获取 GPU 信息")
+            return {}
+        except subprocess.TimeoutExpired:
+            logger.warning("PowerShell 查询 GPU 信息超时")
+            continue
+
+        if result.returncode != 0:
+            continue
+
+        gpu_info = _parse_gpu_names_from_lines(result.stdout)
+        if gpu_info:
+            return gpu_info
+
+    return {}
 
 
 def get_gpu_info() -> Dict[int, str]:
@@ -30,20 +85,7 @@ def get_gpu_info() -> Dict[int, str]:
 
     try:
         if system == "windows":
-            # Windows 系统使用 wmic 命令获取 GPU 信息
-            result = subprocess.run(
-                ["wmic", "path", "win32_videocontroller", "get", "name"],
-                capture_output=True,
-                text=True,
-                creationflags=CREATE_NO_WINDOW,
-            )
-            if result.returncode == 0:
-                # 解析输出，跳过第一行（标题）
-                lines = result.stdout.strip().split("\n")[1:]
-                for i, line in enumerate(lines):
-                    gpu_name = line.strip()
-                    if gpu_name:  # 跳过空行
-                        gpu_info[i] = gpu_name
+            gpu_info = _get_windows_gpu_info()
 
         elif system == "darwin":  # macOS
             # macOS 系统使用 system_profiler 命令获取 GPU 信息
